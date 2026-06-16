@@ -1,7 +1,6 @@
 -- Tabla de motos
 create table if not exists public.motos (
   id uuid primary key default gen_random_uuid(),
-  codigo text generated always as ('M-' || lpad(extract(epoch from created_at)::int::text, 6, '0')) stored,
   placa text not null unique,
   grupo text not null check (grupo in ('CLUB', 'PRADERA', 'COSTA')),
   marca text not null,

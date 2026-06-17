@@ -2,38 +2,19 @@ import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Login() {
-  const { signIn, signUp } = useAuth();
-  const [modo, setModo] = useState<"login" | "registro">("login");
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nombre, setNombre] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
     setLoading(true);
 
-    if (modo === "login") {
-      const { error } = await signIn(email, password);
-      if (error) setError(error);
-    } else {
-      if (!nombre.trim()) {
-        setError("Escribe tu nombre.");
-        setLoading(false);
-        return;
-      }
-      const { error } = await signUp(email, password, nombre.trim());
-      if (error) {
-        setError(error);
-      } else {
-        setInfo("Cuenta creada. Revisa tu correo para confirmar el registro y luego inicia sesión.");
-        setModo("login");
-      }
-    }
+    const { error } = await signIn(email, password);
+    if (error) setError(error);
 
     setLoading(false);
   }
@@ -45,21 +26,12 @@ export default function Login() {
           MotoGestión
         </div>
 
-        <h1 style={{ fontSize: 24, margin: "16px 0 4px" }}>
-          {modo === "login" ? "Iniciar sesión" : "Crear cuenta"}
-        </h1>
+        <h1 style={{ fontSize: 24, margin: "16px 0 4px" }}>Iniciar sesión</h1>
+        <p style={{ marginTop: 0, marginBottom: 4, color: "#64748b", fontSize: 13 }}>
+          Las cuentas las crea un administrador desde el panel de Usuarios.
+        </p>
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, marginTop: 16 }}>
-          {modo === "registro" && (
-            <input
-              type="text"
-              placeholder="Nombre completo"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              style={inputStyle}
-            />
-          )}
-
           <input
             type="email"
             placeholder="Correo electrónico"
@@ -80,7 +52,6 @@ export default function Login() {
           />
 
           {error && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{error}</div>}
-          {info && <div style={{ color: "#166534", fontSize: 13, fontWeight: 600 }}>{info}</div>}
 
           <button
             type="submit"
@@ -96,20 +67,9 @@ export default function Login() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Cargando..." : modo === "login" ? "Entrar" : "Registrarme"}
+            {loading ? "Cargando..." : "Entrar"}
           </button>
         </form>
-
-        <button
-          onClick={() => {
-            setModo(modo === "login" ? "registro" : "login");
-            setError(null);
-            setInfo(null);
-          }}
-          style={{ marginTop: 14, background: "none", border: "none", color: "#0284c7", fontWeight: 600, cursor: "pointer" }}
-        >
-          {modo === "login" ? "¿No tienes cuenta? Crear una nueva" : "Ya tengo cuenta, iniciar sesión"}
-        </button>
       </div>
     </div>
   );

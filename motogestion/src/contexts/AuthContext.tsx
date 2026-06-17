@@ -15,7 +15,6 @@ type AuthState = {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, nombre: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -55,21 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error ? traducirError(error.message) : null };
   }
 
-  async function signUp(email: string, password: string, nombre: string) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { nombre, role: "SECRETARIA" } },
-    });
-    return { error: error ? traducirError(error.message) : null };
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

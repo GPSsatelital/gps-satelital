@@ -7,8 +7,9 @@ import ContratosView from "./pages/ContratosView";
 import CobrosView from "./pages/CobrosView";
 import TallerView from "./pages/TallerView";
 import DashboardView from "./pages/DashboardView";
+import UsuariosView from "./pages/UsuariosView";
 
-type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller";
+type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller" | "usuarios";
 
 const navItems: Array<{ key: ViewKey; label: string }> = [
   { key: "dashboard", label: "Panel" },
@@ -31,6 +32,8 @@ function Shell() {
     return <Login />;
   }
 
+  const items = profile?.role === "ADMIN" ? [...navItems, { key: "usuarios" as ViewKey, label: "Usuarios" }] : navItems;
+
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
       <header style={{ position: "sticky", top: 0, background: "rgba(255,255,255,0.92)", borderBottom: "1px solid #e2e8f0", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -41,8 +44,8 @@ function Shell() {
           </div>
         </div>
 
-        <nav style={{ display: "flex", gap: 8 }}>
-          {navItems.map((item) => (
+        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {items.map((item) => (
             <button
               key={item.key}
               onClick={() => setView(item.key)}
@@ -73,6 +76,7 @@ function Shell() {
         {view === "contratos" && <ContratosView />}
         {view === "cobros" && <CobrosView />}
         {view === "taller" && <TallerView />}
+        {view === "usuarios" && profile?.role === "ADMIN" && <UsuariosView />}
       </main>
     </div>
   );

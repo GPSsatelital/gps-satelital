@@ -6,10 +6,12 @@ import ClientesView from "./pages/ClientesView";
 import ContratosView from "./pages/ContratosView";
 import CobrosView from "./pages/CobrosView";
 import TallerView from "./pages/TallerView";
+import DashboardView from "./pages/DashboardView";
 
-type ViewKey = "clientes" | "motos" | "contratos" | "cobros" | "taller";
+type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller";
 
 const navItems: Array<{ key: ViewKey; label: string }> = [
+  { key: "dashboard", label: "Panel" },
   { key: "clientes", label: "Clientes" },
   { key: "motos", label: "Motos" },
   { key: "contratos", label: "Contratos" },
@@ -19,7 +21,7 @@ const navItems: Array<{ key: ViewKey; label: string }> = [
 
 function Shell() {
   const { session, profile, loading, signOut } = useAuth();
-  const [view, setView] = useState<ViewKey>("clientes");
+  const [view, setView] = useState<ViewKey>("dashboard");
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Cargando...</div>;
@@ -65,6 +67,7 @@ function Shell() {
       </header>
 
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: 16 }}>
+        {view === "dashboard" && <DashboardView onNavigate={setView} />}
         {view === "clientes" && <ClientesView />}
         {view === "motos" && <MotosView />}
         {view === "contratos" && <ContratosView />}

@@ -4,13 +4,17 @@ import Login from "./pages/Login";
 import MotosView from "./pages/MotosView";
 import ClientesView from "./pages/ClientesView";
 import ContratosView from "./pages/ContratosView";
+import CobrosView from "./pages/CobrosView";
+import TallerView from "./pages/TallerView";
 
-type ViewKey = "clientes" | "motos" | "contratos";
+type ViewKey = "clientes" | "motos" | "contratos" | "cobros" | "taller";
 
 const navItems: Array<{ key: ViewKey; label: string }> = [
   { key: "clientes", label: "Clientes" },
   { key: "motos", label: "Motos" },
   { key: "contratos", label: "Contratos" },
+  { key: "cobros", label: "Cobros" },
+  { key: "taller", label: "Taller" },
 ];
 
 function Shell() {
@@ -64,6 +68,8 @@ function Shell() {
         {view === "clientes" && <ClientesView />}
         {view === "motos" && <MotosView />}
         {view === "contratos" && <ContratosView />}
+        {view === "cobros" && <CobrosView />}
+        {view === "taller" && <TallerView />}
       </main>
     </div>
   );

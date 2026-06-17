@@ -3,12 +3,14 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./pages/Login";
 import MotosView from "./pages/MotosView";
 import ClientesView from "./pages/ClientesView";
+import ContratosView from "./pages/ContratosView";
 
-type ViewKey = "clientes" | "motos";
+type ViewKey = "clientes" | "motos" | "contratos";
 
 const navItems: Array<{ key: ViewKey; label: string }> = [
   { key: "clientes", label: "Clientes" },
   { key: "motos", label: "Motos" },
+  { key: "contratos", label: "Contratos" },
 ];
 
 function Shell() {
@@ -59,7 +61,9 @@ function Shell() {
       </header>
 
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: 16 }}>
-        {view === "clientes" ? <ClientesView /> : <MotosView />}
+        {view === "clientes" && <ClientesView />}
+        {view === "motos" && <MotosView />}
+        {view === "contratos" && <ContratosView />}
       </main>
     </div>
   );

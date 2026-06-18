@@ -10,14 +10,8 @@ const sectionTitle: React.CSSProperties = { margin: "0 0 12px", fontSize: 18, fo
 
 type ViewKey = "clientes" | "motos" | "contratos" | "cobros" | "taller";
 
-function StatCard({ label, value, color, onClick }: { label: string; value: number | string; color: string; onClick?: () => void }) {
-  return (
-    <div style={{ ...card, cursor: onClick ? "pointer" : "default" }} onClick={onClick}>
-      <div style={{ fontSize: 13, color: "#64748b" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, color, marginTop: 4 }}>{value}</div>
-    </div>
-  );
-}
+const listItem: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 8 };
+
 
 export default function DashboardView({ onNavigate }: { onNavigate: (view: ViewKey) => void }) {
   const { motos, loading: loadingMotos } = useMotos();
@@ -49,46 +43,99 @@ export default function DashboardView({ onNavigate }: { onNavigate: (view: ViewK
   const tallerEnProceso = taller.filter((t) => t.estado_tecnico !== "Finalizado").length;
 
   return (
-    <div>
-      <h2 style={{ fontSize: 22, margin: 0 }}>Panel general</h2>
-      <p style={{ marginTop: 6, color: "#64748b" }}>Resumen en tiempo real de toda la operación.</p>
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 20, margin: 0 }}>Panel general</h2>
+      <p style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>Resumen en tiempo real de toda la operación.</p>
 
-      <div style={{ marginTop: 24 }}>
-        <h3 style={sectionTitle}>Motos</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-          <StatCard label="Disponibles" value={motosDisponibles} color="#166534" onClick={() => onNavigate("motos")} />
-          <StatCard label="Asignadas" value={motosAsignadas} color="#1d4ed8" onClick={() => onNavigate("motos")} />
-          <StatCard label="En mantenimiento" value={motosMantenimiento} color="#92400e" onClick={() => onNavigate("taller")} />
-          <StatCard label="Total flota" value={motos.length} color="#0f172a" onClick={() => onNavigate("motos")} />
-        </div>
-      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 20 }}>
 
-      <div style={{ marginTop: 24 }}>
-        <h3 style={sectionTitle}>Clientes</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-          <StatCard label="En proceso de aprobación" value={clientesEnProceso} color="#92400e" onClick={() => onNavigate("clientes")} />
-          <StatCard label="Activos" value={clientesActivos} color="#166534" onClick={() => onNavigate("clientes")} />
-          <StatCard label="En riesgo / mora" value={clientesEnRiesgo} color="#991b1b" onClick={() => onNavigate("clientes")} />
-          <StatCard label="Total registrados" value={clientes.length} color="#0f172a" onClick={() => onNavigate("clientes")} />
+        {/* Motos */}
+        <div style={card}>
+          <h3 style={{ ...sectionTitle, fontSize: 15, marginBottom: 10 }}>Motos</h3>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("motos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Disponibles</span>
+            <span style={{ fontWeight: 800, color: "#166534" }}>{motosDisponibles}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("motos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Asignadas</span>
+            <span style={{ fontWeight: 800, color: "#1d4ed8" }}>{motosAsignadas}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("taller")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>En mantenimiento</span>
+            <span style={{ fontWeight: 800, color: "#92400e" }}>{motosMantenimiento}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("motos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Total flota</span>
+            <span style={{ fontWeight: 800, color: "#0f172a" }}>{motos.length}</span>
+          </div>
         </div>
-      </div>
 
-      <div style={{ marginTop: 24 }}>
-        <h3 style={sectionTitle}>Contratos</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-          <StatCard label="Activos" value={contratosActivos} color="#166534" onClick={() => onNavigate("contratos")} />
-          <StatCard label="En proceso" value={contratosEnProceso} color="#92400e" onClick={() => onNavigate("contratos")} />
-          <StatCard label="Total" value={contratos.length} color="#0f172a" onClick={() => onNavigate("contratos")} />
+        {/* Clientes */}
+        <div style={card}>
+          <h3 style={{ ...sectionTitle, fontSize: 15, marginBottom: 10 }}>Clientes</h3>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("clientes")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>En proceso de aprobación</span>
+            <span style={{ fontWeight: 800, color: "#92400e" }}>{clientesEnProceso}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("clientes")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Activos</span>
+            <span style={{ fontWeight: 800, color: "#166534" }}>{clientesActivos}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("clientes")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>En riesgo / mora</span>
+            <span style={{ fontWeight: 800, color: "#991b1b" }}>{clientesEnRiesgo}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("clientes")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Total registrados</span>
+            <span style={{ fontWeight: 800, color: "#0f172a" }}>{clientes.length}</span>
+          </div>
         </div>
-      </div>
 
-      <div style={{ marginTop: 24 }}>
-        <h3 style={sectionTitle}>Cobros y Taller</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-          <StatCard label="Transferencias pendientes" value={pagosPendientes} color="#92400e" onClick={() => onNavigate("cobros")} />
-          <StatCard label="Recaudado en semana ($)" value={totalConfirmadoSemana.toLocaleString("es-CO")} color="#166534" onClick={() => onNavigate("cobros")} />
-          <StatCard label="Motos en taller" value={tallerEnProceso} color="#1d4ed8" onClick={() => onNavigate("taller")} />
+        {/* Contratos */}
+        <div style={card}>
+          <h3 style={{ ...sectionTitle, fontSize: 15, marginBottom: 10 }}>Contratos</h3>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("contratos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Activos</span>
+            <span style={{ fontWeight: 800, color: "#166534" }}>{contratosActivos}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("contratos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>En proceso</span>
+            <span style={{ fontWeight: 800, color: "#92400e" }}>{contratosEnProceso}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("contratos")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Total</span>
+            <span style={{ fontWeight: 800, color: "#0f172a" }}>{contratos.length}</span>
+          </div>
         </div>
+
+        {/* Cartera */}
+        <div style={card}>
+          <h3 style={{ ...sectionTitle, fontSize: 15, marginBottom: 10 }}>Cartera</h3>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("cobros")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Transferencias pendientes</span>
+            <span style={{ fontWeight: 800, color: "#92400e" }}>{pagosPendientes}</span>
+          </div>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("cobros")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Recaudado semana ($)</span>
+            <span style={{ fontWeight: 800, color: "#166534" }}>{totalConfirmadoSemana.toLocaleString("es-CO")}</span>
+          </div>
+          <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#eff6ff", cursor: "pointer", fontSize: 13, color: "#1d4ed8", fontWeight: 700, textAlign: "center" }} onClick={() => onNavigate("cobros")}>
+            Ver clientes con pagos pendientes →
+          </div>
+        </div>
+
+        {/* Taller */}
+        <div style={card}>
+          <h3 style={{ ...sectionTitle, fontSize: 15, marginBottom: 10 }}>Taller</h3>
+          <div style={{ ...listItem, cursor: "pointer" }} onClick={() => onNavigate("taller")}>
+            <span style={{ fontSize: 13, color: "#334155" }}>Motos en proceso</span>
+            <span style={{ fontWeight: 800, color: "#1d4ed8" }}>{tallerEnProceso}</span>
+          </div>
+          <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", cursor: "pointer", fontSize: 13, color: "#166534", fontWeight: 700, textAlign: "center" }} onClick={() => onNavigate("taller")}>
+            Ir al módulo de taller →
+          </div>
+        </div>
+
       </div>
     </div>
   );

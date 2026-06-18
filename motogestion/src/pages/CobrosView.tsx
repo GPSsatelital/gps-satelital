@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { usePagos, calcularEstadoCobro, aplicarPagoAutomatico, type MetodoPago, type PagoEstado } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
+import { useMotos } from "../hooks/useMotos";
 
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -34,14 +35,26 @@ export default function CobrosView() {
   const { pagos, loading, error, registrarPago, confirmarPago, rechazarPago } = usePagos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
+  const { motos } = useMotos();
 
   const [contratoId, setContratoId] = useState("");
+  const [busquedaContrato, setBusquedaContrato] = useState("");
   const [valor, setValor] = useState("");
   const [metodo, setMetodo] = useState<MetodoPago>("Efectivo");
   const [formError, setFormError] = useState<string | null>(null);
 
   const contratosActivos = contratos.filter((c) => c.estado === "Activo");
   const contratoSeleccionado = contratos.find((c) => c.id === contratoId) ?? null;
+
+  const contratosFiltrados = useMemo(() => {
+    const q = busquedaContrato.toLowerCase();
+    if (!q) return contratosActivos;
+    return contratosActivos.filter((c) => {
+      const cliente = clientes.find((cl) => cl.id === c.cliente_id);
+      const moto = motos.find((m) => m.id === c.moto_id);
+      return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
+    });
+  }, [contratosActivos, busquedaContrato, clientes, motos]);
 
   function pagosConfirmadosDelContrato(id: string) {
     return pagos.filter((p) => p.contrato_id === id && p.estado === "Confirmado");
@@ -109,7 +122,7 @@ export default function CobrosView() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, margin: 0 }}>Cobros y Cartera</h2>
+      <h2 style={{ fontSize: 22, margin: 0 }}>Cartera</h2>
       <p style={{ marginTop: 6, color: "#64748b" }}>Registro de pagos con aplicación automática y control de cartera.</p>
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error: {error}</div>}
@@ -127,12 +140,18 @@ export default function CobrosView() {
 
           <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
             <div>
-              <div style={labelStyle}>Contrato activo</div>
+              <div style={labelStyle}>Buscar contrato</div>
+              <input style={inputStyle} placeholder="🔍  Placa o nombre del cliente..." value={busquedaContrato} onChange={(e) => setBusquedaContrato(e.target.value)} />
+            </div>
+            <div>
+              <div style={labelStyle}>Seleccionar contrato activo</div>
               <select style={inputStyle} value={contratoId} onChange={(e) => setContratoId(e.target.value)}>
-                <option value="">Seleccionar contrato</option>
-                {contratosActivos.map((c) => {
+                <option value="">— Seleccionar —</option>
+                {contratosFiltrados.map((c) => {
                   const cliente = clientes.find((cl) => cl.id === c.cliente_id);
-                  return <option key={c.id} value={c.id}>{cliente?.nombre || "Sin cliente"}</option>;
+                  const moto = motos.find((m) => m.id === c.moto_id);
+                  const etiqueta = moto ? `${moto.placa} · ${cliente?.nombre || "Sin cliente"}` : (cliente?.nombre || "Sin cliente");
+                  return <option key={c.id} value={c.id}>{etiqueta}</option>;
                 })}
               </select>
             </div>
@@ -173,78 +192,76 @@ export default function CobrosView() {
         </div>
       </div>
 
-      <div style={{ ...card, marginTop: 20 }}>
-        <h3 style={{ margin: 0, fontSize: 20 }}>Historial de pagos</h3>
-
-        <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-          {pagos.length === 0 && <div style={{ color: "#64748b" }}>Aún no hay pagos registrados.</div>}
-
-          {pagos.map((p) => {
-            const contrato = contratos.find((c) => c.id === p.contrato_id);
-            const cliente = contrato ? clientes.find((cl) => cl.id === contrato.cliente_id) : null;
-
-            return (
-              <div key={p.id} style={{ padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ fontWeight: 800, color: "#0f172a" }}>{cliente?.nombre || "Sin cliente"}</div>
-                  <PagoBadge estado={p.estado} />
-                </div>
-
-                <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 14, color: "#334155" }}>
-                  <div>Fecha: {formatDate(p.fecha)}</div>
-                  <div>Método: {p.metodo}</div>
-                  <div>Valor recibido: $ {fmt(p.valor)}</div>
-                  <div>Aplicado a deuda: $ {fmt(p.aplicado.deuda)}</div>
-                  <div>Aplicado a semana: $ {fmt(p.aplicado.semana)}</div>
-                  <div>Aplicado a ahorro: $ {fmt(p.aplicado.ahorro)}</div>
-                  <div>Saldo a favor: $ {fmt(p.aplicado.saldo)}</div>
-                </div>
-
-                {p.estado === "Pendiente" && (
-                  <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                    <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
-                    <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginTop: 20 }}>
+        <div style={card}>
+          <h3 style={{ margin: 0, fontSize: 18 }}>Historial de pagos</h3>
+          <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+            {pagos.length === 0 && <div style={{ color: "#64748b" }}>Aún no hay pagos registrados.</div>}
+            {pagos.map((p) => {
+              const contrato = contratos.find((c) => c.id === p.contrato_id);
+              const cliente = contrato ? clientes.find((cl) => cl.id === contrato.cliente_id) : null;
+              const moto = contrato ? motos.find((m) => m.id === contrato.moto_id) : null;
+              return (
+                <div key={p.id} style={{ padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontWeight: 800, color: "#0f172a" }}>{moto ? moto.placa : ""} {cliente?.nombre || "Sin cliente"}</div>
+                    </div>
+                    <PagoBadge estado={p.estado} />
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 14, color: "#334155" }}>
+                    <div>Fecha: {formatDate(p.fecha)}</div>
+                    <div>Método: {p.metodo}</div>
+                    <div>Valor recibido: $ {fmt(p.valor)}</div>
+                    <div>Aplicado a deuda: $ {fmt(p.aplicado.deuda)}</div>
+                    <div>Aplicado a semana: $ {fmt(p.aplicado.semana)}</div>
+                    <div>Aplicado a ahorro: $ {fmt(p.aplicado.ahorro)}</div>
+                    <div>Saldo a favor: $ {fmt(p.aplicado.saldo)}</div>
+                  </div>
+                  {p.estado === "Pendiente" && (
+                    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                      <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
+                      <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div style={{ ...card, marginTop: 20 }}>
-        <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de cartera</h3>
-
-        <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-          {resumenCartera.length === 0 && <div style={{ color: "#64748b" }}>Aún no hay contratos.</div>}
-
-          {resumenCartera.map((c) => {
-            const cliente = clientes.find((cl) => cl.id === c.cliente_id);
-            return (
-              <div key={c.id} style={{ padding: 14, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 800 }}>{cliente?.nombre || "Sin cliente"}</div>
-                    <div style={{ fontSize: 13, color: "#64748b" }}>Estado contrato: {c.estado}</div>
+        <div style={card}>
+          <h3 style={{ margin: 0, fontSize: 18 }}>Detalle de cartera</h3>
+          <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+            {resumenCartera.length === 0 && <div style={{ color: "#64748b" }}>Aún no hay contratos.</div>}
+            {resumenCartera.map((c) => {
+              const cliente = clientes.find((cl) => cl.id === c.cliente_id);
+              const moto = motos.find((m) => m.id === c.moto_id);
+              return (
+                <div key={c.id} style={{ padding: 14, background: "#f8fafc", borderRadius: 14, border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{moto ? `${moto.placa} · ` : ""}{cliente?.nombre || "Sin cliente"}</div>
+                      <div style={{ fontSize: 13, color: "#64748b" }}>Estado: {c.estado}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {c.enMora && <span style={miniBtn("#fee2e2", "#991b1b")}>En mora</span>}
+                      {c.enGabela && <span style={miniBtn("#fef3c7", "#92400e")}>En gabela</span>}
+                      {c.hoyPaga && <span style={miniBtn("#dbeafe", "#1d4ed8")}>Paga hoy</span>}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {c.enMora && <span style={miniBtn("#fee2e2", "#991b1b")}>En mora</span>}
-                    {c.enGabela && <span style={miniBtn("#fef3c7", "#92400e")}>En gabela</span>}
-                    {c.hoyPaga && <span style={miniBtn("#dbeafe", "#1d4ed8")}>Paga hoy</span>}
+                  <div style={{ marginTop: 10, display: "grid", gap: 6, fontSize: 14, color: "#334155" }}>
+                    <div>Total confirmado: $ {fmt(c.totalPagado)}</div>
+                    <div>Aplicado a semana: $ {fmt(c.totalSemana)}</div>
+                    <div>Aplicado a ahorro: $ {fmt(c.totalAhorro)}</div>
+                    <div>Saldo a favor: $ {fmt(c.totalSaldo)}</div>
+                    <div>Pendiente semana: $ {fmt(c.semanaPendiente)}</div>
+                    <div>Transferencias pendientes: {c.pagosPendientes}</div>
                   </div>
                 </div>
-
-                <div style={{ marginTop: 10, display: "grid", gap: 6, fontSize: 14, color: "#334155" }}>
-                  <div>Total confirmado: $ {fmt(c.totalPagado)}</div>
-                  <div>Aplicado a semana: $ {fmt(c.totalSemana)}</div>
-                  <div>Aplicado a ahorro: $ {fmt(c.totalAhorro)}</div>
-                  <div>Saldo a favor: $ {fmt(c.totalSaldo)}</div>
-                  <div>Pendiente semana: $ {fmt(c.semanaPendiente)}</div>
-                  <div>Transferencias pendientes: {c.pagosPendientes}</div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

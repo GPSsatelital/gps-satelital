@@ -16,7 +16,7 @@ const navItems: Array<{ key: ViewKey; label: string }> = [
   { key: "clientes", label: "Clientes" },
   { key: "motos", label: "Motos" },
   { key: "contratos", label: "Contratos" },
-  { key: "cobros", label: "Cobros" },
+  { key: "cobros", label: "Cartera" },
   { key: "taller", label: "Taller" },
 ];
 
@@ -32,7 +32,15 @@ function Shell() {
     return <Login />;
   }
 
-  const items = profile?.role === "ADMIN" ? [...navItems, { key: "usuarios" as ViewKey, label: "Usuarios" }] : navItems;
+  const roleActual = profile?.role ?? "SECRETARIA";
+  const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
+  const esMecanico = roleActual === "MECANICO";
+
+  const itemsFiltrados = esMecanico
+    ? navItems.filter((i) => i.key === "dashboard" || i.key === "taller")
+    : navItems;
+
+  const items = esAdmin ? [...itemsFiltrados, { key: "usuarios" as ViewKey, label: "Usuarios" }] : itemsFiltrados;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
@@ -76,7 +84,7 @@ function Shell() {
         {view === "contratos" && <ContratosView />}
         {view === "cobros" && <CobrosView />}
         {view === "taller" && <TallerView />}
-        {view === "usuarios" && profile?.role === "ADMIN" && <UsuariosView />}
+        {view === "usuarios" && esAdmin && <UsuariosView />}
       </main>
     </div>
   );

@@ -196,6 +196,7 @@ export default function ClientesView() {
   const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion } = useClientes();
   const { visitas, crearVisita, resolverVisita } = useVisitas();
 
+  const [detalleModalOpen, setDetalleModalOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [excepcionOpen, setExcepcionOpen] = useState(false);
@@ -460,14 +461,16 @@ export default function ClientesView() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
+      <style>{`@media (max-width: 768px) { .clientes-grid { display: block !important; } .clientes-detalle-desktop { display: none !important; } }`}</style>
+
+      <div className="clientes-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
         <div style={card}>
           <div style={{ marginBottom: 16 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente" style={inputStyle} />
           </div>
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: 600, borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", minWidth: 480, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
                   <th style={thStyle}>Nombre</th>
@@ -492,7 +495,7 @@ export default function ClientesView() {
                     <td style={tdStyle}>{cliente.telefono}</td>
                     <td style={tdStyle}><ClienteBadge estado={estadoVisual(cliente)} /></td>
                     <td style={tdStyle}>
-                      <button onClick={() => setSelectedId(cliente.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
+                      <button onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); }} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
                         {modoVista === "pendientes" ? "Evaluar" : "Ver detalle"}
                       </button>
                     </td>
@@ -504,117 +507,47 @@ export default function ClientesView() {
           </div>
         </div>
 
-        <div style={card}>
+        <div className="clientes-detalle-desktop" style={card}>
           <h3 style={{ margin: 0, fontSize: 20 }}>Detalle del cliente</h3>
 
           {selectedCliente ? (
-            <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-              <InfoBox label="Nombre" value={selectedCliente.nombre} />
-              <InfoBox label="Cédula" value={selectedCliente.cedula} />
-              <InfoBox label="Dirección" value={selectedCliente.direccion} />
-              <InfoBox label="Fuente de llegada" value={selectedCliente.fuente_llegada || "Sin registrar"} />
-              <InfoBox label="Teléfono" value={selectedCliente.telefono} />
-              <InfoBox label="WhatsApp" value={selectedCliente.whatsapp || "Sin registrar"} />
-              <InfoBox
-                label="Acompañante"
-                value={`${selectedCliente.acompanante_nombre || "Sin registrar"} · Tel: ${selectedCliente.acompanante_telefono || "Sin teléfono"}`}
-              />
-
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Historial de visitas</div>
-                {visitasDelCliente(selectedCliente.id).length === 0 ? (
-                  <div style={{ color: "#64748b", fontSize: 14 }}>Sin visitas registradas.</div>
-                ) : (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {visitasDelCliente(selectedCliente.id).map((v) => (
-                      <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
-                        <div style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</div>
-                        <div>Estado visita: {v.estado}</div>
-                        <div>Resultado: {v.resultado || "Pendiente decisión"}</div>
-                        <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"}</div>
-                        <div><b>Tipo vivienda:</b> {v.entrevista.tipoVivienda || "Sin registrar"}</div>
-                        <div><b>Observaciones:</b> {v.entrevista.observaciones || "Sin observaciones"}</div>
-                        {v.fotos.clienteFuncionario && <div>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>}
-                        {v.fotos.fachada && <div>📎 Fachada: {v.fotos.fachada}</div>}
-                        {v.ubicacion && (
-                          <button onClick={() => window.open(`https://www.google.com/maps?q=${v.ubicacion?.lat},${v.ubicacion?.lng}`, "_blank")} style={miniBtn("#e0f2fe", "#0369a1")}>
-                            Ver ubicación de residencia
-                          </button>
-                        )}
-                        {role === "ADMIN" && v.resultado === null && (
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => handleResolverVisita(v.id, selectedCliente.id, "Aprobado")} style={miniBtn("#dcfce7", "#166534")}>Aprobar</button>
-                            <button onClick={() => handleResolverVisita(v.id, selectedCliente.id, "Rechazado")} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos cliente</div>
-                <DocsSummary doc={selectedCliente.documentos_cliente} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos acompañante</div>
-                <DocsSummary doc={selectedCliente.documentos_acompanante} />
-              </div>
-
-              {documentosFaltantes(selectedCliente).length > 0 && (
-                <div style={{ padding: 14, borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412" }}>
-                  <div style={{ fontWeight: 900 }}>Documentos obligatorios pendientes</div>
-                  <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
-                    {documentosFaltantes(selectedCliente).map(([key, label, owner]) => (
-                      <div key={`${owner}-${key}`}>• {owner}: {label}</div>
-                    ))}
-                  </div>
-                  {selectedCliente.excepcion_documental && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #fed7aa" }}>
-                      <div><b>Excepción activa:</b> Sí</div>
-                      <div><b>Motivo:</b> {selectedCliente.excepcion_motivo}</div>
-                      <div><b>Plazo máximo:</b> {selectedCliente.excepcion_plazo ? formatDate(selectedCliente.excepcion_plazo) : "Sin plazo"}</div>
-                      {plazoVencido(selectedCliente) && (
-                        <div style={{ marginTop: 6, fontWeight: 900, color: "#991b1b" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <ClienteBadge estado={estadoVisual(selectedCliente)} />
-
-                <button onClick={() => abrirEdicion(selectedCliente)} style={miniBtn("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>
-
-                {selectedCliente.estado === "Listo para visita" && (
-                  <button onClick={() => setVisitaOpen(true)} style={miniBtn("#dbeafe", "#1d4ed8")}>Registrar visita</button>
-                )}
-
-                {role === "ADMIN" && (
-                  <>
-                    {selectedCliente.estado === "Aprobado" && (
-                      <>
-                        <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "Activo")} style={miniBtn("#dcfce7", "#166534")}>Activar cliente</button>
-                        <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "En seguimiento")} style={miniBtn("#e0f2fe", "#0369a1")}>En seguimiento</button>
-                        <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "En riesgo")} style={miniBtn("#fef3c7", "#92400e")}>Marcar en riesgo</button>
-                        <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "En mora")} style={miniBtn("#fee2e2", "#991b1b")}>En mora</button>
-                      </>
-                    )}
-
-                    <button onClick={() => abrirExcepcion(selectedCliente)} style={miniBtn("#fef3c7", "#92400e")}>Permitir continuar por excepción</button>
-                    <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "Rechazado")} style={miniBtn("#ffe4e6", "#be123c")}>Rechazar</button>
-                    <button onClick={() => cambiarEstadoCliente(selectedCliente.id, "Retirado")} style={miniBtn("#ede9fe", "#6d28d9")}>Retirar</button>
-                  </>
-                )}
-              </div>
-            </div>
+            <DetalleClienteContenido
+              selectedCliente={selectedCliente}
+              role={role}
+              visitas={visitasDelCliente(selectedCliente.id)}
+              onEdit={() => abrirEdicion(selectedCliente)}
+              onVisita={() => setVisitaOpen(true)}
+              onExcepcion={() => abrirExcepcion(selectedCliente)}
+              onEstado={cambiarEstadoCliente}
+              onResolverVisita={handleResolverVisita}
+            />
           ) : (
             <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona un cliente para ver su detalle.</div>
           )}
         </div>
       </div>
+
+      {/* Modal de detalle para móvil */}
+      {detalleModalOpen && selectedCliente && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 80, padding: 0 }} onClick={() => setDetalleModalOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: "white", borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "88vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18 }}>{selectedCliente.nombre}</h3>
+              <button onClick={() => setDetalleModalOpen(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16 }}>✕</button>
+            </div>
+            <DetalleClienteContenido
+              selectedCliente={selectedCliente}
+              role={role}
+              visitas={visitasDelCliente(selectedCliente.id)}
+              onEdit={() => abrirEdicion(selectedCliente)}
+              onVisita={() => setVisitaOpen(true)}
+              onExcepcion={() => abrirExcepcion(selectedCliente)}
+              onEstado={cambiarEstadoCliente}
+              onResolverVisita={handleResolverVisita}
+            />
+          </div>
+        </div>
+      )}
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpen(false)}>
@@ -724,6 +657,124 @@ export default function ClientesView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type DetalleProps = {
+  selectedCliente: Cliente;
+  role: string;
+  visitas: Visita[];
+  onEdit: () => void;
+  onVisita: () => void;
+  onExcepcion: () => void;
+  onEstado: (id: string, estado: ClienteEstado) => void;
+  onResolverVisita: (id: string, clienteId: string, resultado: "Aprobado" | "Rechazado") => void;
+};
+
+function miniBtn2(bg: string, color: string): React.CSSProperties {
+  return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
+}
+
+function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onResolverVisita }: DetalleProps) {
+  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  return (
+    <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+      <InfoBox label="Nombre" value={selectedCliente.nombre} />
+      <InfoBox label="Cédula" value={selectedCliente.cedula} />
+      <InfoBox label="Dirección" value={selectedCliente.direccion} />
+      <InfoBox label="Fuente de llegada" value={selectedCliente.fuente_llegada || "Sin registrar"} />
+      <InfoBox label="Teléfono" value={selectedCliente.telefono} />
+      <InfoBox label="WhatsApp" value={selectedCliente.whatsapp || "Sin registrar"} />
+      <InfoBox label="Acompañante" value={`${selectedCliente.acompanante_nombre || "Sin registrar"} · Tel: ${selectedCliente.acompanante_telefono || "Sin teléfono"}`} />
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Historial de visitas</div>
+        {visitas.length === 0 ? (
+          <div style={{ color: "#64748b", fontSize: 14 }}>Sin visitas registradas.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {visitas.map((v) => (
+              <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
+                <div style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</div>
+                <div>Estado visita: {v.estado}</div>
+                <div>Resultado: {v.resultado || "Pendiente decisión"}</div>
+                <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"}</div>
+                <div><b>Tipo vivienda:</b> {v.entrevista.tipoVivienda || "Sin registrar"}</div>
+                <div><b>Observaciones:</b> {v.entrevista.observaciones || "Sin observaciones"}</div>
+                {v.fotos.clienteFuncionario && <div>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>}
+                {v.fotos.fachada && <div>📎 Fachada: {v.fotos.fachada}</div>}
+                {v.ubicacion && (
+                  <button onClick={() => window.open(`https://www.google.com/maps?q=${v.ubicacion?.lat},${v.ubicacion?.lng}`, "_blank")} style={miniBtn2("#e0f2fe", "#0369a1")}>
+                    Ver ubicación de residencia
+                  </button>
+                )}
+                {esAdmin && v.resultado === null && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => onResolverVisita(v.id, selectedCliente.id, "Aprobado")} style={miniBtn2("#dcfce7", "#166534")}>Aprobar</button>
+                    <button onClick={() => onResolverVisita(v.id, selectedCliente.id, "Rechazado")} style={miniBtn2("#fee2e2", "#991b1b")}>Rechazar</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos cliente</div>
+        <DocsSummary doc={selectedCliente.documentos_cliente} />
+      </div>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos acompañante</div>
+        <DocsSummary doc={selectedCliente.documentos_acompanante} />
+      </div>
+
+      {documentosFaltantes(selectedCliente).length > 0 && (
+        <div style={{ padding: 14, borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412" }}>
+          <div style={{ fontWeight: 900 }}>Documentos obligatorios pendientes</div>
+          <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
+            {documentosFaltantes(selectedCliente).map(([key, label, owner]) => (
+              <div key={`${owner}-${key}`}>• {owner}: {label}</div>
+            ))}
+          </div>
+          {selectedCliente.excepcion_documental && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #fed7aa" }}>
+              <div><b>Excepción activa:</b> Sí</div>
+              <div><b>Motivo:</b> {selectedCliente.excepcion_motivo}</div>
+              <div><b>Plazo máximo:</b> {selectedCliente.excepcion_plazo ? formatDate(selectedCliente.excepcion_plazo) : "Sin plazo"}</div>
+              {plazoVencido(selectedCliente) && (
+                <div style={{ marginTop: 6, fontWeight: 900, color: "#991b1b" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <ClienteBadge estado={estadoVisual(selectedCliente)} />
+        <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>
+        {selectedCliente.estado === "Listo para visita" && (
+          <button onClick={onVisita} style={miniBtn2("#dbeafe", "#1d4ed8")}>Registrar visita</button>
+        )}
+        {esAdmin && (
+          <>
+            {selectedCliente.estado === "Aprobado" && (
+              <>
+                <button onClick={() => onEstado(selectedCliente.id, "Activo")} style={miniBtn2("#dcfce7", "#166534")}>Activar cliente</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En seguimiento")} style={miniBtn2("#e0f2fe", "#0369a1")}>En seguimiento</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En riesgo")} style={miniBtn2("#fef3c7", "#92400e")}>Marcar en riesgo</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En mora")} style={miniBtn2("#fee2e2", "#991b1b")}>En mora</button>
+              </>
+            )}
+            {documentosFaltantes(selectedCliente).length > 0 && (
+              <button onClick={onExcepcion} style={miniBtn2("#fef3c7", "#92400e")}>Permitir continuar por excepción</button>
+            )}
+            <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={miniBtn2("#ffe4e6", "#be123c")}>Rechazar</button>
+            <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("#ede9fe", "#6d28d9")}>Retirar</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

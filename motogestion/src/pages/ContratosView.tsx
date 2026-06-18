@@ -25,8 +25,10 @@ function ContractBadge({ estado }: { estado: ContratoEstado }) {
   return <span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: colors.bg, color: colors.color, fontSize: 12, fontWeight: 700 }}>{estado}</span>;
 }
 
+const VALORES_SEMANALES = [50000, 60000, 70000, 80000, 90000, 100000, 120000, 150000];
+
 function emptyForm() {
-  return { cliente_id: "", dia_pago: "Lunes", valor_semanal: "", meses: "", ahorro_inicial: "", fecha_entrega: "" };
+  return { cliente_id: "", dia_pago: "Lunes", valor_semanal: "", meses: "", ahorro_inicial: "", fecha_entrega: "", forma_pago: "Semanal", valor_diario: "" };
 }
 
 export default function ContratosView() {
@@ -146,7 +148,7 @@ export default function ContratosView() {
 
               <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 14 }}>
                 <div>Firma cliente: {c.firma_cliente ? "Sí" : "No"}</div>
-                <div>Moto: {moto?.placa || "Sin asignar"}</div>
+                <div>Moto: {moto ? `${moto.placa} · ${moto.marca} ${moto.modelo}` : "Sin asignar"}</div>
                 <div>Valor semanal: $ {c.valor_semanal.toLocaleString("es-CO")}</div>
                 <div>Meses: {c.meses}</div>
                 <div>Ahorro inicial: $ {c.ahorro_inicial.toLocaleString("es-CO")}</div>
@@ -190,10 +192,43 @@ export default function ContratosView() {
 
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
               <div>
-                <div style={labelStyle}>Cliente aprobado</div>
-                <select style={inputStyle} value={form.cliente_id} onChange={(e) => setForm((p) => ({ ...p, cliente_id: e.target.value }))}>
-                  <option value="">Seleccionar</option>
-                  {clientesAprobados.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                <div style={labelStyle}>Seleccionar cliente</div>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "#94a3b8", pointerEvents: "none" }}>🔍</span>
+                  <select style={{ ...inputStyle, paddingLeft: 36 }} value={form.cliente_id} onChange={(e) => setForm((p) => ({ ...p, cliente_id: e.target.value }))}>
+                    <option value="">Seleccionar cliente aprobado</option>
+                    {clientesAprobados.map((c) => <option key={c.id} value={c.id}>{c.nombre} · {c.cedula}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div style={labelStyle}>Forma de pago</div>
+                <select style={inputStyle} value={form.forma_pago} onChange={(e) => setForm((p) => ({ ...p, forma_pago: e.target.value }))}>
+                  <option value="Semanal">Semanal</option>
+                  <option value="Diario">Diario</option>
+                </select>
+              </div>
+
+              {form.forma_pago === "Diario" && (
+                <div>
+                  <div style={labelStyle}>Valor diario</div>
+                  <select style={inputStyle} value={form.valor_diario} onChange={(e) => setForm((p) => ({ ...p, valor_diario: e.target.value }))}>
+                    <option value="">Seleccionar valor diario</option>
+                    {[8000, 10000, 12000, 15000, 18000, 20000].map((v) => (
+                      <option key={v} value={String(v)}>$ {v.toLocaleString("es-CO")}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <div style={labelStyle}>Valor semanal</div>
+                <select style={inputStyle} value={form.valor_semanal} onChange={(e) => setForm((p) => ({ ...p, valor_semanal: e.target.value }))}>
+                  <option value="">Seleccionar valor semanal</option>
+                  {VALORES_SEMANALES.map((v) => (
+                    <option key={v} value={String(v)}>$ {v.toLocaleString("es-CO")}</option>
+                  ))}
                 </select>
               </div>
 
@@ -204,7 +239,6 @@ export default function ContratosView() {
                 </select>
               </div>
 
-              <div><div style={labelStyle}>Valor semanal</div><input type="number" style={inputStyle} value={form.valor_semanal} onChange={(e) => setForm((p) => ({ ...p, valor_semanal: e.target.value }))} /></div>
               <div><div style={labelStyle}>Meses</div><input type="number" style={inputStyle} value={form.meses} onChange={(e) => setForm((p) => ({ ...p, meses: e.target.value }))} /></div>
               <div><div style={labelStyle}>Ahorro inicial</div><input type="number" style={inputStyle} value={form.ahorro_inicial} onChange={(e) => setForm((p) => ({ ...p, ahorro_inicial: e.target.value }))} /></div>
               <div><div style={labelStyle}>Fecha de entrega</div><input type="date" style={inputStyle} value={form.fecha_entrega} onChange={(e) => setForm((p) => ({ ...p, fecha_entrega: e.target.value }))} /></div>

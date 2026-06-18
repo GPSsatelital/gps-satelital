@@ -9,6 +9,28 @@ const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0
 
 type PerfilUsuario = { id: string; nombre: string; role: Role };
 
+function roleLabel(role: Role) {
+  const map: Record<Role, string> = {
+    ADMIN: "Administrador",
+    ADMIN_PRINCIPAL: "Admin Principal",
+    SECRETARIA: "Secretaria",
+    MECANICO: "Mecánico / Taller",
+    SUBADMIN: "Subadministrador",
+  };
+  return map[role] ?? role;
+}
+
+function roleBadge(role: Role) {
+  const map: Record<Role, { bg: string; color: string }> = {
+    ADMIN: { bg: "#dbeafe", color: "#1d4ed8" },
+    ADMIN_PRINCIPAL: { bg: "#ede9fe", color: "#6d28d9" },
+    SECRETARIA: { bg: "#fef3c7", color: "#92400e" },
+    MECANICO: { bg: "#dcfce7", color: "#166534" },
+    SUBADMIN: { bg: "#e0f2fe", color: "#0369a1" },
+  };
+  return map[role] ?? { bg: "#e2e8f0", color: "#334155" };
+}
+
 export default function UsuariosView() {
   const [usuarios, setUsuarios] = useState<PerfilUsuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,8 +131,11 @@ export default function UsuariosView() {
             <div>
               <div style={labelStyle}>Rol</div>
               <select style={inputStyle} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                <option value="SECRETARIA">SECRETARIA</option>
-                <option value="ADMIN">ADMIN</option>
+                <option value="SECRETARIA">Secretaria</option>
+                <option value="MECANICO">Mecánico / Encargado de Taller</option>
+                <option value="SUBADMIN">Subadministrador</option>
+                <option value="ADMIN">Administrador</option>
+                <option value="ADMIN_PRINCIPAL">Administrador Principal</option>
               </select>
             </div>
 
@@ -137,8 +162,8 @@ export default function UsuariosView() {
               {usuarios.map((u) => (
                 <div key={u.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontWeight: 700 }}>{u.nombre}</div>
-                  <span style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: u.role === "ADMIN" ? "#dbeafe" : "#fef3c7", color: u.role === "ADMIN" ? "#1d4ed8" : "#92400e" }}>
-                    {u.role}
+                  <span style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>
+                    {roleLabel(u.role)}
                   </span>
                 </div>
               ))}

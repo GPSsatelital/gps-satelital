@@ -8,8 +8,9 @@ import CobrosView from "./pages/CobrosView";
 import TallerView from "./pages/TallerView";
 import DashboardView from "./pages/DashboardView";
 import UsuariosView from "./pages/UsuariosView";
+import LiquidacionesView from "./pages/LiquidacionesView";
 
-type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller" | "usuarios";
+type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller" | "usuarios" | "liquidaciones";
 
 const navItems: Array<{ key: ViewKey; label: string }> = [
   { key: "dashboard", label: "Panel" },
@@ -40,7 +41,9 @@ function Shell() {
     ? navItems.filter((i) => i.key === "dashboard" || i.key === "taller")
     : navItems;
 
-  const items = esAdmin ? [...itemsFiltrados, { key: "usuarios" as ViewKey, label: "Usuarios" }] : itemsFiltrados;
+  const items = esAdmin
+    ? [...itemsFiltrados, { key: "liquidaciones" as ViewKey, label: "Liquidaciones" }, { key: "usuarios" as ViewKey, label: "Usuarios" }]
+    : itemsFiltrados;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
@@ -84,6 +87,7 @@ function Shell() {
         {view === "contratos" && <ContratosView />}
         {view === "cobros" && <CobrosView />}
         {view === "taller" && <TallerView />}
+        {view === "liquidaciones" && esAdmin && <LiquidacionesView />}
         {view === "usuarios" && esAdmin && <UsuariosView />}
       </main>
     </div>

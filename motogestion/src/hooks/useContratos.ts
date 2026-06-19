@@ -15,6 +15,13 @@ export type Contrato = {
   firma_cliente: boolean;
   firma_responsable: boolean;
   estado: ContratoEstado;
+  // Nuevos campos v2 — opcionales para compatibilidad con contratos existentes
+  tipo_contrato?: "diario" | "semanal";
+  tarifa_diaria?: number;
+  tarifa_domingo?: number;
+  base_inicial?: number;
+  base_completada?: boolean;
+  ahorro_acumulado?: number;
   created_at: string;
 };
 

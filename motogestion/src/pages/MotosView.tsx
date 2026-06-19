@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus } from "../hooks/useMotos";
+import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
+import { useAuth } from "../contexts/AuthContext";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -47,12 +49,33 @@ const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWei
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
 export default function MotosView() {
+  const { profile } = useAuth();
   const { motos, loading, error, crearMoto, cambiarEstadoMoto } = useMotos();
+  const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [openRecepcion, setOpenRecepcion] = useState(false);
+  const [openUbicacion, setOpenUbicacion] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
+
+  const [formRec, setFormRec] = useState({
+    motivo: "nuevo_registro" as MotivoRecepcion,
+    condicion_general: "buena" as CondicionVehiculo,
+    descripcion_danos: "",
+    kilometros: "",
+    ubicacion_destino: "bodega" as UbicacionFisica,
+    nombre_entrega: "",
+    observaciones: "",
+  });
+
+  const [formUbic, setFormUbic] = useState({
+    ubicacion_nueva: "bodega" as UbicacionFisica,
+    detalle: "",
+    motivo: "",
+  });
 
   const [form, setForm] = useState({
     placa: "",
@@ -80,6 +103,44 @@ export default function MotosView() {
   );
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? filtered[0] ?? null;
+
+  async function handleRegistrarRecepcion() {
+    if (!selectedMoto || !profile) return;
+    setGuardando(true);
+    const { error } = await registrarRecepcion({
+      moto_id: selectedMoto.id,
+      motivo: formRec.motivo,
+      condicion_general: formRec.condicion_general,
+      descripcion_danos: formRec.descripcion_danos || undefined,
+      kilometros: formRec.kilometros ? Number(formRec.kilometros) : undefined,
+      ubicacion_destino: formRec.ubicacion_destino,
+      quien_recibe: profile.id,
+      nombre_entrega: formRec.nombre_entrega || undefined,
+      observaciones: formRec.observaciones || undefined,
+      ubicacion_anterior: (selectedMoto as any).ubicacion_fisica ?? undefined,
+    });
+    setGuardando(false);
+    if (error) { setMsgDetalle(error); return; }
+    setMsgDetalle("Recepción registrada.");
+    setOpenRecepcion(false);
+  }
+
+  async function handleCambiarUbicacion() {
+    if (!selectedMoto || !profile) return;
+    setGuardando(true);
+    const { error } = await cambiarUbicacion(
+      selectedMoto.id,
+      (selectedMoto as any).ubicacion_fisica ?? null,
+      formUbic.ubicacion_nueva,
+      formUbic.detalle,
+      formUbic.motivo,
+      profile.id
+    );
+    setGuardando(false);
+    if (error) { setMsgDetalle(error); return; }
+    setMsgDetalle("Ubicación actualizada.");
+    setOpenUbicacion(false);
+  }
 
   async function handleGuardar() {
     if (!form.placa.trim() || !form.marca.trim() || !form.modelo.trim()) {
@@ -182,9 +243,17 @@ export default function MotosView() {
               <InfoBox label="Grupo" value={selectedMoto.grupo} />
               <InfoBox label="Marca" value={selectedMoto.marca} />
               <InfoBox label="Modelo" value={selectedMoto.modelo} />
+              <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
               <InfoBox label="Vence seguro" value={formatDate(selectedMoto.fecha_seguro)} />
               <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
               <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
+
+              {msgDetalle && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
+                <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
+              </div>
 
               <div>
                 <div style={labelStyle}>Cambiar estado</div>
@@ -200,12 +269,105 @@ export default function MotosView() {
                   <option value="Recuperada">Recuperada</option>
                 </select>
               </div>
+
+              {/* Historial de ubicaciones */}
+              {historialDeMoto(selectedMoto.id).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#334155" }}>Historial de ubicaciones</div>
+                  {historialDeMoto(selectedMoto.id).slice(0, 5).map((h) => (
+                    <div key={h.id} style={{ fontSize: 12, padding: "6px 10px", borderRadius: 8, background: "#f8fafc", marginBottom: 4, color: "#475569" }}>
+                      <span style={{ fontWeight: 600 }}>{UBICACION_LABEL[h.ubicacion_nueva as UbicacionFisica] ?? h.ubicacion_nueva}</span>
+                      {h.ubicacion_anterior && <span> ← {UBICACION_LABEL[h.ubicacion_anterior as UbicacionFisica] ?? h.ubicacion_anterior}</span>}
+                      <span style={{ color: "#94a3b8", marginLeft: 6 }}>{new Date(h.created_at).toLocaleDateString("es-CO")}</span>
+                      {h.motivo && <div style={{ color: "#64748b" }}>{h.motivo}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Recepciones */}
+              {recepcionesDeMoto(selectedMoto.id).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#334155" }}>Recepciones registradas</div>
+                  {recepcionesDeMoto(selectedMoto.id).slice(0, 3).map((r) => (
+                    <div key={r.id} style={{ fontSize: 12, padding: "8px 10px", borderRadius: 8, background: "#f8fafc", marginBottom: 4 }}>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{new Date(r.created_at).toLocaleDateString("es-CO")} · {r.condicion_general}</div>
+                      {r.descripcion_danos && <div style={{ color: "#dc2626" }}>{r.descripcion_danos}</div>}
+                      {r.kilometros && <div style={{ color: "#64748b" }}>Km: {r.kilometros.toLocaleString("es-CO")}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona una moto para ver su detalle.</div>
           )}
         </div>
       </div>
+
+      {/* Modal cambiar ubicación */}
+      {openUbicacion && selectedMoto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpenUbicacion(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "white", borderRadius: 16, padding: 24 }}>
+            <h3 style={{ margin: "0 0 16px" }}>Cambiar ubicación física</h3>
+            <Field label="Nueva ubicación">
+              <select style={inputStyle} value={formUbic.ubicacion_nueva} onChange={(e) => setFormUbic((p) => ({ ...p, ubicacion_nueva: e.target.value as UbicacionFisica }))}>
+                {(Object.entries(UBICACION_LABEL) as [UbicacionFisica, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </Field>
+            <div style={{ marginTop: 12 }}>
+              <Field label="Detalle / dirección"><input style={inputStyle} placeholder="Ej: Bodega principal calle 12" value={formUbic.detalle} onChange={(e) => setFormUbic((p) => ({ ...p, detalle: e.target.value }))} /></Field>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Field label="Motivo del cambio"><input style={inputStyle} placeholder="Ej: Entrega voluntaria por el cliente" value={formUbic.motivo} onChange={(e) => setFormUbic((p) => ({ ...p, motivo: e.target.value }))} /></Field>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+              <button onClick={() => setOpenUbicacion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={handleCambiarUbicacion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Actualizar ubicación"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal recepción de vehículo */}
+      {openRecepcion && selectedMoto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpenRecepcion(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "white", borderRadius: 16, padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 style={{ margin: "0 0 16px" }}>Formulario de recepción — {selectedMoto.placa}</h3>
+            <div style={{ display: "grid", gap: 12 }}>
+              <Field label="Motivo de ingreso">
+                <select style={inputStyle} value={formRec.motivo} onChange={(e) => setFormRec((p) => ({ ...p, motivo: e.target.value as MotivoRecepcion }))}>
+                  <option value="nuevo_registro">Nuevo registro de moto</option>
+                  <option value="retencion_mora">Retención por mora</option>
+                  <option value="entrega_voluntaria">Entrega voluntaria del cliente</option>
+                  <option value="liquidacion">Liquidación de contrato</option>
+                  <option value="otro">Otro motivo</option>
+                </select>
+              </Field>
+              <Field label="Condición general">
+                <select style={inputStyle} value={formRec.condicion_general} onChange={(e) => setFormRec((p) => ({ ...p, condicion_general: e.target.value as CondicionVehiculo }))}>
+                  <option value="buena">Buena</option>
+                  <option value="regular">Regular</option>
+                  <option value="mala">Mala</option>
+                </select>
+              </Field>
+              <Field label="Descripción de daños visibles"><textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} placeholder="Describe los daños si aplica..." value={formRec.descripcion_danos} onChange={(e) => setFormRec((p) => ({ ...p, descripcion_danos: e.target.value }))} /></Field>
+              <Field label="Kilómetros actuales"><input type="number" style={inputStyle} placeholder="Ej: 12500" value={formRec.kilometros} onChange={(e) => setFormRec((p) => ({ ...p, kilometros: e.target.value }))} /></Field>
+              <Field label="Ubicación donde queda almacenada">
+                <select style={inputStyle} value={formRec.ubicacion_destino} onChange={(e) => setFormRec((p) => ({ ...p, ubicacion_destino: e.target.value as UbicacionFisica }))}>
+                  {(Object.entries(UBICACION_LABEL) as [UbicacionFisica, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </Field>
+              <Field label="Nombre de quien entrega"><input style={inputStyle} placeholder="Nombre del cliente o funcionario" value={formRec.nombre_entrega} onChange={(e) => setFormRec((p) => ({ ...p, nombre_entrega: e.target.value }))} /></Field>
+              <Field label="Observaciones adicionales"><textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} value={formRec.observaciones} onChange={(e) => setFormRec((p) => ({ ...p, observaciones: e.target.value }))} /></Field>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+              <button onClick={() => setOpenRecepcion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={handleRegistrarRecepcion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Registrar recepción"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpen(false)}>

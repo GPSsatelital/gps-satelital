@@ -13,7 +13,10 @@ ALTER TABLE motos DROP CONSTRAINT IF EXISTS motos_estado_check;
 ALTER TABLE motos ADD CONSTRAINT motos_estado_check
   CHECK (estado IN ('Disponible','Reservada','Asignada','Mantenimiento','Recuperada','Fiscalia','Transito','Garantia'));
 
--- Ampliar constraint de grupo: Moteros Costa, Pradera, Rastreador + legado CLUB + OTRO
+-- Migrar motos con grupo CLUB → RASTREADOR (Club Moteros Rastreador es el nuevo nombre)
+UPDATE motos SET grupo = 'RASTREADOR' WHERE grupo = 'CLUB';
+
+-- Actualizar constraint de grupo con los tres grupos reales + OTRO para futuros
 ALTER TABLE motos DROP CONSTRAINT IF EXISTS motos_grupo_check;
 ALTER TABLE motos ADD CONSTRAINT motos_grupo_check
-  CHECK (grupo IN ('CLUB','PRADERA','COSTA','RASTREADOR','OTRO'));
+  CHECK (grupo IN ('COSTA','PRADERA','RASTREADOR','OTRO'));

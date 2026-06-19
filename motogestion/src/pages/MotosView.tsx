@@ -461,10 +461,9 @@ export default function MotosView() {
               </Field>
               <Field label="Grupo operativo">
                 <select style={inputStyle} value={form.grupo} onChange={(e) => setForm((p) => ({ ...p, grupo: e.target.value as GrupoMoto }))}>
-                  <option value="COSTA">Moteros Costa</option>
-                  <option value="PRADERA">Moteros Pradera</option>
-                  <option value="RASTREADOR">Moteros Rastreador</option>
-                  <option value="CLUB">Club (legado)</option>
+                  <option value="COSTA">Club Moteros Costa</option>
+                  <option value="PRADERA">Club Moteros Pradera</option>
+                  <option value="RASTREADOR">Club Moteros Rastreador</option>
                   <option value="OTRO">Otro</option>
                 </select>
               </Field>

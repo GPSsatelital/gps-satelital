@@ -1,6 +1,6 @@
 # DOC MAESTRO — MotoGestión SaaS
 **GPS Satelital Cartagena**
-**Última actualización:** 18 de junio de 2026
+**Última actualización:** 19 de junio de 2026
 **Estado del proyecto:** En desarrollo activo
 
 ---
@@ -461,7 +461,289 @@ motogestion/
 
 ---
 
-## 9. ESTADO ACTUAL DEL PROYECTO
+## 9. MÓDULO DE CARTERA — DEFINICIÓN COMPLETA
+
+### 9.1 Modelo de negocio (esencia)
+MotoGestión opera bajo un modelo de **alquiler con ahorro y venta posterior**:
+- El cliente alquila una moto pagando una tarifa diaria o semanal
+- Simultáneamente acumula un ahorro con cada pago
+- Al completar el contrato, el ahorro acumulado equivale a la compra de la moto
+- Si el contrato se liquida anticipadamente, el ahorro (descontando deudas y daños) se devuelve al cliente en efectivo
+
+---
+
+### 9.2 Tipos de contrato
+
+#### Contrato DIARIO
+- Cliente nuevo que aún no tiene base inicial completa
+- Está ahorrando para llegar a **$510.000** (base inicial)
+- Paga tarifa diaria fija + ahorro variable
+- No tiene tiempo definido de contrato
+- Cuando completa los $510.000 → el sistema lo notifica y el funcionario ejecuta el paso a contrato semanal
+- La base se divide: **$202.000** = primera semana adelantada / **$308.000** = ahorro inicial
+
+#### Contrato SEMANAL
+- Se activa cuando el cliente completó la base inicial de $510.000
+- Tiene tiempo definido, cuota semanal fija, todas las condiciones pactadas
+- Al final del contrato el ahorro acumulado pasa a la empresa como pago de venta de la moto
+- El cliente recibe paz y salvo y puede hacer el traspaso del vehículo
+
+#### Regla de inicio con caso especial
+- Puede darse que un cliente empiece el contrato semanal sin completar los $510.000
+- En ese caso se activa un convenio de pago por el valor faltante de la base inicial
+- Debe quedar documentado como caso especial aprobado por ADMIN
+
+---
+
+### 9.3 Tarifas
+
+| Tipo de cliente | Lunes a Sábado | Domingo |
+|----------------|---------------|---------|
+| Diario (antiguo) | $26.000 | $13.000 |
+| Diario (nuevo) | $27.000 | $14.000 |
+| Semanal | $31.000 | $16.000 |
+
+**Notas:**
+- La tarifa es **innegociable** y se cobra siempre que el cliente tenga la moto en su poder
+- Si no ha devuelto la moto, la tarifa sigue corriendo aunque no haya pagado
+- Clientes semanales: la tarifa diaria incluye $4.000 de ahorro (L-S) y $2.000 (domingo)
+- Clientes diarios: el pago mínimo es $37.000 / pago normal $50.000 (el resto va a ahorro o deuda)
+- Domingo para diarios: mínimo la mitad de lo que dan diariamente
+
+---
+
+### 9.4 Orden de aplicación de cada pago
+Todo pago se aplica en este orden estricto:
+
+1. **Tarifa** — ingreso de la empresa, siempre primero
+2. **Deuda pendiente** — si tiene deuda acumulada
+3. **Cuota de convenio** — si tiene convenio activo, se suma al cobro esperado y se detalla
+4. **Ahorro** — lo que sobre después de tarifa y deuda
+
+El sistema debe mostrar claramente el desglose de cómo se aplicó cada pago, especificando si hay convenio activo y cuánto corresponde a cada rubro.
+
+---
+
+### 9.5 Gabela y mora
+
+#### Día de gabela
+- Todos los clientes (diario y semanal) tienen **1 día de gracia** después del día de pago pactado
+- Ejemplo: día de pago = lunes → gabela = martes → mora desde el miércoles
+- La mora aplica cuando al vencer el día de gabela **no se ha completado el total** a pagar (no solo si no pagó nada)
+
+#### Estados de cobro
+| Estado | Descripción |
+|--------|-------------|
+| **Al día** | Completó el pago antes o en el día de gabela |
+| **En gabela** | Está en el día de gracia, aún no ha completado el pago |
+| **En mora** | Venció el día de gabela sin completar el pago |
+
+#### Acciones al entrar en mora
+1. El sistema marca automáticamente al cliente en mora
+2. Se activan acciones manuales por el funcionario asignado:
+   - Llamada telefónica al cliente
+   - Mensaje de WhatsApp de recordatorio/aviso
+   - Si no responde: apagar moto remotamente (GPS — manual por ahora)
+   - Activar sirena remotamente (GPS — manual por ahora)
+   - Ir a recuperar el vehículo físicamente
+3. Toda acción queda registrada en el historial del cliente
+
+**Nota:** La retención aplica siempre que entre en mora, no solo cuando hay convenio activo.
+
+---
+
+### 9.6 Tipos de deuda
+
+Toda deuda es igual en términos de reglas (puede entrar a convenio), pero debe quedar registrada con su origen específico:
+
+| Tipo | Descripción |
+|------|-------------|
+| **Tarifa atrasada** | Días o semanas sin pagar la tarifa del vehículo |
+| **Daños al vehículo** | Detectados en taller al devolver la moto |
+| **Préstamo repuestos** | La empresa prestó dinero para comprar repuestos |
+| **Préstamo eventualidad** | Retención por entidad pública, emergencia, etc. |
+| **Fotomulta** | Multas de tránsito a cargo del cliente |
+
+**Importante:**
+- Toda deuda debe cobrarse inmediatamente salvo que se apruebe un convenio
+- En caso de liquidación o terminación de contrato, la deuda se descuenta del ahorro acumulado
+- Los préstamos solo los puede aprobar ADMIN o quien tenga habilitada esa función
+- Todo movimiento queda registrado con: concepto, monto, fecha, quién lo registró y por qué
+
+---
+
+### 9.7 Convenios de pago
+
+Un convenio permite diferir una deuda en cuotas que se suman al pago normal del cliente.
+
+#### Reglas del convenio
+1. **No puede haber convenio sobre convenio** — debe estar terminado o no existir uno activo para crear uno nuevo
+2. **Máximo 3 convenios por contrato** durante toda su duración
+3. **Si incumple el 3er convenio** → terminación automática del contrato y liquidación
+4. Si llega una deuda nueva mientras hay convenio activo por concepto diferente al pago → se puede **renovar el convenio absorbiendo la deuda nueva**, sin contar como convenio adicional (sigue siendo el mismo número)
+5. El sistema muestra claramente en el cobro del día cuánto corresponde al convenio y por qué concepto
+
+#### Quién puede crear un convenio
+- ADMIN, ADMIN_PRINCIPAL y quien tenga habilitada esa función
+
+#### Qué define el convenio
+- Número de cuotas fijo
+- Fecha límite para saldar
+- Monto de la cuota extra por período
+- Concepto de la deuda
+
+---
+
+### 9.8 Paso de contrato diario a semanal
+
+1. El cliente completa los $510.000 de base inicial
+2. El sistema detecta el hito y **notifica al funcionario**
+3. El funcionario ejecuta el cambio desde el sistema
+4. El sistema:
+   - Liquida el contrato diario
+   - Transfiere los fondos a favor como base inicial del nuevo contrato
+   - Registra la moto como "en taller" para revisión
+   - Si hay daños detectados en taller → la deuda pasa al nuevo contrato
+5. La empresa asigna una moto nueva (normalmente)
+6. Se crea el contrato semanal con todas las condiciones definidas
+
+**Regla de la semana adelantada:** El principio es "paga, consume, vuelve y paga". Siempre debe tener la semana actual cubierta ($202.000) antes de consumirla.
+
+---
+
+### 9.9 Cierre y liquidación de contrato
+
+#### Liquidación anticipada (por decisión del cliente o por incumplimiento)
+1. Se registra el motivo de cierre
+2. La moto va a taller para revisión
+3. Si hay daños → se calcula el costo y se descuenta del ahorro
+4. Se descuenta cualquier deuda pendiente del ahorro
+5. Se genera **documento de liquidación** con todos los rubros detallados
+6. El saldo restante se entrega al cliente en efectivo
+7. El cliente queda en el historial como "contrato liquidado"
+
+#### Contrato cumplido exitosamente
+1. El ahorro acumulado pasa a la empresa como pago de venta de la moto
+2. Se genera **paz y salvo**
+3. La moto queda disponible para traspaso al cliente
+4. El cliente queda en el historial como "contrato finalizado"
+
+#### Tipos de incumplimiento (a definir en detalle más adelante)
+- Mora reiterada
+- Incumplimiento del 3er convenio
+- Daños graves al vehículo
+- Otros (a documentar)
+
+---
+
+### 9.10 Métodos de pago
+
+| Método | Confirmación | Efecto en cartera |
+|--------|-------------|-------------------|
+| Efectivo | Automática al registrar | Inmediato |
+| Nequi (transferencia) | Manual por ADMIN o SECRETARIA | Solo al confirmar |
+
+- Las transferencias llegan por WhatsApp como comprobante
+- El funcionario las registra en el sistema como "pendiente"
+- Al confirmar → afecta la cartera
+- Al rechazar → queda en historial como rechazado
+
+---
+
+### 9.11 Vista diaria de cartera (resumen)
+
+El módulo debe mostrar al abrir:
+- **Total recaudado hoy** — suma de pagos confirmados del día
+- **Cuántos pagaron hoy** — número de clientes que pagaron
+- **Pagan hoy** — lista de clientes con pago pendiente para hoy
+- **En gabela** — clientes en día de gracia
+- **En mora** — clientes con pago vencido
+
+Al seleccionar un cliente de la lista se debe ver:
+- Historial de pagos
+- Estado actual (al día / gabela / mora)
+- Deuda pendiente y convenio activo si aplica
+- Acciones disponibles: registrar pago, llamar, enviar WhatsApp, registrar gestión
+
+---
+
+### 9.12 Acciones de cobro desde el sistema
+
+| Acción | Quién puede | Cuándo |
+|--------|------------|--------|
+| Registrar pago | SECRETARIA, ADMIN | Siempre |
+| Confirmar transferencia | SECRETARIA, ADMIN | Cuando hay pendiente |
+| Crear convenio | ADMIN + habilitados | Cuando hay deuda |
+| Registrar préstamo | ADMIN + habilitados | Por solicitud |
+| Registrar gestión de cobro | Todos | En mora |
+| Apagar moto (GPS) | Manual por ahora | En mora |
+| Activar sirena (GPS) | Manual por ahora | En mora |
+| Liquidar contrato | ADMIN | Al cierre |
+
+---
+
+### 9.13 Cambios requeridos en base de datos
+
+Para implementar todo lo anterior se necesitan los siguientes cambios en la DB:
+
+#### Tabla `contratos` — campos nuevos
+- `tipo_contrato` (text): "diario" | "semanal"
+- `tarifa_diaria` (numeric): tarifa fija del vehículo por día
+- `tarifa_domingo` (numeric): tarifa del domingo
+- `base_inicial` (numeric): monto de base inicial (default 510.000)
+- `base_completada` (boolean): si completó la base inicial
+- `ahorro_acumulado` (numeric): total de ahorro del cliente a la fecha
+- `semana_adelantada_cubierta` (boolean): si tiene la semana actual cubierta
+
+#### Tabla `deudas` — nueva tabla
+- `id` (uuid PK)
+- `contrato_id` (uuid FK)
+- `concepto` (text): tarifa_atrasada / daño_vehiculo / prestamo_repuesto / prestamo_eventualidad / fotomulta / otro
+- `descripcion` (text): detalle del origen
+- `monto` (numeric)
+- `monto_pendiente` (numeric)
+- `estado` (text): pendiente / en_convenio / pagada
+- `registrado_por` (uuid FK profiles)
+- `created_at` (timestamptz)
+
+#### Tabla `convenios` — nueva tabla
+- `id` (uuid PK)
+- `contrato_id` (uuid FK)
+- `numero_convenio` (int): 1, 2 o 3 (máximo 3 por contrato)
+- `deuda_total` (numeric): monto total a diferir
+- `cuota_por_periodo` (numeric): cuota extra por pago
+- `numero_cuotas` (int)
+- `cuotas_pagadas` (int)
+- `fecha_limite` (date)
+- `estado` (text): activo / cumplido / incumplido / renovado
+- `concepto` (text): descripción de por qué se creó
+- `aprobado_por` (uuid FK profiles)
+- `created_at` (timestamptz)
+
+#### Tabla `gestiones_cobro` — nueva tabla
+- `id` (uuid PK)
+- `contrato_id` (uuid FK)
+- `tipo` (text): llamada / whatsapp / visita / apagado_moto / sirena / recuperacion / otro
+- `resultado` (text): descripción de lo que pasó
+- `registrado_por` (uuid FK profiles)
+- `fecha` (date)
+- `created_at` (timestamptz)
+
+#### Tabla `pagos` — campos nuevos
+- `aplicado_tarifa` (numeric): cuánto fue a tarifa
+- `aplicado_deuda` (numeric): cuánto fue a deuda
+- `aplicado_convenio` (numeric): cuánto fue a convenio
+- `aplicado_ahorro` (numeric): cuánto fue a ahorro
+- `aplicado_saldo` (numeric): saldo a favor restante
+- `convenio_id` (uuid FK nullable): si este pago abonó a un convenio
+
+---
+
+## 10. ESTADO ACTUAL DEL PROYECTO — VERSIÓN ANTERIOR
+
+> **Nota:** La sección de estado actual se mantiene abajo. El módulo de Cartera será rediseñado según la definición de la sección 9.
+
+## 11. ESTADO ACTUAL DEL PROYECTO
 
 ### ✅ Módulos completados y desplegados
 - [x] Autenticación con Supabase Auth

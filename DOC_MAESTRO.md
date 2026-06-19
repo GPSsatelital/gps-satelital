@@ -844,7 +844,128 @@ npx tsc --noEmit
 
 ---
 
-## 12. HISTORIAL DE VERSIONES
+## 12. MÓDULO DE LIQUIDACIONES
+
+### Flujo de 6 etapas
+1. **Iniciada** — Admin abre liquidación desde contrato activo. Elige motivo. Moto pasa a "En taller" automáticamente.
+2. **En taller** — Formulario de revisión: observaciones, daños detallados, deudas pendientes.
+3. **Calculada** — Sistema calcula: `ahorro_acumulado − total_deudas − costo_daños = saldo_final`.
+4. **Documento generado** — Sistema imprime documento con firma de empresa ya incluida (nombre + cargo del responsable predefinido). Cliente debe firmar físicamente.
+5. **Firmada** — Funcionario sube foto/scan del documento firmado. Queda en Supabase Storage.
+6. **Cerrada** — Contrato → "Finalizado". Si `saldo_final < 0`, cliente queda en **lista negra** automáticamente.
+
+### Motivos de liquidación
+- `cumplimiento` — Cliente completó el contrato correctamente
+- `retiro_voluntario` — Cliente decide retirarse
+- `incumplimiento` — Empresa retira por incumplimiento grave
+
+### Reglas
+- Solo ADMIN y ADMIN_PRINCIPAL pueden iniciar liquidación
+- Número secuencial: `LIQ-0001`, `LIQ-0002`, etc.
+- Lista negra: campo `lista_negra = true` en `clientes`, con `motivo_lista_negra` detallado
+- Documento imprimible generado con `window.print()` — sin dependencias externas
+- Documento firmado subido a bucket `liquidaciones` en Supabase Storage
+
+### Tablas involucradas
+- `liquidaciones` (nueva): id, numero, contrato_id, cliente_id, moto_id, motivo, estado, ahorro_acumulado, total_deudas, costo_danos, saldo_final, detalle_deudas (jsonb), detalle_danos (jsonb), observaciones_taller, nombre_responsable, cargo_responsable, documento_firmado_url, iniciada_por, cerrada_por
+- `clientes`: nuevos campos `lista_negra` (boolean), `motivo_lista_negra` (text)
+
+### Archivos
+- `motogestion/supabase/007_liquidaciones.sql`
+- `motogestion/src/hooks/useLiquidaciones.ts`
+- `motogestion/src/utils/generarDocumentoLiquidacion.ts`
+- `motogestion/src/pages/LiquidacionesView.tsx`
+
+---
+
+## 13. MÓDULO DE UBICACIONES Y RECEPCIONES DE VEHÍCULOS
+
+### Ubicaciones físicas posibles
+| Código | Descripción |
+|--------|-------------|
+| `con_cliente` | Con el cliente, en uso |
+| `bodega` | Guardada en bodega física |
+| `oficina` | En las instalaciones de la empresa |
+| `taller` | En revisión o reparación |
+| `patios_transito` | Retenida por autoridades de tránsito |
+| `fiscalia` | Retenida por fiscalía |
+| `otro` | Otro lugar (especificar en detalle) |
+
+### Reglas
+- La ubicación cambia **manualmente** por admin o usuario con permiso delegado
+- Cambio automático solo cuando se activa un contrato → `con_cliente`
+- **Cada cambio queda registrado** en `historial_ubicaciones` con: fecha, quién lo hizo, ubicación anterior, nueva, motivo
+- Al registrar una moto nueva, se debe especificar su ubicación inicial
+
+### Formulario de recepción de vehículo
+Se registra cuando una moto llega a la empresa. Campos:
+- Motivo: retención por mora / entrega voluntaria / liquidación / nuevo registro / otro
+- Condición general: buena / regular / mala
+- Descripción de daños visibles
+- Kilómetros actuales
+- Ubicación física donde queda almacenada
+- Quien recibe (usuario del sistema) + nombre de quien entrega
+- Fotos (evidencias)
+- Observaciones
+
+### Acuerdos de tiempo rodado
+Cuando el cliente deja la moto en la empresa (voluntariamente o por mora) y no paga durante ese período:
+- Admin decide: **cobrar ahora** o **rodar al final del contrato**
+- El contrato se mide en **pagos, no en tiempo calendario** → los días sin pagar extienden el contrato
+- Se genera documento formal con: fechas, valores, motivo, nueva fecha estimada de cierre
+- Documento se imprime → cliente firma → funcionario sube scan → queda en historial del cliente
+
+### Tablas
+- `historial_ubicaciones` (nueva): moto_id, ubicacion_anterior, ubicacion_nueva, detalle, motivo, registrado_por, created_at
+- `recepciones_vehiculo` (nueva): moto_id, contrato_id, cliente_id, motivo, condicion_general, descripcion_danos, kilometros, ubicacion_destino, quien_recibe, nombre_entrega, fotos (jsonb), observaciones
+- `acuerdos_tiempo_rodado` (nueva): contrato_id, cliente_id, moto_id, recepcion_id, dias_en_empresa, valor_por_dia, total_a_cobrar, decision, fecha_entrada, fecha_salida, nueva_fecha_fin_contrato, documento_firmado_url, creado_por
+- `motos`: nuevos campos `ubicacion_fisica` (text), `detalle_ubicacion` (text)
+
+### Archivos
+- `motogestion/supabase/008_ubicaciones_recepciones.sql`
+- `motogestion/src/hooks/useUbicaciones.ts`
+- MotosView actualizado con panel de ubicación, historial y formulario de recepción
+
+---
+
+## 14. PLAN DE TRABAJO — ESTADO ACTUAL
+
+### Completado ✅
+- [x] Autenticación y roles (5 roles, RLS en DB)
+- [x] Módulo Clientes (registro, documentos, visitas, aprobación, lista negra)
+- [x] Módulo Motos (registro, estado, ubicación física, historial, recepciones)
+- [x] Módulo Contratos (semanal/diario, flujo de activación, firmas)
+- [x] Módulo Cartera/Cobros (tarifas, deudas, convenios, gestiones, ahorro)
+- [x] Módulo Taller
+- [x] Dashboard compacto con navegación
+- [x] Módulo Usuarios (crear, roles, badges)
+- [x] Módulo Liquidaciones (flujo 6 etapas, documento imprimible, lista negra)
+- [x] Rastreo de ubicación física de motos
+- [x] Formulario de recepción de vehículos
+- [x] Acuerdos de tiempo rodado (tabla lista)
+
+### Pendiente 🔲
+- [ ] Módulo de Reportes (exportar PDF/Excel por módulo)
+- [ ] Módulo de Configuración (ajustes generales + reportes)
+- [ ] Permisos delegados (admin puede asignar funciones específicas a usuarios)
+- [ ] Auditoría de usuarios (log de movimientos por usuario)
+- [ ] PWA (instalar app en celular desde Chrome)
+- [ ] APK nativo con Capacitor (después de PWA)
+- [ ] Proceso formal de recuperación de motos
+- [ ] Integración GPS dispositivo (actualmente manual)
+- [ ] Módulo de migración de datos existentes (consolidación inicial)
+- [ ] Módulo de transición diario → semanal (cuando cliente completa base inicial)
+- [ ] Subida de fotos en formulario de recepción (actualmente guarda URLs)
+
+### Migraciones SQL pendientes de ejecutar en Supabase
+Para que el sistema funcione completamente, ejecutar en orden en el SQL Editor de Supabase:
+1. `006_cartera_rediseno.sql` — tablas: deudas, convenios, gestiones_cobro
+2. `007_liquidaciones.sql` — tabla: liquidaciones; campos lista_negra en clientes
+3. `008_ubicaciones_recepciones.sql` — tablas: historial_ubicaciones, recepciones_vehiculo, acuerdos_tiempo_rodado; campos ubicacion_fisica en motos
+
+---
+
+## 15. HISTORIAL DE VERSIONES
 
 | Fecha | Versión | Cambios |
 |-------|---------|---------|
@@ -853,9 +974,13 @@ npx tsc --noEmit
 | Jun 2026 | v1.2 | Módulo Contratos con flujo completo |
 | Jun 2026 | v1.3 | Módulo Cartera/Cobros con aplicación automática de pagos |
 | Jun 2026 | v1.4 | Módulo Taller, Dashboard, seguridad por roles en DB |
-| Jun 2026 | v1.5 | Usuarios con 5 roles, navegación por rol, móvil responsive, Dashboard compacto, búsqueda en cartera, Forma de pago Semanal/Diario en contratos |
+| Jun 2026 | v1.5 | Usuarios con 5 roles, navegación por rol, móvil responsive, Dashboard compacto |
+| Jun 2026 | v1.6 | Cartera rediseñada: deudas, convenios, gestiones, tarifas diario/semanal |
+| Jun 2026 | v1.7 | Módulo Liquidaciones completo con documento imprimible y lista negra |
+| Jun 2026 | v1.8 | Rastreo ubicación física de motos, recepciones de vehículos, historial de movimientos |
 
 ---
 
 *Documento generado y mantenido como referencia técnica del proyecto MotoGestión.*
+*Rama de desarrollo: `claude/clever-turing-daklkq` → producción: `main` → Vercel*
 *Actualizar este archivo con cada nuevo módulo o cambio significativo.*

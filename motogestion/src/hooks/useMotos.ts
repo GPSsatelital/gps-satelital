@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia";
-export type GrupoMoto = "CLUB" | "PRADERA" | "COSTA" | "RASTREADOR" | "OTRO";
+export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "CLUB" | "OTRO";
 export type CondicionIngreso = "nueva" | "usada";
 
 export type Moto = {
@@ -34,7 +34,6 @@ export type Moto = {
 export type RetencionData = {
   fecha: string;
   numero_caso?: string;
-  fecha_salida?: string;
   detalle?: string;
 };
 
@@ -83,7 +82,6 @@ export function useMotos() {
       estado: tipo,
       retencion_fecha: datos.fecha,
       retencion_numero_caso: datos.numero_caso ?? null,
-      retencion_fecha_salida: datos.fecha_salida ?? null,
       retencion_detalle: datos.detalle ?? null,
     }).eq("id", id);
     return { error: error?.message ?? null };

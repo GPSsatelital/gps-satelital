@@ -56,6 +56,7 @@ export default function MotosView() {
   const [openRecepcion, setOpenRecepcion] = useState(false);
   const [openUbicacion, setOpenUbicacion] = useState(false);
   const [openRetencion, setOpenRetencion] = useState(false);
+  const [openLiberarFiscalia, setOpenLiberarFiscalia] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
@@ -64,9 +65,10 @@ export default function MotosView() {
     tipo: "Fiscalia" | "Transito" | "Garantia";
     fecha: string;
     numero_caso: string;
-    fecha_salida: string;
     detalle: string;
-  }>({ tipo: "Fiscalia", fecha: "", numero_caso: "", fecha_salida: "", detalle: "" });
+  }>({ tipo: "Fiscalia", fecha: "", numero_caso: "", detalle: "" });
+
+  const [ubicacionSalidaFiscalia, setUbicacionSalidaFiscalia] = useState<UbicacionFisica>("bodega");
 
   const [formRec, setFormRec] = useState({
     motivo: "nuevo_registro" as MotivoRecepcion,
@@ -157,14 +159,27 @@ export default function MotosView() {
     const datos: RetencionData = {
       fecha: formRetencion.fecha,
       numero_caso: formRetencion.numero_caso || undefined,
-      fecha_salida: formRetencion.fecha_salida || undefined,
       detalle: formRetencion.detalle || undefined,
     };
     const { error } = await registrarRetencion(selectedMoto.id, formRetencion.tipo, datos);
     setGuardando(false);
     if (error) { setMsgDetalle(error); return; }
-    setMsgDetalle(`Moto marcada como ${formRetencion.tipo}.`);
+    setMsgDetalle(`Moto marcada como ${ESTADO_LABEL[formRetencion.tipo]}.`);
     setOpenRetencion(false);
+  }
+
+  async function handleLiberarFiscalia() {
+    if (!selectedMoto || !profile) return;
+    setGuardando(true);
+    // 1. Registrar cambio de ubicación al lugar físico elegido
+    await cambiarUbicacion(selectedMoto.id, "fiscalia" as UbicacionFisica, ubicacionSalidaFiscalia, "", "Salida de Fiscalía — ingresa a revisión de taller", profile.id);
+    // 2. Marcar moto como En taller (Mantenimiento) y limpiar retención
+    const { error } = await cambiarEstadoMoto(selectedMoto.id, "Mantenimiento");
+    await liberarRetencion(selectedMoto.id);
+    setGuardando(false);
+    if (error) { setMsgDetalle(error); return; }
+    setMsgDetalle("Moto liberada de Fiscalía. Pasa a taller para revisión antes de operar.");
+    setOpenLiberarFiscalia(false);
   }
 
   async function handleLiberarRetencion() {
@@ -292,9 +307,11 @@ export default function MotosView() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
                 <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
-                {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado)
-                  ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
-                  : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
+                {selectedMoto.estado === "Fiscalia"
+                  ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Registrar salida de Fiscalía</button>
+                  : ["Transito","Garantia"].includes(selectedMoto.estado)
+                    ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
+                    : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
                 }
               </div>
 
@@ -306,8 +323,12 @@ export default function MotosView() {
                   </div>
                   {selectedMoto.retencion_fecha && <div style={{ fontSize: 13 }}>Fecha retención: <strong>{selectedMoto.retencion_fecha}</strong></div>}
                   {selectedMoto.retencion_numero_caso && <div style={{ fontSize: 13 }}>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
-                  {selectedMoto.retencion_fecha_salida && <div style={{ fontSize: 13 }}>Salida estimada: <strong>{selectedMoto.retencion_fecha_salida}</strong></div>}
                   {selectedMoto.retencion_detalle && <div style={{ fontSize: 13, marginTop: 4, color: "#64748b" }}>{selectedMoto.retencion_detalle}</div>}
+                  {selectedMoto.estado === "Fiscalia" && (
+                    <div style={{ fontSize: 12, marginTop: 6, color: "#92400e", fontWeight: 600 }}>
+                      Sale cuando la empresa la reciba físicamente. Al registrar salida pasa a taller automáticamente.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -440,11 +461,11 @@ export default function MotosView() {
               </Field>
               <Field label="Grupo operativo">
                 <select style={inputStyle} value={form.grupo} onChange={(e) => setForm((p) => ({ ...p, grupo: e.target.value as GrupoMoto }))}>
-                  <option value="CLUB">CLUB</option>
-                  <option value="PRADERA">PRADERA</option>
-                  <option value="COSTA">COSTA</option>
-                  <option value="RASTREADOR">RASTREADOR</option>
-                  <option value="OTRO">OTRO</option>
+                  <option value="COSTA">Moteros Costa</option>
+                  <option value="PRADERA">Moteros Pradera</option>
+                  <option value="RASTREADOR">Moteros Rastreador</option>
+                  <option value="CLUB">Club (legado)</option>
+                  <option value="OTRO">Otro</option>
                 </select>
               </Field>
               <Field label="Marca"><input style={inputStyle} value={form.marca} onChange={(e) => setForm((p) => ({ ...p, marca: e.target.value }))} /></Field>
@@ -468,13 +489,13 @@ export default function MotosView() {
       {openRetencion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ margin: "0 0 16px" }}>Registrar retención</h3>
+            <h3 style={{ margin: "0 0 16px" }}>Registrar retención — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Tipo de retención">
                 <select style={inputStyle} value={formRetencion.tipo} onChange={e => setFormRetencion(p => ({ ...p, tipo: e.target.value as any }))}>
-                  <option value="Fiscalia">Fiscalía</option>
-                  <option value="Transito">Tránsito</option>
-                  <option value="Garantia">Garantía (concesionario)</option>
+                  <option value="Fiscalia">Fiscalía — retenida por autoridad judicial</option>
+                  <option value="Transito">Tránsito — retenida por autoridad de tránsito</option>
+                  <option value="Garantia">Garantía — defecto cubierto por empresa/fabricante</option>
                 </select>
               </Field>
               <Field label="Fecha de retención">
@@ -485,15 +506,17 @@ export default function MotosView() {
                   <input style={inputStyle} value={formRetencion.numero_caso} onChange={e => setFormRetencion(p => ({ ...p, numero_caso: e.target.value }))} placeholder="Opcional" />
                 </Field>
               )}
-              <Field label="Fecha de salida estimada">
-                <input type="date" style={inputStyle} value={formRetencion.fecha_salida} onChange={e => setFormRetencion(p => ({ ...p, fecha_salida: e.target.value }))} />
-              </Field>
               <Field label="Detalle / Motivo">
-                <input style={inputStyle} value={formRetencion.detalle} onChange={e => setFormRetencion(p => ({ ...p, detalle: e.target.value }))} placeholder="Descripción de la retención..." />
+                <input style={inputStyle} value={formRetencion.detalle} onChange={e => setFormRetencion(p => ({ ...p, detalle: e.target.value }))} placeholder="Descripción..." />
               </Field>
               {formRetencion.tipo === "Fiscalia" && (
                 <div style={{ padding: "8px 12px", background: "#fef9c3", borderRadius: 10, fontSize: 13, color: "#713f12" }}>
-                  La tarifa diaria se congela. El tiempo retenido quedará como deuda del cliente.
+                  Tarifa se congela. Al recuperar la moto se registra la salida y entra a taller automáticamente.
+                </div>
+              )}
+              {formRetencion.tipo === "Garantia" && (
+                <div style={{ padding: "8px 12px", background: "#f3e8ff", borderRadius: 10, fontSize: 13, color: "#6b21a8" }}>
+                  Garantía cubierta por la empresa o el fabricante del vehículo. No genera deuda para el cliente.
                 </div>
               )}
             </div>
@@ -501,6 +524,36 @@ export default function MotosView() {
               <button onClick={() => setOpenRetencion(false)} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleRegistrarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "#92400e" }}>
                 {guardando ? "Guardando..." : "Registrar retención"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Salida de Fiscalía ── */}
+      {openLiberarFiscalia && selectedMoto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420 }}>
+            <h3 style={{ margin: "0 0 8px" }}>Registrar salida de Fiscalía</h3>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 16px" }}>
+              La moto {selectedMoto.placa} sale de Fiscalía y queda en poder de la empresa. Pasará a taller automáticamente para revisión antes de operar.
+            </p>
+            <div style={{ display: "grid", gap: 12 }}>
+              <Field label="Ubicación física donde queda la moto">
+                <select style={inputStyle} value={ubicacionSalidaFiscalia} onChange={e => setUbicacionSalidaFiscalia(e.target.value as UbicacionFisica)}>
+                  {Object.entries(UBICACION_LABEL).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <div style={{ padding: "8px 12px", background: "#f0fdf4", borderRadius: 10, fontSize: 13, color: "#166534" }}>
+                Estado → <strong>En taller</strong>. Debe pasar revisión antes de volver a operar.
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
+              <button onClick={() => setOpenLiberarFiscalia(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={handleLiberarFiscalia} disabled={guardando} style={{ ...primaryBtn, background: "#166534" }}>
+                {guardando ? "Registrando..." : "Confirmar salida"}
               </button>
             </div>
           </div>

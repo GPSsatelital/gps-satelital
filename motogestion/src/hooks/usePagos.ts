@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import type { Contrato } from "./useContratos";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
-export type MetodoPago = "Efectivo" | "Transferencia";
+export type MetodoPago = "Efectivo" | "Nequi";
 
+export type AplicadoPago = {
+  tarifa: number;
+  deuda: number;
+  convenio: number;
+  ahorro: number;
+  saldo: number;
+};
+
+// Legacy shape kept for compatibility with existing pagos stored as jsonb
 export type Aplicado = {
   deuda: number;
   semana: number;
@@ -20,43 +28,62 @@ export type Pago = {
   metodo: MetodoPago;
   estado: PagoEstado;
   aplicado: Aplicado;
+  aplicado_tarifa: number;
+  aplicado_deuda: number;
+  aplicado_convenio: number;
+  aplicado_ahorro: number;
+  aplicado_saldo_favor: number;
+  convenio_id: string | null;
   fecha: string;
   created_at: string;
 };
 
-const DEUDA_ATRASADA_BASE = 50000;
-const AHORRO_META_SEMANAL_TOPE = 30000;
+export type ResumenCobro = {
+  tarifaPendiente: number;
+  deudaPendiente: number;
+  convenioPendiente: number;
+  ahorroPendiente: number;
+  totalEsperado: number;
+};
 
-export function calcularEstadoCobro(contrato: Contrato, pagosConfirmados: Pago[]) {
-  const totalSemanaPagado = pagosConfirmados.reduce((acc, p) => acc + p.aplicado.semana, 0);
-  const totalAhorroPagado = pagosConfirmados.reduce((acc, p) => acc + p.aplicado.ahorro, 0);
-  const totalDeudaPagada = pagosConfirmados.reduce((acc, p) => acc + p.aplicado.deuda, 0);
+export function calcularAplicacion(
+  monto: number,
+  tarifaDia: number,
+  deudaPendiente: number,
+  cuotaConvenio: number,
+  ahorroMeta: number,
+): AplicadoPago {
+  let resto = monto;
 
-  const deudaAtrasadaPendiente = Math.max(DEUDA_ATRASADA_BASE - totalDeudaPagada, 0);
-  const semanaActualPendiente = Math.max(contrato.valor_semanal - totalSemanaPagado, 0);
-  const ahorroMetaSemanal = Math.min(AHORRO_META_SEMANAL_TOPE, contrato.ahorro_inicial);
-  const ahorroPendiente = Math.max(ahorroMetaSemanal - totalAhorroPagado, 0);
+  const tarifa = Math.min(resto, tarifaDia);
+  resto -= tarifa;
 
-  return { deudaAtrasadaPendiente, semanaActualPendiente, ahorroPendiente };
+  const deuda = Math.min(resto, deudaPendiente);
+  resto -= deuda;
+
+  const convenio = Math.min(resto, cuotaConvenio);
+  resto -= convenio;
+
+  const ahorro = Math.min(resto, ahorroMeta);
+  resto -= ahorro;
+
+  return { tarifa, deuda, convenio, ahorro, saldo: resto };
 }
 
-export function aplicarPagoAutomatico(monto: number, contrato: Contrato, pagosConfirmados: Pago[]): Aplicado {
-  const estado = calcularEstadoCobro(contrato, pagosConfirmados);
-  let restante = monto;
-
-  const deuda = Math.min(restante, estado.deudaAtrasadaPendiente);
-  restante -= deuda;
-
-  const semana = Math.min(restante, estado.semanaActualPendiente);
-  restante -= semana;
-
-  const ahorro = Math.min(restante, estado.ahorroPendiente);
-  restante -= ahorro;
-
-  const convenio = 0;
-  const saldo = restante;
-
-  return { deuda, semana, ahorro, convenio, saldo };
+export function calcularResumenCobro(
+  tarifaDia: number,
+  deudaPendiente: number,
+  cuotaConvenio: number,
+  pagosConfirmadosHoy: number,
+): ResumenCobro {
+  const tarifaPendiente = Math.max(tarifaDia - pagosConfirmadosHoy, 0);
+  return {
+    tarifaPendiente,
+    deudaPendiente,
+    convenioPendiente: cuotaConvenio,
+    ahorroPendiente: 0,
+    totalEsperado: tarifaPendiente + deudaPendiente + cuotaConvenio,
+  };
 }
 
 export function usePagos() {
@@ -81,26 +108,43 @@ export function usePagos() {
 
   useEffect(() => {
     fetchPagos();
-
     const channel = supabase
       .channel("pagos-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pagos" }, () => {
         fetchPagos();
       })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [fetchPagos]);
 
-  async function registrarPago(contratoId: string, valor: number, metodo: MetodoPago, aplicado: Aplicado) {
+  async function registrarPago(
+    contratoId: string,
+    valor: number,
+    metodo: MetodoPago,
+    aplicado: AplicadoPago,
+    convenioId?: string,
+  ) {
+    const estado: PagoEstado = metodo === "Efectivo" ? "Confirmado" : "Pendiente";
+    // Legacy jsonb field for backwards compatibility
+    const aplicadoLegacy: Aplicado = {
+      deuda: aplicado.deuda,
+      semana: aplicado.tarifa,
+      ahorro: aplicado.ahorro,
+      convenio: aplicado.convenio,
+      saldo: aplicado.saldo,
+    };
     const { error } = await supabase.from("pagos").insert({
       contrato_id: contratoId,
       valor,
       metodo,
-      estado: metodo === "Transferencia" ? "Pendiente" : "Confirmado",
-      aplicado,
+      estado,
+      aplicado: aplicadoLegacy,
+      aplicado_tarifa: aplicado.tarifa,
+      aplicado_deuda: aplicado.deuda,
+      aplicado_convenio: aplicado.convenio,
+      aplicado_ahorro: aplicado.ahorro,
+      aplicado_saldo_favor: aplicado.saldo,
+      convenio_id: convenioId ?? null,
     });
     return { error: error?.message ?? null };
   }
@@ -115,5 +159,32 @@ export function usePagos() {
     return { error: error?.message ?? null };
   }
 
-  return { pagos, loading, error, registrarPago, confirmarPago, rechazarPago };
+  function pagosDelContrato(contratoId: string) {
+    return pagos.filter(p => p.contrato_id === contratoId);
+  }
+
+  function pagosConfirmadosDelContrato(contratoId: string) {
+    return pagos.filter(p => p.contrato_id === contratoId && p.estado === "Confirmado");
+  }
+
+  function totalAhorroAcumulado(contratoId: string) {
+    return pagosConfirmadosDelContrato(contratoId).reduce((acc, p) => acc + (p.aplicado_ahorro ?? 0), 0);
+  }
+
+  function totalTarifaAcumulada(contratoId: string) {
+    return pagosConfirmadosDelContrato(contratoId).reduce((acc, p) => acc + (p.aplicado_tarifa ?? 0), 0);
+  }
+
+  return {
+    pagos,
+    loading,
+    error,
+    registrarPago,
+    confirmarPago,
+    rechazarPago,
+    pagosDelContrato,
+    pagosConfirmadosDelContrato,
+    totalAhorroAcumulado,
+    totalTarifaAcumulada,
+  };
 }

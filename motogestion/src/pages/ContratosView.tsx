@@ -203,10 +203,12 @@ export default function ContratosView() {
               </div>
 
               <div>
-                <div style={labelStyle}>Forma de pago</div>
+                <div style={labelStyle}>Modalidad de pago</div>
                 <select style={inputStyle} value={form.forma_pago} onChange={(e) => setForm((p) => ({ ...p, forma_pago: e.target.value }))}>
-                  <option value="Semanal">Semanal</option>
-                  <option value="Diario">Diario</option>
+                  <option value="Diario">Diario — se cobra cada día</option>
+                  <option value="Semanal">Semanal — se cobra cada semana</option>
+                  <option value="Quincenal">Quincenal — se cobra cada 15 días</option>
+                  <option value="Mensual">Mensual — se cobra cada mes</option>
                 </select>
               </div>
 
@@ -215,7 +217,7 @@ export default function ContratosView() {
                   <div style={labelStyle}>Valor diario</div>
                   <select style={inputStyle} value={form.valor_diario} onChange={(e) => setForm((p) => ({ ...p, valor_diario: e.target.value }))}>
                     <option value="">Seleccionar valor diario</option>
-                    {[8000, 10000, 12000, 15000, 18000, 20000].map((v) => (
+                    {[26000, 27000, 30000, 35000, 40000, 50000].map((v) => (
                       <option key={v} value={String(v)}>$ {v.toLocaleString("es-CO")}</option>
                     ))}
                   </select>
@@ -223,9 +225,11 @@ export default function ContratosView() {
               )}
 
               <div>
-                <div style={labelStyle}>Valor semanal</div>
+                <div style={labelStyle}>
+                  Valor por período ({form.forma_pago === "Diario" ? "diario" : form.forma_pago === "Semanal" ? "semanal" : form.forma_pago === "Quincenal" ? "quincenal" : "mensual"})
+                </div>
                 <select style={inputStyle} value={form.valor_semanal} onChange={(e) => setForm((p) => ({ ...p, valor_semanal: e.target.value }))}>
-                  <option value="">Seleccionar valor semanal</option>
+                  <option value="">Seleccionar valor</option>
                   {VALORES_SEMANALES.map((v) => (
                     <option key={v} value={String(v)}>$ {v.toLocaleString("es-CO")}</option>
                   ))}

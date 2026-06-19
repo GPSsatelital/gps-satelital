@@ -1,6 +1,6 @@
 # DOC MAESTRO — MotoGestión SaaS
 **GPS Satelital Cartagena**
-**Última actualización:** 19 de junio de 2026
+**Última actualización:** 19 de junio de 2026 — v1.9
 **Estado del proyecto:** En desarrollo activo
 
 ---
@@ -31,19 +31,49 @@ El sistema tiene 5 roles. Cada rol determina qué módulos ve y qué acciones pu
 
 | Rol | Descripción | Módulos visibles |
 |-----|-------------|-----------------|
-| `ADMIN_PRINCIPAL` | Dueño / Director. Acceso total. | Todos + Usuarios |
-| `ADMIN` | Administrador operativo. Aprueba, crea contratos, confirma pagos. | Todos + Usuarios |
+| `ADMIN_PRINCIPAL` | Dueño / Director. Acceso total. Único que puede delegar funciones especiales. | Todos + Usuarios + Configuración |
+| `ADMIN` | Administrador operativo (Admin 1, 2, 3, 4). Gestiona las motos que le asigne el Admin Principal. | Todos + Usuarios |
 | `SUBADMIN` | Supervisión parcial. Sin acceso a Usuarios. | Dashboard, Clientes, Motos, Contratos, Cartera, Taller |
-| `SECRETARIA` | Registro de clientes, pagos, visitas. | Dashboard, Clientes, Motos, Contratos, Cartera, Taller |
+| `SECRETARIA` | Secretaria / Aux. Contable. Registro de clientes, pagos, visitas. Es el mismo rol. | Dashboard, Clientes, Motos, Contratos, Cartera, Taller |
 | `MECANICO` | Solo gestión de taller. | Dashboard, Taller |
+
+### Modelo de Admins
+- El `ADMIN_PRINCIPAL` puede tener hasta 4 Admins operativos (Admin 1, 2, 3, 4)
+- Cada Admin gestiona las motos que el Admin Principal le asigne — de cualquier grupo, de forma mixta
+- Un Admin puede tener motos de varios grupos simultáneamente
+- El Admin solo ve y gestiona sus motos asignadas (cobrar, administrar, retener, etc.)
+- Las funciones especiales (crear convenios, aprobar préstamos, etc.) se delegan individualmente por el Admin Principal
 
 ### Restricciones importantes
 - Solo `ADMIN` y `ADMIN_PRINCIPAL` pueden crear contratos.
 - Solo `ADMIN` y `ADMIN_PRINCIPAL` pueden aprobar/rechazar clientes.
 - Solo `ADMIN` y `ADMIN_PRINCIPAL` pueden aplicar excepciones documentales.
-- Solo `ADMIN` y `ADMIN_PRINCIPAL` ven el módulo de Usuarios.
+- Solo `ADMIN_PRINCIPAL` puede delegar funciones especiales a otros usuarios.
 - `MECANICO` solo ve Dashboard y Taller.
 - Los usuarios **no pueden registrarse solos** — un ADMIN los crea desde el módulo de Usuarios.
+- El sistema registra **auditoría completa** de cada acción: quién hizo qué, cuándo y desde dónde.
+
+---
+
+## 2B. GRUPOS DE MOTOS
+
+Los grupos son portafolios de inversión independientes dentro de la empresa. Cada grupo representa un socio o tipo de activo diferente.
+
+### Reglas de grupos
+- Una moto pertenece a **un solo grupo para siempre** desde que se registra hasta que deja de ser activo
+- Los grupos tienen **estadísticas, cuentas, cálculos y reportes separados**
+- El Admin Principal ve todos los grupos; los Admins ven solo las motos que se les asignaron (de cualquier grupo)
+- Los cálculos de rentabilidad, recaudo y mora se generan **por grupo de forma independiente**
+
+### Grupos actuales
+| Grupo | Descripción |
+|-------|-------------|
+| `COSTA` | Portafolio Costa |
+| `PRADERA` | Portafolio Pradera |
+| `RASTREADOR` | Portafolio Rastreador (mismo funcionamiento, distinto nombre) |
+| Otros | Se pueden agregar nuevos grupos según crezca la operación |
+
+> **Nota:** Todas las motos tienen dispositivo GPS instalado para identificación y seguridad, independientemente del grupo.
 
 ---
 
@@ -116,9 +146,24 @@ Flota de vehículos.
 | `fecha_tecnomecanica` | date | Vencimiento tecno |
 | `propietario` | text | |
 | `numero_serie` | text | |
-| `estado` | text | Disponible / Reservada / Asignada / Mantenimiento / Recuperada |
+| `estado` | text | Ver tabla de estados abajo |
+| `condicion_ingreso` | text | `nueva` / `usada` — se define al registrar por primera vez |
+| `grupo` | text | `COSTA` / `PRADERA` / `RASTREADOR` / otro — inmutable |
 | `observaciones` | text | |
 | `created_at` / `updated_at` | timestamptz | Auto |
+
+#### Estados de motos
+| Estado | Descripción | Quién lo asigna |
+|--------|-------------|-----------------|
+| `Disponible` | Lista para asignar. Puede ser nueva (compra directa) o usada (ya estuvo con cliente) | Sistema / Admin |
+| `Asignada` | Tiene cliente y contrato activo | Sistema (al activar contrato) |
+| `En taller` | En revisión o reparación interna | Admin / Mecánico |
+| `Garantía` | En el concesionario por defecto de fábrica — fechas + motivo + detalles | Admin |
+| `Fiscalía` | Retenida por Fiscalía — fecha retención, # caso, fecha salida estimada, detalles | Admin |
+| `Tránsito` | Retenida por autoridad de tránsito — fechas + motivos | Admin |
+| `Recuperada` | Recuperada de cliente por incumplimiento — en proceso de re-asignación | Admin |
+
+> **Regla importante:** Al registrar una moto por primera vez se debe especificar si es **Nueva** (directo de compra) o **Usada** (ya fue asignada anteriormente o viene de otra fuente). Este campo es inmutable.
 
 ---
 
@@ -303,7 +348,30 @@ Cada fila es clickeable y navega al módulo correspondiente.
 4. Activar contrato → moto pasa a `Asignada`, cliente pasa a `Activo`
 5. Cancelar si es necesario → moto regresa a `Disponible`
 
-**Opciones de forma de pago:** Semanal / Diario
+**Modalidades de pago (forma de cobro):**
+| Modalidad | Descripción |
+|-----------|-------------|
+| `Diario` | Se cobra cada día |
+| `Semanal` | Se cobra cada semana |
+| `Quincenal` | Se cobra cada 15 días |
+| `Mensual` | Se cobra cada mes |
+
+> La tarifa diaria es **la misma para todos**. Solo cambia la frecuencia de cobro y acumulación.
+
+**Base inicial:** $510.000 — obligatoria y fija para todos los contratos. Se debe completar antes de entregar la moto.
+
+**Meses del contrato:** Se define al crear el contrato según acuerdo.
+
+**Alerta de traspaso:** El sistema notifica **2 meses antes** de que venza el contrato para iniciar el proceso legal de traspaso del vehículo al nombre del cliente.
+
+**Motivos de terminación del contrato:**
+| Motivo | Qué pasa con el ahorro |
+|--------|----------------------|
+| Terminación exitosa | Pasa a la empresa como pago de venta; se genera paz y salvo; inicia traspaso |
+| Devolución voluntaria | Se entrega al cliente menos deudas y daños |
+| Recuperación por mora | Admin decide caso a caso |
+| Incumplimiento de convenios | Admin decide caso a caso |
+| Causales del contrato (delitos, etc.) | Admin decide caso a caso |
 
 ---
 
@@ -611,6 +679,40 @@ Un convenio permite diferir una deuda en cuotas que se suman al pago normal del 
 
 ---
 
+### 9.9B Motos retenidas — Fiscalía / Tránsito / Garantía
+
+#### Fiscalía
+- Estado: `Fiscalía`
+- Registrar: fecha de retención, # caso, fecha de salida estimada, detalles / motivo
+- La **tarifa diaria se congela** en el sistema mientras está retenida
+- El tiempo retenido **queda como deuda del cliente** (la empresa deja de operar ese activo)
+- El Admin decide si aplicar la deuda inmediatamente o al momento de la liquidación
+
+#### Tránsito
+- Estado: `Tránsito`
+- Registrar: fechas, motivos
+- Misma regla de tarifa que Fiscalía
+
+#### Garantía
+- Estado: `Garantía`
+- Registrar: fechas, motivos, detalles del defecto
+- La moto está en el concesionario por defecto de fábrica
+- No genera deuda para el cliente (no es culpa suya)
+- Los gastos son asumidos por la empresa / garantía del fabricante
+
+---
+
+### 9.9C Proceso de Traspaso (al terminar contrato exitosamente)
+
+1. El sistema alerta al Admin **2 meses antes** de que venza el contrato — **"Alerta de inicio de traspaso"**
+2. El Admin inicia el proceso de traspaso desde el sistema
+3. El cliente asume los costos del traspaso (notaría, impuestos, etc.)
+4. La empresa acompaña y gestiona el proceso legal
+5. Al completarse: moto queda a nombre del cliente, contrato cierra como `Finalizado`
+6. El sistema genera el **paz y salvo** definitivo
+
+---
+
 ### 9.9 Cierre y liquidación de contrato
 
 #### Liquidación anticipada (por decisión del cliente o por incumplimiento)
@@ -758,27 +860,67 @@ Para implementar todo lo anterior se necesitan los siguientes cambios en la DB:
 - [x] Diseño responsive (desktop + móvil con bottom-sheet)
 - [x] Realtime en todas las tablas
 
-### 🔄 Pendiente / Plan de trabajo
+### 🔄 Plan de trabajo — Actualizado v1.9
 
-#### PRIORIDAD ALTA
-- [ ] **Reportes y exportación** — PDF o Excel de cartera, contratos activos, mora
-- [ ] **Notificaciones** — alertas de vencimiento (SOAT, tecno, plazo de docs)
-- [ ] **Historial de pagos por cliente** — vista consolidada del estado financiero de cada contrato
-- [ ] **Módulo GPS** — integración con dispositivos GPS satelital instalados en motos
+> **Nota:** Los puntos de cartera, ciclo del cliente y manejo contable están **parcialmente definidos** y requieren más sesiones de definición antes de implementar completamente.
 
-#### PRIORIDAD MEDIA
-- [ ] **Subadmin por grupos** — cada SUBADMIN gestiona solo su grupo de motos (CLUB / PRADERA / COSTA)
-- [ ] **Foto de documentos en Supabase Storage** — actualmente solo se guarda el nombre del archivo
-- [ ] **Foto de visita en Supabase Storage** — idem
-- [ ] **Recuperación de motos** — módulo para registrar proceso de recuperación (estado "Recuperada")
-- [ ] **Liquidación de contratos** — proceso formal de cierre y devolución de ahorro
-- [ ] **Historial de cambios de estado** — audit log de quién cambió qué y cuándo
+---
 
-#### PRIORIDAD BAJA
-- [ ] **Dashboard avanzado** — gráficas de recaudo, mora por semana, motos por estado
-- [ ] **Módulo de nómina** — pago a empleados vinculados a la operación
-- [ ] **App móvil nativa** — versión PWA o React Native
-- [ ] **Multi-empresa** — soporte para varias sedes o empresas desde la misma plataforma
+#### FASE 1 — BASE OPERATIVA (en curso)
+- [x] Autenticación y roles
+- [x] Módulo Clientes
+- [x] Módulo Motos
+- [x] Módulo Contratos
+- [x] Módulo Cartera básico
+- [x] Módulo Taller
+- [x] Módulo Liquidaciones (6 etapas)
+- [x] Módulo Ubicaciones de motos
+- [x] PWA (instalar desde móvil)
+- [x] Datos de prueba cargados
+
+---
+
+#### FASE 2 — CARTERA COMPLETA (prioridad máxima — esencia del negocio)
+- [ ] **Definir ciclo completo de cartera** (sesión de definición pendiente)
+- [ ] **Confirmar / rechazar transferencias** (Nequi/Daviplata pendientes de ADMIN)
+- [ ] **Registrar deudas** — daños, préstamos, multas, tarifa atrasada
+- [ ] **Crear y gestionar convenios** de pago (máx 3 por contrato)
+- [ ] **Vista de mora** con acciones de cobro (llamar, WhatsApp, gestión)
+- [ ] **Aplicación automática del pago** con desglose visible (tarifa → deuda → convenio → ahorro)
+- [ ] **Retención por Fiscalía/Tránsito** — congela tarifa, registra deuda
+- [ ] **Quincenal y Mensual** — nuevas modalidades de pago
+- [ ] **Estadísticas por grupo** — recaudo, mora, rentabilidad separada por grupo
+
+#### FASE 3 — CICLO COMPLETO DEL CLIENTE
+- [ ] **Definir ciclo completo** de llegada a cierre (sesión pendiente)
+- [ ] **Fuentes de llegada** del cliente (referido, redes, directo, etc.)
+- [ ] **Documentos requeridos** (definir lista exacta)
+- [ ] **Proceso de traspaso** — alerta 2 meses antes + flujo legal
+- [ ] **Paz y salvo** automático al terminar exitosamente
+- [ ] **Lista negra** — validación al registrar cliente nuevo
+
+#### FASE 4 — GRUPOS Y ADMINS
+- [ ] **Asignación de motos a Admins** desde el Admin Principal
+- [ ] **Vista filtrada por Admin** — cada Admin ve solo sus motos
+- [ ] **Reportes por grupo** — estadísticas independientes por portafolio
+- [ ] **Delegación de funciones** — el Admin Principal habilita funciones especiales por usuario
+
+#### FASE 5 — MOTOS AVANZADO
+- [ ] **Garantía** — registrar con concesionario, fechas, detalles
+- [ ] **Fiscalía / Tránsito** — registrar retención, calcular deuda
+- [ ] **Condición de ingreso** (nueva / usada) al registrar
+- [ ] **Recuperación de motos** — proceso formal de recuperación por mora
+
+#### FASE 6 — REPORTES Y AUDITORÍA
+- [ ] **Auditoría de usuarios** — rastro de cada acción en el sistema
+- [ ] **Reportes exportables** — PDF/Excel por módulo
+- [ ] **Dashboard avanzado** — gráficas por grupo, mora semanal, recaudo
+- [ ] **Alertas** — SOAT, tecno, contratos próximos a vencer, traspaso
+
+#### FASE 7 — INTEGRACIONES
+- [ ] **GPS real** — apagar/activar sirena desde el sistema
+- [ ] **WhatsApp automático** — notificaciones de pago, mora
+- [ ] **Módulo de nómina** — pagos a funcionarios
 
 ---
 

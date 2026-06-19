@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada";
-export type GrupoMoto = "CLUB" | "PRADERA" | "COSTA";
+export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia";
+export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "OTRO";
+export type CondicionIngreso = "nueva" | "usada";
 
 export type Moto = {
   id: string;
@@ -19,9 +20,21 @@ export type Moto = {
   propietario: string | null;
   numero_serie: string | null;
   estado: MotoStatus;
+  condicion_ingreso: CondicionIngreso | null;
   observaciones: string | null;
+  // campos de retención
+  retencion_fecha: string | null;
+  retencion_numero_caso: string | null;
+  retencion_fecha_salida: string | null;
+  retencion_detalle: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type RetencionData = {
+  fecha: string;
+  numero_caso?: string;
+  detalle?: string;
 };
 
 export function useMotos() {
@@ -64,5 +77,26 @@ export function useMotos() {
     return { error: error?.message ?? null };
   }
 
-  return { motos, loading, error, crearMoto, cambiarEstadoMoto };
+  async function registrarRetencion(id: string, tipo: "Fiscalia" | "Transito" | "Garantia", datos: RetencionData) {
+    const { error } = await supabase.from("motos").update({
+      estado: tipo,
+      retencion_fecha: datos.fecha,
+      retencion_numero_caso: datos.numero_caso ?? null,
+      retencion_detalle: datos.detalle ?? null,
+    }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
+  async function liberarRetencion(id: string) {
+    const { error } = await supabase.from("motos").update({
+      estado: "Disponible",
+      retencion_fecha: null,
+      retencion_numero_caso: null,
+      retencion_fecha_salida: null,
+      retencion_detalle: null,
+    }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
+  return { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion };
 }

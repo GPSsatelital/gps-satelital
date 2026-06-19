@@ -9,7 +9,7 @@ import {
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { useDeudas } from "../hooks/useDeudas";
+import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
@@ -191,8 +191,8 @@ export default function CobrosView() {
   const { contratos, loading: loadingContratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
-  const { deudas } = useDeudas();
-  const { convenios, convenioActivoDelContrato } = useConvenios();
+  const { deudas, registrarDeuda } = useDeudas();
+  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
 
   // Panel state
@@ -210,6 +210,24 @@ export default function CobrosView() {
   const [resultadoGestion, setResultadoGestion] = useState("");
   const [gestionError, setGestionError] = useState<string | null>(null);
   const [gestionExito, setGestionExito] = useState(false);
+
+  // Deuda form state
+  const [deudaConcepto, setDeudaConcepto] = useState<ConceptoDeuda>("daño_vehiculo");
+  const [deudaDescripcion, setDeudaDescripcion] = useState("");
+  const [deudaMonto, setDeudaMonto] = useState("");
+  const [deudaError, setDeudaError] = useState<string | null>(null);
+  const [deudaExito, setDeudaExito] = useState(false);
+
+  // Convenio form state
+  const [convDeudaTotal, setConvDeudaTotal] = useState("");
+  const [convCuota, setConvCuota] = useState("");
+  const [convCuotas, setConvCuotas] = useState("");
+  const [convFechaLimite, setConvFechaLimite] = useState("");
+  const [convConcepto, setConvConcepto] = useState("");
+  const [convError, setConvError] = useState<string | null>(null);
+  const [convExito, setConvExito] = useState(false);
+  const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
+  const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
@@ -299,6 +317,14 @@ export default function CobrosView() {
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
 
+  const deudasContrato = contratoSeleccionadoId
+    ? deudas.filter(d => d.contrato_id === contratoSeleccionadoId && d.estado !== "pagada")
+    : [];
+
+  const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
+  const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
+
   const gestionesContrato = contratoSeleccionadoId
     ? gestiones.filter(g => g.contrato_id === contratoSeleccionadoId).slice(0, 5)
     : [];
@@ -339,6 +365,34 @@ export default function CobrosView() {
     setValor("");
     setFormExito(true);
     setTimeout(() => setFormExito(false), 3000);
+  }
+
+  async function handleRegistrarDeuda() {
+    if (!contratoSeleccionadoId || !profile) return;
+    if (!deudaMonto || Number(deudaMonto) <= 0) { setDeudaError("Ingresa un monto válido."); return; }
+    if (!deudaDescripcion.trim()) { setDeudaError("Ingresa una descripción."); return; }
+    setDeudaError(null);
+    const { error } = await registrarDeuda(contratoSeleccionadoId, deudaConcepto, deudaDescripcion, Number(deudaMonto), profile.id);
+    if (error) { setDeudaError(error); return; }
+    setDeudaMonto(""); setDeudaDescripcion("");
+    setDeudaExito(true); setMostrarFormDeuda(false);
+    setTimeout(() => setDeudaExito(false), 3000);
+  }
+
+  async function handleCrearConvenio() {
+    if (!contratoSeleccionadoId || !profile) return;
+    if (!convDeudaTotal || !convCuota || !convCuotas || !convFechaLimite || !convConcepto.trim()) {
+      setConvError("Completa todos los campos."); return;
+    }
+    setConvError(null);
+    const { error } = await crearConvenio(
+      contratoSeleccionadoId, Number(convDeudaTotal), Number(convCuota),
+      Number(convCuotas), convFechaLimite, convConcepto, profile.id
+    );
+    if (error) { setConvError(error); return; }
+    setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto("");
+    setConvExito(true); setMostrarFormConvenio(false);
+    setTimeout(() => setConvExito(false), 3000);
   }
 
   async function handleRegistrarGestion() {
@@ -674,6 +728,160 @@ export default function CobrosView() {
                   </div>
                 )}
               </div>
+
+              {/* ── Panel Deudas ── */}
+              <div style={card}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, fontSize: 17 }}>
+                    Deudas {deudasContrato.length > 0 && (
+                      <span style={{ fontSize: 13, background: "#fee2e2", color: "#991b1b", borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>
+                        $ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}
+                      </span>
+                    )}
+                  </h3>
+                  {esAdmin && (
+                    <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
+                      {mostrarFormDeuda ? "Cancelar" : "+ Registrar deuda"}
+                    </button>
+                  )}
+                </div>
+
+                {deudaExito && (
+                  <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                    Deuda registrada correctamente.
+                  </div>
+                )}
+
+                {mostrarFormDeuda && esAdmin && (
+                  <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginBottom: 12, display: "grid", gap: 10 }}>
+                    <div>
+                      <div style={labelStyle}>Concepto</div>
+                      <select style={inputStyle} value={deudaConcepto} onChange={e => setDeudaConcepto(e.target.value as ConceptoDeuda)}>
+                        <option value="daño_vehiculo">Daño al vehículo</option>
+                        <option value="tarifa_atrasada">Tarifa atrasada</option>
+                        <option value="prestamo_repuesto">Préstamo repuestos</option>
+                        <option value="prestamo_eventualidad">Préstamo eventualidad</option>
+                        <option value="fotomulta">Fotomulta</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={labelStyle}>Descripción</div>
+                      <input style={inputStyle} value={deudaDescripcion} onChange={e => setDeudaDescripcion(e.target.value)} placeholder="Detalle del origen de la deuda..." />
+                    </div>
+                    <div>
+                      <div style={labelStyle}>Monto ($)</div>
+                      <input type="number" style={inputStyle} value={deudaMonto} onChange={e => setDeudaMonto(e.target.value)} placeholder="Ej. 150000" />
+                    </div>
+                    {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
+                    <button onClick={handleRegistrarDeuda} style={primaryBtn}>Registrar deuda</button>
+                  </div>
+                )}
+
+                {deudasContrato.length === 0 ? (
+                  <div style={{ color: "#64748b", fontSize: 14 }}>Sin deudas pendientes.</div>
+                ) : (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {deudasContrato.map(d => (
+                      <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{d.descripcion}</div>
+                          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                            Estado: {d.estado}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b" }}>$ {fmt(d.monto_pendiente)}</div>
+                          {d.monto !== d.monto_pendiente && (
+                            <div style={{ fontSize: 11, color: "#64748b" }}>de $ {fmt(d.monto)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Panel Convenios ── */}
+              {esAdmin && (
+                <div style={card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 17 }}>
+                      Convenio de pago
+                      <span style={{ fontSize: 12, color: "#64748b", marginLeft: 8 }}>({totalConvenios}/3 usados)</span>
+                    </h3>
+                    {!convenioActual && totalConvenios < 3 && deudasContrato.length > 0 && (
+                      <button onClick={() => setMostrarFormConvenio(v => !v)} style={miniBtn("#eff6ff", "#1e40af")}>
+                        {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
+                      </button>
+                    )}
+                  </div>
+
+                  {convExito && (
+                    <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                      Convenio creado correctamente.
+                    </div>
+                  )}
+
+                  {convenioActual && (
+                    <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a", marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>
+                        Convenio #{convenioActual.numero_convenio} — Activo
+                      </div>
+                      <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{convenioActual.concepto}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+                        <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
+                        <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
+                        <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
+                        <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
+                      </div>
+                    </div>
+                  )}
+
+                  {!convenioActual && totalConvenios >= 3 && (
+                    <div style={{ color: "#991b1b", fontSize: 14, fontWeight: 600 }}>
+                      Este contrato ya alcanzó el máximo de 3 convenios. Si vuelve a incumplir, procede la terminación del contrato.
+                    </div>
+                  )}
+
+                  {!convenioActual && totalConvenios < 3 && deudasContrato.length === 0 && (
+                    <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
+                  )}
+
+                  {mostrarFormConvenio && !convenioActual && esAdmin && (
+                    <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 13, color: "#64748b" }}>
+                        Deuda pendiente total: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Monto total a diferir ($)</div>
+                        <input type="number" style={inputStyle} value={convDeudaTotal} onChange={e => setConvDeudaTotal(e.target.value)} placeholder="Ej. 300000" />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <div style={labelStyle}>Cuota por período ($)</div>
+                          <input type="number" style={inputStyle} value={convCuota} onChange={e => setConvCuota(e.target.value)} placeholder="Ej. 10000" />
+                        </div>
+                        <div>
+                          <div style={labelStyle}>Número de cuotas</div>
+                          <input type="number" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
+                        </div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Fecha límite</div>
+                        <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Concepto / Motivo</div>
+                        <input style={inputStyle} value={convConcepto} onChange={e => setConvConcepto(e.target.value)} placeholder="Descripción del convenio..." />
+                      </div>
+                      {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
+                      <button onClick={handleCrearConvenio} style={primaryBtn}>Crear convenio</button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Gestiones de cobro — solo si en mora o gabela */}
               {(contratoDetalle.estadoCartera === "mora" || contratoDetalle.estadoCartera === "gabela") && (

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useContratos, type ContratoEstado } from "../hooks/useContratos";
+import { useContratos, type ContratoEstado, type FormaPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
@@ -57,8 +57,9 @@ export default function ContratosView() {
       return;
     }
 
-    if (!form.cliente_id || !form.valor_semanal || !form.meses || !form.fecha_entrega) {
-      setFormError("Completa cliente, valor semanal, meses y fecha de entrega.");
+    const requiereMeses = form.forma_pago !== "Diario";
+    if (!form.cliente_id || !form.valor_semanal || (requiereMeses && !form.meses) || !form.fecha_entrega) {
+      setFormError(`Completa cliente, valor por período, ${requiereMeses ? "meses, " : ""}y fecha de entrega.`);
       return;
     }
 
@@ -77,10 +78,12 @@ export default function ContratosView() {
     const { error } = await crearContrato({
       cliente_id: form.cliente_id,
       dia_pago: form.dia_pago,
+      forma_pago: form.forma_pago as FormaPago,
       valor_semanal: Number(form.valor_semanal),
-      meses: Number(form.meses),
+      meses: form.forma_pago === "Diario" ? null : Number(form.meses),
       ahorro_inicial: Number(form.ahorro_inicial || 0),
       fecha_entrega: form.fecha_entrega,
+      tarifa_diaria: form.forma_pago === "Diario" ? Number(form.valor_diario || 27000) : 27000,
     });
     setGuardando(false);
 

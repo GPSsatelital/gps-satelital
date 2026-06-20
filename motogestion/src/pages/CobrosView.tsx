@@ -2,11 +2,12 @@ import React, { useMemo, useState } from "react";
 import {
   usePagos,
   calcularAplicacion,
+  calcularCuotaDia,
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
 } from "../hooks/usePagos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, calcularEquivalenciasDiarias } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
@@ -331,19 +332,24 @@ export default function CobrosView() {
 
   // ── Desglose en tiempo real ───────────────────────────────────────────────
   const montoIngresado = Number(valor) || 0;
-  const tarifaDia = contratoDetalle
-    ? (new Date().getDay() === 0
-      ? (contratoDetalle.tarifa_domingo ?? 14000)
-      : (contratoDetalle.tarifa_diaria ?? 27000))
+  const esDomingo = new Date().getDay() === 0;
+
+  // Cuota pactada: para contratos diarios usa tarifa del día, para periódicos usa valor_semanal
+  const cuotaPactada = contratoDetalle
+    ? (contratoDetalle.forma_pago === "Diario"
+        ? calcularCuotaDia(contratoDetalle.tarifa_diaria ?? 27000, esDomingo)
+        : contratoDetalle.valor_semanal)
     : 27000;
+
+  // Cuánto falta pagar de la cuota del período actual
+  const cuotaPendiente = Math.max(cuotaPactada - (contratoDetalle?.pagadoEstaSemana ?? 0), 0);
 
   const desglose: AplicadoPago = contratoDetalle
     ? calcularAplicacion(
         montoIngresado,
-        tarifaDia,
+        cuotaPendiente,
         contratoDetalle.deudaContrato,
         contratoDetalle.cuotaConvenio,
-        0,
       )
     : { tarifa: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
@@ -549,17 +555,31 @@ export default function CobrosView() {
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-                  <InfoBox label="Tarifa del dia" value={`$ ${fmt(tarifaDia)}`} />
-                  <InfoBox label="Pagado esta semana" value={`$ ${fmt(contratoDetalle.pagadoEstaSemana)}`} />
-                  <InfoBox label="Deuda pendiente" value={`$ ${fmt(contratoDetalle.deudaContrato)}`} highlight={contratoDetalle.deudaContrato > 0} />
-                  {contratoDetalle.convenioActivo ? (
+                  <InfoBox
+                    label={`Cuota pactada (${contratoDetalle.forma_pago ?? "Semanal"}${esDomingo ? " · Domingo" : ""})`}
+                    value={`$ ${fmt(cuotaPactada)}`}
+                  />
+                  <InfoBox
+                    label="Pagado este período"
+                    value={`$ ${fmt(contratoDetalle.pagadoEstaSemana)}`}
+                    highlight={contratoDetalle.pagadoEstaSemana >= cuotaPactada}
+                  />
+                  <InfoBox
+                    label="Pendiente cuota"
+                    value={cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
+                    highlight={cuotaPendiente === 0}
+                  />
+                  <InfoBox
+                    label="Deuda adicional"
+                    value={contratoDetalle.deudaContrato > 0 ? `$ ${fmt(contratoDetalle.deudaContrato)}` : "Sin deudas"}
+                    highlight={contratoDetalle.deudaContrato > 0}
+                  />
+                  {contratoDetalle.convenioActivo && (
                     <InfoBox
                       label={`Cuota convenio #${contratoDetalle.convenioActivo.numero_convenio}`}
                       value={`$ ${fmt(contratoDetalle.convenioActivo.cuota_por_periodo)}`}
                       highlight
                     />
-                  ) : (
-                    <InfoBox label="Sin convenio activo" value="—" />
                   )}
                 </div>
 
@@ -578,6 +598,35 @@ export default function CobrosView() {
                     Convenio #{contratoDetalle.convenioActivo.numero_convenio}: {contratoDetalle.convenioActivo.cuotas_pagadas}/{contratoDetalle.convenioActivo.numero_cuotas} cuotas · Limite {formatDate(contratoDetalle.convenioActivo.fecha_limite)}
                   </div>
                 )}
+
+                {/* Equivalencias diarias — solo para contratos con período definido */}
+                {contratoDetalle.forma_pago !== "Diario" && (() => {
+                  const eq = calcularEquivalenciasDiarias(contratoDetalle);
+                  return (
+                    <div style={{ marginTop: 10, padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}>
+                      <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        Equivalencia diaria ({eq.diasPeriodo} días por período)
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Cuota/día</div>
+                          <div style={{ fontWeight: 700 }}>$ {fmt(eq.cuotaDiaria)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Tarifa/día</div>
+                          <div style={{ fontWeight: 700 }}>$ {fmt(eq.tarifaDiaria)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Ahorro/día</div>
+                          <div style={{ fontWeight: 700, color: "#0284c7" }}>$ {fmt(eq.ahorroDiario)}</div>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 11, color: "#94a3b8" }}>
+                        En liquidación: solo se cobra tarifa/día (sin ahorro)
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Formulario de pago */}
@@ -622,10 +671,12 @@ export default function CobrosView() {
                       <div style={{ fontWeight: 700, color: "#166534", marginBottom: 4 }}>
                         Como se aplicara el pago:
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>Tarifa del dia</span>
-                        <span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
-                      </div>
+                      {desglose.tarifa > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>Cuota pactada</span>
+                          <span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
+                        </div>
+                      )}
                       {desglose.deuda > 0 && (
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span>Abono a deuda</span>
@@ -638,18 +689,16 @@ export default function CobrosView() {
                           <span style={{ fontWeight: 700 }}>$ {fmt(desglose.convenio)}</span>
                         </div>
                       )}
-                      {desglose.ahorro > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span>Ahorro</span>
-                          <span style={{ fontWeight: 700 }}>$ {fmt(desglose.ahorro)}</span>
-                        </div>
-                      )}
                       {desglose.saldo > 0 && (
-                        <div style={{ display: "flex", justifyContent: "space-between", color: "#0284c7" }}>
-                          <span>Saldo a favor</span>
-                          <span style={{ fontWeight: 700 }}>$ {fmt(desglose.saldo)}</span>
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#0284c7", fontWeight: 700 }}>
+                          <span>Saldo a favor (queda guardado)</span>
+                          <span>$ {fmt(desglose.saldo)}</span>
                         </div>
                       )}
+                      <div style={{ borderTop: "1px solid #bbf7d0", marginTop: 4, paddingTop: 6, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                        <span>Total recibido</span>
+                        <span>$ {fmt(montoIngresado)}</span>
+                      </div>
                     </div>
                   )}
 
@@ -1010,7 +1059,10 @@ export default function CobrosView() {
                     {formatDate(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}
                   </div>
                   <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                    Tarifa ${fmt(p.aplicado_tarifa ?? 0)} · Deuda ${fmt(p.aplicado_deuda ?? 0)} · Ahorro ${fmt(p.aplicado_ahorro ?? 0)} · Saldo ${fmt(p.aplicado_saldo_favor ?? 0)}
+                    Cuota ${fmt(p.aplicado_tarifa ?? 0)}
+                    {(p.aplicado_deuda ?? 0) > 0 && ` · Deuda $${fmt(p.aplicado_deuda ?? 0)}`}
+                    {(p.aplicado_convenio ?? 0) > 0 && ` · Convenio $${fmt(p.aplicado_convenio ?? 0)}`}
+                    {(p.aplicado_saldo_favor ?? 0) > 0 && ` · Saldo a favor $${fmt(p.aplicado_saldo_favor ?? 0)}`}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

@@ -563,32 +563,89 @@ MotoGestión opera bajo un modelo de **alquiler con ahorro y venta posterior**:
 
 ---
 
-### 9.3 Tarifas
+### 9.3 Conceptos de cobro
+
+#### Tarifa (ingreso de la empresa)
+Lo que le corresponde a la empresa por cada día que el cliente tiene la moto en su poder. Es **fija e innegociable**.
 
 | Tipo de cliente | Lunes a Sábado | Domingo |
 |----------------|---------------|---------|
 | Diario (antiguo) | $26.000 | $13.000 |
 | Diario (nuevo) | $27.000 | $14.000 |
-| Semanal | $31.000 | $16.000 |
+| Semanal | $31.000/día | $16.000 |
 
-**Notas:**
-- La tarifa es **innegociable** y se cobra siempre que el cliente tenga la moto en su poder
-- Si no ha devuelto la moto, la tarifa sigue corriendo aunque no haya pagado
-- Clientes semanales: la tarifa diaria incluye $4.000 de ahorro (L-S) y $2.000 (domingo)
-- Clientes diarios: el pago mínimo es $37.000 / pago normal $50.000 (el resto va a ahorro o deuda)
-- Domingo para diarios: mínimo la mitad de lo que dan diariamente
+**Regla del domingo:** siempre es la mitad de la tarifa de L–S.
+
+- La tarifa sigue corriendo mientras el cliente tenga la moto, aunque no haya pagado
+- Si la moto está en Fiscalía, la tarifa se **congela** (no corre) mientras dure la retención
+- Es la base de la proyección de ingresos de la empresa — no puede cambiar
+
+#### Cuota Pactada (obligación del cliente por período)
+El valor total que el cliente se compromete a pagar por período según el contrato. **No cambia durante la vigencia del contrato.**
+
+Incluye:
+- **Tarifa** del período (ingreso de la empresa)
+- **Ahorro** del período (acumulado para el cliente, usado al liquidar)
+
+Modalidades:
+| Modalidad | Período | Ejemplo cuota |
+|-----------|---------|---------------|
+| Diario | Cada día | $37.000–$50.000 |
+| Semanal | Cada semana | $100.000–$150.000 |
+| Quincenal | Cada 15 días | Equivalente × 15 días |
+| Mensual | Cada mes | Equivalente × 30 días |
+
+El ahorro ya está incluido en la cuota pactada — el cliente no puede separarlo ni decidir no pagarlo.
+
+#### Saldo
+El sistema lleva un saldo corriente por contrato:
+- **Saldo a favor**: el cliente pagó más de su cuota pactada → queda guardado en su cuenta hasta que él decida usarlo o el ADMIN lo aplique
+- **Saldo en contra**: el cliente pagó menos → se acumula como deuda de tarifa
+
+El saldo a favor **no se aplica automáticamente** — queda reservado hasta que se tome la decisión de utilizarlo.
+
+---
+
+### 9.3B Tipos de contrato por duración
+
+#### Contrato DIARIO — duración indefinida
+- El cliente paga cada día mientras tenga la moto
+- No tiene fecha de vencimiento ni número de meses definido
+- Se termina cuando el cliente decide devolver la moto o por mora/incumplimiento
+- La tarifa diaria es la cuota pactada total (no hay ahorro estructurado en la cuota)
+
+#### Contratos SEMANAL / QUINCENAL / MENSUAL — duración definida
+- Tienen un número de meses pactado y fecha de entrega
+- La cuota del período ya incluye tarifa + ahorro
+- El sistema calcula equivalencias diarias para prorrateos y liquidaciones:
+
+| Campo | Fórmula |
+|-------|---------|
+| `cuota_diaria` | cuota_período ÷ días_período |
+| `tarifa_diaria` | 26k o 27k (fija, lo que le corresponde a la empresa) |
+| `ahorro_diario` | cuota_diaria − tarifa_diaria |
+
+#### Prorrateo
+Aplica cuando la moto estuvo con el cliente pero el pago no cubrió todos los días del período:
+- Se cobra `cuota_diaria × días_sin_cubrir`
+- Incluye tarifa + ahorro (igual que la cuota normal)
+
+#### Liquidación (terminación de contrato)
+Cuando el contrato termina (por cualquier causa) y quedan días pendientes:
+- Solo se cobra la **tarifa diaria × días con moto** (sin ahorro)
+- El ahorro acumulado se usa para saldar deudas primero, el remanente se devuelve al cliente
 
 ---
 
 ### 9.4 Orden de aplicación de cada pago
 Todo pago se aplica en este orden estricto:
 
-1. **Tarifa** — ingreso de la empresa, siempre primero
-2. **Deuda pendiente** — si tiene deuda acumulada
-3. **Cuota de convenio** — si tiene convenio activo, se suma al cobro esperado y se detalla
-4. **Ahorro** — lo que sobre después de tarifa y deuda
+1. **Cuota pactada del período** (tarifa + ahorro incluidos)
+2. **Deuda pendiente** — si tiene deuda acumulada fuera de la cuota
+3. **Cuota de convenio** — si tiene convenio activo
+4. **Saldo a favor** — el sobrante queda guardado, no se aplica automáticamente a períodos futuros
 
-El sistema debe mostrar claramente el desglose de cómo se aplicó cada pago, especificando si hay convenio activo y cuánto corresponde a cada rubro.
+El sistema muestra el desglose completo de cada pago: cuánto fue a cuota, cuánto a deuda, cuánto a convenio y cuánto quedó como saldo a favor.
 
 ---
 

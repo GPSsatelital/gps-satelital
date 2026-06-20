@@ -116,6 +116,7 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
   const filtered = useMemo(() => {
     let list = motos.filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
+    else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
     return list;
   }, [motos, query, filtroEstado]);
@@ -268,6 +269,12 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
             {FILTROS_MOTO.map(f => (
               <button key={f.filter} onClick={() => setFiltroEstado(f.filter)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500, background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9", color: filtroEstado === f.filter ? "white" : "#64748b", whiteSpace: "nowrap" }}>{f.label}</button>
             ))}
+            {filtroEstado.startsWith("grupo:") && (
+              <span style={{ padding: "5px 12px", borderRadius: 999, background: "#6366f1", color: "white", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                Grupo: {filtroEstado.replace("grupo:", "")}
+                <button onClick={() => setFiltroEstado("")} style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+              </span>
+            )}
           </div>
 
           <div style={{ overflowX: "auto" }}>

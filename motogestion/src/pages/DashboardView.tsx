@@ -182,14 +182,19 @@ export default function DashboardView({ onNavigate }: {
       </div>
 
       {/* Alerts */}
-      {alerts.length > 0 && (
+      {alerts.length > 0 ? (
         <div style={{ marginBottom: 20, background: "#fff7ed", borderRadius: 16, padding: 16, border: "1px solid #fed7aa" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10 }}>REQUIEREN ATENCIÓN</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10 }}>⚠️ REQUIEREN ATENCIÓN — toca para ir directo</div>
           <div style={{ display: "grid", gap: 8 }}>
             {alerts.map((a, i) => (
               <AlertItem key={i} icon={a.icon} text={a.text} onClick={a.view ? () => onNavigate(a.view!, a.filter) : undefined} />
             ))}
           </div>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 20, background: "#f0fdf4", borderRadius: 16, padding: 14, border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>✅</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534" }}>Todo al día — no hay alertas pendientes</span>
         </div>
       )}
 
@@ -231,14 +236,20 @@ export default function DashboardView({ onNavigate }: {
               <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>Flota por grupo</div>
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${gruposVisibles.length}, 1fr)`, gap: 10 }}>
                 {gruposVisibles.map(g => (
-                  <div key={g.g} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer" }} onClick={() => onNavigate("motos")}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em", marginBottom: 8 }}>{g.g}</div>
+                  <div
+                    key={g.g}
+                    style={{ textAlign: "center", padding: "14px 8px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", transition: "background 0.15s" }}
+                    onClick={() => onNavigate("motos", `grupo:${g.g}`)}
+                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#eff6ff"}
+                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#f8fafc"}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em", marginBottom: 6 }}>{g.g}</div>
                     <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a" }}>{g.total}</div>
                     <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                      <span style={{ color: "#10b981" }}>{g.asignadas} campo</span>
-                      {" · "}
-                      <span style={{ color: "#64748b" }}>{g.disponibles} disp.</span>
+                      <span style={{ color: "#10b981" }}>{g.asignadas} campo</span>{" · "}
+                      <span style={{ color: "#0284c7" }}>{g.disponibles} disp.</span>
                     </div>
+                    <div style={{ marginTop: 6, fontSize: 10, color: "#0284c7", fontWeight: 600 }}>Ver grupo →</div>
                   </div>
                 ))}
               </div>
@@ -285,10 +296,13 @@ export default function DashboardView({ onNavigate }: {
                 <div
                   key={mod}
                   onClick={() => onNavigate("contratos", "Activo")}
-                  style={{ padding: "12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", textAlign: "center" }}
+                  style={{ padding: "12px", borderRadius: 12, background: n > 0 ? "#f0f9ff" : "#f8fafc", border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`, cursor: "pointer", textAlign: "center", transition: "background 0.15s" }}
+                  onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
+                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc"}
                 >
-                  <div style={{ fontSize: 20, fontWeight: 900, color: "#0284c7" }}>{n}</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</div>
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{mod}</div>
+                  {n > 0 && <div style={{ fontSize: 10, color: "#0284c7", marginTop: 4 }}>Ver →</div>}
                 </div>
               ))}
             </div>

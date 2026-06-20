@@ -9,10 +9,11 @@ import TallerView from "./pages/TallerView";
 import DashboardView from "./pages/DashboardView";
 import UsuariosView from "./pages/UsuariosView";
 import LiquidacionesView from "./pages/LiquidacionesView";
+import ConfiguracionView from "./pages/ConfiguracionView";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
-  | "cobros" | "taller" | "usuarios" | "liquidaciones";
+  | "cobros" | "taller" | "usuarios" | "liquidaciones" | "configuracion";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -93,14 +94,17 @@ const SIDE_GROUPS: SideGroup[] = [
   {
     label: "ADMINISTRACIÓN",
     adminOnly: true,
-    items: [{ key: "usuarios", label: "Usuarios & Roles", icon: "👤" }],
+    items: [
+      { key: "usuarios", label: "Usuarios & Roles", icon: "👤" },
+      { key: "configuracion", label: "Configuración", icon: "⚙️" },
+    ],
   },
 ];
 
 const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
   contratos: "Contratos", cobros: "Cartera & Cobros", taller: "Taller",
-  usuarios: "Usuarios", liquidaciones: "Liquidaciones",
+  usuarios: "Usuarios", liquidaciones: "Liquidaciones", configuracion: "Configuración",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -240,8 +244,9 @@ function MasSheet({
   const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
     { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
     { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
-    { key: "liquidaciones", icon: "📊", label: "Liquidaciones",desc: "Cierre y liquidación", adminOnly: true },
-    { key: "usuarios",      icon: "👤", label: "Usuarios",     desc: "Roles y accesos",      adminOnly: true },
+    { key: "liquidaciones",  icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
+    { key: "usuarios",       icon: "👤", label: "Usuarios",      desc: "Roles y accesos",           adminOnly: true },
+    { key: "configuracion",  icon: "⚙️", label: "Configuración", desc: "Ajustes del sistema y cuenta" },
   ];
 
   return (
@@ -357,8 +362,9 @@ function Shell() {
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
       {ctx.view === "cobros"        && <CobrosView />}
       {ctx.view === "taller"        && <TallerView />}
-      {ctx.view === "liquidaciones" && esAdmin && <LiquidacionesView />}
-      {ctx.view === "usuarios"      && esAdmin && <UsuariosView />}
+      {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
+      {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}
+      {ctx.view === "configuracion"  && <ConfiguracionView />}
     </div>
   );
 
@@ -455,8 +461,8 @@ function Shell() {
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
                 justifyContent: "center", padding: "8px 4px", border: "none",
                 background: "transparent", cursor: "pointer", gap: 3,
-                color: ["contratos","taller","liquidaciones","usuarios"].includes(ctx.view) ? "#0284c7" : "#94a3b8",
-                borderTop: ["contratos","taller","liquidaciones","usuarios"].includes(ctx.view) ? "2px solid #0284c7" : "2px solid transparent",
+                color: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "#0284c7" : "#94a3b8",
+                borderTop: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "2px solid #0284c7" : "2px solid transparent",
               }}
             >
               <span style={{ fontSize: 22 }}>☰</span>

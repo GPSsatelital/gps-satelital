@@ -39,23 +39,27 @@ export type Pago = {
 };
 
 export type ResumenCobro = {
-  tarifaPendiente: number;
+  cuotaPactadaPendiente: number;
   deudaPendiente: number;
   convenioPendiente: number;
-  ahorroPendiente: number;
   totalEsperado: number;
 };
 
+// Domingo siempre es la mitad de la tarifa L–S
+export function calcularCuotaDia(tarifaBase: number, esDomingo: boolean): number {
+  return esDomingo ? Math.round(tarifaBase / 2) : tarifaBase;
+}
+
+// Orden estricto: cuota pactada → deuda → convenio → saldo a favor (no se aplica solo)
 export function calcularAplicacion(
   monto: number,
-  tarifaDia: number,
+  cuotaPactada: number,
   deudaPendiente: number,
   cuotaConvenio: number,
-  ahorroMeta: number,
 ): AplicadoPago {
   let resto = monto;
 
-  const tarifa = Math.min(resto, tarifaDia);
+  const tarifa = Math.min(resto, cuotaPactada);
   resto -= tarifa;
 
   const deuda = Math.min(resto, deudaPendiente);
@@ -64,25 +68,21 @@ export function calcularAplicacion(
   const convenio = Math.min(resto, cuotaConvenio);
   resto -= convenio;
 
-  const ahorro = Math.min(resto, ahorroMeta);
-  resto -= ahorro;
-
-  return { tarifa, deuda, convenio, ahorro, saldo: resto };
+  return { tarifa, deuda, convenio, ahorro: 0, saldo: resto };
 }
 
 export function calcularResumenCobro(
-  tarifaDia: number,
+  cuotaPactada: number,
   deudaPendiente: number,
   cuotaConvenio: number,
-  pagosConfirmadosHoy: number,
+  pagosConfirmadosPeriodo: number,
 ): ResumenCobro {
-  const tarifaPendiente = Math.max(tarifaDia - pagosConfirmadosHoy, 0);
+  const cuotaPactadaPendiente = Math.max(cuotaPactada - pagosConfirmadosPeriodo, 0);
   return {
-    tarifaPendiente,
+    cuotaPactadaPendiente,
     deudaPendiente,
     convenioPendiente: cuotaConvenio,
-    ahorroPendiente: 0,
-    totalEsperado: tarifaPendiente + deudaPendiente + cuotaConvenio,
+    totalEsperado: cuotaPactadaPendiente + deudaPendiente + cuotaConvenio,
   };
 }
 

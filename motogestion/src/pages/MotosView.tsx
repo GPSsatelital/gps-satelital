@@ -88,7 +88,7 @@ export default function MotosView() {
 
   const [form, setForm] = useState({
     placa: "",
-    grupo: "CLUB" as GrupoMoto,
+    grupo: "RASTREADOR" as GrupoMoto,
     marca: "",
     modelo: "",
     numero_motor: "",
@@ -230,9 +230,9 @@ export default function MotosView() {
     }
 
     setForm({
-      placa: "", grupo: "CLUB", marca: "", modelo: "", numero_motor: "", numero_chasis: "",
+      placa: "", grupo: "RASTREADOR" as GrupoMoto, marca: "", modelo: "", numero_motor: "", numero_chasis: "",
       lugar_matricula: "", cilindraje: "", fecha_seguro: "", fecha_tecnomecanica: "",
-      propietario: "", numero_serie: "", estado: "Disponible", observaciones: "",
+      propietario: "", numero_serie: "", estado: "Disponible" as MotoStatus, condicion_ingreso: "nueva" as CondicionIngreso, observaciones: "",
     });
     setOpen(false);
   }

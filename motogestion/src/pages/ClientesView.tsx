@@ -394,7 +394,7 @@ export default function ClientesView() {
         <div>
           <div style={labelStyle}>Datos</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><div style={labelStyle}>Nombre</div><input style={inputStyle} value={data.nombre} onChange={(e) => update({ nombre: e.target.value })} /></div>
+            <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.nombre} onChange={(e) => update({ nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
             <div><div style={labelStyle}>Dirección</div><input style={inputStyle} value={data.direccion} onChange={(e) => update({ direccion: e.target.value })} /></div>
             <div><div style={labelStyle}>Fuente de llegada</div><input style={inputStyle} value={data.fuente_llegada ?? ""} onChange={(e) => update({ fuente_llegada: e.target.value })} /></div>
@@ -421,7 +421,7 @@ export default function ClientesView() {
         <div>
           <div style={labelStyle}>Acompañante</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><div style={labelStyle}>Nombre</div><input style={inputStyle} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value })} /></div>
+            <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.acompanante_cedula ?? ""} onChange={(e) => update({ acompanante_cedula: e.target.value })} /></div>
             <div><div style={labelStyle}>Teléfono</div><input style={inputStyle} value={data.acompanante_telefono ?? ""} onChange={(e) => update({ acompanante_telefono: e.target.value })} /></div>
           </div>
@@ -483,7 +483,7 @@ export default function ClientesView() {
               <tbody>
                 {filtered.map((cliente) => (
                   <tr key={cliente.id} style={{ background: selectedId === cliente.id ? "#eff6ff" : "white" }}>
-                    <td style={tdStyle}>{cliente.nombre}</td>
+                    <td style={{ ...tdStyle, textTransform: "uppercase" }}>{cliente.nombre}</td>
                     {modoVista === "pendientes" && (
                       <td style={tdStyle}>
                         {(() => {
@@ -532,7 +532,7 @@ export default function ClientesView() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 80, padding: 0 }} onClick={() => setDetalleModalOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: "white", borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "88vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>{selectedCliente.nombre}</h3>
+              <h3 style={{ margin: 0, fontSize: 18, textTransform: "uppercase" }}>{selectedCliente.nombre}</h3>
               <button onClick={() => setDetalleModalOpen(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16 }}>✕</button>
             </div>
             <DetalleClienteContenido
@@ -602,7 +602,7 @@ export default function ClientesView() {
       {visitaOpen && selectedCliente && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }} onClick={() => setVisitaOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: "white", borderRadius: 16, padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ margin: 0 }}>Registrar visita · {selectedCliente.nombre}</h3>
+            <h3 style={{ margin: 0 }}>Registrar visita · <span style={{ textTransform: "uppercase" }}>{selectedCliente.nombre}</span></h3>
 
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
               <div>

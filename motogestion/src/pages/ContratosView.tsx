@@ -145,7 +145,7 @@ export default function ContratosView() {
           return (
             <div key={c.id} style={{ padding: 16, border: "1px solid #e2e8f0", borderRadius: 16, background: "#f8fafc" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ fontWeight: 800 }}>{cliente?.nombre || "Sin cliente"}</div>
+                <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
                 <ContractBadge estado={c.estado} />
               </div>
 

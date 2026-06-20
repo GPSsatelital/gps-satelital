@@ -511,7 +511,7 @@ export default function CobrosView() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
                       {moto ? `${moto.placa} · ` : ""}
                       {cliente?.nombre || "Sin cliente"}
                     </div>
@@ -543,12 +543,12 @@ export default function CobrosView() {
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 18 }}>
+                    <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase" }}>
                       {motoDetalle ? `${motoDetalle.placa} · ` : ""}
                       {clienteDetalle?.nombre || "Sin cliente"}
                     </div>
                     <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                      Contrato {contratoDetalle.tipo_contrato ?? "semanal"} · Paga {contratoDetalle.dia_pago}
+                      Contrato {contratoDetalle.forma_pago ?? "Semanal"} · Paga {contratoDetalle.dia_pago}
                     </div>
                   </div>
                   <EstadoBadge estado={contratoDetalle.estadoCartera} />
@@ -1051,7 +1051,7 @@ export default function CobrosView() {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
                     {moto ? `${moto.placa} · ` : ""}
                     {cliente?.nombre || "Sin cliente"}
                   </div>

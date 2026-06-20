@@ -172,7 +172,7 @@ export default function LiquidacionesView() {
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{l.numero}</span>
                     <Badge estado={l.estado} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[l.motivo]}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[l.motivo]}</div>
                 </div>
               );
             })}
@@ -190,7 +190,7 @@ export default function LiquidacionesView() {
                     <span style={{ fontWeight: 600, fontSize: 13, color: "#64748b" }}>{l.numero}</span>
                     <Badge estado={l.estado} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{cliente?.nombre ?? "—"}</div>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
                 </div>
               );
             })}
@@ -208,7 +208,7 @@ export default function LiquidacionesView() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 18 }}>{sel.numero}</div>
-                  <div style={{ fontSize: 13, color: "#64748b" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
+                  <div style={{ fontSize: 13, color: "#64748b", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
                 </div>
                 <button onClick={() => setSel(null)} style={btn("#e2e8f0", "#334155")}>✕</button>
               </div>

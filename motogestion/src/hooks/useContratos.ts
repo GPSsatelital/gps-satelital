@@ -51,7 +51,7 @@ export function calcularEquivalenciasDiarias(contrato: Contrato): {
 // Calcula el valor de un prorrateo
 // En liquidación solo se cobra tarifa (sin ahorro)
 export function calcularProrrateo(contrato: Contrato, dias: number, esLiquidacion = false): number {
-  const { cuotaDiaria, tarifaDiaria, ahorroDiario } = calcularEquivalenciasDiarias(contrato);
+  const { cuotaDiaria, tarifaDiaria } = calcularEquivalenciasDiarias(contrato);
   const valorDia = esLiquidacion ? tarifaDiaria : cuotaDiaria;
   // Domingo descuenta el ahorro y aplica mitad de tarifa
   return valorDia * dias;

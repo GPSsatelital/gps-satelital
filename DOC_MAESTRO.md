@@ -606,6 +606,37 @@ El saldo a favor **no se aplica automáticamente** — queda reservado hasta que
 
 ---
 
+### 9.3B Tipos de contrato por duración
+
+#### Contrato DIARIO — duración indefinida
+- El cliente paga cada día mientras tenga la moto
+- No tiene fecha de vencimiento ni número de meses definido
+- Se termina cuando el cliente decide devolver la moto o por mora/incumplimiento
+- La tarifa diaria es la cuota pactada total (no hay ahorro estructurado en la cuota)
+
+#### Contratos SEMANAL / QUINCENAL / MENSUAL — duración definida
+- Tienen un número de meses pactado y fecha de entrega
+- La cuota del período ya incluye tarifa + ahorro
+- El sistema calcula equivalencias diarias para prorrateos y liquidaciones:
+
+| Campo | Fórmula |
+|-------|---------|
+| `cuota_diaria` | cuota_período ÷ días_período |
+| `tarifa_diaria` | 26k o 27k (fija, lo que le corresponde a la empresa) |
+| `ahorro_diario` | cuota_diaria − tarifa_diaria |
+
+#### Prorrateo
+Aplica cuando la moto estuvo con el cliente pero el pago no cubrió todos los días del período:
+- Se cobra `cuota_diaria × días_sin_cubrir`
+- Incluye tarifa + ahorro (igual que la cuota normal)
+
+#### Liquidación (terminación de contrato)
+Cuando el contrato termina (por cualquier causa) y quedan días pendientes:
+- Solo se cobra la **tarifa diaria × días con moto** (sin ahorro)
+- El ahorro acumulado se usa para saldar deudas primero, el remanente se devuelve al cliente
+
+---
+
 ### 9.4 Orden de aplicación de cada pago
 Todo pago se aplica en este orden estricto:
 

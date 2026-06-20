@@ -2,21 +2,29 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type ContratoEstado = "En proceso" | "Activo" | "Finalizado" | "Cancelado";
+export type FormaPago = "Diario" | "Semanal" | "Quincenal" | "Mensual";
+
+// Días por período según modalidad
+const DIAS_POR_PERIODO: Record<FormaPago, number> = {
+  Diario: 1,
+  Semanal: 7,
+  Quincenal: 15,
+  Mensual: 30,
+};
 
 export type Contrato = {
   id: string;
   cliente_id: string;
   moto_id: string | null;
   dia_pago: string;
-  valor_semanal: number;
-  meses: number;
+  forma_pago: FormaPago;
+  valor_semanal: number;   // cuota pactada por período (nombre legacy, aplica a todos los períodos)
+  meses: number | null;    // null para contratos diarios (indefinidos)
   ahorro_inicial: number;
   fecha_entrega: string | null;
   firma_cliente: boolean;
   firma_responsable: boolean;
   estado: ContratoEstado;
-  // Nuevos campos v2 — opcionales para compatibilidad con contratos existentes
-  tipo_contrato?: "diario" | "semanal";
   tarifa_diaria?: number;
   tarifa_domingo?: number;
   base_inicial?: number;
@@ -25,13 +33,39 @@ export type Contrato = {
   created_at: string;
 };
 
+// Equivalencias diarias para prorrateos y liquidaciones
+export function calcularEquivalenciasDiarias(contrato: Contrato): {
+  cuotaDiaria: number;       // cuota pactada / días del período (incluye ahorro)
+  tarifaDiaria: number;      // solo lo que le corresponde a la empresa
+  ahorroDiario: number;      // porción de ahorro dentro de la cuota diaria
+  diasPeriodo: number;
+} {
+  const forma = contrato.forma_pago ?? "Semanal";
+  const dias = DIAS_POR_PERIODO[forma];
+  const cuotaDiaria = Math.round(contrato.valor_semanal / dias);
+  const tarifaDiaria = contrato.tarifa_diaria ?? 27000;
+  const ahorroDiario = Math.max(cuotaDiaria - tarifaDiaria, 0);
+  return { cuotaDiaria, tarifaDiaria, ahorroDiario, diasPeriodo: dias };
+}
+
+// Calcula el valor de un prorrateo
+// En liquidación solo se cobra tarifa (sin ahorro)
+export function calcularProrrateo(contrato: Contrato, dias: number, esLiquidacion = false): number {
+  const { cuotaDiaria, tarifaDiaria, ahorroDiario } = calcularEquivalenciasDiarias(contrato);
+  const valorDia = esLiquidacion ? tarifaDiaria : cuotaDiaria;
+  // Domingo descuenta el ahorro y aplica mitad de tarifa
+  return valorDia * dias;
+}
+
 export type NuevoContrato = {
   cliente_id: string;
   dia_pago: string;
+  forma_pago: FormaPago;
   valor_semanal: number;
-  meses: number;
+  meses: number | null;
   ahorro_inicial: number;
   fecha_entrega: string;
+  tarifa_diaria?: number;
 };
 
 export function useContratos() {
@@ -70,7 +104,12 @@ export function useContratos() {
   }, [fetchContratos]);
 
   async function crearContrato(nuevo: NuevoContrato) {
-    const { error } = await supabase.from("contratos").insert({ ...nuevo, estado: "En proceso" });
+    const { error } = await supabase.from("contratos").insert({
+      ...nuevo,
+      estado: "En proceso",
+      // Contratos diarios no tienen duración definida
+      meses: nuevo.forma_pago === "Diario" ? null : nuevo.meses,
+    });
     return { error: error?.message ?? null };
   }
 
@@ -113,5 +152,5 @@ export function useContratos() {
     return { error: null };
   }
 
-  return { contratos, loading, error, crearContrato, firmarCliente, asignarMoto, activarContrato, cancelarContrato };
+  return { contratos, loading, error, crearContrato, firmarCliente, asignarMoto, activarContrato, cancelarContrato, calcularEquivalenciasDiarias, calcularProrrateo };
 }

@@ -7,7 +7,7 @@ import {
   type PagoEstado,
   type AplicadoPago,
 } from "../hooks/usePagos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, calcularEquivalenciasDiarias } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
@@ -598,6 +598,35 @@ export default function CobrosView() {
                     Convenio #{contratoDetalle.convenioActivo.numero_convenio}: {contratoDetalle.convenioActivo.cuotas_pagadas}/{contratoDetalle.convenioActivo.numero_cuotas} cuotas · Limite {formatDate(contratoDetalle.convenioActivo.fecha_limite)}
                   </div>
                 )}
+
+                {/* Equivalencias diarias — solo para contratos con período definido */}
+                {contratoDetalle.forma_pago !== "Diario" && (() => {
+                  const eq = calcularEquivalenciasDiarias(contratoDetalle);
+                  return (
+                    <div style={{ marginTop: 10, padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}>
+                      <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        Equivalencia diaria ({eq.diasPeriodo} días por período)
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Cuota/día</div>
+                          <div style={{ fontWeight: 700 }}>$ {fmt(eq.cuotaDiaria)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Tarifa/día</div>
+                          <div style={{ fontWeight: 700 }}>$ {fmt(eq.tarifaDiaria)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Ahorro/día</div>
+                          <div style={{ fontWeight: 700, color: "#0284c7" }}>$ {fmt(eq.ahorroDiario)}</div>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 11, color: "#94a3b8" }}>
+                        En liquidación: solo se cobra tarifa/día (sin ahorro)
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Formulario de pago */}

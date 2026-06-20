@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -46,11 +46,21 @@ const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
-export default function MotosView() {
+const FILTROS_MOTO = [
+  { label: "Todas", filter: "" },
+  { label: "Disponibles", filter: "Disponible" },
+  { label: "Asignadas", filter: "Asignada" },
+  { label: "Mantenimiento", filter: "Mantenimiento" },
+  { label: "Retenciones", filter: "retencion" },
+];
+
+export default function MotosView({ initialFilter = "" }: { initialFilter?: string }) {
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState(initialFilter);
+  useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [openRecepcion, setOpenRecepcion] = useState(false);
@@ -104,13 +114,12 @@ export default function MotosView() {
     observaciones: "",
   });
 
-  const filtered = useMemo(
-    () =>
-      motos.filter((m) =>
-        [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase())
-      ),
-    [motos, query]
-  );
+  const filtered = useMemo(() => {
+    let list = motos.filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
+    if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
+    else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
+    return list;
+  }, [motos, query, filtroEstado]);
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? filtered[0] ?? null;
 
@@ -253,8 +262,13 @@ export default function MotosView() {
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
         <div style={card}>
-          <div style={{ marginBottom: 16 }}>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
+          <div style={{ marginBottom: 12 }}>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por placa, marca o modelo..." style={inputStyle} />
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            {FILTROS_MOTO.map(f => (
+              <button key={f.filter} onClick={() => setFiltroEstado(f.filter)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500, background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9", color: filtroEstado === f.filter ? "white" : "#64748b", whiteSpace: "nowrap" }}>{f.label}</button>
+            ))}
           </div>
 
           <div style={{ overflowX: "auto" }}>

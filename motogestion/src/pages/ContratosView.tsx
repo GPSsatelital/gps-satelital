@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useContratos, type ContratoEstado, type FormaPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -31,7 +31,15 @@ function emptyForm() {
   return { cliente_id: "", dia_pago: "Lunes", valor_semanal: "", meses: "", ahorro_inicial: "", fecha_entrega: "", forma_pago: "Semanal", valor_diario: "" };
 }
 
-export default function ContratosView() {
+const FILTROS_CONTRATO = [
+  { label: "Todos", filter: "" },
+  { label: "En proceso", filter: "En proceso" },
+  { label: "Activos", filter: "Activo" },
+  { label: "Finalizados", filter: "Finalizado" },
+  { label: "Cancelados", filter: "Cancelado" },
+];
+
+export default function ContratosView({ initialFilter = "" }: { initialFilter?: string }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
@@ -39,6 +47,8 @@ export default function ContratosView() {
   const { clientes } = useClientes();
   const { motos } = useMotos();
 
+  const [filtroEstado, setFiltroEstado] = useState(initialFilter);
+  useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
@@ -133,12 +143,18 @@ export default function ContratosView() {
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando contratos: {error}</div>}
 
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
+        {FILTROS_CONTRATO.map(f => (
+          <button key={f.filter} onClick={() => setFiltroEstado(f.filter)} style={{ padding: "5px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500, background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9", color: filtroEstado === f.filter ? "white" : "#64748b", whiteSpace: "nowrap" }}>{f.label}</button>
+        ))}
+      </div>
+
       <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
-        {contratos.length === 0 && (
-          <div style={card}><div style={{ color: "#64748b" }}>Aún no hay contratos registrados.</div></div>
+        {contratos.filter(c => filtroEstado ? c.estado === filtroEstado : true).length === 0 && (
+          <div style={card}><div style={{ color: "#64748b" }}>No hay contratos en este estado.</div></div>
         )}
 
-        {contratos.map((c) => {
+        {contratos.filter(c => filtroEstado ? c.estado === filtroEstado : true).map((c) => {
           const cliente = clientes.find((cl) => cl.id === c.cliente_id);
           const moto = motos.find((m) => m.id === c.moto_id);
 

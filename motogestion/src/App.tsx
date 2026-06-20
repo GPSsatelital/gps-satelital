@@ -10,29 +10,284 @@ import DashboardView from "./pages/DashboardView";
 import UsuariosView from "./pages/UsuariosView";
 import LiquidacionesView from "./pages/LiquidacionesView";
 
-type ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros" | "taller" | "usuarios" | "liquidaciones";
+export type ViewKey =
+  | "dashboard" | "clientes" | "motos" | "contratos"
+  | "cobros" | "taller" | "usuarios" | "liquidaciones";
 
-const navItems: Array<{ key: ViewKey; label: string }> = [
-  { key: "dashboard", label: "Panel" },
-  { key: "clientes", label: "Clientes" },
-  { key: "motos", label: "Motos" },
-  { key: "contratos", label: "Contratos" },
-  { key: "cobros", label: "Cartera" },
-  { key: "taller", label: "Taller" },
+export type NavContext = { view: ViewKey; filter: string };
+
+function useIsMobile() {
+  const [v, setV] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const h = () => setV(window.innerWidth < 900);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return v;
+}
+
+// ─── Bottom Tab (mobile) ─────────────────────────────────────────────────────
+const BOTTOM_TABS: Array<{ key: ViewKey; icon: string; label: string }> = [
+  { key: "dashboard", icon: "🏠", label: "Panel" },
+  { key: "clientes",  icon: "👥", label: "Clientes" },
+  { key: "cobros",    icon: "💳", label: "Cartera" },
+  { key: "motos",     icon: "🏍️", label: "Motos" },
 ];
 
+// ─── Sidebar groups (desktop) ────────────────────────────────────────────────
+type SubItem = { label: string; filter: string };
+type SideItem = { key: ViewKey; label: string; icon: string; sub?: SubItem[] };
+type SideGroup = { label: string; adminOnly?: boolean; items: SideItem[] };
+
+const SIDE_GROUPS: SideGroup[] = [
+  {
+    label: "OPERACIONES",
+    items: [
+      {
+        key: "clientes", label: "Clientes", icon: "👥",
+        sub: [
+          { label: "Todos",                filter: "" },
+          { label: "En proceso",           filter: "En proceso" },
+          { label: "Listos para visita",   filter: "Listo para visita" },
+          { label: "Pendiente evaluación", filter: "Pendiente evaluación" },
+          { label: "Aprobados",            filter: "Aprobado" },
+          { label: "Activos",              filter: "Activo" },
+          { label: "En mora / riesgo",     filter: "mora" },
+          { label: "Rechazados",           filter: "Rechazado" },
+        ],
+      },
+      {
+        key: "contratos", label: "Contratos", icon: "📄",
+        sub: [
+          { label: "Todos",      filter: "" },
+          { label: "En proceso", filter: "En proceso" },
+          { label: "Activos",    filter: "Activo" },
+          { label: "Finalizados",filter: "Finalizado" },
+          { label: "Cancelados", filter: "Cancelado" },
+        ],
+      },
+      { key: "cobros", label: "Cartera & Cobros", icon: "💳" },
+    ],
+  },
+  {
+    label: "FLOTA",
+    items: [
+      {
+        key: "motos", label: "Motos", icon: "🏍️",
+        sub: [
+          { label: "Todas",               filter: "" },
+          { label: "Disponibles",         filter: "Disponible" },
+          { label: "Asignadas (campo)",   filter: "Asignada" },
+          { label: "En mantenimiento",    filter: "Mantenimiento" },
+          { label: "Retenciones",         filter: "retencion" },
+        ],
+      },
+      { key: "taller", label: "Taller", icon: "🔧" },
+    ],
+  },
+  {
+    label: "FINANZAS",
+    adminOnly: true,
+    items: [{ key: "liquidaciones", label: "Liquidaciones", icon: "📊" }],
+  },
+  {
+    label: "ADMINISTRACIÓN",
+    adminOnly: true,
+    items: [{ key: "usuarios", label: "Usuarios & Roles", icon: "👤" }],
+  },
+];
+
+const VIEW_TITLE: Record<ViewKey, string> = {
+  dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
+  contratos: "Contratos", cobros: "Cartera & Cobros", taller: "Taller",
+  usuarios: "Usuarios", liquidaciones: "Liquidaciones",
+};
+
+// ─── Desktop Sidebar ──────────────────────────────────────────────────────────
+function Sidebar({
+  ctx, navigate, esAdmin, collapsed, onCollapse,
+}: {
+  ctx: NavContext;
+  navigate: (v: ViewKey, f?: string) => void;
+  esAdmin: boolean;
+  collapsed: boolean;
+  onCollapse: () => void;
+}) {
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const o: Record<string, boolean> = {};
+    SIDE_GROUPS.forEach(g => g.items.forEach(i => { if (i.sub) o[i.key] = true; }));
+    return o;
+  });
+
+  const W = collapsed ? 64 : 240;
+
+  const btn = (active: boolean): React.CSSProperties => ({
+    width: "100%", display: "flex", alignItems: "center",
+    justifyContent: collapsed ? "center" : "space-between",
+    gap: 10, padding: collapsed ? "10px 0" : "9px 12px",
+    borderRadius: 10, border: "none",
+    background: active ? "rgba(56,189,248,0.15)" : "transparent",
+    color: active ? "#38bdf8" : "#94a3b8",
+    cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+    transition: "all 0.15s", marginBottom: 1,
+  });
+
+  const groups = SIDE_GROUPS.filter(g => !g.adminOnly || esAdmin);
+
+  return (
+    <div style={{
+      width: W, minHeight: "100vh", background: "#0f172a",
+      display: "flex", flexDirection: "column", flexShrink: 0,
+      transition: "width 0.2s", position: "sticky", top: 0, alignSelf: "flex-start",
+      overflow: "hidden",
+    }}>
+      {/* Brand */}
+      <div style={{
+        padding: collapsed ? "18px 0" : "18px 16px",
+        display: "flex", alignItems: "center", gap: 10,
+        borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 20, flexShrink: 0, width: collapsed ? "100%" : "auto", textAlign: "center" }}>🏍️</span>
+        {!collapsed && (
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>MotoGestión</div>
+            <div style={{ fontSize: 10, color: "#475569" }}>GPS Satelital · Cartagena</div>
+          </div>
+        )}
+      </div>
+
+      {/* Nav */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px" }}>
+        {/* Dashboard */}
+        <button onClick={() => navigate("dashboard")} style={btn(ctx.view === "dashboard")} title={collapsed ? "Panel" : undefined}>
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16 }}>🏠</span>
+            {!collapsed && "Panel General"}
+          </span>
+        </button>
+
+        {groups.map(g => (
+          <div key={g.label} style={{ marginTop: 16 }}>
+            {!collapsed
+              ? <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", letterSpacing: "0.1em", padding: "0 8px 4px" }}>{g.label}</div>
+              : <div style={{ margin: "6px 8px", borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+            }
+            {g.items.map(item => (
+              <div key={item.key}>
+                <button
+                  onClick={() => {
+                    navigate(item.key, "");
+                    if (item.sub && !collapsed) setOpen(p => ({ ...p, [item.key]: !p[item.key] }));
+                  }}
+                  style={btn(ctx.view === item.key)}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                    <span style={{ fontSize: 16 }}>{item.icon}</span>
+                    {!collapsed && item.label}
+                  </span>
+                  {!collapsed && item.sub && <span style={{ fontSize: 10, color: "#475569" }}>{open[item.key] ? "▾" : "▸"}</span>}
+                </button>
+
+                {!collapsed && item.sub && open[item.key] && (
+                  <div style={{ paddingLeft: 30, paddingBottom: 2 }}>
+                    {item.sub.map(s => {
+                      const isAct = ctx.view === item.key && ctx.filter === s.filter;
+                      return (
+                        <button
+                          key={s.label}
+                          onClick={() => navigate(item.key, s.filter)}
+                          style={{
+                            width: "100%", textAlign: "left", display: "block",
+                            padding: "6px 10px", borderRadius: 8, border: "none",
+                            background: isAct ? "rgba(56,189,248,0.12)" : "transparent",
+                            color: isAct ? "#38bdf8" : "#64748b",
+                            cursor: "pointer", fontSize: 12,
+                            fontWeight: isAct ? 700 : 400,
+                          }}
+                        >
+                          {isAct ? "▸ " : "  "}{s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "8px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        <button onClick={onCollapse} style={{ width: "100%", padding: 8, borderRadius: 10, border: "none", background: "rgba(255,255,255,0.04)", color: "#475569", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8 }}>
+          <span>{collapsed ? "▶" : "◀"}</span>
+          {!collapsed && "Contraer menú"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mobile "Más" sheet ───────────────────────────────────────────────────────
+function MasSheet({
+  ctx, navigate, esAdmin, onClose,
+}: {
+  ctx: NavContext;
+  navigate: (v: ViewKey, f?: string) => void;
+  esAdmin: boolean;
+  onClose: () => void;
+}) {
+  const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
+    { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
+    { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
+    { key: "liquidaciones", icon: "📊", label: "Liquidaciones",desc: "Cierre y liquidación", adminOnly: true },
+    { key: "usuarios",      icon: "👤", label: "Usuarios",     desc: "Roles y accesos",      adminOnly: true },
+  ];
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 200 }} />
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201,
+        background: "white", borderRadius: "20px 20px 0 0",
+        padding: "12px 0 32px",
+        boxShadow: "0 -8px 40px rgba(15,23,42,0.2)",
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e2e8f0", margin: "0 auto 20px" }} />
+        <div style={{ padding: "0 20px 12px", fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em" }}>MÁS MÓDULOS</div>
+        {extras.filter(e => !e.adminOnly || esAdmin).map(e => (
+          <button
+            key={e.key}
+            onClick={() => { navigate(e.key); onClose(); }}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 16,
+              padding: "14px 20px", border: "none", background: ctx.view === e.key ? "#eff6ff" : "transparent",
+              cursor: "pointer", textAlign: "left",
+            }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{e.icon}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{e.label}</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{e.desc}</div>
+            </div>
+            <span style={{ marginLeft: "auto", color: "#cbd5e1", fontSize: 18 }}>›</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ─── Install Banner ───────────────────────────────────────────────────────────
 function InstallBanner() {
   const [prompt, setPrompt] = useState<any>(null);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
-    const handler = (e: any) => { e.preventDefault(); setPrompt(e); setVisible(true); };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    const h = (e: any) => { e.preventDefault(); setPrompt(e); setVisible(true); };
+    window.addEventListener("beforeinstallprompt", h);
+    return () => window.removeEventListener("beforeinstallprompt", h);
   }, []);
-
   if (!visible) return null;
-
   return (
     <div style={{ background: "#0284c7", color: "white", padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
       <span style={{ fontSize: 13, fontWeight: 600 }}>Instala MotoGestión en tu celular para acceso rápido</span>
@@ -44,84 +299,240 @@ function InstallBanner() {
   );
 }
 
+// ─── Shell ────────────────────────────────────────────────────────────────────
 function Shell() {
   const { session, profile, loading, signOut } = useAuth();
-  const [view, setView] = useState<ViewKey>("dashboard");
+  const isMobile = useIsMobile();
 
-  if (loading) {
-    return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Cargando...</div>;
-  }
-
-  if (!session) {
-    return <Login />;
-  }
+  const [ctx, setCtx] = useState<NavContext>({ view: "dashboard", filter: "" });
+  const [collapsed, setCollapsed] = useState(false);
+  const [masOpen, setMasOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const roleActual = profile?.role ?? "SECRETARIA";
   const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
   const esMecanico = roleActual === "MECANICO";
 
-  const itemsFiltrados = esMecanico
-    ? navItems.filter((i) => i.key === "dashboard" || i.key === "taller")
-    : navItems;
+  function navigate(v: ViewKey, f = "") {
+    setCtx({ view: v, filter: f });
+    setMasOpen(false);
+    setUserMenuOpen(false);
+  }
 
-  const items = esAdmin
-    ? [...itemsFiltrados, { key: "liquidaciones" as ViewKey, label: "Liquidaciones" }, { key: "usuarios" as ViewKey, label: "Usuarios" }]
-    : itemsFiltrados;
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
-      <InstallBanner />
-      <header style={{ position: "sticky", top: 0, background: "rgba(255,255,255,0.92)", borderBottom: "1px solid #e2e8f0", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>MotoGestión</div>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            {profile?.nombre ?? "Usuario"} · Rol: {profile?.role ?? "..."}
-          </div>
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🏍️</div>
+          <div style={{ color: "#64748b", fontSize: 14 }}>Cargando MotoGestión...</div>
         </div>
+      </div>
+    );
+  }
 
-        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {items.map((item) => (
+  if (!session) return <Login />;
+
+  const currentTitle = VIEW_TITLE[ctx.view];
+
+  // Determine subfilter label for breadcrumb
+  let filterLabel = "";
+  if (ctx.filter) {
+    const FILTER_LABELS: Record<string, string> = {
+      "": "", "mora": "En mora / riesgo", "retencion": "Retenciones",
+      "En proceso": "En proceso", "Listo para visita": "Listos para visita",
+      "Pendiente evaluación": "Pendiente evaluación", "Aprobado": "Aprobados",
+      "Activo": "Activos", "Rechazado": "Rechazados",
+      "Disponible": "Disponibles", "Asignada": "Asignadas",
+      "Mantenimiento": "En mantenimiento",
+      "Finalizado": "Finalizados", "Cancelado": "Cancelados",
+    };
+    filterLabel = FILTER_LABELS[ctx.filter] ?? ctx.filter;
+  }
+
+  const contentView = (
+    <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
+      {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
+      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter} />}
+      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} />}
+      {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
+      {ctx.view === "cobros"        && <CobrosView />}
+      {ctx.view === "taller"        && <TallerView />}
+      {ctx.view === "liquidaciones" && esAdmin && <LiquidacionesView />}
+      {ctx.view === "usuarios"      && esAdmin && <UsuariosView />}
+    </div>
+  );
+
+  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
+  if (isMobile) {
+    const bottomTabs = esMecanico
+      ? [{ key: "dashboard" as ViewKey, icon: "🏠", label: "Panel" }, { key: "taller" as ViewKey, icon: "🔧", label: "Taller" }]
+      : BOTTOM_TABS;
+
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#0f172a", background: "#f1f5f9" }}>
+        <InstallBanner />
+
+        {/* Mobile top header */}
+        <header style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "white", borderBottom: "1px solid #f1f5f9",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
+          boxShadow: "0 1px 8px rgba(15,23,42,0.06)",
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{currentTitle}</div>
+            {filterLabel && <div style={{ fontSize: 11, color: "#0284c7", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
+          </div>
+          <div style={{ position: "relative" }}>
             <button
-              key={item.key}
-              onClick={() => setView(item.key)}
+              onClick={() => setUserMenuOpen(p => !p)}
               style={{
-                border: "none",
-                borderRadius: 12,
-                padding: "8px 14px",
-                fontWeight: 700,
-                cursor: "pointer",
-                background: view === item.key ? "#0284c7" : "#e2e8f0",
-                color: view === item.key ? "white" : "#334155",
+                width: 36, height: 36, borderRadius: 999, border: "none",
+                background: "linear-gradient(135deg, #0284c7, #10b981)",
+                color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              {item.label}
+              {(profile?.nombre ?? "U")[0].toUpperCase()}
             </button>
-          ))}
+            {userMenuOpen && (
+              <>
+                <div onClick={() => setUserMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
+                <div style={{
+                  position: "absolute", top: 44, right: 0, width: 200,
+                  background: "white", borderRadius: 14, zIndex: 99,
+                  boxShadow: "0 8px 32px rgba(15,23,42,0.15)", overflow: "hidden",
+                }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{profile?.nombre ?? "Usuario"}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Rol: {profile?.role}</div>
+                  </div>
+                  <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
+                    Cerrar sesión
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </header>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflow: "auto", paddingBottom: 72 }}>
+          {contentView}
+        </div>
+
+        {/* Bottom tab bar */}
+        <nav style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+          background: "white", borderTop: "1px solid #e2e8f0",
+          display: "flex", alignItems: "stretch",
+          boxShadow: "0 -2px 16px rgba(15,23,42,0.08)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}>
+          {bottomTabs.map(tab => {
+            const active = ctx.view === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => navigate(tab.key)}
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                  justifyContent: "center", padding: "8px 4px", border: "none",
+                  background: "transparent", cursor: "pointer", gap: 3,
+                  color: active ? "#0284c7" : "#94a3b8",
+                  borderTop: active ? "2px solid #0284c7" : "2px solid transparent",
+                }}
+              >
+                <span style={{ fontSize: 22 }}>{tab.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{tab.label}</span>
+              </button>
+            );
+          })}
+          {!esMecanico && (
+            <button
+              onClick={() => setMasOpen(true)}
+              style={{
+                flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", padding: "8px 4px", border: "none",
+                background: "transparent", cursor: "pointer", gap: 3,
+                color: ["contratos","taller","liquidaciones","usuarios"].includes(ctx.view) ? "#0284c7" : "#94a3b8",
+                borderTop: ["contratos","taller","liquidaciones","usuarios"].includes(ctx.view) ? "2px solid #0284c7" : "2px solid transparent",
+              }}
+            >
+              <span style={{ fontSize: 22 }}>☰</span>
+              <span style={{ fontSize: 10, fontWeight: 500 }}>Más</span>
+            </button>
+          )}
         </nav>
 
-        <button onClick={signOut} style={{ background: "white", border: "1px solid #cbd5e1", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer" }}>
-          Cerrar sesión
-        </button>
-      </header>
+        {masOpen && <MasSheet ctx={ctx} navigate={navigate} esAdmin={esAdmin} onClose={() => setMasOpen(false)} />}
+      </div>
+    );
+  }
 
-      <main style={{ maxWidth: 1280, margin: "0 auto", padding: 16 }}>
-        {view === "dashboard" && <DashboardView onNavigate={setView} />}
-        {view === "clientes" && <ClientesView />}
-        {view === "motos" && <MotosView />}
-        {view === "contratos" && <ContratosView />}
-        {view === "cobros" && <CobrosView />}
-        {view === "taller" && <TallerView />}
-        {view === "liquidaciones" && esAdmin && <LiquidacionesView />}
-        {view === "usuarios" && esAdmin && <UsuariosView />}
-      </main>
+  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
+      <InstallBanner />
+      <Sidebar ctx={ctx} navigate={navigate} esAdmin={esAdmin} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
+
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: "100vh" }}>
+        {/* Desktop top bar */}
+        <header style={{
+          position: "sticky", top: 0, zIndex: 40, background: "white",
+          borderBottom: "1px solid #e2e8f0", padding: "0 24px",
+          display: "flex", alignItems: "center", gap: 16, height: 56,
+          boxShadow: "0 1px 4px rgba(15,23,42,0.04)",
+        }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{currentTitle}</span>
+            {filterLabel && <span style={{ marginLeft: 8, fontSize: 13, color: "#0284c7", fontWeight: 600 }}>/ {filterLabel}</span>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
+            </div>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setUserMenuOpen(p => !p)}
+                style={{
+                  width: 34, height: 34, borderRadius: 999, border: "none",
+                  background: "linear-gradient(135deg, #0284c7, #10b981)",
+                  color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                }}
+              >
+                {(profile?.nombre ?? "U")[0].toUpperCase()}
+              </button>
+              {userMenuOpen && (
+                <>
+                  <div onClick={() => setUserMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
+                  <div style={{
+                    position: "absolute", top: 42, right: 0, width: 200,
+                    background: "white", borderRadius: 14, zIndex: 99,
+                    boxShadow: "0 8px 32px rgba(15,23,42,0.15)", overflow: "hidden",
+                  }}>
+                    <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{profile?.nombre ?? "Usuario"}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Rol: {profile?.role}</div>
+                    </div>
+                    <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
+                      Cerrar sesión
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main style={{ flex: 1, overflow: "auto", padding: 20, maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+          {contentView}
+        </main>
+      </div>
     </div>
   );
 }
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <Shell />
-    </AuthProvider>
-  );
+  return <AuthProvider><Shell /></AuthProvider>;
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useClientes,
   documentosListos,
@@ -189,7 +189,18 @@ function calcularSemaforo(cliente: Cliente, visitas: Visita[]) {
   return { icono: "🟡", texto: "Revisar", color: "#92400e", bg: "#fef3c7" };
 }
 
-export default function ClientesView() {
+const FILTROS_CLIENTE = [
+  { label: "Todos", filter: "" },
+  { label: "En proceso", filter: "En proceso" },
+  { label: "Listos visita", filter: "Listo para visita" },
+  { label: "Pend. evaluación", filter: "Pendiente evaluación" },
+  { label: "Aprobados", filter: "Aprobado" },
+  { label: "Activos", filter: "Activo" },
+  { label: "Mora / riesgo", filter: "mora" },
+  { label: "Rechazados", filter: "Rechazado" },
+];
+
+export default function ClientesView({ initialFilter = "" }: { initialFilter?: string }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
@@ -203,6 +214,8 @@ export default function ClientesView() {
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [modoVista, setModoVista] = useState<"todos" | "pendientes">("todos");
+  const [filtroEstado, setFiltroEstado] = useState(initialFilter);
+  useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [excepcionMotivo, setExcepcionMotivo] = useState("");
   const [excepcionPlazo, setExcepcionPlazo] = useState("");
@@ -226,10 +239,12 @@ export default function ClientesView() {
 
   const baseClientes = modoVista === "pendientes" ? clientes.filter((c) => c.estado === "Pendiente evaluación") : clientes;
 
-  const filtered = useMemo(
-    () => baseClientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase())),
-    [baseClientes, query]
-  );
+  const filtered = useMemo(() => {
+    let list = baseClientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
+    if (filtroEstado === "mora") list = list.filter(c => c.estado === "En mora" || c.estado === "En riesgo");
+    else if (filtroEstado) list = list.filter(c => c.estado === filtroEstado);
+    return list;
+  }, [baseClientes, query, filtroEstado]);
 
   const selectedCliente: Cliente | null = clientes.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
 
@@ -465,8 +480,23 @@ export default function ClientesView() {
 
       <div className="clientes-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
         <div style={card}>
-          <div style={{ marginBottom: 16 }}>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente" style={inputStyle} />
+          <div style={{ marginBottom: 12 }}>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por nombre, cédula o teléfono..." style={inputStyle} />
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            {FILTROS_CLIENTE.map(f => (
+              <button
+                key={f.filter}
+                onClick={() => setFiltroEstado(f.filter)}
+                style={{
+                  padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500,
+                  background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9",
+                  color: filtroEstado === f.filter ? "white" : "#64748b",
+                  whiteSpace: "nowrap",
+                }}
+              >{f.label}</button>
+            ))}
           </div>
 
           <div style={{ overflowX: "auto" }}>

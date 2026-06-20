@@ -468,17 +468,9 @@ export default function CobrosView() {
       </div>
 
       {/* ── Layout principal ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(280px, 1fr) minmax(0, 1.5fr)",
-          gap: 20,
-          marginTop: 24,
-          alignItems: "start",
-        }}
-      >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
         {/* ── Lista de cobros ── */}
-        <div style={card}>
+        <div style={{ ...card, flex: "0 0 300px", maxHeight: "80vh", overflowY: "auto" }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 18 }}>Cobros del dia</h3>
           <input
             style={{ ...inputStyle, marginBottom: 12 }}
@@ -532,7 +524,7 @@ export default function CobrosView() {
         </div>
 
         {/* ── Panel de detalle ── */}
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 16, flex: "1 1 320px", minWidth: 0 }}>
           {!contratoDetalle ? (
             <div style={{ ...card, color: "#64748b", textAlign: "center", padding: 40 }}>
               Selecciona un contrato de la lista para ver el detalle y registrar pagos.

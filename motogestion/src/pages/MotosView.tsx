@@ -41,8 +41,7 @@ function formatDate(date: string | null) {
   return new Date(date).toLocaleDateString("es-CO");
 }
 
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "12px 10px", fontSize: 13, color: "#475569", borderBottom: "1px solid #e2e8f0" };
-const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color: "#0f172a", borderBottom: "1px solid #f1f5f9" };
+
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
@@ -260,8 +259,8 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando motos: {error}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
-        <div style={card}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
+        <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
           <div style={{ marginBottom: 12 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por placa, marca o modelo..." style={inputStyle} />
           </div>
@@ -272,38 +271,33 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
           </div>
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: 600, borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={thStyle}>Placa</th>
-                  <th style={thStyle}>Grupo</th>
-                  <th style={thStyle}>Moto</th>
-                  <th style={thStyle}>Estado</th>
-                  <th style={thStyle}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((moto) => (
-                  <tr key={moto.id} style={{ background: selectedId === moto.id ? "#eff6ff" : "white" }}>
-                    <td style={tdStyle}>{moto.placa}</td>
-                    <td style={tdStyle}>{moto.grupo}</td>
-                    <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
-                    <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
-                    <td style={tdStyle}>
-                      <button onClick={() => setSelectedId(moto.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
-                        Ver detalle
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas todavía.</div>}
+            <div style={{ display: "grid", gap: 8 }}>
+              {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos en este filtro.</div>}
+              {filtered.map((moto) => (
+                <button
+                  key={moto.id}
+                  onClick={() => setSelectedId(moto.id)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px", borderRadius: 12, border: "none",
+                    background: selectedId === moto.id ? "#eff6ff" : "#f8fafc",
+                    cursor: "pointer", textAlign: "left",
+                    outline: selectedId === moto.id ? "2px solid #0284c7" : "none",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{moto.placa}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                  </div>
+                  <StatusBadge status={moto.estado} />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div style={card}>
-          <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
+        <div style={{ ...card, flex: "1 1 280px", minWidth: 0, maxWidth: 420 }}>
+          <h3 style={{ margin: 0, fontSize: 18 }}>Detalle de moto</h3>
 
           {selectedMoto ? (
             <div style={{ marginTop: 16, display: "grid", gap: 12 }}>

@@ -11,8 +11,7 @@ import {
 import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
 
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "12px 10px", fontSize: 13, color: "#475569", borderBottom: "1px solid #e2e8f0" };
-const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color: "#0f172a", borderBottom: "1px solid #f1f5f9" };
+
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -478,8 +477,8 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
 
       <style>{`@media (max-width: 768px) { .clientes-grid { display: block !important; } .clientes-detalle-desktop { display: none !important; } }`}</style>
 
-      <div className="clientes-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
-        <div style={card}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
+        <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
           <div style={{ marginBottom: 12 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por nombre, cédula o teléfono..." style={inputStyle} />
           </div>
@@ -499,45 +498,38 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
             ))}
           </div>
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: 480, borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={thStyle}>Nombre</th>
-                  {modoVista === "pendientes" && <th style={thStyle}>Riesgo</th>}
-                  <th style={thStyle}>Teléfono</th>
-                  <th style={thStyle}>Estado</th>
-                  <th style={thStyle}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((cliente) => (
-                  <tr key={cliente.id} style={{ background: selectedId === cliente.id ? "#eff6ff" : "white" }}>
-                    <td style={{ ...tdStyle, textTransform: "uppercase" }}>{cliente.nombre}</td>
-                    {modoVista === "pendientes" && (
-                      <td style={tdStyle}>
-                        {(() => {
-                          const riesgo = calcularSemaforo(cliente, visitas);
-                          return <span style={{ ...miniBtn(riesgo.bg, riesgo.color), display: "inline-block" }}>{riesgo.icono} {riesgo.texto}</span>;
-                        })()}
-                      </td>
-                    )}
-                    <td style={tdStyle}>{cliente.telefono}</td>
-                    <td style={tdStyle}><ClienteBadge estado={estadoVisual(cliente)} /></td>
-                    <td style={tdStyle}>
-                      <button onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); }} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
-                        {modoVista === "pendientes" ? "Evaluar" : "Ver detalle"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes registrados todavía.</div>}
+          <div style={{ display: "grid", gap: 8, maxHeight: "70vh", overflowY: "auto" }}>
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+            {filtered.map((cliente) => {
+              const riesgo = modoVista === "pendientes" ? calcularSemaforo(cliente, visitas) : null;
+              const activo = selectedId === cliente.id;
+              return (
+                <button
+                  key={cliente.id}
+                  onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); }}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px", borderRadius: 12, border: "none",
+                    background: activo ? "#eff6ff" : "#f8fafc",
+                    cursor: "pointer", textAlign: "left",
+                    outline: activo ? "2px solid #0284c7" : "none",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.telefono}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                    <ClienteBadge estado={estadoVisual(cliente)} />
+                    {riesgo && <span style={{ fontSize: 11 }}>{riesgo.icono}</span>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="clientes-detalle-desktop" style={card}>
+        <div style={{ ...card, flex: "1 1 280px", minWidth: 0, maxWidth: 440 }}>
           <h3 style={{ margin: 0, fontSize: 20 }}>Detalle del cliente</h3>
 
           {selectedCliente ? (

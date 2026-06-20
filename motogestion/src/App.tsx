@@ -525,7 +525,7 @@ function Shell() {
           </div>
         </header>
 
-        <main style={{ flex: 1, overflow: "auto", padding: 20, maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        <main style={{ flex: 1, overflow: "auto", padding: "16px 20px", maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
           {contentView}
         </main>
       </div>

@@ -22,11 +22,12 @@ import ReferidosView from "./pages/ReferidosView";
 import CobroDiarioView from "./pages/CobroDiarioView";
 import AlertasView from "./pages/AlertasView";
 import InmovilizacionesView from "./pages/InmovilizacionesView";
+import ImportacionView from "./pages/ImportacionView";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
-  | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones";
+  | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -118,6 +119,7 @@ const SIDE_GROUPS: SideGroup[] = [
     items: [
       { key: "usuarios", label: "Usuarios & Roles", icon: "👤" },
       { key: "configuracion", label: "Configuración", icon: "⚙️" },
+      { key: "importacion", label: "Importación Excel", icon: "📥" },
     ],
   },
 ];
@@ -126,7 +128,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
   contratos: "Contratos", cobros: "Cartera & Cobros", caja: "Caja Diaria",
   reportes: "Reportes", taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones",
-  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario", alertas: "Alertas", inmovilizaciones: "Inmovilizaciones",
+  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario", alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -406,6 +408,7 @@ function Shell() {
       {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}
       {ctx.view === "configuracion"  && <ConfiguracionView />}
+      {ctx.view === "importacion"    && profile?.role === "ADMIN_PRINCIPAL" && <ImportacionView />}
     </div>
   );
 

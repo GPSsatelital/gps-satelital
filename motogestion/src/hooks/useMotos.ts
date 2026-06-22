@@ -56,7 +56,7 @@ export function useMotos() {
     cargarMotos();
 
     const channel = supabase
-      .channel("motos-realtime")
+      .channel(`motos-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "motos" }, () => {
         cargarMotos();
       })

@@ -114,7 +114,7 @@ export function useContratos() {
     fetchContratos();
 
     const channel = supabase
-      .channel("contratos-realtime")
+      .channel(`contratos-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "contratos" }, () => {
         fetchContratos();
       })

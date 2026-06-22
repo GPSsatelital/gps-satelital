@@ -125,7 +125,7 @@ export function useClientes() {
     fetchClientes();
 
     const channel = supabase
-      .channel("clientes-realtime")
+      .channel(`clientes-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "clientes" }, () => {
         fetchClientes();
       })

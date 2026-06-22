@@ -48,7 +48,7 @@ export function useTaller() {
     fetchTaller();
 
     const channel = supabase
-      .channel("taller-realtime")
+      .channel(`taller-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "taller" }, () => {
         fetchTaller();
       })

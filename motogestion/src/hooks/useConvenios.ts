@@ -32,7 +32,7 @@ export function useConvenios() {
 
   useEffect(() => {
     fetchConvenios();
-    const channel = supabase.channel("convenios-realtime")
+    const channel = supabase.channel(`convenios-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "convenios" }, fetchConvenios)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

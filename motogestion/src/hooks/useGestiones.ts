@@ -37,7 +37,7 @@ export function useGestiones() {
 
   useEffect(() => {
     fetchGestiones();
-    const channel = supabase.channel("gestiones-realtime")
+    const channel = supabase.channel(`gestiones-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "gestiones_cobro" }, fetchGestiones)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

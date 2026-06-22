@@ -113,7 +113,7 @@ export function usePagos() {
   useEffect(() => {
     fetchPagos();
     const channel = supabase
-      .channel("pagos-realtime")
+      .channel(`pagos-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "pagos" }, () => {
         fetchPagos();
       })

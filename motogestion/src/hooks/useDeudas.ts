@@ -30,7 +30,7 @@ export function useDeudas() {
 
   useEffect(() => {
     fetchDeudas();
-    const channel = supabase.channel("deudas-realtime")
+    const channel = supabase.channel(`deudas-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "deudas" }, fetchDeudas)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

@@ -59,7 +59,7 @@ export function useVisitas() {
     fetchVisitas();
 
     const channel = supabase
-      .channel("visitas-realtime")
+      .channel(`visitas-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "visitas" }, () => {
         fetchVisitas();
       })

@@ -89,7 +89,7 @@ export function useUbicaciones() {
 
   useEffect(() => {
     fetchAll();
-    const ch = supabase.channel("ubicaciones-realtime")
+    const ch = supabase.channel(`ubicaciones-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "historial_ubicaciones" }, fetchAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "recepciones_vehiculo" }, fetchAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "acuerdos_tiempo_rodado" }, fetchAll)

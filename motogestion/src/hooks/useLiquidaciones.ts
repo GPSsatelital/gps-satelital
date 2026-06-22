@@ -53,7 +53,7 @@ export function useLiquidaciones() {
   useEffect(() => {
     fetchLiquidaciones();
     const channel = supabase
-      .channel("liquidaciones-realtime")
+      .channel(`liquidaciones-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "liquidaciones" }, fetchLiquidaciones)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

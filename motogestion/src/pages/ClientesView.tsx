@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 import {
   useClientes,
   documentosListos,
@@ -425,6 +426,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
   const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion } = useClientes();
   const { visitas, crearVisita, resolverVisita } = useVisitas();
 
+  const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [detalleModalOpen, setDetalleModalOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -790,7 +792,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
               return (
                 <button
                   key={cliente.id}
-                  onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); }}
+                  onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); setClienteDetalleId(cliente.id); }}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 12,
                     padding: "12px 14px", borderRadius: 12, border: "none",
@@ -904,6 +906,8 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
           </div>
         </div>
       )}
+
+      <ClienteDetalleSheet clienteId={clienteDetalleId} onClose={() => setClienteDetalleId(null)} />
 
       {visitaOpen && selectedCliente && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }} onClick={() => setVisitaOpen(false)}>

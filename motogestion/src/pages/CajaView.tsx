@@ -119,13 +119,68 @@ export default function CajaView() {
           <h2 style={{ fontSize: 22, margin: 0 }}>Caja diaria</h2>
           <p style={{ marginTop: 6, color: "#64748b", margin: "6px 0 0" }}>Resumen de recaudo, confirmación de transferencias y cierre de caja.</p>
         </div>
-        <div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
             type="date"
             value={fechaSeleccionada}
             onChange={e => setFechaSeleccionada(e.target.value)}
             style={{ ...inputStyle, width: "auto" }}
           />
+          <button
+            onClick={() => {
+              const pagosConfirmados = pagosDelDia.filter(p => p.estado === "Confirmado");
+              const win = window.open("", "_blank", "width=800,height=600");
+              if (!win) return;
+              const filas = pagosConfirmados.map(p => {
+                const { cliente, moto } = infoCliente(p.contrato_id);
+                return `<tr>
+                  <td>${cliente?.nombre ?? "Sin cliente"}</td>
+                  <td>${moto?.placa ?? "—"}</td>
+                  <td>${p.metodo}${p.tipo_registro === "campo" ? " · Campo" : ""}</td>
+                  <td style="text-align:right">$ ${fmt(p.valor)}</td>
+                </tr>`;
+              }).join("");
+              const doc = win.document;
+              doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+                <title>Caja Diaria ${formatDate(fechaSeleccionada)}</title>
+                <style>
+                  body{font-family:sans-serif;padding:24px;color:#0f172a}
+                  h1{font-size:20px;margin:0 0 4px}
+                  .sub{color:#64748b;font-size:13px;margin-bottom:20px}
+                  .kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+                  .kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:130px}
+                  .kpi-label{font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700}
+                  .kpi-val{font-size:20px;font-weight:800;margin-top:4px}
+                  table{width:100%;border-collapse:collapse;font-size:13px}
+                  th{text-align:left;padding:8px 10px;background:#f1f5f9;border-bottom:2px solid #e2e8f0;font-size:11px;text-transform:uppercase;color:#64748b}
+                  td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+                  .total-row{font-weight:800;font-size:15px;background:#f0fdf4}
+                  .footer{margin-top:24px;font-size:12px;color:#94a3b8;text-align:center}
+                  @media print{body{padding:0}}
+                </style></head><body>
+                <h1>GPS Satelital · Caja Diaria</h1>
+                <div class="sub">${formatDate(fechaSeleccionada)}</div>
+                <div class="kpis">
+                  <div class="kpi"><div class="kpi-label">💵 Efectivo</div><div class="kpi-val">$ ${fmt(efectivoConfirmado)}</div></div>
+                  <div class="kpi"><div class="kpi-label">📲 Transferencias</div><div class="kpi-val">$ ${fmt(transferenciaConfirmada)}</div></div>
+                  <div class="kpi"><div class="kpi-label">🛵 Campo</div><div class="kpi-val">$ ${fmt(campoConfirmado)}</div></div>
+                  <div class="kpi" style="background:#0f172a;color:white"><div class="kpi-label" style="color:#94a3b8">TOTAL</div><div class="kpi-val" style="color:#38bdf8">$ ${fmt(totalConfirmado)}</div></div>
+                </div>
+                <table>
+                  <thead><tr><th>Cliente</th><th>Placa</th><th>Método</th><th style="text-align:right">Valor</th></tr></thead>
+                  <tbody>${filas}</tbody>
+                  <tfoot><tr class="total-row"><td colspan="3">TOTAL CONFIRMADO</td><td style="text-align:right">$ ${fmt(totalConfirmado)}</td></tr></tfoot>
+                </table>
+                ${observaciones ? `<div style="margin-top:18px;padding:12px 14px;border-radius:8px;background:#fef3c7;font-size:13px"><strong>Observaciones:</strong> ${observaciones}</div>` : ""}
+                <div class="footer">Generado por MotoGestión · ${new Date().toLocaleString("es-CO")}</div>
+                </body></html>`);
+              doc.close();
+              win.print();
+            }}
+            style={{ ...primaryBtn, padding: "12px 16px", fontSize: 13, whiteSpace: "nowrap" }}
+          >
+            🖨️ Imprimir resumen
+          </button>
         </div>
       </div>
 

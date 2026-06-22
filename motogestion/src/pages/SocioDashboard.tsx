@@ -32,6 +32,60 @@ const GRUPO_NAMES: Record<GrupoMoto, string> = {
   PRADERA: "Pradera",
 };
 
+import type { Pago } from "../hooks/usePagos";
+
+const DIAS_ABREV = ["D", "L", "M", "X", "J", "V", "S"];
+
+function RecaudoSemanal({ pagosGrupo }: { pagosGrupo: Pago[] }) {
+  const hoy = new Date();
+
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() - (6 - i));
+    const fecha = d.toISOString().slice(0, 10);
+    const dow = d.getDay();
+    const total = pagosGrupo
+      .filter(p => p.fecha === fecha && p.estado === "Confirmado")
+      .reduce((a, p) => a + p.valor, 0);
+    return { fecha, dow, total, esHoy: i === 6 };
+  });
+
+  const maximo = Math.max(...dias.map(d => d.total), 1);
+
+  return (
+    <div style={{ ...card, marginTop: 20 }}>
+      <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 16 }}>Recaudo últimos 7 días</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 130 }}>
+        {dias.map((d) => {
+          const pct = (d.total / maximo) * 100;
+          return (
+            <div key={d.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              {d.total > 0 && (
+                <div style={{ fontSize: 10, fontWeight: 700, color: d.esHoy ? "#0284c7" : "#64748b", textAlign: "center", lineHeight: 1.2 }}>
+                  ${fmt(d.total / 1000)}k
+                </div>
+              )}
+              <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
+                <div style={{
+                  width: "100%",
+                  height: `${Math.max(pct, d.total > 0 ? 6 : 2)}%`,
+                  borderRadius: "4px 4px 0 0",
+                  background: d.esHoy ? "#0284c7" : "#e2e8f0",
+                  transition: "height 0.3s",
+                  minHeight: 2,
+                }} />
+              </div>
+              <div style={{ fontSize: 11, fontWeight: d.esHoy ? 800 : 500, color: d.esHoy ? "#0284c7" : "#64748b" }}>
+                {DIAS_ABREV[d.dow]}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SocioDashboard() {
   const { profile } = useAuth();
   const grupo = (profile?.grupo ?? "RASTREADOR") as GrupoMoto;
@@ -112,6 +166,9 @@ export default function SocioDashboard() {
         <KPICard label="En mora (&gt;2 días)" value={`${enMora.length}`} color={enMora.length > 0 ? "#991b1b" : "#166534"} />
         <KPICard label="Proyección mensual" value={`$ ${fmt(proyeccionMensual)}`} sub="~26 días L-S" color="#334155" />
       </div>
+
+      {/* Recaudo últimos 7 días */}
+      <RecaudoSemanal pagosGrupo={pagosGrupo} />
 
       {/* Estado de la flota */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 20 }}>

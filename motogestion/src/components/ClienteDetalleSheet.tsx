@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useClientes, type Cliente, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
 import { useContratos, type Contrato } from "../hooks/useContratos";
 import { useMotos, type Moto } from "../hooks/useMotos";
 import { usePagos, type Pago } from "../hooks/usePagos";
 import { useVisitas } from "../hooks/useVisitas";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 interface Props {
   clienteId: string | null;
@@ -164,6 +166,13 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
   const { motos } = useMotos();
   const { pagos } = usePagos();
   const { visitas } = useVisitas();
+  const { profile } = useAuth();
+  const esAdminPrincipal = profile?.role === "ADMIN_PRINCIPAL";
+
+  const [mostrarFormListaNegra, setMostrarFormListaNegra] = useState(false);
+  const [motivoListaNegra, setMotivoListaNegra] = useState("");
+  const [reversibleListaNegra, setReversibleListaNegra] = useState(false);
+  const [guardandoListaNegra, setGuardandoListaNegra] = useState(false);
 
   const cliente: Cliente | null = useMemo(
     () => clientes.find(c => c.id === clienteId) ?? null,
@@ -439,6 +448,77 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
               >
                 🧾 Estado de cuenta
               </button>
+            </div>
+          )}
+
+          {/* Marcar lista negra — solo ADMIN_PRINCIPAL y si no está en lista negra */}
+          {esAdminPrincipal && !cliente.lista_negra && (
+            <div style={{ marginTop: 16 }}>
+              {!mostrarFormListaNegra ? (
+                <button
+                  onClick={() => setMostrarFormListaNegra(true)}
+                  style={{
+                    width: "100%", padding: "11px", borderRadius: 14, border: "none",
+                    background: "#1f2937", color: "#f9fafb", fontWeight: 700,
+                    fontSize: 13, cursor: "pointer",
+                  }}
+                >
+                  ⛔ Marcar lista negra
+                </button>
+              ) : (
+                <div style={{ background: "#1f2937", borderRadius: 16, padding: 16, display: "grid", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#f9fafb" }}>⛔ Marcar en lista negra</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#d1d5db", marginBottom: 6 }}>Motivo (obligatorio)</div>
+                    <textarea
+                      value={motivoListaNegra}
+                      onChange={e => setMotivoListaNegra(e.target.value)}
+                      placeholder="Describe el motivo..."
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #374151", background: "#111827", color: "#f9fafb", fontSize: 13, minHeight: 70, boxSizing: "border-box", resize: "vertical" }}
+                    />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#d1d5db", fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={reversibleListaNegra}
+                      onChange={e => setReversibleListaNegra(e.target.checked)}
+                    />
+                    ¿Es reversible? (puede ser rehabilitado)
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      disabled={!motivoListaNegra.trim() || guardandoListaNegra}
+                      onClick={async () => {
+                        if (!motivoListaNegra.trim()) return;
+                        setGuardandoListaNegra(true);
+                        await supabase.from("clientes").update({
+                          lista_negra: true,
+                          motivo_lista_negra: motivoListaNegra.trim(),
+                          lista_negra_reversible: reversibleListaNegra,
+                        }).eq("id", cliente.id);
+                        setGuardandoListaNegra(false);
+                        setMostrarFormListaNegra(false);
+                        setMotivoListaNegra("");
+                        setReversibleListaNegra(false);
+                      }}
+                      style={{
+                        flex: 1, padding: "10px", borderRadius: 12, border: "none",
+                        background: "#dc2626", color: "white", fontWeight: 700, fontSize: 13,
+                        cursor: !motivoListaNegra.trim() ? "not-allowed" : "pointer",
+                        opacity: !motivoListaNegra.trim() ? 0.5 : 1,
+                      }}
+                    >
+                      {guardandoListaNegra ? "Guardando..." : "Confirmar"}
+                    </button>
+                    <button
+                      onClick={() => { setMostrarFormListaNegra(false); setMotivoListaNegra(""); setReversibleListaNegra(false); }}
+                      style={{ padding: "10px 16px", borderRadius: 12, border: "none", background: "#374151", color: "#d1d5db", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

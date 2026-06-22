@@ -16,6 +16,8 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
+import ModalDeuda from "../components/ModalDeuda";
+import ModalConvenio from "../components/ModalConvenio";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -334,6 +336,8 @@ export default function CobrosView() {
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
 
   const [modalGestionOpen, setModalGestionOpen] = useState(false);
+  const [modalDeudaOpen, setModalDeudaOpen] = useState(false);
+  const [modalConvenioOpen, setModalConvenioOpen] = useState(false);
 
   const contratosActivos = contratos.filter(c => c.estado === "Activo");
 
@@ -690,18 +694,30 @@ export default function CobrosView() {
                   />
                 )}
 
-                {/* Botón registrar gestión */}
-                <div style={{ marginTop: 10 }}>
+                {/* Botones de acción rápida */}
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     onClick={() => setModalGestionOpen(true)}
-                    style={{
-                      background: "#f1f5f9", color: "#334155", border: "none",
-                      borderRadius: 14, padding: "8px 16px", fontWeight: 600,
-                      fontSize: 13, cursor: "pointer",
-                    }}
+                    style={{ background: "#f1f5f9", color: "#334155", border: "none", borderRadius: 14, padding: "8px 16px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
                   >
                     📋 Registrar gestión
                   </button>
+                  {esAdmin && (
+                    <button
+                      onClick={() => setModalDeudaOpen(true)}
+                      style={{ background: "#fef3c7", color: "#92400e", border: "none", borderRadius: 14, padding: "8px 16px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                    >
+                      📋 Nueva deuda
+                    </button>
+                  )}
+                  {esAdmin && (
+                    <button
+                      onClick={() => setModalConvenioOpen(true)}
+                      style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 14, padding: "8px 16px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                    >
+                      🤝 Nuevo convenio
+                    </button>
+                  )}
                 </div>
 
                 {/* Alerta base completada */}
@@ -1215,6 +1231,24 @@ export default function CobrosView() {
           contratoId={contratoDetalle.id}
           clienteNombre={clienteDetalle.nombre}
           onClose={() => setModalGestionOpen(false)}
+        />
+      )}
+
+      {/* ── Modal deuda ── */}
+      {modalDeudaOpen && contratoDetalle && clienteDetalle && (
+        <ModalDeuda
+          contratoId={contratoDetalle.id}
+          clienteNombre={clienteDetalle.nombre}
+          onClose={() => setModalDeudaOpen(false)}
+        />
+      )}
+
+      {/* ── Modal convenio ── */}
+      {modalConvenioOpen && contratoDetalle && clienteDetalle && (
+        <ModalConvenio
+          contratoId={contratoDetalle.id}
+          clienteNombre={clienteDetalle.nombre}
+          onClose={() => setModalConvenioOpen(false)}
         />
       )}
 

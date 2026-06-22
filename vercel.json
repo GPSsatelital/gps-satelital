@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd motogestion && npm install && npm run build",
+  "outputDirectory": "motogestion/dist",
+  "installCommand": "echo 'skip root install'",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

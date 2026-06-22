@@ -9,7 +9,7 @@ import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-type Tab = "hoy" | "mora" | "inmovilizar";
+type Tab = "hoy" | "semanal" | "mora" | "inmovilizar";
 
 type Fila = {
   contratoId: string;
@@ -95,15 +95,17 @@ export default function CobroDiarioView() {
         const tarifa = c.tarifa_diaria ?? 27000;
         const ahorro = (c as { ahorro_diario?: number }).ahorro_diario ?? 4000;
         const valorPactado = tarifa + ahorro;
-        const valorPeriodo = (c as { valor_periodo?: number }).valor_periodo ?? valorPactado * 7;
-        const tipoRuta = (c as { tipo_ruta?: string }).tipo_ruta ?? "diario";
+        const valorPeriodo = (c as { valor_periodo?: number }).valor_periodo ?? c.valor_semanal ?? valorPactado * 7;
+        const esContratoDiario = (c.forma_pago ?? "").toLowerCase() === "diario";
+        const tipoRuta = esContratoDiario ? "diario" : "semanal";
         const diaPago = c.dia_pago ?? "Lunes";
+        const diaPagoNorm = diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
         const dias = calcDiasConPeriodo(pagosC, tipoRuta, diaPago, hoy);
         const pagadosHoy = pagosC.filter(p => p.fecha === hoy && p.estado === "Confirmado");
         const pagadoHoy = pagadosHoy.reduce((s, p) => s + p.valor, 0);
-        const pagaHoy = tipoRuta === "diario"
+        const pagaHoy = esContratoDiario
           ? true
-          : (diaPago === "Lunes" && esLunes) || (diaPago === "Miércoles" && esMiercoles);
+          : (diaPagoNorm === "lunes" && esLunes) || (diaPagoNorm === "miercoles" && esMiercoles);
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
 
         return {
@@ -130,6 +132,12 @@ export default function CobroDiarioView() {
   }, [contratos, clientes, motos, pagos, hoy, esLunes, esMiercoles]);
 
   const filasHoy = useMemo(() => filas.filter(f => f.pagaHoy), [filas]);
+  const filasSemanal = useMemo(() => filas.filter(f => f.tipoRuta !== "diario").sort((a, b) => {
+    const dA = a.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const dB = b.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    if (dA !== dB) return dA.localeCompare(dB);
+    return a.clienteNombre.localeCompare(b.clienteNombre);
+  }), [filas]);
   const filasMora = useMemo(() => filas.filter(f => f.diasSinPago > 0 && f.diasSinPago < 999).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
   const filasInmov = useMemo(() => filas.filter(f => f.diasSinPago >= 3).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
 
@@ -324,15 +332,16 @@ export default function CobroDiarioView() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "white", borderRadius: 12, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "white", borderRadius: 12, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", flexWrap: "wrap" }}>
         {([
           { key: "hoy", label: `Hoy (${filasHoy.length})` },
+          { key: "semanal", label: `Cartera (${filasSemanal.length})` },
           { key: "mora", label: `Mora (${filasMora.length})` },
           { key: "inmovilizar", label: `Inmovilizar (${filasInmov.length})` },
         ] as { key: Tab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer",
-            fontSize: 12, fontWeight: 700,
+            fontSize: 11, fontWeight: 700,
             background: tab === t.key ? "#0f172a" : "transparent",
             color: tab === t.key ? "white" : "#64748b",
           }}>{t.label}</button>
@@ -354,6 +363,55 @@ export default function CobroDiarioView() {
           {filtrar(filasHoy).map(f => tarjetaHoy(f))}
         </div>
       )}
+
+      {tab === "semanal" && (() => {
+        const lunes = filtrar(filasSemanal).filter(f => f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"") === "lunes");
+        const miercoles = filtrar(filasSemanal).filter(f => f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"") === "miercoles");
+        const otros = filtrar(filasSemanal).filter(f => {
+          const n = f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+          return n !== "lunes" && n !== "miercoles";
+        });
+        const grupos = [
+          { label: `Lunes (${lunes.length})`, filas: lunes, color: "#1d4ed8", bg: "#dbeafe", pagaHoyGrupo: esLunes },
+          { label: `Miércoles (${miercoles.length})`, filas: miercoles, color: "#7c3aed", bg: "#ede9fe", pagaHoyGrupo: esMiercoles },
+          ...(otros.length > 0 ? [{ label: `Otro día (${otros.length})`, filas: otros, color: "#334155", bg: "#f1f5f9", pagaHoyGrupo: false }] : []),
+        ];
+        return (
+          <div style={{ display: "grid", gap: 16 }}>
+            {grupos.map(g => (
+              <div key={g.label}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ padding: "4px 12px", borderRadius: 999, background: g.bg, color: g.color, fontWeight: 800, fontSize: 13 }}>
+                    {g.label}
+                  </div>
+                  {g.pagaHoyGrupo && <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 999 }}>⚡ Paga HOY</span>}
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {g.filas.map(f => (
+                    <div key={f.contratoId} style={{ background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", border: f.pagadoHoyBool && g.pagaHoyGrupo ? "1px solid #bbf7d0" : "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 13, textTransform: "uppercase" }}>{f.placa} · {f.clienteNombre}</div>
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                          ${(f.valorPeriodo ?? f.valorPactado * 7).toLocaleString("es-CO")}/sem
+                          {f.diasSinPago > 0 && f.diasSinPago < 999 && <span style={{ color: "#dc2626", marginLeft: 8, fontWeight: 700 }}>· {f.diasSinPago}d sin pago</span>}
+                          {f.pagadoHoyBool && g.pagaHoyGrupo && <span style={{ color: "#166534", marginLeft: 8, fontWeight: 700 }}>· ✅ Pagó hoy</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                        {f.clienteTel && <>
+                          <button onClick={() => abrirLlamada(f.clienteTel)} title="Llamar" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dbeafe", color: "#1d4ed8" }}>📞</button>
+                          <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} title="WhatsApp" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dcfce7", color: "#166534" }}>💬</button>
+                        </>}
+                        <button onClick={() => abrirCobrar(f)} title="Registrar pago" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#0f172a", color: "white" }}>💳</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {tab === "mora" && (
         <div style={{ display: "grid", gap: 10 }}>

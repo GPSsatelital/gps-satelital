@@ -216,6 +216,208 @@ const FILTROS_CLIENTE = [
   { label: "Rechazados", filter: "Rechazado" },
 ];
 
+function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
+  clientes: Cliente[];
+  visitas: Visita[];
+  role: string;
+  onAprobar: (clienteId: string, visitaId: string) => Promise<void>;
+  onRechazar: (clienteId: string, visitaId: string, motivo: string) => Promise<void>;
+}) {
+  const [expandido, setExpandido] = useState<string | null>(null);
+  const [rechazando, setRechazando] = useState<string | null>(null);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [procesando, setProcesando] = useState<string | null>(null);
+
+  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+
+  if (clientes.length === 0) {
+    return (
+      <div style={{ marginTop: 20, padding: "32px 24px", background: "white", borderRadius: 16, textAlign: "center", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+        <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
+        <div style={{ fontWeight: 700, color: "#166534" }}>No hay clientes pendientes de evaluación</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Todos los clientes han sido evaluados.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 20, display: "grid", gap: 14 }}>
+      {clientes.map(cliente => {
+        const visitasCliente = visitas.filter(v => v.cliente_id === cliente.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+        const visita = visitasCliente[0] ?? null;
+        const semaforo = calcularSemaforo(cliente, visitas);
+        const abierto = expandido === cliente.id;
+        const esteRechazando = rechazando === cliente.id;
+
+        return (
+          <div key={cliente.id} style={{ background: "white", borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)", overflow: "hidden", borderLeft: `4px solid ${semaforo.color}` }}>
+
+            {/* Header de la tarjeta */}
+            <button onClick={() => setExpandido(abierto ? null : cliente.id)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "16px 20px", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: semaforo.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                  {semaforo.icono}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    C.C. {cliente.cedula} · {semaforo.texto}
+                    {visita ? ` · Visita: ${new Date(visita.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin visita registrada"}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <span style={{ padding: "4px 10px", borderRadius: 999, background: semaforo.bg, color: semaforo.color, fontSize: 11, fontWeight: 700 }}>{semaforo.texto}</span>
+                <span style={{ color: "#94a3b8", fontSize: 18 }}>{abierto ? "▲" : "▼"}</span>
+              </div>
+            </button>
+
+            {/* Detalle expandido */}
+            {abierto && (
+              <div style={{ padding: "0 20px 20px", borderTop: "1px solid #f1f5f9" }}>
+
+                {/* Datos básicos del cliente */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 16 }}>
+                  {[
+                    { label: "Teléfono", value: cliente.telefono },
+                    { label: "Dirección", value: cliente.direccion },
+                    { label: "Ruta contrato", value: cliente.ruta_contrato === "diario" ? "Diario (ahorrando base)" : "Tiempo definido" },
+                    { label: "Fuente", value: cliente.fuente_llegada || "—" },
+                    { label: "Acompañante", value: cliente.acompanante_nombre || "—" },
+                    { label: "C.C. acompañante", value: cliente.acompanante_cedula || "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginTop: 3 }}>{value || "—"}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Entrevista de visita */}
+                {visita ? (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#334155", marginBottom: 10 }}>Resultado de la visita domiciliaria</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+                      {[
+                        { label: "¿Vive allí?", value: visita.entrevista.viveAlli, alerta: visita.entrevista.viveAlli !== "Sí" },
+                        { label: "Tiempo de residencia", value: visita.entrevista.tiempoResidencia },
+                        { label: "Tipo de vivienda", value: visita.entrevista.tipoVivienda },
+                        { label: "Composición familiar", value: visita.entrevista.composicionFamiliar },
+                        { label: "Estabilidad laboral", value: visita.entrevista.estabilidadLaboral },
+                        { label: "Dudas del cliente", value: visita.entrevista.dudasCliente || "Ninguna" },
+                        { label: "Observaciones", value: visita.entrevista.observaciones || "—" },
+                        { label: "Recomendación del visitador", value: visita.entrevista.recomendacion, alerta: visita.entrevista.recomendacion === "Rechazado" },
+                      ].map(({ label, value, alerta }) => (
+                        <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: alerta ? "#fff5f5" : "#f0f9ff", border: `1px solid ${alerta ? "#fecaca" : "#bae6fd"}` }}>
+                          <div style={{ fontSize: 11, color: alerta ? "#991b1b" : "#0369a1", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: alerta ? "#991b1b" : "#0f172a", marginTop: 3 }}>{value || "—"}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Fotos */}
+                    {(visita.fotos.clienteFuncionario || visita.fotos.fachada) && (
+                      <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        {visita.fotos.clienteFuncionario && (
+                          <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer">
+                            <img src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          </a>
+                        )}
+                        {visita.fotos.fachada && (
+                          <a href={visita.fotos.fachada} target="_blank" rel="noreferrer">
+                            <img src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* GPS */}
+                    {visita.ubicacion && (
+                      <div style={{ marginTop: 10, fontSize: 12, color: "#166534", fontWeight: 600 }}>
+                        📍 Ubicación registrada: {visita.ubicacion.lat.toFixed(5)}, {visita.ubicacion.lng.toFixed(5)}
+                        {" · "}
+                        <a href={`https://maps.google.com/?q=${visita.ubicacion.lat},${visita.ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>Ver en mapa</a>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 12, background: "#fff5f5", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 600 }}>
+                    ⚠️ Sin visita domiciliaria registrada — no se puede aprobar sin visita
+                  </div>
+                )}
+
+                {/* Acciones */}
+                {esAdmin && visita && (
+                  <div style={{ marginTop: 16 }}>
+                    {!esteRechazando ? (
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          disabled={!!procesando}
+                          onClick={async () => {
+                            setProcesando(cliente.id);
+                            await onAprobar(cliente.id, visita.id);
+                            setProcesando(null);
+                            setExpandido(null);
+                          }}
+                          style={{ background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
+                        >
+                          {procesando === cliente.id ? "Procesando..." : "✅ Aprobar cliente"}
+                        </button>
+                        <button
+                          onClick={() => setRechazando(cliente.id)}
+                          style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                        >
+                          ❌ Rechazar
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ background: "#fff5f5", border: "1px solid #fecaca", borderRadius: 12, padding: 14 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "#991b1b", marginBottom: 8 }}>Motivo del rechazo (obligatorio)</div>
+                        <textarea
+                          value={motivoRechazo}
+                          onChange={e => setMotivoRechazo(e.target.value)}
+                          placeholder="Describe el motivo del rechazo..."
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #fecaca", fontSize: 13, minHeight: 70, boxSizing: "border-box", resize: "vertical" }}
+                        />
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                          <button
+                            disabled={!motivoRechazo.trim() || !!procesando}
+                            onClick={async () => {
+                              if (!motivoRechazo.trim()) return;
+                              setProcesando(cliente.id);
+                              await onRechazar(cliente.id, visita.id, motivoRechazo);
+                              setProcesando(null);
+                              setRechazando(null);
+                              setMotivoRechazo("");
+                              setExpandido(null);
+                            }}
+                            style={{ background: "#991b1b", color: "white", border: "none", borderRadius: 10, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: !motivoRechazo.trim() ? "not-allowed" : "pointer", opacity: !motivoRechazo.trim() ? 0.5 : 1 }}
+                          >
+                            Confirmar rechazo
+                          </button>
+                          <button onClick={() => { setRechazando(null); setMotivoRechazo(""); }} style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!esAdmin && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#f8fafc", fontSize: 13, color: "#64748b" }}>
+                    Solo ADMIN o ADMIN_PRINCIPAL puede aprobar o rechazar clientes.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ClientesView({ initialFilter = "" }: { initialFilter?: string }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
@@ -540,9 +742,26 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
         </button>
       </div>
 
+      {modoVista === "pendientes" && (
+        <PanelAprobacion
+          clientes={clientes.filter(c => c.estado === "Pendiente evaluación")}
+          visitas={visitas}
+          role={role}
+          onAprobar={async (clienteId, visitaId) => {
+            await resolverVisita(visitaId, "Aprobado");
+            await cambiarEstadoCliente(clienteId, "Aprobado");
+          }}
+          onRechazar={async (clienteId, visitaId, motivo) => {
+            await resolverVisita(visitaId, "Rechazado");
+            await cambiarEstadoCliente(clienteId, "Rechazado");
+            if (motivo) await actualizarCliente(clienteId, { estado: "Rechazado" } as never);
+          }}
+        />
+      )}
+
       <style>{`@media (max-width: 768px) { .clientes-grid { display: block !important; } .clientes-detalle-desktop { display: none !important; } }`}</style>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
+      <div style={{ display: modoVista === "pendientes" ? "none" : "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
         <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
           <div style={{ marginBottom: 12 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por nombre, cédula o teléfono..." style={inputStyle} />

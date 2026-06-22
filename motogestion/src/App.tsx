@@ -14,10 +14,13 @@ import CajaView from "./pages/CajaView";
 import ReportesView from "./pages/ReportesView";
 import SocioDashboard from "./pages/SocioDashboard";
 import CampanaAlertas from "./components/CampanaAlertas";
+import ReferidosView from "./pages/ReferidosView";
+import CobroDiarioView from "./pages/CobroDiarioView";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
-  | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion";
+  | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
+  | "referidos" | "cobro_diario";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -94,9 +97,11 @@ const SIDE_GROUPS: SideGroup[] = [
     label: "FINANZAS",
     adminOnly: true,
     items: [
+      { key: "cobro_diario", label: "Cobro Diario", icon: "📅" },
       { key: "reportes", label: "Reportes", icon: "📈" },
       { key: "caja", label: "Caja Diaria", icon: "💰" },
       { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
+      { key: "referidos", label: "Referidos", icon: "🤝" },
     ],
   },
   {
@@ -112,7 +117,8 @@ const SIDE_GROUPS: SideGroup[] = [
 const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
   contratos: "Contratos", cobros: "Cartera & Cobros", caja: "Caja Diaria",
-  reportes: "Reportes", taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones", configuracion: "Configuración",
+  reportes: "Reportes", taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones",
+  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -251,7 +257,9 @@ function MasSheet({
 }) {
   const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
     { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
+    { key: "cobro_diario",  icon: "📅", label: "Cobro Diario",  desc: "Estado de pago del día",               adminOnly: true },
     { key: "reportes",      icon: "📈", label: "Reportes",      desc: "Recaudo, mora, flota y alertas",         adminOnly: true },
+    { key: "referidos",     icon: "🤝", label: "Referidos",     desc: "Programa de referidos y premios",        adminOnly: true },
     { key: "caja",          icon: "💰", label: "Caja Diaria",  desc: "Cierre de caja y confirmación de pagos" },
     { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
     { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
@@ -376,6 +384,8 @@ function Shell() {
       {ctx.view === "cobros"        && <CobrosView />}
       {ctx.view === "caja"          && <CajaView />}
       {ctx.view === "reportes"      && esAdmin && <ReportesView />}
+      {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView />}
+      {ctx.view === "referidos"     && esAdmin && <ReferidosView />}
       {ctx.view === "taller"        && <TallerView />}
       {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}

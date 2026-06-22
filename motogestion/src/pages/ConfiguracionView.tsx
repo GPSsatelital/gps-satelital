@@ -76,7 +76,25 @@ export default function ConfiguracionView() {
   const [guardandoNombre, setGuardandoNombre] = useState(false);
   const [msgNombre, setMsgNombre] = useState<string | null>(null);
 
+  const [cambiarPass, setCambiarPass] = useState(false);
+  const [passNueva, setPassNueva] = useState("");
+  const [passConfirm, setPassConfirm] = useState("");
+  const [guardandoPass, setGuardandoPass] = useState(false);
+  const [msgPass, setMsgPass] = useState<{ ok: boolean; text: string } | null>(null);
+
   const [expandSugerencias, setExpandSugerencias] = useState(false);
+
+  async function handleCambiarPassword() {
+    if (!passNueva || passNueva.length < 8) { setMsgPass({ ok: false, text: "La contraseña debe tener al menos 8 caracteres." }); return; }
+    if (passNueva !== passConfirm) { setMsgPass({ ok: false, text: "Las contraseñas no coinciden." }); return; }
+    setGuardandoPass(true);
+    const { error } = await supabase.auth.updateUser({ password: passNueva });
+    setGuardandoPass(false);
+    if (error) { setMsgPass({ ok: false, text: "Error al cambiar contraseña: " + error.message }); return; }
+    setMsgPass({ ok: true, text: "Contraseña actualizada correctamente." });
+    setPassNueva(""); setPassConfirm("");
+    setTimeout(() => { setCambiarPass(false); setMsgPass(null); }, 3000);
+  }
 
   async function handleGuardarNombre() {
     if (!nuevoNombre.trim() || !profile) return;
@@ -136,6 +154,40 @@ export default function ConfiguracionView() {
                   {guardandoNombre ? "Guardando..." : "Guardar nombre"}
                 </button>
                 <button onClick={() => { setEditandoNombre(false); setMsgNombre(null); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Cambiar contraseña */}
+        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginTop: 4 }}>
+          {!cambiarPass ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={labelCol}>Contraseña</div>
+                <div style={{ fontSize: 12, color: "#94a3b8" }}>••••••••</div>
+              </div>
+              <button onClick={() => { setCambiarPass(true); setMsgPass(null); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                🔑 Cambiar
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Nueva contraseña</div>
+              <input type="password" style={inputStyle} value={passNueva} onChange={e => setPassNueva(e.target.value)} placeholder="Mínimo 8 caracteres" />
+              <input type="password" style={inputStyle} value={passConfirm} onChange={e => setPassConfirm(e.target.value)} placeholder="Confirmar nueva contraseña" />
+              {msgPass && (
+                <div style={{ fontSize: 13, fontWeight: 600, color: msgPass.ok ? "#16a34a" : "#dc2626", padding: "8px 12px", borderRadius: 10, background: msgPass.ok ? "#f0fdf4" : "#fef2f2" }}>
+                  {msgPass.text}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={handleCambiarPassword} disabled={guardandoPass} style={{ ...primaryBtn, flex: 1 }}>
+                  {guardandoPass ? "Guardando..." : "Actualizar contraseña"}
+                </button>
+                <button onClick={() => { setCambiarPass(false); setMsgPass(null); setPassNueva(""); setPassConfirm(""); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
                   Cancelar
                 </button>
               </div>

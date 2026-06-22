@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
+import MotoDetalleSheet from "../components/MotoDetalleSheet";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -57,6 +58,7 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
+  const [motoDetalleId, setMotoDetalleId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filtroEstado, setFiltroEstado] = useState(initialFilter);
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
@@ -279,11 +281,19 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
 
           <div style={{ overflowX: "auto" }}>
             <div style={{ display: "grid", gap: 8 }}>
-              {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos en este filtro.</div>}
+              {filtered.length === 0 && motos.length === 0 && (
+                <div style={{ textAlign: "center", padding: "40px 24px" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🏍️</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin motos en la flota</div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Agrega la primera moto</div>
+                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nueva moto</button>
+                </div>
+              )}
+              {filtered.length === 0 && motos.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos en este filtro.</div>}
               {filtered.map((moto) => (
                 <button
                   key={moto.id}
-                  onClick={() => setSelectedId(moto.id)}
+                  onClick={() => { setSelectedId(moto.id); setMotoDetalleId(moto.id); }}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 12,
                     padding: "12px 14px", borderRadius: 12, border: "none",
@@ -543,6 +553,8 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
           </div>
         </div>
       )}
+
+      <MotoDetalleSheet motoId={motoDetalleId} onClose={() => setMotoDetalleId(null)} />
 
       {/* ── Modal Salida de Fiscalía ── */}
       {openLiberarFiscalia && selectedMoto && (

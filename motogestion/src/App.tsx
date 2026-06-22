@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import BusquedaGlobal from "./components/BusquedaGlobal";
+import { useClientes } from "./hooks/useClientes";
+import { useMotos } from "./hooks/useMotos";
+import { useContratos } from "./hooks/useContratos";
 import Login from "./pages/Login";
 import MotosView from "./pages/MotosView";
 import ClientesView from "./pages/ClientesView";
@@ -327,10 +331,14 @@ function Shell() {
   const { session, profile, loading, signOut } = useAuth();
   const isMobile = useIsMobile();
 
+  const { clientes } = useClientes();
+  const { motos } = useMotos();
+  const { contratos } = useContratos();
   const [ctx, setCtx] = useState<NavContext>({ view: "dashboard", filter: "" });
   const [collapsed, setCollapsed] = useState(false);
   const [masOpen, setMasOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [busquedaOpen, setBusquedaOpen] = useState(false);
 
   const roleActual = profile?.role ?? "SECRETARIA";
   const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
@@ -414,6 +422,7 @@ function Shell() {
             <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{currentTitle}</div>
             {filterLabel && <div style={{ fontSize: 11, color: "#0284c7", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
           </div>
+          <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
           <CampanaAlertas />
           <div style={{ position: "relative" }}>
             <button
@@ -498,6 +507,7 @@ function Shell() {
         </nav>
 
         {masOpen && <MasSheet ctx={ctx} navigate={navigate} esAdmin={esAdmin} onClose={() => setMasOpen(false)} />}
+        {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motos} contratos={contratos} />}
       </div>
     );
   }
@@ -524,6 +534,7 @@ function Shell() {
             <div style={{ fontSize: 13, color: "#64748b" }}>
               {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
             </div>
+            <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
             <CampanaAlertas />
             <div style={{ position: "relative" }}>
               <button
@@ -562,6 +573,7 @@ function Shell() {
           {contentView}
         </main>
       </div>
+      {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motos} contratos={contratos} />}
     </div>
   );
 }

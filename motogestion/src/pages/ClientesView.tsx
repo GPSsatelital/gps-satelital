@@ -216,7 +216,6 @@ const FILTROS_CLIENTE = [
   { label: "Activos", filter: "Activo" },
   { label: "Mora / riesgo", filter: "mora" },
   { label: "Rechazados", filter: "Rechazado" },
-  { label: "Lista negra", filter: "lista_negra" },
 ];
 
 function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
@@ -445,7 +444,6 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
   const [excepcionPlazo, setExcepcionPlazo] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [cedulaListaNegra, setCedulaListaNegra] = useState<{ motivo: string | null; reversible: boolean } | null>(null);
 
   const [form, setForm] = useState<NuevoCliente>(emptyForm());
   const [editForm, setEditForm] = useState<(NuevoCliente & { id: string }) | null>(null);
@@ -469,7 +467,6 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
   const filtered = useMemo(() => {
     let list = baseClientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "mora") list = list.filter(c => c.estado === "En mora" || c.estado === "En riesgo");
-    else if (filtroEstado === "lista_negra") list = list.filter(c => c.lista_negra === true);
     else if (filtroEstado) list = list.filter(c => c.estado === filtroEstado);
     return list;
   }, [baseClientes, query, filtroEstado]);
@@ -675,34 +672,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Datos personales</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.nombre} onChange={(e) => update({ nombre: e.target.value.toUpperCase() })} /></div>
-            <div>
-              <div style={labelStyle}>Cédula</div>
-              <input
-                style={inputStyle}
-                value={data.cedula}
-                onChange={(e) => { update({ cedula: e.target.value }); setCedulaListaNegra(null); }}
-                onBlur={(e) => {
-                  const cedula = e.target.value.trim();
-                  if (!cedula) return;
-                  const encontrado = clientes.find(c => c.cedula.trim() === cedula && c.lista_negra);
-                  if (encontrado) {
-                    setCedulaListaNegra({ motivo: encontrado.motivo_lista_negra ?? null, reversible: encontrado.lista_negra_reversible });
-                  } else {
-                    setCedulaListaNegra(null);
-                  }
-                }}
-              />
-              {cedulaListaNegra && (
-                <div style={{ marginTop: 8, padding: "10px 14px", borderRadius: 12, background: "#fee2e2", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 600 }}>
-                  ⛔ Esta cédula está en lista negra. Motivo: {cedulaListaNegra.motivo || "Sin motivo registrado"}. {cedulaListaNegra.reversible ? "Puede ser reversible — consultar con admin." : "No puede ser registrado."}
-                </div>
-              )}
-              {cedulaListaNegra && cedulaListaNegra.reversible && (
-                <div style={{ marginTop: 6, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
-                  ⚠️ Caso reversible — el admin principal puede autorizar el registro.
-                </div>
-              )}
-            </div>
+            <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
             <div><div style={labelStyle}>Dirección</div><input style={inputStyle} value={data.direccion} onChange={(e) => update({ direccion: e.target.value })} /></div>
             <div><div style={labelStyle}>Fuente de llegada</div><input style={inputStyle} value={data.fuente_llegada ?? ""} onChange={(e) => update({ fuente_llegada: e.target.value })} /></div>
           </div>
@@ -818,7 +788,15 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
           </div>
 
           <div style={{ display: "grid", gap: 8, maxHeight: "70vh", overflowY: "auto" }}>
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+            {filtered.length === 0 && clientes.length === 0 && (
+              <div style={{ textAlign: "center", padding: "40px 24px" }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Registra el primer cliente</div>
+                <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+              </div>
+            )}
+            {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
             {filtered.map((cliente) => {
               const riesgo = modoVista === "pendientes" ? calcularSemaforo(cliente, visitas) : null;
               const activo = selectedId === cliente.id;
@@ -837,32 +815,10 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.telefono}</div>
-                    {cliente.lista_negra && (
-                      <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, background: "#1f2937", color: "#f9fafb", borderRadius: 999, padding: "2px 8px" }}>⛔ Lista negra</span>
-                        {cliente.lista_negra_reversible && (
-                          <span style={{ fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "2px 8px" }}>Reversible</span>
-                        )}
-                        {cliente.motivo_lista_negra && (
-                          <span style={{ fontSize: 11, color: "#991b1b" }}>{cliente.motivo_lista_negra}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <ClienteBadge estado={estadoVisual(cliente)} />
                     {riesgo && <span style={{ fontSize: 11 }}>{riesgo.icono}</span>}
-                    {cliente.lista_negra && role === "ADMIN_PRINCIPAL" && (
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await actualizarCliente(cliente.id, { lista_negra: false, motivo_lista_negra: null } as never);
-                        }}
-                        style={{ background: "#dcfce7", color: "#166534", border: "none", borderRadius: 999, padding: "5px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-                      >
-                        Rehabilitar
-                      </button>
-                    )}
                     {cliente.estado === "Listo para visita" && (
                       <button
                         onClick={(e) => {
@@ -931,12 +887,8 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
             {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })))}
             {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => { setOpen(false); setCedulaListaNegra(null); }} style={secondaryBtn}>Cancelar</button>
-              <button
-                onClick={handleGuardar}
-                disabled={guardando || (cedulaListaNegra !== null && !cedulaListaNegra.reversible)}
-                style={{ ...primaryBtn, opacity: (cedulaListaNegra !== null && !cedulaListaNegra.reversible) ? 0.4 : 1, cursor: (cedulaListaNegra !== null && !cedulaListaNegra.reversible) ? "not-allowed" : "pointer" }}
-              >{guardando ? "Guardando..." : "Guardar cliente"}</button>
+              <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={handleGuardar} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Guardar cliente"}</button>
             </div>
           </div>
         </div>

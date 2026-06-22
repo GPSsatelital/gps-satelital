@@ -253,7 +253,15 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
       </div>
 
       <div style={{ marginTop: 20, display: "grid", gap: 12 }}>
-        {contratosFiltrados.length === 0 && (
+        {contratosFiltrados.length === 0 && contratos.length === 0 && (
+          <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin contratos activos</div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Crea el primer contrato</div>
+            {puedeCrear && <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo contrato</button>}
+          </div>
+        )}
+        {contratosFiltrados.length === 0 && contratos.length > 0 && (
           <div style={card}><div style={{ color: "#64748b" }}>No hay contratos en este estado.</div></div>
         )}
 

@@ -76,6 +76,18 @@ const GRUPO_COLORS: Record<string, string> = {
   PRADERA: "#f59e0b",
 };
 
+function exportarCSV(filas: Array<{ fecha: string; cliente: string; placa: string; metodo: string; tipo: string; valor: number }>, nombreArchivo: string) {
+  const encabezado = "Fecha,Cliente,Placa,Método,Tipo,Valor\n";
+  const contenido = filas.map(f =>
+    `${f.fecha},${f.cliente},${f.placa},${f.metodo},${f.tipo},${f.valor}`
+  ).join("\n");
+  const blob = new Blob([encabezado + contenido], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombreArchivo; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ReportesView() {
   const [rango, setRango] = useState<Rango>("mes");
   const { pagos } = usePagos();
@@ -200,12 +212,33 @@ export default function ReportesView() {
           <h2 style={{ fontSize: 22, margin: 0 }}>Reportes</h2>
           <p style={{ marginTop: 6, color: "#64748b" }}>Resumen operativo y financiero en tiempo real.</p>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           {RANGOS.map(r => (
             <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: rango === r.key ? 700 : 500, background: rango === r.key ? "#0284c7" : "#f1f5f9", color: rango === r.key ? "white" : "#64748b" }}>
               {r.label}
             </button>
           ))}
+          <button
+            onClick={() => {
+              const filas = pagosRango.map(p => {
+                const contrato = contratos.find(c => c.id === p.contrato_id);
+                const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : undefined;
+                const moto = contrato?.moto_id ? motos.find(m => m.id === contrato.moto_id) : undefined;
+                return {
+                  fecha: p.fecha,
+                  cliente: (cliente?.nombre ?? "—").replace(/,/g, " "),
+                  placa: moto?.placa ?? "—",
+                  metodo: p.metodo,
+                  tipo: p.tipo_registro,
+                  valor: p.valor,
+                };
+              });
+              exportarCSV(filas, `pagos-${desde}-${hasta}.csv`);
+            }}
+            style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            ⬇️ Exportar CSV
+          </button>
         </div>
       </div>
 

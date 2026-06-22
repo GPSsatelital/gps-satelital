@@ -218,6 +218,12 @@ export default function DashboardView({ onNavigate }: {
           label="Alertas" value={stats.alertasTotal}
           sub={stats.alertasTotal === 0 ? "Todo al día" : "requieren atención"}
           color={stats.alertasTotal > 0 ? "#ef4444" : "#10b981"}
+          onClick={() => onNavigate("alertas")}
+        />
+        <KpiCard
+          icon="🚨" label="Inmovilizaciones" value={stats.clientesMora}
+          sub="motos a recuperar" color="#991b1b"
+          onClick={() => onNavigate("cobro_diario")}
         />
       </div>
 

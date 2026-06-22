@@ -18,6 +18,7 @@ import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
+import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -295,6 +296,7 @@ export default function CobrosView() {
 
   // Panel state
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
+  const [clienteSheetId, setClienteSheetId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
   // Payment form state
@@ -674,7 +676,10 @@ export default function CobrosView() {
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase" }}>
+                    <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", cursor: clienteDetalle ? "pointer" : "default", color: clienteDetalle ? "#0284c7" : "#0f172a" }}
+                      onClick={() => clienteDetalle && setClienteSheetId(clienteDetalle.id)}
+                      title={clienteDetalle ? "Ver ficha completa del cliente" : undefined}
+                    >
                       {motoDetalle ? `${motoDetalle.placa} · ` : ""}
                       {clienteDetalle?.nombre || "Sin cliente"}
                     </div>
@@ -1334,6 +1339,10 @@ export default function CobrosView() {
           })}
         </div>
       </div>
+
+      {clienteSheetId && (
+        <ClienteDetalleSheet clienteId={clienteSheetId} onClose={() => setClienteSheetId(null)} />
+      )}
     </div>
   );
 }

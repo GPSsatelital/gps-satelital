@@ -83,9 +83,9 @@ export default function DashboardView({ onNavigate }: {
 
     const pagosPendientes = pagos.filter(p => p.estado === "Pendiente").length;
 
-    const hace7dias = new Date(Date.now() - 7 * 86400000).toISOString();
+    const hace7dias = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const recaudoSemana = pagos
-      .filter(p => p.estado === "Confirmado" && p.created_at > hace7dias)
+      .filter(p => p.estado === "Confirmado" && p.fecha >= hace7dias)
       .reduce((acc, p) => acc + p.valor, 0);
 
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;

@@ -25,7 +25,6 @@ export type Moto = {
   // campos de retención
   retencion_fecha: string | null;
   retencion_numero_caso: string | null;
-  retencion_fecha_salida: string | null;
   retencion_detalle: string | null;
   created_at: string;
   updated_at: string;
@@ -92,7 +91,6 @@ export function useMotos() {
       estado: "Disponible",
       retencion_fecha: null,
       retencion_numero_caso: null,
-      retencion_fecha_salida: null,
       retencion_detalle: null,
     }).eq("id", id);
     return { error: error?.message ?? null };

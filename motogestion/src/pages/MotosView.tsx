@@ -230,9 +230,9 @@ export default function MotosView() {
     }
 
     setForm({
-      placa: "", grupo: "CLUB", marca: "", modelo: "", numero_motor: "", numero_chasis: "",
+      placa: "", grupo: "RASTREADOR" as const, marca: "", modelo: "", numero_motor: "", numero_chasis: "",
       lugar_matricula: "", cilindraje: "", fecha_seguro: "", fecha_tecnomecanica: "",
-      propietario: "", numero_serie: "", estado: "Disponible", observaciones: "",
+      propietario: "", numero_serie: "", estado: "Disponible" as const, observaciones: "", condicion_ingreso: "nueva" as const,
     });
     setOpen(false);
   }

@@ -548,7 +548,7 @@ export default function CobrosView() {
                       {clienteDetalle?.nombre || "Sin cliente"}
                     </div>
                     <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-                      Contrato {contratoDetalle.tipo_contrato ?? "semanal"} · Paga {contratoDetalle.dia_pago}
+                      Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {contratoDetalle.dia_pago}
                     </div>
                   </div>
                   <EstadoBadge estado={contratoDetalle.estadoCartera} />

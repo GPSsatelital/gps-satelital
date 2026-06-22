@@ -9,7 +9,7 @@ import {
   type TipoRegistroPago,
 } from "../hooks/usePagos";
 import { useContratos, calcularEquivalenciasDiarias } from "../hooks/useContratos";
-import { useClientes } from "../hooks/useClientes";
+import { useClientes, type Cliente } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -184,6 +184,99 @@ function calcularEstadoCartera(
   return "mora";
 }
 
+// ─── WhatsApp helpers ─────────────────────────────────────────────────────────
+const TIPO_ICON_GESTION: Record<string, string> = {
+  mensaje_recordatorio: "📩", llamada: "📞", whatsapp: "💬", sirena: "🔊",
+  visita: "🏠", plazo_extra: "⏳", cobro_campo: "🛵", recoleccion: "🔒", otro: "💬",
+};
+
+function abrirWhatsApp(telefono: string, mensaje: string) {
+  const num = telefono.replace(/\D/g, "");
+  const full = num.startsWith("57") ? num : `57${num}`;
+  window.open(`https://wa.me/${full}?text=${encodeURIComponent(mensaje)}`, "_blank");
+}
+
+function BotonesWhatsApp({ cliente, contrato, estadoCartera }: {
+  cliente: Cliente;
+  contrato: { dia_pago: string; valor_semanal: number; forma_pago?: string; diasSinPago?: number };
+  estadoCartera: string;
+}) {
+  const tel = cliente.whatsapp || cliente.telefono || "";
+  if (!tel) return null;
+
+  const nombre = cliente.nombre.split(" ")[0];
+  const valor = `$ ${Math.round(contrato.valor_semanal).toLocaleString("es-CO")}`;
+  const dia = contrato.dia_pago;
+
+  const mensajes = {
+    recordatorio: `Hola ${nombre}, le recordamos que su pago de ${valor} vence el día de hoy (${dia}). Por favor acérquese o realice su transferencia. Gracias 🙏`,
+    gabela: `Hola ${nombre}, su pago de ${valor} ya venció. Hoy es su día de gabela, por favor realice el pago lo antes posible para evitar inconvenientes con su moto. GPS Satelital 🏍️`,
+    mora: `Hola ${nombre}, su moto lleva ${contrato.diasSinPago ?? "varios"} días sin pago. Es necesario que se comunique con nosotros urgentemente o realice el pago de ${valor} de inmediato. GPS Satelital ⚠️`,
+  };
+
+  const btns: { label: string; msg: string; color: string; bg: string }[] = [];
+  if (estadoCartera === "al-dia") btns.push({ label: "Recordatorio", msg: mensajes.recordatorio, color: "#166534", bg: "#dcfce7" });
+  if (estadoCartera === "gabela") btns.push({ label: "Gabela", msg: mensajes.gabela, color: "#92400e", bg: "#fef3c7" });
+  if (estadoCartera === "mora") btns.push({ label: "Mora", msg: mensajes.mora, color: "#991b1b", bg: "#fee2e2" });
+  // Siempre mostrar recordatorio como opción adicional
+  if (estadoCartera !== "al-dia") btns.push({ label: "Recordatorio", msg: mensajes.recordatorio, color: "#0369a1", bg: "#e0f2fe" });
+
+  return (
+    <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {btns.map(b => (
+        <button key={b.label} onClick={() => abrirWhatsApp(tel, b.msg)}
+          style={{ padding: "7px 14px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: b.bg, color: b.color, display: "flex", alignItems: "center", gap: 5 }}>
+          💬 WA {b.label}
+        </button>
+      ))}
+      <a href={`tel:${tel}`} style={{ padding: "7px 14px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#334155", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}>
+        📞 Llamar
+      </a>
+    </div>
+  );
+}
+
+// ─── Historial gestiones ──────────────────────────────────────────────────────
+function HistorialGestiones({ gestiones, formatDate }: {
+  gestiones: Array<{ id: string; tipo: string; resultado?: string | null; fecha: string; plazo_extra_motivo?: string | null; plazo_extra_fecha_limite?: string | null }>;
+  formatDate: (d: string) => string;
+}) {
+  const [verTodo, setVerTodo] = useState(false);
+  if (gestiones.length === 0) return null;
+  const visibles = verTodo ? gestiones : gestiones.slice(0, 5);
+
+  return (
+    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Historial de gestiones ({gestiones.length})</div>
+        {gestiones.length > 5 && (
+          <button onClick={() => setVerTodo(v => !v)} style={{ background: "none", border: "none", fontSize: 12, color: "#0284c7", cursor: "pointer", fontWeight: 600 }}>
+            {verTodo ? "Ver menos" : `Ver todas (${gestiones.length})`}
+          </button>
+        )}
+      </div>
+      {visibles.map(g => (
+        <div key={g.id} style={{
+          padding: "8px 12px", borderRadius: 10, fontSize: 13,
+          background: g.tipo === "recoleccion" ? "#fee2e2" : g.tipo === "plazo_extra" ? "#fef3c7" : "#f8fafc",
+          border: `1px solid ${g.tipo === "recoleccion" ? "#fecaca" : g.tipo === "plazo_extra" ? "#fde68a" : "#e2e8f0"}`,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700 }}>{TIPO_ICON_GESTION[g.tipo] ?? "💬"} {g.tipo.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</span>
+            <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatDate(g.fecha)}</span>
+          </div>
+          {g.resultado && <div style={{ color: "#64748b", marginTop: 2 }}>{g.resultado}</div>}
+          {g.plazo_extra_motivo && (
+            <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>
+              Motivo: {g.plazo_extra_motivo} · Límite: {g.plazo_extra_fecha_limite ? formatDate(g.plazo_extra_fecha_limite) : "—"}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CobrosView() {
   const { profile } = useAuth();
@@ -334,9 +427,7 @@ export default function CobrosView() {
   const puedeRegistrarEfectivo = esSecretaria || profile?.role === "ADMIN_PRINCIPAL";
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
-  const gestionesContrato = contratoSeleccionadoId
-    ? gestiones.filter(g => g.contrato_id === contratoSeleccionadoId).slice(0, 5)
-    : [];
+
 
   // ── Desglose en tiempo real ───────────────────────────────────────────────
   const montoIngresado = Number(valor) || 0;
@@ -586,6 +677,24 @@ export default function CobrosView() {
                   </div>
                   <EstadoBadge estado={contratoDetalle.estadoCartera} />
                 </div>
+
+                {/* Botones WhatsApp rápidos */}
+                {clienteDetalle && (clienteDetalle.whatsapp || clienteDetalle.telefono) && (
+                  <BotonesWhatsApp
+                    cliente={clienteDetalle}
+                    contrato={contratoDetalle}
+                    estadoCartera={contratoDetalle.estadoCartera}
+                  />
+                )}
+
+                {/* Alerta base completada */}
+                {(contratoDetalle.tipo_ruta === "diario" || contratoDetalle.forma_pago === "Diario") &&
+                  !contratoDetalle.base_completada &&
+                  (contratoDetalle.ahorro_acumulado ?? 0) >= 510000 && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534" }}>
+                    ✅ Base completada — $ {Math.round(contratoDetalle.ahorro_acumulado ?? 0).toLocaleString("es-CO")} ahorrados. Gestionar cambio de contrato.
+                  </div>
+                )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
                   <InfoBox
@@ -1075,34 +1184,7 @@ export default function CobrosView() {
                     Registrar gestión
                   </button>
 
-                  {gestionesContrato.length > 0 && (
-                    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Últimas gestiones:</div>
-                      {gestionesContrato.map(g => (
-                        <div
-                          key={g.id}
-                          style={{
-                            padding: "8px 12px",
-                            background: g.tipo === "recoleccion" ? "#fee2e2" : g.tipo === "plazo_extra" ? "#fef3c7" : "#f8fafc",
-                            borderRadius: 10,
-                            border: `1px solid ${g.tipo === "recoleccion" ? "#fecaca" : g.tipo === "plazo_extra" ? "#fde68a" : "#e2e8f0"}`,
-                            fontSize: 13,
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontWeight: 700 }}>{g.tipo.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</span>
-                            <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatDate(g.fecha)}</span>
-                          </div>
-                          {g.resultado && <div style={{ color: "#64748b", marginTop: 2 }}>{g.resultado}</div>}
-                          {g.plazo_extra_motivo && (
-                            <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>
-                              Motivo: {g.plazo_extra_motivo} · Límite: {g.plazo_extra_fecha_limite ? formatDate(g.plazo_extra_fecha_limite) : "—"}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <HistorialGestiones gestiones={gestiones.filter(g => g.contrato_id === contratoSeleccionadoId)} formatDate={formatDate} />
                 </div>
               </div>
             </>

@@ -13,6 +13,7 @@ import ConfiguracionView from "./pages/ConfiguracionView";
 import CajaView from "./pages/CajaView";
 import ReportesView from "./pages/ReportesView";
 import SocioDashboard from "./pages/SocioDashboard";
+import CampanaAlertas from "./components/CampanaAlertas";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
@@ -403,6 +404,7 @@ function Shell() {
             <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{currentTitle}</div>
             {filterLabel && <div style={{ fontSize: 11, color: "#0284c7", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
           </div>
+          <CampanaAlertas />
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setUserMenuOpen(p => !p)}
@@ -512,6 +514,7 @@ function Shell() {
             <div style={{ fontSize: 13, color: "#64748b" }}>
               {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
             </div>
+            <CampanaAlertas />
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setUserMenuOpen(p => !p)}

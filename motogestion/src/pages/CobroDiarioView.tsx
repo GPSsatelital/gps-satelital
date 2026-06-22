@@ -25,12 +25,13 @@ type Fila = {
   pagadoPeriodo: number;
   diasSinPago: number;
   estado: "pagado" | "parcial" | "pendiente" | "mora" | "gabela";
+  pagaHoy: boolean;
 };
 
 export default function CobroDiarioView() {
   const hoy = new Date().toISOString().slice(0, 10);
   const [fecha, setFecha] = useState(hoy);
-  const [filtro, setFiltro] = useState<"todos" | "pendientes" | "pagados" | "mora">("todos");
+  const [filtro, setFiltro] = useState<"todos" | "pendientes" | "pagados" | "mora" | "paga_hoy">("todos");
   const [busqueda, setBusqueda] = useState("");
   const [pagarContratoId, setPagarContratoId] = useState<string | null>(null);
   const [pagarValor, setPagarValor] = useState<number>(0);
@@ -80,6 +81,15 @@ export default function CobroDiarioView() {
       else if (diasSinPago > 2) estado = "mora";
       else if (diasSinPago === 2) estado = "gabela";
 
+      // ¿Es el día de pago programado para este contrato?
+      const diaSemFecha = new Date(fecha + "T00:00:00").getDay(); // 0=Dom, 1=Lun, 3=Mie
+      const esLunes = diaSemFecha === 1;
+      const esMiercoles = diaSemFecha === 3;
+      const pagaHoy = c.forma_pago !== "Diario" && (
+        (c.dia_pago === "Lunes" && esLunes) ||
+        (c.dia_pago === "Miércoles" && esMiercoles)
+      );
+
       return {
         contratoId: c.id,
         clienteNombre: cliente?.nombre ?? "Sin nombre",
@@ -92,6 +102,7 @@ export default function CobroDiarioView() {
         pagadoPeriodo,
         diasSinPago,
         estado,
+        pagaHoy,
       };
     });
   }, [contratos, clientes, motos, pagos, fecha, inicioPeriodo, esDomingo]);
@@ -103,6 +114,7 @@ export default function CobroDiarioView() {
     pendientes: filas.filter(f => f.estado === "pendiente").length,
     mora: filas.filter(f => f.estado === "mora").length,
     gabela: filas.filter(f => f.estado === "gabela").length,
+    pagaHoy: filas.filter(f => f.pagaHoy).length,
     recaudado: filas.reduce((a, f) => a + f.pagadoHoy, 0),
     esperado: filas.filter(f => f.estado !== "mora").reduce((a, f) => a + f.cuota, 0),
   }), [filas]);
@@ -112,6 +124,7 @@ export default function CobroDiarioView() {
     if (filtro === "pendientes") lista = lista.filter(f => f.estado === "pendiente" || f.estado === "parcial" || f.estado === "gabela");
     else if (filtro === "pagados") lista = lista.filter(f => f.estado === "pagado");
     else if (filtro === "mora") lista = lista.filter(f => f.estado === "mora");
+    else if (filtro === "paga_hoy") lista = lista.filter(f => f.pagaHoy);
     if (busqueda.trim()) {
       const q = busqueda.toLowerCase();
       lista = lista.filter(f => f.clienteNombre.toLowerCase().includes(q) || f.placa.toLowerCase().includes(q));
@@ -165,6 +178,7 @@ export default function CobroDiarioView() {
           { label: "Pendientes", value: String(resumen.pendientes + resumen.parcial), color: "#92400e" },
           { label: "Gabela", value: String(resumen.gabela), color: "#854d0e" },
           { label: "Mora", value: String(resumen.mora), color: resumen.mora > 0 ? "#991b1b" : "#94a3b8" },
+          { label: "Vence hoy", value: String(resumen.pagaHoy), color: resumen.pagaHoy > 0 ? "#0284c7" : "#94a3b8", bg: resumen.pagaHoy > 0 ? "#e0f2fe" : undefined },
         ].map(k => (
           <div key={k.label} style={{ ...card, background: k.bg ?? "white", padding: "14px 16px" }}>
             <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>{k.label}</div>
@@ -191,6 +205,7 @@ export default function CobroDiarioView() {
           { key: "pendientes", label: `Sin pagar (${resumen.pendientes + resumen.parcial + resumen.gabela})` },
           { key: "mora", label: `Mora (${resumen.mora})` },
           { key: "pagados", label: `Pagaron (${resumen.pagados})` },
+          { key: "paga_hoy", label: `Vence hoy (${resumen.pagaHoy})` },
         ] as const).map(f => (
           <button key={f.key} onClick={() => setFiltro(f.key)} style={{ padding: "6px 14px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: filtro === f.key ? 700 : 500, background: filtro === f.key ? "#0284c7" : "#f1f5f9", color: filtro === f.key ? "white" : "#64748b" }}>
             {f.label}
@@ -214,6 +229,11 @@ export default function CobroDiarioView() {
                     {f.placa !== "—" ? `${f.placa} · ` : ""}{f.clienteNombre}
                   </div>
                   <span style={{ padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, flexShrink: 0 }}>{s.label}</span>
+                  {f.pagaHoy && f.estado !== "pagado" && (
+                    <span style={{ padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#0284c7", color: "white", flexShrink: 0, animation: "pulse 1.5s infinite" }}>
+                      🔔 PAGA HOY
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
                   {f.formaPago} · Paga {f.diaPago}

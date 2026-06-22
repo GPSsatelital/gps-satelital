@@ -127,6 +127,12 @@ export default function InmovilizacionesView() {
         ))}
       </div>
 
+      {/* Aviso GPS */}
+      <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 16 }}>📡</span>
+        <span><strong>GPS no conectado.</strong> Los botones de sirena y apagado remoto estarán disponibles cuando se integre la plataforma GPS. Solo usar con vehículo <strong>detenido</strong>, máx. 1 hora apagado.</span>
+      </div>
+
       {/* Búsqueda */}
       <div style={{ marginBottom: 14 }}>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar cliente o placa..."
@@ -195,6 +201,12 @@ export default function InmovilizacionesView() {
                   )}
                   <button onClick={() => { setGestionContratoId(f.contratoId); setGestionClienteNombre(f.clienteNombre); }} style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>
                     📋 Gestión
+                  </button>
+                  <button disabled title="Requiere integración GPS — solo con vehículo detenido, máx. 10s" style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.6 }}>
+                    📡 Sirena
+                  </button>
+                  <button disabled title="Requiere integración GPS — solo con vehículo detenido, máx. 1 hora" style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.6 }}>
+                    🔴 Apagar
                   </button>
                 </div>
               </div>

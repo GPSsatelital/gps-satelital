@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useClientes, type Cliente, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
 import { useContratos, type Contrato } from "../hooks/useContratos";
 import { useMotos, type Moto } from "../hooks/useMotos";
 import { usePagos, type Pago } from "../hooks/usePagos";
 import { useVisitas } from "../hooks/useVisitas";
+import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+
+type GestionRow = { id: string; tipo: string; resultado: string | null; fecha: string; notas: string | null };
 
 interface Props {
   clienteId: string | null;
@@ -173,6 +176,8 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
   const [motivoListaNegra, setMotivoListaNegra] = useState("");
   const [reversibleListaNegra, setReversibleListaNegra] = useState(false);
   const [guardandoListaNegra, setGuardandoListaNegra] = useState(false);
+  const [gestiones, setGestiones] = useState<GestionRow[]>([]);
+  const { convenios } = useConvenios();
 
   const cliente: Cliente | null = useMemo(
     () => clientes.find(c => c.id === clienteId) ?? null,
@@ -183,6 +188,23 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
     () => contratos.find(c => c.cliente_id === clienteId && c.estado === "Activo") ?? null,
     [contratos, clienteId],
   );
+
+  const conveniosCliente = useMemo(
+    () => contratoActivo
+      ? convenios.filter(cv => cv.contrato_id === contratoActivo.id)
+      : [],
+    [convenios, contratoActivo],
+  );
+
+  useEffect(() => {
+    if (!contratoActivo?.id) return;
+    supabase.from("gestiones_cobro")
+      .select("id,tipo,resultado,fecha,notas")
+      .eq("contrato_id", contratoActivo.id)
+      .order("fecha", { ascending: false })
+      .limit(10)
+      .then(({ data }) => setGestiones(data ?? []));
+  }, [contratoActivo?.id]);
 
   const moto = useMemo(
     () => (contratoActivo?.moto_id ? motos.find(m => m.id === contratoActivo.moto_id) ?? null : null),
@@ -449,6 +471,44 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
                 🧾 Estado de cuenta
               </button>
             </div>
+          )}
+
+          {/* Gestiones de cobro */}
+          {gestiones.length > 0 && (
+            <>
+              <SeccionTitulo titulo={`Gestiones de cobro (${gestiones.length})`} />
+              <div style={{ display: "grid", gap: 6 }}>
+                {gestiones.map(g => (
+                  <div key={g.id} style={{ padding: "8px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 700, color: "#334155", textTransform: "capitalize" }}>{g.tipo.replace(/_/g, " ")}</span>
+                      <span style={{ color: "#94a3b8", fontSize: 11 }}>{new Date(g.fecha + "T00:00:00").toLocaleDateString("es-CO")}</span>
+                    </div>
+                    {g.resultado && <div style={{ color: "#64748b", marginTop: 2 }}>{g.resultado}</div>}
+                    {g.notas && <div style={{ color: "#94a3b8", fontStyle: "italic", marginTop: 2 }}>{g.notas}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Convenios activos */}
+          {conveniosCliente.length > 0 && (
+            <>
+              <SeccionTitulo titulo={`Convenios (${conveniosCliente.length}/3)`} />
+              <div style={{ display: "grid", gap: 6 }}>
+                {conveniosCliente.map(cv => (
+                  <div key={cv.id} style={{ padding: "10px 12px", borderRadius: 10, background: cv.estado === "activo" ? "#f0fdf4" : "#f8fafc", border: `1px solid ${cv.estado === "activo" ? "#bbf7d0" : "#e2e8f0"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>$ {Math.round(cv.cuota_por_periodo).toLocaleString("es-CO")}/cuota × {cv.numero_cuotas}</span>
+                      <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: cv.estado === "activo" ? "#dcfce7" : "#f1f5f9", color: cv.estado === "activo" ? "#166534" : "#64748b" }}>{cv.estado}</span>
+                    </div>
+                    {cv.concepto && <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>{cv.concepto}</div>}
+                    {cv.fecha_limite && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Límite: {new Date(cv.fecha_limite + "T00:00:00").toLocaleDateString("es-CO")}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {/* Marcar lista negra — solo ADMIN_PRINCIPAL y si no está en lista negra */}

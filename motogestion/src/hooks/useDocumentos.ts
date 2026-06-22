@@ -93,17 +93,32 @@ export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): st
   const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
   const esDiario = contrato.forma_pago === "Diario" || contrato.tipo_ruta === "diario";
 
-  const respuestas: Record<string, string> = {
-    valor_periodo: esDiario
-      ? `$ ${fmt(contrato.tarifa_diaria ?? 27000)} de lunes a sábado, $ ${fmt(contrato.tarifa_domingo ?? 14000)} el domingo`
-      : `$ ${fmt(contrato.valor_semanal)} cada ${contrato.forma_pago?.toLowerCase()}`,
-    dia_pago: esDiario ? "Cada día" : contrato.dia_pago,
-  };
+  const tarifaLS = fmt(contrato.tarifa_diaria ?? 27000);
+  const tarifaDomingo = fmt(contrato.tarifa_domingo ?? 14000);
+  const diaPago = esDiario ? "Cada día (lunes a domingo)" : (contrato.dia_pago ?? "Lunes o miércoles");
 
-  const preguntas = PREGUNTAS_CERTIFICADO.map(p => ({
-    ...p,
-    respuesta: p.respuesta ?? respuestas[p.clave] ?? "—",
-  }));
+  const preguntasEspecificas = [
+    {
+      pregunta: "¿Cuánto es el canon diario de lunes a sábado?",
+      respuestaCorrecta: `$ ${tarifaLS}`,
+    },
+    {
+      pregunta: "¿Cuánto es el canon del domingo?",
+      respuestaCorrecta: `$ ${tarifaDomingo}`,
+    },
+    {
+      pregunta: "¿Qué pasa si sale del perímetro de Cartagena sin autorización?",
+      respuestaCorrecta: "Multa de $ 50.000 y apagado remoto inmediato del vehículo",
+    },
+    {
+      pregunta: "¿Cuánto tiempo máximo puede estar el apagado remoto activo?",
+      respuestaCorrecta: "Máximo 1 hora. Luego se reactiva y se procede a recuperación física.",
+    },
+    {
+      pregunta: "¿Cuál es el día de pago acordado?",
+      respuestaCorrecta: diaPago,
+    },
+  ];
 
   return `
     <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
@@ -117,12 +132,26 @@ export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): st
         Yo, <strong>${cliente.nombre.toUpperCase()}</strong>, C.C. <strong>${cliente.cedula}</strong>, certifico que entendí completamente las condiciones del contrato de arrendamiento firmado en esta fecha, respondiendo correctamente las siguientes preguntas:
       </div>
 
-      ${preguntas.map((p, i) => `
-        <div style="margin-bottom:14px;padding:12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0">
-          <div style="font-weight:700;margin-bottom:4px">${i + 1}. ${p.pregunta}</div>
-          <div style="color:#166534;font-style:italic">R/ ${p.respuesta}</div>
-        </div>
-      `).join("")}
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="padding:10px 12px;border:1px solid #cbd5e1;text-align:left;width:5%">#</th>
+            <th style="padding:10px 12px;border:1px solid #cbd5e1;text-align:left;width:40%">Pregunta</th>
+            <th style="padding:10px 12px;border:1px solid #cbd5e1;text-align:left;width:30%">Respuesta del cliente</th>
+            <th style="padding:10px 12px;border:1px solid #cbd5e1;text-align:left;width:25%;color:#166534">Respuesta correcta</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${preguntasEspecificas.map((p, i) => `
+            <tr>
+              <td style="padding:10px 12px;border:1px solid #cbd5e1;font-weight:700">${i + 1}</td>
+              <td style="padding:10px 12px;border:1px solid #cbd5e1">${p.pregunta}</td>
+              <td style="padding:10px 12px;border:1px solid #cbd5e1">&nbsp;</td>
+              <td style="padding:10px 12px;border:1px solid #cbd5e1;color:#166534;font-style:italic">${p.respuestaCorrecta}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
 
       <div style="margin-top:24px;font-size:11px;color:#64748b">
         Declaro que esta información me fue explicada de manera clara y que la firmé de forma libre y voluntaria.

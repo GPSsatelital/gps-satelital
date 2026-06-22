@@ -184,28 +184,77 @@ export default function CajaView() {
         </div>
       </div>
 
-      {/* ── Resumen del día ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginTop: 20 }}>
-        <div style={card}>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>💵 Efectivo</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#166534", marginTop: 6 }}>$ {fmt(efectivoConfirmado)}</div>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Recibido en oficina</div>
+      {/* ── Resumen por método (prominente) ── */}
+      <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
+        <div style={{ ...card, flex: "1 1 220px", borderTop: "4px solid #166534" }}>
+          <div style={{ fontSize: 11, color: "#166534", textTransform: "uppercase", fontWeight: 800, letterSpacing: 1 }}>💵 Efectivo total</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#166534", marginTop: 8, lineHeight: 1 }}>$ {fmt(efectivoConfirmado + campoConfirmado)}</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+            Oficina: <strong>$ {fmt(efectivoConfirmado)}</strong> · Campo: <strong>$ {fmt(campoConfirmado)}</strong>
+          </div>
         </div>
-        <div style={card}>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>📲 Transferencias</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#1e40af", marginTop: 6 }}>$ {fmt(transferenciaConfirmada)}</div>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Confirmadas</div>
+        <div style={{ ...card, flex: "1 1 220px", borderTop: "4px solid #1e40af" }}>
+          <div style={{ fontSize: 11, color: "#1e40af", textTransform: "uppercase", fontWeight: 800, letterSpacing: 1 }}>📲 Transferencias total</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#1e40af", marginTop: 8, lineHeight: 1 }}>$ {fmt(transferenciaConfirmada)}</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+            {pagosDelDia.filter(p => p.metodo === "Transferencia" && p.estado === "Confirmado").length} transferencias confirmadas
+          </div>
         </div>
-        <div style={card}>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>🛵 Campo</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#92400e", marginTop: 6 }}>$ {fmt(campoConfirmado)}</div>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Cobros en campo</div>
+        <div style={{ ...card, flex: "1 1 220px", background: "#0f172a", borderTop: "4px solid #38bdf8" }}>
+          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", fontWeight: 800, letterSpacing: 1 }}>TOTAL DEL DÍA</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#38bdf8", marginTop: 8, lineHeight: 1 }}>$ {fmt(totalConfirmado)}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+            {pagosDelDia.filter(p => p.estado === "Confirmado").length} pagos confirmados
+          </div>
         </div>
-        <div style={{ ...card, background: "#0f172a" }}>
-          <div style={{ fontSize: 12, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>TOTAL CONFIRMADO</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "#38bdf8", marginTop: 6 }}>$ {fmt(totalConfirmado)}</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{pagosDelDia.filter(p => p.estado === "Confirmado").length} pagos</div>
-        </div>
+      </div>
+
+      {/* ── Timeline del día ── */}
+      <div style={{ ...card, marginTop: 20 }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 17, color: "#0f172a" }}>
+          Cronología del día — {formatDate(fechaSeleccionada)}
+        </h3>
+        {pagosDelDia.length === 0 ? (
+          <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados para esta fecha.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {[...pagosDelDia]
+              .sort((a, b) => {
+                const ta = (a as unknown as { created_at?: string }).created_at ?? a.fecha;
+                const tb = (b as unknown as { created_at?: string }).created_at ?? b.fecha;
+                return ta.localeCompare(tb);
+              })
+              .map(p => {
+                const { cliente, moto } = infoCliente(p.contrato_id);
+                const rawDate = (p as unknown as { created_at?: string }).created_at;
+                const hora = rawDate ? new Date(rawDate).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : null;
+                const metodoBg = p.metodo === "Efectivo" ? "#dcfce7" : "#dbeafe";
+                const metodoColor = p.metodo === "Efectivo" ? "#166534" : "#1e40af";
+                return (
+                  <div key={p.id} style={{
+                    display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                    padding: "10px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0",
+                  }}>
+                    {hora && (
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#64748b", minWidth: 44 }}>{hora}</div>
+                    )}
+                    <span style={{ padding: "4px 10px", borderRadius: 999, background: metodoBg, color: metodoColor, fontSize: 12, fontWeight: 700 }}>
+                      {p.metodo}{p.tipo_registro === "campo" ? " · Campo" : ""}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "#0f172a" }}>
+                        {cliente?.nombre ?? "Sin cliente"}{moto?.placa ? ` · ${moto.placa}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: p.estado === "Confirmado" ? "#166534" : p.estado === "Rechazado" ? "#991b1b" : "#92400e" }}>
+                      $ {fmt(p.valor)}
+                    </div>
+                    <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>{p.estado}</span>
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       {/* ── Pendientes por confirmar ── */}
@@ -252,59 +301,6 @@ export default function CajaView() {
         </div>
       )}
 
-      {/* ── Detalle de pagos confirmados ── */}
-      <div style={{ ...card, marginTop: 20 }}>
-        <h3 style={{ margin: "0 0 14px", fontSize: 17 }}>Detalle de pagos confirmados — {formatDate(fechaSeleccionada)}</h3>
-        {pagosDelDia.filter(p => p.estado === "Confirmado").length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos confirmados para esta fecha.</div>
-        ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {pagosDelDia.filter(p => p.estado === "Confirmado").map(p => {
-              const { cliente, moto } = infoCliente(p.contrato_id);
-              return (
-                <div key={p.id} style={{
-                  padding: "10px 14px", borderRadius: 12, background: "#f8fafc",
-                  border: "1px solid #e2e8f0", display: "flex",
-                  justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap",
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
-                      {moto?.placa ? `${moto.placa} · ` : ""}{cliente?.nombre ?? "Sin cliente"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                      {p.metodo}
-                      {p.tipo_registro === "campo" && " · 🛵 Campo"}
-                      {p.tipo_registro === "transferencia" && " · 📲 Transferencia"}
-                    </div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#166534" }}>$ {fmt(p.valor)}</div>
-                </div>
-              );
-            })}
-            {/* Subtotales */}
-            <div style={{ marginTop: 8, padding: "12px 14px", borderRadius: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", display: "grid", gap: 6 }}>
-              {efectivoConfirmado > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <span>💵 Efectivo en oficina</span><span style={{ fontWeight: 700 }}>$ {fmt(efectivoConfirmado)}</span>
-                </div>
-              )}
-              {campoConfirmado > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <span>🛵 Campo</span><span style={{ fontWeight: 700 }}>$ {fmt(campoConfirmado)}</span>
-                </div>
-              )}
-              {transferenciaConfirmada > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                  <span>📲 Transferencias</span><span style={{ fontWeight: 700 }}>$ {fmt(transferenciaConfirmada)}</span>
-                </div>
-              )}
-              <div style={{ borderTop: "1px solid #bbf7d0", paddingTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 15 }}>
-                <span>TOTAL</span><span>$ {fmt(totalConfirmado)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* ── Cierre de caja ── */}
       {puedeRegistrar && (

@@ -205,6 +205,132 @@ export default function ReportesView() {
     [contratos]
   );
 
+  // ── REPORTE POR GRUPO (detallado) ──
+  const reporteGrupos = useMemo(() => {
+    return GRUPOS.map(grupo => {
+      const motosGrupo = motos.filter(m => m.grupo === grupo);
+      const motosGrupoIds = new Set(motosGrupo.map(m => m.id));
+      const contratosGrupo = contratos.filter(c => c.moto_id && motosGrupoIds.has(c.moto_id));
+      const contratosActivosGrupo = contratosGrupo.filter(c => c.estado === "Activo");
+      const contratosActivosGrupoIds = new Set(contratosActivosGrupo.map(c => c.id));
+      const recaudo = pagosRango.filter(p => contratosActivosGrupoIds.has(p.contrato_id)).reduce((a, p) => a + p.valor, 0);
+      const moraGrupo = enMora.filter(e => contratosActivosGrupoIds.has(e.contrato.id)).length;
+      return {
+        grupo,
+        motosAsignadas: motosGrupo.filter(m => m.estado === "Asignada").length,
+        recaudo,
+        contratosActivos: contratosActivosGrupo.length,
+        enMora: moraGrupo,
+      };
+    });
+  }, [motos, contratos, pagosRango, enMora]);
+
+  // ── MORA DETALLADA (tabla) ──
+  const moraDetallada = useMemo(() => {
+    return enMora.map(({ contrato: c, diasSinPago }) => {
+      const cliente = clientes.find(cl => cl.id === c.cliente_id);
+      const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : undefined;
+      const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
+      const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+      const deudaEstimada = diasSinPago * (c.tarifa_diaria ?? 27000);
+      return {
+        id: c.id,
+        cliente: cliente?.nombre ?? "—",
+        placa: moto?.placa ?? "—",
+        diasSinPago,
+        deudaEstimada,
+        ultimoPago: ultimo?.fecha ?? null,
+      };
+    }).sort((a, b) => b.diasSinPago - a.diasSinPago);
+  }, [enMora, clientes, motos, pagos]);
+
+  // ── COMPARATIVA MES ANTERIOR ──
+  const comparativaMes = useMemo(() => {
+    if (rango !== "mes") return null;
+    const hoy = new Date();
+    const inicioMesAnt = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const finMesAnt = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
+    const pagosAnt = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= inicioMesAnt && p.fecha <= finMesAnt);
+    const totalAnt = pagosAnt.reduce((a, p) => a + p.valor, 0);
+    const delta = totalAnt > 0 ? ((totalRecaudado - totalAnt) / totalAnt) * 100 : null;
+    return { totalAnt, delta };
+  }, [rango, pagos, totalRecaudado]);
+
+  // ── IMPRIMIR REPORTE PDF ──
+  function imprimirReporte() {
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
+    const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
+
+    const gruposHTML = reporteGrupos.map(g => `
+      <tr>
+        <td style="padding:8px 12px;font-weight:700;">${g.grupo}</td>
+        <td style="padding:8px 12px;text-align:center;">${g.motosAsignadas}</td>
+        <td style="padding:8px 12px;text-align:center;">$ ${fmt(g.recaudo)}</td>
+        <td style="padding:8px 12px;text-align:center;">${g.contratosActivos}</td>
+        <td style="padding:8px 12px;text-align:center;color:${g.enMora > 0 ? "#991b1b" : "#166534"};">${g.enMora}</td>
+      </tr>
+    `).join("");
+
+    const moraHTML = moraDetallada.slice(0, 30).map(m => `
+      <tr>
+        <td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td>
+        <td style="padding:8px 12px;">${m.placa}</td>
+        <td style="padding:8px 12px;text-align:center;color:#991b1b;font-weight:700;">${m.diasSinPago}</td>
+        <td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaEstimada)}</td>
+        <td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td>
+      </tr>
+    `).join("");
+
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <title>Reporte MotoGestión — ${rangoLabel}</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #0f172a; padding: 32px; font-size: 14px; }
+        h1 { font-size: 22px; margin-bottom: 4px; }
+        h2 { font-size: 16px; margin: 24px 0 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+        .kpis { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+        .kpi { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 20px; min-width: 130px; }
+        .kpi-val { font-size: 20px; font-weight: 800; color: #0284c7; }
+        .kpi-lbl { font-size: 11px; color: #64748b; text-transform: uppercase; margin-top: 2px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 700; color: #64748b; }
+        tr:nth-child(even) { background: #f8fafc; }
+        footer { margin-top: 32px; font-size: 11px; color: #94a3b8; text-align: center; }
+      </style></head><body>
+      <h1>Reporte MotoGestión — GPS Satelital Cartagena</h1>
+      <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy}</p>
+
+      <h2>KPIs de Recaudo</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-val">$ ${fmt(totalRecaudado)}</div><div class="kpi-lbl">Total recaudado</div></div>
+        <div class="kpi"><div class="kpi-val">$ ${fmt(totalEfectivo)}</div><div class="kpi-lbl">Efectivo</div></div>
+        <div class="kpi"><div class="kpi-val">$ ${fmt(totalTransferencia)}</div><div class="kpi-lbl">Transferencias</div></div>
+        <div class="kpi"><div class="kpi-val">$ ${fmt(totalCampo)}</div><div class="kpi-lbl">Cobro en campo</div></div>
+        <div class="kpi"><div class="kpi-val">${contratosActivos.length}</div><div class="kpi-lbl">Contratos activos</div></div>
+        <div class="kpi"><div class="kpi-val">${enMora.length}</div><div class="kpi-lbl">En mora</div></div>
+      </div>
+
+      <h2>Recaudo por Grupo</h2>
+      <table>
+        <thead><tr><th>Grupo</th><th>Motos asignadas</th><th>Recaudo período</th><th>Contratos activos</th><th>En mora</th></tr></thead>
+        <tbody>${gruposHTML}</tbody>
+      </table>
+
+      <h2>Mora y Cartera Vencida (${moraDetallada.length} contratos)</h2>
+      ${moraDetallada.length === 0 ? "<p style='color:#166534;'>Sin contratos en mora.</p>" : `
+      <table>
+        <thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda estimada</th><th>Último pago</th></tr></thead>
+        <tbody>${moraHTML}</tbody>
+      </table>`}
+
+      <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
+      </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 500);
+  }
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
@@ -238,6 +364,12 @@ export default function ReportesView() {
             style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
           >
             ⬇️ Exportar CSV
+          </button>
+          <button
+            onClick={imprimirReporte}
+            style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            🖨️ Imprimir reporte
           </button>
         </div>
       </div>
@@ -278,6 +410,26 @@ export default function ReportesView() {
         <KPI label="Proyección mensual" value={`$ ${fmt(proyeccionMensual)}`} sub="~26 días L-S" />
       </div>
 
+      {/* Comparativa mes anterior */}
+      {comparativaMes && (
+        <div style={{ ...card, marginTop: 14, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>Comparativa vs mes anterior:</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 13 }}>Mes anterior: <strong>$ {fmt(comparativaMes.totalAnt)}</strong></span>
+            {comparativaMes.delta !== null && (
+              <span style={{
+                padding: "3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                background: comparativaMes.delta >= 0 ? "#dcfce7" : "#fee2e2",
+                color: comparativaMes.delta >= 0 ? "#166534" : "#991b1b"
+              }}>
+                {comparativaMes.delta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(comparativaMes.delta))}%
+              </span>
+            )}
+            {comparativaMes.delta === null && <span style={{ fontSize: 12, color: "#94a3b8" }}>sin datos del mes anterior</span>}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 16 }}>
 
         {/* Recaudo por grupo */}
@@ -307,6 +459,36 @@ export default function ReportesView() {
             })}
           </div>
           <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8", textAlign: "center" }}>Pasa el cursor sobre cada barra para ver el valor</div>
+        </div>
+      </div>
+
+      {/* Reporte detallado por grupo */}
+      <div style={{ ...card, marginTop: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Reporte por grupo de inversión</div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {reporteGrupos.map(g => (
+            <div key={g.grupo} style={{ flex: 1, minWidth: 180, borderRadius: 14, border: `2px solid ${GRUPO_COLORS[g.grupo]}`, padding: "16px 18px" }}>
+              <div style={{ fontWeight: 800, fontSize: 16, color: GRUPO_COLORS[g.grupo], marginBottom: 12, letterSpacing: 0.5 }}>{g.grupo}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div style={{ padding: "8px 10px", borderRadius: 10, background: "#f8fafc", textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{g.motosAsignadas}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginTop: 2 }}>Motos asignadas</div>
+                </div>
+                <div style={{ padding: "8px 10px", borderRadius: 10, background: "#f0f9ff", textAlign: "center" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7" }}>$ {fmt(g.recaudo)}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginTop: 2 }}>Recaudo período</div>
+                </div>
+                <div style={{ padding: "8px 10px", borderRadius: 10, background: "#dcfce7", textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "#166534" }}>{g.contratosActivos}</div>
+                  <div style={{ fontSize: 10, color: "#166534", fontWeight: 700, marginTop: 2 }}>Contratos activos</div>
+                </div>
+                <div style={{ padding: "8px 10px", borderRadius: 10, background: g.enMora > 0 ? "#fee2e2" : "#dcfce7", textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: g.enMora > 0 ? "#991b1b" : "#166534" }}>{g.enMora}</div>
+                  <div style={{ fontSize: 10, color: g.enMora > 0 ? "#991b1b" : "#166534", fontWeight: 700, marginTop: 2 }}>Mora activa</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -390,6 +572,47 @@ export default function ReportesView() {
           </div>
         </div>
       </div>
+
+      {/* Mora detallada — tabla */}
+      {moraDetallada.length > 0 && (
+        <div style={{ ...card, marginTop: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "#991b1b" }}>
+            🔴 Mora y cartera vencida — {moraDetallada.length} contrato{moraDetallada.length > 1 ? "s" : ""}
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                  <th style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>Cliente</th>
+                  <th style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>Placa</th>
+                  <th style={{ textAlign: "center", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>Días sin pago</th>
+                  <th style={{ textAlign: "right", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>Deuda estimada</th>
+                  <th style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>Último pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                {moraDetallada.map(m => (
+                  <tr key={m.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "8px 10px", fontWeight: 700, textTransform: "uppercase" }}>{m.cliente}</td>
+                    <td style={{ padding: "8px 10px" }}>{m.placa}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                      <span style={{
+                        display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12,
+                        background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7",
+                        color: m.diasSinPago > 7 ? "#991b1b" : "#92400e"
+                      }}>{m.diasSinPago}d</span>
+                    </td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaEstimada)}</td>
+                    <td style={{ padding: "8px 10px", color: "#64748b" }}>
+                      {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Contratos diarios cerca de completar base */}
       {diasBase.length > 0 && (

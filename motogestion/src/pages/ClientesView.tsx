@@ -648,21 +648,29 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
           <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 12 }}>Ruta del cliente</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {([
-              { value: "diario", label: "Pago diario", desc: "Acumula ahorro hasta completar $510.000 de base inicial" },
-              { value: "tiempo_definido", label: "Tiempo definido", desc: "Ya tiene la base — pago semanal, quincenal o mensual" },
-            ] as { value: RutaContrato; label: string; desc: string }[]).map((op) => (
+              { value: "diario", label: "Diario", desc: "Ahorrando base inicial ($510.000)", badge: { bg: "#dbeafe", color: "#1d4ed8" } },
+              { value: "tiempo_definido", label: "Tiempo definido", desc: "Ya tiene la base, pago semanal/quincenal/mensual", badge: { bg: "#dcfce7", color: "#166534" } },
+            ] as { value: RutaContrato; label: string; desc: string; badge: { bg: string; color: string } }[]).map((op) => (
               <button
                 key={op.value}
                 type="button"
                 onClick={() => update({ ruta_contrato: op.value })}
                 style={{
-                  flex: "1 1 200px", padding: 14, borderRadius: 14, cursor: "pointer", textAlign: "left",
-                  border: data.ruta_contrato === op.value ? "2px solid #0284c7" : "2px solid #e2e8f0",
-                  background: data.ruta_contrato === op.value ? "#e0f2fe" : "white",
+                  flex: "1 1 220px", padding: 18, borderRadius: 16, cursor: "pointer", textAlign: "left",
+                  border: data.ruta_contrato === op.value ? `2px solid ${op.badge.color}` : "2px solid #e2e8f0",
+                  background: data.ruta_contrato === op.value ? op.badge.bg : "white",
+                  transition: "all 0.15s",
                 }}
               >
-                <div style={{ fontWeight: 800, fontSize: 14, color: data.ruta_contrato === op.value ? "#0284c7" : "#334155" }}>{op.label}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{op.desc}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <span style={{ padding: "4px 12px", borderRadius: 999, background: op.badge.bg, color: op.badge.color, fontSize: 13, fontWeight: 800, border: `1px solid ${op.badge.color}` }}>
+                    {op.label}
+                  </span>
+                  {data.ruta_contrato === op.value && (
+                    <span style={{ fontSize: 16, color: op.badge.color }}>✔</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.4 }}>{op.desc}</div>
               </button>
             ))}
           </div>
@@ -815,6 +823,15 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.telefono}</div>
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                        background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
+                        color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                      }}>
+                        {cliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <ClienteBadge estado={estadoVisual(cliente)} />

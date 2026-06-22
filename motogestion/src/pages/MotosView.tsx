@@ -48,7 +48,7 @@ const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", b
 
 export default function MotosView({ initialFilter = "" }: { initialFilter?: string }) {
   const { profile } = useAuth();
-  const { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
+  const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
@@ -61,6 +61,10 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
+  const [editandoMoto, setEditandoMoto] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Moto & { color: string }>>({});
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editGuardando, setEditGuardando] = useState(false);
 
   const [formRetencion, setFormRetencion] = useState<{
     tipo: "Fiscalia" | "Transito" | "Garantia";
@@ -114,6 +118,36 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
   }, [motos, query, filtroEstado]);
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? filtered[0] ?? null;
+
+  function abrirEdicion() {
+    if (!selectedMoto) return;
+    setEditForm({
+      marca: selectedMoto.marca,
+      modelo: selectedMoto.modelo,
+      color: (selectedMoto as any).color ?? "",
+      cilindraje: selectedMoto.cilindraje ?? "",
+      numero_motor: selectedMoto.numero_motor ?? "",
+      numero_chasis: selectedMoto.numero_chasis ?? "",
+      propietario: selectedMoto.propietario ?? "",
+      fecha_seguro: selectedMoto.fecha_seguro ?? "",
+      fecha_tecnomecanica: selectedMoto.fecha_tecnomecanica ?? "",
+      observaciones: selectedMoto.observaciones ?? "",
+      grupo: selectedMoto.grupo,
+    });
+    setEditError(null);
+    setEditandoMoto(true);
+  }
+
+  async function guardarEdicionMoto() {
+    if (!selectedMoto) return;
+    setEditGuardando(true);
+    setEditError(null);
+    const { error } = await actualizarMoto(selectedMoto.id, editForm);
+    setEditGuardando(false);
+    if (error) { setEditError(error); return; }
+    setEditandoMoto(false);
+    setMsgDetalle("Moto actualizada correctamente.");
+  }
 
   async function handleRegistrarRecepcion() {
     if (!selectedMoto || !profile) return;
@@ -293,18 +327,74 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
 
           {selectedMoto ? (
             <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-              <InfoBox label="Placa" value={selectedMoto.placa} />
-              <InfoBox label="Grupo" value={selectedMoto.grupo} />
-              <InfoBox label="Marca" value={selectedMoto.marca} />
-              <InfoBox label="Modelo" value={selectedMoto.modelo} />
-              <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
-              <InfoBox label="Vence seguro" value={formatDate(selectedMoto.fecha_seguro)} />
-              <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
-              <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
 
-              {msgDetalle && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+              {/* Formulario de edición */}
+              {editandoMoto ? (
+                <div style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0", display: "grid", gap: 12 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>✏️ Editando: {selectedMoto.placa}</div>
+                  {([
+                    { key: "marca", label: "Marca" },
+                    { key: "modelo", label: "Modelo" },
+                    { key: "color", label: "Color" },
+                    { key: "cilindraje", label: "Cilindraje" },
+                    { key: "numero_motor", label: "N° Motor" },
+                    { key: "numero_chasis", label: "N° Chasis" },
+                    { key: "propietario", label: "Propietario" },
+                    { key: "fecha_seguro", label: "Vence SOAT (YYYY-MM-DD)" },
+                    { key: "fecha_tecnomecanica", label: "Vence Tecnomecánica (YYYY-MM-DD)" },
+                  ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
+                    <div key={key}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>{label}</div>
+                      <input
+                        value={(editForm[key] as string) ?? ""}
+                        onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Grupo</div>
+                    <select value={editForm.grupo ?? selectedMoto.grupo}
+                      onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}>
+                      {(["COSTA","PRADERA","RASTREADOR","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Observaciones</div>
+                    <textarea value={(editForm.observaciones as string) ?? ""}
+                      onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))}
+                      rows={3} style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14, resize: "vertical" }} />
+                  </div>
+                  {editError && <div style={{ color: "#991b1b", fontSize: 13, padding: "8px 12px", background: "#fee2e2", borderRadius: 8 }}>{editError}</div>}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, color: "#64748b" }}>
+                      Cancelar
+                    </button>
+                    <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: "#0f172a", color: "white", cursor: "pointer", fontWeight: 700, opacity: editGuardando ? 0.7 : 1 }}>
+                      {editGuardando ? "Guardando..." : "💾 Guardar cambios"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <InfoBox label="Placa" value={selectedMoto.placa} />
+                  <InfoBox label="Grupo" value={selectedMoto.grupo} />
+                  <InfoBox label="Marca / Modelo" value={`${selectedMoto.marca} ${selectedMoto.modelo}`} />
+                  {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
+                  <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
+                  <InfoBox label="Vence SOAT" value={formatDate(selectedMoto.fecha_seguro)} />
+                  <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
+                  <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
+                  <button onClick={abrirEdicion} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+                    ✏️ Editar datos de esta moto
+                  </button>
+                </>
+              )}
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+
+              {!editandoMoto && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
                 <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
                 {selectedMoto.estado === "Fiscalia"
@@ -313,7 +403,7 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
                     ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
                     : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
                 }
-              </div>
+              </div>}
 
               {/* Datos de retención activa */}
               {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (

@@ -96,5 +96,10 @@ export function useMotos() {
     return { error: error?.message ?? null };
   }
 
-  return { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion };
+  async function actualizarMoto(id: string, cambios: Partial<Omit<Moto, "id" | "created_at" | "updated_at">>) {
+    const { error } = await supabase.from("motos").update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
+  return { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion };
 }

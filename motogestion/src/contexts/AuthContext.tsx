@@ -2,12 +2,14 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
-export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN";
+export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO";
+export type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR";
 
-type Profile = {
+export type Profile = {
   id: string;
   nombre: string;
   role: Role;
+  grupo: GrupoSocio | null;
 };
 
 type AuthState = {
@@ -26,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from("profiles").select("id, nombre, role").eq("id", userId).single();
+    const { data } = await supabase.from("profiles").select("id, nombre, role, grupo").eq("id", userId).single();
     setProfile(data as Profile | null);
   }
 

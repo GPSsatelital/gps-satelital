@@ -25,6 +25,7 @@ export type Contrato = {
   firma_cliente: boolean;
   firma_responsable: boolean;
   estado: ContratoEstado;
+  tipo_ruta?: string;
   tarifa_diaria?: number;
   tarifa_domingo?: number;
   base_inicial?: number;

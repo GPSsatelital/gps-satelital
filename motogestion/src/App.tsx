@@ -10,10 +10,12 @@ import DashboardView from "./pages/DashboardView";
 import UsuariosView from "./pages/UsuariosView";
 import LiquidacionesView from "./pages/LiquidacionesView";
 import ConfiguracionView from "./pages/ConfiguracionView";
+import CajaView from "./pages/CajaView";
+import SocioDashboard from "./pages/SocioDashboard";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
-  | "cobros" | "taller" | "usuarios" | "liquidaciones" | "configuracion";
+  | "cobros" | "caja" | "taller" | "usuarios" | "liquidaciones" | "configuracion";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -89,7 +91,10 @@ const SIDE_GROUPS: SideGroup[] = [
   {
     label: "FINANZAS",
     adminOnly: true,
-    items: [{ key: "liquidaciones", label: "Liquidaciones", icon: "📊" }],
+    items: [
+      { key: "caja", label: "Caja Diaria", icon: "💰" },
+      { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
+    ],
   },
   {
     label: "ADMINISTRACIÓN",
@@ -103,8 +108,8 @@ const SIDE_GROUPS: SideGroup[] = [
 
 const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
-  contratos: "Contratos", cobros: "Cartera & Cobros", taller: "Taller",
-  usuarios: "Usuarios", liquidaciones: "Liquidaciones", configuracion: "Configuración",
+  contratos: "Contratos", cobros: "Cartera & Cobros", caja: "Caja Diaria",
+  taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones", configuracion: "Configuración",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -243,10 +248,11 @@ function MasSheet({
 }) {
   const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
     { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
+    { key: "caja",          icon: "💰", label: "Caja Diaria",  desc: "Cierre de caja y confirmación de pagos" },
     { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
-    { key: "liquidaciones",  icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
-    { key: "usuarios",       icon: "👤", label: "Usuarios",      desc: "Roles y accesos",           adminOnly: true },
-    { key: "configuracion",  icon: "⚙️", label: "Configuración", desc: "Ajustes del sistema y cuenta" },
+    { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
+    { key: "usuarios",      icon: "👤", label: "Usuarios",      desc: "Roles y accesos",           adminOnly: true },
+    { key: "configuracion", icon: "⚙️", label: "Configuración", desc: "Ajustes del sistema y cuenta" },
   ];
 
   return (
@@ -337,6 +343,9 @@ function Shell() {
 
   if (!session) return <Login />;
 
+  // SOCIO: solo ve su dashboard de grupo, sin navegación completa
+  if (roleActual === "SOCIO") return <SocioDashboard />;
+
   const currentTitle = VIEW_TITLE[ctx.view];
 
   // Determine subfilter label for breadcrumb
@@ -361,6 +370,7 @@ function Shell() {
       {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} />}
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
       {ctx.view === "cobros"        && <CobrosView />}
+      {ctx.view === "caja"          && <CajaView />}
       {ctx.view === "taller"        && <TallerView />}
       {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}

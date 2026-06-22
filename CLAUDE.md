@@ -190,11 +190,12 @@ Si firma en otro día → prorrateo hasta el próximo día de pago asignado.
 ## COBROS Y CARTERA
 
 ### Protocolo de mora (orden estricto)
-1. **Día de pago** → mensaje automático recordatorio (WhatsApp)
-2. **Día de gabela** → mensaje + alerta para llamar al cliente + sirena 2 segundos al final del día sin pago
-3. **Mora** → aparece en lista de inmovilizaciones
-4. **Plazo extra** → máximo 2 días adicionales, requiere motivo escrito en el sistema
-5. **Sin cumplimiento** → orden de recolección física
+1. **Día de pago** → mensaje WhatsApp/texto al cliente durante la mañana
+2. **Día de gabela** → mensaje mañana + llamada + sirena máximo 5-10 segundos (solo con vehículo **detenido** en GPS)
+3. **Apagado remoto** → solo con vehículo detenido · máximo 1 hora · luego reactivar y proceder a inmovilización física
+4. **Mora** → aparece en lista de inmovilizaciones
+5. **Plazo extra** → máximo 2 días adicionales, requiere motivo escrito en el sistema
+6. **Sin cumplimiento** → orden de recolección física
 
 ### Recolección física
 - Ubicación por GPS instalado en moto
@@ -345,6 +346,18 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - Automática si liquidación = saldo negativo
 - Reversible si paga o por decisión admin principal
 - Al registrar cliente nuevo → validar contra lista negra
+
+### GPS y control remoto (reglas estrictas del contrato de admin)
+- **Sirena:** máximo 5-10 segundos, solo cuando el vehículo está **detenido** en la plataforma GPS
+- **Apagado remoto:** solo con vehículo detenido · máximo 1 hora activo · luego reactivar y proceder físicamente
+- **Perímetro:** máximo 1 hora de distancia de Cartagena — salida sin autorización → apagado inmediato + multa
+- **Señales de empeño:** vehículo 2 días sin movimiento + dispositivo sin reportar + cliente paga solo por transferencia → inspección física obligatoria
+- **Robo:** nunca acercarse sin acompañamiento policial — llamar a GPS + policía primero
+
+### Garantía de fábrica
+- No genera tarifa ni deuda para el cliente mientras dure
+- Al salir de garantía: documento escrito firmado por cliente con fecha ingreso/salida/días → ajusta fecha de vencimiento del contrato
+- El cliente puede tomar una moto temporal durante el tiempo en garantía
 
 ---
 

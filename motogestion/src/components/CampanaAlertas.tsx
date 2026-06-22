@@ -4,6 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePagos } from "../hooks/usePagos";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
+import type { ViewKey } from "../App";
 
 const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: string; dot: string }> = {
   critico: { bg: "#fff5f5", color: "#991b1b", border: "#fecaca", dot: "#ef4444" },
@@ -20,7 +21,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   plazo_extra_vence: "⏳",
 };
 
-export default function CampanaAlertas() {
+export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey) => void }) {
   const [abierto, setAbierto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -72,7 +73,7 @@ export default function CampanaAlertas() {
             </div>
           ) : (
             <div style={{ padding: "8px 0" }}>
-              {alertas.map(a => {
+              {alertas.slice(0, 8).map(a => {
                 const s = NIVEL_STYLE[a.nivel];
                 return (
                   <div key={a.id} style={{ margin: "4px 10px", padding: "10px 12px", borderRadius: 10, background: s.bg, border: `1px solid ${s.border}` }}>
@@ -86,6 +87,13 @@ export default function CampanaAlertas() {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {onNavegar && alertas.length > 0 && (
+            <div style={{ padding: "8px 12px 12px", borderTop: "1px solid #f1f5f9" }}>
+              <button onClick={() => { onNavegar("alertas"); setAbierto(false); }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "#f1f5f9", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
+                Ver todas las alertas ({total}) →
+              </button>
             </div>
           )}
         </div>

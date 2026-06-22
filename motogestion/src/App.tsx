@@ -20,11 +20,12 @@ import SocioDashboard from "./pages/SocioDashboard";
 import CampanaAlertas from "./components/CampanaAlertas";
 import ReferidosView from "./pages/ReferidosView";
 import CobroDiarioView from "./pages/CobroDiarioView";
+import AlertasView from "./pages/AlertasView";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
-  | "referidos" | "cobro_diario";
+  | "referidos" | "cobro_diario" | "alertas";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -102,6 +103,7 @@ const SIDE_GROUPS: SideGroup[] = [
     adminOnly: true,
     items: [
       { key: "cobro_diario", label: "Cobro Diario", icon: "📅" },
+      { key: "alertas", label: "Alertas", icon: "🔔" },
       { key: "reportes", label: "Reportes", icon: "📈" },
       { key: "caja", label: "Caja Diaria", icon: "💰" },
       { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
@@ -122,7 +124,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
   contratos: "Contratos", cobros: "Cartera & Cobros", caja: "Caja Diaria",
   reportes: "Reportes", taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones",
-  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
+  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario", alertas: "Alertas",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -262,6 +264,7 @@ function MasSheet({
   const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
     { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
     { key: "cobro_diario",  icon: "📅", label: "Cobro Diario",  desc: "Estado de pago del día",               adminOnly: true },
+    { key: "alertas",       icon: "🔔", label: "Alertas",       desc: "Mora, SOAT, tecno y situaciones activas", adminOnly: true },
     { key: "reportes",      icon: "📈", label: "Reportes",      desc: "Recaudo, mora, flota y alertas",         adminOnly: true },
     { key: "referidos",     icon: "🤝", label: "Referidos",     desc: "Programa de referidos y premios",        adminOnly: true },
     { key: "caja",          icon: "💰", label: "Caja Diaria",  desc: "Cierre de caja y confirmación de pagos" },
@@ -394,6 +397,7 @@ function Shell() {
       {ctx.view === "reportes"      && esAdmin && <ReportesView />}
       {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView />}
       {ctx.view === "referidos"     && esAdmin && <ReferidosView />}
+      {ctx.view === "alertas"       && esAdmin && <AlertasView onNavegar={navigate} />}
       {ctx.view === "taller"        && <TallerView />}
       {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}
@@ -423,7 +427,7 @@ function Shell() {
             {filterLabel && <div style={{ fontSize: 11, color: "#0284c7", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
           </div>
           <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
-          <CampanaAlertas />
+          <CampanaAlertas onNavegar={navigate} />
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setUserMenuOpen(p => !p)}
@@ -535,7 +539,7 @@ function Shell() {
               {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
             </div>
             <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
-            <CampanaAlertas />
+            <CampanaAlertas onNavegar={navigate} />
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setUserMenuOpen(p => !p)}

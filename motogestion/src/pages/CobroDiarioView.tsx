@@ -3,6 +3,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos, type MetodoPago } from "../hooks/usePagos";
+import ModalGestion from "../components/ModalGestion";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 
@@ -37,6 +38,8 @@ export default function CobroDiarioView() {
   const [pagarLabel, setPagarLabel] = useState("");
   const [pagarCuota, setPagarCuota] = useState<number>(0);
   const [guardandoPago, setGuardandoPago] = useState(false);
+  const [gestionContratoId, setGestionContratoId] = useState<string | null>(null);
+  const [gestionClienteNombre, setGestionClienteNombre] = useState("");
 
   const { contratos } = useContratos();
   const { clientes } = useClientes();
@@ -238,9 +241,21 @@ export default function CobroDiarioView() {
                     </button>
                   )}
                   {f.clienteTel && f.estado !== "pagado" && (
-                    <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.cuota, f.estado)}
-                      style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
-                      💬 WA
+                    <>
+                      <button onClick={() => { const n = f.clienteTel.replace(/\D/g,""); window.open(`tel:+57${n}`); }}
+                        style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}>
+                        📞
+                      </button>
+                      <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.cuota, f.estado)}
+                        style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
+                        💬 WA
+                      </button>
+                    </>
+                  )}
+                  {(f.estado === "mora" || f.estado === "gabela") && (
+                    <button onClick={() => { setGestionContratoId(f.contratoId); setGestionClienteNombre(f.clienteNombre); }}
+                      style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>
+                      📋
                     </button>
                   )}
                 </div>
@@ -318,6 +333,14 @@ export default function CobroDiarioView() {
             </div>
           </div>
         </div>
+      )}
+
+      {gestionContratoId && (
+        <ModalGestion
+          contratoId={gestionContratoId}
+          clienteNombre={gestionClienteNombre}
+          onClose={() => setGestionContratoId(null)}
+        />
       )}
     </div>
   );

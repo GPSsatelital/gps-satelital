@@ -39,6 +39,8 @@ export function emptyDocs(): DocumentoFlags {
   };
 }
 
+export type RutaContrato = "diario" | "tiempo_definido";
+
 export type Cliente = {
   id: string;
   nombre: string;
@@ -57,6 +59,14 @@ export type Cliente = {
   excepcion_documental: boolean;
   excepcion_motivo: string | null;
   excepcion_plazo: string | null;
+  ruta_contrato: RutaContrato;
+  referido_por_cedula: string | null;
+  referido_por_nombre: string | null;
+  referidos_confirmados: number;
+  premio_referidos_entregado: number;
+  lista_negra: boolean;
+  motivo_lista_negra: string | null;
+  lista_negra_reversible: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -75,6 +85,9 @@ export type NuevoCliente = {
   documentos_cliente: DocumentoFlags;
   documentos_acompanante: DocumentoFlags;
   estado: ClienteEstado;
+  ruta_contrato: RutaContrato;
+  referido_por_cedula: string | null;
+  referido_por_nombre: string | null;
 };
 
 export function documentosListos(doc: DocumentoFlags) {

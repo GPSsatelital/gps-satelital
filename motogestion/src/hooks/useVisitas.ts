@@ -12,10 +12,12 @@ export type Visita = {
   entrevista: {
     viveAlli: string;
     tiempoResidencia: string;
-    estabilidadLaboral: string;
     tipoVivienda: string;
-    recomendacion: string;
+    composicionFamiliar: string;
+    estabilidadLaboral: string;
+    dudasCliente: string;
     observaciones: string;
+    recomendacion: string;
   };
   fotos: {
     clienteFuncionario?: string | null;

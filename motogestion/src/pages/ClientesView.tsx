@@ -7,6 +7,7 @@ import {
   type ClienteEstado,
   type DocumentoFlags,
   type NuevoCliente,
+  type RutaContrato,
 } from "../hooks/useClientes";
 import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
@@ -169,7 +170,23 @@ function emptyForm(): NuevoCliente {
     documentos_cliente: emptyDocs(),
     documentos_acompanante: emptyDocs(),
     estado: "En proceso",
+    ruta_contrato: "diario",
+    referido_por_cedula: "",
+    referido_por_nombre: "",
   };
+}
+
+const PREMIOS_REFERIDOS = [
+  { hito: 2, premio: "Par de guantes de manejo" },
+  { hito: 5, premio: "Intercomunicador" },
+  { hito: 10, premio: "Casco" },
+  { hito: 17, premio: "Combo completo" },
+];
+
+function calcularPremioReferidos(confirmados: number) {
+  const alcanzados = PREMIOS_REFERIDOS.filter((p) => confirmados >= p.hito);
+  const siguiente = PREMIOS_REFERIDOS.find((p) => confirmados < p.hito);
+  return { alcanzados, siguiente };
 }
 
 function calcularSemaforo(cliente: Cliente, visitas: Visita[]) {
@@ -227,10 +244,12 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
   const [entrevista, setEntrevista] = useState({
     viveAlli: "",
     tiempoResidencia: "",
-    estabilidadLaboral: "",
     tipoVivienda: "",
-    recomendacion: "",
+    composicionFamiliar: "",
+    estabilidadLaboral: "",
+    dudasCliente: "",
     observaciones: "",
+    recomendacion: "",
   });
   const [fotoCliente, setFotoCliente] = useState<File | null>(null);
   const [fotoFachada, setFotoFachada] = useState<File | null>(null);
@@ -257,6 +276,12 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
       return;
     }
 
+    const enListaNegra = clientes.find((c) => c.cedula.trim() === form.cedula.trim() && c.lista_negra);
+    if (enListaNegra) {
+      setFormError(`⛔ Esta cédula está en lista negra${enListaNegra.lista_negra_reversible ? " (reversible — contacta al admin principal)" : " (irreversible)"}.`);
+      return;
+    }
+
     setGuardando(true);
     setFormError(null);
 
@@ -269,6 +294,8 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
       direccion: form.direccion.trim(),
       telefono: form.telefono.trim(),
       whatsapp: form.mismo_whatsapp ? form.telefono.trim() : (form.whatsapp ?? "").trim(),
+      referido_por_cedula: form.referido_por_cedula?.trim() || null,
+      referido_por_nombre: form.referido_por_nombre?.trim() || null,
       estado,
     });
 
@@ -299,6 +326,9 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
       documentos_cliente: JSON.parse(JSON.stringify(cliente.documentos_cliente)),
       documentos_acompanante: JSON.parse(JSON.stringify(cliente.documentos_acompanante)),
       estado: cliente.estado,
+      ruta_contrato: cliente.ruta_contrato ?? "diario",
+      referido_por_cedula: cliente.referido_por_cedula,
+      referido_por_nombre: cliente.referido_por_nombre,
     });
     setEditOpen(true);
   }
@@ -388,7 +418,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
 
     await cambiarEstadoCliente(selectedCliente.id, "Pendiente evaluación");
 
-    setEntrevista({ viveAlli: "", tiempoResidencia: "", estabilidadLaboral: "", tipoVivienda: "", recomendacion: "", observaciones: "" });
+    setEntrevista({ viveAlli: "", tiempoResidencia: "", tipoVivienda: "", composicionFamiliar: "", estabilidadLaboral: "", dudasCliente: "", observaciones: "", recomendacion: "" });
     setFotoCliente(null);
     setFotoFachada(null);
     setUbicacion(null);
@@ -405,8 +435,34 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
+
+        {/* Ruta del cliente */}
+        <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 12 }}>Ruta del cliente</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {([
+              { value: "diario", label: "Pago diario", desc: "Acumula ahorro hasta completar $510.000 de base inicial" },
+              { value: "tiempo_definido", label: "Tiempo definido", desc: "Ya tiene la base — pago semanal, quincenal o mensual" },
+            ] as { value: RutaContrato; label: string; desc: string }[]).map((op) => (
+              <button
+                key={op.value}
+                type="button"
+                onClick={() => update({ ruta_contrato: op.value })}
+                style={{
+                  flex: "1 1 200px", padding: 14, borderRadius: 14, cursor: "pointer", textAlign: "left",
+                  border: data.ruta_contrato === op.value ? "2px solid #0284c7" : "2px solid #e2e8f0",
+                  background: data.ruta_contrato === op.value ? "#e0f2fe" : "white",
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: 14, color: data.ruta_contrato === op.value ? "#0284c7" : "#334155" }}>{op.label}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{op.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
-          <div style={labelStyle}>Datos</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Datos personales</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.nombre} onChange={(e) => update({ nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
@@ -416,7 +472,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
         </div>
 
         <div>
-          <div style={labelStyle}>Contacto</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Contacto</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Teléfono principal</div><input style={inputStyle} value={data.telefono} onChange={(e) => update({ telefono: e.target.value })} /></div>
             <div>
@@ -433,7 +489,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
         </div>
 
         <div>
-          <div style={labelStyle}>Acompañante</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(debe ser mujer — obligatorio)</span></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.acompanante_cedula ?? ""} onChange={(e) => update({ acompanante_cedula: e.target.value })} /></div>
@@ -441,13 +497,22 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
           </div>
         </div>
 
+        <div style={{ padding: 14, borderRadius: 16, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#166534", marginBottom: 10 }}>Referido por (opcional)</div>
+          <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
+            <div><div style={labelStyle}>Cédula de quien refirió</div><input style={inputStyle} value={data.referido_por_cedula ?? ""} onChange={(e) => update({ referido_por_cedula: e.target.value })} /></div>
+          </div>
+        </div>
+
         <div>
-          <div style={labelStyle}>Documentos cliente</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos cliente</div>
           <DocsChecklist doc={data.documentos_cliente} onChange={(next) => update({ documentos_cliente: next })} />
         </div>
 
         <div>
-          <div style={labelStyle}>Documentos acompañante</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
           <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} />
         </div>
       </div>
@@ -641,20 +706,38 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
                 <input style={inputStyle} placeholder="Ej. 2 años" value={entrevista.tiempoResidencia} onChange={(e) => setEntrevista((p) => ({ ...p, tiempoResidencia: e.target.value }))} />
               </div>
               <div>
-                <div style={labelStyle}>Estabilidad laboral / fuente de ingresos</div>
-                <input style={inputStyle} value={entrevista.estabilidadLaboral} onChange={(e) => setEntrevista((p) => ({ ...p, estabilidadLaboral: e.target.value }))} />
+                <div style={labelStyle}>Tipo de vivienda</div>
+                <select style={inputStyle} value={entrevista.tipoVivienda} onChange={(e) => setEntrevista((p) => ({ ...p, tipoVivienda: e.target.value }))}>
+                  <option value="">Seleccionar</option>
+                  <option value="Propia">Propia</option>
+                  <option value="Familiar">Familiar</option>
+                  <option value="Alquilada">Alquilada</option>
+                </select>
               </div>
               <div>
-                <div style={labelStyle}>Tipo de vivienda</div>
-                <input style={inputStyle} value={entrevista.tipoVivienda} onChange={(e) => setEntrevista((p) => ({ ...p, tipoVivienda: e.target.value }))} />
+                <div style={labelStyle}>Composición familiar</div>
+                <input style={inputStyle} placeholder="Ej. Esposa e hijo de 3 años" value={entrevista.composicionFamiliar} onChange={(e) => setEntrevista((p) => ({ ...p, composicionFamiliar: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Estabilidad laboral / fuente de ingresos</div>
+                <input style={inputStyle} placeholder="Ej. Mototaxista independiente, estable" value={entrevista.estabilidadLaboral} onChange={(e) => setEntrevista((p) => ({ ...p, estabilidadLaboral: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Dudas o preguntas del cliente</div>
+                <input style={inputStyle} placeholder="¿Qué preguntas hizo el cliente?" value={entrevista.dudasCliente} onChange={(e) => setEntrevista((p) => ({ ...p, dudasCliente: e.target.value }))} />
+              </div>
+              <div>
+                <div style={labelStyle}>Observaciones del visitador</div>
+                <textarea style={{ ...inputStyle, minHeight: 70 }} value={entrevista.observaciones} onChange={(e) => setEntrevista((p) => ({ ...p, observaciones: e.target.value }))} />
               </div>
               <div>
                 <div style={labelStyle}>Recomendación</div>
-                <input style={inputStyle} value={entrevista.recomendacion} onChange={(e) => setEntrevista((p) => ({ ...p, recomendacion: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Observaciones</div>
-                <textarea style={{ ...inputStyle, minHeight: 70 }} value={entrevista.observaciones} onChange={(e) => setEntrevista((p) => ({ ...p, observaciones: e.target.value }))} />
+                <select style={inputStyle} value={entrevista.recomendacion} onChange={(e) => setEntrevista((p) => ({ ...p, recomendacion: e.target.value }))}>
+                  <option value="">Seleccionar</option>
+                  <option value="Aprobado">Aprobado</option>
+                  <option value="Rechazado">Rechazado</option>
+                  <option value="Pendiente">Pendiente — requiere más información</option>
+                </select>
               </div>
 
               <div>
@@ -667,7 +750,7 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
               </div>
 
               <div>
-                <button onClick={capturarUbicacion} style={miniBtn("#e0f2fe", "#0369a1")}>Capturar ubicación GPS</button>
+                <button type="button" onClick={capturarUbicacion} style={miniBtn("#e0f2fe", "#0369a1")}>Capturar ubicación GPS</button>
                 {ubicacion && <span style={{ marginLeft: 10, fontSize: 13, color: "#166534" }}>✔ Ubicación capturada</span>}
               </div>
             </div>
@@ -700,15 +783,54 @@ function miniBtn2(bg: string, color: string): React.CSSProperties {
 
 function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onResolverVisita }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
+
   return (
     <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+
+      {selectedCliente.lista_negra && (
+        <div style={{ padding: 14, borderRadius: 16, background: "#1f2937", color: "#f9fafb", fontWeight: 700, fontSize: 14 }}>
+          ⛔ LISTA NEGRA{selectedCliente.lista_negra_reversible ? " (reversible)" : " (irreversible)"}
+          {selectedCliente.motivo_lista_negra && <div style={{ marginTop: 6, fontSize: 13, fontWeight: 400, color: "#d1d5db" }}>{selectedCliente.motivo_lista_negra}</div>}
+        </div>
+      )}
+
       <InfoBox label="Nombre" value={selectedCliente.nombre} />
       <InfoBox label="Cédula" value={selectedCliente.cedula} />
       <InfoBox label="Dirección" value={selectedCliente.direccion} />
+      <InfoBox label="Ruta" value={selectedCliente.ruta_contrato === "tiempo_definido" ? "Tiempo definido (semanal/quincenal/mensual)" : "Pago diario (acumula base)"} />
       <InfoBox label="Fuente de llegada" value={selectedCliente.fuente_llegada || "Sin registrar"} />
       <InfoBox label="Teléfono" value={selectedCliente.telefono} />
       <InfoBox label="WhatsApp" value={selectedCliente.whatsapp || "Sin registrar"} />
       <InfoBox label="Acompañante" value={`${selectedCliente.acompanante_nombre || "Sin registrar"} · Tel: ${selectedCliente.acompanante_telefono || "Sin teléfono"}`} />
+
+      {(selectedCliente.referido_por_nombre || selectedCliente.referido_por_cedula) && (
+        <div style={{ background: "#f0fdf4", borderRadius: 16, padding: 14, border: "1px solid #bbf7d0" }}>
+          <div style={{ fontSize: 12, color: "#166534", fontWeight: 700, marginBottom: 4 }}>REFERIDO POR</div>
+          <div style={{ fontSize: 14 }}>{selectedCliente.referido_por_nombre || "Sin nombre"} — {selectedCliente.referido_por_cedula || "Sin cédula"}</div>
+        </div>
+      )}
+
+      {/* Contador de referidos con premios */}
+      {(selectedCliente.referidos_confirmados ?? 0) > 0 || alcanzados.length > 0 ? (
+        <div style={{ background: "#fefce8", borderRadius: 16, padding: 14, border: "1px solid #fde047" }}>
+          <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 8 }}>REFERIDOS CONFIRMADOS: {selectedCliente.referidos_confirmados ?? 0}</div>
+          {alcanzados.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              {alcanzados.map((p) => (
+                <div key={p.hito} style={{ fontSize: 13, color: "#166534" }}>
+                  ✔ {p.hito} referidos — {p.premio} {(selectedCliente.premio_referidos_entregado ?? 0) >= p.hito ? "(entregado)" : "⚠ pendiente de entrega"}
+                </div>
+              ))}
+            </div>
+          )}
+          {siguiente && (
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              Siguiente premio: {siguiente.premio} con {siguiente.hito} referidos ({siguiente.hito - (selectedCliente.referidos_confirmados ?? 0)} pendientes)
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Historial de visitas</div>
@@ -719,10 +841,13 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             {visitas.map((v) => (
               <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
                 <div style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</div>
-                <div>Estado visita: {v.estado}</div>
-                <div>Resultado: {v.resultado || "Pendiente decisión"}</div>
-                <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"}</div>
+                <div>Estado: {v.estado} · Resultado: {v.resultado || "Pendiente decisión"}</div>
+                <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"} {v.entrevista.tiempoResidencia ? `· ${v.entrevista.tiempoResidencia}` : ""}</div>
                 <div><b>Tipo vivienda:</b> {v.entrevista.tipoVivienda || "Sin registrar"}</div>
+                {v.entrevista.composicionFamiliar && <div><b>Familia:</b> {v.entrevista.composicionFamiliar}</div>}
+                {v.entrevista.estabilidadLaboral && <div><b>Ingresos:</b> {v.entrevista.estabilidadLaboral}</div>}
+                {v.entrevista.dudasCliente && <div><b>Dudas del cliente:</b> {v.entrevista.dudasCliente}</div>}
+                <div><b>Recomendación:</b> {v.entrevista.recomendacion || "Sin definir"}</div>
                 <div><b>Observaciones:</b> {v.entrevista.observaciones || "Sin observaciones"}</div>
                 {v.fotos.clienteFuncionario && <div>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>}
                 {v.fotos.fachada && <div>📎 Fachada: {v.fotos.fachada}</div>}

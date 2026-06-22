@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
+import ModalVisita from "../components/ModalVisita";
 import {
   useClientes,
   documentosListos,
@@ -428,6 +429,8 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [detalleModalOpen, setDetalleModalOpen] = useState(false);
+  const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
+  const [clienteVisitaNombre, setClienteVisitaNombre] = useState("");
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [excepcionOpen, setExcepcionOpen] = useState(false);
@@ -808,6 +811,18 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <ClienteBadge estado={estadoVisual(cliente)} />
                     {riesgo && <span style={{ fontSize: 11 }}>{riesgo.icono}</span>}
+                    {cliente.estado === "Listo para visita" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClienteVisitaId(cliente.id);
+                          setClienteVisitaNombre(cliente.nombre);
+                        }}
+                        style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 999, padding: "5px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                      >
+                        🏠 Registrar visita
+                      </button>
+                    )}
                   </div>
                 </button>
               );
@@ -908,6 +923,15 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
       )}
 
       <ClienteDetalleSheet clienteId={clienteDetalleId} onClose={() => setClienteDetalleId(null)} />
+
+      {clienteVisitaId && (
+        <ModalVisita
+          clienteId={clienteVisitaId}
+          clienteNombre={clienteVisitaNombre}
+          onClose={() => setClienteVisitaId(null)}
+          onGuardada={() => { setClienteVisitaId(null); }}
+        />
+      )}
 
       {visitaOpen && selectedCliente && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }} onClick={() => setVisitaOpen(false)}>

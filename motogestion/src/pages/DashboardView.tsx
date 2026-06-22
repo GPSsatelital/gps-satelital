@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, Fragment } from "react";
 import { useMotos } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
@@ -121,6 +121,46 @@ export default function DashboardView({ onNavigate }: {
   }, [loading, motos, clientes, contratos, pagos, taller]);
 
   const hoy = new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  // Recaudo últimos 14 días
+  const recaudo14 = useMemo(() => {
+    const result: Array<{ fecha: string; total: number; esHoy: boolean }> = [];
+    const ahora = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(ahora);
+      d.setDate(ahora.getDate() - i);
+      const fechaStr = d.toISOString().slice(0, 10);
+      const total = pagos
+        .filter(p => p.estado === "Confirmado" && p.fecha === fechaStr)
+        .reduce((acc, p) => acc + p.valor, 0);
+      result.push({ fecha: fechaStr, total, esHoy: i === 0 });
+    }
+    return result;
+  }, [pagos]);
+
+  const maxRecaudo = useMemo(() => Math.max(...recaudo14.map(d => d.total), 1), [recaudo14]);
+
+  // Top 5 contratos con más días sin pago
+  const top5SinPago = useMemo(() => {
+    if (loading || !stats) return [];
+    const hoyDate = new Date();
+    const todayStr = hoyDate.toISOString().slice(0, 10);
+    return contratos
+      .filter(c => c.estado === "Activo")
+      .map(c => {
+        const ultimoPago = pagos
+          .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
+          .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+        const desde = ultimoPago
+          ? new Date(ultimoPago.fecha + "T00:00:00")
+          : (c.fecha_entrega ? new Date(c.fecha_entrega + "T00:00:00") : new Date(c.created_at));
+        const diasSinPago = Math.floor((new Date(todayStr + "T00:00:00").getTime() - desde.getTime()) / 86400000);
+        return { contrato: c, diasSinPago };
+      })
+      .filter(r => r.diasSinPago > 1)
+      .sort((a, b) => b.diasSinPago - a.diasSinPago)
+      .slice(0, 5);
+  }, [contratos, pagos, loading, stats]);
 
   if (loading || !stats) {
     return (
@@ -326,6 +366,81 @@ export default function DashboardView({ onNavigate }: {
 
         </div>
       </div>
+
+      {/* ── Recaudo últimos 14 días ── */}
+      <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", marginTop: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 16 }}>Recaudo — últimos 14 días</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
+          {recaudo14.map(d => {
+            const pct = Math.round((d.total / maxRecaudo) * 100);
+            const altoPx = Math.max(pct, d.total > 0 ? 6 : 2);
+            const label = d.total > 0 ? `$${Math.round(d.total / 1000)}k` : "";
+            const diaSemana = new Date(d.fecha + "T00:00:00").toLocaleDateString("es-CO", { weekday: "short" });
+            return (
+              <Fragment key={d.fecha}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+                  {label && (
+                    <div style={{ fontSize: 10, fontWeight: 700, color: d.esHoy ? "#0284c7" : "#64748b", whiteSpace: "nowrap" }}>
+                      {label}
+                    </div>
+                  )}
+                  <div style={{
+                    width: "100%", borderRadius: 4,
+                    background: d.esHoy ? "#0284c7" : "#cbd5e1",
+                    height: `${altoPx}%`,
+                    minHeight: 3,
+                    transition: "height 0.3s",
+                  }} />
+                  <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "capitalize" }}>{diaSemana}</div>
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Top 5 contratos sin pago ── */}
+      {top5SinPago.length > 0 && (
+        <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>Contratos con más días sin pago</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {top5SinPago.map(({ contrato, diasSinPago }) => {
+              const clienteItem = clientes.find(cl => cl.id === contrato.cliente_id);
+              const motoItem = motos.find(m => m.id === contrato.moto_id);
+              const esCritico = diasSinPago > 7;
+              const esMora = diasSinPago >= 3 && diasSinPago <= 7;
+              const badgeBg = esCritico ? "#fee2e2" : esMora ? "#fef3c7" : "#f1f5f9";
+              const badgeColor = esCritico ? "#991b1b" : esMora ? "#92400e" : "#64748b";
+              const badgeLabel = esCritico ? "Crítico" : esMora ? "Mora" : "Gabela";
+              return (
+                <div
+                  key={contrato.id}
+                  onClick={() => onNavigate("cobros")}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "10px 14px", borderRadius: 12,
+                    borderLeft: `4px solid ${esCritico ? "#ef4444" : esMora ? "#f59e0b" : "#e2e8f0"}`,
+                    background: "#f8fafc", cursor: "pointer", gap: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
+                      {motoItem ? `${motoItem.placa} · ` : ""}{clienteItem?.nombre ?? "Sin cliente"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                      {diasSinPago} días sin pago
+                    </div>
+                  </div>
+                  <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: badgeBg, color: badgeColor, flexShrink: 0 }}>
+                    {badgeLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

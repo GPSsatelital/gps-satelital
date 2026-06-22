@@ -20,6 +20,52 @@ function fmt(n: number) {
   return Math.round(n).toLocaleString("es-CO");
 }
 
+function calcularDiasHastaVencimiento(contrato: Contrato): number | null {
+  if (!contrato.fecha_entrega) return null;
+  if (contrato.forma_pago === "Diario") return null;
+  const diasPeriodo = contrato.forma_pago === "Semanal" ? 7 : contrato.forma_pago === "Quincenal" ? 15 : 30;
+  const entrega = new Date(contrato.fecha_entrega + "T00:00:00");
+  const vencimiento = new Date(entrega);
+  vencimiento.setDate(vencimiento.getDate() + diasPeriodo);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return Math.round((vencimiento.getTime() - hoy.getTime()) / 86400000);
+}
+
+function VencimientoBadge({ contrato }: { contrato: Contrato }) {
+  if (contrato.estado !== "Activo") return null;
+  const dias = calcularDiasHastaVencimiento(contrato);
+  if (dias === null) return null;
+  if (dias > 7) return null;
+
+  if (dias < 0) {
+    return (
+      <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700 }}>
+        Vencido hace {Math.abs(dias)} día{Math.abs(dias) !== 1 ? "s" : ""}
+      </span>
+    );
+  }
+  if (dias === 0) {
+    return (
+      <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>
+        Vence hoy
+      </span>
+    );
+  }
+  if (dias === 1) {
+    return (
+      <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>
+        Vence mañana
+      </span>
+    );
+  }
+  return (
+    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: "#fef9c3", color: "#854d0e", fontSize: 12, fontWeight: 700 }}>
+      Vence en {dias} días
+    </span>
+  );
+}
+
 const ESTADO_COLORS: Record<ContratoEstado, { bg: string; color: string }> = {
   "En proceso": { bg: "#fef3c7", color: "#92400e" },
   Activo: { bg: "#dcfce7", color: "#166534" },
@@ -230,6 +276,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
                     {moto ? ` · ${moto.placa}` : " · Sin moto"}
                     {c.dia_pago && !esDiario ? ` · Paga ${c.dia_pago}` : ""}
                   </div>
+                  {!esDiario && <div style={{ marginTop: 6 }}><VencimientoBadge contrato={c} /></div>}
                 </div>
                 <ContractBadge estado={c.estado} />
               </div>

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, type MetodoPago } from "../hooks/usePagos";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 
@@ -31,11 +31,17 @@ export default function CobroDiarioView() {
   const [fecha, setFecha] = useState(hoy);
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "pagados" | "mora">("todos");
   const [busqueda, setBusqueda] = useState("");
+  const [pagarContratoId, setPagarContratoId] = useState<string | null>(null);
+  const [pagarValor, setPagarValor] = useState<number>(0);
+  const [pagarMetodo, setPagarMetodo] = useState<MetodoPago>("Efectivo");
+  const [pagarLabel, setPagarLabel] = useState("");
+  const [pagarCuota, setPagarCuota] = useState<number>(0);
+  const [guardandoPago, setGuardandoPago] = useState(false);
 
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
-  const { pagos } = usePagos();
+  const { pagos, registrarPago } = usePagos();
 
   const diaSem = diaSemana(fecha);
   const esDomingo = new Date(fecha + "T00:00:00").getDay() === 0;
@@ -216,17 +222,103 @@ export default function CobroDiarioView() {
                   {f.pagadoHoy > 0 ? `$ ${fmt(f.pagadoHoy)}` : "—"}
                   <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}> / $ {fmt(f.cuota)}</span>
                 </div>
-                {f.clienteTel && f.estado !== "pagado" && (
-                  <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.cuota, f.estado)}
-                    style={{ marginTop: 4, padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
-                    💬 WA
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: 4, flexWrap: "wrap" }}>
+                  {f.estado !== "pagado" && (
+                    <button
+                      onClick={() => {
+                        setPagarContratoId(f.contratoId);
+                        setPagarValor(f.cuota);
+                        setPagarCuota(f.cuota);
+                        setPagarMetodo("Efectivo");
+                        setPagarLabel(`${f.placa !== "—" ? f.placa + " · " : ""}${f.clienteNombre}`);
+                      }}
+                      style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
+                    >
+                      💵 Pagar
+                    </button>
+                  )}
+                  {f.clienteTel && f.estado !== "pagado" && (
+                    <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.cuota, f.estado)}
+                      style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
+                      💬 WA
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+      {pagarContratoId && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 90 }}
+          onClick={() => setPagarContratoId(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 380, background: "white", borderRadius: 20, padding: 24, boxShadow: "0 20px 60px rgba(15,23,42,0.2)" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>Registrar pago</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, textTransform: "uppercase", fontWeight: 600 }}>{pagarLabel}</div>
+              </div>
+              <button onClick={() => setPagarContratoId(null)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16, color: "#334155" }}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <div style={{ marginBottom: 5, fontSize: 13, fontWeight: 600, color: "#334155" }}>Valor</div>
+                <input
+                  type="number"
+                  value={pagarValor}
+                  onChange={(e) => setPagarValor(Number(e.target.value))}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" }}
+                />
+                <div style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}>Cuota esperada: $ {fmt(pagarCuota)}</div>
+              </div>
+
+              <div>
+                <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 600, color: "#334155" }}>Método de pago</div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {(["Efectivo", "Transferencia"] as const).map((op) => (
+                    <label key={op} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: `2px solid ${pagarMetodo === op ? "#0284c7" : "#e2e8f0"}`, background: pagarMetodo === op ? "#e0f2fe" : "white", fontSize: 13, fontWeight: 600, color: pagarMetodo === op ? "#0284c7" : "#334155", flex: 1, justifyContent: "center" }}>
+                      <input type="radio" name="metodo" value={op} checked={pagarMetodo === op} onChange={() => setPagarMetodo(op)} style={{ display: "none" }} />
+                      {op}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+              <button onClick={() => setPagarContratoId(null)} style={{ background: "white", border: "1px solid #cbd5e1", borderRadius: 12, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                Cancelar
+              </button>
+              <button
+                disabled={guardandoPago || pagarValor <= 0}
+                onClick={async () => {
+                  if (!pagarContratoId || pagarValor <= 0) return;
+                  setGuardandoPago(true);
+                  const aplicado = {
+                    tarifa: Math.min(pagarValor, pagarCuota),
+                    deuda: 0,
+                    convenio: 0,
+                    ahorro: 0,
+                    saldo: Math.max(pagarValor - pagarCuota, 0),
+                  };
+                  await registrarPago(pagarContratoId, pagarValor, pagarMetodo, aplicado);
+                  setGuardandoPago(false);
+                  setPagarContratoId(null);
+                }}
+                style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, cursor: guardandoPago || pagarValor <= 0 ? "not-allowed" : "pointer", fontSize: 14, opacity: guardandoPago || pagarValor <= 0 ? 0.7 : 1 }}
+              >
+                {guardandoPago ? "Registrando..." : "Registrar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

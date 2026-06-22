@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useClientes, type Cliente, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
-import { useContratos } from "../hooks/useContratos";
-import { useMotos } from "../hooks/useMotos";
-import { usePagos } from "../hooks/usePagos";
+import { useContratos, type Contrato } from "../hooks/useContratos";
+import { useMotos, type Moto } from "../hooks/useMotos";
+import { usePagos, type Pago } from "../hooks/usePagos";
 import { useVisitas } from "../hooks/useVisitas";
 
 interface Props {
@@ -80,6 +80,82 @@ function DocsSection({ doc, titulo }: { doc: DocumentoFlags; titulo: string }) {
       </div>
     </div>
   );
+}
+
+function imprimirEstadoCuenta(
+  cliente: Cliente,
+  contrato: Contrato,
+  moto: Moto | null,
+  pagosContrato: Pago[],
+) {
+  const hoy = new Date();
+  const fechaStr = hoy.toLocaleDateString("es-CO");
+
+  const pagosConfirmados = pagosContrato.filter(p => p.estado === "Confirmado");
+  const totalPagado = pagosConfirmados.reduce((acc, p) => acc + p.valor, 0);
+  const ultimos30 = [...pagosConfirmados].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 30);
+
+  const diasActivo = contrato.fecha_entrega
+    ? Math.floor((hoy.getTime() - new Date(contrato.fecha_entrega + "T00:00:00").getTime()) / 86400000)
+    : 0;
+
+  const tarifaDiaria = contrato.tarifa_diaria ?? 27000;
+  const esDiario = contrato.tipo_ruta === "diario" || contrato.forma_pago === "Diario";
+  const ahorroAcumulado = contrato.ahorro_acumulado ?? 0;
+
+  const linea = "──────────────────────────────────────";
+
+  const filasUltimos = ultimos30.map(p => {
+    const fechaP = new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO");
+    const metodo = p.metodo.padEnd(13);
+    const valor = `$ ${Math.round(p.valor).toLocaleString("es-CO")}`;
+    return `  ${fechaP.padEnd(11)}| ${metodo}| ${valor}`;
+  }).join("\n");
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Estado de cuenta — ${cliente.nombre}</title>
+  <style>
+    body { font-family: monospace; font-size: 14px; padding: 32px; color: #0f172a; max-width: 600px; margin: 0 auto; }
+    h2 { font-size: 18px; margin-bottom: 4px; }
+    pre { white-space: pre-wrap; line-height: 1.7; }
+    .footer { margin-top: 32px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  </style>
+</head>
+<body>
+  <h2>GPS Satelital · Estado de Cuenta</h2>
+  <pre>
+Cliente: ${cliente.nombre.toUpperCase()} (C.C. ${cliente.cedula})
+Fecha: ${fechaStr}${moto ? `  | Contrato: ${contrato.forma_pago} · ${moto.placa}` : `  | Contrato: ${contrato.forma_pago}`}
+
+${linea}
+RESUMEN
+  Tarifa diaria:        $ ${Math.round(tarifaDiaria).toLocaleString("es-CO")}
+  Días activo:          ${diasActivo} días
+  Total pagado:         $ ${Math.round(totalPagado).toLocaleString("es-CO")}${esDiario ? `
+  Ahorro acumulado:     $ ${Math.round(ahorroAcumulado).toLocaleString("es-CO")}` : ""}
+
+${linea}
+ÚLTIMOS 30 PAGOS
+  Fecha      | Método        | Valor
+  ──────────-┼───────────────┼──────────
+${filasUltimos || "  Sin pagos registrados."}
+  </pre>
+  <div class="footer">
+    "Este documento es un estado de cuenta informativo.<br/>
+    GPS Satelital Cartagena · gpssatelitalcartagena@gmail.com"
+  </div>
+</body>
+</html>`;
+
+  const ventana = window.open("", "_blank");
+  if (ventana) {
+    ventana.document.write(html);
+    ventana.document.close();
+    ventana.print();
+  }
 }
 
 export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
@@ -347,6 +423,23 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
                 )}
               </div>
             </>
+          )}
+
+          {/* Estado de cuenta */}
+          {contratoActivo && (
+            <div style={{ marginTop: 24 }}>
+              <button
+                onClick={() => imprimirEstadoCuenta(cliente, contratoActivo, moto, pagosContrato)}
+                style={{
+                  width: "100%", padding: "13px", borderRadius: 14, border: "none",
+                  background: "#f1f5f9", color: "#334155", fontWeight: 700,
+                  fontSize: 14, cursor: "pointer", display: "flex",
+                  alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+              >
+                🧾 Estado de cuenta
+              </button>
+            </div>
           )}
         </div>
       </div>

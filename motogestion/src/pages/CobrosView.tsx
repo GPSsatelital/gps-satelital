@@ -15,6 +15,7 @@ import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
+import ModalGestion from "../components/ModalGestion";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -331,6 +332,8 @@ export default function CobrosView() {
 
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
+
+  const [modalGestionOpen, setModalGestionOpen] = useState(false);
 
   const contratosActivos = contratos.filter(c => c.estado === "Activo");
 
@@ -686,6 +689,20 @@ export default function CobrosView() {
                     estadoCartera={contratoDetalle.estadoCartera}
                   />
                 )}
+
+                {/* Botón registrar gestión */}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    onClick={() => setModalGestionOpen(true)}
+                    style={{
+                      background: "#f1f5f9", color: "#334155", border: "none",
+                      borderRadius: 14, padding: "8px 16px", fontWeight: 600,
+                      fontSize: 13, cursor: "pointer",
+                    }}
+                  >
+                    📋 Registrar gestión
+                  </button>
+                </div>
 
                 {/* Alerta base completada */}
                 {(contratoDetalle.tipo_ruta === "diario" || contratoDetalle.forma_pago === "Diario") &&
@@ -1191,6 +1208,15 @@ export default function CobrosView() {
           )}
         </div>
       </div>
+
+      {/* ── Modal gestión ── */}
+      {modalGestionOpen && contratoDetalle && clienteDetalle && (
+        <ModalGestion
+          contratoId={contratoDetalle.id}
+          clienteNombre={clienteDetalle.nombre}
+          onClose={() => setModalGestionOpen(false)}
+        />
+      )}
 
       {/* ── Historial general de pagos ── */}
       <div style={{ ...card, marginTop: 24 }}>

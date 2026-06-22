@@ -5,11 +5,48 @@ import { useMotos } from "../hooks/useMotos";
 import { usePagos, type AplicadoPago } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
+import ModalDeuda from "../components/ModalDeuda";
+import ModalConvenio from "../components/ModalConvenio";
 import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-type Tab = "hoy" | "semanal" | "mora" | "inmovilizar";
+type Tab = "hoy" | "semanal" | "mora" | "inmovilizar" | "caja";
+
+type FiltroDia = "todos" | "lunes" | "miercoles";
+type FiltroEstado = "todos" | "al-dia" | "pendiente" | "mora";
+
+function fmtFechaCarta(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  return `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+
+function calcPagadoHasta(
+  pagosC: Array<{ fecha: string; estado: string }>,
+  diaPago: string,
+  hoy: string,
+): { pagadoHasta: string | null; estadoLabel: "Al día" | "Pendiente" | "Mora" } {
+  const conf = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
+  if (!conf.length) return { pagadoHasta: null, estadoLabel: "Mora" };
+  const targetDay = diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"") === "miercoles" ? 3 : 1;
+  const d = new Date(hoy + "T00:00:00");
+  while (d.getDay() !== targetDay) d.setDate(d.getDate() - 1);
+  const inicioPeriodo = d.toISOString().slice(0, 10);
+  const pagoPeriodo = conf.find(p => p.fecha >= inicioPeriodo);
+  if (pagoPeriodo) {
+    const hasta = new Date(d); hasta.setDate(hasta.getDate() + 6);
+    return { pagadoHasta: hasta.toISOString().slice(0, 10), estadoLabel: "Al día" };
+  }
+  const anterior = new Date(d); anterior.setDate(anterior.getDate() - 7);
+  const pagoAnterior = conf.find(p => p.fecha >= anterior.toISOString().slice(0,10));
+  if (pagoAnterior) {
+    const hasta = new Date(anterior); hasta.setDate(hasta.getDate() + 6);
+    return { pagadoHasta: hasta.toISOString().slice(0, 10), estadoLabel: "Pendiente" };
+  }
+  return { pagadoHasta: conf[0]?.fecha ?? null, estadoLabel: "Mora" };
+}
 
 type Fila = {
   contratoId: string;
@@ -29,6 +66,8 @@ type Fila = {
   pagadoHoy: number;
   pagaHoy: boolean;
   pagadoHoyBool: boolean;
+  pagadoHasta: string | null;
+  estadoLabel: "Al día" | "Pendiente" | "Mora";
   prioridad: "critica" | "alta" | "media";
 };
 
@@ -68,8 +107,12 @@ export default function CobroDiarioView() {
 
   const [tab, setTab] = useState<Tab>("hoy");
   const [busqueda, setBusqueda] = useState("");
+  const [filtroDia, setFiltroDia] = useState<FiltroDia>("todos");
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
   const [gestionId, setGestionId] = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
+  const [deudaId, setDeudaId] = useState<string | null>(null);
+  const [convenioId, setConvenioId] = useState<string | null>(null);
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [cobrandoId, setCobrandoId] = useState<string | null>(null);
   const [cobrarValor, setCobrarValor] = useState("");
@@ -106,6 +149,9 @@ export default function CobroDiarioView() {
         const pagaHoy = esContratoDiario
           ? true
           : (diaPagoNorm === "lunes" && esLunes) || (diaPagoNorm === "miercoles" && esMiercoles);
+        const { pagadoHasta, estadoLabel } = esContratoDiario
+          ? { pagadoHasta: pagosC.filter(p=>p.estado==="Confirmado").sort((a,b)=>b.fecha.localeCompare(a.fecha))[0]?.fecha ?? null, estadoLabel: (dias === 0 ? "Al día" : dias === 1 ? "Pendiente" : "Mora") as "Al día"|"Pendiente"|"Mora" }
+          : calcPagadoHasta(pagosC, diaPago, hoy);
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
 
         return {
@@ -126,6 +172,8 @@ export default function CobroDiarioView() {
           pagadoHoy,
           pagaHoy,
           pagadoHoyBool: pagadoHoy > 0,
+          pagadoHasta,
+          estadoLabel,
           prioridad,
         };
       });
@@ -338,6 +386,7 @@ export default function CobroDiarioView() {
           { key: "semanal", label: `Cartera (${filasSemanal.length})` },
           { key: "mora", label: `Mora (${filasMora.length})` },
           { key: "inmovilizar", label: `Inmovilizar (${filasInmov.length})` },
+          { key: "caja", label: "🏦 Caja" },
         ] as { key: Tab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer",
@@ -365,50 +414,95 @@ export default function CobroDiarioView() {
       )}
 
       {tab === "semanal" && (() => {
-        const lunes = filtrar(filasSemanal).filter(f => f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"") === "lunes");
-        const miercoles = filtrar(filasSemanal).filter(f => f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"") === "miercoles");
-        const otros = filtrar(filasSemanal).filter(f => {
-          const n = f.diaPago.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
-          return n !== "lunes" && n !== "miercoles";
+        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+        let lista = filtrar(filasSemanal);
+        if (filtroDia !== "todos") lista = lista.filter(f => norm(f.diaPago) === filtroDia);
+        if (filtroEstado !== "todos") lista = lista.filter(f => {
+          if (filtroEstado === "al-dia") return f.estadoLabel === "Al día";
+          if (filtroEstado === "pendiente") return f.estadoLabel === "Pendiente";
+          if (filtroEstado === "mora") return f.estadoLabel === "Mora";
+          return true;
         });
+        const lunes = lista.filter(f => norm(f.diaPago) === "lunes");
+        const miercoles = lista.filter(f => norm(f.diaPago) === "miercoles");
+        const otros = lista.filter(f => norm(f.diaPago) !== "lunes" && norm(f.diaPago) !== "miercoles");
         const grupos = [
           { label: `Lunes (${lunes.length})`, filas: lunes, color: "#1d4ed8", bg: "#dbeafe", pagaHoyGrupo: esLunes },
           { label: `Miércoles (${miercoles.length})`, filas: miercoles, color: "#7c3aed", bg: "#ede9fe", pagaHoyGrupo: esMiercoles },
-          ...(otros.length > 0 ? [{ label: `Otro día (${otros.length})`, filas: otros, color: "#334155", bg: "#f1f5f9", pagaHoyGrupo: false }] : []),
-        ];
+          ...(otros.length > 0 ? [{ label: `Otro (${otros.length})`, filas: otros, color: "#334155", bg: "#f1f5f9", pagaHoyGrupo: false }] : []),
+        ].filter(g => g.filas.length > 0 || filtroDia === "todos");
+        const estadoColor: Record<string, { bg: string; color: string }> = {
+          "Al día": { bg: "#dcfce7", color: "#166534" },
+          "Pendiente": { bg: "#fef3c7", color: "#92400e" },
+          "Mora": { bg: "#fee2e2", color: "#991b1b" },
+        };
         return (
-          <div style={{ display: "grid", gap: 16 }}>
-            {grupos.map(g => (
-              <div key={g.label}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <div style={{ padding: "4px 12px", borderRadius: 999, background: g.bg, color: g.color, fontWeight: 800, fontSize: 13 }}>
-                    {g.label}
+          <div>
+            {/* Filtros */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {(["todos","lunes","miercoles"] as FiltroDia[]).map(d => (
+                <button key={d} onClick={() => setFiltroDia(d)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  background: filtroDia === d ? "#0f172a" : "#f1f5f9", color: filtroDia === d ? "white" : "#64748b" }}>
+                  {d === "todos" ? "Todos los días" : d === "lunes" ? "🔵 Lunes" : "🟣 Miércoles"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+              {(["todos","al-dia","pendiente","mora"] as FiltroEstado[]).map(e => (
+                <button key={e} onClick={() => setFiltroEstado(e)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  background: filtroEstado === e ? "#0f172a" : "#f1f5f9", color: filtroEstado === e ? "white" : "#64748b" }}>
+                  {e === "todos" ? `Todos (${filasSemanal.length})` : e === "al-dia" ? `✅ Al día (${filasSemanal.filter(f=>f.estadoLabel==="Al día").length})` : e === "pendiente" ? `⏳ Pendiente (${filasSemanal.filter(f=>f.estadoLabel==="Pendiente").length})` : `🔴 Mora (${filasSemanal.filter(f=>f.estadoLabel==="Mora").length})`}
+                </button>
+              ))}
+            </div>
+            {/* Lista */}
+            <div style={{ display: "grid", gap: 16 }}>
+              {grupos.map(g => g.filas.length === 0 ? null : (
+                <div key={g.label}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <div style={{ padding: "4px 12px", borderRadius: 999, background: g.bg, color: g.color, fontWeight: 800, fontSize: 13 }}>{g.label}</div>
+                    {g.pagaHoyGrupo && <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 999 }}>⚡ Paga HOY</span>}
                   </div>
-                  {g.pagaHoyGrupo && <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 999 }}>⚡ Paga HOY</span>}
-                </div>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {g.filas.map(f => (
-                    <div key={f.contratoId} style={{ background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", border: f.pagadoHoyBool && g.pagaHoyGrupo ? "1px solid #bbf7d0" : "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 13, textTransform: "uppercase" }}>{f.placa} · {f.clienteNombre}</div>
-                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                          ${(f.valorPeriodo ?? f.valorPactado * 7).toLocaleString("es-CO")}/sem
-                          {f.diasSinPago > 0 && f.diasSinPago < 999 && <span style={{ color: "#dc2626", marginLeft: 8, fontWeight: 700 }}>· {f.diasSinPago}d sin pago</span>}
-                          {f.pagadoHoyBool && g.pagaHoyGrupo && <span style={{ color: "#166534", marginLeft: 8, fontWeight: 700 }}>· ✅ Pagó hoy</span>}
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {g.filas.map(f => {
+                      const ec = estadoColor[f.estadoLabel] ?? estadoColor["Mora"];
+                      return (
+                        <div key={f.contratoId} style={{ background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", borderLeft: `4px solid ${ec.color}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 800, fontSize: 13, textTransform: "uppercase" }}>{f.placa} · {f.clienteNombre}</span>
+                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: ec.bg, color: ec.color }}>{f.estadoLabel}</span>
+                              {f.pagadoHoyBool && g.pagaHoyGrupo && <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✅ Pagó hoy</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                              <span>${(f.valorPeriodo ?? f.valorPactado * 7).toLocaleString("es-CO")}/sem</span>
+                              {f.pagadoHasta && <span>Pagado hasta: <strong>{fmtFechaCarta(f.pagadoHasta)}</strong></span>}
+                              {f.diasSinPago > 0 && f.diasSinPago < 999 && <span style={{ color: "#dc2626", fontWeight: 700 }}>{f.diasSinPago}d sin pago</span>}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                            {f.clienteTel && <>
+                              <button onClick={() => abrirLlamada(f.clienteTel)} title="Llamar" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dbeafe", color: "#1d4ed8" }}>📞</button>
+                              <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} title="WhatsApp" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dcfce7", color: "#166534" }}>💬</button>
+                            </>}
+                            <button onClick={() => abrirCobrar(f)} title="Registrar pago" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#0f172a", color: "white" }}>💳</button>
+                            <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} title="Gestión" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#fef3c7", color: "#92400e" }}>📋</button>
+                            <button onClick={() => setDeudaId(f.contratoId)} title="Registrar deuda" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#fee2e2", color: "#991b1b" }}>⚠️</button>
+                            <button onClick={() => setConvenioId(f.contratoId)} title="Convenio de pago" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#ede9fe", color: "#7c3aed" }}>🤝</button>
+                          </div>
                         </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                        {f.clienteTel && <>
-                          <button onClick={() => abrirLlamada(f.clienteTel)} title="Llamar" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dbeafe", color: "#1d4ed8" }}>📞</button>
-                          <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} title="WhatsApp" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#dcfce7", color: "#166534" }}>💬</button>
-                        </>}
-                        <button onClick={() => abrirCobrar(f)} title="Registrar pago" style={{ padding: "5px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, background: "#0f172a", color: "white" }}>💳</button>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              {lista.length === 0 && (
+                <div style={{ textAlign: "center", padding: "40px 24px", background: "white", borderRadius: 16 }}>
+                  <div style={{ fontSize: 32 }}>🔍</div>
+                  <div style={{ fontWeight: 700, marginTop: 8 }}>Sin resultados con estos filtros</div>
+                </div>
+              )}
+            </div>
           </div>
         );
       })()}
@@ -516,8 +610,68 @@ export default function CobroDiarioView() {
         </div>
       )}
 
+      {tab === "caja" && (() => {
+        const pagosHoy = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado");
+        const efectivoHoy = pagosHoy.filter(p => p.metodo === "Efectivo").reduce((s,p) => s+p.valor, 0);
+        const transHoy = pagosHoy.filter(p => p.metodo === "Transferencia").reduce((s,p) => s+p.valor, 0);
+        const totalHoy = efectivoHoy + transHoy;
+        return (
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 140, background: "#dcfce7", borderRadius: 14, padding: "14px 16px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>💵 Efectivo</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#166534" }}>${fmt(efectivoHoy)}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 140, background: "#dbeafe", borderRadius: 14, padding: "14px 16px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>🏦 Transferencias</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#1d4ed8" }}>${fmt(transHoy)}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 140, background: "#0f172a", borderRadius: 14, padding: "14px 16px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Total del día</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "white" }}>${fmt(totalHoy)}</div>
+              </div>
+            </div>
+            <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: 800, fontSize: 14 }}>
+                Pagos recibidos hoy — {pagosHoy.length} registros
+              </div>
+              {pagosHoy.length === 0 && (
+                <div style={{ padding: "32px 16px", textAlign: "center", color: "#64748b", fontSize: 14 }}>Sin pagos registrados hoy</div>
+              )}
+              {pagosHoy.map((p, i) => {
+                const c = contratos.find(x => x.id === p.contrato_id);
+                const cl = clientes.find(x => x.id === c?.cliente_id);
+                const m = motos.find(x => x.id === c?.moto_id);
+                return (
+                  <div key={p.id ?? i} style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{m?.placa ?? "—"} · {cl?.nombre ?? "—"}</div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>{p.metodo}</div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: p.metodo === "Efectivo" ? "#166534" : "#1d4ed8" }}>${fmt(p.valor)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {!esSecretaria && (
+              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>
+                Solo la secretaria puede cerrar la caja.
+              </div>
+            )}
+            {esSecretaria && (
+              <button style={{ padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 15, background: "#166534", color: "white" }}
+                onClick={() => alert("Caja cerrada: $" + fmt(totalHoy) + " — Función de guardado en DB próximamente")}>
+                ✅ Cerrar caja del día — ${fmt(totalHoy)}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {modalCobrar}
       {gestionId && <ModalGestion contratoId={gestionId} clienteNombre={gestionNombre} onClose={() => setGestionId(null)} />}
+      {deudaId && <ModalDeuda contratoId={deudaId} clienteNombre={filas.find(f=>f.contratoId===deudaId)?.clienteNombre ?? ""} onClose={() => setDeudaId(null)} />}
+      {convenioId && <ModalConvenio contratoId={convenioId} clienteNombre={filas.find(f=>f.contratoId===convenioId)?.clienteNombre ?? ""} onClose={() => setConvenioId(null)} />}
       {clienteDetalleId && <ClienteDetalleSheet clienteId={clienteDetalleId} onClose={() => setClienteDetalleId(null)} />}
     </div>
   );

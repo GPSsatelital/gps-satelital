@@ -6,6 +6,7 @@ import {
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
+  type TipoRegistroPago,
 } from "../hooks/usePagos";
 import { useContratos, calcularEquivalenciasDiarias } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -203,12 +204,17 @@ export default function CobrosView() {
   // Payment form state
   const [valor, setValor] = useState("");
   const [metodo, setMetodo] = useState<MetodoPago>("Efectivo");
+  const [tipoRegistro, setTipoRegistro] = useState<TipoRegistroPago>("normal");
+  const [comprobanteNombre, setComprobanteNombre] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formExito, setFormExito] = useState(false);
 
   // Gestion form state
   const [tipoGestion, setTipoGestion] = useState<TipoGestion>("llamada");
   const [resultadoGestion, setResultadoGestion] = useState("");
+  const [plazoExtraDias, setPlazoExtraDias] = useState("");
+  const [plazoExtraMotivo, setPlazoExtraMotivo] = useState("");
+  const [plazoExtraFecha, setPlazoExtraFecha] = useState("");
   const [gestionError, setGestionError] = useState<string | null>(null);
   const [gestionExito, setGestionExito] = useState(false);
 
@@ -324,6 +330,8 @@ export default function CobrosView() {
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const esSecretaria = profile?.role === "SECRETARIA";
+  const puedeRegistrarEfectivo = esSecretaria || profile?.role === "ADMIN_PRINCIPAL";
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
   const gestionesContrato = contratoSeleccionadoId
@@ -356,7 +364,11 @@ export default function CobrosView() {
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleRegistrarPago() {
     if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
-    if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
+    if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor válido."); return; }
+    if (metodo === "Efectivo" && !puedeRegistrarEfectivo) {
+      setFormError("Solo la secretaria puede registrar pagos en efectivo.");
+      return;
+    }
     setFormError(null);
     setFormExito(false);
 
@@ -365,10 +377,16 @@ export default function CobrosView() {
       montoIngresado,
       metodo,
       desglose,
-      contratoDetalle?.convenioActivo?.id,
+      {
+        convenioId: contratoDetalle?.convenioActivo?.id,
+        tipoRegistro,
+        registradoPor: profile?.id,
+        comprobanteUrl: comprobanteNombre ?? undefined,
+      },
     );
     if (error) { setFormError(error); return; }
     setValor("");
+    setComprobanteNombre(null);
     setFormExito(true);
     setTimeout(() => setFormExito(false), 3000);
   }
@@ -403,10 +421,33 @@ export default function CobrosView() {
 
   async function handleRegistrarGestion() {
     if (!contratoSeleccionadoId || !profile) return;
+    if (tipoGestion === "plazo_extra") {
+      if (!plazoExtraDias || Number(plazoExtraDias) < 1 || Number(plazoExtraDias) > 2) {
+        setGestionError("El plazo extra es máximo 2 días. Ingresa 1 o 2.");
+        return;
+      }
+      if (!plazoExtraMotivo.trim()) {
+        setGestionError("Debes escribir el motivo del plazo extra.");
+        return;
+      }
+      if (!plazoExtraFecha) {
+        setGestionError("Define la fecha límite del plazo extra.");
+        return;
+      }
+    }
     setGestionError(null);
-    const { error } = await registrarGestion(contratoSeleccionadoId, tipoGestion, resultadoGestion, profile.id);
+    const { error } = await registrarGestion(
+      contratoSeleccionadoId,
+      tipoGestion,
+      resultadoGestion,
+      profile.id,
+      tipoGestion === "plazo_extra"
+        ? { plazo_extra_dias: Number(plazoExtraDias), plazo_extra_motivo: plazoExtraMotivo.trim(), plazo_extra_fecha_limite: plazoExtraFecha }
+        : undefined,
+    );
     if (error) { setGestionError(error); return; }
     setResultadoGestion("");
+    setPlazoExtraDias(""); setPlazoExtraMotivo(""); setPlazoExtraFecha("");
     setGestionExito(true);
     setTimeout(() => setGestionExito(false), 3000);
   }
@@ -636,16 +677,59 @@ export default function CobrosView() {
                     />
                   </div>
                   <div>
-                    <div style={labelStyle}>Metodo de pago</div>
-                    <select
-                      style={inputStyle}
-                      value={metodo}
-                      onChange={e => setMetodo(e.target.value as MetodoPago)}
-                    >
-                      <option value="Efectivo">Efectivo (confirma automatico)</option>
-                      <option value="Nequi">Nequi (queda pendiente)</option>
-                    </select>
+                    <div style={labelStyle}>Tipo de registro</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {puedeRegistrarEfectivo && (
+                        <button
+                          type="button"
+                          onClick={() => { setTipoRegistro("normal"); setMetodo("Efectivo"); }}
+                          style={{
+                            flex: "1 1 120px", padding: "10px 12px", borderRadius: 14, cursor: "pointer", border: "none",
+                            background: tipoRegistro === "normal" ? "#dcfce7" : "#f1f5f9",
+                            fontWeight: tipoRegistro === "normal" ? 800 : 500,
+                            color: tipoRegistro === "normal" ? "#166534" : "#334155",
+                          }}
+                        >💵 Efectivo</button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setTipoRegistro("transferencia"); setMetodo("Transferencia"); }}
+                        style={{
+                          flex: "1 1 120px", padding: "10px 12px", borderRadius: 14, cursor: "pointer", border: "none",
+                          background: tipoRegistro === "transferencia" ? "#dbeafe" : "#f1f5f9",
+                          fontWeight: tipoRegistro === "transferencia" ? 800 : 500,
+                          color: tipoRegistro === "transferencia" ? "#1e40af" : "#334155",
+                        }}
+                      >📲 Transferencia</button>
+                      {esAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => { setTipoRegistro("campo"); setMetodo("Efectivo"); }}
+                          style={{
+                            flex: "1 1 120px", padding: "10px 12px", borderRadius: 14, cursor: "pointer", border: "none",
+                            background: tipoRegistro === "campo" ? "#fef3c7" : "#f1f5f9",
+                            fontWeight: tipoRegistro === "campo" ? 800 : 500,
+                            color: tipoRegistro === "campo" ? "#92400e" : "#334155",
+                          }}
+                        >🛵 Cobro en campo</button>
+                      )}
+                    </div>
+                    {tipoRegistro === "normal" && <div style={{ fontSize: 12, color: "#166534", marginTop: 6 }}>Efectivo recibido en oficina — se confirma automáticamente.</div>}
+                    {tipoRegistro === "transferencia" && <div style={{ fontSize: 12, color: "#1e40af", marginTop: 6 }}>Queda pendiente hasta que la secretaria confirme que entró el dinero.</div>}
+                    {tipoRegistro === "campo" && <div style={{ fontSize: 12, color: "#92400e", marginTop: 6 }}>Efectivo recuperado en calle por admin — la secretaria debe confirmar.</div>}
                   </div>
+                  {tipoRegistro === "transferencia" && (
+                    <div>
+                      <div style={labelStyle}>Foto del comprobante</div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={e => setComprobanteNombre(e.target.files?.[0]?.name ?? null)}
+                      />
+                      {comprobanteNombre && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {comprobanteNombre}</div>}
+                    </div>
+                  )}
 
                   {/* Desglose en tiempo real */}
                   {montoIngresado > 0 && (
@@ -924,73 +1008,103 @@ export default function CobrosView() {
                 </div>
               )}
 
-              {/* Gestiones de cobro — solo si en mora o gabela */}
-              {(contratoDetalle.estadoCartera === "mora" || contratoDetalle.estadoCartera === "gabela") && (
-                <div style={card}>
-                  <h3 style={{ margin: "0 0 12px", fontSize: 17 }}>Gestiones de cobro</h3>
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <div>
-                      <div style={labelStyle}>Tipo de gestion</div>
-                      <select
-                        style={inputStyle}
-                        value={tipoGestion}
-                        onChange={e => setTipoGestion(e.target.value as TipoGestion)}
-                      >
-                        <option value="llamada">Llamada</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="visita">Visita</option>
-                        <option value="apagado_moto">Apagado de moto</option>
-                        <option value="sirena">Sirena</option>
-                        <option value="recuperacion">Recuperacion</option>
-                        <option value="otro">Otro</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div style={labelStyle}>Resultado / Nota</div>
-                      <input
-                        style={inputStyle}
-                        value={resultadoGestion}
-                        onChange={e => setResultadoGestion(e.target.value)}
-                        placeholder="Descripcion breve del resultado..."
-                      />
-                    </div>
-                    {gestionError && (
-                      <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>
-                    )}
-                    {gestionExito && (
-                      <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>
-                        Gestion registrada.
-                      </div>
-                    )}
-                    <button onClick={handleRegistrarGestion} style={secondaryBtn}>
-                      Registrar gestion
-                    </button>
-
-                    {gestionesContrato.length > 0 && (
-                      <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                        {gestionesContrato.map(g => (
-                          <div
-                            key={g.id}
-                            style={{
-                              padding: "8px 12px",
-                              background: "#f8fafc",
-                              borderRadius: 10,
-                              border: "1px solid #e2e8f0",
-                              fontSize: 13,
-                            }}
-                          >
-                            <span style={{ fontWeight: 700 }}>{g.tipo}</span>
-                            {g.resultado && <span style={{ color: "#64748b" }}> — {g.resultado}</span>}
-                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-                              {formatDate(g.fecha)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              {/* Gestiones de cobro — siempre visible si está seleccionado un contrato */}
+              <div style={card}>
+                <h3 style={{ margin: "0 0 12px", fontSize: 17 }}>Gestiones de cobro</h3>
+                {contratoDetalle.estadoCartera === "al-dia" && (
+                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Cliente al día — puedes registrar gestiones preventivas.</div>
+                )}
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div>
+                    <div style={labelStyle}>Tipo de gestión</div>
+                    <select
+                      style={inputStyle}
+                      value={tipoGestion}
+                      onChange={e => { setTipoGestion(e.target.value as TipoGestion); setGestionError(null); }}
+                    >
+                      <option value="mensaje_recordatorio">📩 Mensaje recordatorio</option>
+                      <option value="llamada">📞 Llamada</option>
+                      <option value="whatsapp">💬 WhatsApp</option>
+                      <option value="sirena">🔊 Sirena remota</option>
+                      <option value="visita">🏠 Visita de cobro</option>
+                      <option value="plazo_extra">⏳ Plazo extra (máx. 2 días)</option>
+                      <option value="cobro_campo">🛵 Cobro en campo</option>
+                      <option value="recoleccion">🔒 Orden de recolección</option>
+                      <option value="otro">Otro</option>
+                    </select>
                   </div>
+
+                  {tipoGestion === "plazo_extra" && (
+                    <div style={{ background: "#fef3c7", borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>Plazo extra — máximo 2 días adicionales</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <div style={labelStyle}>Días extra (1 o 2)</div>
+                          <input type="number" min={1} max={2} style={inputStyle} value={plazoExtraDias} onChange={e => setPlazoExtraDias(e.target.value)} placeholder="1 o 2" />
+                        </div>
+                        <div>
+                          <div style={labelStyle}>Fecha límite</div>
+                          <input type="date" style={inputStyle} value={plazoExtraFecha} onChange={e => setPlazoExtraFecha(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Motivo del plazo (obligatorio)</div>
+                        <input style={inputStyle} value={plazoExtraMotivo} onChange={e => setPlazoExtraMotivo(e.target.value)} placeholder="Razón por la que se otorga el plazo extra..." />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div style={labelStyle}>Resultado / Nota</div>
+                    <input
+                      style={inputStyle}
+                      value={resultadoGestion}
+                      onChange={e => setResultadoGestion(e.target.value)}
+                      placeholder="Descripción breve del resultado o la acción tomada..."
+                    />
+                  </div>
+                  {gestionError && (
+                    <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>
+                  )}
+                  {gestionExito && (
+                    <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>
+                      Gestión registrada.
+                    </div>
+                  )}
+                  <button onClick={handleRegistrarGestion} style={secondaryBtn}>
+                    Registrar gestión
+                  </button>
+
+                  {gestionesContrato.length > 0 && (
+                    <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Últimas gestiones:</div>
+                      {gestionesContrato.map(g => (
+                        <div
+                          key={g.id}
+                          style={{
+                            padding: "8px 12px",
+                            background: g.tipo === "recoleccion" ? "#fee2e2" : g.tipo === "plazo_extra" ? "#fef3c7" : "#f8fafc",
+                            borderRadius: 10,
+                            border: `1px solid ${g.tipo === "recoleccion" ? "#fecaca" : g.tipo === "plazo_extra" ? "#fde68a" : "#e2e8f0"}`,
+                            fontSize: 13,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: 700 }}>{g.tipo.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</span>
+                            <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatDate(g.fecha)}</span>
+                          </div>
+                          {g.resultado && <div style={{ color: "#64748b", marginTop: 2 }}>{g.resultado}</div>}
+                          {g.plazo_extra_motivo && (
+                            <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>
+                              Motivo: {g.plazo_extra_motivo} · Límite: {g.plazo_extra_fecha_limite ? formatDate(g.plazo_extra_fecha_limite) : "—"}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </>
           )}
         </div>
@@ -1048,7 +1162,10 @@ export default function CobrosView() {
                     {cliente?.nombre || "Sin cliente"}
                   </div>
                   <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
-                    {formatDate(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}
+                    {formatDate(p.fecha)} · {p.metodo}
+                    {p.tipo_registro === "campo" && " · 🛵 Campo"}
+                    {p.tipo_registro === "transferencia" && " · 📲 Transferencia"}
+                    {" · "}$ {fmt(p.valor)}
                   </div>
                   <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                     Cuota ${fmt(p.aplicado_tarifa ?? 0)}

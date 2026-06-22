@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
-export type MetodoPago = "Efectivo" | "Nequi";
+export type MetodoPago = "Efectivo" | "Transferencia";
+export type TipoRegistroPago = "normal" | "campo" | "transferencia";
 
 export type AplicadoPago = {
   tarifa: number;
@@ -27,6 +28,9 @@ export type Pago = {
   valor: number;
   metodo: MetodoPago;
   estado: PagoEstado;
+  tipo_registro: TipoRegistroPago;
+  registrado_por: string | null;
+  comprobante_url: string | null;
   aplicado: Aplicado;
   aplicado_tarifa: number;
   aplicado_deuda: number;
@@ -122,10 +126,10 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    convenioId?: string,
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string },
   ) {
+    const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
     const estado: PagoEstado = metodo === "Efectivo" ? "Confirmado" : "Pendiente";
-    // Legacy jsonb field for backwards compatibility
     const aplicadoLegacy: Aplicado = {
       deuda: aplicado.deuda,
       semana: aplicado.tarifa,
@@ -138,13 +142,16 @@ export function usePagos() {
       valor,
       metodo,
       estado,
+      tipo_registro: tipoRegistro,
+      registrado_por: opts?.registradoPor ?? null,
+      comprobante_url: opts?.comprobanteUrl ?? null,
       aplicado: aplicadoLegacy,
       aplicado_tarifa: aplicado.tarifa,
       aplicado_deuda: aplicado.deuda,
       aplicado_convenio: aplicado.convenio,
       aplicado_ahorro: aplicado.ahorro,
       aplicado_saldo_favor: aplicado.saldo,
-      convenio_id: convenioId ?? null,
+      convenio_id: opts?.convenioId ?? null,
     });
     return { error: error?.message ?? null };
   }

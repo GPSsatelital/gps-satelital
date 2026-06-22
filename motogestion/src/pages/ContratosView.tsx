@@ -3,6 +3,8 @@ import { useContratos, type ContratoEstado, type FormaPago, diasHastaProximoDiaP
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
+import FirmaModal from "./FirmaModal";
+import type { Contrato } from "../hooks/useContratos";
 
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -74,7 +76,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
   const role = profile?.role ?? "SECRETARIA";
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
-  const { contratos, loading, error, crearContrato, firmarCliente, asignarMoto, activarContrato, cancelarContrato, suspenderContrato } = useContratos();
+  const { contratos, loading, error, crearContrato, asignarMoto, activarContrato, cancelarContrato, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
 
@@ -82,6 +84,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
 
   const [open, setOpen] = useState(false);
+  const [contratoFirma, setContratoFirma] = useState<Contrato | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -266,7 +269,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
               {puedeCrear && c.estado !== "Cancelado" && c.estado !== "Finalizado" && (
                 <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {!c.firma_cliente && (
-                    <button onClick={() => firmarCliente(c.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>Firmar cliente</button>
+                    <button onClick={() => setContratoFirma(c)} style={miniBtn("#0284c7", "white")}>✍️ Firmar documentos</button>
                   )}
                   {c.firma_cliente && !c.moto_id && (
                     <select style={{ ...inputStyle, maxWidth: 260, padding: "8px 12px" }} defaultValue="" onChange={(e) => handleAsignarMoto(c.id, e.target.value, c.firma_cliente)}>
@@ -287,6 +290,21 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
           );
         })}
       </div>
+
+      {contratoFirma && (() => {
+        const cl = clientes.find(c => c.id === contratoFirma.cliente_id);
+        const mo = motos.find(m => m.id === contratoFirma.moto_id);
+        if (!cl) return null;
+        return (
+          <FirmaModal
+            contrato={contratoFirma}
+            cliente={cl}
+            moto={mo ?? null}
+            onClose={() => setContratoFirma(null)}
+            onCompletado={() => setContratoFirma(null)}
+          />
+        );
+      })()}
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpen(false)}>

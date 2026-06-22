@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
-import MotoDetalleSheet from "../components/MotoDetalleSheet";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -42,26 +41,16 @@ function formatDate(date: string | null) {
   return new Date(date).toLocaleDateString("es-CO");
 }
 
-
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "12px 10px", fontSize: 13, color: "#475569", borderBottom: "1px solid #e2e8f0" };
+const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color: "#0f172a", borderBottom: "1px solid #f1f5f9" };
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
-const FILTROS_MOTO = [
-  { label: "Todas", filter: "" },
-  { label: "Disponibles", filter: "Disponible" },
-  { label: "Asignadas", filter: "Asignada" },
-  { label: "Mantenimiento", filter: "Mantenimiento" },
-  { label: "Retenciones", filter: "retencion" },
-];
-
-export default function MotosView({ initialFilter = "" }: { initialFilter?: string }) {
+export default function MotosView() {
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
-  const [motoDetalleId, setMotoDetalleId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState(initialFilter);
-  useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [openRecepcion, setOpenRecepcion] = useState(false);
@@ -99,7 +88,7 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
 
   const [form, setForm] = useState({
     placa: "",
-    grupo: "RASTREADOR" as GrupoMoto,
+    grupo: "CLUB" as GrupoMoto,
     marca: "",
     modelo: "",
     numero_motor: "",
@@ -115,13 +104,13 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
     observaciones: "",
   });
 
-  const filtered = useMemo(() => {
-    let list = motos.filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
-    if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
-    else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
-    else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
-    return list;
-  }, [motos, query, filtroEstado]);
+  const filtered = useMemo(
+    () =>
+      motos.filter((m) =>
+        [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase())
+      ),
+    [motos, query]
+  );
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? filtered[0] ?? null;
 
@@ -241,9 +230,9 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
     }
 
     setForm({
-      placa: "", grupo: "RASTREADOR" as GrupoMoto, marca: "", modelo: "", numero_motor: "", numero_chasis: "",
+      placa: "", grupo: "RASTREADOR" as const, marca: "", modelo: "", numero_motor: "", numero_chasis: "",
       lugar_matricula: "", cilindraje: "", fecha_seguro: "", fecha_tecnomecanica: "",
-      propietario: "", numero_serie: "", estado: "Disponible" as MotoStatus, condicion_ingreso: "nueva" as CondicionIngreso, observaciones: "",
+      propietario: "", numero_serie: "", estado: "Disponible" as const, observaciones: "", condicion_ingreso: "nueva" as const,
     });
     setOpen(false);
   }
@@ -262,59 +251,45 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando motos: {error}</div>}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
-        <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
-          <div style={{ marginBottom: 12 }}>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por placa, marca o modelo..." style={inputStyle} />
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-            {FILTROS_MOTO.map(f => (
-              <button key={f.filter} onClick={() => setFiltroEstado(f.filter)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500, background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9", color: filtroEstado === f.filter ? "white" : "#64748b", whiteSpace: "nowrap" }}>{f.label}</button>
-            ))}
-            {filtroEstado.startsWith("grupo:") && (
-              <span style={{ padding: "5px 12px", borderRadius: 999, background: "#6366f1", color: "white", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                Grupo: {filtroEstado.replace("grupo:", "")}
-                <button onClick={() => setFiltroEstado("")} style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
-              </span>
-            )}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
+        <div style={card}>
+          <div style={{ marginBottom: 16 }}>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
           </div>
 
           <div style={{ overflowX: "auto" }}>
-            <div style={{ display: "grid", gap: 8 }}>
-              {filtered.length === 0 && motos.length === 0 && (
-                <div style={{ textAlign: "center", padding: "40px 24px" }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>🏍️</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin motos en la flota</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Agrega la primera moto</div>
-                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nueva moto</button>
-                </div>
-              )}
-              {filtered.length === 0 && motos.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos en este filtro.</div>}
-              {filtered.map((moto) => (
-                <button
-                  key={moto.id}
-                  onClick={() => { setSelectedId(moto.id); setMotoDetalleId(moto.id); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 12,
-                    padding: "12px 14px", borderRadius: 12, border: "none",
-                    background: selectedId === moto.id ? "#eff6ff" : "#f8fafc",
-                    cursor: "pointer", textAlign: "left",
-                    outline: selectedId === moto.id ? "2px solid #0284c7" : "none",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{moto.placa}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
-                  </div>
-                  <StatusBadge status={moto.estado} />
-                </button>
-              ))}
-            </div>
+            <table style={{ width: "100%", minWidth: 600, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  <th style={thStyle}>Placa</th>
+                  <th style={thStyle}>Grupo</th>
+                  <th style={thStyle}>Moto</th>
+                  <th style={thStyle}>Estado</th>
+                  <th style={thStyle}>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((moto) => (
+                  <tr key={moto.id} style={{ background: selectedId === moto.id ? "#eff6ff" : "white" }}>
+                    <td style={tdStyle}>{moto.placa}</td>
+                    <td style={tdStyle}>{moto.grupo}</td>
+                    <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
+                    <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
+                    <td style={tdStyle}>
+                      <button onClick={() => setSelectedId(moto.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
+                        Ver detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas todavía.</div>}
           </div>
         </div>
 
-        <div style={{ ...card, flex: "1 1 280px", minWidth: 0, maxWidth: 420 }}>
-          <h3 style={{ margin: 0, fontSize: 18 }}>Detalle de moto</h3>
+        <div style={card}>
+          <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
 
           {selectedMoto ? (
             <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
@@ -553,8 +528,6 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
           </div>
         </div>
       )}
-
-      <MotoDetalleSheet motoId={motoDetalleId} onClose={() => setMotoDetalleId(null)} />
 
       {/* ── Modal Salida de Fiscalía ── */}
       {openLiberarFiscalia && selectedMoto && (

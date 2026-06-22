@@ -157,6 +157,101 @@ const DIAS: Record<string, number> = {
   Domingo: 0,
 };
 
+const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function fmtFecha(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return `${DIAS_LABEL[d.getDay()]} ${d.getDate()} ${MESES_LABEL[d.getMonth()]}`;
+}
+
+type EstadoCuenta = {
+  formaPago: string;
+  diaPago: string;
+  ultimoPago: string | null;
+  pagadoHasta: string | null;
+  proximoPago: string;
+  diasEstado: number;
+  etiqueta: "Adelantado" | "Al día" | "Gabela" | "Mora";
+  colorEtiqueta: string;
+  bgEtiqueta: string;
+};
+
+function calcEstadoCuenta(
+  formaPago: string,
+  diaPago: string,
+  pagosConfirmados: Array<{ fecha: string }>,
+): EstadoCuenta {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyISO = hoy.toISOString().slice(0, 10);
+
+  const sorted = [...pagosConfirmados].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const ultimoPago = sorted[0]?.fecha ?? null;
+
+  const esDiario = formaPago === "Diario" || formaPago === "diario";
+  const diasPeriodo = formaPago === "Quincenal" || formaPago === "quincenal" ? 15
+    : formaPago === "Mensual" || formaPago === "mensual" ? 30 : 7;
+
+  if (esDiario) {
+    if (!ultimoPago) {
+      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyISO, diasEstado: 999, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
+    }
+    const ultimo = new Date(ultimoPago + "T00:00:00");
+    const diasDesde = Math.floor((hoy.getTime() - ultimo.getTime()) / 86400000);
+    const pagadoHasta = ultimoPago;
+    // Próximo pago = mañana (diario paga cada día hábil)
+    const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
+    const proximoPago = manana.toISOString().slice(0, 10);
+    if (diasDesde === 0) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
+    if (diasDesde === 1) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 1, etiqueta: "Gabela", colorEtiqueta: "#92400e", bgEtiqueta: "#fef3c7" };
+    return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyISO, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
+  }
+
+  // Periódico: buscar el inicio del período actual (último lunes/miércoles)
+  const targetDay = DIAS[diaPago] ?? 1;
+  const d = new Date(hoy);
+  while (d.getDay() !== targetDay) d.setDate(d.getDate() - 1);
+  const inicioPeriodo = d.toISOString().slice(0, 10);
+
+  // Próximo pago = inicio del siguiente período
+  const prox = new Date(d);
+  prox.setDate(prox.getDate() + diasPeriodo);
+  const proximoPago = prox.toISOString().slice(0, 10);
+
+  // ¿Pagó en el período actual?
+  const pagoPeriodo = sorted.find(p => p.fecha >= inicioPeriodo);
+  if (pagoPeriodo) {
+    // Cuántos períodos adelante tiene pagados
+    const pagadoHasta = new Date(d);
+    pagadoHasta.setDate(pagadoHasta.getDate() + diasPeriodo - 1);
+    return {
+      formaPago, diaPago, ultimoPago: pagoPeriodo.fecha,
+      pagadoHasta: pagadoHasta.toISOString().slice(0, 10),
+      proximoPago, diasEstado: 0,
+      etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
+    };
+  }
+
+  // No pagó en este período
+  const diasDesde = Math.floor((hoy.getTime() - d.getTime()) / 86400000);
+  const etiqueta = diasDesde === 0 ? "Al día" : diasDesde === 1 ? "Gabela" : "Mora";
+  const colorEtiqueta = diasDesde <= 1 ? "#92400e" : "#991b1b";
+  const bgEtiqueta = diasDesde <= 1 ? "#fef3c7" : "#fee2e2";
+  return {
+    formaPago, diaPago, ultimoPago,
+    pagadoHasta: ultimoPago ? (() => {
+      const u = new Date(ultimoPago + "T00:00:00");
+      u.setDate(u.getDate() + diasPeriodo - 1);
+      return u.toISOString().slice(0, 10);
+    })() : null,
+    proximoPago: inicioPeriodo,
+    diasEstado: diasDesde,
+    etiqueta: etiqueta as EstadoCuenta["etiqueta"],
+    colorEtiqueta, bgEtiqueta,
+  };
+}
+
 /**
  * Returns the ISO day number (0=Sun, 1=Mon ... 6=Sat) for today.
  * Derives cartera status based on dia_pago of the contract.
@@ -553,6 +648,31 @@ export default function CobrosView() {
                   </div>
                   <EstadoBadge estado={contratoDetalle.estadoCartera} />
                 </div>
+
+                {/* ── Estado de cuenta ── */}
+                {(() => {
+                  const ec = calcEstadoCuenta(
+                    contratoDetalle.forma_pago ?? "semanal",
+                    contratoDetalle.dia_pago ?? "Lunes",
+                    pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
+                  );
+                  return (
+                    <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 12, background: ec.bgEtiqueta, border: `1px solid ${ec.colorEtiqueta}33`, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: ec.colorEtiqueta, background: ec.bgEtiqueta, borderRadius: 8, padding: "2px 10px", border: `1px solid ${ec.colorEtiqueta}66` }}>
+                        {ec.etiqueta}
+                      </span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#334155" }}>
+                        {ec.ultimoPago && (
+                          <span>Último pago: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>
+                        )}
+                        {ec.pagadoHasta && (
+                          <span>Pagado hasta: <strong>{fmtFecha(ec.pagadoHasta)}</strong></span>
+                        )}
+                        <span>Próximo pago: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
                   <InfoBox

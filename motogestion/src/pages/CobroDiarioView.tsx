@@ -262,6 +262,9 @@ export default function CobroDiarioView() {
               }
             </div>
             {f.marca && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{f.marca}</div>}
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+              {f.tipoRuta === "diario" ? "Pago diario" : `${f.tipoRuta.charAt(0).toUpperCase() + f.tipoRuta.slice(1)} · Paga ${f.diaPago}`}
+            </div>
             <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>

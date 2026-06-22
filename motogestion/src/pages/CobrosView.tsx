@@ -365,7 +365,7 @@ export default function CobrosView() {
       montoIngresado,
       metodo,
       desglose,
-      contratoDetalle?.convenioActivo?.id,
+      contratoDetalle?.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
     );
     if (error) { setFormError(error); return; }
     setValor("");

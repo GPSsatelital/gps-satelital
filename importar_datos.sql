@@ -2069,7 +2069,7 @@ SELECT m.id, cl.id, 'semanal', 'Miércoles', 195000, 27857, 13929, 500000, 24, 5
 FROM motos m JOIN clientes cl ON cl.cedula = '1148706563'
 WHERE m.placa='RMZ66H' AND NOT EXISTS (SELECT 1 FROM contratos ex WHERE ex.moto_id=m.id AND ex.estado='Activo');
 INSERT INTO contratos (moto_id, cliente_id, tipo_contrato, dia_pago, valor_semanal, tarifa_diaria, tarifa_domingo, base_inicial, meses, ahorro_inicial, ahorro_acumulado, base_completada, fecha_entrega, estado, created_at)
-SELECT m.id, cl.id, 'mensual', 'Lunes', 840000, 120000, 60000, 500000, 24, 500000, 0, false, '2025-10-14', 'Activo', now()
+SELECT m.id, cl.id, 'semanal', 'Lunes', 840000, 120000, 60000, 500000, 24, 500000, 0, false, '2025-10-14', 'Activo', now()
 FROM motos m JOIN clientes cl ON cl.cedula = '1193495942'
 WHERE m.placa='RMZ48H' AND NOT EXISTS (SELECT 1 FROM contratos ex WHERE ex.moto_id=m.id AND ex.estado='Activo');
 INSERT INTO contratos (moto_id, cliente_id, tipo_contrato, dia_pago, valor_semanal, tarifa_diaria, tarifa_domingo, base_inicial, meses, ahorro_inicial, ahorro_acumulado, base_completada, fecha_entrega, estado, created_at)

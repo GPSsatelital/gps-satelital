@@ -19,7 +19,8 @@ type Fila = {
   marca: string;
   tipoRuta: string;
   diaPago: string;
-  tarifaDiaria: number;
+  valorPactado: number;
+  valorPeriodo: number;
   diasSinPago: number;
   deudaEstimada: number;
   pagadoHoy: number;
@@ -65,6 +66,9 @@ export default function CobroDiarioView() {
         const pagadosHoy = pagos.filter(p => p.contrato_id === c.id && p.fecha === hoy && p.estado === "Confirmado");
         const pagadoHoy = pagadosHoy.reduce((s, p) => s + p.valor, 0);
         const tarifa = c.tarifa_diaria ?? 27000;
+        const ahorro = (c as { ahorro_diario?: number }).ahorro_diario ?? 4000;
+        const valorPactado = tarifa + ahorro;
+        const valorPeriodo = (c as { valor_periodo?: number }).valor_periodo ?? valorPactado * 7;
         const tipoRuta = (c as { tipo_ruta?: string }).tipo_ruta ?? "diario";
         const diaPago = c.dia_pago ?? "";
         const pagaHoy = tipoRuta === "diario"
@@ -81,9 +85,10 @@ export default function CobroDiarioView() {
           marca: moto ? `${moto.marca} ${moto.modelo}` : "",
           tipoRuta,
           diaPago,
-          tarifaDiaria: tarifa,
+          valorPactado,
+          valorPeriodo,
           diasSinPago: dias,
-          deudaEstimada: Math.min(dias, 30) * tarifa,
+          deudaEstimada: Math.min(dias, 30) * valorPactado,
           pagadoHoy,
           pagaHoy,
           pagadoHoyBool: pagadoHoy > 0,
@@ -97,7 +102,7 @@ export default function CobroDiarioView() {
   const filasInmov = useMemo(() => filas.filter(f => f.diasSinPago >= 3).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
 
   const kpiRecaudado = useMemo(() => pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), [pagos, hoy]);
-  const kpiEsperado = useMemo(() => filasHoy.reduce((s, f) => s + f.tarifaDiaria, 0), [filasHoy]);
+  const kpiEsperado = useMemo(() => filasHoy.reduce((s, f) => s + f.valorPactado, 0), [filasHoy]);
   const kpiMora = useMemo(() => filasMora.reduce((s, f) => s + f.deudaEstimada, 0), [filasMora]);
 
   function abrirWA(tel: string, nombre: string, dias: number) {
@@ -197,8 +202,10 @@ export default function CobroDiarioView() {
                   {f.marca && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{f.marca}</div>}
                   <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
                     <div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>${fmt(f.tarifaDiaria)}</div>
-                      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>tarifa/día</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+                        {f.tipoRuta === "diario" ? `$${fmt(f.valorPactado)}/día` : `$${fmt(f.valorPeriodo)}/${f.tipoRuta === "semanal" ? "sem" : f.tipoRuta === "quincenal" ? "quinc" : "mes"}`}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>valor pactado</div>
                     </div>
                     {f.pagadoHoyBool && (
                       <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>

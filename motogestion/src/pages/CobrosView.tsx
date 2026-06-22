@@ -24,7 +24,7 @@ function calcDias(pagos: Array<{ contrato_id: string; estado: string; fecha: str
 type ContratoRow = {
   id: string; clienteId: string; motoId: string | null;
   nombre: string; placa: string; marca: string; tel: string;
-  tipoRuta: string; tarifa: number; estado: string;
+  tipoRuta: string; valorPactado: number; valorPeriodo: number; estado: string;
   diasSinPago: number; deudaEstimada: number;
 };
 
@@ -53,16 +53,21 @@ export default function CobrosView() {
         const moto = motos.find(m => m.id === c.moto_id);
         const dias = calcDias(pagos, c.id);
         const tarifa = c.tarifa_diaria ?? 27000;
+        const ahorro = (c as { ahorro_diario?: number }).ahorro_diario ?? 4000;
+        const valorPactado = tarifa + ahorro;
+        const valorPeriodo = (c as { valor_periodo?: number }).valor_periodo ?? valorPactado * 7;
+        const tipoRuta = (c as { tipo_ruta?: string }).tipo_ruta ?? "diario";
+        const deudaCrono = dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0;
+        const deudaExtra = deudas.filter(d => (d as { contrato_id?: string }).contrato_id === c.id && d.estado === "pendiente").reduce((s, d) => s + d.monto, 0);
         return {
           id: c.id, clienteId: c.cliente_id, motoId: c.moto_id ?? null,
           nombre: cliente?.nombre ?? "Sin nombre",
           placa: moto?.placa ?? "—",
           marca: moto ? `${moto.marca} ${moto.modelo}` : "",
           tel: cliente?.whatsapp ?? cliente?.telefono ?? "",
-          tipoRuta: (c as { tipo_ruta?: string }).tipo_ruta ?? "diario",
-          tarifa, estado: c.estado,
+          tipoRuta, valorPactado, valorPeriodo, estado: c.estado,
           diasSinPago: dias,
-          deudaEstimada: dias > 0 && dias < 999 ? Math.min(dias, 30) * tarifa : 0,
+          deudaEstimada: deudaCrono + deudaExtra,
         };
       })
       .sort((a, b) => b.diasSinPago - a.diasSinPago);
@@ -128,7 +133,9 @@ export default function CobrosView() {
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 6, background: "#f1f5f9", color: "#334155", fontWeight: 600 }}>{f.tipoRuta}</span>
-                  <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 6, background: "#f1f5f9", color: "#334155" }}>${fmt(f.tarifa)}/día</span>
+                  <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 6, background: "#f1f5f9", color: "#334155" }}>
+                    {f.tipoRuta === "diario" ? `$${fmt(f.valorPactado)}/día` : `$${fmt(f.valorPeriodo)}/${f.tipoRuta === "semanal" ? "sem" : f.tipoRuta === "quincenal" ? "quinc" : "mes"}`}
+                  </span>
                 </div>
               </div>
               <div style={{ background: dc.bg, color: dc.color, borderRadius: 10, padding: "4px 10px", textAlign: "center", flexShrink: 0 }}>
@@ -173,7 +180,7 @@ export default function CobrosView() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
         {[
           { label: "Tipo ruta", value: selected.tipoRuta },
-          { label: "Tarifa/día", value: `$${fmt(selected.tarifa)}` },
+          { label: "Valor pactado", value: selected.tipoRuta === "diario" ? `$${fmt(selected.valorPactado)}/día` : `$${fmt(selected.valorPeriodo)}/${selected.tipoRuta === "semanal" ? "sem" : selected.tipoRuta === "quincenal" ? "quinc" : "mes"}` },
           { label: "Estado", value: selected.estado },
         ].map(r => (
           <div key={r.label} style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>

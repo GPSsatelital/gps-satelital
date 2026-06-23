@@ -8,7 +8,7 @@ import {
   type PagoEstado,
   type AplicadoPago,
 } from "../hooks/usePagos";
-import { useContratos, calcularEquivalenciasDiarias } from "../hooks/useContratos";
+import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
@@ -329,6 +329,9 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
 
+  // Detail panel tabs
+  const [detailTab, setDetailTab] = useState<"gestiones" | "deudas" | "convenios" | "historial">("gestiones");
+
   // Protocolo / Campo / Recolección state
   const [accionExitoId, setAccionExitoId] = useState<string | null>(null);
   const [campoContratoId, setCampoContratoId] = useState<string | null>(null);
@@ -473,7 +476,10 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
         : contratoDetalle.valor_semanal)
     : 27000;
 
-  const cuotaPendiente = Math.max(cuotaPactada - (contratoDetalle?.pagadoEstaSemana ?? 0), 0);
+  const pagadoEnPeriodo = contratoDetalle?.forma_pago === "Diario"
+    ? (contratoDetalle?.recaudadoHoy ?? 0)
+    : (contratoDetalle?.pagadoEstaSemana ?? 0);
+  const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
   const desglose: AplicadoPago = contratoDetalle
     ? calcularAplicacion(
@@ -595,177 +601,135 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
       );
     }
 
+    const ec = calcEstadoCuenta(
+      contratoDetalle.forma_pago ?? "semanal",
+      contratoDetalle.dia_pago ?? "Lunes",
+      pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
+    );
+    const protocolo = calcProtocoloStep(contratoDetalle.diasSinPago);
+    const totalPendiente = cuotaPendiente + contratoDetalle.deudaContrato + (contratoDetalle.convenioActivo?.cuota_por_periodo ?? 0);
+
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* Info cliente */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {isMobile && (
+          <button onClick={() => setContratoSeleccionadoId(null)} style={{ ...secondaryBtn, fontSize: 13, padding: "8px 14px", alignSelf: "flex-start" }}>
+            ← Volver
+          </button>
+        )}
+
+        {/* Header */}
         <div style={card}>
-          {isMobile && (
-            <button
-              onClick={() => setContratoSeleccionadoId(null)}
-              style={{ ...secondaryBtn, marginBottom: 14, fontSize: 13, padding: "8px 14px" }}
-            >
-              ← Volver
-            </button>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "#0f172a" }}>
+              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "#0f172a", lineHeight: 1.2 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}
               </div>
-              {motoDetalle && (
-                <button
-                  onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)}
-                  style={{ background: "none", border: "none", cursor: onNavigate ? "pointer" : "default", padding: 0, marginTop: 2 }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0284c7" }}>🏍️ {motoDetalle.placa}</span>
-                  {onNavigate && <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: 4 }}>→ ver ficha moto</span>}
-                </button>
-              )}
-              <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {clienteDetalle?.telefono && (
-                  <span style={{ fontSize: 13, color: "#334155" }}>📞 {clienteDetalle.telefono}</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
+                {motoDetalle && (
+                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#0284c7", fontWeight: 700, fontSize: 13 }}>
+                    🏍️ {motoDetalle.placa}
+                  </button>
                 )}
-                {clienteDetalle?.whatsapp && clienteDetalle.whatsapp !== clienteDetalle.telefono && (
-                  <span style={{ fontSize: 13, color: "#334155" }}>💬 {clienteDetalle.whatsapp}</span>
-                )}
-                {clienteDetalle?.cedula && (
-                  <span style={{ fontSize: 13, color: "#64748b" }}>CC {clienteDetalle.cedula}</span>
-                )}
+                {clienteDetalle?.telefono && <span style={{ color: "#334155" }}>📞 {clienteDetalle.telefono}</span>}
+                {clienteDetalle?.cedula && <span style={{ color: "#64748b" }}>CC {clienteDetalle.cedula}</span>}
               </div>
-              {clienteDetalle?.direccion && (
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>📍 {clienteDetalle.direccion}</div>
-              )}
-              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {contratoDetalle.dia_pago}
+                {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
               <EstadoBadge estado={contratoDetalle.estadoCartera} />
               {onNavigate && clienteDetalle && (
-                <button
-                  onClick={() => onNavigate("ficha_cliente", clienteDetalle.id)}
-                  style={{ background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-                >
-                  Ver ficha completa →
+                <button onClick={() => onNavigate("ficha_cliente", clienteDetalle.id)} style={{ background: "none", border: "none", color: "#0284c7", fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+                  Ver ficha →
                 </button>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Estado de cuenta */}
-          {(() => {
-            const ec = calcEstadoCuenta(
-              contratoDetalle.forma_pago ?? "semanal",
-              contratoDetalle.dia_pago ?? "Lunes",
-              pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
-            );
-            return (
-              <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 12, background: ec.bgEtiqueta, border: `1px solid ${ec.colorEtiqueta}33`, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-                <span style={{ fontWeight: 700, fontSize: 13, color: ec.colorEtiqueta, background: ec.bgEtiqueta, borderRadius: 8, padding: "2px 10px", border: `1px solid ${ec.colorEtiqueta}66` }}>
-                  {ec.etiqueta}
-                </span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#334155" }}>
-                  {ec.ultimoPago && (
-                    <span>Último pago: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>
-                  )}
-                  {ec.pagadoHasta && (
-                    <span>Pagado hasta: <strong>{fmtFecha(ec.pagadoHasta)}</strong></span>
-                  )}
-                  <span>Próximo pago: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
-                </div>
-              </div>
-            );
-          })()}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-            <InfoBox
-              label={`Cuota pactada (${contratoDetalle.forma_pago ?? "Semanal"}${esDomingo ? " · Domingo" : ""})`}
-              value={`$ ${fmt(cuotaPactada)}`}
-            />
-            <InfoBox
-              label="Pagado este período"
-              value={`$ ${fmt(contratoDetalle.pagadoEstaSemana)}`}
-              highlight={contratoDetalle.pagadoEstaSemana >= cuotaPactada}
-            />
-            <InfoBox
-              label="Pendiente cuota"
-              value={cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
-              highlight={cuotaPendiente === 0}
-            />
-            <InfoBox
-              label="Deuda adicional"
-              value={contratoDetalle.deudaContrato > 0 ? `$ ${fmt(contratoDetalle.deudaContrato)}` : "Sin deudas"}
-              highlight={contratoDetalle.deudaContrato > 0}
-            />
-            {contratoDetalle.convenioActivo && (
-              <InfoBox
-                label={`Cuota convenio #${contratoDetalle.convenioActivo.numero_convenio}`}
-                value={`$ ${fmt(contratoDetalle.convenioActivo.cuota_por_periodo)}`}
-                highlight
-              />
+        {/* Estado de cuenta */}
+        <div style={{ ...card, background: ec.bgEtiqueta, border: `1px solid ${ec.colorEtiqueta}44` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#334155", alignItems: "center" }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: ec.colorEtiqueta }}>{ec.etiqueta}</span>
+              {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
+              <span>Próximo: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
+            </div>
+            {contratoDetalle.diasSinPago > 0 && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: protocolo.color, background: protocolo.bg, borderRadius: 8, padding: "3px 10px" }}>
+                Paso {protocolo.paso}: {protocolo.label}
+              </span>
             )}
           </div>
 
-          {contratoDetalle.convenioActivo && (
-            <div style={{ marginTop: 10, padding: "8px 12px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", fontSize: 13, color: "#92400e" }}>
-              Convenio #{contratoDetalle.convenioActivo.numero_convenio}: {contratoDetalle.convenioActivo.cuotas_pagadas}/{contratoDetalle.convenioActivo.numero_cuotas} cuotas · Limite {formatDate(contratoDetalle.convenioActivo.fecha_limite)}
+          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+                {contratoDetalle.forma_pago === "Diario" ? "Cuota hoy" : "Cuota período"}
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(cuotaPactada)}</div>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+                {contratoDetalle.forma_pago === "Diario" ? "Pagado hoy" : "Pagado período"}
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(pagadoEnPeriodo)}</div>
+            </div>
+            <div style={{ background: cuotaPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Pendiente</div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: cuotaPendiente > 0 ? "#991b1b" : "#166534" }}>
+                {cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
+              </div>
+            </div>
+          </div>
+
+          {(contratoDetalle.deudaContrato > 0 || contratoDetalle.convenioActivo) && (
+            <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+              {contratoDetalle.deudaContrato > 0 && (
+                <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
+                  + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
+                </span>
+              )}
+              {contratoDetalle.convenioActivo && (
+                <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
+                  + Conv. #{contratoDetalle.convenioActivo.numero_convenio}: $ {fmt(contratoDetalle.convenioActivo.cuota_por_periodo)}
+                </span>
+              )}
+              {totalPendiente > cuotaPendiente && (
+                <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 900, fontSize: 14, color: "#991b1b", marginLeft: "auto" }}>
+                  Total: $ {fmt(totalPendiente)}
+                </span>
+              )}
             </div>
           )}
 
-          {contratoDetalle.forma_pago !== "Diario" && (() => {
-            const eq = calcularEquivalenciasDiarias(contratoDetalle);
-            return (
-              <div style={{ marginTop: 10, padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}>
-                <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-                  Equivalencia diaria ({eq.diasPeriodo} días por período)
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Cuota/día</div>
-                    <div style={{ fontWeight: 700 }}>$ {fmt(eq.cuotaDiaria)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Tarifa/día</div>
-                    <div style={{ fontWeight: 700 }}>$ {fmt(eq.tarifaDiaria)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>Ahorro/día</div>
-                    <div style={{ fontWeight: 700, color: "#0284c7" }}>$ {fmt(eq.ahorroDiario)}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
-            <div style={{ marginTop: 10, padding: "12px 14px", background: "#eff6ff", borderRadius: 12, border: "1px solid #bae6fd", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", borderRadius: 10, padding: "8px 12px" }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#0284c7", textTransform: "uppercase" }}>Saldo a favor</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#0284c7" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Pendiente de aplicar</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: "#0284c7" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
               </div>
               {esSecretaria && (
-                <button
-                  onClick={handleAplicarSaldo}
-                  style={{ background: "#0284c7", color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
-                  Aplicar ahora
+                <button onClick={handleAplicarSaldo} style={{ background: "#0284c7", color: "white", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  Aplicar
                 </button>
               )}
             </div>
           )}
           {saldoExito && (
-            <div style={{ marginTop: 8, padding: "8px 12px", background: "#dcfce7", borderRadius: 10, color: "#166534", fontWeight: 700, fontSize: 13 }}>
-              ✅ Saldo aplicado correctamente.
+            <div style={{ marginTop: 6, padding: "6px 10px", background: "#dcfce7", borderRadius: 8, color: "#166534", fontWeight: 700, fontSize: 12 }}>
+              ✅ Saldo aplicado.
             </div>
           )}
         </div>
 
         {/* Formulario de pago */}
         <div style={card}>
-          <h3 style={{ margin: "0 0 14px", fontSize: 17 }}>Registrar pago</h3>
-          <div style={{ display: "grid", gap: 12 }}>
-            <div>
+          <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Registrar pago</h3>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ flex: "2 1 130px" }}>
               <div style={labelStyle}>Valor recibido</div>
               <input
                 type="number"
@@ -775,66 +739,232 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
                 placeholder="Ej. 27000"
               />
             </div>
-            <div>
-              <div style={labelStyle}>Metodo de pago</div>
+            <div style={{ flex: "3 1 160px" }}>
+              <div style={labelStyle}>Método</div>
               <select style={inputStyle} value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)}>
-                <option value="Efectivo">Efectivo (confirma automatico)</option>
+                <option value="Efectivo">Efectivo (confirma automático)</option>
                 <option value="Nequi">Nequi (queda pendiente)</option>
               </select>
             </div>
-
-            {montoIngresado > 0 && (
-              <div style={{ background: "#f0fdf4", borderRadius: 12, padding: 12, border: "1px solid #bbf7d0", display: "grid", gap: 6, fontSize: 13 }}>
-                <div style={{ fontWeight: 700, color: "#166534", marginBottom: 4 }}>Como se aplicara el pago:</div>
-                {desglose.tarifa > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Cuota pactada</span>
-                    <span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
-                  </div>
-                )}
-                {desglose.deuda > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Abono a deuda</span>
-                    <span style={{ fontWeight: 700 }}>$ {fmt(desglose.deuda)}</span>
-                  </div>
-                )}
-                {desglose.convenio > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Cuota convenio</span>
-                    <span style={{ fontWeight: 700 }}>$ {fmt(desglose.convenio)}</span>
-                  </div>
-                )}
-                {desglose.saldo > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#0284c7", fontWeight: 700 }}>
-                    <span>Saldo a favor (queda guardado)</span>
-                    <span>$ {fmt(desglose.saldo)}</span>
-                  </div>
-                )}
-                <div style={{ borderTop: "1px solid #bbf7d0", marginTop: 4, paddingTop: 6, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
-                  <span>Total recibido</span>
-                  <span>$ {fmt(montoIngresado)}</span>
-                </div>
-              </div>
-            )}
-
-            {formError && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{formError}</div>}
-            {formExito && (
-              <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
-                Pago registrado correctamente.
-              </div>
-            )}
-            <button onClick={handleRegistrarPago} style={primaryBtn}>Registrar pago</button>
           </div>
+
+          {montoIngresado > 0 && (
+            <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: "#166534", marginBottom: 2 }}>Cómo se aplica:</div>
+              {desglose.tarifa > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Cuota</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
+                </div>
+              )}
+              {desglose.deuda > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Deuda</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.deuda)}</span>
+                </div>
+              )}
+              {desglose.convenio > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Convenio</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.convenio)}</span>
+                </div>
+              )}
+              {desglose.saldo > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", color: "#0284c7", fontWeight: 700 }}>
+                  <span>Saldo a favor</span><span>$ {fmt(desglose.saldo)}</span>
+                </div>
+              )}
+              <div style={{ borderTop: "1px solid #bbf7d0", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                <span>Total</span><span>$ {fmt(montoIngresado)}</span>
+              </div>
+            </div>
+          )}
+
+          {formError && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{formError}</div>}
+          {formExito && (
+            <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13, marginTop: 8 }}>
+              ✅ Pago registrado.
+            </div>
+          )}
+          <button onClick={handleRegistrarPago} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px" }}>
+            Registrar pago
+          </button>
         </div>
 
-        {/* Historial del contrato */}
+        {/* Tabs secundarias */}
         <div style={card}>
-          <h3 style={{ margin: "0 0 12px", fontSize: 17 }}>Ultimos pagos del contrato</h3>
-          {pagosContrato.length === 0 ? (
-            <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>
-          ) : (
+          <div style={{ display: "flex", gap: 4, marginBottom: 14, borderBottom: "2px solid #f1f5f9", paddingBottom: 10, flexWrap: "wrap" }}>
+            {(["gestiones", "deudas", "convenios", "historial"] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setDetailTab(t)}
+                style={{
+                  background: detailTab === t ? "#0f172a" : "transparent",
+                  color: detailTab === t ? "white" : "#64748b",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {t === "gestiones" ? "Gestiones" : t === "deudas" ? `Deudas${deudasContrato.length > 0 ? ` (${deudasContrato.length})` : ""}` : t === "convenios" ? "Convenio" : "Historial"}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Gestiones */}
+          {detailTab === "gestiones" && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <select style={{ ...inputStyle, flex: 1, minWidth: 120 }} value={tipoGestion} onChange={e => setTipoGestion(e.target.value as TipoGestion)}>
+                  <option value="llamada">Llamada</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="visita">Visita</option>
+                  <option value="apagado_moto">Apagado de moto</option>
+                  <option value="sirena">Sirena</option>
+                  <option value="recuperacion">Recuperación</option>
+                  <option value="otro">Otro</option>
+                </select>
+                <input style={{ ...inputStyle, flex: 2, minWidth: 160 }} value={resultadoGestion} onChange={e => setResultadoGestion(e.target.value)} placeholder="Resultado / nota..." />
+              </div>
+              {gestionError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>}
+              {gestionExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Gestión registrada.</div>}
+              <button onClick={handleRegistrarGestion} style={secondaryBtn}>Registrar gestión</button>
+              {gestionesContrato.length > 0 && (
+                <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
+                  {gestionesContrato.map(g => (
+                    <div key={g.id} style={{ padding: "8px 12px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13 }}>
+                      <span style={{ fontWeight: 700 }}>{g.tipo}</span>
+                      {g.resultado && <span style={{ color: "#64748b" }}> — {g.resultado}</span>}
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{formatDate(g.fecha)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {gestionesContrato.length === 0 && <div style={{ color: "#64748b", fontSize: 14 }}>Sin gestiones registradas.</div>}
+            </div>
+          )}
+
+          {/* Tab Deudas */}
+          {detailTab === "deudas" && (
+            <div style={{ display: "grid", gap: 10 }}>
+              {deudasContrato.length === 0 ? (
+                <div style={{ color: "#64748b", fontSize: 14 }}>Sin deudas pendientes.</div>
+              ) : deudasContrato.map(d => (
+                <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{d.descripcion}</div>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
+                </div>
+              ))}
+              {esAdmin && (
+                <div>
+                  <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
+                    {mostrarFormDeuda ? "Cancelar" : "+ Registrar deuda"}
+                  </button>
+                  {mostrarFormDeuda && (
+                    <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                      <div>
+                        <div style={labelStyle}>Concepto</div>
+                        <select style={inputStyle} value={deudaConcepto} onChange={e => setDeudaConcepto(e.target.value as ConceptoDeuda)}>
+                          <option value="daño_vehiculo">Daño al vehículo</option>
+                          <option value="tarifa_atrasada">Tarifa atrasada</option>
+                          <option value="prestamo_repuesto">Préstamo repuestos</option>
+                          <option value="prestamo_eventualidad">Préstamo eventualidad</option>
+                          <option value="fotomulta">Fotomulta</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Descripción</div>
+                        <input style={inputStyle} value={deudaDescripcion} onChange={e => setDeudaDescripcion(e.target.value)} placeholder="Detalle del origen de la deuda..." />
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Monto ($)</div>
+                        <input type="number" style={inputStyle} value={deudaMonto} onChange={e => setDeudaMonto(e.target.value)} placeholder="Ej. 150000" />
+                      </div>
+                      {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
+                      {deudaExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Deuda registrada.</div>}
+                      <button onClick={handleRegistrarDeuda} style={primaryBtn}>Registrar deuda</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Convenios */}
+          {detailTab === "convenios" && (
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ fontSize: 13, color: "#64748b" }}>{totalConvenios}/3 convenios usados.</div>
+              {!esAdmin ? (
+                <div style={{ color: "#64748b", fontSize: 14 }}>Solo administradores pueden gestionar convenios.</div>
+              ) : convenioActual ? (
+                <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{convenioActual.concepto}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+                    <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
+                    <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
+                    <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
+                    <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
+                  </div>
+                </div>
+              ) : totalConvenios >= 3 ? (
+                <div style={{ color: "#991b1b", fontSize: 14, fontWeight: 600 }}>
+                  Máximo de 3 convenios. Si vuelve a incumplir, procede liquidación.
+                </div>
+              ) : deudasContrato.length === 0 ? (
+                <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
+              ) : (
+                <div>
+                  <button onClick={() => setMostrarFormConvenio(v => !v)} style={miniBtn("#eff6ff", "#1e40af")}>
+                    {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
+                  </button>
+                  {mostrarFormConvenio && (
+                    <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 13, color: "#64748b" }}>
+                        Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Monto total a diferir ($)</div>
+                        <input type="number" style={inputStyle} value={convDeudaTotal} onChange={e => setConvDeudaTotal(e.target.value)} placeholder="Ej. 300000" />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div>
+                          <div style={labelStyle}>Cuota por período ($)</div>
+                          <input type="number" style={inputStyle} value={convCuota} onChange={e => setConvCuota(e.target.value)} placeholder="Ej. 10000" />
+                        </div>
+                        <div>
+                          <div style={labelStyle}>Número de cuotas</div>
+                          <input type="number" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
+                        </div>
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Fecha límite</div>
+                        <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Concepto / Motivo</div>
+                        <input style={inputStyle} value={convConcepto} onChange={e => setConvConcepto(e.target.value)} placeholder="Descripción del convenio..." />
+                      </div>
+                      {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
+                      {convExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
+                      <button onClick={handleCrearConvenio} style={primaryBtn}>Crear convenio</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Historial */}
+          {detailTab === "historial" && (
             <div style={{ display: "grid", gap: 8 }}>
-              {pagosContrato.map(p => (
+              {pagosContrato.length === 0 ? (
+                <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>
+              ) : pagosContrato.map(p => (
                 <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
@@ -854,202 +984,6 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
             </div>
           )}
         </div>
-
-        {/* Panel Deudas */}
-        <div style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ margin: 0, fontSize: 17 }}>
-              Deudas {deudasContrato.length > 0 && (
-                <span style={{ fontSize: 13, background: "#fee2e2", color: "#991b1b", borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>
-                  $ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}
-                </span>
-              )}
-            </h3>
-            {esAdmin && (
-              <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
-                {mostrarFormDeuda ? "Cancelar" : "+ Registrar deuda"}
-              </button>
-            )}
-          </div>
-
-          {deudaExito && (
-            <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-              Deuda registrada correctamente.
-            </div>
-          )}
-
-          {mostrarFormDeuda && esAdmin && (
-            <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginBottom: 12, display: "grid", gap: 10 }}>
-              <div>
-                <div style={labelStyle}>Concepto</div>
-                <select style={inputStyle} value={deudaConcepto} onChange={e => setDeudaConcepto(e.target.value as ConceptoDeuda)}>
-                  <option value="daño_vehiculo">Daño al vehículo</option>
-                  <option value="tarifa_atrasada">Tarifa atrasada</option>
-                  <option value="prestamo_repuesto">Préstamo repuestos</option>
-                  <option value="prestamo_eventualidad">Préstamo eventualidad</option>
-                  <option value="fotomulta">Fotomulta</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              <div>
-                <div style={labelStyle}>Descripción</div>
-                <input style={inputStyle} value={deudaDescripcion} onChange={e => setDeudaDescripcion(e.target.value)} placeholder="Detalle del origen de la deuda..." />
-              </div>
-              <div>
-                <div style={labelStyle}>Monto ($)</div>
-                <input type="number" style={inputStyle} value={deudaMonto} onChange={e => setDeudaMonto(e.target.value)} placeholder="Ej. 150000" />
-              </div>
-              {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
-              <button onClick={handleRegistrarDeuda} style={primaryBtn}>Registrar deuda</button>
-            </div>
-          )}
-
-          {deudasContrato.length === 0 ? (
-            <div style={{ color: "#64748b", fontSize: 14 }}>Sin deudas pendientes.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              {deudasContrato.map(d => (
-                <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{d.descripcion}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Estado: {d.estado}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b" }}>$ {fmt(d.monto_pendiente)}</div>
-                    {d.monto !== d.monto_pendiente && (
-                      <div style={{ fontSize: 11, color: "#64748b" }}>de $ {fmt(d.monto)}</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Panel Convenios */}
-        {esAdmin && (
-          <div style={card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 17 }}>
-                Convenio de pago
-                <span style={{ fontSize: 12, color: "#64748b", marginLeft: 8 }}>({totalConvenios}/3 usados)</span>
-              </h3>
-              {!convenioActual && totalConvenios < 3 && deudasContrato.length > 0 && (
-                <button onClick={() => setMostrarFormConvenio(v => !v)} style={miniBtn("#eff6ff", "#1e40af")}>
-                  {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
-                </button>
-              )}
-            </div>
-
-            {convExito && (
-              <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-                Convenio creado correctamente.
-              </div>
-            )}
-
-            {convenioActual && (
-              <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a", marginBottom: 10 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>
-                  Convenio #{convenioActual.numero_convenio} — Activo
-                </div>
-                <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{convenioActual.concepto}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-                  <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
-                  <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
-                  <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
-                  <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
-                </div>
-              </div>
-            )}
-
-            {!convenioActual && totalConvenios >= 3 && (
-              <div style={{ color: "#991b1b", fontSize: 14, fontWeight: 600 }}>
-                Este contrato ya alcanzó el máximo de 3 convenios. Si vuelve a incumplir, procede la terminación del contrato.
-              </div>
-            )}
-
-            {!convenioActual && totalConvenios < 3 && deudasContrato.length === 0 && (
-              <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
-            )}
-
-            {mostrarFormConvenio && !convenioActual && esAdmin && (
-              <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, display: "grid", gap: 10 }}>
-                <div style={{ fontSize: 13, color: "#64748b" }}>
-                  Deuda pendiente total: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
-                </div>
-                <div>
-                  <div style={labelStyle}>Monto total a diferir ($)</div>
-                  <input type="number" style={inputStyle} value={convDeudaTotal} onChange={e => setConvDeudaTotal(e.target.value)} placeholder="Ej. 300000" />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <div>
-                    <div style={labelStyle}>Cuota por período ($)</div>
-                    <input type="number" style={inputStyle} value={convCuota} onChange={e => setConvCuota(e.target.value)} placeholder="Ej. 10000" />
-                  </div>
-                  <div>
-                    <div style={labelStyle}>Número de cuotas</div>
-                    <input type="number" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
-                  </div>
-                </div>
-                <div>
-                  <div style={labelStyle}>Fecha límite</div>
-                  <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
-                </div>
-                <div>
-                  <div style={labelStyle}>Concepto / Motivo</div>
-                  <input style={inputStyle} value={convConcepto} onChange={e => setConvConcepto(e.target.value)} placeholder="Descripción del convenio..." />
-                </div>
-                {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
-                <button onClick={handleCrearConvenio} style={primaryBtn}>Crear convenio</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Gestiones de cobro */}
-        {(contratoDetalle.estadoCartera === "mora" || contratoDetalle.estadoCartera === "gabela") && (
-          <div style={card}>
-            <h3 style={{ margin: "0 0 12px", fontSize: 17 }}>Gestiones de cobro</h3>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div>
-                <div style={labelStyle}>Tipo de gestion</div>
-                <select style={inputStyle} value={tipoGestion} onChange={e => setTipoGestion(e.target.value as TipoGestion)}>
-                  <option value="llamada">Llamada</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="visita">Visita</option>
-                  <option value="apagado_moto">Apagado de moto</option>
-                  <option value="sirena">Sirena</option>
-                  <option value="recuperacion">Recuperacion</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              <div>
-                <div style={labelStyle}>Resultado / Nota</div>
-                <input style={inputStyle} value={resultadoGestion} onChange={e => setResultadoGestion(e.target.value)} placeholder="Descripcion breve del resultado..." />
-              </div>
-              {gestionError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>}
-              {gestionExito && (
-                <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>
-                  Gestion registrada.
-                </div>
-              )}
-              <button onClick={handleRegistrarGestion} style={secondaryBtn}>Registrar gestion</button>
-
-              {gestionesContrato.length > 0 && (
-                <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                  {gestionesContrato.map(g => (
-                    <div key={g.id} style={{ padding: "8px 12px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13 }}>
-                      <span style={{ fontWeight: 700 }}>{g.tipo}</span>
-                      {g.resultado && <span style={{ color: "#64748b" }}> — {g.resultado}</span>}
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{formatDate(g.fecha)}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   }

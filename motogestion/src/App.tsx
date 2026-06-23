@@ -411,7 +411,7 @@ function Shell() {
       {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView onNavigate={navigate} />}
       {ctx.view === "referidos"     && esAdmin && <ReferidosView />}
       {ctx.view === "alertas"       && esAdmin && <AlertasView onNavegar={navigate} />}
-      {ctx.view === "inmovilizaciones" && esAdmin && <InmovilizacionesView />}
+      {ctx.view === "inmovilizaciones" && esAdmin && <InmovilizacionesView onNavigate={navigate} />}
       {ctx.view === "taller"        && <TallerView />}
       {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}

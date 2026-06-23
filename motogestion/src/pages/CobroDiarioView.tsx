@@ -248,6 +248,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const aplicado: AplicadoPago = {
       tarifa: Math.min(valor, f.tarifaDiaria),
       ahorro: Math.max(0, Math.min(valor - f.tarifaDiaria, f.ahorroDiario)),
+      baseInicial: 0,
       deuda: 0,
       convenio: 0,
       saldo: Math.max(0, valor - f.tarifaDiaria - f.ahorroDiario),

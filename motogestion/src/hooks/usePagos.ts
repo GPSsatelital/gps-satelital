@@ -7,6 +7,7 @@ export type TipoRegistroPago = "normal" | "campo" | "transferencia";
 
 export type AplicadoPago = {
   tarifa: number;
+  baseInicial: number; // cuota de base inicial pendiente (entre cuota pactada y deuda)
   deuda: number;
   convenio: number;
   ahorro: number;
@@ -54,10 +55,13 @@ export function calcularCuotaDia(tarifaBase: number, esDomingo: boolean): number
   return esDomingo ? Math.round(tarifaBase / 2) : tarifaBase;
 }
 
-// Orden estricto: cuota pactada → deuda → convenio → saldo a favor (no se aplica solo)
+// Orden estricto: cuota pactada → base inicial pendiente → deuda → convenio → saldo a favor
+// baseInicialPendiente: cuota acordada de base inicial (solo si cliente semanal no la tenía completa al firmar)
+// El saldo a favor se reserva; solo se aplica cuando el admin/secretaria lo decide manualmente, se devuelve en liquidación
 export function calcularAplicacion(
   monto: number,
   cuotaPactada: number,
+  baseInicialPendiente: number,
   deudaPendiente: number,
   cuotaConvenio: number,
 ): AplicadoPago {
@@ -66,13 +70,40 @@ export function calcularAplicacion(
   const tarifa = Math.min(resto, cuotaPactada);
   resto -= tarifa;
 
+  const baseInicial = Math.min(resto, baseInicialPendiente);
+  resto -= baseInicial;
+
   const deuda = Math.min(resto, deudaPendiente);
   resto -= deuda;
 
   const convenio = Math.min(resto, cuotaConvenio);
   resto -= convenio;
 
-  return { tarifa, deuda, convenio, ahorro: 0, saldo: resto };
+  return { tarifa, baseInicial, deuda, convenio, ahorro: 0, saldo: resto };
+}
+
+// Calcula si un contrato está en gabela.
+// Gabela se activa al finalizar el día de pago sin pago registrado.
+// Para contratos diarios: gabela al día siguiente sin pago (1 día de gracia).
+export function calcularEstadoMora(
+  tipoCiclo: "diario" | "semanal" | "quincenal" | "mensual",
+  ultimoPagoFecha: string | null,
+  fechaEntrega: string,
+  hoy: Date = new Date(),
+): "al_dia" | "gabela" | "mora" {
+  const inicio = new Date(ultimoPagoFecha ?? fechaEntrega);
+  const diasSin = Math.floor((hoy.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (tipoCiclo === "diario") {
+    if (diasSin <= 1) return "al_dia";   // mismo día o día siguiente = gabela
+    if (diasSin === 2) return "gabela";  // 1 día de gracia
+    return "mora";
+  }
+  // semanal/quincenal/mensual: gabela al finalizar el día de pago sin pago
+  const ciclo = tipoCiclo === "semanal" ? 7 : tipoCiclo === "quincenal" ? 15 : 30;
+  if (diasSin <= ciclo) return "al_dia";
+  if (diasSin <= ciclo + 1) return "gabela";
+  return "mora";
 }
 
 export function calcularResumenCobro(
@@ -137,6 +168,7 @@ export function usePagos() {
       convenio: aplicado.convenio,
       saldo: aplicado.saldo,
     };
+    const aplicadoBaseInicial = aplicado.baseInicial ?? 0;
     const { error } = await supabase.from("pagos").insert({
       contrato_id: contratoId,
       valor,
@@ -147,6 +179,7 @@ export function usePagos() {
       comprobante_url: opts?.comprobanteUrl ?? null,
       aplicado: aplicadoLegacy,
       aplicado_tarifa: aplicado.tarifa,
+      aplicado_base_inicial: aplicadoBaseInicial,
       aplicado_deuda: aplicado.deuda,
       aplicado_convenio: aplicado.convenio,
       aplicado_ahorro: aplicado.ahorro,

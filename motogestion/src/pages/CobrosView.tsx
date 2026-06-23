@@ -474,10 +474,11 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
     ? calcularAplicacion(
         montoIngresado,
         cuotaPendiente,
+        0,
         contratoDetalle.deudaContrato,
         contratoDetalle.cuotaConvenio,
       )
-    : { tarifa: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
+    : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleRegistrarPago() {

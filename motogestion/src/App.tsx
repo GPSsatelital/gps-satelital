@@ -407,7 +407,7 @@ function Shell() {
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
       {ctx.view === "cobros"        && <CobrosView onNavigate={navigate} />}
       {ctx.view === "caja"          && <CajaView />}
-      {ctx.view === "reportes"      && esAdmin && <ReportesView />}
+      {ctx.view === "reportes"      && esAdmin && <ReportesView onNavigate={navigate} />}
       {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView onNavigate={navigate} />}
       {ctx.view === "referidos"     && esAdmin && <ReferidosView />}
       {ctx.view === "alertas"       && esAdmin && <AlertasView onNavegar={navigate} />}

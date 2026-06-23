@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
-import { useClientes, type ClienteEstado } from "../hooks/useClientes";
+import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
@@ -10,45 +10,123 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
-function fmtFecha(s: string | null) {
+function fmtFecha(s: string | null | undefined) {
   if (!s) return "—";
-  return new Date(s + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(s.length === 10 ? s + "T00:00:00" : s).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+}
+function diasDesde(s: string | null | undefined): number {
+  if (!s) return 0;
+  const d = new Date(s.length === 10 ? s + "T00:00:00" : s);
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
 }
 
-const ESTADO_COLORS: Record<ClienteEstado, { bg: string; color: string }> = {
-  "En proceso": { bg: "#e2e8f0", color: "#334155" },
-  "Listo para visita": { bg: "#dbeafe", color: "#1d4ed8" },
-  "Pendiente evaluación": { bg: "#fef3c7", color: "#92400e" },
-  Aprobado: { bg: "#dcfce7", color: "#166534" },
-  Rechazado: { bg: "#fee2e2", color: "#991b1b" },
-  Activo: { bg: "#dcfce7", color: "#166534" },
-  "En seguimiento": { bg: "#e0f2fe", color: "#0369a1" },
-  "En riesgo": { bg: "#fef3c7", color: "#92400e" },
-  "En mora": { bg: "#fee2e2", color: "#991b1b" },
-  Retirado: { bg: "#ede9fe", color: "#6d28d9" },
-  "Lista negra": { bg: "#1f2937", color: "#f9fafb" },
-  "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d" },
+const ESTADO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  "En proceso":       { bg: "#f1f5f9", color: "#334155", border: "#94a3b8" },
+  "Listo para visita":{ bg: "#dbeafe", color: "#1d4ed8", border: "#3b82f6" },
+  "Pendiente evaluación": { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
+  Aprobado:           { bg: "#dcfce7", color: "#166534", border: "#22c55e" },
+  Rechazado:          { bg: "#fee2e2", color: "#991b1b", border: "#ef4444" },
+  Activo:             { bg: "#dcfce7", color: "#166534", border: "#16a34a" },
+  "En seguimiento":   { bg: "#e0f2fe", color: "#0369a1", border: "#0ea5e9" },
+  "En riesgo":        { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
+  "En mora":          { bg: "#fee2e2", color: "#991b1b", border: "#dc2626" },
+  Retirado:           { bg: "#ede9fe", color: "#6d28d9", border: "#8b5cf6" },
+  "Lista negra":      { bg: "#1f2937", color: "#f9fafb", border: "#111827" },
+  "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d", border: "#991b1b" },
 };
 
-type Tab = "resumen" | "contratos" | "pagos" | "deudas" | "convenios" | "visitas" | "gestiones";
+const REFERIDOS_HITOS = [
+  { n: 2,  premio: "Guantes de manejo" },
+  { n: 5,  premio: "Intercomunicador" },
+  { n: 10, premio: "Casco" },
+  { n: 17, premio: "Combo completo" },
+];
 
 const TIPO_GESTION_LABEL: Record<string, string> = {
-  mensaje_recordatorio: "💬 Recordatorio",
-  llamada: "📞 Llamada",
-  whatsapp: "💬 WhatsApp",
-  sirena: "🚨 Sirena",
-  visita: "🏠 Visita",
-  plazo_extra: "⏰ Plazo extra",
-  recoleccion: "🔴 Recolección",
-  cobro_campo: "💵 Cobro campo",
-  otro: "📋 Otro",
+  mensaje_recordatorio: "Recordatorio",
+  llamada: "Llamada",
+  whatsapp: "WhatsApp",
+  sirena: "Sirena",
+  visita: "Visita",
+  plazo_extra: "Plazo extra",
+  recoleccion: "Recoleccion",
+  cobro_campo: "Cobro campo",
+  otro: "Otro",
 };
+
+const GESTION_COLORS: Record<string, { bg: string; color: string }> = {
+  mensaje_recordatorio: { bg: "#dbeafe", color: "#1d4ed8" },
+  llamada:    { bg: "#dcfce7", color: "#166534" },
+  whatsapp:   { bg: "#dcfce7", color: "#166534" },
+  sirena:     { bg: "#fef3c7", color: "#92400e" },
+  visita:     { bg: "#e0f2fe", color: "#0369a1" },
+  plazo_extra:{ bg: "#fef3c7", color: "#92400e" },
+  recoleccion:{ bg: "#fee2e2", color: "#991b1b" },
+  cobro_campo:{ bg: "#dcfce7", color: "#166534" },
+  otro:       { bg: "#f1f5f9", color: "#64748b" },
+};
+
+type Tab = "resumen" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
+
+const DOC_LABELS: Array<[keyof DocumentoFlags, string]> = [
+  ["cedula",      "Cédula"],
+  ["hojaVida",    "Hoja de vida"],
+  ["recibo1",     "Recibo público 1"],
+  ["recibo2",     "Recibo público 2"],
+  ["carta",       "Carta"],
+  ["antecedentes","Antecedentes"],
+  ["licencia",    "Licencia de conducir"],
+];
+
+function Badge({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
+  return (
+    <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: bg, color, whiteSpace: "nowrap" }}>
+      {children}
+    </span>
+  );
+}
+
+function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div style={{ display: "flex", gap: 12, fontSize: 13, padding: "7px 0", borderBottom: "1px solid #f1f5f9" }}>
+      <span style={{ color: "#64748b", minWidth: 150, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 600, color: "#0f172a", fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function Card({ children, borderColor }: { children: React.ReactNode; borderColor?: string }) {
+  return (
+    <div style={{
+      background: "white", borderRadius: 16, padding: "18px 20px",
+      boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
+      borderLeft: borderColor ? `4px solid ${borderColor}` : undefined,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+      {children}
+    </div>
+  );
+}
 
 export default function FichaClienteView({ clienteId, onNavigate }: {
   clienteId: string;
   onNavigate: (view: ViewKey, filter?: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("resumen");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   const { clientes } = useClientes();
   const { contratos } = useContratos();
@@ -66,27 +144,21 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
     [contratos, clienteId]
   );
   const contratoIds = useMemo(() => new Set(contratosCliente.map(c => c.id)), [contratosCliente]);
+  const contratoActivo = useMemo(() => contratosCliente.find(c => c.estado === "Activo"), [contratosCliente]);
 
   const pagosCliente = useMemo(() =>
     pagos.filter(p => contratoIds.has(p.contrato_id)).sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [pagos, contratoIds]
   );
-
-  const deudasCliente = useMemo(() =>
-    deudas.filter(d => contratoIds.has(d.contrato_id)),
-    [deudas, contratoIds]
-  );
-
+  const deudasCliente = useMemo(() => deudas.filter(d => contratoIds.has(d.contrato_id)), [deudas, contratoIds]);
   const conveniosCliente = useMemo(() =>
     convenios.filter(c => contratoIds.has(c.contrato_id)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [convenios, contratoIds]
   );
-
   const visitasCliente = useMemo(() =>
     visitas.filter(v => v.cliente_id === clienteId).sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [visitas, clienteId]
   );
-
   const gestionesCliente = useMemo(() =>
     gestiones.filter(g => contratoIds.has(g.contrato_id)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [gestiones, contratoIds]
@@ -103,439 +175,561 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
 
   if (!cliente) {
     return (
-      <div style={{ padding: 32, textAlign: "center", color: "#64748b" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-        <div style={{ fontWeight: 700 }}>Cliente no encontrado</div>
-        <button onClick={() => onNavigate("clientes")} style={{ marginTop: 16, padding: "8px 18px", borderRadius: 10, border: "none", background: "#0284c7", color: "white", fontWeight: 700, cursor: "pointer" }}>← Volver</button>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 64, gap: 16 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>?</div>
+        <div style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>Cliente no encontrado</div>
+        <button onClick={() => onNavigate("clientes")} style={{ padding: "10px 24px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+          Volver a clientes
+        </button>
       </div>
     );
   }
 
-  const estadoColors = ESTADO_COLORS[cliente.estado as ClienteEstado] ?? { bg: "#e2e8f0", color: "#334155" };
+  const estadoC = ESTADO_COLORS[cliente.estado as ClienteEstado] ?? { bg: "#e2e8f0", color: "#334155", border: "#94a3b8" };
+  const diasActivo = diasDesde(cliente.created_at);
+  const refConfirmados = cliente.referidos_confirmados ?? 0;
+  const proximoHito = REFERIDOS_HITOS.find(h => h.n > refConfirmados);
+  const motoActiva = contratoActivo?.moto_id ? motos.find(m => m.id === contratoActivo.moto_id) : null;
 
   const TABS: Array<{ key: Tab; label: string; count?: number }> = [
-    { key: "resumen", label: "Resumen" },
-    { key: "contratos", label: "Contratos", count: contratosCliente.length },
-    { key: "pagos", label: "Pagos", count: pagosCliente.length },
-    { key: "deudas", label: "Deudas", count: deudasCliente.filter(d => d.estado !== "pagada").length },
-    { key: "convenios", label: "Convenios", count: conveniosCliente.length },
-    { key: "visitas", label: "Visitas", count: visitasCliente.length },
-    { key: "gestiones", label: "Gestiones", count: gestionesCliente.length },
+    { key: "resumen",    label: "Resumen" },
+    { key: "contrato",   label: "Contrato" },
+    { key: "pagos",      label: "Pagos",      count: pagosCliente.length },
+    { key: "visitas",    label: "Visitas",    count: visitasCliente.length },
+    { key: "documentos", label: "Documentos" },
+    { key: "deudas",     label: "Deudas",     count: deudasCliente.filter(d => d.estado !== "pagada").length },
+    { key: "convenios",  label: "Convenios",  count: conveniosCliente.length },
+    { key: "gestiones",  label: "Gestiones",  count: gestionesCliente.length },
   ];
 
   return (
-    <div style={{ paddingBottom: 32 }}>
-      {/* Back button */}
+    <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 40 }}>
+      {/* Back */}
       <button
-        onClick={() => onNavigate("clientes")}
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 16, padding: 0 }}
+        onClick={() => onNavigate("clientes", "")}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
       >
         ← Volver a clientes
       </button>
 
-      {/* Header card */}
-      <div style={{ background: "white", borderRadius: 20, padding: "20px 24px", marginBottom: 20, boxShadow: "0 4px 20px rgba(15,23,42,0.08)", borderLeft: `5px solid ${estadoColors.color}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: "#0f172a", textTransform: "uppercase", letterSpacing: 0.5 }}>{cliente.nombre}</div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8, fontSize: 14, color: "#64748b" }}>
-              <span>🪪 {cliente.cedula}</span>
-              {cliente.telefono && <span>📱 {cliente.telefono}</span>}
-              {cliente.whatsapp && !cliente.mismo_whatsapp && <span>💬 {cliente.whatsapp}</span>}
-              {cliente.direccion && <span>📍 {cliente.direccion}</span>}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              <span style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: estadoColors.bg, color: estadoColors.color }}>{cliente.estado}</span>
-              <span style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7", color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534" }}>
-                {cliente.ruta_contrato === "diario" ? "Ruta diaria" : "Tiempo definido"}
-              </span>
-              {cliente.lista_negra && <span style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: "#1f2937", color: "#f9fafb" }}>🚫 Lista negra</span>}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
-            <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#dcfce7" }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(totalPagado)}</div>
-              <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginTop: 2 }}>Total pagado</div>
-            </div>
-            {deudaActiva > 0 && (
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fee2e2" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#991b1b" }}>${fmt(deudaActiva)}</div>
-                <div style={{ fontSize: 11, color: "#991b1b", fontWeight: 700, marginTop: 2 }}>Deuda activa</div>
+      {/* Hero card */}
+      <div style={{
+        background: "white", borderRadius: 20, marginBottom: 20,
+        boxShadow: "0 4px 24px rgba(15,23,42,0.10)",
+        overflow: "hidden",
+      }}>
+        {/* Color accent bar */}
+        <div style={{ height: 5, background: `linear-gradient(90deg, ${estadoC.border}, ${estadoC.border}88)` }} />
+        <div style={{ padding: isMobile ? "18px 16px 20px" : "24px 28px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: "#0f172a", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
+                {cliente.nombre}
               </div>
-            )}
-            {(cliente.referidos_confirmados ?? 0) > 0 && (
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fef3c7" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#92400e" }}>{cliente.referidos_confirmados}</div>
-                <div style={{ fontSize: 11, color: "#92400e", fontWeight: 700, marginTop: 2 }}>Referidos</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <Badge bg={estadoC.bg} color={estadoC.color}>{cliente.estado}</Badge>
+                <Badge bg={cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7"} color={cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534"}>
+                  {cliente.ruta_contrato === "diario" ? "Ruta diaria" : "Tiempo definido"}
+                </Badge>
+                {cliente.lista_negra && <Badge bg="#1f2937" color="#f9fafb">Lista negra</Badge>}
               </div>
-            )}
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#64748b" }}>
+                <span>CC {cliente.cedula}</span>
+                {cliente.telefono && <span>{cliente.telefono}</span>}
+                {cliente.whatsapp && !cliente.mismo_whatsapp && <span>WA: {cliente.whatsapp}</span>}
+                {cliente.direccion && <span>{cliente.direccion}</span>}
+              </div>
+            </div>
+            {/* KPI mini cards */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#f0f9ff", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#0284c7" }}>{diasActivo}</div>
+                <div style={{ fontSize: 10, color: "#0284c7", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
+              </div>
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#dcfce7", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "#166534" }}>${fmt(totalPagado)}</div>
+                <div style={{ fontSize: 10, color: "#166534", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
+              </div>
+              {deudaActiva > 0 && (
+                <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fee2e2", minWidth: 72 }}>
+                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "#991b1b" }}>${fmt(deudaActiva)}</div>
+                  <div style={{ fontSize: 10, color: "#991b1b", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
+                </div>
+              )}
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fef3c7", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#92400e" }}>{refConfirmados}</div>
+                <div style={{ fontSize: 10, color: "#92400e", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Referidos</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              padding: "9px 16px", border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
+              padding: isMobile ? "9px 12px" : "10px 18px",
+              border: "none", background: "none", cursor: "pointer",
+              fontSize: isMobile ? 12 : 13, fontWeight: tab === t.key ? 700 : 500,
               color: tab === t.key ? "#0284c7" : "#64748b",
               borderBottom: tab === t.key ? "2px solid #0284c7" : "2px solid transparent",
-              marginBottom: -2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
+              marginBottom: -2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5,
+              transition: "color 0.15s",
             }}
           >
             {t.label}
             {t.count !== undefined && t.count > 0 && (
-              <span style={{ background: tab === t.key ? "#0284c7" : "#e2e8f0", color: tab === t.key ? "white" : "#64748b", borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700 }}>{t.count}</span>
+              <span style={{
+                background: tab === t.key ? "#0284c7" : "#e2e8f0",
+                color: tab === t.key ? "white" : "#64748b",
+                borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700,
+              }}>{t.count}</span>
             )}
           </button>
         ))}
       </div>
 
-      {/* Tab: Resumen */}
+      {/* ── Tab: Resumen ── */}
       {tab === "resumen" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-          <div style={{ background: "white", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 14, color: "#0f172a" }}>Datos personales</div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {[
-                ["Nombre", cliente.nombre.toUpperCase()],
-                ["Cédula", cliente.cedula],
-                ["Teléfono", cliente.telefono || "—"],
-                ["WhatsApp", cliente.mismo_whatsapp ? cliente.telefono : (cliente.whatsapp || "—")],
-                ["Dirección", cliente.direccion || "—"],
-                ["Fuente de llegada", cliente.fuente_llegada || "—"],
-                ["Registrado", fmtFecha(cliente.created_at?.slice(0, 10))],
-              ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", gap: 12, fontSize: 13 }}>
-                  <span style={{ color: "#64748b", minWidth: 130, flexShrink: 0 }}>{k}</span>
-                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{v}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Referidos progress */}
+          {proximoHito && (
+            <Card>
+              <SectionTitle>Programa de referidos</SectionTitle>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                <div style={{ fontSize: 32, fontWeight: 900, color: "#92400e" }}>{refConfirmados}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
+                    Próximo premio: <strong style={{ color: "#92400e" }}>{proximoHito.premio}</strong> ({proximoHito.n - refConfirmados} referido{proximoHito.n - refConfirmados !== 1 ? "s" : ""} más)
+                  </div>
+                  <div style={{ height: 8, borderRadius: 999, background: "#fef3c7", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, (refConfirmados / proximoHito.n) * 100)}%`, background: "#f59e0b", transition: "width 0.5s" }} />
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {(cliente.acompanante_nombre) && (
-            <div style={{ background: "white", borderRadius: 16, padding: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 14, color: "#0f172a" }}>Acompañante</div>
-              <div style={{ display: "grid", gap: 10 }}>
-                {[
-                  ["Nombre", (cliente.acompanante_nombre ?? "").toUpperCase()],
-                  ["Cédula", cliente.acompanante_cedula || "—"],
-                  ["Teléfono", cliente.acompanante_telefono || "—"],
-                ].map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", gap: 12, fontSize: 13 }}>
-                    <span style={{ color: "#64748b", minWidth: 130, flexShrink: 0 }}>{k}</span>
-                    <span style={{ fontWeight: 600, color: "#0f172a" }}>{v}</span>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {REFERIDOS_HITOS.map(h => (
+                  <div key={h.n} style={{
+                    padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600,
+                    background: refConfirmados >= h.n ? "#dcfce7" : "#f1f5f9",
+                    color: refConfirmados >= h.n ? "#166534" : "#94a3b8",
+                    border: refConfirmados >= h.n ? "1.5px solid #22c55e" : "1.5px solid #e2e8f0",
+                  }}>
+                    {h.n} → {h.premio}
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          {(cliente.referido_por_nombre || cliente.referido_por_cedula) && (
-            <div style={{ background: "white", borderRadius: 16, padding: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 14, color: "#0f172a" }}>Referido por</div>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ display: "flex", gap: 12, fontSize: 13 }}>
-                  <span style={{ color: "#64748b", minWidth: 130 }}>Nombre</span>
-                  <span style={{ fontWeight: 600, textTransform: "uppercase" }}>{cliente.referido_por_nombre || "—"}</span>
-                </div>
-                <div style={{ display: "flex", gap: 12, fontSize: 13 }}>
-                  <span style={{ color: "#64748b", minWidth: 130 }}>Cédula</span>
-                  <span style={{ fontWeight: 600 }}>{cliente.referido_por_cedula || "—"}</span>
-                </div>
-              </div>
-            </div>
-          )}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
+            <Card>
+              <SectionTitle>Datos personales</SectionTitle>
+              <InfoRow label="Nombre" value={<span style={{ textTransform: "uppercase" }}>{cliente.nombre}</span>} />
+              <InfoRow label="Cédula" value={cliente.cedula} mono />
+              <InfoRow label="Teléfono" value={cliente.telefono || "—"} />
+              <InfoRow label="WhatsApp" value={cliente.mismo_whatsapp ? cliente.telefono : (cliente.whatsapp || "—")} />
+              <InfoRow label="Dirección" value={cliente.direccion || "—"} />
+              <InfoRow label="Fuente de llegada" value={cliente.fuente_llegada || "—"} />
+              <InfoRow label="Registrado" value={fmtFecha(cliente.created_at)} />
+            </Card>
 
-          <div style={{ background: "white", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 14, color: "#0f172a" }}>Documentos cliente</div>
-            {(() => {
-              const docs = (cliente.documentos_cliente ?? {}) as Record<string, { ok: boolean }>;
-              const labels: Array<[string, string]> = [
-                ["cedula", "Cédula"], ["licencia", "Licencia"], ["recibo1", "Recibo 1"],
-                ["recibo2", "Recibo 2"], ["carta", "Carta"], ["antecedentes", "Antecedentes"], ["hojaVida", "Hoja de vida"],
-              ];
-              return (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {labels.map(([key, label]) => {
-                    const ok = docs[key]?.ok === true;
-                    return (
-                      <span key={key} style={{ padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: ok ? "#dcfce7" : "#f1f5f9", color: ok ? "#166534" : "#94a3b8" }}>
-                        {ok ? "✓" : "○"} {label}
-                      </span>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-            {cliente.excepcion_documental && (
-              <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
-                ⚠️ Excepción documental: {cliente.excepcion_motivo}
-              </div>
-            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {cliente.acompanante_nombre && (
+                <Card>
+                  <SectionTitle>Acompañante</SectionTitle>
+                  <InfoRow label="Nombre" value={<span style={{ textTransform: "uppercase" }}>{cliente.acompanante_nombre}</span>} />
+                  <InfoRow label="Cédula" value={cliente.acompanante_cedula || "—"} mono />
+                  <InfoRow label="Teléfono" value={cliente.acompanante_telefono || "—"} />
+                </Card>
+              )}
+
+              {(cliente.referido_por_nombre || cliente.referido_por_cedula) && (
+                <Card>
+                  <SectionTitle>Referido por</SectionTitle>
+                  <InfoRow label="Nombre" value={<span style={{ textTransform: "uppercase" }}>{cliente.referido_por_nombre || "—"}</span>} />
+                  <InfoRow label="Cédula" value={cliente.referido_por_cedula || "—"} mono />
+                </Card>
+              )}
+
+              {contratoActivo && motoActiva && (
+                <Card borderColor="#0284c7">
+                  <SectionTitle>Moto asignada</SectionTitle>
+                  <button
+                    onClick={() => onNavigate("ficha_moto", motoActiva.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", width: "100%" }}
+                  >
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "#0284c7", letterSpacing: 1 }}>{motoActiva.placa}</div>
+                    <div style={{ fontSize: 14, color: "#334155", fontWeight: 600 }}>{motoActiva.marca} {motoActiva.modelo}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{motoActiva.grupo}</div>
+                  </button>
+                </Card>
+              )}
+            </div>
           </div>
+
+          {cliente.excepcion_documental && (
+            <Card borderColor="#f59e0b">
+              <div style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+                Excepcion documental: {cliente.excepcion_motivo}
+                {cliente.excepcion_plazo && <span style={{ marginLeft: 8, fontWeight: 400 }}>Plazo: {fmtFecha(cliente.excepcion_plazo)}</span>}
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* Tab: Contratos */}
-      {tab === "contratos" && (
-        <div style={{ display: "grid", gap: 12 }}>
+      {/* ── Tab: Contrato ── */}
+      {tab === "contrato" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {contratosCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin contratos registrados.</div>
+            <Card>
+              <div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
+                <div style={{ fontWeight: 700 }}>Sin contrato activo</div>
+              </div>
+            </Card>
           ) : contratosCliente.map(c => {
             const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : null;
             const ESTADO_C: Record<string, { bg: string; color: string }> = {
-              Activo: { bg: "#dcfce7", color: "#166534" }, "En proceso": { bg: "#dbeafe", color: "#1d4ed8" },
-              Finalizado: { bg: "#e2e8f0", color: "#334155" }, Cancelado: { bg: "#fee2e2", color: "#991b1b" },
+              Activo: { bg: "#dcfce7", color: "#166534" },
+              "En proceso": { bg: "#dbeafe", color: "#1d4ed8" },
+              Finalizado: { bg: "#e2e8f0", color: "#334155" },
+              Cancelado: { bg: "#fee2e2", color: "#991b1b" },
               Suspendido: { bg: "#fef3c7", color: "#92400e" },
             };
             const ec = ESTADO_C[c.estado] ?? { bg: "#e2e8f0", color: "#334155" };
-            const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
-            const ahorro = (c as Record<string, unknown>).ahorro_acumulado as number | undefined;
+            const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
+            const ahorro = c.ahorro_acumulado ?? 0;
+            const isActive = c.estado === "Activo";
             return (
-              <div key={c.id} style={{ background: "white", borderRadius: 16, padding: 20, borderLeft: `4px solid ${ec.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <Card key={c.id} borderColor={ec.color}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
                   <div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <Badge bg={ec.bg} color={ec.color}>{c.estado}</Badge>
+                      <Badge bg="#f1f5f9" color="#334155">{c.forma_pago}</Badge>
+                      {c.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {c.dia_pago}</Badge>}
+                    </div>
                     {moto ? (
                       <button
                         onClick={() => onNavigate("ficha_moto", moto.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 800, fontSize: 16, padding: 0 }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 800, fontSize: 16, padding: 0, letterSpacing: 0.5 }}
                       >
-                        🏍️ {moto.placa} — {moto.marca} {moto.modelo}
+                        {moto.placa} — {moto.marca} {moto.modelo}
                       </button>
                     ) : (
-                      <div style={{ fontWeight: 700, color: "#64748b", fontSize: 15 }}>Sin moto asignada</div>
-                    )}
-                    <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-                      <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: ec.bg, color: ec.color }}>{c.estado}</span>
-                      <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f1f5f9", color: "#64748b" }}>{c.forma_pago}</span>
-                      {c.dia_pago && <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, color: "#64748b" }}>Día de pago: {c.dia_pago}</span>}
-                    </div>
-                    <div style={{ display: "grid", gap: 4, marginTop: 10, fontSize: 13, color: "#64748b" }}>
-                      {c.fecha_entrega && <span>Entregada: {fmtFecha(c.fecha_entrega)}</span>}
-                      {c.valor_semanal && <span>Valor semanal: <strong style={{ color: "#0f172a" }}>${fmt(c.valor_semanal)}</strong></span>}
-                    </div>
-                    {c.tipo_ruta === "diario" && ahorro !== undefined && (
-                      <div style={{ marginTop: 10 }}>
-                        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Ahorro acumulado: ${fmt(ahorro)} / $510.000 ({Math.min(100, Math.round((ahorro / 510000) * 100))}%)</div>
-                        <div style={{ height: 6, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, (ahorro / 510000) * 100)}%`, background: "#0284c7" }} />
-                        </div>
-                      </div>
+                      <div style={{ fontWeight: 700, color: "#64748b", fontSize: 14 }}>Sin moto asignada</div>
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#166534" }}>${fmt(pagosC)}</div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>total pagado</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(pagosContrato)}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>total pagado</div>
                   </div>
                 </div>
-              </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 12 }}>
+                  {c.fecha_entrega && (
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
+                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Fecha entrega</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{fmtFecha(c.fecha_entrega)}</div>
+                    </div>
+                  )}
+                  {c.valor_semanal > 0 && (
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
+                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Valor período</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>${fmt(c.valor_semanal)}</div>
+                    </div>
+                  )}
+                  {c.tarifa_diaria && (
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
+                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Tarifa diaria</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>${fmt(c.tarifa_diaria)}</div>
+                    </div>
+                  )}
+                </div>
+
+                {c.tipo_ruta === "diario" && isActive && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 5 }}>
+                      <span>Ahorro acumulado hacia base inicial</span>
+                      <strong style={{ color: ahorro >= 510000 ? "#166534" : "#0f172a" }}>${fmt(ahorro)} / $510.000 ({Math.min(100, Math.round((ahorro / 510000) * 100))}%)</strong>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", borderRadius: 999,
+                        width: `${Math.min(100, (ahorro / 510000) * 100)}%`,
+                        background: ahorro >= 510000 ? "#16a34a" : "#0284c7",
+                        transition: "width 0.5s",
+                      }} />
+                    </div>
+                    {ahorro >= 510000 && (
+                      <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, background: "#dcfce7", fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                        Base completada — listo para cambio de contrato
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* Tab: Pagos */}
+      {/* ── Tab: Pagos ── */}
       {tab === "pagos" && (
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* KPIs */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
             {[
               { label: "Confirmados", val: pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), color: "#166534", bg: "#dcfce7" },
               { label: "Efectivo", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0), color: "#166534", bg: "#f0fdf4" },
               { label: "Transferencia", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0), color: "#1d4ed8", bg: "#dbeafe" },
               { label: "Pendientes", val: pagosCliente.filter(p => p.estado === "Pendiente").reduce((s, p) => s + p.valor, 0), color: "#92400e", bg: "#fef3c7" },
             ].map(kpi => (
-              <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 12, padding: "12px 14px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color, marginTop: 4 }}>${fmt(kpi.val)}</div>
+              <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase", marginBottom: 4 }}>{kpi.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color }}>${fmt(kpi.val)}</div>
               </div>
             ))}
           </div>
+
           {pagosCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin pagos registrados.</div>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin pagos registrados.</div></Card>
           ) : (
-            <div style={{ background: "white", borderRadius: 16, overflow: "hidden" }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: "#f8fafc" }}>
-                      {["Fecha", "Moto", "Método", "Tipo", "Estado", "Valor"].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#64748b", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagosCliente.map(p => {
-                      const c = contratos.find(ct => ct.id === p.contrato_id);
-                      const moto = c?.moto_id ? motos.find(m => m.id === c.moto_id) : null;
-                      const estadoP = p.estado === "Confirmado" ? { bg: "#dcfce7", color: "#166534" } : p.estado === "Pendiente" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#f1f5f9", color: "#64748b" };
-                      return (
-                        <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "10px 14px", color: "#64748b", whiteSpace: "nowrap" }}>{fmtFecha(p.fecha)}</td>
-                          <td style={{ padding: "10px 14px", fontWeight: 700 }}>
-                            {moto ? (
-                              <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 700, padding: 0 }}>
-                                {moto.placa}
-                              </button>
-                            ) : "—"}
-                          </td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: p.metodo === "Efectivo" ? "#dcfce7" : "#dbeafe", color: p.metodo === "Efectivo" ? "#166534" : "#1d4ed8" }}>
-                              {p.metodo}
-                            </span>
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#64748b", fontSize: 12 }}>{p.tipo_registro}</td>
-                          <td style={{ padding: "10px 14px" }}>
-                            <span style={{ padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: estadoP.bg, color: estadoP.color }}>{p.estado}</span>
-                          </td>
-                          <td style={{ padding: "10px 14px", fontWeight: 800, color: "#0f172a", textAlign: "right" }}>${fmt(p.valor)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pagosCliente.map(p => {
+                const c = contratos.find(ct => ct.id === p.contrato_id);
+                const moto = c?.moto_id ? motos.find(m => m.id === c.moto_id) : null;
+                const estadoP = p.estado === "Confirmado" ? { bg: "#dcfce7", color: "#166534" } : p.estado === "Pendiente" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#fee2e2", color: "#991b1b" };
+                return (
+                  <div key={p.id} style={{ background: "white", borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{fmtFecha(p.fecha)}</div>
+                      {moto && (
+                        <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 600, fontSize: 12, padding: 0 }}>
+                          {moto.placa}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <Badge bg={p.metodo === "Efectivo" ? "#dcfce7" : "#dbeafe"} color={p.metodo === "Efectivo" ? "#166534" : "#1d4ed8"}>{p.metodo}</Badge>
+                      <Badge bg={estadoP.bg} color={estadoP.color}>{p.estado}</Badge>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", textAlign: "right", minWidth: 90 }}>
+                      ${fmt(p.valor)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Tab: Deudas */}
-      {tab === "deudas" && (
-        <div style={{ display: "grid", gap: 12 }}>
-          {deudasCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin deudas registradas.</div>
-          ) : deudasCliente.map(d => {
-            const ec = d.estado === "pendiente" ? { bg: "#fee2e2", color: "#991b1b" } : d.estado === "en_convenio" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#dcfce7", color: "#166534" };
+      {/* ── Tab: Visitas ── */}
+      {tab === "visitas" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {visitasCliente.length === 0 ? (
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin visitas registradas.</div></Card>
+          ) : visitasCliente.map((v, idx) => {
+            const rColor = v.resultado === "Aprobado" ? "#166534" : v.resultado === "Rechazado" ? "#991b1b" : "#92400e";
+            const rBg = v.resultado === "Aprobado" ? "#dcfce7" : v.resultado === "Rechazado" ? "#fee2e2" : "#fef3c7";
+            const borderC = v.resultado === "Aprobado" ? "#16a34a" : v.resultado === "Rechazado" ? "#dc2626" : "#f59e0b";
             return (
-              <div key={d.id} style={{ background: "white", borderRadius: 14, padding: "16px 20px", borderLeft: `4px solid ${ec.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{d.descripcion}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{d.concepto.replace(/_/g, " ")}</div>
-                    <span style={{ display: "inline-block", marginTop: 8, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: ec.bg, color: ec.color }}>{d.estado}</span>
+              <div key={v.id} style={{ display: "flex", gap: 0 }}>
+                {/* Timeline line */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginRight: 16 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: rBg, border: `2px solid ${borderC}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 800, fontSize: 13, color: rColor }}>
+                    {idx + 1}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: ec.color }}>${fmt(d.monto_pendiente)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>de ${fmt(d.monto)}</div>
-                  </div>
+                  {idx < visitasCliente.length - 1 && (
+                    <div style={{ width: 2, flex: 1, background: "#e2e8f0", marginTop: 4, minHeight: 20 }} />
+                  )}
                 </div>
+                <Card borderColor={borderC}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: v.entrevista ? 14 : 0 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>Visita — {fmtFecha(v.fecha)}</div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                        <Badge bg={v.estado === "Realizada" ? "#dcfce7" : "#fef3c7"} color={v.estado === "Realizada" ? "#166534" : "#92400e"}>{v.estado}</Badge>
+                        {v.resultado && <Badge bg={rBg} color={rColor}>{v.resultado}</Badge>}
+                      </div>
+                    </div>
+                    {v.ubicacion && (
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}</div>
+                    )}
+                  </div>
+                  {v.entrevista && (
+                    <div style={{ display: "grid", gap: 0 }}>
+                      {([
+                        ["¿Vive allí?", v.entrevista.viveAlli],
+                        ["Tiempo de residencia", v.entrevista.tiempoResidencia],
+                        ["Tipo de vivienda", v.entrevista.tipoVivienda],
+                        ["Composición familiar", v.entrevista.composicionFamiliar],
+                        ["Estabilidad laboral", v.entrevista.estabilidadLaboral],
+                        ["Observaciones", v.entrevista.observaciones],
+                        ["Recomendación", v.entrevista.recomendacion],
+                      ] as [string, string][]).filter(([, val]) => val).map(([k, val]) => (
+                        <InfoRow key={k} label={k} value={val} />
+                      ))}
+                    </div>
+                  )}
+                </Card>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Tab: Convenios */}
+      {/* ── Tab: Documentos ── */}
+      {tab === "documentos" && (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
+          {[
+            { title: "Documentos del cliente", docs: cliente.documentos_cliente },
+            { title: "Documentos del acompañante", docs: cliente.documentos_acompanante },
+          ].map(section => {
+            const total = DOC_LABELS.length;
+            const ok = DOC_LABELS.filter(([k]) => section.docs[k]?.ok).length;
+            return (
+              <Card key={section.title}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <SectionTitle>{section.title}</SectionTitle>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: ok === total ? "#166534" : "#92400e", background: ok === total ? "#dcfce7" : "#fef3c7", padding: "3px 10px", borderRadius: 999 }}>
+                    {ok}/{total}
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {DOC_LABELS.map(([key, label]) => {
+                    const item = section.docs[key];
+                    const isOk = item?.ok === true;
+                    return (
+                      <div key={key} style={{
+                        display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                        borderRadius: 10, background: isOk ? "#f0fdf4" : "#fef9f9",
+                        border: `1.5px solid ${isOk ? "#bbf7d0" : "#fecaca"}`,
+                      }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: "50%",
+                          background: isOk ? "#16a34a" : "#fee2e2",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 12, fontWeight: 800, color: isOk ? "white" : "#991b1b",
+                          flexShrink: 0,
+                        }}>
+                          {isOk ? "✓" : "✗"}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: isOk ? "#166534" : "#991b1b", flex: 1 }}>{label}</span>
+                        {item?.file && (
+                          <a href={item.file} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0284c7", fontWeight: 600 }}>Ver</a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Tab: Deudas ── */}
+      {tab === "deudas" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {deudasCliente.length === 0 ? (
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin deudas registradas.</div></Card>
+          ) : deudasCliente.map(d => {
+            const ec = d.estado === "pendiente" ? { bg: "#fee2e2", color: "#991b1b" } : d.estado === "en_convenio" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#dcfce7", color: "#166534" };
+            return (
+              <Card key={d.id} borderColor={ec.color}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 4 }}>{d.descripcion}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{d.concepto.replace(/_/g, " ")}</div>
+                    <div style={{ marginTop: 8 }}><Badge bg={ec.bg} color={ec.color}>{d.estado}</Badge></div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: ec.color }}>${fmt(d.monto_pendiente)}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>de ${fmt(d.monto)}</div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Tab: Convenios ── */}
       {tab === "convenios" && (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {conveniosCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin convenios registrados.</div>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin convenios registrados.</div></Card>
           ) : conveniosCliente.map(cv => {
             const ec = cv.estado === "activo" ? { bg: "#dbeafe", color: "#1d4ed8" } : cv.estado === "cumplido" ? { bg: "#dcfce7", color: "#166534" } : cv.estado === "incumplido" ? { bg: "#fee2e2", color: "#991b1b" } : { bg: "#f1f5f9", color: "#334155" };
             const pct = cv.numero_cuotas > 0 ? Math.round((cv.cuotas_pagadas / cv.numero_cuotas) * 100) : 0;
             return (
-              <div key={cv.id} style={{ background: "white", borderRadius: 14, padding: "16px 20px", borderLeft: `4px solid ${ec.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <Card key={cv.id} borderColor={ec.color}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 800, fontSize: 14 }}>Convenio #{cv.numero_convenio}</span>
-                      <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: ec.bg, color: ec.color }}>{cv.estado}</span>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 800, fontSize: 15 }}>Convenio #{cv.numero_convenio}</span>
+                      <Badge bg={ec.bg} color={ec.color}>{cv.estado}</Badge>
                     </div>
-                    <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>{cv.concepto}</div>
-                    <div style={{ fontSize: 13, marginTop: 4, color: "#334155" }}>
+                    <div style={{ fontSize: 13, color: "#64748b" }}>{cv.concepto}</div>
+                    <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
                       Cuota: <strong>${fmt(cv.cuota_por_periodo)}</strong> · {cv.cuotas_pagadas}/{cv.numero_cuotas} cuotas · Vence: {fmtFecha(cv.fecha_limite)}
-                    </div>
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ height: 6, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: ec.color }} />
-                      </div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{pct}% pagado</div>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>${fmt(cv.deuda_total)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>${fmt(cv.deuda_total)}</div>
                     <div style={{ fontSize: 11, color: "#94a3b8" }}>deuda total</div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Tab: Visitas */}
-      {tab === "visitas" && (
-        <div style={{ display: "grid", gap: 12 }}>
-          {visitasCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin visitas registradas.</div>
-          ) : visitasCliente.map(v => {
-            const rColor = v.resultado === "Aprobado" ? "#166534" : v.resultado === "Rechazado" ? "#991b1b" : "#92400e";
-            const rBg = v.resultado === "Aprobado" ? "#dcfce7" : v.resultado === "Rechazado" ? "#fee2e2" : "#fef3c7";
-            return (
-              <div key={v.id} style={{ background: "white", borderRadius: 14, padding: "16px 20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>Visita — {fmtFecha(v.fecha)}</div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                      <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: v.estado === "Realizada" ? "#dcfce7" : "#fef3c7", color: v.estado === "Realizada" ? "#166534" : "#92400e" }}>{v.estado}</span>
-                      {v.resultado && <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: rBg, color: rColor }}>{v.resultado}</span>}
-                    </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                    <span>Progreso</span>
+                    <span>{pct}%</span>
                   </div>
-                  {v.ubicacion && <div style={{ fontSize: 12, color: "#64748b" }}>📍 {v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}</div>}
+                  <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: ec.color, transition: "width 0.5s" }} />
+                  </div>
                 </div>
-                {v.entrevista && (
-                  <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
-                    {[
-                      ["¿Vive allí?", v.entrevista.viveAlli],
-                      ["Tiempo residencia", v.entrevista.tiempoResidencia],
-                      ["Tipo vivienda", v.entrevista.tipoVivienda],
-                      ["Composición familiar", v.entrevista.composicionFamiliar],
-                      ["Estabilidad laboral", v.entrevista.estabilidadLaboral],
-                      ["Observaciones", v.entrevista.observaciones],
-                      ["Recomendación", v.entrevista.recomendacion],
-                    ].filter(([, val]) => val).map(([k, val]) => (
-                      <div key={k} style={{ display: "flex", gap: 10 }}>
-                        <span style={{ color: "#64748b", minWidth: 150, flexShrink: 0 }}>{k}</span>
-                        <span style={{ fontWeight: 600, color: "#0f172a" }}>{val}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* Tab: Gestiones */}
+      {/* ── Tab: Gestiones ── */}
       {tab === "gestiones" && (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {gestionesCliente.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 48, background: "white", borderRadius: 16, color: "#64748b" }}>Sin gestiones de cobro registradas.</div>
-          ) : gestionesCliente.map(g => (
-            <div key={g.id} style={{ background: "white", borderRadius: 12, padding: "14px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                {(TIPO_GESTION_LABEL[g.tipo] ?? "📋 ").split(" ")[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{TIPO_GESTION_LABEL[g.tipo] ?? g.tipo}</span>
-                  <span style={{ fontSize: 12, color: "#94a3b8" }}>{fmtFecha(g.fecha)}</span>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin gestiones de cobro registradas.</div></Card>
+          ) : gestionesCliente.map(g => {
+            const gc = GESTION_COLORS[g.tipo] ?? { bg: "#f1f5f9", color: "#64748b" };
+            return (
+              <div key={g.id} style={{ background: "white", borderRadius: 12, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: gc.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: gc.color, textAlign: "center", lineHeight: 1.2 }}>{TIPO_GESTION_LABEL[g.tipo]?.slice(0, 4) ?? "—"}</span>
                 </div>
-                {g.resultado && <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{g.resultado}</div>}
-                {g.plazo_extra_dias && (
-                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>
-                    ⏰ Plazo extra: {g.plazo_extra_dias} días — {g.plazo_extra_motivo}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{TIPO_GESTION_LABEL[g.tipo] ?? g.tipo}</span>
+                    <span style={{ fontSize: 12, color: "#94a3b8" }}>{fmtFecha(g.fecha)}</span>
                   </div>
-                )}
+                  {g.resultado && <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>{g.resultado}</div>}
+                  {g.plazo_extra_dias && (
+                    <div style={{ fontSize: 12, color: "#92400e", marginTop: 3, fontWeight: 600 }}>
+                      Plazo extra: {g.plazo_extra_dias} días — {g.plazo_extra_motivo}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

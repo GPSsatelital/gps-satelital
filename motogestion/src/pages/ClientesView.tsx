@@ -426,11 +426,17 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+
   const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion } = useClientes();
   const { visitas, crearVisita, resolverVisita } = useVisitas();
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
-  const [detalleModalOpen, setDetalleModalOpen] = useState(false);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
   const [clienteVisitaNombre, setClienteVisitaNombre] = useState("");
   const [open, setOpen] = useState(false);
@@ -473,7 +479,7 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
     return list;
   }, [baseClientes, query, filtroEstado]);
 
-  const selectedCliente: Cliente | null = clientes.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
+  const selectedCliente: Cliente | null = clientes.find(c => c.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
   function visitasDelCliente(clienteId: string) {
     return visitas.filter((v) => v.cliente_id === clienteId).sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -641,6 +647,16 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
 
+  const KPI_PILLS = [
+    { label: "Todos", count: clientes.length, color: "#334155", bg: "#e2e8f0", filter: "" },
+    { label: "En proceso", count: clientes.filter(c => c.estado === "En proceso").length, color: "#334155", bg: "#e2e8f0", filter: "En proceso" },
+    { label: "Listos visita", count: clientes.filter(c => c.estado === "Listo para visita").length, color: "#1d4ed8", bg: "#dbeafe", filter: "Listo para visita" },
+    { label: "Pend. eval.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, color: "#92400e", bg: "#fef3c7", filter: "Pendiente evaluación" },
+    { label: "Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, color: "#166534", bg: "#dcfce7", filter: "Aprobado" },
+    { label: "Activos", count: clientes.filter(c => c.estado === "Activo").length, color: "#166534", bg: "#bbf7d0", filter: "Activo" },
+    { label: "Mora / riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora" },
+  ];
+
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
@@ -738,19 +754,39 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ fontSize: 22, margin: 0 }}>Clientes</h2>
-          <p style={{ marginTop: 6, color: "#64748b" }}>Registro, documentos, estados y aprobación. Conectado en tiempo real.</p>
-        </div>
-        <button onClick={() => setOpen(true)} style={primaryBtn}>+ Ingresar cliente nuevo</button>
+      {/* Header compacto */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <h2 style={{ fontSize: 20, margin: 0, color: "#0f172a" }}>Clientes</h2>
+        <button onClick={() => setOpen(true)} style={primaryBtn}>+ Nuevo cliente</button>
       </div>
 
-      {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando clientes: {error}</div>}
+      {error && <div style={{ marginBottom: 10, color: "#991b1b", fontSize: 13 }}>Error: {error}</div>}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+      {/* KPI pills */}
+      <div style={{ display: "flex", overflowX: "auto", gap: 8, paddingBottom: 4, marginBottom: 14 }}>
+        {KPI_PILLS.map(pill => {
+          const active = filtroEstado === pill.filter && modoVista === "todos";
+          return (
+            <button
+              key={pill.filter}
+              onClick={() => { setModoVista("todos"); setFiltroEstado(pill.filter); }}
+              style={{
+                flexShrink: 0, border: "none", borderRadius: 999, padding: "6px 14px",
+                fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+                background: active ? pill.color : pill.bg,
+                color: active ? "white" : pill.color,
+              }}
+            >
+              {pill.label} ({pill.count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Vista toggle */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <button onClick={() => setModoVista("todos")} style={miniBtn(modoVista === "todos" ? "#dbeafe" : "#e2e8f0", modoVista === "todos" ? "#1d4ed8" : "#334155")}>
-          Todos los clientes
+          Todos
         </button>
         <button onClick={() => setModoVista("pendientes")} style={miniBtn(modoVista === "pendientes" ? "#fef3c7" : "#e2e8f0", modoVista === "pendientes" ? "#92400e" : "#334155")}>
           Pendientes de aprobación ({clientes.filter((c) => c.estado === "Pendiente evaluación").length})
@@ -774,137 +810,209 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
         />
       )}
 
-      <style>{`@media (max-width: 768px) { .clientes-grid { display: block !important; } .clientes-detalle-desktop { display: none !important; } }`}</style>
-
-      <div style={{ display: modoVista === "pendientes" ? "none" : "flex", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "flex-start" }}>
-        <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
-          <div style={{ marginBottom: 12 }}>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍  Buscar por nombre, cédula o teléfono..." style={inputStyle} />
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-            {FILTROS_CLIENTE.map(f => (
+      {modoVista === "todos" && (
+        isMobile ? (
+          /* ---- MOBILE LAYOUT ---- */
+          selectedId && selectedCliente ? (
+            <div>
               <button
-                key={f.filter}
-                onClick={() => setFiltroEstado(f.filter)}
-                style={{
-                  padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-                  fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500,
-                  background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9",
-                  color: filtroEstado === f.filter ? "white" : "#64748b",
-                  whiteSpace: "nowrap",
-                }}
-              >{f.label}</button>
-            ))}
-          </div>
-
-          <div style={{ display: "grid", gap: 8, maxHeight: "70vh", overflowY: "auto" }}>
-            {filtered.length === 0 && clientes.length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px 24px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Registra el primer cliente</div>
-                <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                onClick={() => setSelectedId(null)}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0 }}
+              >
+                ← Volver
+              </button>
+              <div style={{ ...card }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "#0f172a", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
+                  <ClienteBadge estado={estadoVisual(selectedCliente)} />
+                  <span style={{
+                    display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                    background: selectedCliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
+                    color: selectedCliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                  }}>
+                    {selectedCliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
+                  </span>
+                </div>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate("ficha_cliente", selectedCliente.id)}
+                    style={{ marginBottom: 14, background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    Ver ficha completa →
+                  </button>
+                )}
+                <DetalleClienteContenido
+                  selectedCliente={selectedCliente}
+                  role={role}
+                  visitas={visitasDelCliente(selectedCliente.id)}
+                  onEdit={() => abrirEdicion(selectedCliente)}
+                  onVisita={() => setVisitaOpen(true)}
+                  onExcepcion={() => abrirExcepcion(selectedCliente)}
+                  onEstado={cambiarEstadoCliente}
+                  onResolverVisita={handleResolverVisita}
+                />
               </div>
-            )}
-            {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
-            {filtered.map((cliente) => {
-              const riesgo = modoVista === "pendientes" ? calcularSemaforo(cliente, visitas) : null;
-              const activo = selectedId === cliente.id;
-              return (
-                <button
-                  key={cliente.id}
-                  onClick={() => { setSelectedId(cliente.id); setDetalleModalOpen(true); setClienteDetalleId(cliente.id); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 12,
-                    padding: "12px 14px", borderRadius: 12, border: "none",
-                    background: activo ? "#eff6ff" : "#f8fafc",
-                    cursor: "pointer", textAlign: "left",
-                    outline: activo ? "2px solid #0284c7" : "none",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.telefono}</div>
-                    <div style={{ marginTop: 4 }}>
-                      <span style={{
-                        display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                        background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
-                        color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
-                      }}>
-                        {cliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
-                      </span>
+            </div>
+          ) : (
+            <div>
+              <div style={{ marginBottom: 10 }}>
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={inputStyle} />
+              </div>
+              {filtered.length === 0 && clientes.length === 0 && (
+                <div style={{ textAlign: "center", padding: "40px 24px" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
+                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                </div>
+              )}
+              {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+              <div style={{ display: "grid", gap: 8 }}>
+                {filtered.map((cliente) => (
+                  <button
+                    key={cliente.id}
+                    onClick={() => setSelectedId(cliente.id)}
+                    style={{ width: "100%", background: "white", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.cedula} · {cliente.telefono}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{
+                          display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                          background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
+                          color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                        }}>{cliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}</span>
+                        <ClienteBadge estado={estadoVisual(cliente)} />
+                        {(cliente.referidos_confirmados ?? 0) > 0 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#166534" }}>👥 {cliente.referidos_confirmados} referidos</span>
+                        )}
+                      </div>
+                    </div>
+                    <span style={{ color: "#94a3b8", fontSize: 22, flexShrink: 0 }}>›</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
+          /* ---- DESKTOP LAYOUT ---- */
+          <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+            {/* Left panel */}
+            <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
+              <div style={{ marginBottom: 10 }}>
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                {FILTROS_CLIENTE.map(f => (
+                  <button
+                    key={f.filter}
+                    onClick={() => setFiltroEstado(f.filter)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+                      fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500,
+                      background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9",
+                      color: filtroEstado === f.filter ? "white" : "#64748b",
+                      whiteSpace: "nowrap",
+                    }}
+                  >{f.label}</button>
+                ))}
+              </div>
+              <div style={{ display: "grid", gap: 6, maxHeight: "70vh", overflowY: "auto" }}>
+                {filtered.length === 0 && clientes.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 24px" }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
+                    <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Registra el primer cliente</div>
+                    <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                  </div>
+                )}
+                {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+                {filtered.map((cliente) => {
+                  const activo = selectedId === cliente.id || (!selectedId && filtered[0]?.id === cliente.id);
+                  return (
+                    <button
+                      key={cliente.id}
+                      onClick={() => setSelectedId(cliente.id)}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: 10,
+                        padding: "10px 12px", borderRadius: 10, border: "none",
+                        background: activo ? "#eff6ff" : "#f8fafc",
+                        cursor: "pointer", textAlign: "left",
+                        outline: activo ? "2px solid #0284c7" : "none",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{cliente.cedula} · {cliente.telefono}</div>
+                        <div style={{ marginTop: 4, display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{
+                            display: "inline-block", padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                            background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
+                            color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                          }}>{cliente.ruta_contrato === "diario" ? "Diario" : "T. definido"}</span>
+                          <ClienteBadge estado={estadoVisual(cliente)} />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                        {cliente.estado === "Listo para visita" && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setClienteVisitaId(cliente.id); setClienteVisitaNombre(cliente.nombre); }}
+                            style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 999, padding: "4px 9px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                          >
+                            🏠 Visita
+                          </button>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right panel */}
+            <div style={{ ...card, flex: "0 0 360px" }}>
+              {selectedCliente ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "#0f172a" }}>{selectedCliente.nombre}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                        <ClienteBadge estado={estadoVisual(selectedCliente)} />
+                        <span style={{
+                          display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                          background: selectedCliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
+                          color: selectedCliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                        }}>
+                          {selectedCliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                    <ClienteBadge estado={estadoVisual(cliente)} />
-                    {riesgo && <span style={{ fontSize: 11 }}>{riesgo.icono}</span>}
-                    {onNavigate && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate("ficha_cliente", cliente.id); }}
-                        style={{ background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 999, padding: "4px 10px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
-                      >
-                        Ver ficha →
-                      </button>
-                    )}
-                    {cliente.estado === "Listo para visita" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setClienteVisitaId(cliente.id);
-                          setClienteVisitaNombre(cliente.nombre);
-                        }}
-                        style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 999, padding: "5px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-                      >
-                        🏠 Registrar visita
-                      </button>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ ...card, flex: "1 1 280px", minWidth: 0, maxWidth: 440 }}>
-          <h3 style={{ margin: 0, fontSize: 20 }}>Detalle del cliente</h3>
-
-          {selectedCliente ? (
-            <DetalleClienteContenido
-              selectedCliente={selectedCliente}
-              role={role}
-              visitas={visitasDelCliente(selectedCliente.id)}
-              onEdit={() => abrirEdicion(selectedCliente)}
-              onVisita={() => setVisitaOpen(true)}
-              onExcepcion={() => abrirExcepcion(selectedCliente)}
-              onEstado={cambiarEstadoCliente}
-              onResolverVisita={handleResolverVisita}
-            />
-          ) : (
-            <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona un cliente para ver su detalle.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Modal de detalle para móvil */}
-      {detalleModalOpen && selectedCliente && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 80, padding: 0 }} onClick={() => setDetalleModalOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: "white", borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "88vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18, textTransform: "uppercase" }}>{selectedCliente.nombre}</h3>
-              <button onClick={() => setDetalleModalOpen(false)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16 }}>✕</button>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate("ficha_cliente", selectedCliente.id)}
+                      style={{ marginBottom: 14, background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                    >
+                      Ver ficha completa →
+                    </button>
+                  )}
+                  <DetalleClienteContenido
+                    selectedCliente={selectedCliente}
+                    role={role}
+                    visitas={visitasDelCliente(selectedCliente.id)}
+                    onEdit={() => abrirEdicion(selectedCliente)}
+                    onVisita={() => setVisitaOpen(true)}
+                    onExcepcion={() => abrirExcepcion(selectedCliente)}
+                    onEstado={cambiarEstadoCliente}
+                    onResolverVisita={handleResolverVisita}
+                  />
+                </>
+              ) : (
+                <div style={{ color: "#64748b", fontSize: 14, padding: "20px 0" }}>Selecciona un cliente para ver su detalle.</div>
+              )}
             </div>
-            <DetalleClienteContenido
-              selectedCliente={selectedCliente}
-              role={role}
-              visitas={visitasDelCliente(selectedCliente.id)}
-              onEdit={() => abrirEdicion(selectedCliente)}
-              onVisita={() => setVisitaOpen(true)}
-              onExcepcion={() => abrirExcepcion(selectedCliente)}
-              onEstado={cambiarEstadoCliente}
-              onResolverVisita={handleResolverVisita}
-            />
           </div>
-        </div>
+        )
       )}
 
       {open && (

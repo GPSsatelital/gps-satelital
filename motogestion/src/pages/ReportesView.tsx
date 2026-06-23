@@ -76,12 +76,9 @@ const GRUPO_COLORS: Record<string, string> = {
   PRADERA: "#f59e0b",
 };
 
-function exportarCSV(filas: Array<{ fecha: string; cliente: string; placa: string; metodo: string; tipo: string; valor: number }>, nombreArchivo: string) {
-  const encabezado = "Fecha,Cliente,Placa,Método,Tipo,Valor\n";
-  const contenido = filas.map(f =>
-    `${f.fecha},${f.cliente},${f.placa},${f.metodo},${f.tipo},${f.valor}`
-  ).join("\n");
-  const blob = new Blob([encabezado + contenido], { type: "text/csv;charset=utf-8;" });
+function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: string) {
+  const contenido = [encabezado, ...filas].map(row => row.join(",")).join("\n");
+  const blob = new Blob(["﻿" + contenido], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = nombreArchivo; a.click();
@@ -350,21 +347,51 @@ export default function ReportesView() {
                 const contrato = contratos.find(c => c.id === p.contrato_id);
                 const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : undefined;
                 const moto = contrato?.moto_id ? motos.find(m => m.id === contrato.moto_id) : undefined;
-                return {
-                  fecha: p.fecha,
-                  cliente: (cliente?.nombre ?? "—").replace(/,/g, " "),
-                  placa: moto?.placa ?? "—",
-                  metodo: p.metodo,
-                  tipo: p.tipo_registro,
-                  valor: p.valor,
-                };
+                return [
+                  p.fecha,
+                  (cliente?.nombre ?? "—").replace(/,/g, " "),
+                  moto?.placa ?? "—",
+                  p.metodo,
+                  p.tipo_registro,
+                  String(p.valor),
+                ];
               });
-              exportarCSV(filas, `pagos-${desde}-${hasta}.csv`);
+              exportarCSV(filas, ["Fecha", "Cliente", "Placa", "Metodo", "Tipo", "Valor"], `pagos-${desde}-${hasta}.csv`);
             }}
             style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
           >
-            ⬇️ Exportar CSV
+            ⬇️ CSV Pagos
           </button>
+          <button
+            onClick={() => {
+              const filas = moraDetallada.map(m => [
+                m.cliente.replace(/,/g, " "),
+                m.placa,
+                String(m.diasSinPago),
+                String(m.deudaEstimada),
+                m.ultimoPago ?? "Sin pagos",
+              ]);
+              exportarCSV(filas, ["Cliente", "Placa", "Dias sin pago", "Deuda estimada", "Ultimo pago"], `mora-${hoyStr}.csv`);
+            }}
+            style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            ⬇️ CSV Mora
+          </button>
+          {alertasVencimiento.length > 0 && (
+            <button
+              onClick={() => {
+                const filas = alertasVencimiento.map(a => [
+                  a.placa,
+                  a.seguro ?? "—",
+                  a.tecno ?? "—",
+                ]);
+                exportarCSV(filas, ["Placa", "SOAT vence", "Tecnomecanica vence"], `vencimientos-${hoyStr}.csv`);
+              }}
+              style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}
+            >
+              ⬇️ CSV Vencimientos
+            </button>
+          )}
           <button
             onClick={imprimirReporte}
             style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid #cbd5e1", cursor: "pointer", fontSize: 12, fontWeight: 600, background: "white", color: "#334155", display: "flex", alignItems: "center", gap: 6 }}

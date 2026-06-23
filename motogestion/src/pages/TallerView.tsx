@@ -164,6 +164,78 @@ function Modal({ onClose, title, children }: { onClose: () => void; title: strin
   );
 }
 
+// ─── Repuestos Editor ──────────────────────────────────────────────────────────
+
+type RepuestoItem = { nombre: string; cantidad: number; costo: number };
+
+function RepuestosEditor({ items, onChange }: { items: RepuestoItem[]; onChange: (items: RepuestoItem[]) => void }) {
+  function agregar() {
+    onChange([...items, { nombre: "", cantidad: 1, costo: 0 }]);
+  }
+  function eliminar(i: number) {
+    onChange(items.filter((_, idx) => idx !== i));
+  }
+  function actualizar(i: number, field: keyof RepuestoItem, value: string | number) {
+    const copia = items.map((item, idx) => idx === i ? { ...item, [field]: value } : item);
+    onChange(copia);
+  }
+  const totalRepuestos = items.reduce((s, r) => s + r.costo * r.cantidad, 0);
+  return (
+    <div>
+      <label style={labelStyle}>Repuestos utilizados</label>
+      {items.length === 0 && (
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Sin repuestos agregados.</div>
+      )}
+      {items.map((item, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+          <input
+            style={{ ...inputStyle, flex: 3 }}
+            value={item.nombre}
+            onChange={e => actualizar(i, "nombre", e.target.value)}
+            placeholder="Nombre del repuesto"
+          />
+          <input
+            type="number"
+            style={{ ...inputStyle, flex: 1, minWidth: 50 }}
+            value={item.cantidad}
+            min={1}
+            onChange={e => actualizar(i, "cantidad", Number(e.target.value) || 1)}
+            title="Cantidad"
+          />
+          <input
+            type="number"
+            style={{ ...inputStyle, flex: 2, minWidth: 70 }}
+            value={item.costo || ""}
+            onChange={e => actualizar(i, "costo", Number(e.target.value) || 0)}
+            placeholder="$ costo u."
+            title="Costo unitario"
+          />
+          <button onClick={() => eliminar(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "0 2px", flexShrink: 0 }}>✕</button>
+        </div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+        <button onClick={agregar} type="button" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", background: "none", border: "1px dashed #93c5fd", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}>
+          + Agregar repuesto
+        </button>
+        {items.length > 0 && (
+          <span style={{ fontSize: 12, color: "#64748b" }}>
+            Total repuestos: <strong style={{ color: "#0f172a" }}>${items.reduce((s, r) => s + r.costo * r.cantidad, 0).toLocaleString("es-CO")}</strong>
+          </span>
+        )}
+      </div>
+      {totalRepuestos > 0 && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>El costo de repuestos se suma al costo total de la orden.</div>}
+    </div>
+  );
+}
+
+function repuestosToText(items: RepuestoItem[]): string {
+  return items.filter(r => r.nombre.trim()).map(r => r.cantidad > 1 ? `${r.nombre.trim()} (x${r.cantidad})` : r.nombre.trim()).join(", ");
+}
+
+function repuestosToTotal(items: RepuestoItem[]): number {
+  return items.reduce((s, r) => s + r.costo * r.cantidad, 0);
+}
+
 // ─── Nueva Orden Modal ─────────────────────────────────────────────────────────
 
 function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
@@ -174,11 +246,14 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
   const [motoId, setMotoId] = useState("");
   const [estadoInicial, setEstadoInicial] = useState<TallerEstado>("Pendiente");
   const [fechaIngreso, setFechaIngreso] = useState(new Date().toISOString().slice(0, 10));
-  const [costo, setCosto] = useState("");
+  const [costoManoObra, setCostoManoObra] = useState("");
   const [detalle, setDetalle] = useState("");
-  const [repuestos, setRepuestos] = useState("");
+  const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const costoRepuestos = repuestosToTotal(repuestosItems);
+  const costoTotal = (Number(costoManoObra) || 0) + costoRepuestos;
 
   async function handleSubmit() {
     if (!motoId) { setFormError("Selecciona la moto."); return; }
@@ -188,8 +263,8 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
       moto_id: motoId,
       estado_tecnico: estadoInicial,
       detalle: detalle.trim(),
-      costo: Number(costo) || 0,
-      repuestos: repuestos.trim() || null,
+      costo: costoTotal,
+      repuestos: repuestosToText(repuestosItems) || null,
       fecha_ingreso: fechaIngreso,
     });
     setSaving(false);
@@ -226,19 +301,20 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
             placeholder="Describe el problema o trabajo a realizar"
           />
         </div>
+        <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
         <div>
-          <label style={labelStyle}>Repuestos (separados por coma)</label>
-          <input
-            style={inputStyle}
-            value={repuestos}
-            onChange={(e) => setRepuestos(e.target.value)}
-            placeholder="Ej. Pastillas de freno, aceite, filtro"
-          />
+          <label style={labelStyle}>Mano de obra ($)</label>
+          <input type="number" style={inputStyle} value={costoManoObra} onChange={(e) => setCostoManoObra(e.target.value)} placeholder="0" />
         </div>
-        <div>
-          <label style={labelStyle}>Costo estimado ($)</label>
-          <input type="number" style={inputStyle} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="0" />
-        </div>
+        {costoTotal > 0 && (
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
+            <span style={{ color: "#64748b" }}>Repuestos: <strong>${costoRepuestos.toLocaleString("es-CO")}</strong></span>
+            <span style={{ color: "#64748b", margin: "0 10px" }}>+</span>
+            <span style={{ color: "#64748b" }}>Mano de obra: <strong>${(Number(costoManoObra) || 0).toLocaleString("es-CO")}</strong></span>
+            <span style={{ color: "#64748b", margin: "0 10px" }}>=</span>
+            <span style={{ color: "#0284c7", fontWeight: 800 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
+          </div>
+        )}
         {formError && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{formError}</div>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
           <button onClick={onClose} style={ghostBtn}>Cancelar</button>
@@ -263,13 +339,16 @@ function ActualizarModal({
   onActualizar: (id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string) => Promise<void>;
 }) {
   const [nuevoEstado, setNuevoEstado] = useState<TallerEstado>(item.estado_tecnico);
-  const [costoExtra, setCostoExtra] = useState("");
-  const [repuestosExtra, setRepuestosExtra] = useState("");
+  const [manoObraExtra, setManoObraExtra] = useState("");
+  const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const costoRepuestos = repuestosToTotal(repuestosItems);
+  const costoExtra = (Number(manoObraExtra) || 0) + costoRepuestos;
 
   async function handleSubmit() {
     setSaving(true);
-    await onActualizar(item.id, nuevoEstado, Number(costoExtra) || 0, repuestosExtra.trim());
+    await onActualizar(item.id, nuevoEstado, costoExtra, repuestosToText(repuestosItems));
     setSaving(false);
     onClose();
   }
@@ -278,7 +357,9 @@ function ActualizarModal({
     <Modal onClose={onClose} title="Actualizar orden">
       <div style={{ marginBottom: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 10, fontSize: 14 }}>
         <strong>{motoLabel}</strong>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Ingresó: {formatDate(item.fecha_ingreso)}</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+          Ingresó: {formatDate(item.fecha_ingreso)} · Costo acumulado: {formatCOP(item.costo)}
+        </div>
       </div>
       <div style={{ display: "grid", gap: 14 }}>
         <div>
@@ -287,19 +368,17 @@ function ActualizarModal({
             {ESTADOS.filter((e) => e !== "Finalizado").map((e) => <option key={e} value={e}>{e}</option>)}
           </select>
         </div>
+        <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
         <div>
-          <label style={labelStyle}>Costo adicional ($)</label>
-          <input type="number" style={inputStyle} value={costoExtra} onChange={(e) => setCostoExtra(e.target.value)} placeholder="0" />
+          <label style={labelStyle}>Mano de obra adicional ($)</label>
+          <input type="number" style={inputStyle} value={manoObraExtra} onChange={(e) => setManoObraExtra(e.target.value)} placeholder="0" />
         </div>
-        <div>
-          <label style={labelStyle}>Repuestos adicionales</label>
-          <input
-            style={inputStyle}
-            value={repuestosExtra}
-            onChange={(e) => setRepuestosExtra(e.target.value)}
-            placeholder="Ej. Bujía, cadena"
-          />
-        </div>
+        {costoExtra > 0 && (
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
+            Nuevo total acumulado: <strong style={{ color: "#0284c7" }}>{formatCOP(item.costo + costoExtra)}</strong>
+            <span style={{ color: "#94a3b8", marginLeft: 8 }}>(+{formatCOP(costoExtra)})</span>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={ghostBtn}>Cancelar</button>
           <button onClick={handleSubmit} style={primaryBtn} disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>

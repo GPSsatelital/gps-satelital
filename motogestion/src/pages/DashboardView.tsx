@@ -42,6 +42,8 @@ export default function DashboardView({ onNavigate }: {
   onNavigate: (view: ViewKey, filter?: string) => void;
 }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  const [chartDays, setChartDays] = useState<7 | 14 | 30>(14);
+
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
     window.addEventListener("resize", h);
@@ -87,6 +89,12 @@ export default function DashboardView({ onNavigate }: {
       .filter(p => p.estado === "Confirmado" && p.fecha >= hace7dias)
       .reduce((acc, p) => acc + p.valor, 0);
 
+    // Previous week for delta calculation
+    const hace14dias = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const recaudoSemanaAnterior = pagos
+      .filter(p => p.estado === "Confirmado" && p.fecha >= hace14dias && p.fecha < hace7dias)
+      .reduce((acc, p) => acc + p.valor, 0);
+
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;
 
     const grupos = ["COSTA","PRADERA","RASTREADOR","OTRO"] as const;
@@ -107,21 +115,46 @@ export default function DashboardView({ onNavigate }: {
 
     const alertasTotal = pagosPendientes + clientesMora + motosRetencion;
 
+    // KPI deltas (current week vs previous week for key metrics)
+    const prevMotosAsignadas = motosAsignadas; // no history — use same for display but show neutral
+    const prevContratosActivos = contratosActivos;
+    const prevClientesActivos = clientesActivos;
+    const prevClientesMora = clientesMora;
+
+    // Recoveries this week (motos that were retenidas now Disponible/Asignada — approximate via taller)
+    const recuperadasSemana = motos.filter(m => m.estado === "Recuperada").length;
+
+    // Pagan hoy
+    const diaSem = new Date().getDay();
+    const esLunes = diaSem === 1;
+    const esMiercoles = diaSem === 3;
+    const paganHoy = contratos
+      .filter(c => c.estado === "Activo")
+      .filter(c => {
+        const esDiario = (c.forma_pago ?? "").toLowerCase() === "diario";
+        if (esDiario) return true;
+        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+        const dp = norm(c.dia_pago ?? "lunes");
+        return (dp === "lunes" && esLunes) || (dp === "miercoles" && esMiercoles);
+      }).length;
+
     return {
       motosAsignadas, motosDisponibles, motosTaller, motosRetencion,
       contratosActivos, contratosEnProceso,
       clientesActivos, clientesMora, clientesProceso, clientesVisita,
       clientesPendEval, clientesAprobados,
-      pagosPendientes, recaudoHoy, recaudoSemana, tallerActivo,
-      porGrupo, porModalidad, alertasTotal,
+      pagosPendientes, recaudoHoy, recaudoSemana, recaudoSemanaAnterior,
+      tallerActivo, porGrupo, porModalidad, alertasTotal,
+      prevMotosAsignadas, prevContratosActivos, prevClientesActivos, prevClientesMora,
+      recuperadasSemana, paganHoy,
     };
   }, [loading, motos, clientes, contratos, pagos, taller]);
 
-  // ── Recaudo 14 días ────────────────────────────────────────────────────────
-  const recaudo14 = useMemo(() => {
+  // ── Chart data (variable days) ────────────────────────────────────────────
+  const chartData = useMemo(() => {
     const result: Array<{ fecha: string; total: number; esHoy: boolean }> = [];
     const ahora = new Date();
-    for (let i = 13; i >= 0; i--) {
+    for (let i = chartDays - 1; i >= 0; i--) {
       const d = new Date(ahora);
       d.setDate(ahora.getDate() - i);
       const fechaStr = d.toISOString().slice(0, 10);
@@ -131,10 +164,10 @@ export default function DashboardView({ onNavigate }: {
       result.push({ fecha: fechaStr, total, esHoy: i === 0 });
     }
     return result;
-  }, [pagos]);
+  }, [pagos, chartDays]);
 
-  const maxRecaudo = useMemo(() => Math.max(...recaudo14.map(d => d.total), 1), [recaudo14]);
-  const totalRecaudo14 = useMemo(() => recaudo14.reduce((s, d) => s + d.total, 0), [recaudo14]);
+  const maxRecaudo = useMemo(() => Math.max(...chartData.map(d => d.total), 1), [chartData]);
+  const totalRecaudoChart = useMemo(() => chartData.reduce((s, d) => s + d.total, 0), [chartData]);
 
   // ── Top 5 sin pago ─────────────────────────────────────────────────────────
   const top5SinPago = useMemo(() => {
@@ -182,40 +215,47 @@ export default function DashboardView({ onNavigate }: {
   // ── Alerts list ────────────────────────────────────────────────────────────
   const alerts: Array<{
     icon: string; text: string; color: string; bgColor: string; borderColor: string;
+    severidad: "critica" | "alta" | "media";
     view?: ViewKey; filter?: string;
   }> = [];
 
   if (stats.pagosPendientes > 0)
     alerts.push({
       icon: "🔔", color: "#92400e", bgColor: "#fef3c7", borderColor: "#f59e0b",
+      severidad: "alta",
       text: `${stats.pagosPendientes} transferencia${stats.pagosPendientes > 1 ? "s" : ""} pendiente${stats.pagosPendientes > 1 ? "s" : ""} de confirmar`,
       view: "cobros",
     });
   if (stats.clientesMora > 0)
     alerts.push({
       icon: "⚠️", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#ef4444",
+      severidad: stats.clientesMora >= 5 ? "critica" : "alta",
       text: `${stats.clientesMora} cliente${stats.clientesMora > 1 ? "s" : ""} en mora o riesgo`,
       view: "clientes", filter: "mora",
     });
   if (stats.motosRetencion > 0)
     alerts.push({
       icon: "🚨", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#dc2626",
+      severidad: "critica",
       text: `${stats.motosRetencion} moto${stats.motosRetencion > 1 ? "s" : ""} retenida${stats.motosRetencion > 1 ? "s" : ""} (Fiscalía / Tránsito / Garantía)`,
       view: "motos", filter: "retencion",
     });
   if (stats.motosTaller > 0)
     alerts.push({
       icon: "🔧", color: "#92400e", bgColor: "#fff7ed", borderColor: "#f97316",
+      severidad: "media",
       text: `${stats.motosTaller} moto${stats.motosTaller > 1 ? "s" : ""} en mantenimiento`,
       view: "taller",
     });
   if (stats.contratosEnProceso > 0)
     alerts.push({
       icon: "📄", color: "#1e40af", bgColor: "#eff6ff", borderColor: "#3b82f6",
+      severidad: "media",
       text: `${stats.contratosEnProceso} contrato${stats.contratosEnProceso > 1 ? "s" : ""} en proceso sin activar`,
       view: "contratos", filter: "En proceso",
     });
 
+  const alertasCriticas = alerts.filter(a => a.severidad === "critica");
   const gruposVisibles = stats.porGrupo.filter(g => g.total > 0);
 
   // Pipeline rows
@@ -229,6 +269,22 @@ export default function DashboardView({ onNavigate }: {
   ];
   const totalClientes = clientes.length || 1;
 
+  // KPI deltas helper
+  function calcDelta(curr: number, prev: number): { pct: number; label: string; color: string } {
+    if (prev === 0) return { pct: 0, label: "—", color: "#94a3b8" };
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    if (pct === 0) return { pct: 0, label: "= sin cambio", color: "#94a3b8" };
+    const up = pct > 0;
+    return {
+      pct,
+      label: `${up ? "▲" : "▼"} ${Math.abs(pct)}% vs sem. pasada`,
+      color: up ? "#166534" : "#991b1b",
+    };
+  }
+
+  // Recaudo delta
+  const recaudoDelta = calcDelta(stats.recaudoSemana, stats.recaudoSemanaAnterior);
+
   // Quick actions
   const quickActions = [
     { icon: "👥", label: "Nuevo cliente",  view: "clientes"  as ViewKey },
@@ -240,6 +296,30 @@ export default function DashboardView({ onNavigate }: {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ padding: isMobile ? "16px 12px 40px" : "24px 24px 48px", maxWidth: 1040, margin: "0 auto" }}>
+
+      {/* ── BANNER CRÍTICO (si hay alertas críticas) ── */}
+      {alertasCriticas.length > 0 && (
+        <div style={{
+          marginBottom: 16,
+          background: "#991b1b",
+          borderRadius: 14,
+          padding: "12px 18px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          boxShadow: "0 4px 16px rgba(153,27,27,0.3)",
+        }}>
+          <span style={{ fontSize: 20 }}>🚨</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: "white", fontWeight: 800, fontSize: 13 }}>
+              {alertasCriticas.length} alerta{alertasCriticas.length > 1 ? "s" : ""} crítica{alertasCriticas.length > 1 ? "s" : ""} — requieren acción inmediata
+            </div>
+            <div style={{ color: "#fca5a5", fontSize: 12, marginTop: 2 }}>
+              {alertasCriticas.map(a => a.text).join(" · ")}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HERO: recaudo del día ── */}
       <div style={{
@@ -262,10 +342,22 @@ export default function DashboardView({ onNavigate }: {
         <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>
           ${fmt(stats.recaudoHoy)}
         </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 10 }}>
-          Semana:&nbsp;
-          <span style={{ color: "#34d399", fontWeight: 700 }}>${fmt(stats.recaudoSemana)}</span>
-          &nbsp;en pagos confirmados
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, color: "#94a3b8" }}>
+            Semana:&nbsp;
+            <span style={{ color: "#34d399", fontWeight: 700 }}>${fmt(stats.recaudoSemana)}</span>
+            &nbsp;en pagos confirmados
+          </div>
+          {recaudoDelta.pct !== 0 && (
+            <span style={{
+              fontSize: 12, fontWeight: 700,
+              color: recaudoDelta.color === "#166534" ? "#34d399" : "#fca5a5",
+              background: "rgba(255,255,255,0.08)",
+              padding: "2px 10px", borderRadius: 999,
+            }}>
+              {recaudoDelta.label}
+            </span>
+          )}
         </div>
       </div>
 
@@ -283,21 +375,25 @@ export default function DashboardView({ onNavigate }: {
             icon: "🏍️", label: "Motos en campo", value: stats.motosAsignadas,
             sub: `${stats.motosDisponibles} disponibles`, color: "#0284c7",
             bg: "#eff6ff", onClick: () => onNavigate("motos", "Asignada"),
+            delta: calcDelta(stats.motosAsignadas, stats.prevMotosAsignadas),
           },
           {
             icon: "📄", label: "Contratos activos", value: stats.contratosActivos,
             sub: `${stats.contratosEnProceso} en proceso`, color: "#6366f1",
             bg: "#f5f3ff", onClick: () => onNavigate("contratos", "Activo"),
+            delta: calcDelta(stats.contratosActivos, stats.prevContratosActivos),
           },
           {
             icon: "👥", label: "Clientes activos", value: stats.clientesActivos,
             sub: "con moto asignada", color: "#166534",
             bg: "#f0fdf4", onClick: () => onNavigate("clientes", "Activo"),
+            delta: calcDelta(stats.clientesActivos, stats.prevClientesActivos),
           },
           {
             icon: "🚨", label: "En mora", value: stats.clientesMora,
             sub: "requieren acción", color: "#991b1b",
             bg: "#fff1f2", onClick: () => onNavigate("clientes", "mora"),
+            delta: calcDelta(stats.clientesMora, stats.prevClientesMora),
           },
           {
             icon: stats.alertasTotal > 0 ? "⚠️" : "✅",
@@ -306,6 +402,7 @@ export default function DashboardView({ onNavigate }: {
             color: stats.alertasTotal > 0 ? "#92400e" : "#166534",
             bg: stats.alertasTotal > 0 ? "#fffbeb" : "#f0fdf4",
             onClick: undefined as (() => void) | undefined,
+            delta: { pct: 0, label: "", color: "#94a3b8" },
           },
         ].map(kpi => (
           <div
@@ -337,6 +434,11 @@ export default function DashboardView({ onNavigate }: {
             <div style={{ fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{kpi.value}</div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", marginTop: 4 }}>{kpi.label}</div>
             <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{kpi.sub}</div>
+            {kpi.delta.pct !== 0 && (
+              <div style={{ fontSize: 10, fontWeight: 700, color: kpi.delta.color, marginTop: 4 }}>
+                {kpi.delta.label}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -363,6 +465,9 @@ export default function DashboardView({ onNavigate }: {
               >
                 <span style={{ fontSize: 18 }}>{a.icon}</span>
                 <span style={{ fontSize: 13, color: a.color, flex: 1, fontWeight: 600 }}>{a.text}</span>
+                {a.severidad === "critica" && (
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fecaca", padding: "2px 7px", borderRadius: 999 }}>CRÍTICO</span>
+                )}
                 {a.view && <span style={{ color: a.color, fontSize: 18, fontWeight: 700 }}>›</span>}
               </div>
             ))}
@@ -374,6 +479,75 @@ export default function DashboardView({ onNavigate }: {
           <span style={{ fontSize: 13, fontWeight: 600, color: "#166534" }}>Todo al día — no hay alertas pendientes</span>
         </div>
       )}
+
+      {/* ── QUICK STATS ROW ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
+        gap: 10,
+        marginBottom: 20,
+      }}>
+        {[
+          {
+            label: "Pagan hoy",
+            value: stats.paganHoy,
+            icon: "📅",
+            color: "#0284c7", bg: "#eff6ff",
+            onClick: () => onNavigate("cobros"),
+          },
+          {
+            label: "En gabela",
+            value: stats.clientesMora > 0 ? stats.clientesMora : 0,
+            icon: "⏳",
+            color: "#92400e", bg: "#fef3c7",
+            onClick: () => onNavigate("cobros"),
+          },
+          {
+            label: "En mora",
+            value: stats.clientesMora,
+            icon: "🔴",
+            color: "#991b1b", bg: "#fee2e2",
+            onClick: () => onNavigate("clientes", "mora"),
+          },
+          {
+            label: "Recuperadas (sem.)",
+            value: stats.recuperadasSemana,
+            icon: "🔄",
+            color: "#166534", bg: "#dcfce7",
+            onClick: () => onNavigate("motos", "Recuperada"),
+          },
+        ].map(s => (
+          <div
+            key={s.label}
+            onClick={s.onClick}
+            style={{
+              background: s.bg,
+              borderRadius: 14,
+              padding: "14px 16px",
+              cursor: "pointer",
+              borderBottom: `3px solid ${s.color}`,
+              boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
+              transition: "transform 0.12s, box-shadow 0.12s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 16px rgba(15,23,42,0.1)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLDivElement).style.transform = "";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 6px rgba(15,23,42,0.06)";
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", marginTop: 3 }}>{s.label}</div>
+              </div>
+              <span style={{ fontSize: 20, opacity: 0.7 }}>{s.icon}</span>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* ── TWO COLUMN LAYOUT (desktop) / STACKED (mobile) ── */}
       <div style={{
@@ -552,19 +726,38 @@ export default function DashboardView({ onNavigate }: {
         </div>
       </div>
 
-      {/* ── RECAUDO 14 DÍAS ── */}
+      {/* ── RECAUDO CHART ── */}
       <div style={{
         background: "white", borderRadius: 16, padding: "18px 20px",
         boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Recaudo — últimos 14 días</div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
-            Total: <span style={{ fontSize: 14 }}>${fmt(totalRecaudo14)}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Recaudo — últimos {chartDays} días</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Total: <span style={{ fontWeight: 800, color: "#0284c7" }}>${fmt(totalRecaudoChart)}</span></div>
+          </div>
+          {/* Time range selector */}
+          <div style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 10, padding: 3 }}>
+            {([7, 14, 30] as const).map(d => (
+              <button
+                key={d}
+                onClick={() => setChartDays(d)}
+                style={{
+                  padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: 700,
+                  background: chartDays === d ? "#0f172a" : "transparent",
+                  color: chartDays === d ? "white" : "#64748b",
+                  transition: "all 0.15s",
+                }}
+              >
+                {d}d
+              </button>
+            ))}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: isMobile ? 4 : 6, height: 110 }}>
-          {recaudo14.map(d => {
+
+        <div style={{ display: "flex", alignItems: "flex-end", gap: isMobile ? 3 : 5, height: 110 }}>
+          {chartData.map(d => {
             const pct = Math.round((d.total / maxRecaudo) * 100);
             const altoPx = Math.max(pct, d.total > 0 ? 6 : 2);
             const label = d.total > 0 ? `$${Math.round(d.total / 1000)}k` : "";
@@ -584,7 +777,9 @@ export default function DashboardView({ onNavigate }: {
                     transition: "height 0.3s",
                     boxShadow: d.esHoy ? "0 0 8px rgba(2,132,199,0.4)" : "none",
                   }} />
-                  <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "capitalize" }}>{diaSemana}</div>
+                  {(chartDays <= 14 || d.esHoy) && (
+                    <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "capitalize" }}>{diaSemana}</div>
+                  )}
                 </div>
               </Fragment>
             );

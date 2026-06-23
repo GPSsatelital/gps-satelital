@@ -405,7 +405,7 @@ function Shell() {
       {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
-      {ctx.view === "cobros"        && <CobrosView />}
+      {ctx.view === "cobros"        && <CobrosView onNavigate={navigate} />}
       {ctx.view === "caja"          && <CajaView />}
       {ctx.view === "reportes"      && esAdmin && <ReportesView />}
       {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView />}

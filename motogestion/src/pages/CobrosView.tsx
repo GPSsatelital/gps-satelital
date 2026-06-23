@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import type { ViewKey } from "../App";
 import {
   usePagos,
   calcularAplicacion,
@@ -279,7 +280,7 @@ function calcularEstadoCartera(
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CobrosView() {
+export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, confirmarPago, rechazarPago, pagosDelContrato } =
@@ -637,16 +638,48 @@ export default function CobrosView() {
               {/* Info cliente */}
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 18 }}>
-                      {motoDetalle ? `${motoDetalle.placa} · ` : ""}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "#0f172a" }}>
                       {clienteDetalle?.nombre || "Sin cliente"}
                     </div>
+                    {motoDetalle && (
+                      <button
+                        onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)}
+                        style={{ background: "none", border: "none", cursor: onNavigate ? "pointer" : "default", padding: 0, marginTop: 2 }}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#0284c7" }}>🏍️ {motoDetalle.placa}</span>
+                        {onNavigate && <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: 4 }}>→ ver ficha moto</span>}
+                      </button>
+                    )}
+                    <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {clienteDetalle?.telefono && (
+                        <span style={{ fontSize: 13, color: "#334155" }}>📞 {clienteDetalle.telefono}</span>
+                      )}
+                      {clienteDetalle?.whatsapp && clienteDetalle.whatsapp !== clienteDetalle.telefono && (
+                        <span style={{ fontSize: 13, color: "#334155" }}>💬 {clienteDetalle.whatsapp}</span>
+                      )}
+                      {clienteDetalle?.cedula && (
+                        <span style={{ fontSize: 13, color: "#64748b" }}>CC {clienteDetalle.cedula}</span>
+                      )}
+                    </div>
+                    {clienteDetalle?.direccion && (
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>📍 {clienteDetalle.direccion}</div>
+                    )}
                     <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
                       Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {contratoDetalle.dia_pago}
                     </div>
                   </div>
-                  <EstadoBadge estado={contratoDetalle.estadoCartera} />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                    <EstadoBadge estado={contratoDetalle.estadoCartera} />
+                    {onNavigate && clienteDetalle && (
+                      <button
+                        onClick={() => onNavigate("ficha_cliente", clienteDetalle.id)}
+                        style={{ background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Ver ficha completa →
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* ── Estado de cuenta ── */}

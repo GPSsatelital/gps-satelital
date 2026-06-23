@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 
@@ -6,8 +6,7 @@ function fmt(n: number) { return n.toLocaleString("es-CO"); }
 
 type TipoImport = "motos" | "clientes" | "pagos";
 type Paso = 1 | 2 | 3;
-
-type ColMap = Record<string, string>; // campo_sistema → columna_excel
+type ColMap = Record<string, string>;
 
 const CAMPOS_MOTOS = [
   { key: "placa", label: "Placa", req: true },
@@ -45,7 +44,6 @@ const GRUPO_MAP: Record<string, string> = {
 function parseDate(val: unknown): string | null {
   if (!val) return null;
   if (typeof val === "number") {
-    // Excel serial date
     const d = new Date((val - 25569) * 86400000);
     return d.toISOString().slice(0, 10);
   }
@@ -66,8 +64,18 @@ function parseMonto(val: unknown): number {
   return Math.round(parseFloat(s)) || 0;
 }
 
+const TIPOS = [
+  { key: "motos" as TipoImport, label: "Motos", icon: "🏍️", desc: "Placa, marca, grupo, color" },
+  { key: "clientes" as TipoImport, label: "Clientes", icon: "👥", desc: "Nombre, cédula, teléfono" },
+  { key: "pagos" as TipoImport, label: "Pagos históricos", icon: "💵", desc: "Placa o cédula, valor, fecha" },
+];
+
+const STEP_LABELS = ["Preparar Excel", "Mapear columnas", "Revisar y confirmar"];
+
 export default function ImportacionView() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [paso, setPaso] = useState<Paso>(1);
   const [tipo, setTipo] = useState<TipoImport>("motos");
   const [hojas, setHojas] = useState<string[]>([]);
@@ -75,6 +83,8 @@ export default function ImportacionView() {
   const [columnas, setColumnas] = useState<string[]>([]);
   const [filas, setFilas] = useState<Record<string, unknown>[]>([]);
   const [colMap, setColMap] = useState<ColMap>({});
+  const [dragging, setDragging] = useState(false);
+  const [fileName, setFileName] = useState("");
   const [fechaMin, setFechaMin] = useState(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 3);
@@ -84,11 +94,16 @@ export default function ImportacionView() {
   const [progreso, setProgreso] = useState<{ actual: number; total: number; errores: string[] } | null>(null);
   const [importDone, setImportDone] = useState(false);
 
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   const camposActivos = tipo === "motos" ? CAMPOS_MOTOS : tipo === "clientes" ? CAMPOS_CLIENTES : CAMPOS_PAGOS;
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function processFile(file: File) {
+    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = ev => {
       const wb = XLSX.read(ev.target?.result, { type: "binary" });
@@ -100,6 +115,18 @@ export default function ImportacionView() {
     reader.readAsBinaryString(file);
   }
 
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }
+
   function cargarHoja(wb: XLSX.WorkBook, nombre: string) {
     const ws = wb.Sheets[nombre];
     const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
@@ -107,11 +134,12 @@ export default function ImportacionView() {
     const cols = Object.keys(data[0]);
     setColumnas(cols);
     setFilas(data);
-    // Auto-mapeo por similitud de nombre
     const autoMap: ColMap = {};
     for (const campo of camposActivos) {
-      const match = cols.find(c => c.toLowerCase().replace(/[^a-z]/g, "").includes(campo.key.replace(/_/g, "").toLowerCase())
-        || campo.key.replace(/_/g, "").toLowerCase().includes(c.toLowerCase().replace(/[^a-z]/g, "")));
+      const match = cols.find(c =>
+        c.toLowerCase().replace(/[^a-z]/g, "").includes(campo.key.replace(/_/g, "").toLowerCase()) ||
+        campo.key.replace(/_/g, "").toLowerCase().includes(c.toLowerCase().replace(/[^a-z]/g, ""))
+      );
       if (match) autoMap[campo.key] = match;
     }
     setColMap(autoMap);
@@ -198,7 +226,6 @@ export default function ImportacionView() {
     }
 
     if (tipo === "pagos") {
-      // Para pagos: buscar contratos activos para cada identificador (placa o cédula)
       const { data: contratos } = await supabase.from("contratos").select("id, moto_id, cliente_id, estado").eq("estado", "Activo");
       const { data: motos } = await supabase.from("motos").select("id, placa");
       const { data: clientes } = await supabase.from("clientes").select("id, cedula");
@@ -238,219 +265,444 @@ export default function ImportacionView() {
   const pct = progreso && progreso.total > 0 ? Math.round((progreso.actual / progreso.total) * 100) : 0;
 
   return (
-    <div style={{ paddingBottom: 40 }}>
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, margin: 0, fontWeight: 800 }}>Importación de Datos Excel</h2>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Solo para ADMIN PRINCIPAL — importa motos, clientes o pagos históricos desde Excel</div>
-      </div>
+    <div style={{ paddingBottom: 48, background: "#f1f5f9", minHeight: "100vh" }}>
 
-      {/* Pasos */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        {([1, 2, 3] as Paso[]).map(p => (
-          <div key={p} style={{ flex: 1, textAlign: "center", padding: "10px 8px", borderRadius: 12, fontWeight: 700, fontSize: 13,
-            background: paso === p ? "#0f172a" : paso > p ? "#dcfce7" : "#f1f5f9",
-            color: paso === p ? "white" : paso > p ? "#166534" : "#94a3b8" }}>
-            {paso > p ? "✓ " : ""}{p === 1 ? "1. Cargar archivo" : p === 2 ? "2. Mapear columnas" : "3. Importar"}
+      {/* Hero */}
+      <div style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+        padding: isMobile ? "28px 20px 32px" : "36px 40px 40px",
+        marginBottom: 28,
+        borderRadius: isMobile ? 0 : "0 0 24px 24px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(2,132,199,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+            📊
           </div>
-        ))}
-      </div>
-
-      {/* PASO 1 */}
-      {paso === 1 && (
-        <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(15,23,42,0.07)" }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>¿Qué tipo de datos contiene el archivo?</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {([
-                { key: "motos", label: "🏍️ Motos" },
-                { key: "clientes", label: "👥 Clientes" },
-                { key: "pagos", label: "💵 Pagos históricos" },
-              ] as { key: TipoImport; label: string }[]).map(t => (
-                <button key={t.key} onClick={() => setTipo(t.key)} style={{
-                  padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-                  background: tipo === t.key ? "#0f172a" : "#f1f5f9",
-                  color: tipo === t.key ? "white" : "#64748b",
-                }}>{t.label}</button>
-              ))}
-            </div>
-          </div>
-
-          <div
-            onClick={() => fileRef.current?.click()}
-            style={{ border: "2px dashed #cbd5e1", borderRadius: 16, padding: "48px 24px", textAlign: "center", cursor: "pointer", background: "#f8fafc" }}
-          >
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📂</div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "#334155" }}>Haz clic para seleccionar el archivo</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>Formatos aceptados: .xlsx, .xls, .csv</div>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }} onChange={onFile} />
-          </div>
-
-          {hojas.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Hojas encontradas — selecciona la que contiene los datos:</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {hojas.map(h => (
-                  <button key={h} onClick={() => onHojaChange(h)} style={{
-                    padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
-                    background: hojaSeleccionada === h ? "#0284c7" : "#f1f5f9",
-                    color: hojaSeleccionada === h ? "white" : "#334155",
-                  }}>{h}</button>
-                ))}
-              </div>
-              <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#f1f5f9", fontSize: 13, color: "#334155" }}>
-                ✅ <strong>{fmt(filas.length)}</strong> filas cargadas — <strong>{columnas.length}</strong> columnas detectadas
-              </div>
-              {/* Preview primeras 3 filas */}
-              {filas.length > 0 && (
-                <div style={{ marginTop: 12, overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                    <thead>
-                      <tr>{columnas.slice(0, 8).map(c => <th key={c} style={{ padding: "6px 8px", background: "#f8fafc", border: "1px solid #e2e8f0", fontWeight: 700, textAlign: "left", whiteSpace: "nowrap" }}>{c}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {filas.slice(0, 3).map((f, i) => (
-                        <tr key={i}>{columnas.slice(0, 8).map(c => <td key={c} style={{ padding: "5px 8px", border: "1px solid #f1f5f9", color: "#64748b" }}>{String(f[c] ?? "")}</td>)}</tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <button onClick={() => setPaso(2)} disabled={filas.length === 0}
-                style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, border: "none", background: "#0f172a", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                Continuar → Mapear columnas
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* PASO 2 */}
-      {paso === 2 && (
-        <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(15,23,42,0.07)" }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Mapeo de columnas</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Indica qué columna de tu Excel corresponde a cada campo del sistema</div>
-
-          {tipo === "pagos" && (
-            <div style={{ marginBottom: 20, padding: "12px 16px", background: "#fef3c7", borderRadius: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>⚠️ Fecha mínima de pagos a importar</div>
-              <input type="date" value={fechaMin} onChange={e => setFechaMin(e.target.value)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
-              <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>Pagos anteriores a esta fecha serán ignorados</div>
-            </div>
-          )}
-
-          <div style={{ display: "grid", gap: 12 }}>
-            {camposActivos.map(campo => (
-              <div key={campo.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#f8fafc", borderRadius: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{campo.label}</span>
-                  {campo.req && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
-                </div>
-                <select value={colMap[campo.key] ?? ""} onChange={e => setColMap(prev => ({ ...prev, [campo.key]: e.target.value }))}
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, background: "white" }}>
-                  <option value="">— Sin mapear —</option>
-                  {columnas.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-            <button onClick={() => setPaso(1)} style={{ padding: "12px 20px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b" }}>← Atrás</button>
-            <button onClick={() => setPaso(3)} style={{ flex: 1, padding: "12px 20px", borderRadius: 12, border: "none", background: "#0f172a", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-              Continuar → Ver preview
-            </button>
+          <div>
+            <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "white" }}>
+              Importación de Datos
+            </h1>
+            <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", marginTop: 2 }}>
+              Carga tus clientes, motos y contratos desde Excel
+            </p>
           </div>
         </div>
-      )}
 
-      {/* PASO 3 */}
-      {paso === 3 && (
-        <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 2px 12px rgba(15,23,42,0.07)" }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Preview y confirmación</div>
-
-          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 140, padding: "12px 16px", background: "#dcfce7", borderRadius: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>Registros válidos</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#166534" }}>{fmt(validos.length)}</div>
-            </div>
-            <div style={{ flex: 1, minWidth: 140, padding: "12px 16px", background: "#fee2e2", borderRadius: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#991b1b", textTransform: "uppercase" }}>Con errores</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#991b1b" }}>{fmt(invalidos.length)}</div>
-            </div>
-            <div style={{ flex: 1, minWidth: 140, padding: "12px 16px", background: "#f1f5f9", borderRadius: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", textTransform: "uppercase" }}>Total en archivo</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#0f172a" }}>{fmt(filas.length)}</div>
-            </div>
-          </div>
-
-          {invalidos.length > 0 && (
-            <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fff5f5", borderRadius: 12, border: "1px solid #fecaca" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#991b1b", marginBottom: 8 }}>Errores encontrados (se omitirán al importar):</div>
-              <div style={{ maxHeight: 120, overflowY: "auto" }}>
-                {invalidos.slice(0, 20).map((e, i) => <div key={i} style={{ fontSize: 12, color: "#991b1b", padding: "2px 0" }}>• {e}</div>)}
-                {invalidos.length > 20 && <div style={{ fontSize: 12, color: "#94a3b8" }}>... y {invalidos.length - 20} más</div>}
+        {/* Guía de 3 pasos */}
+        <div style={{
+          display: "flex",
+          gap: isMobile ? 8 : 16,
+          marginTop: 24,
+          flexDirection: isMobile ? "column" : "row",
+        }}>
+          {STEP_LABELS.map((label, i) => {
+            const done = paso > i + 1;
+            const active = paso === i + 1;
+            return (
+              <div key={i} style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 16px",
+                borderRadius: 12,
+                background: active ? "rgba(2,132,199,0.2)" : done ? "rgba(22,101,52,0.2)" : "rgba(255,255,255,0.06)",
+                border: active ? "1px solid rgba(2,132,199,0.5)" : done ? "1px solid rgba(22,101,52,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                transition: "all 0.2s",
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: done ? 16 : 14, fontWeight: 800,
+                  background: active ? "#0284c7" : done ? "#166534" : "rgba(255,255,255,0.1)",
+                  color: "white",
+                }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: active ? "#7dd3fc" : done ? "#86efac" : "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Paso {i + 1}
+                  </div>
+                  <div style={{ fontSize: 13, color: active ? "white" : done ? "#bbf7d0" : "#94a3b8", fontWeight: active ? 700 : 400 }}>
+                    {label}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Preview tabla */}
-          <div style={{ overflowX: "auto", marginBottom: 20 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr>{camposActivos.filter(c => colMap[c.key]).map(c => <th key={c.key} style={{ padding: "8px 10px", background: "#f8fafc", border: "1px solid #e2e8f0", fontWeight: 700, textAlign: "left", whiteSpace: "nowrap" }}>{c.label}</th>)}</tr>
-              </thead>
-              <tbody>
-                {validos.slice(0, 15).map(({ r }, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
-                    {camposActivos.filter(c => colMap[c.key]).map(c => <td key={c.key} style={{ padding: "6px 10px", border: "1px solid #f1f5f9", color: "#334155" }}>{String(r[c.key] ?? "")}</td>)}
-                  </tr>
+      <div style={{ padding: isMobile ? "0 16px" : "0 32px" }}>
+
+        {/* PASO 1 */}
+        {paso === 1 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Tipo de datos */}
+            <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>¿Qué tipo de datos contiene el archivo?</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Selecciona el tipo antes de subir el archivo</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {TIPOS.map(t => (
+                  <button key={t.key} onClick={() => setTipo(t.key)} style={{
+                    flex: "1 1 140px",
+                    padding: "14px 12px",
+                    borderRadius: 14,
+                    border: tipo === t.key ? "2px solid #0284c7" : "2px solid #e2e8f0",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    textAlign: "left",
+                    background: tipo === t.key ? "#eff6ff" : "white",
+                    color: tipo === t.key ? "#0284c7" : "#334155",
+                    transition: "all 0.15s",
+                  }}>
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>{t.icon}</div>
+                    <div>{t.label}</div>
+                    <div style={{ fontSize: 11, fontWeight: 400, color: tipo === t.key ? "#0369a1" : "#94a3b8", marginTop: 2 }}>{t.desc}</div>
+                  </button>
                 ))}
-              </tbody>
-            </table>
-            {validos.length > 15 && <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>... y {validos.length - 15} registros más</div>}
-          </div>
+              </div>
+            </div>
 
-          {/* Progreso */}
-          {progreso && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
-                <span>{importDone ? "✅ Importación completa" : `Importando... ${fmt(progreso.actual)} / ${fmt(progreso.total)}`}</span>
-                <span>{pct}%</span>
+            {/* Columnas esperadas */}
+            <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 12 }}>
+                Columnas esperadas para {TIPOS.find(t => t.key === tipo)?.label}
               </div>
-              <div style={{ height: 8, borderRadius: 999, background: "#f1f5f9", overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: importDone ? "#166534" : "#0284c7", transition: "width 0.3s" }} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {camposActivos.map(c => (
+                  <div key={c.key} style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 12px", borderRadius: 20,
+                    background: c.req ? "#eff6ff" : "#f8fafc",
+                    border: `1px solid ${c.req ? "#bfdbfe" : "#e2e8f0"}`,
+                  }}>
+                    {c.req && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0284c7", display: "inline-block", flexShrink: 0 }} />}
+                    <span style={{ fontSize: 12, fontWeight: c.req ? 700 : 400, color: c.req ? "#0369a1" : "#64748b" }}>{c.label}</span>
+                    {c.req && <span style={{ fontSize: 10, color: "#0284c7", fontWeight: 700 }}>REQ</span>}
+                  </div>
+                ))}
               </div>
-              {progreso.errores.length > 0 && (
-                <div style={{ marginTop: 10, padding: "10px 12px", background: "#fff5f5", borderRadius: 10, fontSize: 12, color: "#991b1b" }}>
-                  {progreso.errores.map((e, i) => <div key={i}>• {e}</div>)}
+            </div>
+
+            {/* Drag and drop */}
+            <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 16 }}>Subir archivo Excel</div>
+              <div
+                ref={dropRef}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                style={{
+                  border: `2px dashed ${dragging ? "#0284c7" : fileName ? "#166534" : "#cbd5e1"}`,
+                  borderRadius: 16,
+                  padding: isMobile ? "32px 16px" : "52px 32px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  background: dragging ? "#eff6ff" : fileName ? "#f0fdf4" : "#f8fafc",
+                  transition: "all 0.2s",
+                }}>
+                <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 12 }}>
+                  {fileName ? "✅" : dragging ? "📂" : "📁"}
                 </div>
-              )}
-              {importDone && progreso.errores.length === 0 && (
-                <div style={{ marginTop: 10, padding: "10px 12px", background: "#dcfce7", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#166534" }}>
-                  ✅ {fmt(progreso.actual)} registros importados correctamente
+                {fileName ? (
+                  <>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "#166534" }}>{fileName}</div>
+                    <div style={{ fontSize: 12, color: "#4ade80", marginTop: 4 }}>Archivo cargado — haz clic para cambiar</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#334155" }}>
+                      {dragging ? "Suelta el archivo aquí" : "Arrastra tu archivo Excel aquí"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>o haz clic para buscar</div>
+                    <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 8 }}>Formatos: .xlsx · .xls · .csv</div>
+                  </>
+                )}
+                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }} onChange={onFile} />
+              </div>
+
+              {hojas.length > 0 && (
+                <div style={{ marginTop: 20 }}>
+                  {hojas.length > 1 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Selecciona la hoja con los datos:</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {hojas.map(h => (
+                          <button key={h} onClick={() => onHojaChange(h)} style={{
+                            padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                            background: hojaSeleccionada === h ? "#0284c7" : "#f1f5f9",
+                            color: hojaSeleccionada === h ? "white" : "#334155",
+                          }}>{h}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ padding: "12px 16px", borderRadius: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>✅</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>{fmt(filas.length)} filas · {columnas.length} columnas detectadas</div>
+                      <div style={{ fontSize: 11, color: "#4ade80" }}>Vista previa de las primeras filas a continuación</div>
+                    </div>
+                  </div>
+
+                  {filas.length > 0 && (
+                    <div style={{ marginTop: 14, overflowX: "auto", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                        <thead>
+                          <tr style={{ background: "#f8fafc" }}>
+                            {columnas.slice(0, 8).map(c => (
+                              <th key={c} style={{ padding: "8px 10px", borderBottom: "2px solid #e2e8f0", fontWeight: 700, textAlign: "left", whiteSpace: "nowrap", color: "#334155" }}>{c}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filas.slice(0, 5).map((f, i) => (
+                            <tr key={i} style={{ background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                              {columnas.slice(0, 8).map(c => (
+                                <td key={c} style={{ padding: "7px 10px", borderBottom: "1px solid #f1f5f9", color: "#64748b" }}>{String(f[c] ?? "")}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <button onClick={() => setPaso(2)} disabled={filas.length === 0} style={{
+                    marginTop: 18,
+                    width: "100%",
+                    padding: "14px",
+                    borderRadius: 14,
+                    border: "none",
+                    background: filas.length === 0 ? "#94a3b8" : "linear-gradient(90deg, #0f172a 0%, #1e3a5f 100%)",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: 15,
+                    cursor: filas.length === 0 ? "not-allowed" : "pointer",
+                    letterSpacing: "0.02em",
+                  }}>
+                    Continuar — Mapear columnas →
+                  </button>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => setPaso(2)} disabled={!!progreso && !importDone}
-              style={{ padding: "12px 20px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b" }}>← Atrás</button>
-            {!importDone ? (
-              <button onClick={importar} disabled={validos.length === 0 || (!!progreso && !importDone)}
-                style={{ flex: 1, padding: "12px 20px", borderRadius: 12, border: "none", background: validos.length === 0 ? "#94a3b8" : "#166534", color: "white", fontWeight: 700, fontSize: 14, cursor: validos.length === 0 ? "not-allowed" : "pointer" }}>
-                {progreso && !importDone ? "Importando..." : `✅ Importar ${fmt(validos.length)} registros válidos`}
-              </button>
-            ) : (
-              <button onClick={() => { setPaso(1); setProgreso(null); setImportDone(false); setFilas([]); setColumnas([]); setHojas([]); setWorkbook(null); }}
-                style={{ flex: 1, padding: "12px 20px", borderRadius: 12, border: "none", background: "#0f172a", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                Importar otro archivo
-              </button>
+        {/* PASO 2 */}
+        {paso === 2 && (
+          <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 28, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Mapeo de columnas</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                Indica qué columna de tu Excel corresponde a cada campo del sistema.
+                Las sugerencias automáticas están marcadas en azul.
+              </div>
+            </div>
+
+            {tipo === "pagos" && (
+              <div style={{ marginBottom: 20, padding: "14px 18px", background: "#fef3c7", borderRadius: 14, border: "1px solid #fde68a" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>Fecha mínima de pagos a importar</div>
+                <input type="date" value={fechaMin} onChange={e => setFechaMin(e.target.value)}
+                  style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #fbbf24", fontSize: 13, background: "white" }} />
+                <div style={{ fontSize: 11, color: "#a16207", marginTop: 6 }}>Pagos anteriores a esta fecha serán ignorados</div>
+              </div>
             )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {camposActivos.map(campo => {
+                const mapped = colMap[campo.key];
+                return (
+                  <div key={campo.key} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 16px",
+                    background: mapped ? "#f0fdf4" : "#f8fafc",
+                    borderRadius: 12,
+                    border: `1px solid ${mapped ? "#bbf7d0" : "#e2e8f0"}`,
+                    flexWrap: isMobile ? "wrap" : "nowrap",
+                  }}>
+                    <div style={{ flex: "1 1 160px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{campo.label}</span>
+                        {campo.req && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "white", background: "#0284c7", borderRadius: 4, padding: "1px 5px" }}>REQ</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>campo: {campo.key}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 200px" }}>
+                      <span style={{ fontSize: 18, color: mapped ? "#22c55e" : "#cbd5e1" }}>{mapped ? "→" : "→"}</span>
+                      <select
+                        value={mapped ?? ""}
+                        onChange={e => setColMap(prev => ({ ...prev, [campo.key]: e.target.value }))}
+                        style={{
+                          flex: 1,
+                          padding: "9px 12px",
+                          borderRadius: 10,
+                          border: `1px solid ${mapped ? "#86efac" : "#e2e8f0"}`,
+                          fontSize: 13,
+                          background: "white",
+                          color: mapped ? "#166534" : "#64748b",
+                          fontWeight: mapped ? 700 : 400,
+                        }}>
+                        <option value="">— Sin mapear —</option>
+                        {columnas.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              <button onClick={() => setPaso(1)} style={{
+                padding: "12px 20px", borderRadius: 12, border: "1px solid #e2e8f0",
+                background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b",
+              }}>← Atrás</button>
+              <button onClick={() => setPaso(3)} style={{
+                flex: 1, padding: "14px", borderRadius: 14, border: "none",
+                background: "linear-gradient(90deg, #0f172a 0%, #1e3a5f 100%)",
+                color: "white", fontWeight: 800, fontSize: 15, cursor: "pointer",
+              }}>
+                Continuar — Ver preview →
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* PASO 3 */}
+        {paso === 3 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* KPIs */}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid #22c55e" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: "0.07em" }}>Registros válidos</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#166534", marginTop: 4 }}>{fmt(validos.length)}</div>
+                <div style={{ fontSize: 11, color: "#4ade80" }}>Listos para importar</div>
+              </div>
+              <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid #f87171" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#991b1b", textTransform: "uppercase", letterSpacing: "0.07em" }}>Con errores</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#991b1b", marginTop: 4 }}>{fmt(invalidos.length)}</div>
+                <div style={{ fontSize: 11, color: "#fca5a5" }}>Se omitirán</div>
+              </div>
+              <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "white", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid #94a3b8" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.07em" }}>Total en archivo</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{fmt(filas.length)}</div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>Filas leídas</div>
+              </div>
+            </div>
+
+            {/* Errores */}
+            {invalidos.length > 0 && (
+              <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)", border: "1px solid #fecaca" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#991b1b", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span> Filas con errores (se omitirán al importar)
+                </div>
+                <div style={{ maxHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+                  {invalidos.slice(0, 20).map((e, i) => (
+                    <div key={i} style={{ fontSize: 12, color: "#991b1b", padding: "5px 10px", background: "#fff5f5", borderRadius: 8 }}>• {e}</div>
+                  ))}
+                  {invalidos.length > 20 && <div style={{ fontSize: 12, color: "#94a3b8", padding: "4px 10px" }}>... y {invalidos.length - 20} más</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Preview */}
+            <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 14 }}>
+                Vista previa — primeras {Math.min(validos.length, 15)} filas válidas
+              </div>
+              <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      {camposActivos.filter(c => colMap[c.key]).map(c => (
+                        <th key={c.key} style={{ padding: "9px 12px", borderBottom: "2px solid #e2e8f0", fontWeight: 700, textAlign: "left", whiteSpace: "nowrap", color: "#334155" }}>{c.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validos.slice(0, 15).map(({ r }, i) => (
+                      <tr key={i} style={{ background: i % 2 === 0 ? "white" : "#f8fafc" }}>
+                        {camposActivos.filter(c => colMap[c.key]).map(c => (
+                          <td key={c.key} style={{ padding: "7px 12px", borderBottom: "1px solid #f1f5f9", color: "#334155" }}>{String(r[c.key] ?? "")}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {validos.length > 15 && (
+                <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 4px" }}>... y {validos.length - 15} registros más no mostrados</div>
+              )}
+            </div>
+
+            {/* Progreso */}
+            {progreso && (
+              <div style={{ background: "white", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 10, color: "#0f172a" }}>
+                  <span>{importDone ? "Importación completa" : `Importando... ${fmt(progreso.actual)} / ${fmt(progreso.total)}`}</span>
+                  <span style={{ color: importDone ? "#166534" : "#0284c7" }}>{pct}%</span>
+                </div>
+                <div style={{ height: 10, borderRadius: 999, background: "#f1f5f9", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: 999,
+                    width: `${pct}%`,
+                    background: importDone ? "linear-gradient(90deg, #166534, #22c55e)" : "linear-gradient(90deg, #0284c7, #38bdf8)",
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+                {progreso.errores.length > 0 && (
+                  <div style={{ marginTop: 12, padding: "12px 14px", background: "#fff5f5", borderRadius: 12, fontSize: 12, color: "#991b1b", border: "1px solid #fecaca" }}>
+                    {progreso.errores.map((e, i) => <div key={i} style={{ marginBottom: 4 }}>• {e}</div>)}
+                  </div>
+                )}
+                {importDone && progreso.errores.length === 0 && (
+                  <div style={{ marginTop: 12, padding: "12px 14px", background: "#dcfce7", borderRadius: 12, fontSize: 13, fontWeight: 700, color: "#166534", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>✅</span>
+                    {fmt(progreso.actual)} registros importados correctamente
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setPaso(2)} disabled={!!progreso && !importDone} style={{
+                padding: "13px 20px", borderRadius: 14, border: "1px solid #e2e8f0",
+                background: "white", fontWeight: 700, cursor: !!progreso && !importDone ? "not-allowed" : "pointer", color: "#64748b",
+                opacity: !!progreso && !importDone ? 0.5 : 1,
+              }}>← Atrás</button>
+              {!importDone ? (
+                <button
+                  onClick={importar}
+                  disabled={validos.length === 0 || (!!progreso && !importDone)}
+                  style={{
+                    flex: 1, padding: "14px", borderRadius: 14, border: "none",
+                    background: validos.length === 0 ? "#94a3b8" : "linear-gradient(90deg, #166534, #15803d)",
+                    color: "white", fontWeight: 800, fontSize: 15,
+                    cursor: validos.length === 0 || (!!progreso && !importDone) ? "not-allowed" : "pointer",
+                    opacity: !!progreso && !importDone ? 0.7 : 1,
+                  }}>
+                  {progreso && !importDone ? "Importando..." : `Importar ${fmt(validos.length)} registros válidos`}
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setPaso(1); setProgreso(null); setImportDone(false); setFilas([]); setColumnas([]); setHojas([]); setWorkbook(null); setFileName(""); }}
+                  style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: "linear-gradient(90deg, #0f172a 0%, #1e3a5f 100%)", color: "white", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+                  Importar otro archivo
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

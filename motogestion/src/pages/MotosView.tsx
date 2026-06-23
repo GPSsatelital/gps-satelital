@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -51,6 +51,12 @@ import type { ViewKey } from "../App";
 export default function MotosView({ initialFilter = "", onNavigate }: { initialFilter?: string; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
@@ -287,8 +293,8 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando motos: {error}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(320px, 0.9fr)", gap: 20, marginTop: 24 }}>
-        <div style={card}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, marginTop: 24 }}>
+        <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
           <div style={{ marginBottom: 16 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
           </div>
@@ -331,7 +337,7 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
           </div>
         </div>
 
-        <div style={card}>
+        <div style={{ ...card, flex: isMobile ? "1 1 auto" : "0 0 360px", minWidth: 0 }}>
           <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
 
           {selectedMoto ? (

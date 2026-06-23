@@ -60,6 +60,7 @@ export type Cliente = {
   excepcion_motivo: string | null;
   excepcion_plazo: string | null;
   ruta_contrato: RutaContrato;
+  ingreso_inicial: number | null;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
   referidos_confirmados: number;
@@ -86,6 +87,7 @@ export type NuevoCliente = {
   documentos_acompanante: DocumentoFlags;
   estado: ClienteEstado;
   ruta_contrato: RutaContrato;
+  ingreso_inicial: number | null;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
 };

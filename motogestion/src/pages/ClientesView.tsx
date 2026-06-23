@@ -57,8 +57,15 @@ function ClienteBadge({ estado }: { estado: ClienteEstado }) {
   );
 }
 
-function DocsSummary({ doc }: { doc: DocumentoFlags }) {
-  const labels: Array<[keyof DocumentoFlags, string]> = [
+// El acompañante solo aporta cédula, 2 recibos y antecedentes (sin hoja de vida ni licencia)
+const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1", "recibo2", "antecedentes"];
+
+function documentosAcompananteListos(doc: DocumentoFlags) {
+  return DOCS_ACOMPANANTE.every((k) => doc[k].ok);
+}
+
+function DocsSummary({ doc, only }: { doc: DocumentoFlags; only?: Array<keyof DocumentoFlags> }) {
+  const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia"],
     ["recibo1", "Recibo 1"],
@@ -67,6 +74,7 @@ function DocsSummary({ doc }: { doc: DocumentoFlags }) {
     ["antecedentes", "Antecedentes"],
     ["hojaVida", "Hoja de vida"],
   ];
+  const labels = only ? todos.filter(([k]) => only.includes(k)) : todos;
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {labels.map(([key, label]) => (
@@ -78,8 +86,8 @@ function DocsSummary({ doc }: { doc: DocumentoFlags }) {
   );
 }
 
-function DocsChecklist({ doc, onChange }: { doc: DocumentoFlags; onChange: (next: DocumentoFlags) => void }) {
-  const labels: Array<[keyof DocumentoFlags, string]> = [
+function DocsChecklist({ doc, onChange, only }: { doc: DocumentoFlags; onChange: (next: DocumentoFlags) => void; only?: Array<keyof DocumentoFlags> }) {
+  const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia (opcional)"],
     ["recibo1", "Recibo 1"],
@@ -88,6 +96,7 @@ function DocsChecklist({ doc, onChange }: { doc: DocumentoFlags; onChange: (next
     ["antecedentes", "Antecedentes"],
     ["hojaVida", "Hoja de vida"],
   ];
+  const labels = only ? todos.filter(([k]) => only.includes(k)) : todos;
 
   function setDocumento(key: keyof DocumentoFlags, file: File | undefined) {
     onChange({ ...doc, [key]: { ok: !!file, file: file ? file.name : null } });
@@ -130,9 +139,7 @@ function documentosFaltantes(cliente: Cliente) {
     ["cedula", "Cédula", "Acompañante"],
     ["recibo1", "Recibo 1", "Acompañante"],
     ["recibo2", "Recibo 2", "Acompañante"],
-    ["carta", "Carta", "Acompañante"],
     ["antecedentes", "Antecedentes", "Acompañante"],
-    ["hojaVida", "Hoja de vida", "Acompañante"],
   ];
   return labels.filter(([key, , owner]) => {
     const doc = owner === "Cliente" ? cliente.documentos_cliente : cliente.documentos_acompanante;
@@ -153,7 +160,7 @@ function estadoVisual(cliente: Cliente): ClienteEstado {
 }
 
 function calcularEstado(docCliente: DocumentoFlags, docAcompanante: DocumentoFlags): ClienteEstado {
-  if (documentosListos(docCliente) && documentosListos(docAcompanante)) return "Listo para visita";
+  if (documentosListos(docCliente) && documentosAcompananteListos(docAcompanante)) return "Listo para visita";
   return "En proceso";
 }
 
@@ -173,10 +180,14 @@ function emptyForm(): NuevoCliente {
     documentos_acompanante: emptyDocs(),
     estado: "En proceso",
     ruta_contrato: "diario",
+    ingreso_inicial: null,
     referido_por_cedula: "",
     referido_por_nombre: "",
   };
 }
+
+const INGRESO_MINIMO = 100000;
+const INGRESO_IDEAL = 280500; // 55% de la base inicial de $510.000
 
 const PREMIOS_REFERIDOS = [
   { hito: 2, premio: "Par de guantes de manejo" },
@@ -497,6 +508,11 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
       return;
     }
 
+    if (!form.ingreso_inicial || form.ingreso_inicial < INGRESO_MINIMO) {
+      setFormError(`El ingreso inicial mínimo es $${INGRESO_MINIMO.toLocaleString("es-CO")}.`);
+      return;
+    }
+
     setGuardando(true);
     setFormError(null);
 
@@ -542,6 +558,7 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
       documentos_acompanante: JSON.parse(JSON.stringify(cliente.documentos_acompanante)),
       estado: cliente.estado,
       ruta_contrato: cliente.ruta_contrato ?? "diario",
+      ingreso_inicial: cliente.ingreso_inicial ?? null,
       referido_por_cedula: cliente.referido_por_cedula,
       referido_por_nombre: cliente.referido_por_nombre,
     });
@@ -694,6 +711,30 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
           </div>
         </div>
 
+        {/* Ingreso inicial */}
+        <div style={{ padding: 16, borderRadius: 16, background: "#fffbeb", border: "2px solid #fbbf24" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 6 }}>Ingreso inicial</div>
+          <div style={{ fontSize: 12, color: "#78716c", marginBottom: 10 }}>
+            Mínimo ${INGRESO_MINIMO.toLocaleString("es-CO")} · Ideal ${INGRESO_IDEAL.toLocaleString("es-CO")} (55% de la base de $510.000)
+          </div>
+          <input
+            type="number"
+            style={inputStyle}
+            value={data.ingreso_inicial ?? ""}
+            onChange={(e) => update({ ingreso_inicial: e.target.value === "" ? null : Number(e.target.value) })}
+            placeholder="Ej. 280500"
+          />
+          {data.ingreso_inicial != null && data.ingreso_inicial > 0 && (
+            <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: data.ingreso_inicial < INGRESO_MINIMO ? "#991b1b" : data.ingreso_inicial >= INGRESO_IDEAL ? "#166534" : "#92400e" }}>
+              {data.ingreso_inicial < INGRESO_MINIMO
+                ? `⛔ Por debajo del mínimo ($${INGRESO_MINIMO.toLocaleString("es-CO")})`
+                : data.ingreso_inicial >= INGRESO_IDEAL
+                ? "✔ Cumple el ideal"
+                : "✓ Cumple el mínimo (por debajo del ideal)"}
+            </div>
+          )}
+        </div>
+
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Datos personales</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -746,7 +787,7 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
 
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
-          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} />
+          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} />
         </div>
       </div>
     );
@@ -1264,7 +1305,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       </div>
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos acompañante</div>
-        <DocsSummary doc={selectedCliente.documentos_acompanante} />
+        <DocsSummary doc={selectedCliente.documentos_acompanante} only={DOCS_ACOMPANANTE} />
       </div>
 
       {documentosFaltantes(selectedCliente).length > 0 && (

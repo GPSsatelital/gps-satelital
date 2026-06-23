@@ -3,7 +3,9 @@ import type { ViewKey } from "../App";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos, type AplicadoPago } from "../hooks/usePagos";
+import { usePagos, calcularAplicacion } from "../hooks/usePagos";
+import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
@@ -95,6 +97,9 @@ type Fila = {
   valorPeriodo: number;
   diasSinPago: number;
   deudaEstimada: number;
+  deudaReal: number;
+  cuotaConvenioFila: number;
+  convenioActivoId: string | null;
   pagadoHoy: number;
   pagaHoy: boolean;
   pagadoHoyBool: boolean;
@@ -145,6 +150,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { pagos, registrarPago } = usePagos();
+  const { deudas } = useDeudas();
+  const { convenioActivoDelContrato } = useConvenios();
   const { cerrarCaja, cajaDia } = useCaja();
 
   const filas: Fila[] = useMemo(() => {
@@ -176,6 +183,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             }
           : calcPagadoHasta(pagosC, diaPago, hoy);
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
+        const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada").reduce((s, d) => s + d.monto_pendiente, 0);
+        const convActivo = convenioActivoDelContrato(c.id);
 
         return {
           contratoId: c.id,
@@ -193,6 +202,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           valorPeriodo,
           diasSinPago: dias,
           deudaEstimada: dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0,
+          deudaReal,
+          cuotaConvenioFila: convActivo?.cuota_por_periodo ?? 0,
+          convenioActivoId: convActivo?.id ?? null,
           pagadoHoy,
           pagaHoy,
           pagadoHoyBool: pagadoHoy > 0,
@@ -201,7 +213,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           prioridad,
         };
       });
-  }, [contratos, clientes, motos, pagos, hoy, esLunes, esMiercoles]);
+  }, [contratos, clientes, motos, pagos, deudas, convenioActivoDelContrato, hoy, esLunes, esMiercoles]);
 
   // Tab data
   const filasHoy = useMemo(() => filas.filter(f => f.tipoRuta === "diario"), [filas]);
@@ -245,15 +257,12 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
     setCobrandoLoading(true);
     setCobrarError(null);
-    const aplicado: AplicadoPago = {
-      tarifa: Math.min(valor, f.tarifaDiaria),
-      ahorro: Math.max(0, Math.min(valor - f.tarifaDiaria, f.ahorroDiario)),
-      baseInicial: 0,
-      deuda: 0,
-      convenio: 0,
-      saldo: Math.max(0, valor - f.tarifaDiaria - f.ahorroDiario),
-    };
-    const { error } = await registrarPago(f.contratoId, valor, cobrarMetodo, aplicado, { registradoPor: profile?.id });
+    const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
+    const aplicado = calcularAplicacion(valor, cuotaPactada, 0, f.deudaReal, f.cuotaConvenioFila);
+    const { error } = await registrarPago(f.contratoId, valor, cobrarMetodo, aplicado, {
+      registradoPor: profile?.id,
+      ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
+    });
     setCobrandoLoading(false);
     if (error) { setCobrarError(error); return; }
     setCobrandoId(null);

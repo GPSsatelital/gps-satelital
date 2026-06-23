@@ -378,6 +378,8 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
       const convenioActivo = convenioActivoDelContrato(contrato.id);
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
 
+      const saldoAFavor = confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
+
       return {
         ...contrato,
         pagadoEstaSemana,
@@ -389,6 +391,7 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
         pendientesCount: pendientes.length,
         diasSinPago,
         ultimaGestion,
+        saldoAFavor,
       };
     });
   }, [contratosActivos, pagos, deudas, convenios]);
@@ -452,6 +455,8 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
+  const [saldoExito, setSaldoExito] = useState(false);
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
   const gestionesContrato = contratoSeleccionadoId
@@ -498,6 +503,20 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
     setValor("");
     setFormExito(true);
     setTimeout(() => setFormExito(false), 3000);
+  }
+
+  async function handleAplicarSaldo() {
+    if (!contratoSeleccionadoId || !contratoDetalle) return;
+    const saldo = contratoDetalle.saldoAFavor ?? 0;
+    if (saldo <= 0) return;
+    const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
+    const { error } = await registrarPago(
+      contratoSeleccionadoId, saldo, "Efectivo", aplicado,
+      contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
+    );
+    if (error) { setFormError(error); return; }
+    setSaldoExito(true);
+    setTimeout(() => setSaldoExito(false), 3000);
   }
 
   async function handleRegistrarDeuda() {
@@ -717,6 +736,29 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
               </div>
             );
           })()}
+
+          {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
+            <div style={{ marginTop: 10, padding: "12px 14px", background: "#eff6ff", borderRadius: 12, border: "1px solid #bae6fd", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#0284c7", textTransform: "uppercase" }}>Saldo a favor</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0284c7" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Pendiente de aplicar</div>
+              </div>
+              {esSecretaria && (
+                <button
+                  onClick={handleAplicarSaldo}
+                  style={{ background: "#0284c7", color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  Aplicar ahora
+                </button>
+              )}
+            </div>
+          )}
+          {saldoExito && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "#dcfce7", borderRadius: 10, color: "#166534", fontWeight: 700, fontSize: 13 }}>
+              ✅ Saldo aplicado correctamente.
+            </div>
+          )}
         </div>
 
         {/* Formulario de pago */}

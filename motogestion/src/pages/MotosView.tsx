@@ -46,7 +46,9 @@ const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
-export default function MotosView({ initialFilter = "" }: { initialFilter?: string }) {
+import type { ViewKey } from "../App";
+
+export default function MotosView({ initialFilter = "", onNavigate }: { initialFilter?: string; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
@@ -310,9 +312,16 @@ export default function MotosView({ initialFilter = "" }: { initialFilter?: stri
                     <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
                     <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
                     <td style={tdStyle}>
-                      <button onClick={() => setSelectedId(moto.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
-                        Ver detalle
-                      </button>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setSelectedId(moto.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
+                          Ver detalle
+                        </button>
+                        {onNavigate && (
+                          <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ border: "none", background: "#eff6ff", color: "#0284c7", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                            Ficha →
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

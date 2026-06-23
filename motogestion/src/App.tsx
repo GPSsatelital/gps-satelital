@@ -23,11 +23,15 @@ import CobroDiarioView from "./pages/CobroDiarioView";
 import AlertasView from "./pages/AlertasView";
 import InmovilizacionesView from "./pages/InmovilizacionesView";
 import ImportacionView from "./pages/ImportacionView";
+import FichaClienteView from "./pages/FichaClienteView";
+import FichaMotoView from "./pages/FichaMotoView";
+import HistorialPagosView from "./pages/HistorialPagosView";
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
-  | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion";
+  | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion"
+  | "ficha_cliente" | "ficha_moto" | "historial_pagos";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -107,6 +111,7 @@ const SIDE_GROUPS: SideGroup[] = [
       { key: "cobro_diario", label: "Cobro Diario", icon: "📅" },
       { key: "alertas", label: "Alertas", icon: "🔔" },
       { key: "inmovilizaciones", label: "Inmovilizaciones", icon: "🚨" },
+      { key: "historial_pagos", label: "Historial Pagos", icon: "🧾" },
       { key: "reportes", label: "Reportes", icon: "📈" },
       { key: "caja", label: "Caja Diaria", icon: "💰" },
       { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
@@ -128,7 +133,9 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   dashboard: "Panel General", clientes: "Clientes", motos: "Motos",
   contratos: "Contratos", cobros: "Cartera & Cobros", caja: "Caja Diaria",
   reportes: "Reportes", taller: "Taller", usuarios: "Usuarios", liquidaciones: "Liquidaciones",
-  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario", alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
+  configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
+  alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
+  ficha_cliente: "Ficha de Cliente", ficha_moto: "Ficha de Moto", historial_pagos: "Historial de Pagos",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -272,6 +279,7 @@ function MasSheet({
     { key: "inmovilizaciones", icon: "🚨", label: "Inmovilizaciones", desc: "Motos a recuperar por mora",           adminOnly: true },
     { key: "reportes",      icon: "📈", label: "Reportes",      desc: "Recaudo, mora, flota y alertas",         adminOnly: true },
     { key: "referidos",     icon: "🤝", label: "Referidos",     desc: "Programa de referidos y premios",        adminOnly: true },
+    { key: "historial_pagos", icon: "🧾", label: "Historial Pagos", desc: "Todos los pagos con filtros avanzados", adminOnly: true },
     { key: "caja",          icon: "💰", label: "Caja Diaria",  desc: "Cierre de caja y confirmación de pagos" },
     { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
     { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
@@ -394,8 +402,8 @@ function Shell() {
   const contentView = (
     <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
-      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter} />}
-      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} />}
+      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter} onNavigate={navigate} />}
+      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
       {ctx.view === "cobros"        && <CobrosView />}
       {ctx.view === "caja"          && <CajaView />}
@@ -409,6 +417,9 @@ function Shell() {
       {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}
       {ctx.view === "configuracion"  && <ConfiguracionView />}
       {ctx.view === "importacion"    && profile?.role === "ADMIN_PRINCIPAL" && <ImportacionView />}
+      {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
+      {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
+      {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
     </div>
   );
 

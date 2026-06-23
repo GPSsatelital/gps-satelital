@@ -420,7 +420,9 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
   );
 }
 
-export default function ClientesView({ initialFilter = "" }: { initialFilter?: string }) {
+import type { ViewKey } from "../App";
+
+export default function ClientesView({ initialFilter = "", onNavigate }: { initialFilter?: string; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
@@ -836,6 +838,14 @@ export default function ClientesView({ initialFilter = "" }: { initialFilter?: s
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <ClienteBadge estado={estadoVisual(cliente)} />
                     {riesgo && <span style={{ fontSize: 11 }}>{riesgo.icono}</span>}
+                    {onNavigate && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onNavigate("ficha_cliente", cliente.id); }}
+                        style={{ background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 999, padding: "4px 10px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                      >
+                        Ver ficha →
+                      </button>
+                    )}
                     {cliente.estado === "Listo para visita" && (
                       <button
                         onClick={(e) => {

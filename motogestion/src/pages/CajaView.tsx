@@ -3,6 +3,8 @@ import { usePagos } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { useCaja } from "../hooks/useCaja";
+import { useAuth } from "../contexts/AuthContext";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -11,13 +13,22 @@ export default function CajaView() {
   const [fecha, setFecha] = useState(hoyDefault);
   const [busqueda, setBusqueda] = useState("");
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [cerrando, setCerrando] = useState(false);
+  const [notas, setNotas] = useState("");
+  const [msgCierre, setMsgCierre] = useState<string | null>(null);
+
+  const { profile } = useAuth();
+  const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
 
   const { pagos, confirmarPago } = usePagos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { cerrarCaja, cajaDia } = useCaja();
 
   const isMobile = window.innerWidth < 900;
+
+  const cajaCerradaHoy = cajaDia(fecha);
 
   const pagosDia = useMemo(() =>
     pagos.filter(p => p.fecha === fecha).sort((a, b) => b.created_at.localeCompare(a.created_at)),
@@ -47,6 +58,34 @@ export default function CajaView() {
     setConfirmando(id);
     await confirmarPago(id);
     setConfirmando(null);
+  }
+
+  async function handleCerrarCaja() {
+    if (!esSecretaria) return;
+    setCerrando(true);
+    setMsgCierre(null);
+    const detalle = pagosDia
+      .filter(p => p.estado === "Confirmado")
+      .map(p => {
+        const { nombre, placa } = getInfo(p.contrato_id);
+        return { placa, nombre, valor: p.valor, metodo: p.metodo };
+      });
+    const { error } = await cerrarCaja({
+      fecha,
+      efectivo: resumen.efectivo,
+      transferencias: resumen.transfer,
+      total: resumen.total,
+      detalle,
+      cerradoPor: profile?.id ?? null,
+      notas: notas.trim() || undefined,
+    });
+    setCerrando(false);
+    if (error) {
+      setMsgCierre(`Error: ${error}`);
+    } else {
+      setMsgCierre(`Caja del ${fecha} cerrada correctamente — Total: $${fmt(resumen.total)}`);
+      setNotas("");
+    }
   }
 
   function getInfo(contratoId: string) {
@@ -82,9 +121,37 @@ export default function CajaView() {
           <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>{resumen.pendientes} pago{resumen.pendientes > 1 ? "s" : ""} pendientes</div>
         </div>
       )}
-      <button disabled style={{ padding: 12, borderRadius: 12, border: "1px dashed #cbd5e1", background: "white", color: "#94a3b8", fontSize: 13, fontWeight: 700, cursor: "not-allowed" }}>
-        🔒 Cerrar caja — próximamente
-      </button>
+      {cajaCerradaHoy ? (
+        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534" }}>
+          ✅ Caja cerrada — ${fmt(cajaCerradaHoy.total)}
+        </div>
+      ) : !esSecretaria ? (
+        <div style={{ padding: "10px 14px", borderRadius: 12, background: "#fef3c7", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
+          Solo la secretaria puede cerrar la caja.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <textarea
+            value={notas}
+            onChange={e => setNotas(e.target.value)}
+            placeholder="Notas del cierre (opcional)..."
+            rows={2}
+            style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }}
+          />
+          {msgCierre && (
+            <div style={{ padding: "8px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700, background: msgCierre.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCierre.startsWith("Error") ? "#991b1b" : "#166534" }}>
+              {msgCierre}
+            </div>
+          )}
+          <button
+            onClick={handleCerrarCaja}
+            disabled={cerrando || resumen.total === 0}
+            style={{ padding: 12, borderRadius: 12, border: "none", background: resumen.total === 0 ? "#e2e8f0" : "#166534", color: resumen.total === 0 ? "#94a3b8" : "white", fontSize: 13, fontWeight: 800, cursor: cerrando || resumen.total === 0 ? "not-allowed" : "pointer", opacity: cerrando ? 0.7 : 1 }}
+          >
+            {cerrando ? "Cerrando..." : `✅ Cerrar caja — $${fmt(resumen.total)}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 

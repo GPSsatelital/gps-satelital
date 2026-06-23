@@ -3,6 +3,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos, type AplicadoPago } from "../hooks/usePagos";
+import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
@@ -119,6 +120,9 @@ export default function CobroDiarioView() {
   const [cobrarMetodo, setCobrarMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
   const [cobrarError, setCobrarError] = useState<string | null>(null);
+  const [cerrandoCaja, setCerrandoCaja] = useState(false);
+  const [notasCaja, setNotasCaja] = useState("");
+  const [msgCaja, setMsgCaja] = useState<string | null>(null);
 
   const { profile } = useAuth();
   const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
@@ -127,6 +131,7 @@ export default function CobroDiarioView() {
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { pagos, registrarPago } = usePagos();
+  const { cerrarCaja, cajaDia } = useCaja();
 
   const filas: Fila[] = useMemo(() => {
     return contratos
@@ -653,16 +658,57 @@ export default function CobroDiarioView() {
                 );
               })}
             </div>
-            {!esSecretaria && (
+            {!esSecretaria ? (
               <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>
                 Solo la secretaria puede cerrar la caja.
               </div>
-            )}
-            {esSecretaria && (
-              <button style={{ padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 15, background: "#166534", color: "white" }}
-                onClick={() => alert("Caja cerrada: $" + fmt(totalHoy) + " — Función de guardado en DB próximamente")}>
-                ✅ Cerrar caja del día — ${fmt(totalHoy)}
-              </button>
+            ) : cajaDia(hoy) ? (
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534" }}>
+                ✅ Caja cerrada — ${fmt(cajaDia(hoy)!.total)}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <textarea
+                  value={notasCaja}
+                  onChange={e => setNotasCaja(e.target.value)}
+                  placeholder="Notas del cierre (opcional)..."
+                  rows={2}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }}
+                />
+                {msgCaja && (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700, background: msgCaja.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCaja.startsWith("Error") ? "#991b1b" : "#166534" }}>
+                    {msgCaja}
+                  </div>
+                )}
+                <button
+                  disabled={cerrandoCaja || totalHoy === 0}
+                  onClick={async () => {
+                    setCerrandoCaja(true);
+                    setMsgCaja(null);
+                    const detalle = pagosHoy.map(p => {
+                      const c = contratos.find(x => x.id === p.contrato_id);
+                      const cl = clientes.find(x => x.id === c?.cliente_id);
+                      const m = motos.find(x => x.id === c?.moto_id);
+                      return { placa: m?.placa ?? "—", nombre: cl?.nombre ?? "—", valor: p.valor, metodo: p.metodo };
+                    });
+                    const { error } = await cerrarCaja({
+                      fecha: hoy,
+                      efectivo: efectivoHoy,
+                      transferencias: transHoy,
+                      total: totalHoy,
+                      detalle,
+                      cerradoPor: profile?.id ?? null,
+                      notas: notasCaja.trim() || undefined,
+                    });
+                    setCerrandoCaja(false);
+                    if (error) setMsgCaja(`Error: ${error}`);
+                    else { setMsgCaja(`Caja cerrada — $${fmt(totalHoy)}`); setNotasCaja(""); }
+                  }}
+                  style={{ padding: "14px", borderRadius: 14, border: "none", cursor: cerrandoCaja || totalHoy === 0 ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 15, background: totalHoy === 0 ? "#e2e8f0" : "#166534", color: totalHoy === 0 ? "#94a3b8" : "white", opacity: cerrandoCaja ? 0.7 : 1 }}
+                >
+                  {cerrandoCaja ? "Cerrando..." : `✅ Cerrar caja del día — $${fmt(totalHoy)}`}
+                </button>
+              </div>
             )}
           </div>
         );

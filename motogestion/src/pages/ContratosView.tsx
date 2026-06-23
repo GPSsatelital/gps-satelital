@@ -134,6 +134,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [accionError, setAccionError] = useState<string | null>(null);
 
   const clientesAprobados = clientes.filter((c) => c.estado === "Aprobado");
   const motosDisponibles = motos.filter((m) => m.estado === "Disponible");
@@ -217,15 +218,19 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
 
   async function handleAsignarMoto(contratoId: string, motoId: string, firmaCliente: boolean) {
     if (!motoId) return;
-    if (!firmaCliente) { alert("Primero debe firmar el cliente."); return; }
+    if (!firmaCliente) { setAccionError("Primero debe firmar el cliente antes de asignar una moto."); return; }
     const enUso = contratos.some(c => c.moto_id === motoId && c.id !== contratoId && c.estado !== "Cancelado" && c.estado !== "Suspendido");
-    if (enUso) { alert("Esta moto ya está asignada a otro contrato."); return; }
-    await asignarMoto(contratoId, motoId);
+    if (enUso) { setAccionError("Esta moto ya está asignada a otro contrato activo."); return; }
+    setAccionError(null);
+    const { error } = await asignarMoto(contratoId, motoId);
+    if (error) setAccionError(error);
   }
 
   async function handleActivar(contratoId: string, motoId: string | null, clienteId: string) {
-    if (!motoId) { alert("Debe tener moto asignada."); return; }
-    await activarContrato(contratoId, motoId, clienteId);
+    if (!motoId) { setAccionError("Debe tener moto asignada antes de activar el contrato."); return; }
+    setAccionError(null);
+    const { error } = await activarContrato(contratoId, motoId, clienteId);
+    if (error) setAccionError(error);
   }
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando contratos...</div>;
@@ -243,6 +248,12 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
       </div>
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error: {error}</div>}
+      {accionError && (
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 12, background: "#fee2e2", border: "1px solid #fecaca", color: "#991b1b", fontWeight: 600, fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>⚠️ {accionError}</span>
+          <button onClick={() => setAccionError(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#991b1b", fontSize: 16, padding: "0 4px" }}>✕</button>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
         {FILTROS.map(f => (

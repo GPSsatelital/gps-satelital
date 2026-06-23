@@ -41,8 +41,6 @@ function formatDate(date: string | null) {
   return new Date(date).toLocaleDateString("es-CO");
 }
 
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "12px 10px", fontSize: 13, color: "#475569", borderBottom: "1px solid #e2e8f0" };
-const tdStyle: React.CSSProperties = { padding: "12px 10px", fontSize: 14, color: "#0f172a", borderBottom: "1px solid #f1f5f9" };
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
@@ -57,7 +55,7 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
-  const { cambiarUbicacion, registrarRecepcion, historialDeMoto, recepcionesDeMoto } = useUbicaciones();
+  const { cambiarUbicacion, registrarRecepcion, historialDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -281,283 +279,194 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando motos...</div>;
 
+  // Panel de detalle (reutilizado en móvil y desktop)
+  function DetallePanel() {
+    if (!selectedMoto) return <div style={{ padding: 24, color: "#64748b", textAlign: "center" }}>Selecciona una moto de la lista.</div>;
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        {/* Header moto */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 900, fontSize: 22, color: "#0f172a" }}>{selectedMoto.placa}</div>
+            <div style={{ fontSize: 14, color: "#64748b" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
+          </div>
+          <StatusBadge status={selectedMoto.estado} />
+        </div>
+        {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
+        {editandoMoto ? (
+          <div style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0", display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>✏️ Editando: {selectedMoto.placa}</div>
+            {([
+              { key: "marca", label: "Marca" }, { key: "modelo", label: "Modelo" },
+              { key: "color", label: "Color" }, { key: "cilindraje", label: "Cilindraje" },
+              { key: "numero_motor", label: "N° Motor" }, { key: "numero_chasis", label: "N° Chasis" },
+              { key: "propietario", label: "Propietario" },
+              { key: "fecha_seguro", label: "SOAT (YYYY-MM-DD)" },
+              { key: "fecha_tecnomecanica", label: "Tecnomecánica (YYYY-MM-DD)" },
+            ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
+              <div key={key}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>{label}</div>
+                <input value={(editForm[key] as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+              </div>
+            ))}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
+              <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}>
+                {(["COSTA","PRADERA","RASTREADOR","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Observaciones</div>
+              <textarea value={(editForm.observaciones as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))}
+                rows={2} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, resize: "vertical" }} />
+            </div>
+            {editError && <div style={{ color: "#991b1b", fontSize: 12, padding: "6px 10px", background: "#fee2e2", borderRadius: 8 }}>{editError}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, color: "#64748b", fontSize: 13 }}>Cancelar</button>
+              <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: "#0f172a", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: editGuardando ? 0.7 : 1 }}>
+                {editGuardando ? "Guardando..." : "💾 Guardar"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <InfoBox label="Ubicación" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
+              <InfoBox label="SOAT vence" value={formatDate(selectedMoto.fecha_seguro)} />
+              <InfoBox label="Tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
+              {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
+            </div>
+            {selectedMoto.observaciones && <div style={{ fontSize: 13, color: "#64748b", padding: "8px 12px", background: "#f8fafc", borderRadius: 10 }}>{selectedMoto.observaciones}</div>}
+            <button onClick={abrirEdicion} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", color: "#334155", cursor: "pointer", fontWeight: 700, fontSize: 13, textAlign: "left" as const }}>✏️ Editar datos</button>
+          </>
+        )}
+        {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+        {!editandoMoto && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
+            <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📋 Recepción</button>
+            {selectedMoto.estado === "Fiscalia"
+              ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Salida Fiscalía</button>
+              : ["Transito","Garantia"].includes(selectedMoto.estado)
+                ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Liberar retención</button>
+                : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#92400e" }}>🚨 Retención</button>
+            }
+          </div>
+        )}
+        {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
+          <div style={{ background: "#fef9c3", borderRadius: 10, padding: 10, border: "1px solid #fde047", fontSize: 13 }}>
+            <div style={{ fontWeight: 700, color: "#713f12", marginBottom: 4 }}>🚨 {ESTADO_LABEL[selectedMoto.estado]}</div>
+            {selectedMoto.retencion_fecha && <div>Fecha: <strong>{selectedMoto.retencion_fecha}</strong></div>}
+            {selectedMoto.retencion_numero_caso && <div>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
+            {selectedMoto.retencion_detalle && <div style={{ color: "#64748b", marginTop: 4 }}>{selectedMoto.retencion_detalle}</div>}
+          </div>
+        )}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>Cambiar estado</div>
+          <select value={selectedMoto.estado} onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)} style={inputStyle}>
+            <option value="Disponible">Disponible</option>
+            <option value="Reservada">Reservada</option>
+            <option value="Asignada">Asignada</option>
+            <option value="Mantenimiento">En taller</option>
+            <option value="Recuperada">Recuperada</option>
+          </select>
+        </div>
+        {historialDeMoto(selectedMoto.id).length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#334155" }}>Historial ubicaciones</div>
+            {historialDeMoto(selectedMoto.id).slice(0, 3).map((h) => (
+              <div key={h.id} style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, background: "#f8fafc", marginBottom: 3, color: "#475569" }}>
+                <strong>{UBICACION_LABEL[h.ubicacion_nueva as UbicacionFisica] ?? h.ubicacion_nueva}</strong>
+                <span style={{ color: "#94a3b8", marginLeft: 6 }}>{new Date(h.created_at).toLocaleDateString("es-CO")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, margin: 0 }}>Módulo de Motos</h2>
-          <p style={{ marginTop: 6, color: "#64748b" }}>Conectado en tiempo real a la base de datos.</p>
+          <h2 style={{ fontSize: 20, margin: 0 }}>Motos</h2>
+          <p style={{ marginTop: 4, color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
         </div>
         <button onClick={() => setOpen(true)} style={primaryBtn}>+ Registrar moto</button>
       </div>
+      {error && <div style={{ marginBottom: 12, color: "#991b1b" }}>Error: {error}</div>}
 
-      {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando motos: {error}</div>}
-
-      {/* En móvil: lista de tarjetas ─ toca una para ver detalle */}
-      {isMobile && !selectedId ? (
-        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
-          {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas.</div>}
-          {filtered.map((moto) => {
-            const sc = getStatusColors(moto.estado);
-            return (
-              <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                style={{ background: "white", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: "1px solid #e2e8f0" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>{moto.placa}</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
-                </div>
-                <span style={{ display: "inline-block", padding: "5px 10px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
-                  {ESTADO_LABEL[moto.estado]}
-                </span>
-                <span style={{ color: "#cbd5e1", fontSize: 20 }}>›</span>
-              </div>
-            );
-          })}
-        </div>
-      ) : isMobile && selectedId ? (
-        /* Móvil: vista de detalle con botón volver */
-        <div style={{ marginTop: 16 }}>
-          <button onClick={() => { setSelectedId(null); setEditandoMoto(false); setMsgDetalle(null); }}
-            style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 15, cursor: "pointer", padding: "0 0 12px 0", display: "flex", alignItems: "center", gap: 6 }}>
-            ← Volver a la lista
-          </button>
-          <div style={card}>
-          <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
-
-          {selectedMoto ? (
-            <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-
-              {/* Formulario de edición */}
-              {editandoMoto ? (
-                <div style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0", display: "grid", gap: 12 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>✏️ Editando: {selectedMoto.placa}</div>
-                  {([
-                    { key: "marca", label: "Marca" },
-                    { key: "modelo", label: "Modelo" },
-                    { key: "color", label: "Color" },
-                    { key: "cilindraje", label: "Cilindraje" },
-                    { key: "numero_motor", label: "N° Motor" },
-                    { key: "numero_chasis", label: "N° Chasis" },
-                    { key: "propietario", label: "Propietario" },
-                    { key: "fecha_seguro", label: "Vence SOAT (YYYY-MM-DD)" },
-                    { key: "fecha_tecnomecanica", label: "Vence Tecnomecánica (YYYY-MM-DD)" },
-                  ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
-                    <div key={key}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>{label}</div>
-                      <input
-                        value={(editForm[key] as string) ?? ""}
-                        onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
-                        style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}
-                      />
-                    </div>
-                  ))}
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Grupo</div>
-                    <select value={editForm.grupo ?? selectedMoto.grupo}
-                      onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
-                      style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}>
-                      {(["COSTA","PRADERA","RASTREADOR","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Observaciones</div>
-                    <textarea value={(editForm.observaciones as string) ?? ""}
-                      onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))}
-                      rows={3} style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14, resize: "vertical" }} />
-                  </div>
-                  {editError && <div style={{ color: "#991b1b", fontSize: 13, padding: "8px 12px", background: "#fee2e2", borderRadius: 8 }}>{editError}</div>}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, color: "#64748b" }}>
-                      Cancelar
-                    </button>
-                    <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: "#0f172a", color: "white", cursor: "pointer", fontWeight: 700, opacity: editGuardando ? 0.7 : 1 }}>
-                      {editGuardando ? "Guardando..." : "💾 Guardar cambios"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <InfoBox label="Placa" value={selectedMoto.placa} />
-                  <InfoBox label="Grupo" value={selectedMoto.grupo} />
-                  <InfoBox label="Marca / Modelo" value={`${selectedMoto.marca} ${selectedMoto.modelo}`} />
-                  {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
-                  <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
-                  <InfoBox label="Vence SOAT" value={formatDate(selectedMoto.fecha_seguro)} />
-                  <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
-                  <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
-                  <button onClick={abrirEdicion} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
-                    ✏️ Editar datos de esta moto
-                  </button>
-                </>
-              )}
-
-              {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
-
-              {!editandoMoto && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
-                <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
-                {selectedMoto.estado === "Fiscalia"
-                  ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Registrar salida de Fiscalía</button>
-                  : ["Transito","Garantia"].includes(selectedMoto.estado)
-                    ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
-                    : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
-                }
-              </div>}
-
-              {/* Datos de retención activa */}
-              {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
-                <div style={{ background: "#fef9c3", borderRadius: 12, padding: 12, border: "1px solid #fde047" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#713f12", marginBottom: 6 }}>
-                    🚨 Moto en {ESTADO_LABEL[selectedMoto.estado]}
-                  </div>
-                  {selectedMoto.retencion_fecha && <div style={{ fontSize: 13 }}>Fecha retención: <strong>{selectedMoto.retencion_fecha}</strong></div>}
-                  {selectedMoto.retencion_numero_caso && <div style={{ fontSize: 13 }}>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
-                  {selectedMoto.retencion_detalle && <div style={{ fontSize: 13, marginTop: 4, color: "#64748b" }}>{selectedMoto.retencion_detalle}</div>}
-                  {selectedMoto.estado === "Fiscalia" && (
-                    <div style={{ fontSize: 12, marginTop: 6, color: "#92400e", fontWeight: 600 }}>
-                      Sale cuando la empresa la reciba físicamente. Al registrar salida pasa a taller automáticamente.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <div style={labelStyle}>Cambiar estado</div>
-                <select
-                  value={selectedMoto.estado}
-                  onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)}
-                  style={inputStyle}
-                >
-                  <option value="Disponible">Disponible</option>
-                  <option value="Reservada">Reservada</option>
-                  <option value="Asignada">Asignada</option>
-                  <option value="Mantenimiento">En taller</option>
-                  <option value="Recuperada">Recuperada</option>
-                </select>
-              </div>
-
-              {/* Historial de ubicaciones */}
-              {historialDeMoto(selectedMoto.id).length > 0 && (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#334155" }}>Historial de ubicaciones</div>
-                  {historialDeMoto(selectedMoto.id).slice(0, 5).map((h) => (
-                    <div key={h.id} style={{ fontSize: 12, padding: "6px 10px", borderRadius: 8, background: "#f8fafc", marginBottom: 4, color: "#475569" }}>
-                      <span style={{ fontWeight: 600 }}>{UBICACION_LABEL[h.ubicacion_nueva as UbicacionFisica] ?? h.ubicacion_nueva}</span>
-                      {h.ubicacion_anterior && <span> ← {UBICACION_LABEL[h.ubicacion_anterior as UbicacionFisica] ?? h.ubicacion_anterior}</span>}
-                      <span style={{ color: "#94a3b8", marginLeft: 6 }}>{new Date(h.created_at).toLocaleDateString("es-CO")}</span>
-                      {h.motivo && <div style={{ color: "#64748b" }}>{h.motivo}</div>}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Recepciones */}
-              {recepcionesDeMoto(selectedMoto.id).length > 0 && (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#334155" }}>Recepciones registradas</div>
-                  {recepcionesDeMoto(selectedMoto.id).slice(0, 3).map((r) => (
-                    <div key={r.id} style={{ fontSize: 12, padding: "8px 10px", borderRadius: 8, background: "#f8fafc", marginBottom: 4 }}>
-                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{new Date(r.created_at).toLocaleDateString("es-CO")} · {r.condicion_general}</div>
-                      {r.descripcion_danos && <div style={{ color: "#dc2626" }}>{r.descripcion_danos}</div>}
-                      {r.kilometros && <div style={{ color: "#64748b" }}>Km: {r.kilometros.toLocaleString("es-CO")}</div>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona una moto para ver su detalle.</div>
-          )}
+      {/* Móvil: lista → detalle (nunca juntos) */}
+      {isMobile ? (
+        selectedId && selectedMoto ? (
+          <div>
+            <button onClick={() => { setSelectedId(null); setEditandoMoto(false); setMsgDetalle(null); }}
+              style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "0 0 12px 0" }}>
+              ← Volver a la lista
+            </button>
+            <div style={card}><DetallePanel /></div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 12 }} />
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {filtered.map((moto) => {
+                const sc = getStatusColors(moto.estado);
+                return (
+                  <div key={moto.id} onClick={() => setSelectedId(moto.id)}
+                    style={{ background: "white", borderRadius: 12, padding: "12px 14px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{moto.placa}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                    </div>
+                    <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {ESTADO_LABEL[moto.estado]}
+                    </span>
+                    <span style={{ color: "#cbd5e1" }}>›</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
       ) : (
-        /* Desktop: lista tabla + detalle en columnas */
-        <div style={{ display: "flex", gap: 20, marginTop: 0 }}>
+        /* Desktop: 2 columnas flex */
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
-            <div style={{ marginBottom: 16 }}>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f8fafc" }}>
-                    <th style={thStyle}>Placa</th>
-                    <th style={thStyle}>Moto</th>
-                    <th style={thStyle}>Estado</th>
-                    <th style={thStyle}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((moto) => (
-                    <tr key={moto.id} onClick={() => setSelectedId(moto.id)} style={{ background: selectedId === moto.id ? "#eff6ff" : "white", cursor: "pointer" }}>
-                      <td style={tdStyle}>{moto.placa}<div style={{ fontSize: 11, color: "#94a3b8" }}>{moto.grupo}</div></td>
-                      <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
-                      <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
-                      <td style={tdStyle}>
-                        {onNavigate && (
-                          <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
-                            style={{ border: "none", background: "#eff6ff", color: "#0284c7", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                            Ficha →
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas.</div>}
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {filtered.map((moto) => {
+                const sc = getStatusColors(moto.estado);
+                const sel = selectedId === moto.id;
+                return (
+                  <div key={moto.id} onClick={() => setSelectedId(moto.id)}
+                    style={{ borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid #0284c7" : "1px solid #e2e8f0", background: sel ? "#eff6ff" : "white" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{moto.placa}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                    </div>
+                    <span style={{ padding: "3px 8px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {ESTADO_LABEL[moto.estado]}
+                    </span>
+                    {onNavigate && (
+                      <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
+                        style={{ border: "none", background: "#f1f5f9", color: "#0284c7", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        Ficha
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div style={{ ...card, flex: "0 0 360px", minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
-            {selectedMoto ? (
-              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-                <InfoBox label="Placa" value={selectedMoto.placa} />
-                <InfoBox label="Grupo" value={selectedMoto.grupo} />
-                <InfoBox label="Marca / Modelo" value={`${selectedMoto.marca} ${selectedMoto.modelo}`} />
-                {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
-                <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
-                <InfoBox label="Vence SOAT" value={formatDate(selectedMoto.fecha_seguro)} />
-                <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
-                <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
-                {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
-                <button onClick={abrirEdicion} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
-                  ✏️ Editar datos de esta moto
-                </button>
-                {msgDetalle && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
-                  <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
-                  {selectedMoto.estado === "Fiscalia"
-                    ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Registrar salida de Fiscalía</button>
-                    : ["Transito","Garantia"].includes(selectedMoto.estado)
-                      ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
-                      : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
-                  }
-                </div>
-                {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
-                  <div style={{ background: "#fef9c3", borderRadius: 12, padding: 12, border: "1px solid #fde047" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "#713f12", marginBottom: 6 }}>🚨 Moto en {ESTADO_LABEL[selectedMoto.estado]}</div>
-                    {selectedMoto.retencion_fecha && <div style={{ fontSize: 13 }}>Fecha retención: <strong>{selectedMoto.retencion_fecha}</strong></div>}
-                    {selectedMoto.retencion_numero_caso && <div style={{ fontSize: 13 }}>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
-                    {selectedMoto.retencion_detalle && <div style={{ fontSize: 13, marginTop: 4, color: "#64748b" }}>{selectedMoto.retencion_detalle}</div>}
-                  </div>
-                )}
-                <div>
-                  <div style={labelStyle}>Cambiar estado</div>
-                  <select value={selectedMoto.estado} onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)} style={inputStyle}>
-                    <option value="Disponible">Disponible</option>
-                    <option value="Reservada">Reservada</option>
-                    <option value="Asignada">Asignada</option>
-                    <option value="Mantenimiento">En taller</option>
-                    <option value="Recuperada">Recuperada</option>
-                  </select>
-                </div>
-              </div>
-            ) : (
-              <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona una moto de la lista.</div>
-            )}
+          <div style={{ ...card, flex: "0 0 340px", minWidth: 0 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 17 }}>Detalle de moto</h3>
+            <DetallePanel />
           </div>
         </div>
       )}

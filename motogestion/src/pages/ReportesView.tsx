@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { usePagos } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
@@ -89,9 +89,12 @@ function BarraN({ label, valor, total, color }: { label: string; valor: number; 
 }
 
 function KPI({ label, value, sub, color, bg }: { label: string; value: string; sub?: string; color?: string; bg?: string }) {
+  const icon = KPI_ICONS[label];
   return (
     <div style={{ ...card, background: bg ?? "white", padding: "14px 16px" }}>
-      <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>{label}</div>
+      <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>
+        {icon && <span style={{ marginRight: 4 }}>{icon}</span>}{label}
+      </div>
       <div style={{ fontSize: 22, fontWeight: 800, color: color ?? "#0f172a", marginTop: 6 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
     </div>
@@ -107,9 +110,24 @@ function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: str
   URL.revokeObjectURL(url);
 }
 
+const KPI_ICONS: Record<string, string> = {
+  "Total recaudado": "💰",
+  "Efectivo": "💵",
+  "Transferencias": "📲",
+  "Cobro en campo": "🏍️",
+  "Proyección mensual": "📈",
+};
+
 export default function ReportesView({ onNavigate }: Props) {
   const [rango, setRango] = useState<Rango>("mes");
   const [tab, setTab]     = useState<Tab>("resumen");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   const { pagos }     = usePagos();
   const { contratos } = useContratos();
@@ -118,6 +136,11 @@ export default function ReportesView({ onNavigate }: Props) {
 
   const hoyStr = new Date().toISOString().slice(0, 10);
   const { desde, hasta } = getRango(rango);
+
+  // ── Recaudado hoy ──────────────────────────────────────────────────────────
+  const recaudadoHoy = useMemo(() =>
+    pagos.filter(p => p.estado === "Confirmado" && p.fecha === hoyStr).reduce((a, p) => a + p.valor, 0),
+    [pagos, hoyStr]);
 
   // ── Pagos en rango ─────────────────────────────────────────────────────────
   const pagosRango = useMemo(() =>
@@ -299,16 +322,23 @@ export default function ReportesView({ onNavigate }: Props) {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+      {/* Hero header */}
+      <div style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)", borderRadius: 20, padding: isMobile ? "20px 16px" : "28px 32px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Reportes</h2>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 14 }}>Resumen operativo y financiero en tiempo real.</p>
+          <h2 style={{ fontSize: isMobile ? 20 : 26, margin: 0, fontWeight: 800, color: "white" }}>Reportes</h2>
+          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Resumen operativo y financiero en tiempo real.</p>
         </div>
-        {/* Rangos */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, color: "#38bdf8", lineHeight: 1 }}>$ {fmt(recaudadoHoy)}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4, fontWeight: 600 }}>Recaudado hoy</div>
+        </div>
+      </div>
+
+      {/* Rangos */}
+      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 4 }}>
           {RANGOS.map(r => (
-            <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: rango === r.key ? "#0284c7" : "#f1f5f9", color: rango === r.key ? "white" : "#64748b" }}>
+            <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: rango === r.key ? "#0284c7" : "#f1f5f9", color: rango === r.key ? "white" : "#64748b", flexShrink: 0 }}>
               {r.label}
             </button>
           ))}
@@ -327,12 +357,14 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 20, flexWrap: "wrap" }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === t.key ? "#0f172a" : "transparent", color: tab === t.key ? "white" : "#64748b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <span>{t.icon}</span><span>{t.label}</span>
-          </button>
-        ))}
+      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 4, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === t.key ? "#0f172a" : "transparent", color: tab === t.key ? "white" : "#64748b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexShrink: 0 }}>
+              <span>{t.icon}</span><span>{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── TAB RESUMEN ── */}
@@ -364,9 +396,9 @@ export default function ReportesView({ onNavigate }: Props) {
             {/* Gráfico diario */}
             <div style={card}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Recaudo diario — últimos 14 días</div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 90 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110 }}>
                 {recaudoDiario.map(({ fecha, total, label }) => {
-                  const h = total === 0 ? 2 : Math.max(5, Math.round((total / maxDiario) * 90));
+                  const h = total === 0 ? 2 : Math.max(5, Math.round((total / maxDiario) * 110));
                   const isHoy = fecha === hoyStr;
                   return (
                     <div key={fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`$ ${fmt(total)}`}>
@@ -382,9 +414,9 @@ export default function ReportesView({ onNavigate }: Props) {
             {/* Gráfico semanal */}
             <div style={card}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Recaudo últimas 4 semanas</div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 90 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 110 }}>
                 {recaudoSemanal.map(({ label, total }, i) => {
-                  const h = total === 0 ? 2 : Math.max(5, Math.round((total / maxSemanal) * 90));
+                  const h = total === 0 ? 2 : Math.max(5, Math.round((total / maxSemanal) * 110));
                   const isLast = i === recaudoSemanal.length - 1;
                   return (
                     <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
@@ -403,7 +435,7 @@ export default function ReportesView({ onNavigate }: Props) {
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Recaudo por grupo de inversión</div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {reporteGrupos.map(g => (
-                <div key={g.grupo} style={{ flex: 1, minWidth: 160, borderRadius: 14, border: `2px solid ${GRUPO_COLORS[g.grupo]}`, padding: "14px 16px" }}>
+                <div key={g.grupo} onClick={() => onNavigate?.("motos", "grupo:" + g.grupo)} style={{ flex: 1, minWidth: 160, borderRadius: 14, border: `2px solid ${GRUPO_COLORS[g.grupo]}`, padding: "14px 16px", cursor: "pointer" }}>
                   <div style={{ fontWeight: 800, fontSize: 15, color: GRUPO_COLORS[g.grupo], marginBottom: 10 }}>{g.grupo}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                     {[
@@ -473,44 +505,83 @@ export default function ReportesView({ onNavigate }: Props) {
             ))}
           </div>
 
-          {/* Tabla mora */}
+          {/* Mora detallada — cards en móvil, tabla en desktop */}
           {moraDetallada.length > 0 && (
             <div style={card}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "#991b1b" }}>
                 🔴 Mora detallada — {moraDetallada.length} contrato{moraDetallada.length > 1 ? "s" : ""}
               </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
-                      {["Cliente","Placa","Días sin pago","Deuda estimada","Último pago",""].map(h => (
-                        <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {moraDetallada.map(m => (
-                      <tr key={m.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "8px 10px", fontWeight: 700, textTransform: "uppercase" }}>{m.cliente}</td>
-                        <td style={{ padding: "8px 10px" }}>{m.placa}</td>
-                        <td style={{ padding: "8px 10px" }}>
-                          <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d</span>
-                        </td>
-                        <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaEstimada)}</td>
-                        <td style={{ padding: "8px 10px", color: "#64748b" }}>{m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}</td>
-                        <td style={{ padding: "8px 6px" }}>
-                          {onNavigate && (
-                            <div style={{ display: "flex", gap: 4 }}>
-                              <button onClick={() => onNavigate("ficha_cliente", m.clienteId)} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤</button>
-                              {m.motoId && <button onClick={() => onNavigate("ficha_moto", m.motoId!)} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️</button>}
-                            </div>
+
+              {isMobile ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {moraDetallada.map(m => (
+                    <div
+                      key={m.id}
+                      onClick={() => onNavigate?.("ficha_cliente", m.clienteId)}
+                      style={{ padding: "12px 14px", borderRadius: 14, background: m.diasSinPago > 7 ? "#fff5f5" : "#fffbeb", border: `1px solid ${m.diasSinPago > 7 ? "#fecaca" : "#fde68a"}`, cursor: "pointer" }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 13 }}>{m.cliente}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "#334155" }}>{m.placa}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d sin pago</span>
+                        <span style={{ fontWeight: 800, color: "#991b1b", fontSize: 14 }}>$ {fmt(m.deudaEstimada)}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                        Último pago: {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}
+                      </div>
+                      {onNavigate && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={e => { e.stopPropagation(); onNavigate("ficha_cliente", m.clienteId); }}
+                            style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}
+                          >👤 Ver cliente</button>
+                          {m.motoId && (
+                            <button
+                              onClick={e => { e.stopPropagation(); onNavigate("ficha_moto", m.motoId!); }}
+                              style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}
+                            >🏍️ Ver moto</button>
                           )}
-                        </td>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                        {["Cliente","Placa","Días sin pago","Deuda estimada","Último pago",""].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {moraDetallada.map(m => (
+                        <tr key={m.id} onClick={() => onNavigate?.("ficha_cliente", m.clienteId)} style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: 700, textTransform: "uppercase" }}>{m.cliente}</td>
+                          <td style={{ padding: "8px 10px" }}>{m.placa}</td>
+                          <td style={{ padding: "8px 10px" }}>
+                            <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d</span>
+                          </td>
+                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaEstimada)}</td>
+                          <td style={{ padding: "8px 10px", color: "#64748b" }}>{m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}</td>
+                          <td style={{ padding: "8px 6px" }}>
+                            {onNavigate && (
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <button onClick={e => { e.stopPropagation(); onNavigate("ficha_cliente", m.clienteId); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤</button>
+                                {m.motoId && <button onClick={e => { e.stopPropagation(); onNavigate("ficha_moto", m.motoId!); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️</button>}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -585,49 +656,85 @@ export default function ReportesView({ onNavigate }: Props) {
           {alertasVencimiento.length > 0 && (
             <div style={card}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "#92400e" }}>📋 Documentos venciendo — próximos 30 días</div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
-                      {["Placa","SOAT vence","Días","Tecno vence","Días",""].map((h, i) => (
-                        <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {alertasVencimiento.map(a => (
-                      <tr key={a.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "8px 10px", fontWeight: 700 }}>{a.placa}</td>
-                        <td style={{ padding: "8px 10px", color: (a.diasSeguro ?? 999) < 0 ? "#991b1b" : "#334155" }}>
-                          {a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
+
+              {isMobile ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {alertasVencimiento.map(a => (
+                    <div key={a.id} style={{ padding: "12px 14px", borderRadius: 14, background: "#fffbeb", border: "1px solid #fde68a" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: 15 }}>{a.placa}</span>
+                        {onNavigate && (
+                          <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Ver moto</button>
+                        )}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>SOAT vence</div>
+                          <div style={{ color: (a.diasSeguro ?? 999) < 0 ? "#991b1b" : "#334155" }}>{a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
                           {a.diasSeguro !== null && (
-                            <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "#fee2e2" : a.diasSeguro < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasSeguro < 0 ? "#991b1b" : a.diasSeguro < 10 ? "#92400e" : "#166534" }}>
+                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "#fee2e2" : a.diasSeguro < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasSeguro < 0 ? "#991b1b" : a.diasSeguro < 10 ? "#92400e" : "#166534" }}>
                               {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
                             </span>
                           )}
-                        </td>
-                        <td style={{ padding: "8px 10px", color: (a.diasTecno ?? 999) < 0 ? "#991b1b" : "#334155" }}>
-                          {a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Tecno vence</div>
+                          <div style={{ color: (a.diasTecno ?? 999) < 0 ? "#991b1b" : "#334155" }}>{a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
                           {a.diasTecno !== null && (
-                            <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "#fee2e2" : a.diasTecno < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasTecno < 0 ? "#991b1b" : a.diasTecno < 10 ? "#92400e" : "#166534" }}>
+                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "#fee2e2" : a.diasTecno < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasTecno < 0 ? "#991b1b" : a.diasTecno < 10 ? "#92400e" : "#166534" }}>
                               {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
                             </span>
                           )}
-                        </td>
-                        <td style={{ padding: "8px 6px" }}>
-                          {onNavigate && (
-                            <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Ficha</button>
-                          )}
-                        </td>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                        {["Placa","SOAT vence","Días","Tecno vence","Días",""].map((h, i) => (
+                          <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {alertasVencimiento.map(a => (
+                        <tr key={a.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: 700 }}>{a.placa}</td>
+                          <td style={{ padding: "8px 10px", color: (a.diasSeguro ?? 999) < 0 ? "#991b1b" : "#334155" }}>
+                            {a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}
+                          </td>
+                          <td style={{ padding: "8px 10px" }}>
+                            {a.diasSeguro !== null && (
+                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "#fee2e2" : a.diasSeguro < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasSeguro < 0 ? "#991b1b" : a.diasSeguro < 10 ? "#92400e" : "#166534" }}>
+                                {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px 10px", color: (a.diasTecno ?? 999) < 0 ? "#991b1b" : "#334155" }}>
+                            {a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}
+                          </td>
+                          <td style={{ padding: "8px 10px" }}>
+                            {a.diasTecno !== null && (
+                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "#fee2e2" : a.diasTecno < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasTecno < 0 ? "#991b1b" : a.diasTecno < 10 ? "#92400e" : "#166534" }}>
+                                {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px 6px" }}>
+                            {onNavigate && (
+                              <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Ficha</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

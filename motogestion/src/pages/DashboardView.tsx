@@ -1,4 +1,4 @@
-import { useMemo, Fragment } from "react";
+import { useMemo, useState, useEffect, Fragment } from "react";
 import { useMotos } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
@@ -8,53 +8,46 @@ import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-function KpiCard({ icon, label, value, sub, color, onClick }: {
-  icon: string; label: string; value: string | number; sub?: string;
-  color: string; onClick?: () => void;
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div style={{
+      height: 110, borderRadius: 16, background: "#e2e8f0",
+      animation: "pulse 1.5s ease-in-out infinite",
+    }} />
+  );
+}
+
+function Section({ title, children, action }: {
+  title: string; children: React.ReactNode; action?: React.ReactNode;
 }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        background: "white", borderRadius: 18, padding: "18px 20px",
-        boxShadow: "0 2px 12px rgba(15,23,42,0.07)",
-        cursor: onClick ? "pointer" : "default",
-        borderLeft: `4px solid ${color}`,
-        transition: "transform 0.15s, box-shadow 0.15s",
-        display: "flex", flexDirection: "column", gap: 6,
-      }}
-      onMouseEnter={e => onClick && ((e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)")}
-      onMouseLeave={e => onClick && ((e.currentTarget as HTMLDivElement).style.transform = "")}
-    >
-      <div style={{ fontSize: 24 }}>{icon}</div>
-      <div style={{ fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: "#94a3b8" }}>{sub}</div>}
+    <div style={{
+      background: "white", borderRadius: 16, padding: "18px 20px",
+      boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", letterSpacing: "0.02em" }}>{title}</div>
+        {action}
+      </div>
+      {children}
     </div>
   );
 }
 
-function AlertItem({ icon, text, onClick }: { icon: string; text: string; onClick?: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "11px 14px",
-        borderRadius: 12, background: "white", cursor: onClick ? "pointer" : "default",
-        border: "1px solid #fee2e2",
-        transition: "background 0.1s",
-      }}
-    >
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <span style={{ fontSize: 13, color: "#374151", flex: 1 }}>{text}</span>
-      {onClick && <span style={{ color: "#94a3b8", fontSize: 16 }}>›</span>}
-    </div>
-  );
-}
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DashboardView({ onNavigate }: {
   onNavigate: (view: ViewKey, filter?: string) => void;
 }) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
   const { motos, loading: lM } = useMotos();
   const { clientes, loading: lC } = useClientes();
   const { contratos, loading: lCt } = useContratos();
@@ -63,6 +56,7 @@ export default function DashboardView({ onNavigate }: {
 
   const loading = lM || lC || lCt || lP || lT;
 
+  // ── Computed stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     if (loading) return null;
 
@@ -71,17 +65,22 @@ export default function DashboardView({ onNavigate }: {
     const motosTaller      = motos.filter(m => m.estado === "Mantenimiento").length;
     const motosRetencion   = motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado)).length;
 
-    const contratosActivos    = contratos.filter(c => c.estado === "Activo").length;
-    const contratosEnProceso  = contratos.filter(c => c.estado === "En proceso").length;
+    const contratosActivos   = contratos.filter(c => c.estado === "Activo").length;
+    const contratosEnProceso = contratos.filter(c => c.estado === "En proceso").length;
 
-    const clientesActivos  = clientes.filter(c => c.estado === "Activo").length;
-    const clientesMora     = clientes.filter(c => ["En mora","En riesgo"].includes(c.estado)).length;
-    const clientesProceso  = clientes.filter(c => c.estado === "En proceso").length;
-    const clientesVisita   = clientes.filter(c => c.estado === "Listo para visita").length;
-    const clientesPendEval = clientes.filter(c => c.estado === "Pendiente evaluación").length;
-    const clientesAprobados= clientes.filter(c => c.estado === "Aprobado").length;
+    const clientesActivos   = clientes.filter(c => c.estado === "Activo").length;
+    const clientesMora      = clientes.filter(c => ["En mora","En riesgo"].includes(c.estado)).length;
+    const clientesProceso   = clientes.filter(c => c.estado === "En proceso").length;
+    const clientesVisita    = clientes.filter(c => c.estado === "Listo para visita").length;
+    const clientesPendEval  = clientes.filter(c => c.estado === "Pendiente evaluación").length;
+    const clientesAprobados = clientes.filter(c => c.estado === "Aprobado").length;
 
     const pagosPendientes = pagos.filter(p => p.estado === "Pendiente").length;
+
+    const hoyStr  = new Date().toISOString().slice(0, 10);
+    const recaudoHoy = pagos
+      .filter(p => p.estado === "Confirmado" && p.fecha === hoyStr)
+      .reduce((acc, p) => acc + p.valor, 0);
 
     const hace7dias = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const recaudoSemana = pagos
@@ -90,22 +89,20 @@ export default function DashboardView({ onNavigate }: {
 
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;
 
-    // por grupo
     const grupos = ["COSTA","PRADERA","RASTREADOR","OTRO"] as const;
     const porGrupo = grupos.map(g => ({
       g,
-      asignadas: motos.filter(m => m.grupo === g && m.estado === "Asignada").length,
+      asignadas:   motos.filter(m => m.grupo === g && m.estado === "Asignada").length,
       disponibles: motos.filter(m => m.grupo === g && m.estado === "Disponible").length,
-      total: motos.filter(m => m.grupo === g).length,
+      total:       motos.filter(m => m.grupo === g).length,
     }));
 
-    // contratos por forma_pago
     const activos = contratos.filter(c => c.estado === "Activo");
     const porModalidad = {
-      Diario: activos.filter(c => c.forma_pago === "Diario").length,
-      Semanal: activos.filter(c => c.forma_pago === "Semanal").length,
+      Diario:    activos.filter(c => c.forma_pago === "Diario").length,
+      Semanal:   activos.filter(c => c.forma_pago === "Semanal").length,
       Quincenal: activos.filter(c => c.forma_pago === "Quincenal").length,
-      Mensual: activos.filter(c => c.forma_pago === "Mensual").length,
+      Mensual:   activos.filter(c => c.forma_pago === "Mensual").length,
     };
 
     const alertasTotal = pagosPendientes + clientesMora + motosRetencion;
@@ -115,14 +112,12 @@ export default function DashboardView({ onNavigate }: {
       contratosActivos, contratosEnProceso,
       clientesActivos, clientesMora, clientesProceso, clientesVisita,
       clientesPendEval, clientesAprobados,
-      pagosPendientes, recaudoSemana, tallerActivo,
+      pagosPendientes, recaudoHoy, recaudoSemana, tallerActivo,
       porGrupo, porModalidad, alertasTotal,
     };
   }, [loading, motos, clientes, contratos, pagos, taller]);
 
-  const hoy = new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
-  // Recaudo últimos 14 días
+  // ── Recaudo 14 días ────────────────────────────────────────────────────────
   const recaudo14 = useMemo(() => {
     const result: Array<{ fecha: string; total: number; esHoy: boolean }> = [];
     const ahora = new Date();
@@ -139,12 +134,12 @@ export default function DashboardView({ onNavigate }: {
   }, [pagos]);
 
   const maxRecaudo = useMemo(() => Math.max(...recaudo14.map(d => d.total), 1), [recaudo14]);
+  const totalRecaudo14 = useMemo(() => recaudo14.reduce((s, d) => s + d.total, 0), [recaudo14]);
 
-  // Top 5 contratos con más días sin pago
+  // ── Top 5 sin pago ─────────────────────────────────────────────────────────
   const top5SinPago = useMemo(() => {
     if (loading || !stats) return [];
-    const hoyDate = new Date();
-    const todayStr = hoyDate.toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
     return contratos
       .filter(c => c.estado === "Activo")
       .map(c => {
@@ -154,7 +149,9 @@ export default function DashboardView({ onNavigate }: {
         const desde = ultimoPago
           ? new Date(ultimoPago.fecha + "T00:00:00")
           : (c.fecha_entrega ? new Date(c.fecha_entrega + "T00:00:00") : new Date(c.created_at));
-        const diasSinPago = Math.floor((new Date(todayStr + "T00:00:00").getTime() - desde.getTime()) / 86400000);
+        const diasSinPago = Math.floor(
+          (new Date(todayStr + "T00:00:00").getTime() - desde.getTime()) / 86400000
+        );
         return { contrato: c, diasSinPago };
       })
       .filter(r => r.diasSinPago > 1)
@@ -162,221 +159,411 @@ export default function DashboardView({ onNavigate }: {
       .slice(0, 5);
   }, [contratos, pagos, loading, stats]);
 
+  // ── Date string ────────────────────────────────────────────────────────────
+  const hoy = new Date().toLocaleDateString("es-CO", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading || !stats) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14 }}>
-          {[1,2,3,4].map(i => (
-            <div key={i} style={{ height: 120, borderRadius: 18, background: "#e2e8f0", animation: "pulse 1.5s infinite" }} />
-          ))}
+      <div style={{ padding: "20px 16px", maxWidth: 1040, margin: "0 auto" }}>
+        <div style={{ height: 110, borderRadius: 20, background: "#e2e8f0", marginBottom: 20, animation: "pulse 1.5s infinite" }} />
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, overflowX: "auto" }}>
+          {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "#e2e8f0", animation: "pulse 1.5s infinite" }} />)}
+        </div>
+        <div style={{ display: "grid", gap: 14, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
+          {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
         </div>
       </div>
     );
   }
 
-  const alerts: Array<{ icon: string; text: string; view?: ViewKey; filter?: string }> = [];
+  // ── Alerts list ────────────────────────────────────────────────────────────
+  const alerts: Array<{
+    icon: string; text: string; color: string; bgColor: string; borderColor: string;
+    view?: ViewKey; filter?: string;
+  }> = [];
+
   if (stats.pagosPendientes > 0)
-    alerts.push({ icon: "🔔", text: `${stats.pagosPendientes} transferencia${stats.pagosPendientes > 1 ? "s" : ""} pendiente${stats.pagosPendientes > 1 ? "s" : ""} de confirmar`, view: "cobros" });
+    alerts.push({
+      icon: "🔔", color: "#92400e", bgColor: "#fef3c7", borderColor: "#f59e0b",
+      text: `${stats.pagosPendientes} transferencia${stats.pagosPendientes > 1 ? "s" : ""} pendiente${stats.pagosPendientes > 1 ? "s" : ""} de confirmar`,
+      view: "cobros",
+    });
   if (stats.clientesMora > 0)
-    alerts.push({ icon: "⚠️", text: `${stats.clientesMora} cliente${stats.clientesMora > 1 ? "s" : ""} en mora o riesgo`, view: "clientes", filter: "mora" });
+    alerts.push({
+      icon: "⚠️", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#ef4444",
+      text: `${stats.clientesMora} cliente${stats.clientesMora > 1 ? "s" : ""} en mora o riesgo`,
+      view: "clientes", filter: "mora",
+    });
   if (stats.motosRetencion > 0)
-    alerts.push({ icon: "🚨", text: `${stats.motosRetencion} moto${stats.motosRetencion > 1 ? "s" : ""} con retención (Fiscalía / Tránsito / Garantía)`, view: "motos", filter: "retencion" });
+    alerts.push({
+      icon: "🚨", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#dc2626",
+      text: `${stats.motosRetencion} moto${stats.motosRetencion > 1 ? "s" : ""} retenida${stats.motosRetencion > 1 ? "s" : ""} (Fiscalía / Tránsito / Garantía)`,
+      view: "motos", filter: "retencion",
+    });
   if (stats.motosTaller > 0)
-    alerts.push({ icon: "🔧", text: `${stats.motosTaller} moto${stats.motosTaller > 1 ? "s" : ""} en mantenimiento`, view: "taller" });
+    alerts.push({
+      icon: "🔧", color: "#92400e", bgColor: "#fff7ed", borderColor: "#f97316",
+      text: `${stats.motosTaller} moto${stats.motosTaller > 1 ? "s" : ""} en mantenimiento`,
+      view: "taller",
+    });
   if (stats.contratosEnProceso > 0)
-    alerts.push({ icon: "📄", text: `${stats.contratosEnProceso} contrato${stats.contratosEnProceso > 1 ? "s" : ""} en proceso sin activar`, view: "contratos", filter: "En proceso" });
+    alerts.push({
+      icon: "📄", color: "#1e40af", bgColor: "#eff6ff", borderColor: "#3b82f6",
+      text: `${stats.contratosEnProceso} contrato${stats.contratosEnProceso > 1 ? "s" : ""} en proceso sin activar`,
+      view: "contratos", filter: "En proceso",
+    });
 
   const gruposVisibles = stats.porGrupo.filter(g => g.total > 0);
 
+  // Pipeline rows
+  const pipelineRows = [
+    { label: "En proceso",        count: stats.clientesProceso,   color: "#94a3b8", filter: "En proceso" },
+    { label: "Listos para visita",count: stats.clientesVisita,    color: "#60a5fa", filter: "Listo para visita" },
+    { label: "Pendiente eval.",   count: stats.clientesPendEval,  color: "#f59e0b", filter: "Pendiente evaluación" },
+    { label: "Aprobados",         count: stats.clientesAprobados, color: "#34d399", filter: "Aprobado" },
+    { label: "Activos",           count: stats.clientesActivos,   color: "#10b981", filter: "Activo" },
+    { label: "En mora / riesgo",  count: stats.clientesMora,      color: "#ef4444", filter: "mora" },
+  ];
+  const totalClientes = clientes.length || 1;
+
+  // Quick actions
+  const quickActions = [
+    { icon: "👥", label: "Nuevo cliente",  view: "clientes"  as ViewKey },
+    { icon: "💳", label: "Registrar pago", view: "cobros"    as ViewKey },
+    { icon: "🏍️", label: "Agregar moto",   view: "motos"     as ViewKey },
+    { icon: "📄", label: "Nuevo contrato", view: "contratos" as ViewKey },
+  ];
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: "16px 16px 32px", maxWidth: 1000, margin: "0 auto" }}>
-      {/* Greeting */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Panel General</div>
-        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3, textTransform: "capitalize" }}>{hoy}</div>
+    <div style={{ padding: isMobile ? "16px 12px 40px" : "24px 24px 48px", maxWidth: 1040, margin: "0 auto" }}>
+
+      {/* ── HERO: recaudo del día ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+        borderRadius: 20, padding: isMobile ? "22px 20px" : "28px 32px",
+        marginBottom: 20, position: "relative", overflow: "hidden",
+      }}>
+        {/* decorative circle */}
+        <div style={{
+          position: "absolute", right: -40, top: -40,
+          width: 180, height: 180, borderRadius: "50%",
+          background: "rgba(2,132,199,0.15)", pointerEvents: "none",
+        }} />
+        <div style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize", marginBottom: 6, letterSpacing: "0.04em" }}>
+          {hoy}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8", letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>
+          Recaudo del día
+        </div>
+        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>
+          ${fmt(stats.recaudoHoy)}
+        </div>
+        <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 10 }}>
+          Semana:&nbsp;
+          <span style={{ color: "#34d399", fontWeight: 700 }}>${fmt(stats.recaudoSemana)}</span>
+          &nbsp;en pagos confirmados
+        </div>
       </div>
 
-      {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
-        <KpiCard
-          icon="🏍️" label="Motos en campo" value={stats.motosAsignadas}
-          sub={`${stats.motosDisponibles} disponibles`} color="#0284c7"
-          onClick={() => onNavigate("motos", "Asignada")}
-        />
-        <KpiCard
-          icon="💰" label="Recaudo 7 días" value={`$${fmt(stats.recaudoSemana)}`}
-          sub="pagos confirmados" color="#10b981"
-          onClick={() => onNavigate("cobros")}
-        />
-        <KpiCard
-          icon="📄" label="Contratos activos" value={stats.contratosActivos}
-          sub={`${stats.contratosEnProceso} en proceso`} color="#6366f1"
-          onClick={() => onNavigate("contratos", "Activo")}
-        />
-        <KpiCard
-          icon={stats.alertasTotal > 0 ? "🔴" : "✅"}
-          label="Alertas" value={stats.alertasTotal}
-          sub={stats.alertasTotal === 0 ? "Todo al día" : "requieren atención"}
-          color={stats.alertasTotal > 0 ? "#ef4444" : "#10b981"}
-          onClick={() => onNavigate("alertas")}
-        />
-        <KpiCard
-          icon="🚨" label="Inmovilizaciones" value={stats.clientesMora}
-          sub="motos a recuperar" color="#991b1b"
-          onClick={() => onNavigate("cobro_diario")}
-        />
+      {/* ── KPI STRIP ── */}
+      <div style={{
+        display: "flex",
+        gap: 10,
+        overflowX: isMobile ? "auto" : "visible",
+        flexWrap: isMobile ? "nowrap" : "wrap",
+        paddingBottom: isMobile ? 4 : 0,
+        marginBottom: 20,
+      }}>
+        {[
+          {
+            icon: "🏍️", label: "Motos en campo", value: stats.motosAsignadas,
+            sub: `${stats.motosDisponibles} disponibles`, color: "#0284c7",
+            bg: "#eff6ff", onClick: () => onNavigate("motos", "Asignada"),
+          },
+          {
+            icon: "📄", label: "Contratos activos", value: stats.contratosActivos,
+            sub: `${stats.contratosEnProceso} en proceso`, color: "#6366f1",
+            bg: "#f5f3ff", onClick: () => onNavigate("contratos", "Activo"),
+          },
+          {
+            icon: "👥", label: "Clientes activos", value: stats.clientesActivos,
+            sub: "con moto asignada", color: "#166534",
+            bg: "#f0fdf4", onClick: () => onNavigate("clientes", "Activo"),
+          },
+          {
+            icon: "🚨", label: "En mora", value: stats.clientesMora,
+            sub: "requieren acción", color: "#991b1b",
+            bg: "#fff1f2", onClick: () => onNavigate("clientes", "mora"),
+          },
+          {
+            icon: stats.alertasTotal > 0 ? "⚠️" : "✅",
+            label: "Alertas", value: stats.alertasTotal,
+            sub: stats.alertasTotal === 0 ? "todo al día" : "pendientes",
+            color: stats.alertasTotal > 0 ? "#92400e" : "#166534",
+            bg: stats.alertasTotal > 0 ? "#fffbeb" : "#f0fdf4",
+            onClick: undefined as (() => void) | undefined,
+          },
+        ].map(kpi => (
+          <div
+            key={kpi.label}
+            onClick={kpi.onClick}
+            style={{
+              flex: isMobile ? "0 0 auto" : "1 1 140px",
+              minWidth: isMobile ? 148 : 130,
+              background: kpi.bg,
+              borderRadius: 14,
+              padding: "16px 16px",
+              cursor: kpi.onClick ? "pointer" : "default",
+              borderLeft: `4px solid ${kpi.color}`,
+              boxShadow: "0 1px 6px rgba(15,23,42,0.07)",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => {
+              if (kpi.onClick) {
+                (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 20px rgba(15,23,42,0.12)";
+              }
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLDivElement).style.transform = "";
+              (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 6px rgba(15,23,42,0.07)";
+            }}
+          >
+            <div style={{ fontSize: 22, marginBottom: 6 }}>{kpi.icon}</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{kpi.value}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", marginTop: 4 }}>{kpi.label}</div>
+            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{kpi.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Alerts */}
+      {/* ── ALERTS ── */}
       {alerts.length > 0 ? (
-        <div style={{ marginBottom: 20, background: "#fff7ed", borderRadius: 16, padding: 16, border: "1px solid #fed7aa" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10 }}>⚠️ REQUIEREN ATENCIÓN — toca para ir directo</div>
-          <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ marginBottom: 20, background: "#fff7ed", borderRadius: 16, padding: "14px 16px", border: "1px solid #fed7aa" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase" }}>
+            ⚠️ Requieren atención — toca para ir directo
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {alerts.map((a, i) => (
-              <AlertItem key={i} icon={a.icon} text={a.text} onClick={a.view ? () => onNavigate(a.view!, a.filter) : undefined} />
+              <div
+                key={i}
+                onClick={a.view ? () => onNavigate(a.view!, a.filter) : undefined}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "11px 14px", borderRadius: 12,
+                  background: a.bgColor,
+                  borderLeft: `4px solid ${a.borderColor}`,
+                  cursor: a.view ? "pointer" : "default",
+                  transition: "opacity 0.1s",
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{a.icon}</span>
+                <span style={{ fontSize: 13, color: a.color, flex: 1, fontWeight: 600 }}>{a.text}</span>
+                {a.view && <span style={{ color: a.color, fontSize: 18, fontWeight: 700 }}>›</span>}
+              </div>
             ))}
           </div>
         </div>
       ) : (
-        <div style={{ marginBottom: 20, background: "#f0fdf4", borderRadius: 16, padding: 14, border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 20 }}>✅</span>
+        <div style={{ marginBottom: 20, background: "#f0fdf4", borderRadius: 16, padding: "14px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 22 }}>✅</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#166534" }}>Todo al día — no hay alertas pendientes</span>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+      {/* ── TWO COLUMN LAYOUT (desktop) / STACKED (mobile) ── */}
+      <div style={{
+        display: isMobile ? "flex" : "grid",
+        flexDirection: isMobile ? "column" : undefined,
+        gridTemplateColumns: isMobile ? undefined : "minmax(0, 2fr) minmax(0, 1fr)",
+        gap: 16,
+        alignItems: "start",
+        marginBottom: 16,
+      }}>
 
-        {/* Left column */}
-        <div style={{ display: "grid", gap: 16 }}>
+        {/* LEFT column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Pipeline clientes */}
-          <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>Pipeline de clientes</div>
-            {[
-              { label: "En proceso",       count: stats.clientesProceso,  color: "#94a3b8", filter: "En proceso" },
-              { label: "Listos para visita",count: stats.clientesVisita,   color: "#60a5fa", filter: "Listo para visita" },
-              { label: "Pendiente eval.",   count: stats.clientesPendEval, color: "#f59e0b", filter: "Pendiente evaluación" },
-              { label: "Aprobados",         count: stats.clientesAprobados,color: "#34d399", filter: "Aprobado" },
-              { label: "Activos",           count: stats.clientesActivos,  color: "#10b981", filter: "Activo" },
-              { label: "En mora / riesgo",  count: stats.clientesMora,     color: "#ef4444", filter: "mora" },
-            ].map(row => {
-              const total = clientes.length || 1;
-              const pct = Math.round((row.count / total) * 100);
+          {/* Pipeline de clientes */}
+          <Section title="Pipeline de clientes">
+            {pipelineRows.map(row => {
+              const pct = Math.round((row.count / totalClientes) * 100);
               return (
-                <div key={row.label} style={{ marginBottom: 10, cursor: "pointer" }} onClick={() => onNavigate("clientes", row.filter)}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginBottom: 4 }}>
-                    <span>{row.label}</span>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>{row.count}</span>
+                <div
+                  key={row.label}
+                  onClick={() => onNavigate("clientes", row.filter)}
+                  style={{ marginBottom: 12, cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 5 }}>
+                    <span style={{ color: "#64748b", fontWeight: 500 }}>{row.label}</span>
+                    <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{row.count}</span>
                   </div>
-                  <div style={{ height: 8, borderRadius: 99, background: "#f1f5f9" }}>
-                    <div style={{ height: "100%", borderRadius: 99, background: row.color, width: `${Math.max(pct, row.count > 0 ? 4 : 0)}%`, transition: "width 0.4s" }} />
+                  <div style={{ height: 12, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 99,
+                      background: row.color,
+                      width: `${Math.max(pct, row.count > 0 ? 3 : 0)}%`,
+                      transition: "width 0.5s ease",
+                    }} />
                   </div>
                 </div>
               );
             })}
-          </div>
+          </Section>
 
           {/* Flota por grupo */}
           {gruposVisibles.length > 0 && (
-            <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>Flota por grupo</div>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${gruposVisibles.length}, 1fr)`, gap: 10 }}>
-                {gruposVisibles.map(g => (
-                  <div
-                    key={g.g}
-                    style={{ textAlign: "center", padding: "14px 8px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", transition: "background 0.15s" }}
-                    onClick={() => onNavigate("motos", `grupo:${g.g}`)}
-                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#eff6ff"}
-                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#f8fafc"}
-                  >
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em", marginBottom: 6 }}>{g.g}</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a" }}>{g.total}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
-                      <span style={{ color: "#10b981" }}>{g.asignadas} campo</span>{" · "}
-                      <span style={{ color: "#0284c7" }}>{g.disponibles} disp.</span>
+            <Section title="Flota por grupo">
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${Math.min(gruposVisibles.length, isMobile ? 2 : 4)}, 1fr)`,
+                gap: 10,
+              }}>
+                {gruposVisibles.map(g => {
+                  const pctAsignadas = g.total > 0 ? Math.round((g.asignadas / g.total) * 100) : 0;
+                  return (
+                    <div
+                      key={g.g}
+                      onClick={() => onNavigate("motos", `grupo:${g.g}`)}
+                      style={{
+                        padding: "14px 10px 12px", borderRadius: 14,
+                        background: "#f8fafc", border: "1px solid #e2e8f0",
+                        cursor: "pointer", textAlign: "center",
+                        transition: "background 0.15s, border-color 0.15s",
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLDivElement).style.background = "#eff6ff";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "#bae6fd";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLDivElement).style.background = "#f8fafc";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "#e2e8f0";
+                      }}
+                    >
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em", marginBottom: 8, textTransform: "uppercase" }}>{g.g}</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{g.total}</div>
+                      <div style={{ marginTop: 8, height: 6, borderRadius: 99, background: "#e2e8f0", overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: 99, background: "#0284c7", width: `${pctAsignadas}%`, transition: "width 0.4s" }} />
+                      </div>
+                      <div style={{ fontSize: 10, color: "#64748b", marginTop: 6 }}>
+                        <span style={{ color: "#10b981", fontWeight: 700 }}>{g.asignadas}</span>{" campo · "}
+                        <span style={{ color: "#0284c7", fontWeight: 700 }}>{g.disponibles}</span>{" disp."}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{pctAsignadas}% asignado</div>
                     </div>
-                    <div style={{ marginTop: 6, fontSize: 10, color: "#0284c7", fontWeight: 600 }}>Ver grupo →</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
+            </Section>
           )}
 
         </div>
 
-        {/* Right column */}
-        <div style={{ display: "grid", gap: 16 }}>
+        {/* RIGHT column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Acciones rápidas */}
-          <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 12 }}>Acciones rápidas</div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {[
-                { icon: "👥", label: "Nuevo cliente",      view: "clientes" as ViewKey, filter: "" },
-                { icon: "💳", label: "Registrar pago",     view: "cobros" as ViewKey,   filter: "" },
-                { icon: "🏍️", label: "Agregar moto",       view: "motos" as ViewKey,    filter: "" },
-                { icon: "📄", label: "Nuevo contrato",     view: "contratos" as ViewKey,filter: "" },
-              ].map(a => (
+          <Section title="Acciones rápidas">
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr",
+              gap: 8,
+            }}>
+              {quickActions.map(a => (
                 <button
                   key={a.label}
-                  onClick={() => onNavigate(a.view, a.filter)}
+                  onClick={() => onNavigate(a.view)}
                   style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", borderRadius: 12, border: "1px solid #e2e8f0",
-                    background: "#f8fafc", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155",
-                    textAlign: "left",
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "11px 14px", borderRadius: 12,
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155",
+                    textAlign: "left", transition: "background 0.12s, border-color 0.12s",
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "#eff6ff";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "#bae6fd";
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc";
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0";
                   }}
                 >
                   <span style={{ fontSize: 18 }}>{a.icon}</span>
-                  {a.label}
+                  <span>{a.label}</span>
                 </button>
               ))}
             </div>
-          </div>
+          </Section>
 
           {/* Contratos por modalidad */}
-          <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 12 }}>Contratos activos por modalidad</div>
+          <Section title="Contratos activos por modalidad">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {Object.entries(stats.porModalidad).map(([mod, n]) => (
                 <div
                   key={mod}
                   onClick={() => onNavigate("contratos", "Activo")}
-                  style={{ padding: "12px", borderRadius: 12, background: n > 0 ? "#f0f9ff" : "#f8fafc", border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`, cursor: "pointer", textAlign: "center", transition: "background 0.15s" }}
+                  style={{
+                    padding: "14px 10px", borderRadius: 12, textAlign: "center",
+                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                    cursor: "pointer", transition: "background 0.15s",
+                  }}
                   onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
-                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc"}
+                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
                 >
-                  <div style={{ fontSize: 20, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{mod}</div>
-                  {n > 0 && <div style={{ fontSize: 10, color: "#0284c7", marginTop: 4 }}>Ver →</div>}
+                  <div style={{ fontSize: 22, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{mod}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
 
           {/* Taller snapshot */}
           {stats.tallerActivo > 0 && (
             <div
               onClick={() => onNavigate("taller")}
-              style={{ background: "#fff7ed", borderRadius: 16, padding: 16, border: "1px solid #fed7aa", cursor: "pointer" }}
+              style={{
+                background: "#fff7ed", borderRadius: 16, padding: "16px 18px",
+                border: "1px solid #fed7aa", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 14,
+                boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#fef3c7"}
+              onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#fff7ed"}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 26 }}>🔧</span>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "#c2410c" }}>{stats.tallerActivo}</div>
-                  <div style={{ fontSize: 12, color: "#9a3412" }}>moto{stats.tallerActivo > 1 ? "s" : ""} en taller</div>
+              <span style={{ fontSize: 28 }}>🔧</span>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#c2410c" }}>{stats.tallerActivo}</div>
+                <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>
+                  moto{stats.tallerActivo > 1 ? "s" : ""} en taller
                 </div>
               </div>
+              <span style={{ marginLeft: "auto", color: "#c2410c", fontSize: 20 }}>›</span>
             </div>
           )}
 
         </div>
       </div>
 
-      {/* ── Recaudo últimos 14 días ── */}
-      <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", marginTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 16 }}>Recaudo — últimos 14 días</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
+      {/* ── RECAUDO 14 DÍAS ── */}
+      <div style={{
+        background: "white", borderRadius: 16, padding: "18px 20px",
+        boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Recaudo — últimos 14 días</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
+            Total: <span style={{ fontSize: 14 }}>${fmt(totalRecaudo14)}</span>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: isMobile ? 4 : 6, height: 110 }}>
           {recaudo14.map(d => {
             const pct = Math.round((d.total / maxRecaudo) * 100);
             const altoPx = Math.max(pct, d.total > 0 ? 6 : 2);
@@ -386,16 +573,16 @@ export default function DashboardView({ onNavigate }: {
               <Fragment key={d.fecha}>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
                   {label && (
-                    <div style={{ fontSize: 10, fontWeight: 700, color: d.esHoy ? "#0284c7" : "#64748b", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: d.esHoy ? "#0284c7" : "#94a3b8", whiteSpace: "nowrap" }}>
                       {label}
                     </div>
                   )}
                   <div style={{
-                    width: "100%", borderRadius: 4,
+                    width: "100%", borderRadius: "4px 4px 0 0",
                     background: d.esHoy ? "#0284c7" : "#cbd5e1",
-                    height: `${altoPx}%`,
-                    minHeight: 3,
+                    height: `${altoPx}%`, minHeight: 3,
                     transition: "height 0.3s",
+                    boxShadow: d.esHoy ? "0 0 8px rgba(2,132,199,0.4)" : "none",
                   }} />
                   <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "capitalize" }}>{diaSemana}</div>
                 </div>
@@ -405,39 +592,53 @@ export default function DashboardView({ onNavigate }: {
         </div>
       </div>
 
-      {/* ── Top 5 contratos sin pago ── */}
+      {/* ── TOP MORA LIST ── */}
       {top5SinPago.length > 0 && (
-        <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", marginTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>Contratos con más días sin pago</div>
-          <div style={{ display: "grid", gap: 8 }}>
+        <div style={{
+          background: "white", borderRadius: 16, padding: "18px 20px",
+          boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>
+            Contratos con más días sin pago
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {top5SinPago.map(({ contrato, diasSinPago }) => {
               const clienteItem = clientes.find(cl => cl.id === contrato.cliente_id);
-              const motoItem = motos.find(m => m.id === contrato.moto_id);
-              const esCritico = diasSinPago > 7;
-              const esMora = diasSinPago >= 3 && diasSinPago <= 7;
-              const badgeBg = esCritico ? "#fee2e2" : esMora ? "#fef3c7" : "#f1f5f9";
-              const badgeColor = esCritico ? "#991b1b" : esMora ? "#92400e" : "#64748b";
-              const badgeLabel = esCritico ? "Crítico" : esMora ? "Mora" : "Gabela";
+              const motoItem    = motos.find(m => m.id === contrato.moto_id);
+              const esCritico   = diasSinPago > 7;
+              const esMora      = diasSinPago >= 3 && diasSinPago <= 7;
+              const badgeBg     = esCritico ? "#fee2e2" : esMora ? "#fef3c7" : "#f1f5f9";
+              const badgeColor  = esCritico ? "#991b1b" : esMora ? "#92400e" : "#64748b";
+              const badgeLabel  = esCritico ? "Crítico" : esMora ? "Mora" : "Gabela";
+              const borderColor = esCritico ? "#ef4444" : esMora ? "#f59e0b" : "#e2e8f0";
               return (
                 <div
                   key={contrato.id}
-                  onClick={() => onNavigate("cobros")}
+                  onClick={() => clienteItem ? onNavigate("ficha_cliente" as ViewKey, clienteItem.id) : onNavigate("cobros")}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 14px", borderRadius: 12,
-                    borderLeft: `4px solid ${esCritico ? "#ef4444" : esMora ? "#f59e0b" : "#e2e8f0"}`,
-                    background: "#f8fafc", cursor: "pointer", gap: 12,
+                    padding: "12px 16px", borderRadius: 12,
+                    borderLeft: `4px solid ${borderColor}`,
+                    background: esCritico ? "#fff8f8" : esMora ? "#fffdf5" : "#f8fafc",
+                    cursor: "pointer", gap: 12,
+                    transition: "background 0.12s",
                   }}
+                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.opacity = "0.85"}
+                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.opacity = "1"}
                 >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {motoItem ? `${motoItem.placa} · ` : ""}{clienteItem?.nombre ?? "Sin cliente"}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                      {diasSinPago} días sin pago
+                      {diasSinPago} día{diasSinPago !== 1 ? "s" : ""} sin pago
                     </div>
                   </div>
-                  <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: badgeBg, color: badgeColor, flexShrink: 0 }}>
+                  <span style={{
+                    padding: "4px 12px", borderRadius: 999,
+                    fontSize: 11, fontWeight: 700,
+                    background: badgeBg, color: badgeColor, flexShrink: 0,
+                  }}>
                     {badgeLabel}
                   </span>
                 </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -12,9 +12,7 @@ import ModalConvenio from "../components/ModalConvenio";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-type Tab = "hoy" | "semanal" | "mora" | "inmovilizar" | "caja";
-type FiltroDia = "todos" | "lunes" | "miercoles";
-type FiltroEstado = "todos" | "al-dia" | "pendiente" | "mora";
+type Tab = "diario" | "periodico" | "gabela" | "pagaron" | "caja";
 
 const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -73,7 +71,6 @@ function calcDiasConPeriodo(
   return Math.floor((new Date(hoy + "T00:00:00").getTime() - d.getTime()) / 86400000);
 }
 
-// Protocolo de mora: pasos ordenados
 function getProtocoloStep(dias: number): { paso: number; label: string; color: string; bg: string } {
   if (dias === 0) return { paso: 0, label: "Al día", color: "#166534", bg: "#dcfce7" };
   if (dias === 1) return { paso: 1, label: "Gabela — mensaje + llamada", color: "#92400e", bg: "#fef3c7" };
@@ -112,22 +109,21 @@ const PRIORIDAD: Record<string, { bg: string; color: string; border: string; lab
   media:   { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa", label: "Media" },
 };
 
-const ESTADO_COLOR: Record<string, { bg: string; color: string }> = {
-  "Al día":    { bg: "#dcfce7", color: "#166534" },
-  "Pendiente": { bg: "#fef3c7", color: "#92400e" },
-  "Mora":      { bg: "#fee2e2", color: "#991b1b" },
-};
-
 export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
   const hoy = new Date().toISOString().slice(0, 10);
   const diaSem = new Date(hoy + "T00:00:00").getDay();
   const esLunes = diaSem === 1;
   const esMiercoles = diaSem === 3;
 
-  const [tab, setTab] = useState<Tab>("hoy");
+  const [tab, setTab] = useState<Tab>("diario");
   const [busqueda, setBusqueda] = useState("");
-  const [filtroDia, setFiltroDia] = useState<FiltroDia>("todos");
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
   const [gestionId, setGestionId] = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
   const [deudaId, setDeudaId] = useState<string | null>(null);
@@ -135,6 +131,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrandoId, setCobrandoId] = useState<string | null>(null);
   const [cobrarValor, setCobrarValor] = useState("");
   const [cobrarMetodo, setCobrarMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
+  const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
   const [cobrarError, setCobrarError] = useState<string | null>(null);
   const [cerrandoCaja, setCerrandoCaja] = useState(false);
@@ -206,24 +203,22 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       });
   }, [contratos, clientes, motos, pagos, hoy, esLunes, esMiercoles]);
 
-  const filasHoy = useMemo(() => filas.filter(f => f.pagaHoy), [filas]);
-  const filasSemanal = useMemo(() =>
-    filas.filter(f => f.tipoRuta !== "diario").sort((a, b) => {
-      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const dA = norm(a.diaPago), dB = norm(b.diaPago);
-      if (dA !== dB) return dA.localeCompare(dB);
-      return a.clienteNombre.localeCompare(b.clienteNombre);
-    }), [filas]);
-  const filasMora = useMemo(() =>
-    filas.filter(f => f.diasSinPago > 0 && f.diasSinPago < 999).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
-  const filasInmov = useMemo(() =>
-    filas.filter(f => f.diasSinPago >= 3).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
+  // Tab data
+  const filasHoy = useMemo(() => filas.filter(f => f.tipoRuta === "diario"), [filas]);
+  const filasPeriodicaHoy = useMemo(() => filas.filter(f => f.tipoRuta !== "diario" && f.pagaHoy), [filas]);
+  const filasGabela = useMemo(() => filas.filter(f => f.diasSinPago === 1), [filas]);
+  const filasMora = useMemo(() => filas.filter(f => f.diasSinPago > 0 && f.diasSinPago < 999).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
+  const filasPagaronHoy = useMemo(() => filas.filter(f => f.pagadoHoyBool), [filas]);
+  const filasInmov = useMemo(() => filas.filter(f => f.diasSinPago >= 3).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
 
   const kpiRecaudado = useMemo(() => pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), [pagos, hoy]);
-  const kpiEsperado  = useMemo(() => filasHoy.reduce((s, f) => s + f.valorPactado, 0), [filasHoy]);
-  const kpiMora      = useMemo(() => filasMora.reduce((s, f) => s + f.deudaEstimada, 0), [filasMora]);
-  const pagaronHoy   = useMemo(() => filasHoy.filter(f => f.pagadoHoyBool).length, [filasHoy]);
-  const progressPct  = kpiEsperado > 0 ? Math.min(100, Math.round((kpiRecaudado / kpiEsperado) * 100)) : 0;
+  const kpiEsperadoDiario = useMemo(() => filasHoy.reduce((s, f) => s + f.valorPactado, 0), [filasHoy]);
+  const kpiEsperadoPeriodico = useMemo(() => filasPeriodicaHoy.reduce((s, f) => s + f.valorPeriodo, 0), [filasPeriodicaHoy]);
+  const kpiEsperado = kpiEsperadoDiario + kpiEsperadoPeriodico;
+  const kpiMora = useMemo(() => filasMora.reduce((s, f) => s + f.deudaEstimada, 0), [filasMora]);
+  const totalPagaronHoy = filasPagaronHoy.length;
+  const totalEsperadosHoy = filasHoy.length + filasPeriodicaHoy.length;
+  const progressPct = kpiEsperado > 0 ? Math.min(100, Math.round((kpiRecaudado / kpiEsperado) * 100)) : 0;
 
   const fechaHoy = new Date(hoy + "T00:00:00");
   const fechaDisplay = `${DIAS_LABEL[fechaHoy.getDay()]} ${fechaHoy.getDate()} de ${MESES_FULL[fechaHoy.getMonth()]} ${fechaHoy.getFullYear()}`;
@@ -262,6 +257,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (error) { setCobrarError(error); return; }
     setCobrandoId(null);
     setCobrarValor("");
+    setCobrarNota("");
   }
 
   function abrirCobrar(f: Fila) {
@@ -269,6 +265,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setCobrarValor(String(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo));
     setCobrarMetodo(esSecretaria ? "Efectivo" : "Transferencia");
     setCobrarError(null);
+    setCobrarNota("");
   }
 
   const q = busqueda.toLowerCase();
@@ -277,11 +274,12 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     return lista.filter(f => f.clienteNombre.toLowerCase().includes(q) || f.placa.toLowerCase().includes(q));
   }
 
-  // ── Botones de acción reutilizables ───────────────────────────────────────
+  // ── Acción rápida botones ────────────────────────────────────────────────────
   function AccionesBtns({ f, vertical = false }: { f: Fila; vertical?: boolean }) {
     const s: React.CSSProperties = {
-      padding: "6px 10px", borderRadius: 8, border: "none",
-      cursor: "pointer", fontSize: 12, fontWeight: 700,
+      padding: "7px 11px", borderRadius: 10, border: "none",
+      cursor: "pointer", fontSize: 13, fontWeight: 700,
+      transition: "opacity 0.1s",
     };
     return (
       <div style={{ display: "flex", flexDirection: vertical ? "column" : "row", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
@@ -294,8 +292,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago > 0 ? f.diasSinPago : 0)} style={{ ...s, background: "#dcfce7", color: "#166534" }} title="WhatsApp">💬</button>
           </>
         )}
-        <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "#fef3c7", color: "#92400e" }} title="Gestión">📋</button>
-        <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "#fee2e2", color: "#991b1b" }} title="Deuda">⚠️</button>
+        <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "#fef3c7", color: "#92400e" }} title="Registrar gestión">📋</button>
+        <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "#fee2e2", color: "#991b1b" }} title="Ver deuda">⚠️</button>
         {onNavigate && (
           <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ ...s, background: "#eff6ff", color: "#0284c7" }} title="Ver ficha cliente">👤</button>
         )}
@@ -306,42 +304,65 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     );
   }
 
-  // ── Modal cobrar ──────────────────────────────────────────────────────────
+  // ── Modal cobrar ─────────────────────────────────────────────────────────────
   const modalCobrar = cobrandoId ? (() => {
     const f = filas.find(x => x.contratoId === cobrandoId);
     if (!f) return null;
     return (
       <div
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         onClick={e => { if (e.target === e.currentTarget) setCobrandoId(null); }}
       >
-        <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-          <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 2, textTransform: "uppercase" }}>{f.clienteNombre}</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-            {f.placa !== "—" && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0284c7", background: "#eff6ff", padding: "2px 10px", borderRadius: 999 }}>🏍️ {f.placa}</span>
-            )}
-            <span style={{ fontSize: 13, color: "#64748b" }}>
-              Valor pactado: <strong>${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}</strong>
-              /{f.tipoRuta === "diario" ? "día" : "sem"}
+        <div style={{ background: "white", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 17, textTransform: "uppercase", color: "#0f172a" }}>{f.clienteNombre}</div>
+              <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                {f.placa !== "—" && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", background: "#eff6ff", padding: "2px 10px", borderRadius: 999 }}>🏍️ {f.placa}</span>
+                )}
+                <span style={{ fontSize: 12, color: "#64748b" }}>
+                  {f.tipoRuta === "diario" ? "Contrato diario" : `Contrato ${f.tipoRuta}`}
+                </span>
+              </div>
+            </div>
+            <button onClick={() => setCobrandoId(null)} style={{ background: "#f1f5f9", border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+          </div>
+
+          {/* Valor esperado */}
+          <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Valor esperado</span>
+            <span style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>
+              ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
             </span>
           </div>
+
+          {/* Alerta mora */}
           {f.diasSinPago > 0 && (
-            <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 10, background: "#fee2e2", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 700 }}>
-              ⚠️ {f.diasSinPago} días sin pago · {getProtocoloStep(f.diasSinPago).label}
+            <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 10, background: "#fee2e2", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              ⚠️
+              <div>
+                <div>{f.diasSinPago} días sin pago</div>
+                <div style={{ fontWeight: 400, fontSize: 11 }}>{getProtocoloStep(f.diasSinPago).label}</div>
+              </div>
             </div>
           )}
+
+          {/* Valor a cobrar */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Valor a cobrar</div>
             <input
               type="number"
               value={cobrarValor}
               onChange={e => setCobrarValor(e.target.value)}
-              style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 18, fontWeight: 800, textAlign: "center" }}
+              style={{ width: "100%", boxSizing: "border-box", padding: "14px", borderRadius: 14, border: "2px solid #e2e8f0", fontSize: 22, fontWeight: 900, textAlign: "center", outline: "none" }}
               autoFocus
             />
           </div>
-          <div style={{ marginBottom: 20 }}>
+
+          {/* Método */}
+          <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Método de pago</div>
             <div style={{ display: "flex", gap: 8 }}>
               {(["Efectivo", "Transferencia"] as const).map(m => (
@@ -350,34 +371,50 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   onClick={() => setCobrarMetodo(m)}
                   disabled={m === "Efectivo" && !esSecretaria}
                   style={{
-                    flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
+                    flex: 1, padding: "12px 0", borderRadius: 12, border: "2px solid",
+                    borderColor: cobrarMetodo === m ? (m === "Efectivo" ? "#16a34a" : "#2563eb") : "#e2e8f0",
                     cursor: m === "Efectivo" && !esSecretaria ? "not-allowed" : "pointer",
                     fontWeight: 700, fontSize: 13,
-                    background: cobrarMetodo === m ? (m === "Efectivo" ? "#dcfce7" : "#dbeafe") : "#f1f5f9",
+                    background: cobrarMetodo === m ? (m === "Efectivo" ? "#dcfce7" : "#dbeafe") : "white",
                     color: cobrarMetodo === m ? (m === "Efectivo" ? "#166534" : "#1d4ed8") : "#94a3b8",
                     opacity: m === "Efectivo" && !esSecretaria ? 0.4 : 1,
+                    transition: "all 0.15s",
                   }}
                 >
-                  {m === "Efectivo" ? "💵 Efectivo" : "🏦 Transfer."}
+                  {m === "Efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}
                 </button>
               ))}
             </div>
-            {!esSecretaria && <div style={{ fontSize: 11, color: "#92400e", marginTop: 6 }}>Solo la secretaria registra efectivo</div>}
+            {!esSecretaria && <div style={{ fontSize: 11, color: "#92400e", marginTop: 5, textAlign: "center" }}>Solo la secretaria registra efectivo</div>}
           </div>
+
+          {/* Nota */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Nota (opcional)</div>
+            <input
+              type="text"
+              value={cobrarNota}
+              onChange={e => setCobrarNota(e.target.value)}
+              placeholder="Observación..."
+              style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
+            />
+          </div>
+
           {cobrarError && (
             <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12, padding: "8px 12px", background: "#fee2e2", borderRadius: 8 }}>{cobrarError}</div>
           )}
+
           <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={() => setCobrandoId(null)}
-              style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#64748b" }}
+              style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#64748b" }}
             >
               Cancelar
             </button>
             <button
               onClick={() => handleCobrar(f)}
               disabled={cobrandoLoading}
-              style={{ flex: 2, padding: 12, borderRadius: 12, border: "none", background: "#0f172a", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, opacity: cobrandoLoading ? 0.7 : 1 }}
+              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: cobrandoLoading ? "#94a3b8" : "#0f172a", color: "white", cursor: cobrandoLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
             >
               {cobrandoLoading ? "Registrando..." : "✅ Confirmar pago"}
             </button>
@@ -387,494 +424,350 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     );
   })() : null;
 
-  // ── Tarjeta "Hoy" ────────────────────────────────────────────────────────
-  function TarjetaHoy({ f }: { f: Fila }) {
+  // ── Tarjeta cliente ──────────────────────────────────────────────────────────
+  function TarjetaCliente({ f, showDiasPago = false }: { f: Fila; showDiasPago?: boolean }) {
     const prot = getProtocoloStep(f.diasSinPago);
+    const borderColor = f.pagadoHoyBool ? "#22c55e" : f.diasSinPago > 0 ? prot.color : "#e2e8f0";
+
     return (
       <div style={{
-        background: "white", borderRadius: 16, padding: "14px 16px",
-        boxShadow: "0 2px 12px rgba(15,23,42,0.07)",
-        borderLeft: f.pagadoHoyBool ? "4px solid #22c55e" : f.diasSinPago > 0 ? `4px solid ${prot.color}` : "4px solid #e2e8f0",
+        background: "white", borderRadius: 18, padding: isMobile ? "14px" : "16px 20px",
+        boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
+        borderLeft: `4px solid ${borderColor}`,
+        transition: "box-shadow 0.15s",
       }}>
-        {/* Fila superior */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+          {/* Info principal */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {/* Nombre + placa */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
               {onNavigate && f.motoId
                 ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</button>
-                : <span style={{ fontWeight: 800, fontSize: 14 }}>{f.placa}</span>
+                : <span style={{ fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</span>
               }
-              <span style={{ fontSize: 12, color: "#64748b" }}>·</span>
+              <span style={{ fontSize: 12, color: "#cbd5e1" }}>·</span>
               {onNavigate
                 ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                : <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{f.clienteNombre}</span>
+                : <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</span>
               }
-              {f.pagadoHoyBool
-                ? <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✅ Pagado</span>
-                : <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>⏳ Pendiente</span>
-              }
+              {/* Estado badge */}
+              {f.pagadoHoyBool ? (
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✅ Pagado</span>
+              ) : f.diasSinPago > 0 ? (
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: prot.bg, color: prot.color }}>
+                  {f.diasSinPago}d · {prot.label}
+                </span>
+              ) : (
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>⏳ Pendiente</span>
+              )}
             </div>
-            {f.marca && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{f.marca}</div>}
 
-            {/* Protocolo si tiene días sin pago */}
-            {f.diasSinPago > 0 && (
-              <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 8, background: prot.bg, display: "inline-block", fontSize: 11, fontWeight: 700, color: prot.color }}>
-                ⚡ Paso {prot.paso}: {prot.label} ({f.diasSinPago}d sin pago)
-              </div>
-            )}
+            {/* Marca + dia pago */}
+            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>
+              {f.marca && <span>{f.marca}</span>}
+              {showDiasPago && <span style={{ marginLeft: f.marca ? 8 : 0, color: "#0284c7", fontWeight: 600 }}>· Pago: {f.diaPago}</span>}
+            </div>
 
-            <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
+            {/* Montos */}
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>
                   ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
-                  <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 400, color: "#94a3b8", marginLeft: 3 }}>
                     /{f.tipoRuta === "diario" ? "día" : "sem"}
                   </span>
                 </div>
-                <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>valor pactado</div>
+                {f.tipoRuta === "diario" && (
+                  <div style={{ fontSize: 11, color: "#64748b" }}>
+                    <span style={{ color: "#166534", fontWeight: 700 }}>${fmt(f.tarifaDiaria)}</span> tarifa
+                    <span style={{ color: "#64748b" }}> + </span>
+                    <span style={{ color: "#0284c7", fontWeight: 700 }}>${fmt(f.ahorroDiario)}</span> ahorro
+                  </div>
+                )}
               </div>
               {f.pagadoHoyBool && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>
+                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "#166534" }}>${fmt(f.pagadoHoy)}</div>
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>pagado hoy</div>
                 </div>
               )}
               {f.pagadoHasta && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>
+                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{fmtFechaCarta(f.pagadoHasta)}</div>
                   <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>pagado hasta</div>
                 </div>
               )}
-              {f.tipoRuta === "diario" && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>
-                    <span style={{ color: "#166534" }}>${fmt(f.tarifaDiaria)}</span>
-                    <span style={{ color: "#64748b" }}> + </span>
-                    <span style={{ color: "#0284c7" }}>${fmt(f.ahorroDiario)} ahorro</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>desglose</div>
+              {f.diasSinPago > 0 && f.deudaEstimada > 0 && (
+                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b" }}>${fmt(f.deudaEstimada)}</div>
+                  <div style={{ fontSize: 10, color: "#991b1b", fontWeight: 700, textTransform: "uppercase" }}>deuda est.</div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Botones acción lado derecho */}
+          {/* Acciones */}
           <AccionesBtns f={f} vertical />
         </div>
       </div>
     );
   }
 
-  // ── Tab "Hoy" contenido ───────────────────────────────────────────────────
-  const listaHoy = filtrar(filasHoy);
-  const pendientesHoy = listaHoy.filter(f => !f.pagadoHoyBool).length;
-  const pagadosHoyCount = listaHoy.filter(f => f.pagadoHoyBool).length;
+  // ── Tabs config ─────────────────────────────────────────────────────────────
+  const tabsDef: { key: Tab; label: string; count: number; color?: string; bg?: string }[] = [
+    { key: "diario",   label: "Diario",    count: filasHoy.length,          color: "#0284c7", bg: "#eff6ff" },
+    { key: "periodico",label: "Periódico", count: filasPeriodicaHoy.length,  color: "#7c3aed", bg: "#f5f3ff" },
+    { key: "gabela",   label: "Gabela",    count: filasGabela.length,        color: "#92400e", bg: "#fef3c7" },
+    { key: "pagaron",  label: "Ya pagaron",count: totalPagaronHoy,           color: "#166534", bg: "#dcfce7" },
+    { key: "caja",     label: "Caja",      count: -1 },
+  ];
 
   return (
-    <div style={{ paddingBottom: 32 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 20, margin: 0, fontWeight: 800 }}>Cobro Diario</h2>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{fechaDisplay}</div>
+    <div style={{ paddingBottom: 40 }}>
+
+      {/* ── Hero ── */}
+      <div style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+        borderRadius: 20, padding: isMobile ? "20px 18px" : "24px 28px",
+        marginBottom: 18, position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", right: -30, top: -30, width: 160, height: 160, borderRadius: "50%", background: "rgba(2,132,199,0.15)", pointerEvents: "none" }} />
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4, textTransform: "capitalize" }}>
+          Cobro del {fechaDisplay}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Total recaudado hoy</div>
+            <div style={{ fontSize: isMobile ? 34 : 44, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>${fmt(kpiRecaudado)}</div>
+          </div>
+          <div style={{ paddingBottom: 4 }}>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Meta estimada</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#38bdf8" }}>${fmt(kpiEsperado)}</div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        {kpiEsperado > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11 }}>
+              <span style={{ color: "#94a3b8" }}>{totalPagaronHoy} de {totalEsperadosHoy} clientes pagaron</span>
+              <span style={{ color: progressPct >= 100 ? "#34d399" : "#38bdf8", fontWeight: 700 }}>{progressPct}%</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.15)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 999,
+                width: `${progressPct}%`,
+                background: progressPct >= 100 ? "#22c55e" : progressPct >= 60 ? "#38bdf8" : "#f59e0b",
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* KPI cards */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 120, background: "#dcfce7", borderRadius: 14, padding: "12px 14px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>Recaudado hoy</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#166534" }}>${fmt(kpiRecaudado)}</div>
-          <div style={{ fontSize: 11, color: "#166534", marginTop: 2, opacity: 0.8 }}>{pagaronHoy} de {filasHoy.length} pagaron</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 120, background: "#dbeafe", borderRadius: 14, padding: "12px 14px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>Esperado hoy</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#1d4ed8" }}>${fmt(kpiEsperado)}</div>
-          <div style={{ fontSize: 11, color: "#1d4ed8", marginTop: 2, opacity: 0.8 }}>{pendientesHoy} pendientes</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 120, background: "#fee2e2", borderRadius: 14, padding: "12px 14px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#991b1b", textTransform: "uppercase" }}>Cartera mora</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>${fmt(kpiMora)}</div>
-          <div style={{ fontSize: 11, color: "#991b1b", marginTop: 2, opacity: 0.8 }}>{filasMora.length} contratos</div>
-        </div>
-      </div>
-
-      {/* Barra de progreso recaudo */}
-      {kpiEsperado > 0 && (
-        <div style={{ marginBottom: 14, background: "white", borderRadius: 14, padding: "12px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
-            <span style={{ fontWeight: 700, color: "#334155" }}>Progreso del día</span>
-            <span style={{ fontWeight: 800, color: progressPct >= 100 ? "#166534" : "#0284c7" }}>{progressPct}%</span>
+      {/* ── KPI cards ── */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: isMobile ? "nowrap" : "wrap", overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0 }}>
+        {[
+          { label: "Recaudado", value: `$${fmt(kpiRecaudado)}`, sub: `${totalPagaronHoy} pagos`, color: "#166534", bg: "#dcfce7" },
+          { label: "Esperado", value: `$${fmt(kpiEsperado)}`, sub: `${totalEsperadosHoy - totalPagaronHoy} pendientes`, color: "#1d4ed8", bg: "#dbeafe" },
+          { label: "En mora", value: `$${fmt(kpiMora)}`, sub: `${filasMora.length} contratos`, color: "#991b1b", bg: "#fee2e2" },
+          { label: "En gabela", value: `${filasGabela.length}`, sub: "día de gracia", color: "#92400e", bg: "#fef3c7" },
+        ].map(kpi => (
+          <div key={kpi.label} style={{ flex: isMobile ? "0 0 auto" : 1, minWidth: isMobile ? 130 : 110, background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color, marginTop: 2 }}>{kpi.value}</div>
+            <div style={{ fontSize: 11, color: kpi.color, opacity: 0.75, marginTop: 1 }}>{kpi.sub}</div>
           </div>
-          <div style={{ height: 8, borderRadius: 999, background: "#f1f5f9", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 999,
-              width: `${progressPct}%`,
-              background: progressPct >= 100 ? "#22c55e" : progressPct >= 60 ? "#0284c7" : "#f59e0b",
-              transition: "width 0.5s ease",
-            }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: "#94a3b8" }}>
-            <span>${fmt(kpiRecaudado)} recaudado</span>
-            <span>Falta ${fmt(Math.max(0, kpiEsperado - kpiRecaudado))}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "white", borderRadius: 12, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", flexWrap: "wrap" }}>
-        {([
-          { key: "hoy",         label: `Hoy (${filasHoy.length})` },
-          { key: "semanal",     label: `Cartera (${filasSemanal.length})` },
-          { key: "mora",        label: `Mora (${filasMora.length})` },
-          { key: "inmovilizar", label: `Inmovilizar (${filasInmov.length})` },
-          { key: "caja",        label: "🏦 Caja" },
-        ] as { key: Tab; label: string }[]).map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer",
-              fontSize: 11, fontWeight: 700,
-              background: tab === t.key ? "#0f172a" : "transparent",
-              color: tab === t.key ? "white" : "#64748b",
-            }}
-          >
-            {t.label}
-          </button>
         ))}
       </div>
 
-      {/* Buscador */}
-      <input
-        value={busqueda}
-        onChange={e => setBusqueda(e.target.value)}
-        placeholder="Buscar cliente o placa..."
-        style={{ width: "100%", boxSizing: "border-box", padding: "9px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13, marginBottom: 12 }}
-      />
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", gap: 3, marginBottom: 14, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", overflowX: "auto" }}>
+        {tabsDef.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                flex: "0 0 auto", padding: isMobile ? "7px 10px" : "8px 14px",
+                borderRadius: 10, border: "none", cursor: "pointer",
+                fontSize: isMobile ? 11 : 12, fontWeight: 700,
+                background: isActive ? (t.bg ?? "#0f172a") : "transparent",
+                color: isActive ? (t.color ?? "white") : "#64748b",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s",
+                position: "relative" as const,
+              }}
+            >
+              {t.key === "caja" ? "🏦 Caja" : `${t.label}${t.count >= 0 ? ` (${t.count})` : ""}`}
+              {t.count > 0 && t.key === "gabela" && !isActive && (
+                <span style={{ position: "absolute", top: 4, right: 4, width: 7, height: 7, borderRadius: "50%", background: "#f59e0b" }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* ── Tab Hoy ── */}
-      {tab === "hoy" && (
+      {/* ── Buscador ── */}
+      {tab !== "caja" && (
+        <div style={{ position: "relative", marginBottom: 14 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8" }}>🔍</span>
+          <input
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar cliente o placa..."
+            style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px 10px 36px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13, background: "white" }}
+          />
+        </div>
+      )}
+
+      {/* ── Tab: Diario ── */}
+      {tab === "diario" && (
         <div>
-          {/* Subresumen */}
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
             <span style={{ padding: "4px 12px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700 }}>
-              ✅ {pagadosHoyCount} pagaron
+              ✅ {filasHoy.filter(f => f.pagadoHoyBool).length} pagaron
             </span>
             <span style={{ padding: "4px 12px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>
-              ⏳ {pendientesHoy} pendientes
+              ⏳ {filasHoy.filter(f => !f.pagadoHoyBool).length} pendientes
             </span>
-            {listaHoy.filter(f => f.diasSinPago > 0).length > 0 && (
+            {filasHoy.filter(f => f.diasSinPago > 0).length > 0 && (
               <span style={{ padding: "4px 12px", borderRadius: 999, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700 }}>
-                🔴 {listaHoy.filter(f => f.diasSinPago > 0).length} con mora
+                🔴 {filasHoy.filter(f => f.diasSinPago > 0).length} con mora acumulada
               </span>
             )}
           </div>
           <div style={{ display: "grid", gap: 10 }}>
-            {listaHoy.length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px 24px", background: "white", borderRadius: 16 }}>
-                <div style={{ fontSize: 32 }}>📅</div>
-                <div style={{ fontWeight: 700, marginTop: 8 }}>Sin cobros programados para hoy</div>
-              </div>
-            )}
-            {/* Primero pendientes, luego pagados */}
-            {[...listaHoy.filter(f => !f.pagadoHoyBool), ...listaHoy.filter(f => f.pagadoHoyBool)].map(f => (
-              <TarjetaHoy key={f.contratoId} f={f} />
+            {filtrar([...filasHoy.filter(f => !f.pagadoHoyBool), ...filasHoy.filter(f => f.pagadoHoyBool)]).map(f => (
+              <TarjetaCliente key={f.contratoId} f={f} />
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Tab Cartera Semanal ── */}
-      {tab === "semanal" && (() => {
-        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-        let lista = filtrar(filasSemanal);
-        if (filtroDia !== "todos") lista = lista.filter(f => norm(f.diaPago) === filtroDia);
-        if (filtroEstado !== "todos") lista = lista.filter(f =>
-          filtroEstado === "al-dia" ? f.estadoLabel === "Al día" :
-          filtroEstado === "pendiente" ? f.estadoLabel === "Pendiente" :
-          f.estadoLabel === "Mora"
-        );
-        const lunes     = lista.filter(f => norm(f.diaPago) === "lunes");
-        const miercoles = lista.filter(f => norm(f.diaPago) === "miercoles");
-        const otros     = lista.filter(f => norm(f.diaPago) !== "lunes" && norm(f.diaPago) !== "miercoles");
-        const grupos = [
-          { label: `Lunes (${lunes.length})`,      filas: lunes,     color: "#1d4ed8", bg: "#dbeafe", pagaHoyGrupo: esLunes },
-          { label: `Miércoles (${miercoles.length})`, filas: miercoles, color: "#7c3aed", bg: "#ede9fe", pagaHoyGrupo: esMiercoles },
-          ...(otros.length > 0 ? [{ label: `Otro (${otros.length})`, filas: otros, color: "#334155", bg: "#f1f5f9", pagaHoyGrupo: false }] : []),
-        ].filter(g => g.filas.length > 0);
-
-        return (
-          <div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              {(["todos","lunes","miercoles"] as FiltroDia[]).map(d => (
-                <button key={d} onClick={() => setFiltroDia(d)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: filtroDia === d ? "#0f172a" : "#f1f5f9", color: filtroDia === d ? "white" : "#64748b" }}>
-                  {d === "todos" ? "Todos" : d === "lunes" ? "🔵 Lunes" : "🟣 Miércoles"}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-              {(["todos","al-dia","pendiente","mora"] as FiltroEstado[]).map(e => (
-                <button key={e} onClick={() => setFiltroEstado(e)} style={{ padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: filtroEstado === e ? "#0f172a" : "#f1f5f9", color: filtroEstado === e ? "white" : "#64748b" }}>
-                  {e === "todos" ? `Todos (${filasSemanal.length})` :
-                   e === "al-dia" ? `✅ Al día (${filasSemanal.filter(f=>f.estadoLabel==="Al día").length})` :
-                   e === "pendiente" ? `⏳ Pendiente (${filasSemanal.filter(f=>f.estadoLabel==="Pendiente").length})` :
-                   `🔴 Mora (${filasSemanal.filter(f=>f.estadoLabel==="Mora").length})`}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "grid", gap: 16 }}>
-              {grupos.map(g => (
-                <div key={g.label}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <div style={{ padding: "4px 12px", borderRadius: 999, background: g.bg, color: g.color, fontWeight: 800, fontSize: 13 }}>{g.label}</div>
-                    {g.pagaHoyGrupo && <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 999 }}>⚡ Paga HOY</span>}
-                  </div>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {g.filas.map(f => {
-                      const ec = ESTADO_COLOR[f.estadoLabel] ?? ESTADO_COLOR["Mora"];
-                      const prot = getProtocoloStep(f.diasSinPago);
-                      return (
-                        <div key={f.contratoId} style={{ background: "white", borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", borderLeft: `4px solid ${ec.color}` }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                                {onNavigate && f.motoId
-                                  ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 13, color: "#0284c7" }}>{f.placa}</button>
-                                  : <span style={{ fontWeight: 800, fontSize: 13 }}>{f.placa}</span>
-                                }
-                                <span style={{ fontSize: 12, color: "#64748b" }}>·</span>
-                                {onNavigate
-                                  ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                                  : <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{f.clienteNombre}</span>
-                                }
-                                <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: ec.bg, color: ec.color }}>{f.estadoLabel}</span>
-                                {f.pagadoHoyBool && g.pagaHoyGrupo && <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✅ Pagó hoy</span>}
-                              </div>
-                              {f.diasSinPago > 0 && (
-                                <div style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: prot.color }}>
-                                  ⚡ {prot.label} · {f.diasSinPago}d sin pago
-                                </div>
-                              )}
-                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                                <span>${fmt(f.valorPeriodo)}/sem</span>
-                                {f.pagadoHasta && <span>Hasta: <strong>{fmtFechaCarta(f.pagadoHasta)}</strong></span>}
-                                {f.diasSinPago > 0 && f.deudaEstimada > 0 && (
-                                  <span style={{ color: "#dc2626", fontWeight: 700 }}>Deuda ~${fmt(f.deudaEstimada)}</span>
-                                )}
-                              </div>
-                            </div>
-                            <AccionesBtns f={f} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {lista.length === 0 && (
-                <div style={{ textAlign: "center", padding: "40px 24px", background: "white", borderRadius: 16 }}>
-                  <div style={{ fontSize: 32 }}>🔍</div>
-                  <div style={{ fontWeight: 700, marginTop: 8 }}>Sin resultados</div>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Tab Mora ── */}
-      {tab === "mora" && (
-        <div>
-          {/* Leyenda protocolo */}
-          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", fontSize: 12 }}>
-            <div style={{ fontWeight: 700, color: "#334155", marginBottom: 6 }}>Protocolo de mora:</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {[
-                { label: "1d · Gabela", color: "#92400e", bg: "#fef3c7" },
-                { label: "2d · Apagado remoto", color: "#c2410c", bg: "#fff7ed" },
-                { label: "3-4d · Inmovilizar", color: "#991b1b", bg: "#fee2e2" },
-                { label: "5d+ · Recolección urgente", color: "#7f1d1d", bg: "#fca5a5" },
-              ].map(p => (
-                <span key={p.label} style={{ padding: "3px 10px", borderRadius: 999, background: p.bg, color: p.color, fontSize: 11, fontWeight: 700 }}>{p.label}</span>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gap: 10 }}>
-            {filtrar(filasMora).length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px 24px", background: "white", borderRadius: 16 }}>
-                <div style={{ fontSize: 32 }}>✅</div>
-                <div style={{ fontWeight: 700, marginTop: 8 }}>Sin contratos en mora</div>
+            {filtrar(filasHoy).length === 0 && (
+              <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+                <div style={{ fontSize: 36 }}>📅</div>
+                <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>Sin contratos diarios activos</div>
               </div>
             )}
-            {filtrar(filasMora).map(f => {
-              const prot = getProtocoloStep(f.diasSinPago);
-              return (
-                <div key={f.contratoId} style={{ background: "white", borderRadius: 16, padding: "14px 16px", boxShadow: "0 2px 12px rgba(15,23,42,0.07)", borderLeft: `4px solid ${prot.color}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        {onNavigate && f.motoId
-                          ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</button>
-                          : <span style={{ fontWeight: 800, fontSize: 14 }}>{f.placa}</span>
-                        }
-                        <span style={{ fontSize: 12, color: "#64748b" }}>·</span>
-                        {onNavigate
-                          ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                          : <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{f.clienteNombre}</span>
-                        }
-                        {f.clienteTel && <span style={{ fontSize: 12, color: "#64748b" }}>· {f.clienteTel}</span>}
-                      </div>
-                      {f.marca && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{f.marca}</div>}
-
-                      {/* Protocolo actual */}
-                      <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 10, background: prot.bg, display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 18, fontWeight: 900, color: prot.color }}>{f.diasSinPago === 999 ? "∞" : f.diasSinPago}</span>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: prot.color }}>Paso {prot.paso}: {prot.label}</div>
-                        </div>
-                      </div>
-
-                      <div style={{ marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>${fmt(f.deudaEstimada)}</div>
-                          <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>deuda estimada</div>
-                        </div>
-                        {f.pagadoHasta && (
-                          <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 12 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700 }}>{fmtFechaCarta(f.pagadoHasta)}</div>
-                            <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>último pago hasta</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <AccionesBtns f={f} vertical />
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
 
-      {/* ── Tab Inmovilizar ── */}
-      {tab === "inmovilizar" && (
+      {/* ── Tab: Periódico ── */}
+      {tab === "periodico" && (
         <div>
-          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", display: "flex", gap: 8 }}>
-            <span>📡</span>
-            <span><strong>GPS no conectado.</strong> Sirena y apagado remoto disponibles al integrar la plataforma GPS. Solo usar con vehículo <strong>detenido</strong>. Máximo 1 hora apagado.</span>
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {filtrar(filasInmov).length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px 24px", background: "white", borderRadius: 16 }}>
-                <div style={{ fontSize: 32 }}>✅</div>
-                <div style={{ fontWeight: 700, marginTop: 8 }}>Sin motos para inmovilizar</div>
+          {filasPeriodicaHoy.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+              <div style={{ fontSize: 36 }}>📋</div>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>
+                {esLunes || esMiercoles ? "Sin contratos periódicos para hoy" : "Hoy no es día de pago periódico"}
               </div>
-            )}
-            {filtrar(filasInmov).map(f => {
-              const s = PRIORIDAD[f.prioridad];
-              return (
-                <div key={f.contratoId} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 16, padding: "14px 16px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        {onNavigate && f.motoId
-                          ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</button>
-                          : <span style={{ fontWeight: 800, fontSize: 14 }}>{f.placa}</span>
-                        }
-                        <span style={{ fontSize: 12, color: "#64748b" }}>·</span>
-                        {onNavigate
-                          ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                          : <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{f.clienteNombre}</span>
-                        }
-                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.border, color: s.color }}>{s.label}</span>
-                      </div>
-                      {f.marca && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{f.marca}</div>}
-                      <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        <div>
-                          <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{f.diasSinPago === 999 ? "∞" : f.diasSinPago}</div>
-                          <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
-                        </div>
-                        <div style={{ borderLeft: `1px solid ${s.border}`, paddingLeft: 12 }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>${fmt(f.deudaEstimada)}</div>
-                          <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>deuda estimada</div>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 10, height: 5, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, (f.diasSinPago / 14) * 100)}%`, background: f.prioridad === "critica" ? "#ef4444" : f.prioridad === "alta" ? "#f59e0b" : "#f97316" }} />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
-                      <button onClick={() => abrirCobrar(f)} style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#0f172a", color: "white" }}>💳</button>
-                      {f.clienteTel && (
-                        <>
-                          <button onClick={() => abrirLlamada(f.clienteTel)} style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}>📞</button>
-                          <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>💬</button>
-                        </>
-                      )}
-                      <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>📋</button>
-                      {onNavigate && (
-                        <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤</button>
-                      )}
-                      <button disabled title="Requiere GPS" style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}>🚨</button>
-                      <button disabled title="Requiere GPS" style={{ padding: "6px 10px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}>🔴</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Los pagos periódicos son solo lunes o miércoles</div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ marginBottom: 10, padding: "8px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0284c7", fontWeight: 600 }}>
+                ⚡ {esLunes ? "Lunes" : "Miércoles"} — día de pago periódico. {filasPeriodicaHoy.length} contratos.
+              </div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {filtrar([...filasPeriodicaHoy.filter(f => !f.pagadoHoyBool), ...filasPeriodicaHoy.filter(f => f.pagadoHoyBool)]).map(f => (
+                  <TarjetaCliente key={f.contratoId} f={f} showDiasPago />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Tab Caja ── */}
+      {/* ── Tab: Gabela ── */}
+      {tab === "gabela" && (
+        <div>
+          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+            <strong>Día de gabela:</strong> Se envía mensaje + llamada. Sirena solo con vehículo detenido en GPS. No aplicar apagado remoto aún.
+          </div>
+          {filasGabela.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+              <div style={{ fontSize: 36 }}>✅</div>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "#166534" }}>Sin clientes en gabela hoy</div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {filtrar(filasGabela).map(f => (
+                <TarjetaCliente key={f.contratoId} f={f} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Ya pagaron ── */}
+      {tab === "pagaron" && (
+        <div>
+          <div style={{ marginBottom: 12, fontSize: 13, color: "#64748b" }}>
+            {totalPagaronHoy} pagos confirmados hoy · ${fmt(kpiRecaudado)} total
+          </div>
+          {filasPagaronHoy.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+              <div style={{ fontSize: 36 }}>💳</div>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>Aún no hay pagos registrados hoy</div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {filtrar(filasPagaronHoy).map(f => (
+                <TarjetaCliente key={f.contratoId} f={f} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: Caja ── */}
       {tab === "caja" && (() => {
         const pagosHoy = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado");
         const efectivoHoy = pagosHoy.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
         const transHoy = pagosHoy.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
         const totalHoy = efectivoHoy + transHoy;
+        const cajaCerrada = cajaDia(hoy);
+
         return (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gap: 14 }}>
+            {/* Resumen */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 140, background: "#dcfce7", borderRadius: 14, padding: "14px 16px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>💵 Efectivo</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#166534" }}>${fmt(efectivoHoy)}</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 140, background: "#dbeafe", borderRadius: 14, padding: "14px 16px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>🏦 Transferencias</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#1d4ed8" }}>${fmt(transHoy)}</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 140, background: "#0f172a", borderRadius: 14, padding: "14px 16px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Total del día</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "white" }}>${fmt(totalHoy)}</div>
-              </div>
+              {[
+                { label: "💵 Efectivo", value: efectivoHoy, color: "#166534", bg: "#dcfce7" },
+                { label: "🏦 Transferencias", value: transHoy, color: "#1d4ed8", bg: "#dbeafe" },
+                { label: "Total del día", value: totalHoy, color: "white", bg: "#0f172a" },
+              ].map(c => (
+                <div key={c.label} style={{ flex: 1, minWidth: 140, background: c.bg, borderRadius: 14, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: c.color, textTransform: "uppercase", opacity: c.label === "Total del día" ? 0.7 : 1 }}>{c.label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: c.color }}>${fmt(c.value)}</div>
+                </div>
+              ))}
             </div>
 
-            <div style={{ background: "white", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9", fontWeight: 800, fontSize: 14 }}>
-                Pagos recibidos hoy — {pagosHoy.length} registros
+            {/* Lista pagos */}
+            <div style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+              <div style={{ padding: "13px 18px", borderBottom: "1px solid #f1f5f9", fontWeight: 800, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Pagos recibidos hoy</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{pagosHoy.length} registros</span>
               </div>
               {pagosHoy.length === 0 && (
-                <div style={{ padding: "32px 16px", textAlign: "center", color: "#64748b", fontSize: 14 }}>Sin pagos registrados hoy</div>
+                <div style={{ padding: "32px 16px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Sin pagos registrados hoy</div>
               )}
               {pagosHoy.map((p, i) => {
                 const c = contratos.find(x => x.id === p.contrato_id);
                 const cl = clientes.find(x => x.id === c?.cliente_id);
                 const m = motos.find(x => x.id === c?.moto_id);
                 return (
-                  <div key={p.id ?? i} style={{ padding: "10px 16px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
-                        {m?.placa ?? "—"} · {cl?.nombre ?? "—"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#64748b" }}>{p.metodo}</div>
+                  <div key={p.id ?? i} style={{ padding: "11px 18px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{m?.placa ?? "—"} · {cl?.nombre ?? "—"}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{p.metodo}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: p.metodo === "Efectivo" ? "#166534" : "#1d4ed8" }}>${fmt(p.valor)}</div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: p.metodo === "Efectivo" ? "#166534" : "#1d4ed8" }}>${fmt(p.valor)}</div>
                       {onNavigate && cl && (
-                        <button onClick={() => onNavigate("ficha_cliente", cl.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>
-                          Ver ficha
-                        </button>
+                        <button onClick={() => onNavigate("ficha_cliente", cl.id)} style={{ padding: "3px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>Ver ficha</button>
                       )}
                     </div>
                   </div>
@@ -882,13 +775,12 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               })}
             </div>
 
+            {/* Cierre de caja */}
             {!esSecretaria ? (
-              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>
-                Solo la secretaria puede cerrar la caja.
-              </div>
-            ) : cajaDia(hoy) ? (
-              <div style={{ padding: "12px 14px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534" }}>
-                ✅ Caja cerrada — ${fmt(cajaDia(hoy)!.total)}
+              <div style={{ padding: "12px 16px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>Solo la secretaria puede cerrar la caja.</div>
+            ) : cajaCerrada ? (
+              <div style={{ padding: "14px 18px", borderRadius: 14, background: "#dcfce7", border: "1px solid #86efac", fontSize: 14, fontWeight: 700, color: "#166534" }}>
+                ✅ Caja cerrada — ${fmt(cajaCerrada.total)}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -897,7 +789,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   onChange={e => setNotasCaja(e.target.value)}
                   placeholder="Notas del cierre (opcional)..."
                   rows={2}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }}
                 />
                 {msgCaja && (
                   <div style={{ padding: "8px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700, background: msgCaja.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCaja.startsWith("Error") ? "#991b1b" : "#166534" }}>
@@ -909,26 +801,37 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   onClick={async () => {
                     setCerrandoCaja(true);
                     setMsgCaja(null);
-                    const detalle = pagosHoy.map(p => {
+                    const pagosHoyLocal = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado");
+                    const detalle = pagosHoyLocal.map(p => {
                       const c = contratos.find(x => x.id === p.contrato_id);
                       const cl = clientes.find(x => x.id === c?.cliente_id);
                       const m = motos.find(x => x.id === c?.moto_id);
                       return { placa: m?.placa ?? "—", nombre: cl?.nombre ?? "—", valor: p.valor, metodo: p.metodo };
                     });
+                    const ef = pagosHoyLocal.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
+                    const tr = pagosHoyLocal.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
+                    const tot = ef + tr;
                     const { error } = await cerrarCaja({
                       fecha: hoy,
-                      efectivo: efectivoHoy,
-                      transferencias: transHoy,
-                      total: totalHoy,
+                      efectivo: ef,
+                      transferencias: tr,
+                      total: tot,
                       detalle,
                       cerradoPor: profile?.id ?? null,
                       notas: notasCaja.trim() || undefined,
                     });
                     setCerrandoCaja(false);
                     if (error) setMsgCaja(`Error: ${error}`);
-                    else { setMsgCaja(`Caja cerrada — $${fmt(totalHoy)}`); setNotasCaja(""); }
+                    else { setMsgCaja(`Caja cerrada — $${fmt(tot)}`); setNotasCaja(""); }
                   }}
-                  style={{ padding: "14px", borderRadius: 14, border: "none", cursor: cerrandoCaja || totalHoy === 0 ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 15, background: totalHoy === 0 ? "#e2e8f0" : "#166534", color: totalHoy === 0 ? "#94a3b8" : "white", opacity: cerrandoCaja ? 0.7 : 1 }}
+                  style={{
+                    padding: "15px", borderRadius: 14, border: "none",
+                    cursor: cerrandoCaja || totalHoy === 0 ? "not-allowed" : "pointer",
+                    fontWeight: 800, fontSize: 15,
+                    background: totalHoy === 0 ? "#e2e8f0" : "#166534",
+                    color: totalHoy === 0 ? "#94a3b8" : "white",
+                    opacity: cerrandoCaja ? 0.7 : 1,
+                  }}
                 >
                   {cerrandoCaja ? "Cerrando..." : `✅ Cerrar caja del día — $${fmt(totalHoy)}`}
                 </button>
@@ -937,6 +840,49 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           </div>
         );
       })()}
+
+      {/* ── Sección mora / inmovilizar (siempre visible bajo cualquier tab si hay) ── */}
+      {tab !== "caja" && filasInmov.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#991b1b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+            🚨 Requieren inmovilización ({filasInmov.length})
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {filtrar(filasInmov).slice(0, 5).map(f => {
+              const s = PRIORIDAD[f.prioridad];
+              return (
+                <div key={f.contratoId} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 16, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: "#0284c7" }}>{f.placa}</span>
+                        <span style={{ fontSize: 12, color: "#94a3b8" }}>·</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{f.clienteNombre}</span>
+                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.border, color: s.color }}>{s.label} · {f.diasSinPago}d</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: s.color, fontWeight: 700, marginTop: 4 }}>
+                        Deuda: ${fmt(f.deudaEstimada)} · {getProtocoloStep(f.diasSinPago).label}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                      <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#0f172a", color: "white" }}>💳</button>
+                      {f.clienteTel && (
+                        <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>💬</button>
+                      )}
+                      <button disabled title="Requiere GPS" style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "not-allowed", fontSize: 13, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}>🚨</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {filasInmov.length > 5 && (
+              <div style={{ textAlign: "center", fontSize: 12, color: "#64748b", padding: "8px 0" }}>
+                +{filasInmov.length - 5} más en inmovilización
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {modalCobrar}
       {gestionId && <ModalGestion contratoId={gestionId} clienteNombre={gestionNombre} onClose={() => setGestionId(null)} />}

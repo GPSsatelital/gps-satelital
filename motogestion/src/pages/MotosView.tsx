@@ -125,7 +125,7 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
     return list;
   }, [motos, query, filtroEstado]);
 
-  const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? filtered[0] ?? null;
+  const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
   function abrirEdicion() {
     if (!selectedMoto) return;
@@ -293,51 +293,36 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
 
       {error && <div style={{ marginTop: 12, color: "#991b1b" }}>Error cargando motos: {error}</div>}
 
-      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, marginTop: 24 }}>
-        <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
-          <div style={{ marginBottom: 16 }}>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
-          </div>
-
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: 600, borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8fafc" }}>
-                  <th style={thStyle}>Placa</th>
-                  <th style={thStyle}>Grupo</th>
-                  <th style={thStyle}>Moto</th>
-                  <th style={thStyle}>Estado</th>
-                  <th style={thStyle}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((moto) => (
-                  <tr key={moto.id} style={{ background: selectedId === moto.id ? "#eff6ff" : "white" }}>
-                    <td style={tdStyle}>{moto.placa}</td>
-                    <td style={tdStyle}>{moto.grupo}</td>
-                    <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
-                    <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
-                    <td style={tdStyle}>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => setSelectedId(moto.id)} style={{ border: "none", background: "transparent", color: "#0284c7", fontWeight: 700, cursor: "pointer" }}>
-                          Ver detalle
-                        </button>
-                        {onNavigate && (
-                          <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ border: "none", background: "#eff6ff", color: "#0284c7", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                            Ficha →
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas todavía.</div>}
-          </div>
+      {/* En móvil: lista de tarjetas ─ toca una para ver detalle */}
+      {isMobile && !selectedId ? (
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
+          {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas.</div>}
+          {filtered.map((moto) => {
+            const sc = getStatusColors(moto.estado);
+            return (
+              <div key={moto.id} onClick={() => setSelectedId(moto.id)}
+                style={{ background: "white", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: "1px solid #e2e8f0" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>{moto.placa}</div>
+                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                </div>
+                <span style={{ display: "inline-block", padding: "5px 10px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+                  {ESTADO_LABEL[moto.estado]}
+                </span>
+                <span style={{ color: "#cbd5e1", fontSize: 20 }}>›</span>
+              </div>
+            );
+          })}
         </div>
-
-        <div style={{ ...card, flex: isMobile ? "1 1 auto" : "0 0 360px", minWidth: 0 }}>
+      ) : isMobile && selectedId ? (
+        /* Móvil: vista de detalle con botón volver */
+        <div style={{ marginTop: 16 }}>
+          <button onClick={() => { setSelectedId(null); setEditandoMoto(false); setMsgDetalle(null); }}
+            style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 15, cursor: "pointer", padding: "0 0 12px 0", display: "flex", alignItems: "center", gap: 6 }}>
+            ← Volver a la lista
+          </button>
+          <div style={card}>
           <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
 
           {selectedMoto ? (
@@ -484,8 +469,98 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
           ) : (
             <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona una moto para ver su detalle.</div>
           )}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Desktop: lista tabla + detalle en columnas */
+        <div style={{ display: "flex", gap: 20, marginTop: 0 }}>
+          <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
+            <div style={{ marginBottom: 16 }}>
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa o modelo" style={inputStyle} />
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", minWidth: 500, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th style={thStyle}>Placa</th>
+                    <th style={thStyle}>Moto</th>
+                    <th style={thStyle}>Estado</th>
+                    <th style={thStyle}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((moto) => (
+                    <tr key={moto.id} onClick={() => setSelectedId(moto.id)} style={{ background: selectedId === moto.id ? "#eff6ff" : "white", cursor: "pointer" }}>
+                      <td style={tdStyle}>{moto.placa}<div style={{ fontSize: 11, color: "#94a3b8" }}>{moto.grupo}</div></td>
+                      <td style={tdStyle}>{moto.marca} {moto.modelo}</td>
+                      <td style={tdStyle}><StatusBadge status={moto.estado} /></td>
+                      <td style={tdStyle}>
+                        {onNavigate && (
+                          <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
+                            style={{ border: "none", background: "#eff6ff", color: "#0284c7", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                            Ficha →
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos registradas.</div>}
+            </div>
+          </div>
+          <div style={{ ...card, flex: "0 0 360px", minWidth: 0 }}>
+            <h3 style={{ margin: 0, fontSize: 20 }}>Detalle de moto</h3>
+            {selectedMoto ? (
+              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                <InfoBox label="Placa" value={selectedMoto.placa} />
+                <InfoBox label="Grupo" value={selectedMoto.grupo} />
+                <InfoBox label="Marca / Modelo" value={`${selectedMoto.marca} ${selectedMoto.modelo}`} />
+                {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
+                <InfoBox label="Ubicación física" value={UBICACION_LABEL[(selectedMoto as any).ubicacion_fisica as UbicacionFisica] ?? "No registrada"} />
+                <InfoBox label="Vence SOAT" value={formatDate(selectedMoto.fecha_seguro)} />
+                <InfoBox label="Vence tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
+                <InfoBox label="Observaciones" value={selectedMoto.observaciones || "Sin observaciones"} />
+                {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
+                <button onClick={abrirEdicion} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
+                  ✏️ Editar datos de esta moto
+                </button>
+                {msgDetalle && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📍 Cambiar ubicación</button>
+                  <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13 }}>📋 Registrar recepción</button>
+                  {selectedMoto.estado === "Fiscalia"
+                    ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Registrar salida de Fiscalía</button>
+                    : ["Transito","Garantia"].includes(selectedMoto.estado)
+                      ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 13, color: "#166534" }}>✅ Liberar retención</button>
+                      : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 13, color: "#92400e" }}>🚨 Registrar retención</button>
+                  }
+                </div>
+                {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
+                  <div style={{ background: "#fef9c3", borderRadius: 12, padding: 12, border: "1px solid #fde047" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#713f12", marginBottom: 6 }}>🚨 Moto en {ESTADO_LABEL[selectedMoto.estado]}</div>
+                    {selectedMoto.retencion_fecha && <div style={{ fontSize: 13 }}>Fecha retención: <strong>{selectedMoto.retencion_fecha}</strong></div>}
+                    {selectedMoto.retencion_numero_caso && <div style={{ fontSize: 13 }}>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
+                    {selectedMoto.retencion_detalle && <div style={{ fontSize: 13, marginTop: 4, color: "#64748b" }}>{selectedMoto.retencion_detalle}</div>}
+                  </div>
+                )}
+                <div>
+                  <div style={labelStyle}>Cambiar estado</div>
+                  <select value={selectedMoto.estado} onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)} style={inputStyle}>
+                    <option value="Disponible">Disponible</option>
+                    <option value="Reservada">Reservada</option>
+                    <option value="Asignada">Asignada</option>
+                    <option value="Mantenimiento">En taller</option>
+                    <option value="Recuperada">Recuperada</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop: 16, color: "#64748b" }}>Selecciona una moto de la lista.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal cambiar ubicación */}
       {openUbicacion && selectedMoto && (

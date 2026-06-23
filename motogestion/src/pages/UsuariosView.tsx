@@ -7,7 +7,8 @@ const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWei
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
 
-type PerfilUsuario = { id: string; nombre: string; role: Role };
+type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR";
+type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null };
 
 function roleLabel(role: Role) {
   const map: Record<Role, string> = {
@@ -42,12 +43,13 @@ export default function UsuariosView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("SECRETARIA");
+  const [grupo, setGrupo] = useState<GrupoSocio>("RASTREADOR");
   const [formError, setFormError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
 
   async function cargarUsuarios() {
-    const { data, error } = await supabase.from("profiles").select("id, nombre, role").order("nombre");
+    const { data, error } = await supabase.from("profiles").select("id, nombre, role, grupo").order("nombre");
     if (error) {
       setListError(error.message);
     } else {
@@ -81,7 +83,7 @@ export default function UsuariosView() {
     const token = sessionData.session?.access_token;
 
     const { data, error } = await supabase.functions.invoke("create-user", {
-      body: { nombre: nombre.trim(), email: email.trim(), password, role },
+      body: { nombre: nombre.trim(), email: email.trim(), password, role, ...(role === "SOCIO" ? { grupo } : {}) },
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
 
@@ -102,6 +104,7 @@ export default function UsuariosView() {
     setEmail("");
     setPassword("");
     setRole("SECRETARIA");
+    setGrupo("RASTREADOR");
     cargarUsuarios();
   }
 
@@ -138,8 +141,21 @@ export default function UsuariosView() {
                 <option value="SUBADMIN">Subadministrador</option>
                 <option value="ADMIN">Administrador</option>
                 <option value="ADMIN_PRINCIPAL">Administrador Principal</option>
+                <option value="SOCIO">Socio (solo lectura)</option>
               </select>
             </div>
+
+            {role === "SOCIO" && (
+              <div>
+                <div style={labelStyle}>Grupo / portafolio</div>
+                <select style={inputStyle} value={grupo} onChange={(e) => setGrupo(e.target.value as GrupoSocio)}>
+                  <option value="RASTREADOR">Rastreador</option>
+                  <option value="COSTA">Costa</option>
+                  <option value="PRADERA">Pradera</option>
+                </select>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
+              </div>
+            )}
 
             {formError && <div style={{ color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
             {info && <div style={{ color: "#166534", fontWeight: 600 }}>{info}</div>}
@@ -164,9 +180,16 @@ export default function UsuariosView() {
               {usuarios.map((u) => (
                 <div key={u.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontWeight: 700 }}>{u.nombre}</div>
-                  <span style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>
-                    {roleLabel(u.role)}
-                  </span>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {u.role === "SOCIO" && u.grupo && (
+                      <span style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: "#e0f2fe", color: "#0369a1" }}>
+                        {u.grupo}
+                      </span>
+                    )}
+                    <span style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>
+                      {roleLabel(u.role)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

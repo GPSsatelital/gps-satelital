@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", userData.user.id)
       .single();
 
-    if (!profile || profile.role !== "ADMIN") {
+    if (!profile || (profile.role !== "ADMIN" && profile.role !== "ADMIN_PRINCIPAL")) {
       return new Response(JSON.stringify({ error: "Solo un ADMIN puede crear usuarios" }), { status: 403, headers: corsHeaders });
     }
 
@@ -50,13 +50,19 @@ Deno.serve(async (req: Request) => {
     const email = (body.email ?? "").trim();
     const password = body.password ?? "";
     const role = body.role;
+    const grupo = (body.grupo ?? "").trim();
 
     if (!nombre || !email || !password || !role) {
       return new Response(JSON.stringify({ error: "Faltan datos" }), { status: 400, headers: corsHeaders });
     }
 
-    if (role !== "ADMIN" && role !== "SECRETARIA") {
+    const rolesValidos = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "MECANICO", "SOCIO"];
+    if (!rolesValidos.includes(role)) {
       return new Response(JSON.stringify({ error: "Rol inválido" }), { status: 400, headers: corsHeaders });
+    }
+
+    if (role === "SOCIO" && !["COSTA", "PRADERA", "RASTREADOR"].includes(grupo)) {
+      return new Response(JSON.stringify({ error: "Un socio debe tener un grupo asignado" }), { status: 400, headers: corsHeaders });
     }
 
     if (password.length < 6) {
@@ -69,7 +75,7 @@ Deno.serve(async (req: Request) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { nombre, role },
+      user_metadata: role === "SOCIO" ? { nombre, role, grupo } : { nombre, role },
     });
 
     if (createError) {

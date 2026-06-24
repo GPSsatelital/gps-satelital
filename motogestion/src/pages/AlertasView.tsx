@@ -68,6 +68,15 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "convenios", label: "Convenios"     },
 ];
 
+function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer") return "cobros";
+  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
+  if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
+  if (tipo === "moto_taller_demorada") return "taller";
+  if (tipo === "convenio_incumplido_3") return "liquidaciones";
+  return "alertas";
+}
+
 function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
   if (tab === "todas")     return true;
   if (tab === "mora")      return a.tipo === "mora_critica" || a.tipo === "gabela";
@@ -173,11 +182,12 @@ export default function AlertasView({ onNavegar }: Props) {
       borderRadius:  14,
       padding:       "14px 16px",
       opacity:       vista ? 0.65 : 1,
-      cursor:        "default",
+      cursor:        "pointer",
+      transition:    "box-shadow 0.15s",
     };
 
     return (
-      <div style={cardStyle}>
+      <div style={cardStyle} onClick={() => onNavegar(viewParaAlerta(a.tipo))}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
 
           {/* Left: icon + content */}

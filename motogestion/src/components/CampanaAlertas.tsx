@@ -28,6 +28,15 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   moto_taller_demorada:   "🔧",
 };
 
+function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer") return "cobros";
+  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
+  if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
+  if (tipo === "moto_taller_demorada") return "taller";
+  if (tipo === "convenio_incumplido_3") return "liquidaciones";
+  return "alertas";
+}
+
 export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey) => void }) {
   const [abierto, setAbierto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -83,7 +92,11 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
               {alertas.slice(0, 8).map(a => {
                 const s = NIVEL_STYLE[a.nivel];
                 return (
-                  <div key={a.id} style={{ margin: "4px 10px", padding: "10px 12px", borderRadius: 10, background: s.bg, border: `1px solid ${s.border}` }}>
+                  <div
+                    key={a.id}
+                    onClick={() => { if (onNavegar) { onNavegar(viewParaAlerta(a.tipo)); setAbierto(false); } }}
+                    style={{ margin: "4px 10px", padding: "10px 12px", borderRadius: 10, background: s.bg, border: `1px solid ${s.border}`, cursor: onNavegar ? "pointer" : "default" }}
+                  >
                     <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                       <span style={{ fontSize: 16, flexShrink: 0 }}>{TIPO_ICON[a.tipo]}</span>
                       <div style={{ minWidth: 0 }}>

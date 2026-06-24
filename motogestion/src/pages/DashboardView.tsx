@@ -323,14 +323,7 @@ export default function DashboardView({ onNavigate }: {
   ];
 
   // Grupo selector data
-  const grupoOpciones: Array<{ key: "todos" | "RASTREADOR" | "COSTA" | "PRADERA"; label: string }> = [
-    { key: "todos",      label: "Toda la flota" },
-    { key: "RASTREADOR", label: "Rastreador" },
-    { key: "COSTA",      label: "Costa" },
-    { key: "PRADERA",    label: "Pradera" },
-  ];
-
-  const grupoActualStats = grupoSeleccionado === "todos"
+const grupoActualStats = grupoSeleccionado === "todos"
     ? {
         total:       motos.length,
         asignadas:   stats.motosAsignadas,
@@ -375,92 +368,79 @@ export default function DashboardView({ onNavigate }: {
         </div>
       )}
 
-      {/* ── SELECTOR DE GRUPO ── */}
-      <div style={{ marginBottom: 16 }}>
-        {/* Chips de grupo */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          {grupoOpciones.map(op => {
-            const isSelected = grupoSeleccionado === op.key;
-            const gData = op.key === "todos" ? null : stats.porGrupo.find(x => x.g === op.key);
-            const hasMoots = op.key === "todos" ? motos.length > 0 : (gData?.total ?? 0) > 0;
-            return (
-              <button
-                key={op.key}
-                onClick={() => setGrupoSeleccionado(op.key)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 14px", borderRadius: 12, border: "none", cursor: "pointer",
-                  background: isSelected ? "#0f172a" : "white",
-                  color: isSelected ? "white" : "#334155",
-                  fontWeight: 700, fontSize: 12,
-                  boxShadow: isSelected
-                    ? "0 4px 14px rgba(15,23,42,0.25)"
-                    : "0 1px 6px rgba(15,23,42,0.08)",
-                  transition: "all 0.15s",
-                  opacity: hasMoots || op.key === "todos" ? 1 : 0.5,
-                }}
-              >
-                <span>{op.label}</span>
-                {op.key !== "todos" && gData && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 800,
-                    background: isSelected ? "rgba(255,255,255,0.15)" : "#f1f5f9",
-                    color: isSelected ? "#bae6fd" : "#64748b",
-                    padding: "2px 7px", borderRadius: 999,
-                  }}>
-                    {gData.total}
-                  </span>
-                )}
-                {op.key === "todos" && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 800,
-                    background: isSelected ? "rgba(255,255,255,0.15)" : "#f1f5f9",
-                    color: isSelected ? "#bae6fd" : "#64748b",
-                    padding: "2px 7px", borderRadius: 999,
-                  }}>
-                    {motos.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Detalles del grupo seleccionado */}
-        <div style={{
-          display: "flex", gap: 10, flexWrap: "wrap",
-        }}>
-          {gruposVisibles.map(g => {
-            const isActive = grupoSeleccionado === g.g;
-            const pct = g.total > 0 ? Math.round((g.asignadas / g.total) * 100) : 0;
-            return (
-              <div
-                key={g.g}
-                onClick={() => onNavigate("motos", `grupo:${g.g}`)}
-                style={{
-                  flex: "1 1 110px", minWidth: 110,
-                  padding: "10px 12px", borderRadius: 12,
-                  background: isActive ? "#eff6ff" : "white",
-                  border: `1px solid ${isActive ? "#bae6fd" : "#e2e8f0"}`,
-                  cursor: "pointer", textAlign: "center",
-                  transition: "all 0.15s",
-                  boxShadow: isActive ? "0 2px 10px rgba(2,132,199,0.12)" : "0 1px 4px rgba(15,23,42,0.06)",
-                }}
-              >
-                <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? "#0284c7" : "#64748b", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>{g.g}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: isActive ? "#0284c7" : "#0f172a", lineHeight: 1 }}>{g.total}</div>
-                <div style={{ marginTop: 6, height: 4, borderRadius: 99, background: "#e2e8f0", overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 99, background: isActive ? "#0284c7" : "#94a3b8", width: `${pct}%`, transition: "width 0.4s" }} />
-                </div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 5, lineHeight: 1.6 }}>
-                  <span style={{ color: "#10b981", fontWeight: 700 }}>{g.asignadas}</span>{" campo · "}
-                  <span style={{ color: "#0284c7", fontWeight: 700 }}>{g.disponibles}</span>{" disp."}
-                </div>
-                <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>{pct}% asignado</div>
+      {/* ── SELECTOR DE GRUPO (unificado) ── */}
+      <div style={{
+        display: "flex", gap: 8,
+        overflowX: isMobile ? "auto" : "visible",
+        flexWrap: isMobile ? "nowrap" : "wrap",
+        paddingBottom: isMobile ? 4 : 0,
+        marginBottom: 16,
+      }}>
+        {/* Tarjeta "Toda la flota" */}
+        {(() => {
+          const isSelected = grupoSeleccionado === "todos";
+          const pct = motos.length > 0 ? Math.round((stats.motosAsignadas / motos.length) * 100) : 0;
+          return (
+            <div
+              key="todos"
+              onClick={() => setGrupoSeleccionado("todos")}
+              style={{
+                flex: isMobile ? "0 0 auto" : "1 1 130px",
+                minWidth: isMobile ? 140 : 120,
+                padding: "14px 14px 12px", borderRadius: 14,
+                background: isSelected ? "#0f172a" : "white",
+                border: `1.5px solid ${isSelected ? "#0f172a" : "#e2e8f0"}`,
+                cursor: "pointer", textAlign: "center",
+                boxShadow: isSelected ? "0 6px 20px rgba(15,23,42,0.22)" : "0 1px 6px rgba(15,23,42,0.07)",
+                transition: "all 0.18s",
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: isSelected ? "#64748b" : "#94a3b8", marginBottom: 4 }}>Toda la flota</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: isSelected ? "white" : "#0f172a" }}>{motos.length}</div>
+              <div style={{ margin: "8px 0 4px", height: 3, borderRadius: 99, background: isSelected ? "rgba(255,255,255,0.12)" : "#f1f5f9", overflow: "hidden" }}>
+                <div style={{ height: "100%", borderRadius: 99, background: isSelected ? "#38bdf8" : "#94a3b8", width: `${pct}%`, transition: "width 0.4s" }} />
               </div>
-            );
-          })}
-        </div>
+              <div style={{ fontSize: 10, color: isSelected ? "#94a3b8" : "#64748b", lineHeight: 1.7 }}>
+                <span style={{ fontWeight: 700, color: isSelected ? "#34d399" : "#10b981" }}>{stats.motosAsignadas}</span>{" campo · "}
+                <span style={{ fontWeight: 700, color: isSelected ? "#7dd3fc" : "#0284c7" }}>{stats.motosDisponibles}</span>{" disp."}
+              </div>
+              <div style={{ fontSize: 9, color: isSelected ? "#475569" : "#94a3b8", marginTop: 1 }}>{pct}% asignado</div>
+            </div>
+          );
+        })()}
+
+        {/* Tarjetas por grupo */}
+        {gruposVisibles.map(g => {
+          const isSelected = grupoSeleccionado === g.g;
+          const pct = g.total > 0 ? Math.round((g.asignadas / g.total) * 100) : 0;
+          return (
+            <div
+              key={g.g}
+              onClick={() => setGrupoSeleccionado(g.g as "RASTREADOR" | "COSTA" | "PRADERA")}
+              style={{
+                flex: isMobile ? "0 0 auto" : "1 1 130px",
+                minWidth: isMobile ? 130 : 110,
+                padding: "14px 14px 12px", borderRadius: 14,
+                background: isSelected ? "#0f172a" : "white",
+                border: `1.5px solid ${isSelected ? "#0f172a" : "#e2e8f0"}`,
+                cursor: "pointer", textAlign: "center",
+                boxShadow: isSelected ? "0 6px 20px rgba(15,23,42,0.22)" : "0 1px 6px rgba(15,23,42,0.07)",
+                transition: "all 0.18s",
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: isSelected ? "#64748b" : "#94a3b8", marginBottom: 4 }}>{g.g}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: isSelected ? "white" : "#0f172a" }}>{g.total}</div>
+              <div style={{ margin: "8px 0 4px", height: 3, borderRadius: 99, background: isSelected ? "rgba(255,255,255,0.12)" : "#f1f5f9", overflow: "hidden" }}>
+                <div style={{ height: "100%", borderRadius: 99, background: isSelected ? "#38bdf8" : "#94a3b8", width: `${pct}%`, transition: "width 0.4s" }} />
+              </div>
+              <div style={{ fontSize: 10, color: isSelected ? "#94a3b8" : "#64748b", lineHeight: 1.7 }}>
+                <span style={{ fontWeight: 700, color: isSelected ? "#34d399" : "#10b981" }}>{g.asignadas}</span>{" campo · "}
+                <span style={{ fontWeight: 700, color: isSelected ? "#7dd3fc" : "#0284c7" }}>{g.disponibles}</span>{" disp."}
+              </div>
+              <div style={{ fontSize: 9, color: isSelected ? "#475569" : "#94a3b8", marginTop: 1 }}>{pct}% asignado</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
@@ -753,101 +733,91 @@ export default function DashboardView({ onNavigate }: {
         ))}
       </div>
 
-      {/* ── CONTRATOS POR MODALIDAD (horizontal) ── */}
-      <div style={{
-        background: "white", borderRadius: 16, padding: "14px 16px",
-        boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10 }}>Contratos activos por modalidad</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-          {Object.entries(stats.porModalidad).map(([mod, n]) => (
-            <div
-              key={mod}
-              onClick={() => onNavigate("contratos", "Activo")}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                padding: "12px 10px", borderRadius: 12, textAlign: "center",
-                background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
-                cursor: "pointer", transition: "background 0.15s", gap: 2,
-              }}
-              onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
-              onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
-            >
-              <div style={{ fontSize: 22, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginTop: 3 }}>{mod}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── TWO COLUMN LAYOUT ── */}
+      {/* ── PIPELINE + CONTRATOS MODALIDAD (lado a lado) ── */}
       <div style={{
         display: isMobile ? "flex" : "grid",
         flexDirection: isMobile ? "column" : undefined,
-        gridTemplateColumns: isMobile ? undefined : "minmax(0, 2fr) minmax(0, 1fr)",
+        gridTemplateColumns: isMobile ? undefined : "minmax(0, 3fr) minmax(0, 2fr)",
         gap: 16,
         alignItems: "start",
         marginBottom: 16,
       }}>
-
-        {/* LEFT column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Section title="Pipeline de clientes">
-            {pipelineRows.map(row => {
-              const pct = Math.round((row.count / totalClientes) * 100);
-              return (
-                <div
-                  key={row.label}
-                  onClick={() => onNavigate("clientes", row.filter)}
-                  style={{ marginBottom: 12, cursor: "pointer" }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 5 }}>
-                    <span style={{ color: "#64748b", fontWeight: 500 }}>{row.label}</span>
-                    <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{row.count}</span>
-                  </div>
-                  <div style={{ height: 12, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: 99,
-                      background: row.color,
-                      width: `${Math.max(pct, row.count > 0 ? 3 : 0)}%`,
-                      transition: "width 0.5s ease",
-                    }} />
-                  </div>
+        {/* Pipeline de clientes */}
+        <Section title="Pipeline de clientes">
+          {pipelineRows.map(row => {
+            const pct = Math.round((row.count / totalClientes) * 100);
+            return (
+              <div
+                key={row.label}
+                onClick={() => onNavigate("clientes", row.filter)}
+                style={{ marginBottom: 12, cursor: "pointer" }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 5 }}>
+                  <span style={{ color: "#64748b", fontWeight: 500 }}>{row.label}</span>
+                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{row.count}</span>
                 </div>
-              );
-            })}
-          </Section>
-        </div>
-
-        {/* RIGHT column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Taller snapshot */}
-          {stats.tallerActivo > 0 && (
-            <div
-              onClick={() => onNavigate("taller")}
-              style={{
-                background: "#fff7ed", borderRadius: 16, padding: "16px 18px",
-                border: "1px solid #fed7aa", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 14,
-                boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#fef3c7"}
-              onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#fff7ed"}
-            >
-              <span style={{ fontSize: 28 }}>🔧</span>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#c2410c" }}>{stats.tallerActivo}</div>
-                <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>
-                  moto{stats.tallerActivo > 1 ? "s" : ""} en taller
+                <div style={{ height: 10, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: 99,
+                    background: row.color,
+                    width: `${Math.max(pct, row.count > 0 ? 3 : 0)}%`,
+                    transition: "width 0.5s ease",
+                  }} />
                 </div>
               </div>
-              <span style={{ marginLeft: "auto", color: "#c2410c", fontSize: 20 }}>›</span>
-            </div>
-          )}
-        </div>
+            );
+          })}
+        </Section>
+
+        {/* Contratos por modalidad */}
+        <Section title="Contratos por modalidad">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {Object.entries(stats.porModalidad).map(([mod, n]) => (
+              <div
+                key={mod}
+                onClick={() => onNavigate("contratos", "Activo")}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  padding: "16px 10px", borderRadius: 12, textAlign: "center",
+                  background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                  border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                  cursor: "pointer", transition: "background 0.15s",
+                }}
+                onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
+                onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
+              >
+                <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 5 }}>{mod}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
       </div>
+
+      {/* ── TALLER SNAPSHOT ── */}
+      {stats.tallerActivo > 0 && (
+        <div
+          onClick={() => onNavigate("taller")}
+          style={{
+            background: "#fff7ed", borderRadius: 16, padding: "16px 18px",
+            border: "1px solid #fed7aa", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 14,
+            boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
+            transition: "background 0.15s", marginBottom: 16,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#fef3c7"}
+          onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#fff7ed"}
+        >
+          <span style={{ fontSize: 28 }}>🔧</span>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#c2410c" }}>{stats.tallerActivo}</div>
+            <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>
+              moto{stats.tallerActivo > 1 ? "s" : ""} en taller
+            </div>
+          </div>
+          <span style={{ marginLeft: "auto", color: "#c2410c", fontSize: 20 }}>›</span>
+        </div>
+      )}
 
       {/* ── RECAUDO CHART ── */}
       <div style={{

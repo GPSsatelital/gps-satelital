@@ -368,6 +368,50 @@ const grupoActualStats = grupoSeleccionado === "todos"
         </div>
       )}
 
+      {/* ── ALERTS (clickeable → vista alertas) ── */}
+      {alerts.length > 0 ? (
+        <div
+          style={{ marginBottom: 16, background: "#fff7ed", borderRadius: 16, padding: "14px 16px", border: "1px solid #fed7aa", cursor: "pointer" }}
+          onClick={() => onNavigate("alertas")}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>⚠️ Requieren atención — toca para ver todas</span>
+            <span style={{ fontSize: 13, color: "#c2410c" }}>›</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {alerts.map((a, i) => (
+              <div
+                key={i}
+                onClick={e => { e.stopPropagation(); if (a.view) onNavigate(a.view!, a.filter); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 14px", borderRadius: 12,
+                  background: a.bgColor,
+                  borderLeft: `4px solid ${a.borderColor}`,
+                  cursor: a.view ? "pointer" : "default",
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{a.icon}</span>
+                <span style={{ fontSize: 12, color: a.color, flex: 1, fontWeight: 600 }}>{a.text}</span>
+                {a.severidad === "critica" && (
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fecaca", padding: "2px 7px", borderRadius: 999 }}>CRÍTICO</span>
+                )}
+                {a.view && <span style={{ color: a.color, fontSize: 16, fontWeight: 700 }}>›</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{ marginBottom: 16, background: "#f0fdf4", borderRadius: 16, padding: "14px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+          onClick={() => onNavigate("alertas")}
+        >
+          <span style={{ fontSize: 22 }}>✅</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534", flex: 1 }}>Todo al día — no hay alertas pendientes</span>
+          <span style={{ color: "#166534", fontSize: 16 }}>›</span>
+        </div>
+      )}
+
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
       <div style={{
         background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
@@ -538,49 +582,6 @@ const grupoActualStats = grupoSeleccionado === "todos"
         ))}
       </div>
 
-      {/* ── ALERTS (clickeable → vista alertas) ── */}
-      {alerts.length > 0 ? (
-        <div
-          style={{ marginBottom: 16, background: "#fff7ed", borderRadius: 16, padding: "14px 16px", border: "1px solid #fed7aa", cursor: "pointer" }}
-          onClick={() => onNavigate("alertas")}
-        >
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>⚠️ Requieren atención — toca para ver todas</span>
-            <span style={{ fontSize: 13, color: "#c2410c" }}>›</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {alerts.map((a, i) => (
-              <div
-                key={i}
-                onClick={e => { e.stopPropagation(); if (a.view) onNavigate(a.view!, a.filter); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 14px", borderRadius: 12,
-                  background: a.bgColor,
-                  borderLeft: `4px solid ${a.borderColor}`,
-                  cursor: a.view ? "pointer" : "default",
-                }}
-              >
-                <span style={{ fontSize: 16 }}>{a.icon}</span>
-                <span style={{ fontSize: 12, color: a.color, flex: 1, fontWeight: 600 }}>{a.text}</span>
-                {a.severidad === "critica" && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fecaca", padding: "2px 7px", borderRadius: 999 }}>CRÍTICO</span>
-                )}
-                {a.view && <span style={{ color: a.color, fontSize: 16, fontWeight: 700 }}>›</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{ marginBottom: 16, background: "#f0fdf4", borderRadius: 16, padding: "14px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
-          onClick={() => onNavigate("alertas")}
-        >
-          <span style={{ fontSize: 22 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534", flex: 1 }}>Todo al día — no hay alertas pendientes</span>
-          <span style={{ color: "#166534", fontSize: 16 }}>›</span>
-        </div>
-      )}
 
       {/* ── ACCIONES RÁPIDAS (entre banner y tarjetas) ── */}
       <div style={{

@@ -769,28 +769,50 @@ const grupoActualStats = grupoSeleccionado === "todos"
           })}
         </Section>
 
-        {/* Contratos por modalidad */}
+        {/* Contratos por modalidad — en desktop: grid 2x2; en móvil: fila horizontal de chips */}
         <Section title="Contratos por modalidad">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {Object.entries(stats.porModalidad).map(([mod, n]) => (
-              <div
-                key={mod}
-                onClick={() => onNavigate("contratos", "Activo")}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  padding: "16px 10px", borderRadius: 12, textAlign: "center",
-                  background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                  border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
-                  cursor: "pointer", transition: "background 0.15s",
-                }}
-                onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
-                onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
-              >
-                <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 5 }}>{mod}</div>
-              </div>
-            ))}
-          </div>
+          {isMobile ? (
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+              {Object.entries(stats.porModalidad).map(([mod, n]) => (
+                <div
+                  key={mod}
+                  onClick={() => onNavigate("contratos", "Activo")}
+                  style={{
+                    flex: "0 0 auto",
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 14px", borderRadius: 10,
+                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 18, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8" }}>{mod}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {Object.entries(stats.porModalidad).map(([mod, n]) => (
+                <div
+                  key={mod}
+                  onClick={() => onNavigate("contratos", "Activo")}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    padding: "16px 10px", borderRadius: 12, textAlign: "center",
+                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                    cursor: "pointer", transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
+                >
+                  <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 5 }}>{mod}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
       </div>
 

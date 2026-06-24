@@ -300,6 +300,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [modalPago, setModalPago] = useState(initialOpenForm);
   const [modalBusqueda, setModalBusqueda] = useState("");
   const [modalContratoId, setModalContratoId] = useState<string | null>(null);
+  const [modalListaAbierta, setModalListaAbierta] = useState(false);
   const [modalValor, setModalValor] = useState("");
   const [modalMetodo, setModalMetodo] = useState<MetodoPago>("Efectivo");
   const [modalError, setModalError] = useState<string | null>(null);
@@ -523,8 +524,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
   function cerrarModalPago() {
-    setModalPago(false); setModalBusqueda(""); setModalContratoId(null);
+    setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
+  }
+
+  const modalResultados = resumenContratos.filter(c => {
+    const q = modalBusqueda.trim().toLowerCase();
+    if (!q) return true;
+    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const moto = motos.find(m => m.id === c.moto_id);
+    return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
+  });
+  function etiquetaContrato(c: typeof resumenContratos[number]) {
+    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const moto = motos.find(m => m.id === c.moto_id);
+    return `${moto ? `${moto.placa} · ` : ""}${cliente?.nombre || "Sin cliente"}`;
   }
 
   async function handleRegistrarPagoModal() {
@@ -1525,40 +1539,48 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <button onClick={cerrarModalPago} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
             </div>
 
-            {/* Selector de cliente */}
-            <div style={{ marginBottom: 14 }}>
+            {/* Buscador-selector unificado (combobox) */}
+            <div style={{ marginBottom: 14, position: "relative" }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Cliente / contrato</label>
-              <input
-                style={{ ...inputStyle, marginBottom: 8 }}
-                placeholder="Buscar cliente o placa..."
-                value={modalBusqueda}
-                onChange={e => setModalBusqueda(e.target.value)}
-                autoFocus
-              />
-              <select
-                style={inputStyle}
-                value={modalContratoId ?? ""}
-                onChange={e => { setModalContratoId(e.target.value || null); setModalError(null); setModalExito(false); }}
-              >
-                <option value="">— Selecciona un contrato —</option>
-                {resumenContratos
-                  .filter(c => {
-                    const q = modalBusqueda.trim().toLowerCase();
-                    if (!q) return true;
-                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                    const moto = motos.find(m => m.id === c.moto_id);
-                    return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
-                  })
-                  .map(c => {
-                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                    const moto = motos.find(m => m.id === c.moto_id);
-                    return (
-                      <option key={c.id} value={c.id}>
-                        {moto ? `${moto.placa} · ` : ""}{cliente?.nombre || "Sin cliente"}
-                      </option>
-                    );
-                  })}
-              </select>
+              <div style={{ position: "relative" }}>
+                <input
+                  style={{ ...inputStyle, paddingRight: modalContratoId ? 34 : 12 }}
+                  placeholder="Buscar y seleccionar cliente o placa..."
+                  value={modalBusqueda}
+                  autoFocus
+                  onFocus={() => setModalListaAbierta(true)}
+                  onChange={e => { setModalBusqueda(e.target.value); setModalListaAbierta(true); setModalContratoId(null); setModalError(null); setModalExito(false); }}
+                />
+                {modalContratoId && (
+                  <button
+                    onClick={() => { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(true); }}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#94a3b8" }}
+                    title="Limpiar selección"
+                  >✕</button>
+                )}
+              </div>
+
+              {/* Lista de resultados */}
+              {modalListaAbierta && !modalContratoId && (
+                <div style={{ position: "absolute", left: 0, right: 0, top: "100%", marginTop: 4, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", maxHeight: 240, overflowY: "auto", zIndex: 10 }}>
+                  {modalResultados.length === 0 ? (
+                    <div style={{ padding: "12px 14px", fontSize: 13, color: "#94a3b8" }}>Sin coincidencias.</div>
+                  ) : (
+                    modalResultados.slice(0, 30).map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setModalContratoId(c.id); setModalBusqueda(etiquetaContrato(c)); setModalListaAbierta(false); setModalError(null); setModalExito(false); }}
+                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: "1px solid #f1f5f9", background: "white", cursor: "pointer", fontSize: 13, color: "#0f172a" }}
+                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc"}
+                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "white"}
+                      >
+                        <span style={{ fontWeight: 600, textTransform: "uppercase" }}>{etiquetaContrato(c)}</span>
+                        <EstadoBadge estado={c.estadoCartera as EstadoCartera} />
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Detalle del contrato seleccionado — dentro del modal */}

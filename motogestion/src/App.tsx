@@ -402,9 +402,9 @@ function Shell() {
   const contentView = (
     <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
-      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter} onNavigate={navigate} />}
-      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter} onNavigate={navigate} />}
-      {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter} />}
+      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
       {ctx.view === "cobros"        && <CobrosView onNavigate={navigate} />}
       {ctx.view === "caja"          && <CajaView />}
       {ctx.view === "reportes"      && esAdmin && <ReportesView onNavigate={navigate} />}

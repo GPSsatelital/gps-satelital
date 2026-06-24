@@ -433,7 +433,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
 
 import type { ViewKey } from "../App";
 
-export default function ClientesView({ initialFilter = "", onNavigate }: { initialFilter?: string; onNavigate?: (view: ViewKey, filter?: string) => void }) {
+export default function ClientesView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
@@ -450,7 +450,7 @@ export default function ClientesView({ initialFilter = "", onNavigate }: { initi
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
   const [clienteVisitaNombre, setClienteVisitaNombre] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpenForm);
   const [editOpen, setEditOpen] = useState(false);
   const [excepcionOpen, setExcepcionOpen] = useState(false);
   const [visitaOpen, setVisitaOpen] = useState(false);

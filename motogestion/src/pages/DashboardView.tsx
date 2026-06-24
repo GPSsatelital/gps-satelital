@@ -753,6 +753,34 @@ export default function DashboardView({ onNavigate }: {
         ))}
       </div>
 
+      {/* ── CONTRATOS POR MODALIDAD (horizontal) ── */}
+      <div style={{
+        background: "white", borderRadius: 16, padding: "14px 16px",
+        boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10 }}>Contratos activos por modalidad</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          {Object.entries(stats.porModalidad).map(([mod, n]) => (
+            <div
+              key={mod}
+              onClick={() => onNavigate("contratos", "Activo")}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "12px 10px", borderRadius: 12, textAlign: "center",
+                background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                cursor: "pointer", transition: "background 0.15s", gap: 2,
+              }}
+              onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
+              onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
+            >
+              <div style={{ fontSize: 22, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginTop: 3 }}>{mod}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── TWO COLUMN LAYOUT ── */}
       <div style={{
         display: isMobile ? "flex" : "grid",
@@ -794,29 +822,6 @@ export default function DashboardView({ onNavigate }: {
 
         {/* RIGHT column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Contratos por modalidad */}
-          <Section title="Contratos activos por modalidad">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {Object.entries(stats.porModalidad).map(([mod, n]) => (
-                <div
-                  key={mod}
-                  onClick={() => onNavigate("contratos", "Activo")}
-                  style={{
-                    padding: "14px 10px", borderRadius: 12, textAlign: "center",
-                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
-                    cursor: "pointer", transition: "background 0.15s",
-                  }}
-                  onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
-                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
-                >
-                  <div style={{ fontSize: 22, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{mod}</div>
-                </div>
-              ))}
-            </div>
-          </Section>
-
           {/* Taller snapshot */}
           {stats.tallerActivo > 0 && (
             <div

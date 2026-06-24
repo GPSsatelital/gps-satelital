@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia";
-export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "OTRO";
+export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS" | "OTRO";
 export type CondicionIngreso = "nueva" | "usada";
 
 export type Moto = {

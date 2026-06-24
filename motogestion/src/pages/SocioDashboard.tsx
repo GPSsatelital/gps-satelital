@@ -6,18 +6,20 @@ import { usePagos } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import type { Pago } from "../hooks/usePagos";
 
-type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR";
+type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
 const GRUPO_NAMES: Record<GrupoMoto, string> = {
   RASTREADOR: "Rastreador",
   COSTA: "Costa",
   PRADERA: "Pradera",
+  USADAS: "Usadas Club",
 };
 
 const GRUPO_COLOR: Record<GrupoMoto, string> = {
   RASTREADOR: "#0284c7",
   COSTA: "#0d9488",
   PRADERA: "#7c3aed",
+  USADAS: "#ea580c",
 };
 
 function fmt(n: number) {

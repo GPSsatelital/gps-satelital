@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
 export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO";
-export type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR";
+export type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
 export type Profile = {
   id: string;

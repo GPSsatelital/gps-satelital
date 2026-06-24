@@ -314,7 +314,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
               <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}>
-                {(["COSTA","PRADERA","RASTREADOR","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
+                {(["COSTA","PRADERA","RASTREADOR","USADAS","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
@@ -553,6 +553,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <option value="COSTA">Club Moteros Costa</option>
                   <option value="PRADERA">Club Moteros Pradera</option>
                   <option value="RASTREADOR">Club Moteros Rastreador</option>
+                  <option value="USADAS">Usadas Club</option>
                   <option value="OTRO">Otro</option>
                 </select>
               </Field>

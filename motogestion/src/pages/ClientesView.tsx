@@ -57,8 +57,8 @@ function ClienteBadge({ estado }: { estado: ClienteEstado }) {
   );
 }
 
-// El acompañante solo aporta cédula, 2 recibos y antecedentes (sin hoja de vida ni licencia)
-const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1", "recibo2", "antecedentes"];
+// El acompañante solo aporta cédula y 2 recibos (sin hoja de vida, licencia ni antecedentes)
+const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1", "recibo2"];
 
 function documentosAcompananteListos(doc: DocumentoFlags) {
   return DOCS_ACOMPANANTE.every((k) => doc[k].ok);
@@ -139,7 +139,6 @@ function documentosFaltantes(cliente: Cliente) {
     ["cedula", "Cédula", "Acompañante"],
     ["recibo1", "Recibo 1", "Acompañante"],
     ["recibo2", "Recibo 2", "Acompañante"],
-    ["antecedentes", "Antecedentes", "Acompañante"],
   ];
   return labels.filter(([key, , owner]) => {
     const doc = owner === "Cliente" ? cliente.documentos_cliente : cliente.documentos_acompanante;
@@ -225,7 +224,7 @@ const FILTROS_CLIENTE = [
   { label: "Pend. evaluación", filter: "Pendiente evaluación" },
   { label: "Aprobados", filter: "Aprobado" },
   { label: "Activos", filter: "Activo" },
-  { label: "Mora / riesgo", filter: "mora" },
+  { label: "Clientes en riesgo", filter: "mora" },
   { label: "Rechazados", filter: "Rechazado" },
 ];
 
@@ -671,7 +670,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     { label: "Pend. eval.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, color: "#92400e", bg: "#fef3c7", filter: "Pendiente evaluación" },
     { label: "Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, color: "#166534", bg: "#dcfce7", filter: "Aprobado" },
     { label: "Activos", count: clientes.filter(c => c.estado === "Activo").length, color: "#166534", bg: "#bbf7d0", filter: "Activo" },
-    { label: "Mora / riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora" },
+    { label: "Clientes en riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora" },
   ];
 
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {

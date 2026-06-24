@@ -7,7 +7,7 @@ const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWei
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
 
-type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR";
+type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null };
 
 function roleLabel(role: Role) {
@@ -152,6 +152,7 @@ export default function UsuariosView() {
                   <option value="RASTREADOR">Rastreador</option>
                   <option value="COSTA">Costa</option>
                   <option value="PRADERA">Pradera</option>
+                  <option value="USADAS">Usadas Club</option>
                 </select>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
               </div>

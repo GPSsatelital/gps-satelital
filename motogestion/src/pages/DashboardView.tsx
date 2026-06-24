@@ -368,81 +368,6 @@ const grupoActualStats = grupoSeleccionado === "todos"
         </div>
       )}
 
-      {/* ── SELECTOR DE GRUPO (unificado) ── */}
-      <div style={{
-        display: "flex", gap: 8,
-        overflowX: isMobile ? "auto" : "visible",
-        flexWrap: isMobile ? "nowrap" : "wrap",
-        paddingBottom: isMobile ? 4 : 0,
-        marginBottom: 16,
-      }}>
-        {/* Tarjeta "Toda la flota" */}
-        {(() => {
-          const isSelected = grupoSeleccionado === "todos";
-          const pct = motos.length > 0 ? Math.round((stats.motosAsignadas / motos.length) * 100) : 0;
-          return (
-            <div
-              key="todos"
-              onClick={() => setGrupoSeleccionado("todos")}
-              style={{
-                flex: isMobile ? "0 0 auto" : "1 1 130px",
-                minWidth: isMobile ? 140 : 120,
-                padding: "14px 14px 12px", borderRadius: 14,
-                background: isSelected ? "#0f172a" : "white",
-                border: `1.5px solid ${isSelected ? "#0f172a" : "#e2e8f0"}`,
-                cursor: "pointer", textAlign: "center",
-                boxShadow: isSelected ? "0 6px 20px rgba(15,23,42,0.22)" : "0 1px 6px rgba(15,23,42,0.07)",
-                transition: "all 0.18s",
-              }}
-            >
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: isSelected ? "#64748b" : "#94a3b8", marginBottom: 4 }}>Toda la flota</div>
-              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: isSelected ? "white" : "#0f172a" }}>{motos.length}</div>
-              <div style={{ margin: "8px 0 4px", height: 3, borderRadius: 99, background: isSelected ? "rgba(255,255,255,0.12)" : "#f1f5f9", overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: 99, background: isSelected ? "#38bdf8" : "#94a3b8", width: `${pct}%`, transition: "width 0.4s" }} />
-              </div>
-              <div style={{ fontSize: 10, color: isSelected ? "#94a3b8" : "#64748b", lineHeight: 1.7 }}>
-                <span style={{ fontWeight: 700, color: isSelected ? "#34d399" : "#10b981" }}>{stats.motosAsignadas}</span>{" campo · "}
-                <span style={{ fontWeight: 700, color: isSelected ? "#7dd3fc" : "#0284c7" }}>{stats.motosDisponibles}</span>{" disp."}
-              </div>
-              <div style={{ fontSize: 9, color: isSelected ? "#475569" : "#94a3b8", marginTop: 1 }}>{pct}% asignado</div>
-            </div>
-          );
-        })()}
-
-        {/* Tarjetas por grupo */}
-        {gruposVisibles.map(g => {
-          const isSelected = grupoSeleccionado === g.g;
-          const pct = g.total > 0 ? Math.round((g.asignadas / g.total) * 100) : 0;
-          return (
-            <div
-              key={g.g}
-              onClick={() => setGrupoSeleccionado(g.g as "RASTREADOR" | "COSTA" | "PRADERA")}
-              style={{
-                flex: isMobile ? "0 0 auto" : "1 1 130px",
-                minWidth: isMobile ? 130 : 110,
-                padding: "14px 14px 12px", borderRadius: 14,
-                background: isSelected ? "#0f172a" : "white",
-                border: `1.5px solid ${isSelected ? "#0f172a" : "#e2e8f0"}`,
-                cursor: "pointer", textAlign: "center",
-                boxShadow: isSelected ? "0 6px 20px rgba(15,23,42,0.22)" : "0 1px 6px rgba(15,23,42,0.07)",
-                transition: "all 0.18s",
-              }}
-            >
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: isSelected ? "#64748b" : "#94a3b8", marginBottom: 4 }}>{g.g}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: isSelected ? "white" : "#0f172a" }}>{g.total}</div>
-              <div style={{ margin: "8px 0 4px", height: 3, borderRadius: 99, background: isSelected ? "rgba(255,255,255,0.12)" : "#f1f5f9", overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: 99, background: isSelected ? "#38bdf8" : "#94a3b8", width: `${pct}%`, transition: "width 0.4s" }} />
-              </div>
-              <div style={{ fontSize: 10, color: isSelected ? "#94a3b8" : "#64748b", lineHeight: 1.7 }}>
-                <span style={{ fontWeight: 700, color: isSelected ? "#34d399" : "#10b981" }}>{g.asignadas}</span>{" campo · "}
-                <span style={{ fontWeight: 700, color: isSelected ? "#7dd3fc" : "#0284c7" }}>{g.disponibles}</span>{" disp."}
-              </div>
-              <div style={{ fontSize: 9, color: isSelected ? "#475569" : "#94a3b8", marginTop: 1 }}>{pct}% asignado</div>
-            </div>
-          );
-        })}
-      </div>
-
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
       <div style={{
         background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
@@ -474,13 +399,13 @@ const grupoActualStats = grupoSeleccionado === "todos"
         <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>
           ${fmt(recaudoFiltrado.hoy)}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+        <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 13, color: "#94a3b8" }}>
             Semana:&nbsp;
             <span style={{ color: "#34d399", fontWeight: 700 }}>${fmt(recaudoFiltrado.semana)}</span>
             &nbsp;en pagos confirmados
           </div>
-          <div style={{ fontSize: 13, color: "#94a3b8" }}>
+          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
             <span style={{ color: "#7dd3fc", fontWeight: 700 }}>{grupoActualStats.asignadas}</span>
             {" en campo · "}
             <span style={{ color: "#34d399", fontWeight: 700 }}>{grupoActualStats.disponibles}</span>
@@ -488,17 +413,50 @@ const grupoActualStats = grupoSeleccionado === "todos"
             <span style={{ color: "#bae6fd", fontWeight: 700 }}>{grupoActualStats.pct}%</span>
             {" asignado"}
           </div>
-          {recaudoDelta.pct !== 0 && (
-            <span style={{
-              fontSize: 12, fontWeight: 700,
-              color: recaudoDelta.color === "#166534" ? "#34d399" : "#fca5a5",
-              background: "rgba(255,255,255,0.08)",
-              padding: "2px 10px", borderRadius: 999,
-            }}>
-              {recaudoDelta.label}
-            </span>
-          )}
         </div>
+
+        {/* Selector de grupo dentro del panel */}
+        <div style={{ display: "flex", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
+          {[
+            { key: "todos" as const, label: "Toda la flota", total: motos.length },
+            ...gruposVisibles.map(g => ({ key: g.g as "RASTREADOR" | "COSTA" | "PRADERA", label: g.g, total: g.total })),
+          ].map(op => {
+            const isSelected = grupoSeleccionado === op.key;
+            return (
+              <button
+                key={op.key}
+                onClick={() => setGrupoSeleccionado(op.key)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "5px 12px", borderRadius: 99, border: "none", cursor: "pointer",
+                  background: isSelected ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)",
+                  color: isSelected ? "white" : "#94a3b8",
+                  fontWeight: isSelected ? 700 : 500, fontSize: 11,
+                  transition: "all 0.15s",
+                  outline: isSelected ? "1.5px solid rgba(255,255,255,0.3)" : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <span>{op.label}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 800,
+                  color: isSelected ? "#38bdf8" : "#64748b",
+                }}>{op.total}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Delta semana anterior — esquina inferior derecha */}
+        {recaudoDelta.pct !== 0 && (
+          <div style={{
+            position: "absolute", bottom: 14, right: 18,
+            fontSize: 10, fontWeight: 700,
+            color: recaudoDelta.color === "#166534" ? "#34d399" : "#fca5a5",
+            opacity: 0.8,
+          }}>
+            {recaudoDelta.label}
+          </div>
+        )}
       </div>
 
       {/* ── KPI STRIP (reordenado y más compacto) ── */}

@@ -733,30 +733,61 @@ const grupoActualStats = grupoSeleccionado === "todos"
         ))}
       </div>
 
-      {/* ── PIPELINE + CONTRATOS MODALIDAD (lado a lado) ── */}
+      {/* ── CONTRATOS POR MODALIDAD: chips compactos (móvil arriba, desktop dentro de grid) ── */}
+      {isMobile ? (
+        <div style={{
+          background: "white", borderRadius: 14, padding: "10px 14px",
+          boxShadow: "0 1px 8px rgba(15,23,42,0.07)", marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 8, letterSpacing: "0.04em" }}>Contratos por modalidad</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+            {Object.entries(stats.porModalidad).map(([mod, n]) => (
+              <div
+                key={mod}
+                onClick={() => onNavigate("contratos", "Activo")}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  padding: "7px 4px", borderRadius: 9, textAlign: "center",
+                  background: n > 0 ? "#f0f9ff" : "#f8fafc",
+                  border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 16, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 3 }}>{mod}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── PIPELINE + CONTRATOS MODALIDAD (lado a lado en desktop) ── */}
       <div style={{
-        display: isMobile ? "flex" : "grid",
-        flexDirection: isMobile ? "column" : undefined,
+        display: isMobile ? "block" : "grid",
         gridTemplateColumns: isMobile ? undefined : "minmax(0, 3fr) minmax(0, 2fr)",
         gap: 16,
         alignItems: "start",
         marginBottom: 16,
       }}>
         {/* Pipeline de clientes */}
-        <Section title="Pipeline de clientes">
+        <div style={{
+          background: "white", borderRadius: 16, padding: "14px 16px",
+          boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10 }}>Pipeline de clientes</div>
           {pipelineRows.map(row => {
             const pct = Math.round((row.count / totalClientes) * 100);
             return (
               <div
                 key={row.label}
                 onClick={() => onNavigate("clientes", row.filter)}
-                style={{ marginBottom: 12, cursor: "pointer" }}
+                style={{ marginBottom: 8, cursor: "pointer" }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginBottom: 5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, marginBottom: 4 }}>
                   <span style={{ color: "#64748b", fontWeight: 500 }}>{row.label}</span>
-                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{row.count}</span>
+                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 12 }}>{row.count}</span>
                 </div>
-                <div style={{ height: 10, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
+                <div style={{ height: 7, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
                   <div style={{
                     height: "100%", borderRadius: 99,
                     background: row.color,
@@ -767,31 +798,11 @@ const grupoActualStats = grupoSeleccionado === "todos"
               </div>
             );
           })}
-        </Section>
+        </div>
 
-        {/* Contratos por modalidad — en desktop: grid 2x2; en móvil: fila horizontal de chips */}
-        <Section title="Contratos por modalidad">
-          {isMobile ? (
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
-              {Object.entries(stats.porModalidad).map(([mod, n]) => (
-                <div
-                  key={mod}
-                  onClick={() => onNavigate("contratos", "Activo")}
-                  style={{
-                    flex: "0 0 auto",
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 14px", borderRadius: 10,
-                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ fontSize: 18, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1" }}>{n}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8" }}>{mod}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
+        {/* Contratos por modalidad — solo en desktop (en móvil ya se muestra arriba) */}
+        {!isMobile && (
+          <Section title="Contratos por modalidad">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {Object.entries(stats.porModalidad).map(([mod, n]) => (
                 <div
@@ -812,8 +823,8 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 </div>
               ))}
             </div>
-          )}
-        </Section>
+          </Section>
+        )}
       </div>
 
       {/* ── TALLER SNAPSHOT ── */}

@@ -4,6 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
+import { useConvenios } from "../hooks/useConvenios";
 import type { ViewKey } from "../App";
 
 interface Props {
@@ -24,40 +25,58 @@ const NIVEL_BADGE_BG: Record<Alerta["nivel"], string> = {
 };
 
 const TIPO_ICON: Record<Alerta["tipo"], string> = {
-  mora_critica:      "🚨",
-  gabela:            "⏰",
-  base_completada:   "✅",
-  soat_vence:        "📋",
-  tecno_vence:       "🔧",
-  plazo_extra_vence: "⏳",
+  mora_critica:           "🚨",
+  gabela:                 "⏰",
+  base_completada:        "✅",
+  soat_vence:             "📋",
+  tecno_vence:            "🔧",
+  plazo_extra_vence:      "⏳",
+  transferencia_pendiente:"💳",
+  contrato_sin_activar:   "📄",
+  moto_retenida:          "🔒",
+  traspaso_proximo:       "🔄",
+  convenio_incumplido_3:  "⚖️",
+  convenio_por_vencer:    "📅",
+  moto_taller_demorada:   "🔧",
 };
 
 const TIPO_LABEL: Record<Alerta["tipo"], string> = {
-  mora_critica:      "Mora",
-  gabela:            "Gabela",
-  base_completada:   "Base lista",
-  soat_vence:        "SOAT",
-  tecno_vence:       "Tecnomecánica",
-  plazo_extra_vence: "Plazo extra",
+  mora_critica:           "Mora",
+  gabela:                 "Gabela",
+  base_completada:        "Base lista",
+  soat_vence:             "SOAT",
+  tecno_vence:            "Tecnomecánica",
+  plazo_extra_vence:      "Plazo extra",
+  transferencia_pendiente:"Transferencia",
+  contrato_sin_activar:   "Contrato",
+  moto_retenida:          "Retención",
+  traspaso_proximo:       "Traspaso",
+  convenio_incumplido_3:  "Liquidación",
+  convenio_por_vencer:    "Convenio",
+  moto_taller_demorada:   "Taller",
 };
 
 // ── Category tab definitions ──────────────────────────────────────────────────
-type TabKey = "todas" | "mora" | "soat_tecno" | "contratos" | "referidos";
+type TabKey = "todas" | "mora" | "soat_tecno" | "contratos" | "flota" | "convenios";
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "todas",      label: "Todas"         },
-  { key: "mora",       label: "Mora"          },
-  { key: "soat_tecno", label: "SOAT / Tecno"  },
-  { key: "contratos",  label: "Contratos"     },
-  { key: "referidos",  label: "Referidos"     },
+  { key: "todas",     label: "Todas"         },
+  { key: "mora",      label: "Mora"          },
+  { key: "contratos", label: "Contratos"     },
+  { key: "flota",     label: "Flota"         },
+  { key: "soat_tecno",label: "SOAT / Tecno"  },
+  { key: "convenios", label: "Convenios"     },
 ];
 
 function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
-  if (tab === "todas")      return true;
-  if (tab === "mora")       return a.tipo === "mora_critica" || a.tipo === "gabela";
-  if (tab === "soat_tecno") return a.tipo === "soat_vence"   || a.tipo === "tecno_vence";
-  if (tab === "contratos")  return a.tipo === "base_completada" || a.tipo === "plazo_extra_vence";
-  // referidos — currently no alert type, so always empty
+  if (tab === "todas")     return true;
+  if (tab === "mora")      return a.tipo === "mora_critica" || a.tipo === "gabela";
+  if (tab === "soat_tecno")return a.tipo === "soat_vence"   || a.tipo === "tecno_vence";
+  if (tab === "contratos") return a.tipo === "base_completada" || a.tipo === "plazo_extra_vence"
+                               || a.tipo === "transferencia_pendiente" || a.tipo === "contrato_sin_activar"
+                               || a.tipo === "traspaso_proximo";
+  if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada";
+  if (tab === "convenios") return a.tipo === "convenio_incumplido_3" || a.tipo === "convenio_por_vencer";
   return false;
 }
 
@@ -78,19 +97,22 @@ export default function AlertasView({ onNavegar }: Props) {
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { pagos }     = usePagos();
-  const alertas = useAlertas({ contratos, clientes, motos, pagos });
+  const { convenios } = useConvenios();
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
 
   const [tab, setTab]           = useState<TabKey>("todas");
   const [vistas, setVistas]     = useState<Set<string>>(new Set());
 
   // Count per tab
   const tabCounts = useMemo(() => {
-    const counts: Record<TabKey, number> = { todas: 0, mora: 0, soat_tecno: 0, contratos: 0, referidos: 0 };
+    const counts: Record<TabKey, number> = { todas: 0, mora: 0, soat_tecno: 0, contratos: 0, flota: 0, convenios: 0 };
     for (const a of alertas) {
       counts.todas++;
-      if (alertaMatchesTab(a, "mora"))       counts.mora++;
-      if (alertaMatchesTab(a, "soat_tecno")) counts.soat_tecno++;
-      if (alertaMatchesTab(a, "contratos"))  counts.contratos++;
+      if (alertaMatchesTab(a, "mora"))      counts.mora++;
+      if (alertaMatchesTab(a, "soat_tecno"))counts.soat_tecno++;
+      if (alertaMatchesTab(a, "contratos")) counts.contratos++;
+      if (alertaMatchesTab(a, "flota"))     counts.flota++;
+      if (alertaMatchesTab(a, "convenios")) counts.convenios++;
     }
     return counts;
   }, [alertas]);
@@ -260,14 +282,29 @@ export default function AlertasView({ onNavegar }: Props) {
                 💳 Cartera
               </button>
             )}
-            {a.tipo === "base_completada" && (
+            {(a.tipo === "base_completada" || a.tipo === "traspaso_proximo" || a.tipo === "contrato_sin_activar") && (
               <button onClick={() => onNavegar("contratos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
                 📄 Contratos
               </button>
             )}
-            {(a.tipo === "soat_vence" || a.tipo === "tecno_vence") && (
+            {(a.tipo === "soat_vence" || a.tipo === "tecno_vence" || a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada") && (
               <button onClick={() => onNavegar("motos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>
                 🏍️ Ir a Motos
+              </button>
+            )}
+            {a.tipo === "moto_taller_demorada" && (
+              <button onClick={() => onNavegar("taller")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fff7ed", color: "#c2410c" }}>
+                🔧 Taller
+              </button>
+            )}
+            {a.tipo === "transferencia_pendiente" && (
+              <button onClick={() => onNavegar("cobros")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>
+                💳 Confirmar
+              </button>
+            )}
+            {(a.tipo === "convenio_incumplido_3") && (
+              <button onClick={() => onNavegar("liquidaciones")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fee2e2", color: "#991b1b" }}>
+                ⚖️ Liquidar
               </button>
             )}
             {!vista && (
@@ -354,14 +391,15 @@ export default function AlertasView({ onNavegar }: Props) {
           textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
         }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>
-            {tab === "mora" ? "🎉" : tab === "soat_tecno" ? "🛡️" : tab === "contratos" ? "📄" : "✅"}
+            {tab === "mora" ? "🎉" : tab === "soat_tecno" ? "🛡️" : tab === "contratos" ? "📄" : tab === "flota" ? "🏍️" : tab === "convenios" ? "🤝" : "✅"}
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Sin alertas en esta categoría</div>
           <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
             {tab === "mora"       ? "Todos los clientes están al día con sus pagos." :
              tab === "soat_tecno" ? "Todos los documentos están vigentes." :
              tab === "contratos"  ? "No hay contratos pendientes de acción." :
-             tab === "referidos"  ? "No hay referidos pendientes de premios." :
+             tab === "flota"      ? "No hay motos retenidas ni demoradas en taller." :
+             tab === "convenios"  ? "No hay convenios vencidos ni por vencer." :
              "Todas las alertas están bajo control."}
           </div>
         </div>

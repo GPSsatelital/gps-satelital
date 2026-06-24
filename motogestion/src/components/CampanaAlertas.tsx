@@ -13,12 +13,19 @@ const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: 
 };
 
 const TIPO_ICON: Record<Alerta["tipo"], string> = {
-  mora_critica:    "🚨",
-  gabela:          "⏰",
-  base_completada: "✅",
-  soat_vence:      "📋",
-  tecno_vence:     "🔧",
-  plazo_extra_vence: "⏳",
+  mora_critica:           "🚨",
+  gabela:                 "⏰",
+  base_completada:        "✅",
+  soat_vence:             "📋",
+  tecno_vence:            "🔧",
+  plazo_extra_vence:      "⏳",
+  transferencia_pendiente:"💳",
+  contrato_sin_activar:   "📄",
+  moto_retenida:          "🔒",
+  traspaso_proximo:       "🔄",
+  convenio_incumplido_3:  "⚖️",
+  convenio_por_vencer:    "📅",
+  moto_taller_demorada:   "🔧",
 };
 
 export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey) => void }) {

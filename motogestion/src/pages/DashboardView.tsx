@@ -317,7 +317,7 @@ export default function DashboardView({ onNavigate }: {
 
   const quickActions = [
     { icon: "👥", label: "Nuevo cliente",  view: "clientes"  as ViewKey, filter: "new" },
-    { icon: "💳", label: "Registrar pago", view: "cobros"    as ViewKey, filter: undefined },
+    { icon: "💳", label: "Registrar pago", view: "cobros"    as ViewKey, filter: "new" },
     { icon: "🏍️", label: "Agregar moto",   view: "motos"     as ViewKey, filter: "new" },
     { icon: "📄", label: "Nuevo contrato", view: "contratos" as ViewKey, filter: "new" },
   ];

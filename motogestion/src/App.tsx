@@ -405,7 +405,7 @@ function Shell() {
       {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
-      {ctx.view === "cobros"        && <CobrosView onNavigate={navigate} />}
+      {ctx.view === "cobros"        && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "caja"          && <CajaView />}
       {ctx.view === "reportes"      && esAdmin && <ReportesView onNavigate={navigate} />}
       {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView onNavigate={navigate} />}

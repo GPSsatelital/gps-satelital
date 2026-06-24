@@ -273,7 +273,7 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
+export default function CobrosView({ initialOpenForm = false, onNavigate }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, confirmarPago, rechazarPago, pagosDelContrato } =
@@ -295,6 +295,10 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
   const [activeTab, setActiveTab] = useState<TabKey>("pagan-hoy");
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
+
+  // Modal de registro rápido de pago (desde acción rápida del dashboard)
+  const [modalPago, setModalPago] = useState(initialOpenForm);
+  const [modalBusqueda, setModalBusqueda] = useState("");
 
   // Payment form state
   const [valor, setValor] = useState("");
@@ -1460,6 +1464,92 @@ export default function CobrosView({ onNavigate }: { onNavigate?: (view: ViewKey
               <PanelDetalle />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal de registro rápido de pago */}
+      {modalPago && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}
+          onClick={() => { setModalPago(false); setModalBusqueda(""); }}
+        >
+          <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Registrar pago</h3>
+              <button onClick={() => { setModalPago(false); setModalBusqueda(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
+            </div>
+
+            {/* Selector de cliente */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Cliente / contrato</label>
+              <input
+                style={{ ...inputStyle, marginBottom: 8 }}
+                placeholder="Buscar cliente o placa..."
+                value={modalBusqueda}
+                onChange={e => setModalBusqueda(e.target.value)}
+                autoFocus
+              />
+              <select
+                style={inputStyle}
+                value={contratoSeleccionadoId ?? ""}
+                onChange={e => setContratoSeleccionadoId(e.target.value || null)}
+              >
+                <option value="">— Selecciona un contrato —</option>
+                {resumenContratos
+                  .filter(c => {
+                    const q = modalBusqueda.trim().toLowerCase();
+                    if (!q) return true;
+                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                    const moto = motos.find(m => m.id === c.moto_id);
+                    return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
+                  })
+                  .map(c => {
+                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                    const moto = motos.find(m => m.id === c.moto_id);
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {moto ? `${moto.placa} · ` : ""}{cliente?.nombre || "Sin cliente"}
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+
+            {/* Cuota pendiente del contrato seleccionado */}
+            {contratoDetalle && (
+              <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "#0369a1" }}>
+                Cuota del período: <strong>${cuotaPactada.toLocaleString("es-CO")}</strong> · Pendiente: <strong>${cuotaPendiente.toLocaleString("es-CO")}</strong>
+              </div>
+            )}
+
+            {/* Valor */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Valor recibido</label>
+              <input type="number" style={inputStyle} value={valor} onChange={e => setValor(e.target.value)} placeholder="Ej. 202000" />
+            </div>
+
+            {/* Método */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Método de pago</label>
+              <select style={inputStyle} value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)}>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+              </select>
+            </div>
+
+            {formError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{formError}</div>}
+            {formExito && <div style={{ color: "#166534", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>✓ Pago registrado correctamente</div>}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={async () => { await handleRegistrarPago(); }}
+                style={{ ...primaryBtn, flex: 1 }}
+              >
+                Registrar pago
+              </button>
+              <button onClick={() => { setModalPago(false); setModalBusqueda(""); }} style={secondaryBtn}>Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

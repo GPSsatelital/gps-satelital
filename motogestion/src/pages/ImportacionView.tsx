@@ -39,6 +39,7 @@ const CAMPOS_PAGOS = [
 const GRUPO_MAP: Record<string, string> = {
   "costa": "COSTA", "pradera": "PRADERA", "rastreador": "RASTREADOR",
   "COSTA": "COSTA", "PRADERA": "PRADERA", "RASTREADOR": "RASTREADOR",
+  "usadas": "USADAS", "usadas club": "USADAS", "USADAS": "USADAS", "USADAS CLUB": "USADAS",
 };
 
 function parseDate(val: unknown): string | null {

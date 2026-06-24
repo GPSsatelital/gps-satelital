@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, Fragment } from "react";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
@@ -43,7 +43,7 @@ export default function DashboardView({ onNavigate }: {
 }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [chartDays, setChartDays] = useState<7 | 14 | 30>(14);
-  const [grupoSeleccionado, setGrupoSeleccionado] = useState<"todos" | "RASTREADOR" | "COSTA" | "PRADERA">("todos");
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState<"todos" | GrupoMoto>("todos");
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -97,7 +97,7 @@ export default function DashboardView({ onNavigate }: {
 
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;
 
-    const grupos = ["COSTA","PRADERA","RASTREADOR","OTRO"] as const;
+    const grupos = ["COSTA","PRADERA","RASTREADOR","USADAS","OTRO"] as const;
     const porGrupo = grupos.map(g => ({
       g,
       asignadas:   motos.filter(m => m.grupo === g && m.estado === "Asignada").length,
@@ -463,7 +463,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
         <div style={{ display: "flex", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
           {[
             { key: "todos" as const, label: "Toda la flota", total: motos.length },
-            ...gruposVisibles.map(g => ({ key: g.g as "RASTREADOR" | "COSTA" | "PRADERA", label: g.g, total: g.total })),
+            ...gruposVisibles.map(g => ({ key: g.g as GrupoMoto, label: g.g, total: g.total })),
           ].map(op => {
             const isSelected = grupoSeleccionado === op.key;
             return (

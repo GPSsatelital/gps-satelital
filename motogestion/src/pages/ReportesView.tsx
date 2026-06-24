@@ -31,9 +31,9 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "exportar", label: "Exportar", icon: "⬇️" },
 ];
 
-const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA"] as const;
+const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA", "USADAS"] as const;
 const GRUPO_COLORS: Record<string, string> = {
-  RASTREADOR: "#0284c7", COSTA: "#10b981", PRADERA: "#f59e0b",
+  RASTREADOR: "#0284c7", COSTA: "#10b981", PRADERA: "#f59e0b", USADAS: "#ea580c",
 };
 const ESTADO_MOTO_COLOR: Record<string, string> = {
   Asignada: "#166534", Disponible: "#1e40af", "En taller": "#92400e",

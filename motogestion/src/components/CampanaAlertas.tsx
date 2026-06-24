@@ -3,6 +3,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePagos } from "../hooks/usePagos";
+import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
 import type { ViewKey } from "../App";
 
@@ -45,8 +46,9 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { pagos } = usePagos();
+  const { convenios } = useConvenios();
 
-  const alertas = useAlertas({ contratos, clientes, motos, pagos });
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
   const criticos = alertas.filter(a => a.nivel === "critico").length;
   const total = alertas.length;
 

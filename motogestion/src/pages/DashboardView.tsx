@@ -4,6 +4,8 @@ import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
+import { useConvenios } from "../hooks/useConvenios";
+import { useAlertas, type Alerta } from "../hooks/useAlertas";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -56,6 +58,10 @@ export default function DashboardView({ onNavigate }: {
   const { contratos, loading: lCt } = useContratos();
   const { pagos, loading: lP } = usePagos();
   const { taller, loading: lT } = useTaller();
+  const { convenios } = useConvenios();
+
+  // Misma fuente de alertas que la campana y la vista de Alertas
+  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios });
 
   const loading = lM || lC || lCt || lP || lT;
 
@@ -244,47 +250,46 @@ export default function DashboardView({ onNavigate }: {
     );
   }
 
-  // ── Alerts list ────────────────────────────────────────────────────────────
-  const alerts: Array<{
-    icon: string; text: string; color: string; bgColor: string; borderColor: string;
-    severidad: "critica" | "alta" | "media";
-    view?: ViewKey; filter?: string;
-  }> = [];
+  // ── Alerts list — agrupa las MISMAS alertas de la campana por tipo ──────────
+  // Mapa de presentación por tipo (icono, estilo, módulo destino, etiqueta)
+  const TIPO_BANNER: Record<Alerta["tipo"], { icon: string; bgColor: string; borderColor: string; color: string; view: ViewKey; filter?: string; label: (n: number) => string }> = {
+    mora_critica:            { icon: "🚨", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "cobros",        label: n => `${n} cliente${n > 1 ? "s" : ""} en mora` },
+    gabela:                  { icon: "⏰", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} cliente${n > 1 ? "s" : ""} en gabela` },
+    transferencia_pendiente: { icon: "🔔", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros", filter: "new", label: n => `${n} transferencia${n > 1 ? "s" : ""} pendiente${n > 1 ? "s" : ""} de confirmar` },
+    base_completada:         { icon: "✅", bgColor: "#dcfce7", borderColor: "#16a34a", color: "#166534", view: "contratos",     label: n => `${n} cliente${n > 1 ? "s" : ""} completó la base inicial` },
+    soat_vence:              { icon: "📋", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "motos",         label: n => `${n} SOAT por vencer` },
+    tecno_vence:             { icon: "🔧", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "motos",         label: n => `${n} tecnomecánica${n > 1 ? "s" : ""} por vencer` },
+    plazo_extra_vence:       { icon: "⏳", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} plazo${n > 1 ? "s" : ""} extra por vencer` },
+    contrato_sin_activar:    { icon: "📄", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "contratos", filter: "En proceso", label: n => `${n} contrato${n > 1 ? "s" : ""} sin activar` },
+    moto_retenida:           { icon: "🔒", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "motos", filter: "retencion", label: n => `${n} moto${n > 1 ? "s" : ""} retenida${n > 1 ? "s" : ""} (Fiscalía / Tránsito / Garantía)` },
+    traspaso_proximo:        { icon: "🔄", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "contratos",     label: n => `${n} traspaso${n > 1 ? "s" : ""} próximo${n > 1 ? "s" : ""}` },
+    convenio_incumplido_3:   { icon: "⚖️", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "liquidaciones", label: n => `${n} convenio${n > 1 ? "s" : ""} incumplido${n > 1 ? "s" : ""} → liquidación` },
+    convenio_por_vencer:     { icon: "📅", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} convenio${n > 1 ? "s" : ""} por vencer` },
+    moto_taller_demorada:    { icon: "🔧", bgColor: "#fff7ed", borderColor: "#f97316", color: "#92400e", view: "taller",        label: n => `${n} moto${n > 1 ? "s" : ""} demorada${n > 1 ? "s" : ""} en taller` },
+  };
 
-  if (stats.pagosPendientes > 0)
-    alerts.push({
-      icon: "🔔", color: "#92400e", bgColor: "#fef3c7", borderColor: "#f59e0b",
-      severidad: "alta",
-      text: `${stats.pagosPendientes} transferencia${stats.pagosPendientes > 1 ? "s" : ""} pendiente${stats.pagosPendientes > 1 ? "s" : ""} de confirmar`,
-      view: "cobros",
-    });
-  if (stats.clientesMora > 0)
-    alerts.push({
-      icon: "⚠️", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#ef4444",
-      severidad: stats.clientesMora >= 5 ? "critica" : "alta",
-      text: `${stats.clientesMora} cliente${stats.clientesMora > 1 ? "s" : ""} en mora o riesgo`,
-      view: "clientes", filter: "mora",
-    });
-  if (stats.motosRetencion > 0)
-    alerts.push({
-      icon: "🚨", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#dc2626",
-      severidad: "critica",
-      text: `${stats.motosRetencion} moto${stats.motosRetencion > 1 ? "s" : ""} retenida${stats.motosRetencion > 1 ? "s" : ""} (Fiscalía / Tránsito / Garantía)`,
-      view: "motos", filter: "retencion",
-    });
-  if (stats.motosTaller > 0)
-    alerts.push({
-      icon: "🔧", color: "#92400e", bgColor: "#fff7ed", borderColor: "#f97316",
-      severidad: "media",
-      text: `${stats.motosTaller} moto${stats.motosTaller > 1 ? "s" : ""} en mantenimiento`,
-      view: "taller",
-    });
-  if (stats.contratosEnProceso > 0)
-    alerts.push({
-      icon: "📄", color: "#1e40af", bgColor: "#eff6ff", borderColor: "#3b82f6",
-      severidad: "media",
-      text: `${stats.contratosEnProceso} contrato${stats.contratosEnProceso > 1 ? "s" : ""} en proceso sin activar`,
-      view: "contratos", filter: "En proceso",
+  // Agrupar por tipo conservando el nivel más alto
+  const ordenNivel: Record<Alerta["nivel"], number> = { critico: 0, alerta: 1, info: 2 };
+  const porTipo = new Map<Alerta["tipo"], { count: number; nivel: Alerta["nivel"] }>();
+  for (const a of alertasSistema) {
+    const prev = porTipo.get(a.tipo);
+    if (!prev) porTipo.set(a.tipo, { count: 1, nivel: a.nivel });
+    else porTipo.set(a.tipo, { count: prev.count + 1, nivel: ordenNivel[a.nivel] < ordenNivel[prev.nivel] ? a.nivel : prev.nivel });
+  }
+
+  const alerts = Array.from(porTipo.entries())
+    .map(([tipo, info]) => {
+      const b = TIPO_BANNER[tipo];
+      return {
+        icon: b.icon, color: b.color, bgColor: b.bgColor, borderColor: b.borderColor,
+        severidad: (info.nivel === "critico" ? "critica" : info.nivel === "alerta" ? "alta" : "media") as "critica" | "alta" | "media",
+        text: b.label(info.count),
+        view: b.view, filter: b.filter,
+      };
+    })
+    .sort((x, y) => {
+      const r: Record<string, number> = { critica: 0, alta: 1, media: 2 };
+      return r[x.severidad] - r[y.severidad];
     });
 
   const alertasCriticas = alerts.filter(a => a.severidad === "critica");
@@ -375,7 +380,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           onClick={() => onNavigate("alertas")}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>⚠️ Requieren atención — toca para ver todas</span>
+            <span>⚠️ {alertasSistema.length} alerta{alertasSistema.length !== 1 ? "s" : ""} — toca para ver todas</span>
             <span style={{ fontSize: 13, color: "#c2410c" }}>›</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

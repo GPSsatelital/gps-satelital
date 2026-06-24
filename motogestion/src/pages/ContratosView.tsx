@@ -97,6 +97,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [busqueda, setBusqueda] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(initialOpenForm && puedeCrear);
+  // profile carga async: si initialOpenForm llegó antes de resolver el rol, abrir cuando ya pueda crear
+  useEffect(() => { if (initialOpenForm && puedeCrear) setOpen(true); }, [initialOpenForm, puedeCrear]);
   const [contratoFirma, setContratoFirma] = useState<Contrato | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);

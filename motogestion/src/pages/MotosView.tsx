@@ -473,7 +473,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
       {/* Modal cambiar ubicación */}
       {openUbicacion && selectedMoto && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpenUbicacion(false)}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenUbicacion(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "white", borderRadius: 16, padding: 24 }}>
             <h3 style={{ margin: "0 0 16px" }}>Cambiar ubicación física</h3>
             <Field label="Nueva ubicación">
@@ -497,8 +497,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
       {/* Modal recepción de vehículo */}
       {openRecepcion && selectedMoto && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpenRecepcion(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "white", borderRadius: 16, padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenRecepcion(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: "0 0 16px" }}>Formulario de recepción — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Motivo de ingreso">
@@ -536,8 +536,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       )}
 
       {open && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 }} onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "white", borderRadius: 16, padding: 24, maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Registrar nueva moto</h3>
 
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
@@ -576,7 +576,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {/* ── Modal Retención ── */}
       {openRetencion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: "0 0 16px" }}>Registrar retención — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Tipo de retención">

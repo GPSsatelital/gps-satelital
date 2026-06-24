@@ -296,9 +296,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
-  // Modal de registro rápido de pago (desde acción rápida del dashboard)
+  // Modal de registro rápido de pago (desde acción rápida del dashboard) — estado propio e independiente
   const [modalPago, setModalPago] = useState(initialOpenForm);
   const [modalBusqueda, setModalBusqueda] = useState("");
+  const [modalContratoId, setModalContratoId] = useState<string | null>(null);
+  const [modalValor, setModalValor] = useState("");
+  const [modalMetodo, setModalMetodo] = useState<MetodoPago>("Efectivo");
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalExito, setModalExito] = useState(false);
 
   // Payment form state
   const [valor, setValor] = useState("");
@@ -494,6 +499,47 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         contratoDetalle.cuotaConvenio,
       )
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
+
+  // ── Modal de pago: cálculos independientes ────────────────────────────────
+  const modalContrato = modalContratoId
+    ? resumenContratos.find(c => c.id === modalContratoId) ?? null
+    : null;
+  const modalCliente = modalContrato ? clientes.find(cl => cl.id === modalContrato.cliente_id) : null;
+  const modalMoto = modalContrato ? motos.find(m => m.id === modalContrato.moto_id) : null;
+  const modalPagos = modalContratoId ? pagosDelContrato(modalContratoId).slice(0, 8) : [];
+
+  const modalCuotaPactada = modalContrato
+    ? (modalContrato.forma_pago === "Diario"
+        ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo)
+        : modalContrato.valor_semanal)
+    : 0;
+  const modalPagadoPeriodo = modalContrato?.forma_pago === "Diario"
+    ? (modalContrato?.recaudadoHoy ?? 0)
+    : (modalContrato?.pagadoEstaSemana ?? 0);
+  const modalCuotaPendiente = modalContrato ? Math.max(modalCuotaPactada - modalPagadoPeriodo, 0) : 0;
+  const modalMonto = Number(modalValor) || 0;
+  const modalDesglose: AplicadoPago = modalContrato
+    ? calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, modalContrato.cuotaConvenio)
+    : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
+
+  function cerrarModalPago() {
+    setModalPago(false); setModalBusqueda(""); setModalContratoId(null);
+    setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
+  }
+
+  async function handleRegistrarPagoModal() {
+    if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
+    if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
+    setModalError(null); setModalExito(false);
+    const { error } = await registrarPago(
+      modalContratoId, modalMonto, modalMetodo, modalDesglose,
+      modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : undefined,
+    );
+    if (error) { setModalError(error); return; }
+    setModalValor("");
+    setModalExito(true);
+    setTimeout(() => setModalExito(false), 3000);
+  }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleRegistrarPago() {
@@ -1471,12 +1517,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       {modalPago && (
         <div
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}
-          onClick={() => { setModalPago(false); setModalBusqueda(""); }}
+          onClick={cerrarModalPago}
         >
           <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Registrar pago</h3>
-              <button onClick={() => { setModalPago(false); setModalBusqueda(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
+              <button onClick={cerrarModalPago} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
             </div>
 
             {/* Selector de cliente */}
@@ -1491,8 +1537,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               />
               <select
                 style={inputStyle}
-                value={contratoSeleccionadoId ?? ""}
-                onChange={e => setContratoSeleccionadoId(e.target.value || null)}
+                value={modalContratoId ?? ""}
+                onChange={e => { setModalContratoId(e.target.value || null); setModalError(null); setModalExito(false); }}
               >
                 <option value="">— Selecciona un contrato —</option>
                 {resumenContratos
@@ -1515,39 +1561,104 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </select>
             </div>
 
-            {/* Cuota pendiente del contrato seleccionado */}
-            {contratoDetalle && (
-              <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "#0369a1" }}>
-                Cuota del período: <strong>${cuotaPactada.toLocaleString("es-CO")}</strong> · Pendiente: <strong>${cuotaPendiente.toLocaleString("es-CO")}</strong>
+            {/* Detalle del contrato seleccionado — dentro del modal */}
+            {modalContrato && (
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", textTransform: "uppercase" }}>
+                    {modalCliente?.nombre || "Sin cliente"}
+                  </div>
+                  <EstadoBadge estado={modalContrato.estadoCartera as EstadoCartera} />
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+                  {modalMoto ? `🏍️ ${modalMoto.placa} · ` : ""}
+                  {modalContrato.forma_pago === "Diario" ? "Contrato diario" : "Pago semanal"}
+                  {modalContrato.diasSinPago < 999 ? ` · ${modalContrato.diasSinPago} días sin pago` : ""}
+                </div>
+
+                {/* Cuotas */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, background: "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Cuota período</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>$ {fmt(modalCuotaPactada)}</div>
+                  </div>
+                  <div style={{ flex: 1, background: "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Pagado</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#166534" }}>$ {fmt(modalPagadoPeriodo)}</div>
+                  </div>
+                  <div style={{ flex: 1, background: modalCuotaPendiente > 0 ? "#fef2f2" : "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Pendiente</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: modalCuotaPendiente > 0 ? "#991b1b" : "#0f172a" }}>$ {fmt(modalCuotaPendiente)}</div>
+                  </div>
+                </div>
+
+                {/* Deuda / convenio */}
+                {(modalContrato.deudaContrato > 0 || modalContrato.cuotaConvenio > 0) && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12, fontSize: 12 }}>
+                    {modalContrato.deudaContrato > 0 && (
+                      <div style={{ flex: 1, background: "#fff7ed", borderRadius: 8, padding: "6px 10px", color: "#c2410c", fontWeight: 700 }}>Deuda: $ {fmt(modalContrato.deudaContrato)}</div>
+                    )}
+                    {modalContrato.cuotaConvenio > 0 && (
+                      <div style={{ flex: 1, background: "#eff6ff", borderRadius: 8, padding: "6px 10px", color: "#0369a1", fontWeight: 700 }}>Convenio: $ {fmt(modalContrato.cuotaConvenio)}/período</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Historial */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", marginBottom: 6 }}>Últimos pagos</div>
+                {modalPagos.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#94a3b8" }}>Sin pagos registrados.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 130, overflowY: "auto" }}>
+                    {modalPagos.map(p => (
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", borderRadius: 8, padding: "6px 10px" }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: 13 }}>$ {fmt(p.valor)}</span>
+                          <span style={{ fontSize: 11, color: "#64748b" }}> · {formatDate(p.fecha)} · {p.metodo}</span>
+                        </div>
+                        <PagoBadge estado={p.estado} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Valor */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Valor recibido</label>
-              <input type="number" style={inputStyle} value={valor} onChange={e => setValor(e.target.value)} placeholder="Ej. 202000" />
+              <input type="number" style={inputStyle} value={modalValor} onChange={e => setModalValor(e.target.value)} placeholder="Ej. 202000" />
             </div>
+
+            {/* Desglose de aplicación */}
+            {modalContrato && modalMonto > 0 && (
+              <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#0369a1" }}>
+                Se aplicará:
+                {modalDesglose.tarifa > 0 && <> tarifa $ {fmt(modalDesglose.tarifa)}</>}
+                {modalDesglose.deuda > 0 && <> · deuda $ {fmt(modalDesglose.deuda)}</>}
+                {modalDesglose.convenio > 0 && <> · convenio $ {fmt(modalDesglose.convenio)}</>}
+                {modalDesglose.ahorro > 0 && <> · ahorro $ {fmt(modalDesglose.ahorro)}</>}
+                {modalDesglose.saldo > 0 && <> · saldo a favor $ {fmt(modalDesglose.saldo)}</>}
+              </div>
+            )}
 
             {/* Método */}
             <div style={{ marginBottom: 18 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Método de pago</label>
-              <select style={inputStyle} value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)}>
+              <select style={inputStyle} value={modalMetodo} onChange={e => setModalMetodo(e.target.value as MetodoPago)}>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
               </select>
             </div>
 
-            {formError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{formError}</div>}
-            {formExito && <div style={{ color: "#166534", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>✓ Pago registrado correctamente</div>}
+            {modalError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{modalError}</div>}
+            {modalExito && <div style={{ color: "#166534", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>✓ Pago registrado correctamente</div>}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={async () => { await handleRegistrarPago(); }}
-                style={{ ...primaryBtn, flex: 1 }}
-              >
+              <button onClick={handleRegistrarPagoModal} style={{ ...primaryBtn, flex: 1 }}>
                 Registrar pago
               </button>
-              <button onClick={() => { setModalPago(false); setModalBusqueda(""); }} style={secondaryBtn}>Cerrar</button>
+              <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
             </div>
           </div>
         </div>

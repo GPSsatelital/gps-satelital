@@ -383,7 +383,8 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 |-------|---------|
 | CSS Grid con `minmax(320px, 1fr)` | Usar flexbox con `flexWrap: "wrap"` |
 | `tipo_contrato` no existe | El campo se llama `forma_pago` |
-| `"CLUB"` no es GrupoMoto válido | Usar `"RASTREADOR" as GrupoMoto` |
+| `"CLUB"` no es GrupoMoto válido | Grupos válidos: `COSTA` `PRADERA` `RASTREADOR` `USADAS` `OTRO` |
+| Insert a columna inexistente en Supabase | El código no crea columnas; agregar migración .sql y avisar al usuario que la corra |
 | `import React` sin usar JSX | Importar solo lo necesario |
 | Variables no usadas en destructuring | No incluir lo que no se usa |
 | sed embeds JSX como texto | Usar herramienta Edit de Claude, nunca sed en JSX |
@@ -391,11 +392,11 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 
 ---
 
-## ESTADO ACTUAL — v2.0
+## ESTADO ACTUAL — v2.1
 
 ### Completado ✅
 - Autenticación y 5 roles con RLS
-- Dashboard con KPIs y navegación filtrada
+- Dashboard con KPIs y navegación filtrada (selector de grupo en panel oscuro, acciones rápidas que abren formulario directo)
 - Módulo Clientes (registro básico, documentos, visitas, aprobación)
 - Módulo Motos (registro, estados, grupos, retenciones, ubicación)
 - Módulo Contratos (flujo completo básico)
@@ -405,20 +406,36 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - Módulo Liquidaciones (6 etapas)
 - Módulo Configuración
 - Responsive + PWA + Realtime
+- **Sistema de alertas completo** (`useAlertas.ts` + `AlertasView.tsx` + campana): 10+ tipos (mora, SOAT, tecno, base completada, transferencias pendientes, contratos sin activar, motos retenidas, traspaso, convenio incumplido/por vencer, taller demorado). Campana y vista comparten datos; clic en alerta navega al módulo.
+- **Confirmación de pagos** (módulo Cobros): transferencia con foto de comprobante obligatoria (bucket Storage `comprobantes`), cobro en campo con flujo de 2 pasos (admin "Entregué a secretaria" → secretaria "Confirmar recibido"), pestaña "Por confirmar" con visor de foto, recibos por WhatsApp (provisional + definitivo) con folio `CMP-AAMMDD-HHMM`.
+- **Grupo "Usadas Club"** (valor interno `USADAS`) como 4º portafolio de socio.
+- Modal de "Registrar pago" autónomo con combobox de búsqueda (desde acción rápida del dashboard).
+
+### Migraciones SQL aplicadas en Supabase (carpeta motogestion/supabase/)
+- Hasta `012_*` (base v2.0)
+- `013_pago_aplicado_base_inicial.sql` — columna que faltaba en pagos ✅ APLICADA
+- `014_grupo_usadas_club.sql` — grupo USADAS en checks de motos/profiles ✅ APLICADA
+- `015_pagos_campo_recibo.sql` — columnas `entregado_caja` + `folio` en pagos ✅ APLICADA
+- Bucket Storage `comprobantes` (público) + policies de insert/select ✅ CREADO
+> IMPORTANTE: las migraciones .sql se aplican MANUALMENTE en el SQL Editor de Supabase. El código solo las deja listas en la carpeta; hay que pegarlas y darle Run.
+
+### Migración de datos reales (en proceso) 📋
+- Excel fuente del cliente analizado (Moteros de la Costa + Ingresos General).
+- Generado `MIGRACION_GPS_SATELITAL_v2.xlsx` (en scratchpad, NO en repo) con hojas por grupo: MOTOS_*, CONTRATOS_*, ARQUEO_* (COSTA/PRADERA/RASTREADOR) + INMOVILIZAR_HOY + INSTRUCCIONES detalladas.
+- Concepto de **arqueo**: foto financiera de hoy por contrato (último pago, deuda, estado) en vez de cargar todo el historial.
+- Pendiente: el cliente llena el Excel → cargar al sistema vía ImportacionView.
 
 ### En implementación 🔨 (Fase 1 — datos reales)
-1. **Rol SOCIO** + dashboard por grupo
-2. **Clientes rediseño:** ruta diario/tiempo_definido, referidos, visita completa
-3. **Firma digital:** 3 documentos auto-generados, huella biométrica, PDF
-4. **Cobros rediseño:** vista diaria, protocolo mora, caja, reportes
-5. **Migración Excel** → datos reales
+1. **Firma digital:** 3 documentos auto-generados, huella biométrica, PDF
+2. **Migración Excel** → datos reales (Excel ya entregado al cliente para llenar)
 
 ### Pendiente 🔲
 - Integración GPS real (sirena + apagado remoto)
-- WhatsApp automático
+- WhatsApp automático (hoy los recibos abren wa.me manualmente)
 - Reportes exportables PDF/Excel
 - Inventario taller y repuestos
 - APK nativo con Capacitor
+- Recibo de pago como imagen/PDF con logo (hoy es texto WhatsApp)
 
 ---
 

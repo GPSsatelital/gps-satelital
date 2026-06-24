@@ -39,9 +39,17 @@ export type Pago = {
   aplicado_ahorro: number;
   aplicado_saldo_favor: number;
   convenio_id: string | null;
+  entregado_caja: boolean;
+  folio: string | null;
   fecha: string;
   created_at: string;
 };
+
+// Folio único legible para recibos: CMP-YYMMDD-HHMM
+export function generarFolio(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `CMP-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
 
 export type ResumenCobro = {
   cuotaPactadaPendiente: number;
@@ -157,10 +165,10 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string },
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean },
   ) {
     const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
-    const estado: PagoEstado = metodo === "Efectivo" ? "Confirmado" : "Pendiente";
+    const estado: PagoEstado = (metodo === "Efectivo" && !opts?.forzarPendiente) ? "Confirmado" : "Pendiente";
     const aplicadoLegacy: Aplicado = {
       deuda: aplicado.deuda,
       semana: aplicado.tarifa,
@@ -185,7 +193,41 @@ export function usePagos() {
       aplicado_ahorro: aplicado.ahorro,
       aplicado_saldo_favor: aplicado.saldo,
       convenio_id: opts?.convenioId ?? null,
+      folio: opts?.folio ?? null,
     });
+    return { error: error?.message ?? null };
+  }
+
+  // Sube la foto del comprobante de transferencia al bucket "comprobantes"
+  async function subirComprobante(file: File, contratoId: string): Promise<{ url: string | null; error: string | null }> {
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${contratoId}/${Date.now()}.${ext}`;
+    const { error: up } = await supabase.storage.from("comprobantes").upload(path, file, { upsert: true });
+    if (up) return { url: null, error: up.message };
+    const { data } = supabase.storage.from("comprobantes").getPublicUrl(path);
+    return { url: data.publicUrl, error: null };
+  }
+
+  // Cobro en campo: efectivo recuperado por un admin en la calle. Queda Pendiente (preaprobado)
+  // hasta que la secretaria reciba el efectivo físico y lo confirme.
+  async function registrarCobroCampo(
+    contratoId: string,
+    valor: number,
+    aplicado: AplicadoPago,
+    cobradoPorId: string,
+    folio: string,
+  ) {
+    return registrarPago(contratoId, valor, "Efectivo", aplicado, {
+      tipoRegistro: "campo",
+      registradoPor: cobradoPorId,
+      folio,
+      forzarPendiente: true,
+    });
+  }
+
+  // El admin marca que entregó físicamente el efectivo a la secretaria.
+  async function marcarEntregadoCaja(id: string) {
+    const { error } = await supabase.from("pagos").update({ entregado_caja: true }).eq("id", id);
     return { error: error?.message ?? null };
   }
 
@@ -220,6 +262,9 @@ export function usePagos() {
     loading,
     error,
     registrarPago,
+    subirComprobante,
+    registrarCobroCampo,
+    marcarEntregadoCaja,
     confirmarPago,
     rechazarPago,
     pagosDelContrato,

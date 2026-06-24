@@ -4,9 +4,11 @@ import {
   usePagos,
   calcularAplicacion,
   calcularCuotaDia,
+  generarFolio,
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
+  type Pago,
 } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -262,7 +264,7 @@ function calcularEstadoCartera(
   return "mora";
 }
 
-type TabKey = "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "protocolo" | "campo" | "recoleccion" | "historial";
+type TabKey = "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "por-confirmar" | "protocolo" | "campo" | "recoleccion" | "historial";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -276,7 +278,7 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 export default function CobrosView({ initialOpenForm = false, onNavigate }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
 
-  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, confirmarPago, rechazarPago, pagosDelContrato } =
+  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, pagosDelContrato } =
     usePagos();
   const { contratos, loading: loadingContratos } = useContratos();
   const { clientes } = useClientes();
@@ -305,6 +307,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [modalMetodo, setModalMetodo] = useState<MetodoPago>("Efectivo");
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
+  const [modalComprobante, setModalComprobante] = useState<File | null>(null);
+  const [modalSubiendo, setModalSubiendo] = useState(false);
 
   // Payment form state
   const [valor, setValor] = useState("");
@@ -346,7 +350,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [accionExitoId, setAccionExitoId] = useState<string | null>(null);
   const [campoContratoId, setCampoContratoId] = useState<string | null>(null);
   const [campoMonto, setCampoMonto] = useState("");
-  const [campoPorId, setCampoPorId] = useState("");
   const [campoNota, setCampoNota] = useState("");
   const [campoError, setCampoError] = useState("");
   const [campoExito, setCampoExito] = useState(false);
@@ -526,6 +529,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   function cerrarModalPago() {
     setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
+    setModalComprobante(null); setModalSubiendo(false);
   }
 
   const modalResultados = resumenContratos.filter(c => {
@@ -544,15 +548,55 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   async function handleRegistrarPagoModal() {
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
+    if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
     setModalError(null); setModalExito(false);
+
+    let comprobanteUrl: string | undefined;
+    if (modalMetodo === "Transferencia" && modalComprobante) {
+      setModalSubiendo(true);
+      const { url, error: upErr } = await subirComprobante(modalComprobante, modalContratoId);
+      setModalSubiendo(false);
+      if (upErr) { setModalError("Error subiendo comprobante: " + upErr); return; }
+      comprobanteUrl = url ?? undefined;
+    }
+
     const { error } = await registrarPago(
       modalContratoId, modalMonto, modalMetodo, modalDesglose,
-      modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : undefined,
+      {
+        folio: generarFolio(),
+        comprobanteUrl,
+        ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
+      },
     );
     if (error) { setModalError(error); return; }
-    setModalValor("");
+    setModalValor(""); setModalComprobante(null);
     setModalExito(true);
     setTimeout(() => setModalExito(false), 3000);
+  }
+
+  // Recibo al cliente por WhatsApp (provisional si está Pendiente, definitivo si Confirmado)
+  function enviarRecibo(pago: Pago) {
+    const contrato = contratos.find(c => c.id === pago.contrato_id);
+    const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+    const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
+    const confirmado = pago.estado === "Confirmado";
+    const lineas = [
+      "🧾 *GPS SATELITAL — Comprobante de pago*",
+      pago.folio ? `Folio: ${pago.folio}` : "",
+      `Fecha: ${formatDate(pago.fecha)}`,
+      cliente ? `Cliente: ${cliente.nombre}` : "",
+      moto ? `Placa: ${moto.placa}` : "",
+      `Monto: $${fmt(pago.valor)}`,
+      `Método: ${pago.metodo}${pago.tipo_registro === "campo" ? " (recibido en campo)" : ""}`,
+      "",
+      confirmado
+        ? "✅ PAGO CONFIRMADO. ¡Gracias por su pago!"
+        : "⏳ Pago recibido, pendiente de validación en caja.",
+    ].filter(Boolean);
+    const msg = encodeURIComponent(lineas.join("\n"));
+    const num = tel.startsWith("57") ? tel : `57${tel}`;
+    window.open(tel ? `https://wa.me/${num}?text=${msg}` : `https://wa.me/?text=${msg}`, "_blank");
   }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -635,11 +679,36 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   async function handleCampoSubmit() {
-    if (!campoContratoId || !campoMonto || !campoPorId) { setCampoError("Completa todos los campos"); return; }
-    await registrarGestion(campoContratoId, "cobro_campo", `Efectivo recuperado: $${campoMonto}. Nota: ${campoNota}`, campoPorId);
+    if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
+    if (!profile) { setCampoError("Sesión no válida"); return; }
+    const monto = Number(campoMonto);
+    if (monto <= 0) { setCampoError("Monto inválido"); return; }
+    const r = resumenContratos.find(x => x.id === campoContratoId);
+    if (!r) { setCampoError("Contrato no encontrado"); return; }
+
+    const cuotaPact = r.forma_pago === "Diario"
+      ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo)
+      : r.valor_semanal;
+    const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0);
+    const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
+    const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
+    const folio = generarFolio();
+
+    const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio);
+    if (error) { setCampoError(error); return; }
+    if (campoNota.trim()) {
+      await registrarGestion(campoContratoId, "cobro_campo", `Efectivo recuperado en campo (${folio}): $${fmt(monto)}. ${campoNota}`, profile.id);
+    }
     setCampoExito(true);
-    setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoPorId(""); setCampoNota(""); setCampoError(""); }, 2000);
+    setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoNota(""); setCampoError(""); }, 2500);
   }
+
+  // ── Pagos pendientes de confirmación (transferencias + cobros en campo) ─────
+  const pagosPendientes = useMemo(
+    () => pagos.filter(p => p.estado === "Pendiente"),
+    [pagos],
+  );
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   // ── Historial filtrado ────────────────────────────────────────────────────
   const pagosFiltrados = useMemo(() => {
@@ -1117,6 +1186,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     { key: "mora", label: "Mora", count: enMora.length },
     { key: "al-dia", label: "Al día", count: alDia.length },
     { key: "todos", label: "Todos", count: resumenContratos.length },
+    { key: "por-confirmar", label: "Por confirmar", count: pagosPendientes.length },
     { key: "protocolo", label: "Protocolo" },
     { key: "campo", label: "Campo" },
     { key: "recoleccion", label: "Recolección", count: enMoraCritica },
@@ -1207,6 +1277,88 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ))}
       </div>
 
+      {/* Por confirmar tab — transferencias y cobros en campo pendientes */}
+      {activeTab === "por-confirmar" && (
+        <div style={{ ...card }}>
+          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>Pagos por confirmar</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+            Transferencias por verificar y efectivo cobrado en campo por entregar/confirmar.
+          </div>
+          {pagosPendientes.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 16px", color: "#94a3b8" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+              No hay pagos pendientes de confirmación.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {pagosPendientes.map(p => {
+                const contrato = contratos.find(c => c.id === p.contrato_id);
+                const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+                const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+                const esCampo = p.tipo_registro === "campo";
+                return (
+                  <div key={p.id} style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 14, padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                          {moto ? `🏍️ ${moto.placa} · ` : ""}{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                          <span style={{ padding: "3px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700 }}>
+                            {esCampo ? "💵 Cobro en campo" : "🏦 Transferencia"}
+                          </span>
+                          <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", color: "#0f172a", fontSize: 11, fontWeight: 800 }}>
+                            $ {fmt(p.valor)}
+                          </span>
+                          {esCampo && (
+                            <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "#dcfce7" : "#fef3c7", color: p.entregado_caja ? "#166534" : "#92400e", fontSize: 11, fontWeight: 700 }}>
+                              {p.entregado_caja ? "Entregado a secretaria" : "En poder del admin"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Foto comprobante */}
+                      {p.comprobante_url && (
+                        <img
+                          src={p.comprobante_url}
+                          onClick={() => setFotoAmpliada(p.comprobante_url)}
+                          style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Acciones */}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                      <button onClick={() => enviarRecibo(p)} style={miniBtn("#dcfce7", "#166534")}>💬 Recibo provisional</button>
+
+                      {esCampo && !p.entregado_caja && (
+                        <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>📤 Entregué a secretaria</button>
+                      )}
+
+                      {/* Confirmar: transferencia siempre; campo solo cuando ya fue entregado */}
+                      {(!esCampo || p.entregado_caja) && esSecretaria && (
+                        <button onClick={async () => { await confirmarPago(p.id); }} style={miniBtn("#16a34a", "#ffffff")}>✓ Confirmar recibido</button>
+                      )}
+                      {esSecretaria && (
+                        <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Visor de foto del comprobante */}
+      {fotoAmpliada && (
+        <div onClick={() => setFotoAmpliada(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <img src={fotoAmpliada} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+        </div>
+      )}
+
       {/* Historial tab — full width */}
       {activeTab === "historial" && (
         <div style={{ ...card, marginTop: 20 }}>
@@ -1253,6 +1405,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
                         <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
                       </>
+                    )}
+                    {p.estado === "Confirmado" && (
+                      <button onClick={() => enviarRecibo(p)} style={miniBtn("#dcfce7", "#166534")}>💬 Recibo</button>
                     )}
                   </div>
                 </div>
@@ -1423,18 +1578,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <div style={labelStyle}>Monto recuperado ($)</div>
                       <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder="Ej. 27000" />
                     </div>
-                    <div>
-                      <div style={labelStyle}>Cobrado por (ID del admin)</div>
-                      <input style={inputStyle} value={campoPorId} onChange={e => setCampoPorId(e.target.value)} placeholder="ID del admin que cobró" />
-                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
                     <div>
                       <div style={labelStyle}>Nota (opcional)</div>
                       <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={campoNota} onChange={e => setCampoNota(e.target.value)} placeholder="Observaciones del cobro en campo..." />
                     </div>
+                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e" }}>
+                      Quedará <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme. Podrás enviar el recibo provisional al cliente desde "Por confirmar".
+                    </div>
                     {campoError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
                     {campoExito && (
                       <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
-                        ✓ Registrado
+                        ✓ Cobro en campo registrado (pendiente de entrega a caja)
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 10 }}>
@@ -1503,7 +1658,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       )}
 
       {/* Other tabs (gabela, mora, al-dia, todos) */}
-      {activeTab !== "pagan-hoy" && activeTab !== "historial" && activeTab !== "protocolo" && activeTab !== "campo" && activeTab !== "recoleccion" && (
+      {activeTab !== "pagan-hoy" && activeTab !== "historial" && activeTab !== "protocolo" && activeTab !== "campo" && activeTab !== "recoleccion" && activeTab !== "por-confirmar" && (
         <div style={{ marginTop: 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1665,20 +1820,30 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             )}
 
             {/* Método */}
-            <div style={{ marginBottom: 18 }}>
+            <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Método de pago</label>
               <select style={inputStyle} value={modalMetodo} onChange={e => setModalMetodo(e.target.value as MetodoPago)}>
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
+                <option value="Efectivo">Efectivo (confirma automático)</option>
+                <option value="Transferencia">Transferencia (queda pendiente)</option>
               </select>
             </div>
+
+            {/* Foto del comprobante — obligatoria en transferencia */}
+            {modalMetodo === "Transferencia" && (
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Foto del comprobante *</label>
+                <input type="file" accept="image/*" capture="environment" onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} style={{ fontSize: 13 }} />
+                {modalComprobante && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✓ {modalComprobante.name}</div>}
+                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>La transferencia quedará pendiente hasta que la secretaria confirme que entró a la cuenta.</div>
+              </div>
+            )}
 
             {modalError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{modalError}</div>}
             {modalExito && <div style={{ color: "#166534", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>✓ Pago registrado correctamente</div>}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleRegistrarPagoModal} style={{ ...primaryBtn, flex: 1 }}>
-                Registrar pago
+              <button onClick={handleRegistrarPagoModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
+                {modalSubiendo ? "Subiendo..." : "Registrar pago"}
               </button>
               <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
             </div>

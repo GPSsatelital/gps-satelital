@@ -75,7 +75,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default function ContratosView({ initialFilter = "" }: { initialFilter?: string }) {
+export default function ContratosView({ initialFilter = "", initialOpenForm = false }: { initialFilter?: string; initialOpenForm?: boolean }) {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
@@ -96,7 +96,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
 
   const [busqueda, setBusqueda] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpenForm && puedeCrear);
   const [contratoFirma, setContratoFirma] = useState<Contrato | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [formError, setFormError] = useState<string | null>(null);

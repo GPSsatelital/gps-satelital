@@ -46,7 +46,7 @@ const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", b
 
 import type { ViewKey } from "../App";
 
-export default function MotosView({ initialFilter = "", onNavigate }: { initialFilter?: string; onNavigate?: (view: ViewKey, filter?: string) => void }) {
+export default function MotosView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -59,7 +59,7 @@ export default function MotosView({ initialFilter = "", onNavigate }: { initialF
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpenForm);
   const [openRecepcion, setOpenRecepcion] = useState(false);
   const [openUbicacion, setOpenUbicacion] = useState(false);
   const [openRetencion, setOpenRetencion] = useState(false);

@@ -316,10 +316,10 @@ export default function DashboardView({ onNavigate }: {
   const recaudoDelta = calcDelta(recaudoFiltrado.semana, recaudoFiltrado.semanaAnterior);
 
   const quickActions = [
-    { icon: "👥", label: "Nuevo cliente",  view: "clientes"  as ViewKey },
-    { icon: "💳", label: "Registrar pago", view: "cobros"    as ViewKey },
-    { icon: "🏍️", label: "Agregar moto",   view: "motos"     as ViewKey },
-    { icon: "📄", label: "Nuevo contrato", view: "contratos" as ViewKey },
+    { icon: "👥", label: "Nuevo cliente",  view: "clientes"  as ViewKey, filter: "new" },
+    { icon: "💳", label: "Registrar pago", view: "cobros"    as ViewKey, filter: undefined },
+    { icon: "🏍️", label: "Agregar moto",   view: "motos"     as ViewKey, filter: "new" },
+    { icon: "📄", label: "Nuevo contrato", view: "contratos" as ViewKey, filter: "new" },
   ];
 
   // Grupo selector data
@@ -597,7 +597,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           {quickActions.map(a => (
             <button
               key={a.label}
-              onClick={() => onNavigate(a.view)}
+              onClick={() => onNavigate(a.view, a.filter)}
               style={{
                 display: "flex", flexDirection: isMobile ? "column" : "row",
                 alignItems: "center", justifyContent: "center", gap: isMobile ? 4 : 8,

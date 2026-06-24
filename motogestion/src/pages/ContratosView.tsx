@@ -80,7 +80,7 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
   const role = profile?.role ?? "SECRETARIA";
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
-  const { contratos, loading, error, crearContrato, asignarMoto, activarContrato, cancelarContrato, suspenderContrato } = useContratos();
+  const { contratos, loading, error, crearContrato, asignarMoto, activarContrato, cancelarContrato, suspenderContrato, finalizarContrato } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
 
@@ -329,6 +329,18 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
                   ⏸️ Suspender contrato
                 </button>
               )}
+              {c.estado === "Activo" && (
+                <button
+                  onClick={async () => {
+                    if (!confirm("¿Finalizar este contrato? La moto quedará disponible.")) return;
+                    const { error } = await finalizarContrato(c.id, c.moto_id);
+                    if (error) setAccionError(error);
+                  }}
+                  style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}
+                >
+                  🏁 Finalizar contrato
+                </button>
+              )}
               <button onClick={() => cancelarContrato(c.id, c.moto_id)} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                 ❌ Cancelar contrato
               </button>
@@ -488,7 +500,9 @@ export default function ContratosView({ initialFilter = "" }: { initialFilter?: 
                   </div>
                 )}
                 {esDiario && c.base_completada && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#166534", fontWeight: 700 }}>✅ Base completada</div>
+                  <div style={{ marginTop: 8, padding: "6px 10px", background: "#dcfce7", borderRadius: 8, fontSize: 12, color: "#166534", fontWeight: 700 }}>
+                    🎯 Base completada — listo para nuevo contrato
+                  </div>
                 )}
 
                 {/* Pasos pendientes */}

@@ -187,6 +187,18 @@ export function useContratos() {
     return { error: null };
   }
 
+  async function finalizarContrato(id: string, motoId: string | null) {
+    const { error: errContrato } = await supabase.from("contratos").update({ estado: "Finalizado" }).eq("id", id);
+    if (errContrato) return { error: errContrato.message };
+
+    if (motoId) {
+      const { error: errMoto } = await supabase.from("motos").update({ estado: "Disponible" }).eq("id", motoId);
+      if (errMoto) return { error: errMoto.message };
+    }
+
+    return { error: null };
+  }
+
   async function actualizarAhorro(id: string, nuevoAhorro: number) {
     const completada = nuevoAhorro >= 510000;
     const { error } = await supabase
@@ -206,6 +218,7 @@ export function useContratos() {
     activarContrato,
     cancelarContrato,
     suspenderContrato,
+    finalizarContrato,
     actualizarAhorro,
     calcularEquivalenciasDiarias,
     calcularProrrateo,

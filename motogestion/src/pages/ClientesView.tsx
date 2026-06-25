@@ -1471,9 +1471,9 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
 function InfoBox({ label, value, full }: { label: string; value: string; full?: boolean }) {
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 12, padding: "8px 12px", gridColumn: full ? "1 / -1" : undefined }}>
-      <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.3, fontWeight: 600 }}>{label}</div>
-      <div style={{ marginTop: 2, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{value}</div>
+    <div style={{ background: "#f8fafc", borderRadius: 10, padding: "5px 10px", gridColumn: full ? "1 / -1" : undefined }}>
+      <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, fontWeight: 700 }}>{label}</div>
+      <div style={{ marginTop: 1, fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{value}</div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useContratos } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
-import { useAlertas, type Alerta } from "../hooks/useAlertas";
+import { useAlertas } from "../hooks/useAlertas";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -250,49 +250,6 @@ export default function DashboardView({ onNavigate }: {
     );
   }
 
-  // ── Alerts list — agrupa las MISMAS alertas de la campana por tipo ──────────
-  // Mapa de presentación por tipo (icono, estilo, módulo destino, etiqueta)
-  const TIPO_BANNER: Record<Alerta["tipo"], { icon: string; bgColor: string; borderColor: string; color: string; view: ViewKey; filter?: string; label: (n: number) => string }> = {
-    mora_critica:            { icon: "🚨", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "cobros",        label: n => `${n} cliente${n > 1 ? "s" : ""} en mora` },
-    gabela:                  { icon: "⏰", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} cliente${n > 1 ? "s" : ""} en gabela` },
-    transferencia_pendiente: { icon: "🔔", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros", filter: "new", label: n => `${n} transferencia${n > 1 ? "s" : ""} pendiente${n > 1 ? "s" : ""} de confirmar` },
-    base_completada:         { icon: "✅", bgColor: "#dcfce7", borderColor: "#16a34a", color: "#166534", view: "contratos",     label: n => `${n} cliente${n > 1 ? "s" : ""} completó la base inicial` },
-    soat_vence:              { icon: "📋", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "motos",         label: n => `${n} SOAT por vencer` },
-    tecno_vence:             { icon: "🔧", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "motos",         label: n => `${n} tecnomecánica${n > 1 ? "s" : ""} por vencer` },
-    plazo_extra_vence:       { icon: "⏳", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} plazo${n > 1 ? "s" : ""} extra por vencer` },
-    contrato_sin_activar:    { icon: "📄", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "contratos", filter: "En proceso", label: n => `${n} contrato${n > 1 ? "s" : ""} sin activar` },
-    moto_retenida:           { icon: "🔒", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "motos", filter: "retencion", label: n => `${n} moto${n > 1 ? "s" : ""} retenida${n > 1 ? "s" : ""} (Fiscalía / Tránsito / Garantía)` },
-    traspaso_proximo:        { icon: "🔄", bgColor: "#eff6ff", borderColor: "#3b82f6", color: "#1e40af", view: "contratos",     label: n => `${n} traspaso${n > 1 ? "s" : ""} próximo${n > 1 ? "s" : ""}` },
-    convenio_incumplido_3:   { icon: "⚖️", bgColor: "#fee2e2", borderColor: "#dc2626", color: "#991b1b", view: "liquidaciones", label: n => `${n} convenio${n > 1 ? "s" : ""} incumplido${n > 1 ? "s" : ""} → liquidación` },
-    convenio_por_vencer:     { icon: "📅", bgColor: "#fef3c7", borderColor: "#f59e0b", color: "#92400e", view: "cobros",        label: n => `${n} convenio${n > 1 ? "s" : ""} por vencer` },
-    moto_taller_demorada:    { icon: "🔧", bgColor: "#fff7ed", borderColor: "#f97316", color: "#92400e", view: "taller",        label: n => `${n} moto${n > 1 ? "s" : ""} demorada${n > 1 ? "s" : ""} en taller` },
-  };
-
-  // Agrupar por tipo conservando el nivel más alto
-  const ordenNivel: Record<Alerta["nivel"], number> = { critico: 0, alerta: 1, info: 2 };
-  const porTipo = new Map<Alerta["tipo"], { count: number; nivel: Alerta["nivel"] }>();
-  for (const a of alertasSistema) {
-    const prev = porTipo.get(a.tipo);
-    if (!prev) porTipo.set(a.tipo, { count: 1, nivel: a.nivel });
-    else porTipo.set(a.tipo, { count: prev.count + 1, nivel: ordenNivel[a.nivel] < ordenNivel[prev.nivel] ? a.nivel : prev.nivel });
-  }
-
-  const alerts = Array.from(porTipo.entries())
-    .map(([tipo, info]) => {
-      const b = TIPO_BANNER[tipo];
-      return {
-        icon: b.icon, color: b.color, bgColor: b.bgColor, borderColor: b.borderColor,
-        severidad: (info.nivel === "critico" ? "critica" : info.nivel === "alerta" ? "alta" : "media") as "critica" | "alta" | "media",
-        text: b.label(info.count),
-        view: b.view, filter: b.filter,
-      };
-    })
-    .sort((x, y) => {
-      const r: Record<string, number> = { critica: 0, alta: 1, media: 2 };
-      return r[x.severidad] - r[y.severidad];
-    });
-
-  const alertasCriticas = alerts.filter(a => a.severidad === "critica");
   const gruposVisibles = stats.porGrupo.filter(g => g.total > 0);
 
   // Pipeline rows
@@ -349,73 +306,42 @@ const grupoActualStats = grupoSeleccionado === "todos"
   return (
     <div style={{ padding: isMobile ? "16px 12px 40px" : "24px 24px 48px", maxWidth: 1040, margin: "0 auto" }}>
 
-      {/* ── BANNER CRÍTICO ── */}
-      {alertasCriticas.length > 0 && (
-        <div style={{
-          marginBottom: 16,
-          background: "#991b1b",
-          borderRadius: 14,
-          padding: "12px 18px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          boxShadow: "0 4px 16px rgba(153,27,27,0.3)",
-        }}>
-          <span style={{ fontSize: 20 }}>🚨</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "white", fontWeight: 800, fontSize: 13 }}>
-              {alertasCriticas.length} alerta{alertasCriticas.length > 1 ? "s" : ""} crítica{alertasCriticas.length > 1 ? "s" : ""} — requieren acción inmediata
+{/* ── BARRA DE ALERTAS COMPACTA ── */}
+      {(() => {
+        const nCrit  = alertasSistema.filter(a => a.nivel === "critico").length;
+        const nAlert = alertasSistema.filter(a => a.nivel === "alerta").length;
+        const nInfo  = alertasSistema.filter(a => a.nivel === "info").length;
+        const total  = alertasSistema.length;
+        if (total === 0) {
+          return (
+            <div
+              onClick={() => onNavigate("alertas")}
+              style={{ marginBottom: 16, background: "#f0fdf4", borderRadius: 14, padding: "12px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            >
+              <span style={{ fontSize: 18 }}>✅</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#166534", flex: 1 }}>Todo al día — sin alertas pendientes</span>
+              <span style={{ color: "#166534", fontSize: 14 }}>›</span>
             </div>
-            <div style={{ color: "#fca5a5", fontSize: 12, marginTop: 2 }}>
-              {alertasCriticas.map(a => a.text).join(" · ")}
+          );
+        }
+        return (
+          <div
+            onClick={() => onNavigate("alertas")}
+            style={{ marginBottom: 16, background: nCrit > 0 ? "#fff1f2" : "#fff7ed", borderRadius: 14, padding: "10px 16px", border: `1px solid ${nCrit > 0 ? "#fecdd3" : "#fed7aa"}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
+          >
+            <span style={{ fontSize: 16 }}>{nCrit > 0 ? "🚨" : "⚠️"}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: nCrit > 0 ? "#991b1b" : "#c2410c", flex: 1, minWidth: 120 }}>
+              {total} alerta{total > 1 ? "s" : ""} activa{total > 1 ? "s" : ""}
+            </span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", background: "#fee2e2", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
+              {nAlert > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", padding: "3px 10px", borderRadius: 999 }}>⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</span>}
+              {nInfo  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#0369a1", background: "#dbeafe", padding: "3px 10px", borderRadius: 999 }}>ℹ️ {nInfo} info</span>}
             </div>
+            <span style={{ color: nCrit > 0 ? "#991b1b" : "#c2410c", fontSize: 16, fontWeight: 700 }}>›</span>
           </div>
-        </div>
-      )}
-
-      {/* ── ALERTS (clickeable → vista alertas) ── */}
-      {alerts.length > 0 ? (
-        <div
-          style={{ marginBottom: 16, background: "#fff7ed", borderRadius: 16, padding: "14px 16px", border: "1px solid #fed7aa", cursor: "pointer" }}
-          onClick={() => onNavigate("alertas")}
-        >
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#c2410c", letterSpacing: "0.08em", marginBottom: 10, textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>⚠️ {alertasSistema.length} alerta{alertasSistema.length !== 1 ? "s" : ""} — toca para ver todas</span>
-            <span style={{ fontSize: 13, color: "#c2410c" }}>›</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {alerts.map((a, i) => (
-              <div
-                key={i}
-                onClick={e => { e.stopPropagation(); if (a.view) onNavigate(a.view!, a.filter); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 14px", borderRadius: 12,
-                  background: a.bgColor,
-                  borderLeft: `4px solid ${a.borderColor}`,
-                  cursor: a.view ? "pointer" : "default",
-                }}
-              >
-                <span style={{ fontSize: 16 }}>{a.icon}</span>
-                <span style={{ fontSize: 12, color: a.color, flex: 1, fontWeight: 600 }}>{a.text}</span>
-                {a.severidad === "critica" && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fecaca", padding: "2px 7px", borderRadius: 999 }}>CRÍTICO</span>
-                )}
-                {a.view && <span style={{ color: a.color, fontSize: 16, fontWeight: 700 }}>›</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{ marginBottom: 16, background: "#f0fdf4", borderRadius: 16, padding: "14px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
-          onClick={() => onNavigate("alertas")}
-        >
-          <span style={{ fontSize: 22 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534", flex: 1 }}>Todo al día — no hay alertas pendientes</span>
-          <span style={{ color: "#166534", fontSize: 16 }}>›</span>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
       <div style={{

@@ -439,13 +439,16 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - `013_pago_aplicado_base_inicial.sql` — columna que faltaba en pagos ✅ APLICADA
 - `014_grupo_usadas_club.sql` — grupo USADAS en checks de motos/profiles ✅ APLICADA
 - `015_pagos_campo_recibo.sql` — columnas `entregado_caja` + `folio` en pagos ✅ APLICADA
-- `016_profiles_permisos.sql` — columna `permisos` (jsonb) en profiles para accesos por usuario 🔲 PENDIENTE DE APLICAR
-- `017_bucket_documentos.sql` — bucket `documentos` + policies de insert/select/update (docs de cliente + fotos de visitas) 🔲 PENDIENTE DE APLICAR
+- `016_profiles_permisos.sql` — columna `permisos` (jsonb) en profiles ✅ APLICADA
+- `017_bucket_documentos.sql` — bucket `documentos` ✅ APLICADA
 - Bucket Storage `comprobantes` (público) + policies de insert/select ✅ CREADO
+
+### Políticas RLS aplicadas manualmente (sesión 26-jun)
+- `profiles` SELECT: función `mi_rol()` (SECURITY DEFINER) evita recursión. Admin Principal ve todos; Admin ve todos excepto Admin Principal; resto solo su propio perfil.
 
 ### Edge Functions (carpeta motogestion/supabase/functions/)
 - `create-user` — versión vieja (solo crear). Reemplazada por `manage-users`.
-- `manage-users` — crear / editar (nombre, rol, grupo, accesos) / resetear contraseña. Guardia de ADMIN. Corrige validación de grupo USADAS. 🔲 PENDIENTE DE DESPLEGAR (`supabase functions deploy manage-users`)
+- `manage-users` — crear / editar (nombre, rol, grupo, accesos) / resetear contraseña. 🔲 PENDIENTE DE DESPLEGAR (`supabase functions deploy manage-users`)
 
 ### Accesos por usuario (módulo Usuarios)
 - `profiles.permisos` (jsonb) = lista de ViewKeys que el usuario puede abrir.
@@ -482,15 +485,27 @@ Ver conversación del 22 de junio 2026 para el plan detallado completo con fases
 
 ---
 
-## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 25-jun-2026)
+## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 26-jun-2026)
 
 **Estado del código:** todo committeado y pusheado en `claude/clever-turing-daklkq` y merged a `main`. Working tree limpio. `npm run build` pasa.
 
-**⚠️ Pendientes MANUALES del usuario en Supabase (el código ya está listo, falta correrlos):**
-1. SQL Editor → correr `motogestion/supabase/016_profiles_permisos.sql` (accesos por usuario).
-2. SQL Editor → correr `motogestion/supabase/017_bucket_documentos.sql` (bucket `documentos` para docs de cliente y fotos de visitas). **Sin esto, subir fotos de visita falla.**
-3. Desplegar Edge Function: `supabase functions deploy manage-users`.
+**Usuarios en producción (BD real):**
+| Email | Nombre | Rol |
+|---|---|---|
+| brandon@hotmail.com | FREDY | ADMIN_PRINCIPAL |
+| emiro@hotmail.com | SERGIO AGUAS | ADMIN |
+| andres@hotmail.com | EMIRO | SUBADMIN |
+| angela@hotmail.com | ANGELA | SECRETARIA |
 
-**Posibles siguientes pasos (no empezados):**
-- Recibo de pago como imagen/PDF con logo (hoy "🖨️ Imprimir" usa `window.print()` del recibo en pantalla).
-- Firma digital (3 documentos + huella biométrica) y migración de datos reales vía Excel.
+**✅ Lo que quedó listo esta sesión:**
+- Políticas RLS de `profiles` corregidas (función `mi_rol()` sin recursión)
+- Módulo Usuarios: orden jerárquico + tarjetas compactas en una fila
+- Migraciones 016 y 017 aplicadas en Supabase
+
+**⚠️ Único pendiente MANUAL:**
+- Desplegar Edge Function: `supabase functions deploy manage-users` (para crear/editar usuarios desde la app)
+
+**Posibles siguientes pasos:**
+- Recibo de pago como imagen/PDF con logo
+- Firma digital (3 documentos + huella biométrica)
+- Migración de datos reales vía Excel

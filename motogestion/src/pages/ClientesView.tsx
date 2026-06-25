@@ -1327,6 +1327,9 @@ function miniBtn2(bg: string, color: string): React.CSSProperties {
 function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
+  const [verAnteriores, setVerAnteriores] = useState(false);
+  // visitas viene ordenado de la más reciente a la más antigua
+  const visitasVisibles = verAnteriores ? visitas : visitas.slice(0, 1);
 
   return (
     <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
@@ -1382,7 +1385,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
           <div style={{ color: "#64748b", fontSize: 14 }}>Sin visitas registradas.</div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
-            {visitas.map((v) => (
+            {visitasVisibles.map((v) => (
               <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</span>
@@ -1445,6 +1448,14 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                 )}
               </div>
             ))}
+            {visitas.length > 1 && (
+              <button
+                onClick={() => setVerAnteriores((x) => !x)}
+                style={{ background: "none", border: "none", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left", padding: "4px 2px" }}
+              >
+                {verAnteriores ? "▾ Ocultar visitas anteriores" : `▸ Visitas anteriores (${visitas.length - 1})`}
+              </button>
+            )}
           </div>
         )}
       </div>

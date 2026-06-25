@@ -67,7 +67,9 @@ const ROLE_LABEL: Record<string, string> = {
   MECANICO: "Mecánico",
 };
 
-export default function ConfiguracionView() {
+import type { ViewKey } from "../App";
+
+export default function ConfiguracionView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
   const { profile } = useAuth();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
@@ -253,14 +255,20 @@ export default function ConfiguracionView() {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Gestionar usuarios</div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>Crear cuentas y asignar roles al equipo</div>
-            </div>
-            <span style={{ fontSize: 16, color: "#94a3b8" }}>→</span>
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={() => onNavigate?.("usuarios" as ViewKey)}
+              style={{ ...primaryBtn, flex: "1 1 140px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              👤 Ver equipo
+            </button>
+            <button
+              onClick={() => onNavigate?.("usuarios" as ViewKey)}
+              style={{ flex: "1 1 140px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}
+            >
+              ➕ Crear usuario
+            </button>
           </div>
-          <div style={{ marginTop: 4, fontSize: 12, color: "#94a3b8", textAlign: "center" }}>Ir a Más › Usuarios & Roles</div>
         </div>
       )}
 

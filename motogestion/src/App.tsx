@@ -436,7 +436,7 @@ function Shell() {
       {ctx.view === "taller"        && puedeVer("taller") && <TallerView />}
       {ctx.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
       {ctx.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
-      {ctx.view === "configuracion"  && <ConfiguracionView />}
+      {ctx.view === "configuracion"  && <ConfiguracionView onNavigate={navigate} />}
       {ctx.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}

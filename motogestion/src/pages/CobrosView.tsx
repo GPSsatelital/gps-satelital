@@ -8,7 +8,6 @@ import {
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
-  type Pago,
 } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -264,6 +263,160 @@ function calcularEstadoCartera(
   return "mora";
 }
 
+// ─── Panel de recibo ─────────────────────────────────────────────────────────
+type DatosRecibo = {
+  folio: string;
+  fecha: string;
+  clienteNombre: string;
+  clienteTel: string;
+  clienteWhatsapp: string;
+  placa: string;
+  valor: number;
+  metodo: string;
+  estado: "Confirmado" | "Pendiente";
+};
+
+function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
+  const [fase, setFase] = useState<"ver" | "whatsapp">("ver");
+  const [otroNum, setOtroNum] = useState("");
+
+  function buildMsg() {
+    const lineas = [
+      "🧾 *GPS SATELITAL — Comprobante de pago*",
+      `Folio: ${datos.folio}`,
+      `Fecha: ${new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")}`,
+      `Cliente: ${datos.clienteNombre}`,
+      datos.placa ? `Placa: ${datos.placa}` : "",
+      `Monto: $${Math.round(datos.valor).toLocaleString("es-CO")}`,
+      `Método: ${datos.metodo}`,
+      "",
+      datos.estado === "Confirmado"
+        ? "✅ PAGO CONFIRMADO. ¡Gracias por su pago!"
+        : "⏳ Pago recibido, pendiente de validación en caja.",
+    ].filter(Boolean).join("\n");
+    return encodeURIComponent(lineas);
+  }
+
+  function limpiarNum(n: string) {
+    const d = n.replace(/\D/g, "");
+    return d.startsWith("57") ? d : `57${d}`;
+  }
+
+  function abrirWA(numero: string) {
+    const n = limpiarNum(numero);
+    if (n.replace(/\D/g, "").length < 7) return;
+    window.open(`https://wa.me/${n}?text=${buildMsg()}`, "_blank");
+  }
+
+  const telRegistrado = datos.clienteWhatsapp || datos.clienteTel;
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 90, padding: "0 0 0 0" }}
+      onClick={onCerrar}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 480, background: "white", borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "85dvh", overflowY: "auto" }}
+      >
+        {/* Encabezado */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>🧾 Recibo de pago</div>
+          <button onClick={onCerrar} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}>✕</button>
+        </div>
+
+        {/* Detalle */}
+        <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
+          {[
+            ["Folio",    datos.folio],
+            ["Fecha",    new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")],
+            ["Cliente",  datos.clienteNombre],
+            ["Placa",    datos.placa || "—"],
+            ["Monto",    `$${Math.round(datos.valor).toLocaleString("es-CO")}`],
+            ["Método",   datos.metodo],
+          ].map(([l, v]) => (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 6 }}>
+              <span style={{ fontSize: 13, color: "#64748b" }}>{l}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: l === "Cliente" ? "uppercase" : "none" }}>{v}</span>
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
+            <span style={{ fontSize: 13, color: "#64748b" }}>Estado</span>
+            <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+              background: datos.estado === "Confirmado" ? "#dcfce7" : "#fef3c7",
+              color: datos.estado === "Confirmado" ? "#166534" : "#92400e" }}>
+              {datos.estado === "Confirmado" ? "✅ Confirmado" : "⏳ Pendiente validación"}
+            </span>
+          </div>
+        </div>
+
+        {fase === "ver" && (
+          <div style={{ display: "grid", gap: 10 }}>
+            <button
+              onClick={() => setFase("whatsapp")}
+              style={{ ...primaryBtn, width: "100%", padding: "13px 16px", fontSize: 15 }}
+            >
+              💬 Enviar por WhatsApp
+            </button>
+            <button
+              onClick={() => window.print()}
+              style={{ ...secondaryBtn, width: "100%", padding: "13px 16px", fontSize: 15 }}
+            >
+              🖨️ Imprimir / Guardar PDF
+            </button>
+          </div>
+        )}
+
+        {fase === "whatsapp" && (
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 2 }}>¿A qué número enviar?</div>
+
+            {telRegistrado && (
+              <button
+                onClick={() => abrirWA(telRegistrado)}
+                style={{ ...secondaryBtn, textAlign: "left", padding: "12px 16px" }}
+              >
+                <div style={{ fontSize: 12, color: "#64748b" }}>Número registrado</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>📱 {telRegistrado}</div>
+              </button>
+            )}
+
+            <div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Otro número</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={otroNum}
+                  onChange={e => setOtroNum(e.target.value)}
+                  placeholder="Ej: 3001234567"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={() => abrirWA(otroNum)}
+                  disabled={!otroNum.trim()}
+                  style={{ ...primaryBtn, opacity: !otroNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" }}
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
+
+            {telRegistrado && otroNum.trim() && (
+              <button
+                onClick={() => { abrirWA(telRegistrado); setTimeout(() => abrirWA(otroNum), 600); }}
+                style={{ ...primaryBtn, width: "100%", padding: "12px 16px" }}
+              >
+                Enviar a los dos números
+              </button>
+            )}
+
+            <button onClick={() => setFase("ver")} style={{ ...secondaryBtn, width: "100%", fontSize: 13 }}>← Volver</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type TabKey = "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "por-confirmar" | "protocolo" | "campo" | "recoleccion" | "historial";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
@@ -309,6 +462,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
   const [modalSubiendo, setModalSubiendo] = useState(false);
+
+  // Recibo panel
+  const [reciboData, setReciboData] = useState<DatosRecibo | null>(null);
 
   // Payment form state
   const [valor, setValor] = useState("");
@@ -566,43 +722,42 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       comprobanteUrl = url ?? undefined;
     }
 
+    const folio = generarFolio();
     const { error } = await registrarPago(
       modalContratoId, modalMonto, modalMetodo, modalDesglose,
       {
-        folio: generarFolio(),
+        folio,
         comprobanteUrl,
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
     if (error) { setModalError(error); return; }
-    setModalValor(""); setModalComprobante(null);
-    setModalExito(true);
-    setTimeout(() => setModalExito(false), 3000);
-  }
 
-  // Recibo al cliente por WhatsApp (provisional si está Pendiente, definitivo si Confirmado)
-  function enviarRecibo(pago: Pago) {
-    const contrato = contratos.find(c => c.id === pago.contrato_id);
+    const contrato = contratos.find(c => c.id === modalContratoId);
     const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
     const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
-    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
-    const confirmado = pago.estado === "Confirmado";
-    const lineas = [
-      "🧾 *GPS SATELITAL — Comprobante de pago*",
-      pago.folio ? `Folio: ${pago.folio}` : "",
-      `Fecha: ${formatDate(pago.fecha)}`,
-      cliente ? `Cliente: ${cliente.nombre}` : "",
-      moto ? `Placa: ${moto.placa}` : "",
-      `Monto: $${fmt(pago.valor)}`,
-      `Método: ${pago.metodo}${pago.tipo_registro === "campo" ? " (recibido en campo)" : ""}`,
-      "",
-      confirmado
-        ? "✅ PAGO CONFIRMADO. ¡Gracias por su pago!"
-        : "⏳ Pago recibido, pendiente de validación en caja.",
-    ].filter(Boolean);
-    const msg = encodeURIComponent(lineas.join("\n"));
-    const num = tel.startsWith("57") ? tel : `57${tel}`;
-    window.open(tel ? `https://wa.me/${num}?text=${msg}` : `https://wa.me/?text=${msg}`, "_blank");
+
+    setModalValor(""); setModalComprobante(null);
+
+    if (modalMetodo === "Efectivo") {
+      // Efectivo = confirmado al instante → mostrar recibo
+      setModalPago(false);
+      setReciboData({
+        folio,
+        fecha: new Date().toISOString().slice(0, 10),
+        clienteNombre: cliente?.nombre ?? "",
+        clienteTel: cliente?.telefono ?? "",
+        clienteWhatsapp: cliente?.whatsapp ?? "",
+        placa: moto?.placa ?? "",
+        valor: modalMonto,
+        metodo: "Efectivo",
+        estado: "Confirmado",
+      });
+    } else {
+      // Transferencia = pendiente → solo aviso, el recibo saldrá al confirmar
+      setModalExito(true);
+      setTimeout(() => setModalExito(false), 4000);
+    }
   }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -1379,15 +1534,36 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
                     {/* Acciones */}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                      <button onClick={() => enviarRecibo(p)} style={miniBtn("#dcfce7", "#166534")}>💬 Recibo provisional</button>
-
                       {esCampo && !p.entregado_caja && (
                         <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>📤 Entregué a secretaria</button>
                       )}
 
-                      {/* Confirmar: transferencia siempre; campo solo cuando ya fue entregado */}
+                      {/* Confirmar: abre recibo al confirmar */}
                       {(!esCampo || p.entregado_caja) && esSecretaria && (
-                        <button onClick={async () => { await confirmarPago(p.id); }} style={miniBtn("#16a34a", "#ffffff")}>✓ Confirmar recibido</button>
+                        <button
+                          onClick={async () => {
+                            const { error: errConf } = await confirmarPago(p.id);
+                            if (!errConf) {
+                              const contrato = contratos.find(c => c.id === p.contrato_id);
+                              const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+                              const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+                              setReciboData({
+                                folio: p.folio ?? "—",
+                                fecha: p.fecha,
+                                clienteNombre: cliente?.nombre ?? "",
+                                clienteTel: cliente?.telefono ?? "",
+                                clienteWhatsapp: cliente?.whatsapp ?? "",
+                                placa: moto?.placa ?? "",
+                                valor: p.valor,
+                                metodo: p.metodo,
+                                estado: "Confirmado",
+                              });
+                            }
+                          }}
+                          style={miniBtn("#16a34a", "#ffffff")}
+                        >
+                          ✓ Confirmar recibido
+                        </button>
                       )}
                       {esSecretaria && (
                         <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
@@ -1456,7 +1632,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       </>
                     )}
                     {p.estado === "Confirmado" && (
-                      <button onClick={() => enviarRecibo(p)} style={miniBtn("#dcfce7", "#166534")}>💬 Recibo</button>
+                      <button
+                        onClick={() => setReciboData({
+                          folio: p.folio ?? "—",
+                          fecha: p.fecha,
+                          clienteNombre: cliente?.nombre ?? "",
+                          clienteTel: cliente?.telefono ?? "",
+                          clienteWhatsapp: cliente?.whatsapp ?? "",
+                          placa: moto?.placa ?? "",
+                          valor: p.valor,
+                          metodo: p.metodo,
+                          estado: "Confirmado",
+                        })}
+                        style={miniBtn("#dcfce7", "#166534")}
+                      >
+                        🧾 Recibo
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1928,7 +2119,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             )}
 
             {modalError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{modalError}</div>}
-            {modalExito && <div style={{ color: "#166534", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>✓ Pago registrado correctamente</div>}
+            {modalExito && (
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>⏳ Transferencia registrada</div>
+                <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>El recibo se generará cuando la secretaria confirme que el dinero entró a la cuenta.</div>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleRegistrarPagoModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
@@ -1939,6 +2135,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         </div>
       )}
+
+      {/* Panel de recibo */}
+      {reciboData && <ReciboPanel datos={reciboData} onCerrar={() => setReciboData(null)} />}
     </div>
   );
 }

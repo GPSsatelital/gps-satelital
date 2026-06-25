@@ -355,6 +355,7 @@ function Shell() {
   const { motos } = useMotos();
   const { contratos } = useContratos();
   const [ctx, setCtx] = useState<NavContext>({ view: "dashboard", filter: "" });
+  const [_navStack, setNavStack] = useState<NavContext[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [masOpen, setMasOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -383,10 +384,34 @@ function Shell() {
   }
 
   function navigate(v: ViewKey, f = "") {
+    setNavStack(prev => [...prev, ctx]);
     setCtx({ view: v, filter: f });
     setMasOpen(false);
     setUserMenuOpen(false);
+    // Empujar estado al historial del navegador para interceptar el botón atrás del celular
+    window.history.pushState({ inApp: true }, "");
   }
+
+  // Interceptar botón atrás del celular/navegador
+  useEffect(() => {
+    function handlePopState() {
+      setNavStack(prev => {
+        if (prev.length === 0) {
+          // No hay historial interno: volver al dashboard en vez de salir
+          setCtx({ view: "dashboard", filter: "" });
+          window.history.pushState({ inApp: true }, "");
+          return prev;
+        }
+        const anterior = prev[prev.length - 1];
+        setCtx(anterior);
+        return prev.slice(0, -1);
+      });
+    }
+    // Asegurar que el estado inicial esté en el historial del navegador
+    window.history.replaceState({ inApp: true }, "");
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   if (loading) {
     return (

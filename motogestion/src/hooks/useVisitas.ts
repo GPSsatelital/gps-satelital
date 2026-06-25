@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type VisitaEstado = "Pendiente" | "Realizada";
-export type VisitaResultado = "Aprobado" | "Rechazado" | null;
+export type VisitaResultado = "Aprobado" | "Rechazado" | "Repetir" | null;
 
 export type Visita = {
   id: string;
@@ -79,7 +79,7 @@ export function useVisitas() {
     return { error: error?.message ?? null };
   }
 
-  async function resolverVisita(id: string, resultado: "Aprobado" | "Rechazado") {
+  async function resolverVisita(id: string, resultado: "Aprobado" | "Rechazado" | "Repetir") {
     const { error } = await supabase.from("visitas").update({ resultado }).eq("id", id);
     return { error: error?.message ?? null };
   }

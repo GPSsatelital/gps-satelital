@@ -77,16 +77,35 @@ function DocsSummary({ doc, only }: { doc: DocumentoFlags; only?: Array<keyof Do
   const labels = only ? todos.filter(([k]) => only.includes(k)) : todos;
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {labels.map(([key, label]) => (
-        <span key={key} style={{ padding: "5px 8px", borderRadius: 999, background: doc[key].ok ? "#dcfce7" : "#fee2e2", color: doc[key].ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700 }}>
-          {label}
-        </span>
-      ))}
+      {labels.map(([key, label]) => {
+        const item = doc[key];
+        const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "#dcfce7" : "#fee2e2", color: item.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
+        if (item.ok && esUrl(item.file)) {
+          return (
+            <a key={key} href={item.file!} target="_blank" rel="noreferrer" style={estilo} title="Ver documento">
+              {label} 🔍
+            </a>
+          );
+        }
+        return <span key={key} style={estilo}>{label}</span>;
+      })}
     </div>
   );
 }
 
-function DocsChecklist({ doc, onChange, only }: { doc: DocumentoFlags; onChange: (next: DocumentoFlags) => void; only?: Array<keyof DocumentoFlags> }) {
+function esUrl(s: string | null): boolean {
+  return !!s && /^https?:\/\//.test(s);
+}
+
+function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
+  doc: DocumentoFlags;
+  onChange: (next: DocumentoFlags) => void;
+  only?: Array<keyof DocumentoFlags>;
+  carpeta: string;
+  subir: (file: File, carpeta: string, docKey: string) => Promise<{ url: string | null; error: string | null }>;
+}) {
+  const [subiendo, setSubiendo] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<{ key: string; msg: string } | null>(null);
   const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia (opcional)"],
@@ -98,8 +117,14 @@ function DocsChecklist({ doc, onChange, only }: { doc: DocumentoFlags; onChange:
   ];
   const labels = only ? todos.filter(([k]) => only.includes(k)) : todos;
 
-  function setDocumento(key: keyof DocumentoFlags, file: File | undefined) {
-    onChange({ ...doc, [key]: { ok: !!file, file: file ? file.name : null } });
+  async function setDocumento(key: keyof DocumentoFlags, file: File | undefined) {
+    if (!file) return;
+    setErrorKey(null);
+    setSubiendo(key);
+    const { url, error } = await subir(file, carpeta, key);
+    setSubiendo(null);
+    if (error || !url) { setErrorKey({ key, msg: error || "No se pudo subir" }); return; }
+    onChange({ ...doc, [key]: { ok: true, file: url } });
   }
 
   return (
@@ -117,8 +142,18 @@ function DocsChecklist({ doc, onChange, only }: { doc: DocumentoFlags; onChange:
               <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => setDocumento(key, e.target.files?.[0])} />
             </label>
           </div>
-          {doc[key].ok ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#16a34a", fontWeight: 700 }}>✔ {doc[key].file}</div>
+          {subiendo === key ? (
+            <div style={{ marginTop: 8, fontSize: 12, color: "#0284c7", fontWeight: 700 }}>Subiendo…</div>
+          ) : errorKey?.key === key ? (
+            <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 700 }}>⛔ {errorKey.msg}</div>
+          ) : doc[key].ok ? (
+            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700 }}>
+              {esUrl(doc[key].file) ? (
+                <a href={doc[key].file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
+              ) : (
+                <span style={{ color: "#16a34a" }}>✔ Cargado</span>
+              )}
+            </div>
           ) : (
             <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b" }}>Documento pendiente</div>
           )}
@@ -358,6 +393,19 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
                   </div>
                 )}
 
+                {/* Documentos cargados — clic para verlos */}
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#334155", marginBottom: 8 }}>Documentos del cliente <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(clic en 🔍 para ver)</span></div>
+                  <DocsSummary doc={cliente.documentos_cliente} />
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#334155", margin: "12px 0 8px" }}>Documentos del acompañante</div>
+                  <DocsSummary doc={cliente.documentos_acompanante} only={DOCS_ACOMPANANTE} />
+                  {cliente.excepcion_documental && (
+                    <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+                      ⚠️ Excepción documental: {cliente.excepcion_motivo || "sin motivo"}{cliente.excepcion_plazo ? ` · plazo: ${cliente.excepcion_plazo}` : ""}
+                    </div>
+                  )}
+                </div>
+
                 {/* Acciones */}
                 {esAdmin && visita && (
                   <div style={{ marginTop: 16 }}>
@@ -443,7 +491,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     return () => window.removeEventListener("resize", fn);
   }, []);
 
-  const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion } = useClientes();
+  const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
   const { visitas, crearVisita, resolverVisita } = useVisitas();
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
@@ -781,12 +829,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos cliente</div>
-          <DocsChecklist doc={data.documentos_cliente} onChange={(next) => update({ documentos_cliente: next })} />
+          <DocsChecklist doc={data.documentos_cliente} onChange={(next) => update({ documentos_cliente: next })} carpeta={data.cedula || "sin-cedula"} subir={subirDocumento} />
         </div>
 
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
-          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} />
+          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
         </div>
       </div>
     );

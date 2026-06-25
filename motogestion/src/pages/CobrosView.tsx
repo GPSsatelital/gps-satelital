@@ -294,7 +294,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("pagan-hoy");
+  const [activeTab, setActiveTab] = useState<TabKey>("mora");
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
@@ -417,6 +417,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const alDia = resumenContratos.filter(r => r.estadoCartera === "al-dia");
   const enMoraCritica = resumenContratos.filter(r => r.diasSinPago > 3).length;
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
+  const recaudadoSemanaTotal = resumenContratos.reduce((acc, r) => acc + r.pagadoEstaSemana, 0);
   // ── Pagan Hoy ─────────────────────────────────────────────────────────────
   const hoyDia = new Date().getDay(); // 0=Sun, 1=Mon...
 
@@ -1132,38 +1133,80 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const cliente = clientes.find(cl => cl.id === c.cliente_id);
           const moto = motos.find(m => m.id === c.moto_id);
           const seleccionado = c.id === contratoSeleccionadoId;
+          const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
+
+          const cuotaPact = c.forma_pago === "Diario"
+            ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0)
+            : c.valor_semanal;
+          const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
+          const pendiente = Math.max(cuotaPact - pagadoP, 0);
+
           return (
             <div
               key={c.id}
-              onClick={() => setContratoSeleccionadoId(c.id)}
               style={{
                 padding: "12px 14px",
                 borderRadius: 14,
-                border: seleccionado ? "2px solid #0284c7" : "1px solid #e2e8f0",
-                background: seleccionado ? "#eff6ff" : "#f8fafc",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                border: seleccionado ? "2px solid #0284c7" : `1px solid ${c.estadoCartera === "mora" ? "#fecaca" : "#e2e8f0"}`,
+                background: seleccionado ? "#eff6ff" : c.estadoCartera === "mora" ? "#fff5f5" : "#f8fafc",
                 gap: 8,
               }}
             >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
-                  {cliente?.nombre || "Sin cliente"}
+              {/* Fila principal — clic para ver detalle */}
+              <div
+                onClick={() => setContratoSeleccionadoId(c.id)}
+                style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
+                    {cliente?.nombre || "Sin cliente"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    {moto ? `🏍️ ${moto.placa} · ` : ""}
+                    {c.forma_pago === "Diario" ? "Diario" : `Paga ${c.dia_pago}`}
+                    {c.diasSinPago > 0 && c.diasSinPago < 999 && (
+                      <span style={{ color: "#991b1b", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                  {moto ? `🏍️ ${moto.placa} · ` : ""}
-                  {c.forma_pago === "Diario"
-                    ? "Diario"
-                    : `Paga ${c.dia_pago} · $${fmt(c.valor_semanal)}`}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                  <EstadoBadge estado={c.estadoCartera} />
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                <EstadoBadge estado={c.estadoCartera} />
-                {c.pendientesCount > 0 && (
-                  <span style={{ fontSize: 11, color: "#92400e" }}>{c.pendientesCount} pend.</span>
-                )}
+
+              {/* Fila inferior — monto + protocolo + botón pagar */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  {pendiente > 0 ? (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#991b1b", background: "#fee2e2", borderRadius: 8, padding: "2px 8px" }}>
+                      Debe ${fmt(pendiente)}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 8, padding: "2px 8px" }}>
+                      ✓ Al día
+                    </span>
+                  )}
+                  {paso && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: paso.color, background: paso.bg, borderRadius: 8, padding: "2px 8px" }}>
+                      P{paso.paso}: {paso.label}
+                    </span>
+                  )}
+                  {c.pendientesCount > 0 && (
+                    <span style={{ fontSize: 11, color: "#92400e" }}>{c.pendientesCount} pend.</span>
+                  )}
+                </div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    setModalContratoId(c.id);
+                    setModalBusqueda(etiquetaContrato(c));
+                    setModalListaAbierta(false);
+                    setModalPago(true);
+                  }}
+                  style={{ ...miniBtn("#0284c7", "white"), padding: "5px 12px", fontSize: 12, flexShrink: 0 }}
+                >
+                  💰 Pagar
+                </button>
               </div>
             </div>
           );
@@ -1175,15 +1218,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // ── KPI cards ─────────────────────────────────────────────────────────────
   const kpis = [
     { label: "Pagan hoy", value: totalPaganHoy, color: "#0284c7", bg: "#eff6ff", tab: "pagan-hoy" as TabKey },
-    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, color: "#166534", bg: "#dcfce7", tab: "al-dia" as TabKey },
+    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "#166534", bg: "#dcfce7", tab: "al-dia" as TabKey },
     { label: "En gabela", value: enGabela.length, color: "#92400e", bg: "#fef3c7", tab: "gabela" as TabKey },
     { label: "En mora", value: enMora.length, color: "#991b1b", bg: "#fee2e2", tab: "mora" as TabKey },
   ];
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
-    { key: "pagan-hoy", label: "Pagan Hoy", count: totalPaganHoy },
-    { key: "gabela", label: "Gabela", count: enGabela.length },
     { key: "mora", label: "Mora", count: enMora.length },
+    { key: "gabela", label: "Gabela", count: enGabela.length },
+    { key: "pagan-hoy", label: "Pagan Hoy", count: totalPaganHoy },
     { key: "al-dia", label: "Al día", count: alDia.length },
     { key: "todos", label: "Todos", count: resumenContratos.length },
     { key: "por-confirmar", label: "Por confirmar", count: pagosPendientes.length },
@@ -1216,8 +1259,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         </div>
       )}
 
-      {/* KPI cards — clickable */}
-      <div style={{ display: "flex", gap: 12, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
+      {/* KPI cards — 2x2 grid, clickable */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
         {kpis.map(k => (
           <button
             key={k.tab}
@@ -1226,16 +1269,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               background: activeTab === k.tab ? k.bg : "white",
               border: activeTab === k.tab ? `2px solid ${k.color}` : "2px solid transparent",
               borderRadius: 16,
-              padding: "14px 20px",
+              padding: "14px 16px",
               cursor: "pointer",
               boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
-              flex: "0 0 auto",
-              minWidth: 130,
               textAlign: "left",
             }}
           >
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: k.color }}>{k.value}</div>
+            {"sub" in k && k.sub && (
+              <div style={{ fontSize: 11, color: k.color, opacity: 0.75, marginTop: 2 }}>{k.sub}</div>
+            )}
           </button>
         ))}
       </div>

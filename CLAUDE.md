@@ -10,6 +10,12 @@ Supabase: `jvfkprkjysjffhzjitgl` | Repo: `GPSsatelital/gps-satelital` | Producci
 
 ---
 
+## REGLA DE PREGUNTAS — OBLIGATORIO SIEMPRE
+
+**Hacer las preguntas UNA POR UNA (nunca varias juntas), y siempre ofreciendo opciones para autoseleccionar la respuesta.**
+
+---
+
 ## REGLA DE DESPLIEGUE — OBLIGATORIO SIEMPRE
 
 Después de cualquier `git push`, hacer merge inmediato a `main`:

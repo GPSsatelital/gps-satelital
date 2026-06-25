@@ -422,6 +422,17 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - **Confirmación de pagos** (módulo Cobros): transferencia con foto de comprobante obligatoria (bucket Storage `comprobantes`), cobro en campo con flujo de 2 pasos (admin "Entregué a secretaria" → secretaria "Confirmar recibido"), pestaña "Por confirmar" con visor de foto, recibos por WhatsApp (provisional + definitivo) con folio `CMP-AAMMDD-HHMM`.
 - **Grupo "Usadas Club"** (valor interno `USADAS`) como 4º portafolio de socio.
 - Modal de "Registrar pago" autónomo con combobox de búsqueda (desde acción rápida del dashboard).
+- **UX móvil (sesión 25-jun):**
+  - Botones flotantes `+` (FAB) en Clientes, Motos y Contratos; quitados los botones del header. FAB de Contratos solo para ADMIN/ADMIN_PRINCIPAL.
+  - Barra de tabs inferior: Panel · Clientes · Cartera · Motos · Contratos · ☰Más.
+  - **Botón atrás del celular** interceptado (`App.tsx`, `_navStack` + `popstate`): navega a la pantalla anterior dentro del sistema en vez de salir de la PWA. Si no hay historial interno, vuelve al Panel.
+- **Panel de recibo unificado** (`ReciboPanel` en `CobrosView.tsx`):
+  - Efectivo → al registrar en el modal se abre el recibo (Confirmado).
+  - Transferencia → al registrar solo aviso amarillo; el recibo se genera al dar "✓ Confirmar recibido" (quitado el "Recibo provisional" para evitar doble recibo).
+  - Historial de confirmados → botón "🧾 Recibo" para reenviar.
+  - Botón "💬 Enviar por WhatsApp" pregunta a qué número: registrado / otro (input) / **ambos** (abre dos chats con 600ms de diferencia). Botón "🖨️ Imprimir" usa `window.print()`.
+  - Eliminada la función vieja `enviarRecibo`.
+- **Visitas domiciliarias:** fotos suben a Storage (bucket `documentos`, prefijo `visitas/`) como URLs; se ven como miniaturas clicables + GPS como link a Google Maps (en panel del cliente y en FichaClienteView). Flujo separado "Aprobar visita" vs "Aprobar cliente" + "Repetir visita". Visitas anteriores colapsadas.
 
 ### Migraciones SQL aplicadas en Supabase (carpeta motogestion/supabase/)
 - Hasta `012_*` (base v2.0)
@@ -429,6 +440,7 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - `014_grupo_usadas_club.sql` — grupo USADAS en checks de motos/profiles ✅ APLICADA
 - `015_pagos_campo_recibo.sql` — columnas `entregado_caja` + `folio` en pagos ✅ APLICADA
 - `016_profiles_permisos.sql` — columna `permisos` (jsonb) en profiles para accesos por usuario 🔲 PENDIENTE DE APLICAR
+- `017_bucket_documentos.sql` — bucket `documentos` + policies de insert/select/update (docs de cliente + fotos de visitas) 🔲 PENDIENTE DE APLICAR
 - Bucket Storage `comprobantes` (público) + policies de insert/select ✅ CREADO
 
 ### Edge Functions (carpeta motogestion/supabase/functions/)
@@ -467,3 +479,18 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 ## PLAN DE IMPLEMENTACIÓN (referencia)
 
 Ver conversación del 22 de junio 2026 para el plan detallado completo con fases, semanas y orden de implementación.
+
+---
+
+## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 25-jun-2026)
+
+**Estado del código:** todo committeado y pusheado en `claude/clever-turing-daklkq` y merged a `main`. Working tree limpio. `npm run build` pasa.
+
+**⚠️ Pendientes MANUALES del usuario en Supabase (el código ya está listo, falta correrlos):**
+1. SQL Editor → correr `motogestion/supabase/016_profiles_permisos.sql` (accesos por usuario).
+2. SQL Editor → correr `motogestion/supabase/017_bucket_documentos.sql` (bucket `documentos` para docs de cliente y fotos de visitas). **Sin esto, subir fotos de visita falla.**
+3. Desplegar Edge Function: `supabase functions deploy manage-users`.
+
+**Posibles siguientes pasos (no empezados):**
+- Recibo de pago como imagen/PDF con logo (hoy "🖨️ Imprimir" usa `window.print()` del recibo en pantalla).
+- Firma digital (3 documentos + huella biométrica) y migración de datos reales vía Excel.

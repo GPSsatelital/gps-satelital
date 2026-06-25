@@ -492,7 +492,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   }, []);
 
   const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
-  const { visitas, crearVisita, resolverVisita } = useVisitas();
+  const { visitas, crearVisita, resolverVisita, subirFotoVisita } = useVisitas();
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
@@ -683,10 +683,21 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
+    let urlClienteFuncionario: string | null = null;
+    let urlFachada: string | null = null;
+    if (fotoCliente) {
+      const r = await subirFotoVisita(fotoCliente, selectedCliente.id, "funcionario");
+      if (r.url) urlClienteFuncionario = r.url;
+    }
+    if (fotoFachada) {
+      const r = await subirFotoVisita(fotoFachada, selectedCliente.id, "fachada");
+      if (r.url) urlFachada = r.url;
+    }
+
     const { error } = await crearVisita({
       cliente_id: selectedCliente.id,
       entrevista,
-      fotos: { clienteFuncionario: fotoCliente?.name ?? null, fachada: fotoFachada?.name ?? null },
+      fotos: { clienteFuncionario: urlClienteFuncionario, fachada: urlFachada },
       ubicacion,
     });
 
@@ -1103,6 +1114,33 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         )
       )}
 
+      {/* FAB — Nuevo cliente */}
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          position: "fixed",
+          bottom: isMobile ? 80 : 28,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #0284c7 0%, #10b981 100%)",
+          color: "white",
+          border: "none",
+          fontSize: 28,
+          fontWeight: 700,
+          cursor: "pointer",
+          boxShadow: "0 4px 18px rgba(2,132,199,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 50,
+        }}
+        title="Nuevo cliente"
+      >
+        +
+      </button>
+
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
@@ -1327,12 +1365,39 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                 {v.entrevista.dudasCliente && <div><b>Dudas del cliente:</b> {v.entrevista.dudasCliente}</div>}
                 <div><b>Recomendación:</b> {v.entrevista.recomendacion || "Sin definir"}</div>
                 <div><b>Observaciones:</b> {v.entrevista.observaciones || "Sin observaciones"}</div>
-                {v.fotos.clienteFuncionario && <div>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>}
-                {v.fotos.fachada && <div>📎 Fachada: {v.fotos.fachada}</div>}
+                {(v.fotos.clienteFuncionario || v.fotos.fachada) && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                    {v.fotos.clienteFuncionario && (
+                      esUrl(v.fotos.clienteFuncionario) ? (
+                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Funcionario + visitados">
+                          <img src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                        </a>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#64748b" }}>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>
+                      )
+                    )}
+                    {v.fotos.fachada && (
+                      esUrl(v.fotos.fachada) ? (
+                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada">
+                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                        </a>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#64748b" }}>📎 Fachada: {v.fotos.fachada}</div>
+                      )
+                    )}
+                  </div>
+                )}
                 {v.ubicacion && (
-                  <button onClick={() => window.open(`https://www.google.com/maps?q=${v.ubicacion?.lat},${v.ubicacion?.lng}`, "_blank")} style={miniBtn2("#e0f2fe", "#0369a1")}>
-                    Ver ubicación de residencia
-                  </button>
+                  <div style={{ marginTop: 4 }}>
+                    <a
+                      href={`https://www.google.com/maps?q=${v.ubicacion.lat},${v.ubicacion.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 12, textDecoration: "none" }}
+                    >
+                      📍 Ver ubicación en mapa · {v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}
+                    </a>
+                  </div>
                 )}
                 {esAdmin && v.resultado === null && (
                   <div style={{ display: "flex", gap: 8 }}>

@@ -84,5 +84,14 @@ export function useVisitas() {
     return { error: error?.message ?? null };
   }
 
-  return { visitas, loading, error, crearVisita, resolverVisita };
+  async function subirFotoVisita(file: File, clienteId: string, tipo: string): Promise<{ url: string | null; error: string | null }> {
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `visitas/${clienteId}/${tipo}-${Date.now()}.${ext}`;
+    const { error: up } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
+    if (up) return { url: null, error: up.message };
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+    return { url: data.publicUrl, error: null };
+  }
+
+  return { visitas, loading, error, crearVisita, resolverVisita, subirFotoVisita };
 }

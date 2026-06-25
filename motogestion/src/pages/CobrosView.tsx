@@ -473,7 +473,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
+  const esSubadmin = profile?.role === "SUBADMIN";
+  // Registrar pago normal: secretaria y admins (no subadmin). Cobro en campo: admins y subadmin (no secretaria pura).
+  const puedePagoNormal = esSecretaria || esAdmin;
+  const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
   const gestionesContrato = contratoSeleccionadoId
@@ -1723,6 +1728,46 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <PanelDetalle />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Botón flotante "+" — acciones rápidas según rol */}
+      {(puedePagoNormal || puedeCobroCampo) && (
+        <div style={{ position: "fixed", right: 20, bottom: isMobile ? 88 : 28, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+          {fabOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {puedePagoNormal && (
+                <button
+                  onClick={() => { setFabOpen(false); setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
+                >
+                  💰 Registrar pago
+                </button>
+              )}
+              {puedeCobroCampo && (
+                <button
+                  onClick={() => { setFabOpen(false); setContratoSeleccionadoId(null); setActiveTab("campo"); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
+                >
+                  💵 Cobro en campo
+                </button>
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              // Si solo tiene una acción disponible, dispararla directo sin menú
+              const soloPago = puedePagoNormal && !puedeCobroCampo;
+              const soloCampo = puedeCobroCampo && !puedePagoNormal;
+              if (soloPago) { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); return; }
+              if (soloCampo) { setContratoSeleccionadoId(null); setActiveTab("campo"); return; }
+              setFabOpen(v => !v);
+            }}
+            aria-label="Acciones rápidas"
+            style={{ width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", fontSize: 30, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(2,132,199,0.4)", display: "flex", alignItems: "center", justifyContent: "center", transform: fabOpen ? "rotate(45deg)" : "none", transition: "transform 0.15s" }}
+          >
+            +
+          </button>
         </div>
       )}
 

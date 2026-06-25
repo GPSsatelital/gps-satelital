@@ -395,7 +395,6 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <h2 style={{ fontSize: 20, margin: 0 }}>Motos</h2>
           <p style={{ marginTop: 4, color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
         </div>
-        <button onClick={() => setOpen(true)} style={primaryBtn}>+ Registrar moto</button>
       </div>
       {error && <div style={{ marginBottom: 12, color: "#991b1b" }}>Error: {error}</div>}
 
@@ -470,6 +469,33 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           </div>
         </div>
       )}
+
+      {/* FAB — Registrar moto */}
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          position: "fixed",
+          bottom: isMobile ? 80 : 28,
+          right: 20,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #0284c7 0%, #10b981 100%)",
+          color: "white",
+          border: "none",
+          fontSize: 28,
+          fontWeight: 700,
+          cursor: "pointer",
+          boxShadow: "0 4px 18px rgba(2,132,199,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 50,
+        }}
+        title="Registrar moto"
+      >
+        +
+      </button>
 
       {/* Modal cambiar ubicación */}
       {openUbicacion && selectedMoto && (

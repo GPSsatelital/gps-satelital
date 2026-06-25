@@ -263,11 +263,12 @@ const FILTROS_CLIENTE = [
   { label: "Rechazados", filter: "Rechazado" },
 ];
 
-function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
+function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRechazar }: {
   clientes: Cliente[];
   visitas: Visita[];
   role: string;
   onAprobar: (clienteId: string, visitaId: string) => Promise<void>;
+  onRepetir: (clienteId: string, visitaId: string) => Promise<void>;
   onRechazar: (clienteId: string, visitaId: string, motivo: string) => Promise<void>;
 }) {
   const [expandido, setExpandido] = useState<string | null>(null);
@@ -424,10 +425,22 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRechazar }: {
                           {procesando === cliente.id ? "Procesando..." : "✅ Aprobar cliente"}
                         </button>
                         <button
+                          disabled={!!procesando}
+                          onClick={async () => {
+                            setProcesando(cliente.id);
+                            await onRepetir(cliente.id, visita.id);
+                            setProcesando(null);
+                            setExpandido(null);
+                          }}
+                          style={{ background: "#fef3c7", color: "#92400e", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
+                        >
+                          🔁 Repetir visita
+                        </button>
+                        <button
                           onClick={() => setRechazando(cliente.id)}
                           style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
                         >
-                          ❌ Rechazar
+                          ❌ Rechazar definitivo
                         </button>
                       </div>
                     ) : (
@@ -715,9 +728,17 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     setVisitaOpen(false);
   }
 
-  async function handleResolverVisita(id: string, clienteId: string, resultado: "Aprobado" | "Rechazado") {
-    await resolverVisita(id, resultado);
-    await cambiarEstadoCliente(clienteId, resultado === "Aprobado" ? "Aprobado" : "Rechazado");
+  // "Aprobar visita" solo valida que la visita se hizo bien; el cliente queda en
+  // "Pendiente evaluación" para la decisión final (Aprobar/Rechazar cliente).
+  async function handleAprobarVisita(id: string, clienteId: string) {
+    await resolverVisita(id, "Aprobado");
+    await cambiarEstadoCliente(clienteId, "Pendiente evaluación");
+  }
+
+  // "Repetir visita" devuelve al cliente a "Listo para visita" para una nueva visita.
+  async function handleRepetirVisita(id: string, clienteId: string) {
+    await resolverVisita(id, "Repetir");
+    await cambiarEstadoCliente(clienteId, "Listo para visita");
   }
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
@@ -900,6 +921,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             await resolverVisita(visitaId, "Aprobado");
             await cambiarEstadoCliente(clienteId, "Aprobado");
           }}
+          onRepetir={async (clienteId, visitaId) => {
+            await resolverVisita(visitaId, "Repetir");
+            await cambiarEstadoCliente(clienteId, "Listo para visita");
+          }}
           onRechazar={async (clienteId, visitaId, motivo) => {
             await resolverVisita(visitaId, "Rechazado");
             await cambiarEstadoCliente(clienteId, "Rechazado");
@@ -947,7 +972,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   onVisita={() => setVisitaOpen(true)}
                   onExcepcion={() => abrirExcepcion(selectedCliente)}
                   onEstado={cambiarEstadoCliente}
-                  onResolverVisita={handleResolverVisita}
+                  onAprobarVisita={handleAprobarVisita}
+                  onRepetirVisita={handleRepetirVisita}
                 />
               </div>
             </div>
@@ -1102,7 +1128,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     onVisita={() => setVisitaOpen(true)}
                     onExcepcion={() => abrirExcepcion(selectedCliente)}
                     onEstado={cambiarEstadoCliente}
-                    onResolverVisita={handleResolverVisita}
+                    onAprobarVisita={handleAprobarVisita}
+                    onRepetirVisita={handleRepetirVisita}
                   />
                 </>
               ) : (
@@ -1289,14 +1316,15 @@ type DetalleProps = {
   onVisita: () => void;
   onExcepcion: () => void;
   onEstado: (id: string, estado: ClienteEstado) => void;
-  onResolverVisita: (id: string, clienteId: string, resultado: "Aprobado" | "Rechazado") => void;
+  onAprobarVisita: (id: string, clienteId: string) => void;
+  onRepetirVisita: (id: string, clienteId: string) => void;
 };
 
 function miniBtn2(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
 }
 
-function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onResolverVisita }: DetalleProps) {
+function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
 
@@ -1356,8 +1384,18 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
           <div style={{ display: "grid", gap: 10 }}>
             {visitas.map((v) => (
               <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
-                <div style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</div>
-                <div>Estado: {v.estado} · Resultado: {v.resultado || "Pendiente decisión"}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</span>
+                  {v.resultado === "Repetir" && (
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 11, fontWeight: 700 }}>🔁 Repetir visita ordenada</span>
+                  )}
+                  {v.resultado === "Aprobado" && (
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 11, fontWeight: 700 }}>✔ Visita aprobada</span>
+                  )}
+                  {v.resultado === null && (
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#e2e8f0", color: "#475569", fontSize: 11, fontWeight: 700 }}>Pendiente de revisar</span>
+                  )}
+                </div>
                 <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"} {v.entrevista.tiempoResidencia ? `· ${v.entrevista.tiempoResidencia}` : ""}</div>
                 <div><b>Tipo vivienda:</b> {v.entrevista.tipoVivienda || "Sin registrar"}</div>
                 {v.entrevista.composicionFamiliar && <div><b>Familia:</b> {v.entrevista.composicionFamiliar}</div>}
@@ -1400,9 +1438,9 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                   </div>
                 )}
                 {esAdmin && v.resultado === null && (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => onResolverVisita(v.id, selectedCliente.id, "Aprobado")} style={miniBtn2("#dcfce7", "#166534")}>Aprobar</button>
-                    <button onClick={() => onResolverVisita(v.id, selectedCliente.id, "Rechazado")} style={miniBtn2("#fee2e2", "#991b1b")}>Rechazar</button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button onClick={() => onAprobarVisita(v.id, selectedCliente.id)} style={miniBtn2("#dcfce7", "#166534")}>✅ Aprobar visita</button>
+                    <button onClick={() => onRepetirVisita(v.id, selectedCliente.id)} style={miniBtn2("#fef3c7", "#92400e")}>🔁 Repetir visita</button>
                   </div>
                 )}
               </div>
@@ -1438,6 +1476,18 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Decisión final del cliente — solo tras revisar la(s) visita(s) */}
+      {esAdmin && selectedCliente.estado === "Pendiente evaluación" && (
+        <div style={{ padding: 14, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita, decide si el cliente queda aprobado o rechazado.</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button onClick={() => onEstado(selectedCliente.id, "Aprobado")} style={{ background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✅ Aprobar cliente</button>
+            <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>❌ Rechazar cliente</button>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { MODULOS_SIEMPRE } from "./lib/modulos";
 import BusquedaGlobal from "./components/BusquedaGlobal";
 import { useClientes } from "./hooks/useClientes";
 import { useMotos } from "./hooks/useMotos";
@@ -140,11 +141,11 @@ const VIEW_TITLE: Record<ViewKey, string> = {
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
 function Sidebar({
-  ctx, navigate, esAdmin, collapsed, onCollapse,
+  ctx, navigate, puedeVer, collapsed, onCollapse,
 }: {
   ctx: NavContext;
   navigate: (v: ViewKey, f?: string) => void;
-  esAdmin: boolean;
+  puedeVer: (v: ViewKey) => boolean;
   collapsed: boolean;
   onCollapse: () => void;
 }) {
@@ -167,7 +168,9 @@ function Sidebar({
     transition: "all 0.15s", marginBottom: 1,
   });
 
-  const groups = SIDE_GROUPS.filter(g => !g.adminOnly || esAdmin);
+  const groups = SIDE_GROUPS
+    .map(g => ({ ...g, items: g.items.filter(i => puedeVer(i.key)) }))
+    .filter(g => g.items.length > 0);
 
   return (
     <div style={{
@@ -265,11 +268,11 @@ function Sidebar({
 
 // ─── Mobile "Más" sheet ───────────────────────────────────────────────────────
 function MasSheet({
-  ctx, navigate, esAdmin, onClose,
+  ctx, navigate, puedeVer, onClose,
 }: {
   ctx: NavContext;
   navigate: (v: ViewKey, f?: string) => void;
-  esAdmin: boolean;
+  puedeVer: (v: ViewKey) => boolean;
   onClose: () => void;
 }) {
   const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
@@ -298,7 +301,7 @@ function MasSheet({
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e2e8f0", margin: "0 auto 20px" }} />
         <div style={{ padding: "0 20px 12px", fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em" }}>MÁS MÓDULOS</div>
-        {extras.filter(e => !e.adminOnly || esAdmin).map(e => (
+        {extras.filter(e => puedeVer(e.key)).map(e => (
           <button
             key={e.key}
             onClick={() => { navigate(e.key); onClose(); }}
@@ -360,6 +363,24 @@ function Shell() {
   const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
   const esMecanico = roleActual === "MECANICO";
 
+  // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
+  function accesoPorRol(view: ViewKey): boolean {
+    if (view === "importacion") return roleActual === "ADMIN_PRINCIPAL";
+    const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "liquidaciones", "usuarios", "historial_pagos"];
+    if (adminViews.includes(view)) return esAdmin;
+    return true; // clientes, motos, contratos, cobros, caja, taller
+  }
+
+  // ¿Puede el usuario abrir este módulo? Accesos a medida mandan; si no hay, default por rol.
+  function puedeVer(view: ViewKey): boolean {
+    if (MODULOS_SIEMPRE.includes(view)) return true;
+    const p = profile?.permisos;
+    // Lista a medida (incluso vacía) manda; sin lista (NULL) usa el default del rol.
+    // SOCIO siempre va por su dashboard aparte, así que su lista vacía no afecta.
+    if (Array.isArray(p) && roleActual !== "SOCIO") return p.includes(view);
+    return accesoPorRol(view);
+  }
+
   function navigate(v: ViewKey, f = "") {
     setCtx({ view: v, filter: f });
     setMasOpen(false);
@@ -402,21 +423,21 @@ function Shell() {
   const contentView = (
     <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
-      {ctx.view === "clientes"      && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
-      {ctx.view === "motos"         && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
-      {ctx.view === "contratos"     && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
-      {ctx.view === "cobros"        && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
-      {ctx.view === "caja"          && <CajaView />}
-      {ctx.view === "reportes"      && esAdmin && <ReportesView onNavigate={navigate} />}
-      {ctx.view === "cobro_diario"  && esAdmin && <CobroDiarioView onNavigate={navigate} />}
-      {ctx.view === "referidos"     && esAdmin && <ReferidosView />}
-      {ctx.view === "alertas"       && esAdmin && <AlertasView onNavegar={navigate} />}
-      {ctx.view === "inmovilizaciones" && esAdmin && <InmovilizacionesView onNavigate={navigate} />}
-      {ctx.view === "taller"        && <TallerView />}
-      {ctx.view === "liquidaciones"  && esAdmin && <LiquidacionesView />}
-      {ctx.view === "usuarios"       && esAdmin && <UsuariosView />}
+      {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
+      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "caja"          && puedeVer("caja") && <CajaView />}
+      {ctx.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
+      {ctx.view === "cobro_diario"  && puedeVer("cobro_diario") && <CobroDiarioView onNavigate={navigate} />}
+      {ctx.view === "referidos"     && puedeVer("referidos") && <ReferidosView />}
+      {ctx.view === "alertas"       && puedeVer("alertas") && <AlertasView onNavegar={navigate} />}
+      {ctx.view === "inmovilizaciones" && puedeVer("inmovilizaciones") && <InmovilizacionesView onNavigate={navigate} />}
+      {ctx.view === "taller"        && puedeVer("taller") && <TallerView />}
+      {ctx.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
+      {ctx.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
       {ctx.view === "configuracion"  && <ConfiguracionView />}
-      {ctx.view === "importacion"    && profile?.role === "ADMIN_PRINCIPAL" && <ImportacionView />}
+      {ctx.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
@@ -427,7 +448,7 @@ function Shell() {
   if (isMobile) {
     const bottomTabs = esMecanico
       ? [{ key: "dashboard" as ViewKey, icon: "🏠", label: "Panel" }, { key: "taller" as ViewKey, icon: "🔧", label: "Taller" }]
-      : BOTTOM_TABS;
+      : BOTTOM_TABS.filter(t => t.key === "dashboard" || puedeVer(t.key));
 
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#0f172a", background: "#f1f5f9" }}>
@@ -528,7 +549,7 @@ function Shell() {
           )}
         </nav>
 
-        {masOpen && <MasSheet ctx={ctx} navigate={navigate} esAdmin={esAdmin} onClose={() => setMasOpen(false)} />}
+        {masOpen && <MasSheet ctx={ctx} navigate={navigate} puedeVer={puedeVer} onClose={() => setMasOpen(false)} />}
         {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motos} contratos={contratos} />}
       </div>
     );
@@ -538,7 +559,7 @@ function Shell() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
       <InstallBanner />
-      <Sidebar ctx={ctx} navigate={navigate} esAdmin={esAdmin} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
+      <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: "100vh" }}>
         {/* Desktop top bar */}

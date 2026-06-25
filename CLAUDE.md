@@ -416,7 +416,20 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - `013_pago_aplicado_base_inicial.sql` — columna que faltaba en pagos ✅ APLICADA
 - `014_grupo_usadas_club.sql` — grupo USADAS en checks de motos/profiles ✅ APLICADA
 - `015_pagos_campo_recibo.sql` — columnas `entregado_caja` + `folio` en pagos ✅ APLICADA
+- `016_profiles_permisos.sql` — columna `permisos` (jsonb) en profiles para accesos por usuario 🔲 PENDIENTE DE APLICAR
 - Bucket Storage `comprobantes` (público) + policies de insert/select ✅ CREADO
+
+### Edge Functions (carpeta motogestion/supabase/functions/)
+- `create-user` — versión vieja (solo crear). Reemplazada por `manage-users`.
+- `manage-users` — crear / editar (nombre, rol, grupo, accesos) / resetear contraseña. Guardia de ADMIN. Corrige validación de grupo USADAS. 🔲 PENDIENTE DE DESPLEGAR (`supabase functions deploy manage-users`)
+
+### Accesos por usuario (módulo Usuarios)
+- `profiles.permisos` (jsonb) = lista de ViewKeys que el usuario puede abrir.
+  - `NULL` → usa accesos por defecto del rol (comportamiento histórico, sin regresión).
+  - `[...]` → lista a medida que define el admin (incluso vacía = solo panel).
+- `src/lib/modulos.ts`: catálogo `MODULOS_ASIGNABLES`, `MODULOS_SIEMPRE`, plantillas `ACCESOS_SUGERIDOS` por rol.
+- `App.tsx` → `puedeVer(view)` controla sidebar, MasSheet, bottom tabs y rutas.
+- Las reglas de dinero (ej. "solo secretaria registra efectivo") siguen atadas al ROL, no a los accesos.
 > IMPORTANTE: las migraciones .sql se aplican MANUALMENTE en el SQL Editor de Supabase. El código solo las deja listas en la carpeta; hay que pegarlas y darle Run.
 
 ### Migración de datos reales (en proceso) 📋

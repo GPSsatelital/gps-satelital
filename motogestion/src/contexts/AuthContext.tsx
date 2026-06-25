@@ -10,6 +10,7 @@ export type Profile = {
   nombre: string;
   role: Role;
   grupo: GrupoSocio | null;
+  permisos: string[] | null;
 };
 
 type AuthState = {
@@ -28,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from("profiles").select("id, nombre, role, grupo").eq("id", userId).single();
+    const { data } = await supabase.from("profiles").select("id, nombre, role, grupo, permisos").eq("id", userId).single();
     setProfile(data as Profile | null);
   }
 

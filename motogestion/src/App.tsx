@@ -50,6 +50,7 @@ function useIsMobile() {
 const BOTTOM_TABS: Array<{ key: ViewKey; icon: string; label: string }> = [
   { key: "dashboard", icon: "🏠", label: "Panel" },
   { key: "clientes",  icon: "👥", label: "Clientes" },
+  { key: "contratos", icon: "📄", label: "Contratos" },
   { key: "cobros",    icon: "💳", label: "Cartera" },
   { key: "motos",     icon: "🏍️", label: "Motos" },
 ];

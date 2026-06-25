@@ -856,7 +856,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       {/* Header compacto */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
         <h2 style={{ fontSize: 20, margin: 0, color: "#0f172a" }}>Clientes</h2>
-        <button onClick={() => setOpen(true)} style={primaryBtn}>+ Nuevo cliente</button>
       </div>
 
       {error && <div style={{ marginBottom: 10, color: "#991b1b", fontSize: 13 }}>Error: {error}</div>}
@@ -1311,14 +1310,15 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         </div>
       )}
 
-      <InfoBox label="Nombre" value={selectedCliente.nombre} />
-      <InfoBox label="Cédula" value={selectedCliente.cedula} />
-      <InfoBox label="Dirección" value={selectedCliente.direccion} />
-      <InfoBox label="Ruta" value={selectedCliente.ruta_contrato === "tiempo_definido" ? "Tiempo definido (semanal/quincenal/mensual)" : "Pago diario (acumula base)"} />
-      <InfoBox label="Fuente de llegada" value={selectedCliente.fuente_llegada || "Sin registrar"} />
-      <InfoBox label="Teléfono" value={selectedCliente.telefono} />
-      <InfoBox label="WhatsApp" value={selectedCliente.whatsapp || "Sin registrar"} />
-      <InfoBox label="Acompañante" value={`${selectedCliente.acompanante_nombre || "Sin registrar"} · Tel: ${selectedCliente.acompanante_telefono || "Sin teléfono"}`} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <InfoBox label="Cédula" value={selectedCliente.cedula} />
+        <InfoBox label="Teléfono" value={selectedCliente.telefono} />
+        <InfoBox label="WhatsApp" value={selectedCliente.whatsapp || "Sin registrar"} />
+        <InfoBox label="Fuente" value={selectedCliente.fuente_llegada || "Sin registrar"} />
+        <InfoBox label="Ruta" value={selectedCliente.ruta_contrato === "tiempo_definido" ? "Tiempo definido" : "Diario (acumula base)"} full />
+        <InfoBox label="Dirección" value={selectedCliente.direccion} full />
+        <InfoBox label="Acompañante" value={`${selectedCliente.acompanante_nombre || "Sin registrar"} · Tel: ${selectedCliente.acompanante_telefono || "Sin teléfono"}`} full />
+      </div>
 
       {(selectedCliente.referido_por_nombre || selectedCliente.referido_por_cedula) && (
         <div style={{ background: "#f0fdf4", borderRadius: 16, padding: 14, border: "1px solid #bbf7d0" }}>
@@ -1469,11 +1469,11 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
   );
 }
 
-function InfoBox({ label, value }: { label: string; value: string }) {
+function InfoBox({ label, value, full }: { label: string; value: string; full?: boolean }) {
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 16, padding: 14 }}>
-      <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase" }}>{label}</div>
-      <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600 }}>{value}</div>
+    <div style={{ background: "#f8fafc", borderRadius: 12, padding: "8px 12px", gridColumn: full ? "1 / -1" : undefined }}>
+      <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.3, fontWeight: 600 }}>{label}</div>
+      <div style={{ marginTop: 2, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{value}</div>
     </div>
   );
 }

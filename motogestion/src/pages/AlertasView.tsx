@@ -102,11 +102,12 @@ export default function AlertasView({ onNavegar }: Props) {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { contratos } = useContratos();
-  const { clientes }  = useClientes();
-  const { motos }     = useMotos();
-  const { pagos }     = usePagos();
+  const { contratos, loading: lCt } = useContratos();
+  const { clientes,  loading: lCl } = useClientes();
+  const { motos,     loading: lM  } = useMotos();
+  const { pagos,     loading: lP  } = usePagos();
   const { convenios } = useConvenios();
+  const cargando = lCt || lCl || lM || lP;
   const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
 
   const [tab, setTab]           = useState<TabKey>("todas");
@@ -326,6 +327,22 @@ export default function AlertasView({ onNavegar }: Props) {
               </button>
             )}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (cargando) {
+    return (
+      <div>
+        <div style={{ marginBottom: 22 }}>
+          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Alertas del sistema</h2>
+          <p style={{ margin: "5px 0 0", color: "#94a3b8", fontSize: 14 }}>Cargando datos...</p>
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ height: 80, borderRadius: 14, background: "#e2e8f0", animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
         </div>
       </div>
     );

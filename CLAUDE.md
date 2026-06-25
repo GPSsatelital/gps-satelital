@@ -4,6 +4,12 @@ Supabase: `jvfkprkjysjffhzjitgl` | Repo: `GPSsatelital/gps-satelital` | Producci
 
 ---
 
+## REGLA DE AUTORIZACIÓN — OBLIGATORIO SIEMPRE
+
+**Nunca implementar nada sin antes describir el plan y esperar confirmación explícita del usuario.**
+
+---
+
 ## REGLA DE DESPLIEGUE — OBLIGATORIO SIEMPRE
 
 Después de cualquier `git push`, hacer merge inmediato a `main`:

@@ -58,9 +58,13 @@ export type ResumenCobro = {
   totalEsperado: number;
 };
 
-// Domingo siempre es la mitad de la tarifa L–S
-export function calcularCuotaDia(tarifaBase: number, esDomingo: boolean): number {
-  return esDomingo ? Math.round(tarifaBase / 2) : tarifaBase;
+// Domingo = mitad de la tarifa L–S, redondeada al millar más cercano.
+// Si el contrato tiene una tarifa de domingo explícita (tarifa_domingo), se usa esa.
+// Ej: nuevo $27.000 → domingo $14.000 · antiguo $26.000 → domingo $13.000
+export function calcularCuotaDia(tarifaBase: number, esDomingo: boolean, tarifaDomingo?: number): number {
+  if (!esDomingo) return tarifaBase;
+  if (tarifaDomingo && tarifaDomingo > 0) return tarifaDomingo;
+  return Math.round(tarifaBase / 2 / 1000) * 1000;
 }
 
 // Orden estricto: cuota pactada → base inicial pendiente → deuda → convenio → saldo a favor

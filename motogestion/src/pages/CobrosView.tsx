@@ -491,7 +491,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const cuotaPactada = contratoDetalle
     ? (contratoDetalle.forma_pago === "Diario"
-        ? calcularCuotaDia(contratoDetalle.tarifa_diaria ?? 27000, esDomingo)
+        ? calcularCuotaDia(contratoDetalle.tarifa_diaria ?? 27000, esDomingo, contratoDetalle.tarifa_domingo)
         : contratoDetalle.valor_semanal)
     : 27000;
 
@@ -520,7 +520,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const modalCuotaPactada = modalContrato
     ? (modalContrato.forma_pago === "Diario"
-        ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo)
+        ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo, modalContrato.tarifa_domingo)
         : modalContrato.valor_semanal)
     : 0;
   const modalPagadoPeriodo = modalContrato?.forma_pago === "Diario"
@@ -693,7 +693,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!r) { setCampoError("Contrato no encontrado"); return; }
 
     const cuotaPact = r.forma_pago === "Diario"
-      ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo)
+      ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
       : r.valor_semanal;
     const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0);
     const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
@@ -1141,7 +1141,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
 
           const cuotaPact = c.forma_pago === "Diario"
-            ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0)
+            ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
             : c.valor_semanal;
           const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
           const pendiente = Math.max(cuotaPact - pagadoP, 0);

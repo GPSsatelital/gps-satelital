@@ -107,10 +107,18 @@ export default function UsuariosView() {
   // ── Editar ──
   const [editando, setEditando] = useState<PerfilUsuario | null>(null);
 
+  const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "SOCIO", "MECANICO"];
+
   async function cargarUsuarios() {
-    const { data, error } = await supabase.from("profiles").select("id, nombre, role, grupo, permisos").order("nombre");
+    const { data, error } = await supabase.from("profiles").select("id, nombre, role, grupo, permisos");
     if (error) setListError(error.message);
-    else { setUsuarios((data ?? []) as PerfilUsuario[]); setListError(null); }
+    else {
+      const sorted = (data ?? []).sort((a, b) =>
+        ROLE_ORDER.indexOf(a.role as Role) - ROLE_ORDER.indexOf(b.role as Role)
+      );
+      setUsuarios(sorted as PerfilUsuario[]);
+      setListError(null);
+    }
     setLoading(false);
   }
 
@@ -222,25 +230,17 @@ export default function UsuariosView() {
               {usuarios.length === 0 && <div style={{ color: "#64748b" }}>No hay usuarios todavía.</div>}
               {usuarios.map(u => {
                 const nAccesos = Array.isArray(u.permisos) ? u.permisos.length : null;
+                const badge = roleBadge(u.role);
                 return (
-                  <div key={u.id} style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <div style={{ fontWeight: 700, textTransform: "uppercase" }}>{u.nombre}</div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {u.role === "SOCIO" && u.grupo && (
-                          <span style={{ padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: "#e0f2fe", color: "#0369a1" }}>{u.grupo}</span>
-                        )}
-                        <span style={{ padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>{roleLabel(u.role)}</span>
+                  <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{u.nombre}</div>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                        {u.role === "SOCIO" ? u.grupo : nAccesos === null ? "Accesos por defecto" : `${nAccesos} módulos`}
                       </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                        {u.role === "SOCIO" ? "Dashboard de su grupo" : nAccesos === null ? "Accesos por defecto del rol" : `${nAccesos} módulo${nAccesos !== 1 ? "s" : ""} asignado${nAccesos !== 1 ? "s" : ""}`}
-                      </div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setEditando(u)} style={{ padding: "6px 12px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#334155" }}>✏️ Editar</button>
-                      </div>
-                    </div>
+                    <span style={{ padding: "4px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: "nowrap" }}>{roleLabel(u.role)}</span>
+                    <button onClick={() => setEditando(u)} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #cbd5e1", background: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#334155", whiteSpace: "nowrap" }}>✏️</button>
                   </div>
                 );
               })}

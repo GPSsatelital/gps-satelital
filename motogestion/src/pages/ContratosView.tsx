@@ -390,7 +390,6 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           <h2 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Contratos</h2>
           <p style={{ marginTop: 4, color: "#64748b", margin: "4px 0 0", fontSize: 14 }}>Solo clientes aprobados con visita domiciliaria.</p>
         </div>
-        {puedeCrear && <button onClick={() => setOpen(true)} style={primaryBtn}>+ Nuevo contrato</button>}
       </div>
 
       {error && <div style={{ marginBottom: 12, color: "#991b1b" }}>Error: {error}</div>}
@@ -443,7 +442,6 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
               <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
               <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin contratos</div>
               <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Crea el primer contrato para empezar</div>
-              {puedeCrear && <button onClick={() => setOpen(true)} style={primaryBtn}>+ Nuevo contrato</button>}
             </div>
           )}
           {contratosFiltrados.length === 0 && contratos.length > 0 && (
@@ -642,6 +640,34 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             </div>
           </div>
         </div>
+      )}
+
+      {/* FAB nuevo contrato */}
+      {puedeCrear && (
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            position: "fixed",
+            bottom: isMobile ? 80 : 28,
+            right: 20,
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #0284c7 0%, #10b981 100%)",
+            color: "white",
+            border: "none",
+            fontSize: 28,
+            cursor: "pointer",
+            boxShadow: "0 4px 20px rgba(2,132,199,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          title="Nuevo contrato"
+        >
+          +
+        </button>
       )}
     </div>
   );

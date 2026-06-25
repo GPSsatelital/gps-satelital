@@ -579,6 +579,36 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                       ))}
                     </div>
                   )}
+
+                  {/* Fotos de la visita */}
+                  {(v.fotos?.fachada || v.fotos?.clienteFuncionario) && (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                      {v.fotos.fachada && /^https?:\/\//.test(v.fotos.fachada) && (
+                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada de la vivienda">
+                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                        </a>
+                      )}
+                      {v.fotos.clienteFuncionario && /^https?:\/\//.test(v.fotos.clienteFuncionario) && (
+                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Cliente + funcionario">
+                          <img src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Ubicación de residencia en mapa */}
+                  {v.ubicacion && (
+                    <div style={{ marginTop: 12 }}>
+                      <a
+                        href={`https://www.google.com/maps?q=${v.ubicacion.lat},${v.ubicacion.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
+                      >
+                        📍 Ver dónde vive en el mapa
+                      </a>
+                    </div>
+                  )}
                 </Card>
               </div>
             );

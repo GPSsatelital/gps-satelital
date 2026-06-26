@@ -16,6 +16,12 @@ Supabase: `jvfkprkjysjffhzjitgl` | Repo: `GPSsatelital/gps-satelital` | Producci
 
 ---
 
+## REGLA DE SQL — OBLIGATORIO SIEMPRE
+
+**Nunca enviar archivos SQL para descargar. Siempre pegar el código SQL directamente en el chat como bloque de código para copiar y pegar.**
+
+---
+
 ## REGLA DE DESPLIEGUE — OBLIGATORIO SIEMPRE
 
 Después de cualquier `git push`, hacer merge inmediato a `main`:
@@ -481,12 +487,10 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `015_pagos_campo_recibo.sql` ✅
 - `016_profiles_permisos.sql` ✅
 - `017_bucket_documentos.sql` ✅
-- `019_fix_cliente_estado_trigger.sql` — corrige trigger para usar `mi_rol()` ⚠️ PENDIENTE APLICAR EN SUPABASE
-- `020_ahorro_domingo.sql` — agrega columna `ahorro_domingo` a contratos ⚠️ PENDIENTE APLICAR EN SUPABASE
+- `019_fix_cliente_estado_trigger.sql` — corrige trigger para usar `mi_rol()` ✅
+- `020_ahorro_domingo.sql` — agrega columna `ahorro_domingo` a contratos ✅
 
 ### Pendientes manuales ⚠️
-- Aplicar `019_fix_cliente_estado_trigger.sql` en SQL Editor de Supabase
-- Aplicar `020_ahorro_domingo.sql` en SQL Editor de Supabase
 - Desplegar Edge Function: `supabase functions deploy manage-users`
 
 ### Completado en WizardContrato paso 1 ✅

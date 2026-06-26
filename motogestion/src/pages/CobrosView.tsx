@@ -251,13 +251,24 @@ function calcularEstadoCartera(
   diaPago: string,
   totalPagadoEstaSemana: number,
   valorSemanal: number,
+  fechaEntrega: string | null,
 ): EstadoCartera {
-  const hoyJS = new Date().getDay();
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const hoyJS = hoy.getDay();
   const diaPagoNum = DIAS[diaPago] ?? 1;
 
   if (totalPagadoEstaSemana >= valorSemanal) return "al-dia";
 
-  let diasDesde = (hoyJS - diaPagoNum + 7) % 7;
+  const diasDesde = (hoyJS - diaPagoNum + 7) % 7;
+
+  // Si el contrato fue entregado después del inicio del período actual, aún no vence el primer cobro
+  if (fechaEntrega) {
+    const inicioPeriodo = new Date(hoy);
+    inicioPeriodo.setDate(hoy.getDate() - diasDesde);
+    if (fechaEntrega >= inicioPeriodo.toISOString().slice(0, 10)) return "al-dia";
+  }
+
   if (diasDesde === 0) return "al-dia";
   if (diasDesde === 1) return "gabela";
   return "mora";
@@ -542,7 +553,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .filter(p => p.fecha === hoy.toISOString().slice(0, 10))
         .reduce((acc, p) => acc + p.valor, 0);
 
-      const estadoCartera = calcularEstadoCartera(contrato.dia_pago, pagadoEstaSemana, contrato.valor_semanal);
+      const estadoCartera = calcularEstadoCartera(contrato.dia_pago, pagadoEstaSemana, contrato.valor_semanal, contrato.fecha_entrega ?? null);
 
       const deudaContrato = deudas
         .filter(d => d.contrato_id === contrato.id && d.estado !== "pagada")

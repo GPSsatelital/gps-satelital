@@ -99,9 +99,10 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   const [form, setForm] = useState({
     placa: "",
-    grupo: "CLUB" as GrupoMoto,
+    grupo: "RASTREADOR" as GrupoMoto,
     marca: "",
     modelo: "",
+    color: "",
     numero_motor: "",
     numero_chasis: "",
     lugar_matricula: "",
@@ -246,6 +247,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       grupo: form.grupo,
       marca: form.marca.trim().toUpperCase(),
       modelo: form.modelo.trim(),
+      color: form.color.trim() || null,
       numero_motor: form.numero_motor.trim() || null,
       numero_chasis: form.numero_chasis.trim() || null,
       lugar_matricula: form.lugar_matricula.trim() || null,
@@ -257,8 +259,6 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       estado: form.estado,
       condicion_ingreso: form.condicion_ingreso,
       observaciones: form.observaciones.trim() || null,
-      retencion_fecha: null,
-      retencion_numero_caso: null,
     });
 
     setGuardando(false);
@@ -269,7 +269,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     }
 
     setForm({
-      placa: "", grupo: "RASTREADOR" as const, marca: "", modelo: "", numero_motor: "", numero_chasis: "",
+      placa: "", grupo: "RASTREADOR" as const, marca: "", modelo: "", color: "", numero_motor: "", numero_chasis: "",
       lugar_matricula: "", cilindraje: "", fecha_seguro: "", fecha_tecnomecanica: "",
       propietario: "", numero_serie: "", estado: "Disponible" as const, observaciones: "", condicion_ingreso: "nueva" as const,
     });
@@ -313,7 +313,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
               <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}>
-                {(["COSTA","PRADERA","RASTREADOR","USADAS","OTRO"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
+                {(["COSTA","PRADERA","RASTREADOR","USADAS"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
@@ -579,12 +579,16 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <option value="PRADERA">Club Moteros Pradera</option>
                   <option value="RASTREADOR">Club Moteros Rastreador</option>
                   <option value="USADAS">Usadas Club</option>
-                  <option value="OTRO">Otro</option>
                 </select>
               </Field>
               <Field label="Marca"><input style={inputStyle} value={form.marca} onChange={(e) => setForm((p) => ({ ...p, marca: e.target.value }))} /></Field>
-              <Field label="Modelo"><input style={inputStyle} value={form.modelo} onChange={(e) => setForm((p) => ({ ...p, modelo: e.target.value }))} /></Field>
-              <Field label="Vencimiento seguro"><input type="date" style={inputStyle} value={form.fecha_seguro} onChange={(e) => setForm((p) => ({ ...p, fecha_seguro: e.target.value }))} /></Field>
+              <Field label="Modelo (año)"><input style={inputStyle} value={form.modelo} onChange={(e) => setForm((p) => ({ ...p, modelo: e.target.value }))} /></Field>
+              <Field label="Color"><input style={inputStyle} value={form.color} onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))} placeholder="Ej. Rojo, Negro mate" /></Field>
+              <Field label="Cilindraje"><input style={inputStyle} value={form.cilindraje} onChange={(e) => setForm((p) => ({ ...p, cilindraje: e.target.value }))} placeholder="Ej. 125cc" /></Field>
+              <Field label="N° Motor"><input style={inputStyle} value={form.numero_motor} onChange={(e) => setForm((p) => ({ ...p, numero_motor: e.target.value }))} /></Field>
+              <Field label="N° Chasis"><input style={inputStyle} value={form.numero_chasis} onChange={(e) => setForm((p) => ({ ...p, numero_chasis: e.target.value }))} /></Field>
+              <Field label="Propietario"><input style={inputStyle} value={form.propietario} onChange={(e) => setForm((p) => ({ ...p, propietario: e.target.value }))} placeholder="Nombre del propietario legal" /></Field>
+              <Field label="Vencimiento SOAT"><input type="date" style={inputStyle} value={form.fecha_seguro} onChange={(e) => setForm((p) => ({ ...p, fecha_seguro: e.target.value }))} /></Field>
               <Field label="Vencimiento tecnomecánica"><input type="date" style={inputStyle} value={form.fecha_tecnomecanica} onChange={(e) => setForm((p) => ({ ...p, fecha_tecnomecanica: e.target.value }))} /></Field>
               <Field label="Observaciones"><input style={inputStyle} value={form.observaciones} onChange={(e) => setForm((p) => ({ ...p, observaciones: e.target.value }))} /></Field>
             </div>

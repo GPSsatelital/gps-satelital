@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
 import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 import ModalVisita from "../components/ModalVisita";
 import {
@@ -741,6 +742,22 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     await cambiarEstadoCliente(clienteId, "Listo para visita");
   }
 
+  async function handleEliminarCliente(clienteId: string) {
+    const { data: contratos } = await supabase
+      .from("contratos")
+      .select("id")
+      .eq("cliente_id", clienteId)
+      .in("estado", ["Activo", "En proceso"])
+      .limit(1);
+    if (contratos && contratos.length > 0) {
+      alert("No se puede eliminar: el cliente tiene contratos activos.");
+      return;
+    }
+    const { error } = await supabase.from("clientes").delete().eq("id", clienteId);
+    if (error) { alert("Error al eliminar: " + error.message); return; }
+    setSelectedId(null);
+  }
+
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
 
   const KPI_PILLS = [
@@ -974,6 +991,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   onEstado={cambiarEstadoCliente}
                   onAprobarVisita={handleAprobarVisita}
                   onRepetirVisita={handleRepetirVisita}
+                  onEliminar={() => handleEliminarCliente(selectedCliente.id)}
                 />
               </div>
             </div>
@@ -1130,6 +1148,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     onEstado={cambiarEstadoCliente}
                     onAprobarVisita={handleAprobarVisita}
                     onRepetirVisita={handleRepetirVisita}
+                    onEliminar={() => handleEliminarCliente(selectedCliente.id)}
                   />
                 </>
               ) : (
@@ -1318,17 +1337,19 @@ type DetalleProps = {
   onEstado: (id: string, estado: ClienteEstado) => void;
   onAprobarVisita: (id: string, clienteId: string) => void;
   onRepetirVisita: (id: string, clienteId: string) => void;
+  onEliminar?: () => void;
 };
 
 function miniBtn2(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
 }
 
-function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita }: DetalleProps) {
+function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  const esPrincipal = role === "ADMIN_PRINCIPAL";
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
   const [verAnteriores, setVerAnteriores] = useState(false);
-  // visitas viene ordenado de la más reciente a la más antigua
+  const [eliminando, setEliminando] = useState(false);
   const visitasVisibles = verAnteriores ? visitas : visitas.slice(0, 1);
 
   return (
@@ -1525,7 +1546,26 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("#ede9fe", "#6d28d9")}>Retirar</button>
           </>
         )}
+        {esPrincipal && onEliminar && (
+          <button
+            onClick={() => setEliminando(true)}
+            style={miniBtn2("#fee2e2", "#991b1b")}
+          >
+            🗑 Eliminar cliente
+          </button>
+        )}
       </div>
+
+      {eliminando && (
+        <div style={{ padding: 14, borderRadius: 14, background: "#fee2e2", border: "1px solid #fca5a5" }}>
+          <div style={{ fontWeight: 700, color: "#991b1b", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
+          <div style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 12 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setEliminando(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#334155" }}>Cancelar</button>
+            <button onClick={() => { setEliminando(false); onEliminar?.(); }} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#991b1b", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Sí, eliminar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -473,7 +473,7 @@ Si `saldo_final < 0` → cliente a lista negra automáticamente (reversible)
 - Pendiente: el cliente llena el Excel → cargar al sistema vía ImportacionView.
 
 ### En implementación 🔨 (Fase 1 — datos reales)
-1. **Firma digital:** 3 documentos auto-generados, huella biométrica, PDF
+1. **Wizard de contrato:** ✅ IMPLEMENTADO — 6 pasos: datos, moto, firma contrato, firma pagaré, foto certificado, entrega+activación. Archivo: `WizardContrato.tsx`. `ContratosView.tsx` actualizado para usar el wizard. Contratos existentes "En proceso" tienen botón "Continuar" que abre el wizard en el paso correcto.
 2. **Migración Excel** → datos reales (Excel ya entregado al cliente para llenar)
 
 ### Pendiente 🔲
@@ -492,7 +492,7 @@ Ver conversación del 22 de junio 2026 para el plan detallado completo con fases
 
 ---
 
-## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 27-jun-2026)
+## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 27-jun-2026 sesión 2)
 
 **Estado del código:** todo committeado y pusheado en `claude/clever-turing-daklkq` y merged a `main`. Working tree limpio. `npm run build` pasa.
 
@@ -504,15 +504,27 @@ Ver conversación del 22 de junio 2026 para el plan detallado completo con fases
 | andres@hotmail.com | EMIRO | SUBADMIN |
 | angela@hotmail.com | ANGELA | SECRETARIA |
 
-**✅ Lo que quedó listo esta sesión (27-jun):**
-- **Inputs de foto/archivo:** dos botones separados `[📷 Cámara]` (con `capture="environment"`) y `[🖼 Galería]` en TODOS los inputs del sistema — documentos del cliente, fotos de visita (ClientesView + ModalVisita), comprobante de transferencia (Cobros), documento firmado (Liquidaciones).
-- **Filtros de Clientes fusionados:** una sola fila con `flexWrap` (sin scroll horizontal). Tab "Pend. aprob." abre directamente el panel de aprobación. Eliminada la doble fila redundante.
-- **Anti-doble-clic (registros duplicados):** protegidos todos los botones que insertan en BD. Faltaban: registrar pago, deuda, convenio, gestión, cobro en campo (Cobros), guardar visita, guardar cambios cliente y confirmar excepción (Clientes). Ya estaban: contratos, motos, taller, caja, config, usuarios, firma, modales. → **Regla agregada a CONVENCIONES para futuros botones.**
+**✅ Lo que quedó listo sesión anterior (27-jun-1):**
+- **Inputs de foto/archivo:** dos botones separados `[📷 Cámara]` (con `capture="environment"`) y `[🖼 Galería]` en TODOS los inputs del sistema.
+- **Filtros de Clientes fusionados:** una sola fila con `flexWrap`. Tab "Pend. aprob." abre directamente el panel de aprobación.
+- **Anti-doble-clic:** protegidos todos los botones que insertan en BD. Regla agregada a CONVENCIONES.
 
-**⚠️ Único pendiente MANUAL:**
-- Desplegar Edge Function: `supabase functions deploy manage-users` (para crear/editar usuarios desde la app)
+**✅ Lo que quedó listo esta sesión (27-jun-2):**
+- **Wizard de contrato en 6 pasos** (`WizardContrato.tsx` nuevo):
+  1. **Datos**: cliente, forma pago, tarifa, valor período, día de pago (con primer pago estimado para Lunes y Miércoles), meses, base inicial entregada vs requerida, fecha entrega. Crea contrato en BD al avanzar.
+  2. **Moto**: lista de motos disponibles con búsqueda. Seleccionar asigna la moto y avanza.
+  3. **Firma contrato de arrendamiento**: documento scrollable + checkbox leído + canvas firma. Sube PNG a storage `firmas/{id}/contrato.png`.
+  4. **Firma pagaré + carta**: ídem. Sube a `firmas/{id}/pagare.png`.
+  5. **Foto certificado de conocimiento**: el cliente llenó físicamente; el funcionario sube foto. Sube a `certificados/{id}/`. Marca `firma_cliente=true` en contrato.
+  6. **Entrega**: km inicial + fotos del estado (📷/🖼, múltiples, eliminables) + checklist 8 ítems → activa contrato, cambia moto a "Asignada", cliente a "Activo".
+- **ContratosView simplificado**: eliminado el modal antiguo de creación y FirmaModal. FAB abre wizard nuevo. Contratos "En proceso" tienen botón "Continuar" que abre el wizard en el paso correcto (detecta automáticamente si falta moto, firma o entrega).
+- **Lógica de base inicial**: Semanal = $308k + valor_semanal; Quincenal = $308k + 2×VS + VS/7; Mensual = $308k + 4×VS + 2×VS/7. Calculada dinámicamente según valor elegido.
+- **`crearContrato` en useContratos.ts**: ahora retorna `{ id, error }` (antes solo `{ error }`).
+
+**⚠️ Pendientes MANUALES:**
+- Desplegar Edge Function: `supabase functions deploy manage-users`
 
 **Posibles siguientes pasos:**
 - Recibo de pago como imagen/PDF con logo
-- Firma digital (3 documentos + huella biométrica) — wizard de contrato de 5 pasos ya planeado
 - Migración de datos reales vía Excel
+- Lógica de semanas/casilleros para cálculo de mora y liberación (contador de semanas pagadas)

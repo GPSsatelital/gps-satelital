@@ -49,6 +49,13 @@ Vercel despliega automáticamente solo desde `main`. Sin este paso, nada llega a
 - **Nombres:** Todos los nombres de personas → `textTransform: "uppercase"` en CSS
 - **TypeScript:** Siempre resolver errores TS antes de hacer push. `npm run build` debe pasar.
 - **Responsive:** Mobile-first. `useIsMobile()` = `window.innerWidth < 900`. Bottom tab bar en móvil, sidebar en desktop.
+- **Botones que crean/guardan registros (anti-doble-clic) — OBLIGATORIO SIEMPRE:** Todo botón que inserte o guarde en la BD (registrar, crear, guardar, confirmar excepción, etc.) DEBE:
+  1. Tener un estado `procesando`/`guardando` (`useState(false)`).
+  2. Al inicio del handler: `if (procesando) return;` y luego `setProcesando(true)` envuelto en `try { ... } finally { setProcesando(false) }`.
+  3. En el botón: `disabled={procesando}` + texto dinámico que muestra la orden en curso (`{procesando ? "Guardando..." : "Guardar"}`) + `opacity: procesando ? 0.6 : 1`.
+  - Así se evita que al dar varios clics antes de que cargue se creen registros duplicados.
+  - Excepción: updates idempotentes (fijan un estado fijo, ej. Confirmar/Rechazar transferencia) NO requieren guarda porque no duplican registros.
+- **Inputs de foto/archivo:** dos botones separados `[📷 Cámara]` (con `capture="environment"`) y `[🖼 Galería]` (sin capture). Android no permite ambos en un solo input.
 
 ---
 
@@ -485,7 +492,7 @@ Ver conversación del 22 de junio 2026 para el plan detallado completo con fases
 
 ---
 
-## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 26-jun-2026)
+## PARA RETOMAR EN LA PRÓXIMA SESIÓN (cierre 27-jun-2026)
 
 **Estado del código:** todo committeado y pusheado en `claude/clever-turing-daklkq` y merged a `main`. Working tree limpio. `npm run build` pasa.
 
@@ -497,15 +504,15 @@ Ver conversación del 22 de junio 2026 para el plan detallado completo con fases
 | andres@hotmail.com | EMIRO | SUBADMIN |
 | angela@hotmail.com | ANGELA | SECRETARIA |
 
-**✅ Lo que quedó listo esta sesión:**
-- Políticas RLS de `profiles` corregidas (función `mi_rol()` sin recursión)
-- Módulo Usuarios: orden jerárquico + tarjetas compactas en una fila
-- Migraciones 016 y 017 aplicadas en Supabase
+**✅ Lo que quedó listo esta sesión (27-jun):**
+- **Inputs de foto/archivo:** dos botones separados `[📷 Cámara]` (con `capture="environment"`) y `[🖼 Galería]` en TODOS los inputs del sistema — documentos del cliente, fotos de visita (ClientesView + ModalVisita), comprobante de transferencia (Cobros), documento firmado (Liquidaciones).
+- **Filtros de Clientes fusionados:** una sola fila con `flexWrap` (sin scroll horizontal). Tab "Pend. aprob." abre directamente el panel de aprobación. Eliminada la doble fila redundante.
+- **Anti-doble-clic (registros duplicados):** protegidos todos los botones que insertan en BD. Faltaban: registrar pago, deuda, convenio, gestión, cobro en campo (Cobros), guardar visita, guardar cambios cliente y confirmar excepción (Clientes). Ya estaban: contratos, motos, taller, caja, config, usuarios, firma, modales. → **Regla agregada a CONVENCIONES para futuros botones.**
 
 **⚠️ Único pendiente MANUAL:**
 - Desplegar Edge Function: `supabase functions deploy manage-users` (para crear/editar usuarios desde la app)
 
 **Posibles siguientes pasos:**
 - Recibo de pago como imagen/PDF con logo
-- Firma digital (3 documentos + huella biométrica)
+- Firma digital (3 documentos + huella biométrica) — wizard de contrato de 5 pasos ya planeado
 - Migración de datos reales vía Excel

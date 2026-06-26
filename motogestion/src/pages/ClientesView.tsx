@@ -65,7 +65,8 @@ function documentosAcompananteListos(doc: DocumentoFlags) {
   return DOCS_ACOMPANANTE.every((k) => doc[k].ok);
 }
 
-function DocsSummary({ doc, only }: { doc: DocumentoFlags; only?: Array<keyof DocumentoFlags> }) {
+function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<keyof DocumentoFlags>; role?: string }) {
+  const puedeVerArchivo = role !== "SECRETARIA";
   const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia"],
@@ -81,7 +82,7 @@ function DocsSummary({ doc, only }: { doc: DocumentoFlags; only?: Array<keyof Do
       {labels.map(([key, label]) => {
         const item = doc[key];
         const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "#dcfce7" : "#fee2e2", color: item.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
-        if (item.ok && esUrl(item.file)) {
+        if (item.ok && esUrl(item.file) && puedeVerArchivo) {
           return (
             <a key={key} href={item.file!} target="_blank" rel="noreferrer" style={estilo} title="Ver documento">
               {label} 🔍
@@ -364,8 +365,8 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                       ))}
                     </div>
 
-                    {/* Fotos */}
-                    {(visita.fotos.clienteFuncionario || visita.fotos.fachada) && (
+                    {/* Fotos — solo ADMIN y ADMIN_PRINCIPAL tras completar la visita */}
+                    {role !== "SUBADMIN" && (visita.fotos.clienteFuncionario || visita.fotos.fachada) && (
                       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {visita.fotos.clienteFuncionario && (
                           <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer">
@@ -1483,11 +1484,11 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos cliente</div>
-        <DocsSummary doc={selectedCliente.documentos_cliente} />
+        <DocsSummary doc={selectedCliente.documentos_cliente} role={role} />
       </div>
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos acompañante</div>
-        <DocsSummary doc={selectedCliente.documentos_acompanante} only={DOCS_ACOMPANANTE} />
+        <DocsSummary doc={selectedCliente.documentos_acompanante} only={DOCS_ACOMPANANTE} role={role} />
       </div>
 
       {documentosFaltantes(selectedCliente).length > 0 && (

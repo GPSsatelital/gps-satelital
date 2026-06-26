@@ -134,16 +134,10 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
       {labels.map(([key, label]) => (
         <div key={key} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 8 }}>{label}</div>
-          <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
-              Tomar foto
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => setDocumento(key, e.target.files?.[0])} />
-            </label>
-            <label style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
-              Subir archivo
-              <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => setDocumento(key, e.target.files?.[0])} />
-            </label>
-          </div>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+            📎 Foto o archivo
+            <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => setDocumento(key, e.target.files?.[0])} />
+          </label>
           {subiendo === key ? (
             <div style={{ marginTop: 8, fontSize: 12, color: "#0284c7", fontWeight: 700 }}>Subiendo…</div>
           ) : errorKey?.key === key ? (
@@ -1304,11 +1298,17 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
               <div>
                 <div style={labelStyle}>Foto personas + funcionario</div>
-                <input type="file" accept="image/*" capture="environment" onChange={(e) => setFotoCliente(e.target.files?.[0] ?? null)} />
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                  📷 {fotoCliente ? fotoCliente.name : "Cámara o galería"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFotoCliente(e.target.files?.[0] ?? null)} />
+                </label>
               </div>
               <div>
                 <div style={labelStyle}>Foto fachada</div>
-                <input type="file" accept="image/*" capture="environment" onChange={(e) => setFotoFachada(e.target.files?.[0] ?? null)} />
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                  📷 {fotoFachada ? fotoFachada.name : "Cámara o galería"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFotoFachada(e.target.files?.[0] ?? null)} />
+                </label>
               </div>
 
               <div>

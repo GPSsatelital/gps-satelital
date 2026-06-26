@@ -262,7 +262,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                   <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
                     📷 {fotoCliente ? fotoCliente.name : "Tomar / seleccionar foto"}
                   </span>
-                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                  <input type="file" accept="image/*" style={{ display: "none" }}
                     onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
                 </label>
                 {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}
@@ -273,7 +273,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                   <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
                     📷 {fotoFachada ? fotoFachada.name : "Tomar / seleccionar foto"}
                   </span>
-                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                  <input type="file" accept="image/*" style={{ display: "none" }}
                     onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
                 </label>
                 {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}

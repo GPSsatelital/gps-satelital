@@ -1557,14 +1557,22 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       </div>
 
       {eliminando && (
-        <div style={{ padding: 14, borderRadius: 14, background: "#fee2e2", border: "1px solid #fca5a5" }}>
-          <div style={{ fontWeight: 700, color: "#991b1b", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
-          <div style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 12 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setEliminando(false)} style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#334155" }}>Cancelar</button>
-            <button onClick={() => { setEliminando(false); onEliminar?.(); }} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#991b1b", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Sí, eliminar</button>
+        <>
+          <div onClick={() => setEliminando(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 90 }} />
+          <div style={{
+            position: "fixed", zIndex: 91, top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            width: "min(420px, calc(100vw - 32px))", background: "white", borderRadius: 18,
+            padding: 22, boxShadow: "0 30px 80px rgba(15,23,42,0.35)",
+          }}>
+            <div style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>🗑</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", textAlign: "center", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
+            <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 18 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setEliminando(false)} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#334155" }}>Cancelar</button>
+              <button onClick={() => { setEliminando(false); onEliminar?.(); }} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "none", background: "#991b1b", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Sí, eliminar</button>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

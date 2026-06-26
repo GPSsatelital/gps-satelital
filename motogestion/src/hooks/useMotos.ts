@@ -21,10 +21,11 @@ export type Moto = {
   numero_serie: string | null;
   estado: MotoStatus;
   condicion_ingreso: CondicionIngreso | null;
+  color: string | null;
   observaciones: string | null;
   // campos de retención
-  retencion_fecha: string | null;
-  retencion_numero_caso: string | null;
+  retencion_fecha?: string | null;
+  retencion_numero_caso?: string | null;
   retencion_detalle?: string | null;
   created_at: string;
   updated_at: string;

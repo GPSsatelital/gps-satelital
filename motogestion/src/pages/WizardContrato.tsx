@@ -32,12 +32,26 @@ const btnSecondary: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-const TARIFAS = [26000, 27000, 28000, 30000, 32000, 35000, 40000];
-const VALORES: Record<string, number[]> = {
-  Semanal: [195000, 202000, 210000, 220000, 250000],
-  Quincenal: [390000, 404000, 420000, 440000, 500000],
-  Mensual: [780000, 808000, 840000, 880000, 1000000],
-};
+function MoneyInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [focused, setFocused] = useState(false);
+  const num = Number(value) || 0;
+  const display = focused ? value : (num > 0 ? "$ " + num.toLocaleString("es-CO") : "");
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <input
+        style={inputStyle}
+        type="text"
+        inputMode="numeric"
+        value={display}
+        onFocus={e => { setFocused(true); e.target.select(); }}
+        onBlur={() => setFocused(false)}
+        onChange={e => onChange(e.target.value.replace(/\D/g, ""))}
+        placeholder={placeholder ?? "$ 0"}
+      />
+    </div>
+  );
+}
 const CHECKLIST = [
   "Luces delanteras funcionando",
   "Luces traseras funcionando",
@@ -144,8 +158,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const [form, setForm] = useState({
     cliente_id: contratoInicial?.cliente_id ?? "",
     forma_pago: (contratoInicial?.forma_pago ?? "Semanal") as FormaPago,
-    tarifa_diaria: String(contratoInicial?.tarifa_diaria ?? 27000),
-    valor_semanal: String(contratoInicial?.valor_semanal ?? ""),
+    tarifa_ls: String(contratoInicial?.tarifa_diaria ?? 27000),
+    tarifa_dom: String(contratoInicial?.tarifa_domingo ?? 14000),
+    ahorro_ls: String(contratoInicial?.ahorro_diario ?? 4000),
+    ahorro_dom: String(contratoInicial?.ahorro_domingo ?? 2000),
     dia_pago: contratoInicial?.dia_pago ?? "Lunes",
     meses: String(contratoInicial?.meses ?? ""),
     ahorro_inicial: String(contratoInicial?.ahorro_inicial ?? ""),
@@ -188,18 +204,16 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     return m.estado === "Disponible";
   });
 
-  const valorSemanal = Number(form.valor_semanal) || 0;
-  const tarifaDiaria = Number(form.tarifa_diaria) || 27000;
-  const tarifaDomingo = Math.ceil(tarifaDiaria / 2 / 1000) * 1000;
-  const pagoDiaLS = valorSemanal > 0 ? Math.round(valorSemanal / 6.5 / 1000) * 1000 : tarifaDiaria;
-  const pagoDiaDom = valorSemanal > 0 ? Math.ceil(pagoDiaLS / 2 / 1000) * 1000 : tarifaDomingo;
-  const ahorroDiaLS = Math.max(pagoDiaLS - tarifaDiaria, 0);
-  const ahorroDiaDom = Math.max(pagoDiaDom - tarifaDomingo, 0);
+  const tarifaDiaria = Number(form.tarifa_ls) || 0;
+  const tarifaDomingo = Number(form.tarifa_dom) || 0;
+  const ahorroLS = Number(form.ahorro_ls) || 0;
+  const ahorroDom = Number(form.ahorro_dom) || 0;
+  const pagoDiaLS = tarifaDiaria + ahorroLS;
+  const pagoDiaDom = tarifaDomingo + ahorroDom;
+  const valorSemanal = tarifaDiaria > 0 && tarifaDomingo > 0 ? 6 * pagoDiaLS + pagoDiaDom : 0;
   const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
   const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
-  const cuotaDiaria = form.forma_pago !== "Diario" && valorSemanal > 0
-    ? Math.round(valorSemanal / (form.forma_pago === "Semanal" ? 7 : form.forma_pago === "Quincenal" ? 15 : 30))
-    : tarifaDiaria;
+  const cuotaDiaria = pagoDiaLS > 0 ? pagoDiaLS : tarifaDiaria;
   const baseRequerida = calcBaseRequerida(form.forma_pago, valorSemanal);
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
@@ -225,12 +239,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   // ── STEP 1: Guardar contrato ──────────────────────────────────────────────
   async function handleStep1() {
     if (!form.cliente_id) { setError("Selecciona un cliente."); return; }
-    if (form.forma_pago !== "Diario" && !form.valor_semanal) { setError("Ingresa el valor por período."); return; }
+    if (!form.tarifa_ls || !form.tarifa_dom) { setError("Ingresa la tarifa diaria y la tarifa del domingo."); return; }
     if (form.forma_pago !== "Diario" && !form.meses) { setError("Ingresa la duración en meses."); return; }
     const cliente = clientes.find(c => c.id === form.cliente_id);
     if (!cliente) { setError("Cliente no encontrado."); return; }
 
-    const ahorroDiario = Math.max(cuotaDiaria - tarifaDiaria, 0);
     const diaPago = form.forma_pago === "Diario" ? "Diario" : form.dia_pago;
 
     if (guardando) return;
@@ -246,8 +259,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         fecha_entrega: form.fecha_entrega,
         tipo_ruta: cliente.ruta_contrato ?? "tiempo_definido",
         tarifa_diaria: tarifaDiaria,
-        tarifa_domingo: Math.ceil(tarifaDiaria / 2 / 1000) * 1000,
-        ahorro_diario: ahorroDiario,
+        tarifa_domingo: tarifaDomingo,
+        ahorro_diario: ahorroLS,
+        ahorro_domingo: ahorroDom,
         base_inicial: baseRequerida || 510000,
         estado: "En proceso",
         ahorro_acumulado: ahorroEntregado,
@@ -415,7 +429,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
               <div>
                 <label style={labelStyle}>Modalidad</label>
-                <select style={inputStyle} value={form.forma_pago} onChange={e => setForm(p => ({ ...p, forma_pago: e.target.value as FormaPago, valor_semanal: "" }))}>
+                <select style={inputStyle} value={form.forma_pago} onChange={e => setForm(p => ({ ...p, forma_pago: e.target.value as FormaPago }))}>
                   <option value="Diario">Diario — ahorrando base inicial</option>
                   <option value="Semanal">Semanal — pago cada semana</option>
                   <option value="Quincenal">Quincenal — pago cada 15 días</option>
@@ -423,23 +437,16 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 </select>
               </div>
 
-              <div>
-                <label style={labelStyle}>Tarifa diaria empresa</label>
-                <select style={inputStyle} value={form.tarifa_diaria} onChange={e => setForm(p => ({ ...p, tarifa_diaria: e.target.value }))}>
-                  {TARIFAS.map(v => <option key={v} value={String(v)}>$ {fmt(v)}/día · domingo $ {fmt(Math.ceil(v / 2 / 1000) * 1000)}</option>)}
-                </select>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <MoneyInput label="Tarifa L-S / día" value={form.tarifa_ls} onChange={v => setForm(p => ({ ...p, tarifa_ls: v }))} placeholder="$ 27.000" />
+                <MoneyInput label="Tarifa domingo" value={form.tarifa_dom} onChange={v => setForm(p => ({ ...p, tarifa_dom: v }))} placeholder="$ 14.000" />
               </div>
 
               {form.forma_pago !== "Diario" && (
                 <>
-                  <div>
-                    <label style={labelStyle}>Valor por período</label>
-                    <select style={inputStyle} value={form.valor_semanal} onChange={e => setForm(p => ({ ...p, valor_semanal: e.target.value }))}>
-                      <option value="">Seleccionar</option>
-                      {(VALORES[form.forma_pago] ?? []).map(v => (
-                        <option key={v} value={String(v)}>$ {fmt(v)}</option>
-                      ))}
-                    </select>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <MoneyInput label="Ahorro L-S / día" value={form.ahorro_ls} onChange={v => setForm(p => ({ ...p, ahorro_ls: v }))} placeholder="$ 4.000" />
+                    <MoneyInput label="Ahorro domingo" value={form.ahorro_dom} onChange={v => setForm(p => ({ ...p, ahorro_dom: v }))} placeholder="$ 2.000" />
                   </div>
 
                   {valorSemanal > 0 && (
@@ -448,21 +455,21 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, fontSize: 12, color: "#334155", marginBottom: 6 }}>
                         <div style={{ fontWeight: 700, color: "#64748b" }}>Día</div>
                         <div style={{ fontWeight: 700, color: "#64748b" }}>Tarifa empresa</div>
-                        <div style={{ fontWeight: 700, color: "#64748b" }}>Ahorro cliente</div>
+                        <div style={{ fontWeight: 700, color: "#166534" }}>Ahorro cliente</div>
                         <div style={{ fontWeight: 700, color: "#64748b" }}>Pago día</div>
                         <div>L–S (×6)</div>
                         <div>$ {fmt(tarifaDiaria)}</div>
-                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDiaLS)}</div>
+                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroLS)}</div>
                         <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaLS)}</div>
                         <div>Domingo</div>
                         <div>$ {fmt(tarifaDomingo)}</div>
-                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDiaDom)}</div>
+                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDom)}</div>
                         <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaDom)}</div>
                       </div>
-                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#64748b" }}>Empresa recibe: <strong>$ {fmt(tarifaSemana)}</strong></span>
-                        <span style={{ color: "#166534" }}>Ahorro semana: <strong>$ {fmt(ahorroSemana)}</strong></span>
-                        <span style={{ color: "#0369a1" }}>Total: <strong>$ {fmt(valorSemanal)}</strong></span>
+                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                        <span style={{ color: "#64748b", fontSize: 12 }}>Empresa: <strong>$ {fmt(tarifaSemana)}</strong></span>
+                        <span style={{ color: "#166534", fontSize: 12 }}>Ahorro semana: <strong>$ {fmt(ahorroSemana)}</strong></span>
+                        <span style={{ color: "#0369a1", fontSize: 13, fontWeight: 800 }}>Total {form.forma_pago === "Semanal" ? "sem" : form.forma_pago === "Quincenal" ? "quinc" : "mes"}: $ {fmt(valorSemanal)}</span>
                       </div>
                     </div>
                   )}
@@ -499,9 +506,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   </div>
 
                   <div>
-                    <label style={labelStyle}>Base inicial entregada</label>
-                    <input type="number" style={inputStyle} value={form.ahorro_inicial}
-                      onChange={e => setForm(p => ({ ...p, ahorro_inicial: e.target.value }))} placeholder="$ 0" />
+                    <MoneyInput label="Base inicial entregada" value={form.ahorro_inicial} onChange={v => setForm(p => ({ ...p, ahorro_inicial: v }))} placeholder="$ 0" />
                     {valorSemanal > 0 && baseRequerida > 0 && (
                       <div style={{
                         marginTop: 8, padding: "10px 12px", borderRadius: 10,

@@ -28,6 +28,7 @@ export type Contrato = {
   tarifa_diaria?: number;
   tarifa_domingo?: number;
   ahorro_diario?: number;
+  ahorro_domingo?: number;
   base_inicial?: number;
   base_completada?: boolean;
   ahorro_acumulado?: number;
@@ -87,6 +88,7 @@ export type NuevoContrato = {
   tarifa_diaria?: number;
   tarifa_domingo?: number;
   ahorro_diario?: number;
+  ahorro_domingo?: number;
   base_inicial?: number;
 };
 

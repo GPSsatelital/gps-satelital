@@ -64,14 +64,22 @@ const CHECKLIST = [
 ];
 
 
-function calcPrimerPago(fecha: string, dia: "Lunes" | "Miércoles", cuotaDiaria: number) {
+// Prorrateo: día entrega NO incluido, primer día de pago SÍ incluido.
+// Itera día a día detectando domingos para usar tarifa correcta.
+function calcPrimerPago(fecha: string, dia: "Lunes" | "Miércoles", pagoDiaLS: number, pagoDiaDom: number) {
   const base = new Date(fecha + "T00:00:00");
   const dow = base.getDay();
   const target = dia === "Lunes" ? 1 : 3;
   const dias = ((target - dow + 7) % 7) || 7;
+  let total = 0;
+  for (let i = 1; i <= dias; i++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i);
+    total += d.getDay() === 0 ? pagoDiaDom : pagoDiaLS;
+  }
   const proxima = new Date(base);
   proxima.setDate(proxima.getDate() + dias);
-  return { dias, fecha: proxima.toISOString().slice(0, 10), valor: cuotaDiaria * dias };
+  return { dias, fecha: proxima.toISOString().slice(0, 10), valor: total };
 }
 
 function CanvasFirma({ label, onChange }: { label: string; onChange: (data: string | null) => void }) {
@@ -211,7 +219,6 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     : form.forma_pago === "Mensual" ? valorMensual : 0;
   const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
   const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
-  const cuotaDiaria = pagoDiaLS > 0 ? pagoDiaLS : tarifaDiaria;
   const baseRequerida = form.forma_pago === "Diario" ? 0
     : form.forma_pago === "Semanal" ? 308000 + valorSemanal
     : form.forma_pago === "Quincenal" ? 308000 + valorQuincenal
@@ -219,8 +226,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
 
-  const primerLunes = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Lunes", cuotaDiaria) : null;
-  const primerMiercoles = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Miércoles", cuotaDiaria) : null;
+  const primerLunes = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Lunes", pagoDiaLS, pagoDiaDom) : null;
+  const primerMiercoles = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Miércoles", pagoDiaLS, pagoDiaDom) : null;
 
   async function subirArchivo(file: File, path: string): Promise<string | null> {
     const { error } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
@@ -515,20 +522,31 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
                   <div>
                     <MoneyInput label="Base inicial entregada" value={form.ahorro_inicial} onChange={v => setForm(p => ({ ...p, ahorro_inicial: v }))} placeholder="$ 0" />
-                    {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
-                      <div style={{
-                        marginTop: 8, padding: "10px 12px", borderRadius: 10,
-                        background: baseSuficiente ? "#dcfce7" : "#fef3c7",
-                        border: `1px solid ${baseSuficiente ? "#bbf7d0" : "#fde68a"}`,
-                      }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: baseSuficiente ? "#166534" : "#92400e" }}>
-                          {baseSuficiente ? "✅ Base suficiente" : `⚠️ Faltan $ ${fmt(baseRequerida - ahorroEntregado)}`}
+                    {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (() => {
+                      const clienteSeleccionado = clientes.find(c => c.id === form.cliente_id);
+                      const ingresoRegistro = clienteSeleccionado?.ingreso_inicial ?? 0;
+                      const falta = baseRequerida - ahorroEntregado;
+                      return (
+                        <div style={{
+                          marginTop: 8, padding: "10px 12px", borderRadius: 10,
+                          background: baseSuficiente ? "#dcfce7" : "#fef3c7",
+                          border: `1px solid ${baseSuficiente ? "#bbf7d0" : "#fde68a"}`,
+                          display: "flex", flexDirection: "column", gap: 4,
+                        }}>
+                          {ingresoRegistro > 0 && (
+                            <div style={{ fontSize: 11, color: "#64748b" }}>
+                              Pagó al registrarse: <strong>$ {fmt(ingresoRegistro)}</strong>
+                            </div>
+                          )}
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            Requerido ({form.forma_pago}): <strong>$ {fmt(baseRequerida)}</strong>
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: baseSuficiente ? "#166534" : "#92400e" }}>
+                            {baseSuficiente ? "✅ Base suficiente" : `⚠️ Falta: $ ${fmt(falta)}`}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                          Requerida para {form.forma_pago}: <strong>$ {fmt(baseRequerida)}</strong>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </>
               )}

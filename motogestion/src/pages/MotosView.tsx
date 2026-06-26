@@ -259,7 +259,6 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       observaciones: form.observaciones.trim() || null,
       retencion_fecha: null,
       retencion_numero_caso: null,
-      retencion_detalle: null,
     });
 
     setGuardando(false);

@@ -258,6 +258,22 @@ function calcEstadoCuenta(
   };
 }
 
+// Calcula el valor real del primer pago (prorrateo) para contratos nuevos
+function calcProrrateoInicial(contrato: { fecha_entrega: string | null; dia_pago: string; tarifa_diaria?: number; ahorro_diario?: number; tarifa_domingo?: number; ahorro_domingo?: number }): number {
+  if (!contrato.fecha_entrega) return 0;
+  const pagoDiaLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
+  const pagoDiaDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
+  const base = new Date(contrato.fecha_entrega + "T00:00:00");
+  const target = DIAS[contrato.dia_pago] ?? 1;
+  const dias = ((target - base.getDay() + 7) % 7) || 7;
+  let total = 0;
+  for (let i = 1; i <= dias; i++) {
+    const d = new Date(base); d.setDate(d.getDate() + i);
+    total += d.getDay() === 0 ? pagoDiaDom : pagoDiaLS;
+  }
+  return total;
+}
+
 function calcularEstadoCartera(
   diaPago: string,
   totalPagadoEstaSemana: number,
@@ -668,10 +684,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const montoIngresado = Number(valor) || 0;
   const esDomingo = new Date().getDay() === 0;
 
+  // Detectar si está en período de prorrateo (contrato nuevo, entregado después del último día de pago)
+  const enProrrateo = (() => {
+    if (!contratoDetalle || contratoDetalle.forma_pago === "Diario" || !contratoDetalle.fecha_entrega) return false;
+    if ((contratoDetalle.pagadoEstaSemana ?? 0) > 0) return false;
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const target = DIAS[contratoDetalle.dia_pago] ?? 1;
+    const d = new Date(hoy);
+    while (d.getDay() !== target) d.setDate(d.getDate() - 1);
+    return contratoDetalle.fecha_entrega >= d.toISOString().slice(0, 10);
+  })();
+
   const cuotaPactada = contratoDetalle
     ? (contratoDetalle.forma_pago === "Diario"
         ? calcularCuotaDia(contratoDetalle.tarifa_diaria ?? 27000, esDomingo, contratoDetalle.tarifa_domingo)
-        : contratoDetalle.valor_semanal)
+        : enProrrateo
+          ? calcProrrateoInicial(contratoDetalle)
+          : contratoDetalle.valor_semanal)
     : 27000;
 
   const pagadoEnPeriodo = contratoDetalle?.forma_pago === "Diario"

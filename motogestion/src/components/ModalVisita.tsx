@@ -258,25 +258,31 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
             <div style={{ display: "grid", gap: 14 }}>
               <div>
                 <div style={labelStyle}>Foto cliente + funcionario</div>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
-                    📷 {fotoCliente ? fotoCliente.name : "Tomar / seleccionar foto"}
-                  </span>
-                  <input type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
-                </label>
-                {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#f1f5f9", color: "#334155", fontWeight: 700, fontSize: 13 }}>
+                    🖼 Galería
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+                {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoCliente.name}</div>}
               </div>
               <div>
                 <div style={labelStyle}>Foto fachada</div>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
-                    📷 {fotoFachada ? fotoFachada.name : "Tomar / seleccionar foto"}
-                  </span>
-                  <input type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
-                </label>
-                {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#f1f5f9", color: "#334155", fontWeight: 700, fontSize: 13 }}>
+                    🖼 Galería
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+                {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoFachada.name}</div>}
               </div>
             </div>
           </div>

@@ -507,7 +507,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
                   <div>
                     <MoneyInput label="Base inicial entregada" value={form.ahorro_inicial} onChange={v => setForm(p => ({ ...p, ahorro_inicial: v }))} placeholder="$ 0" />
-                    {valorSemanal > 0 && baseRequerida > 0 && (
+                    {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
                       <div style={{
                         marginTop: 8, padding: "10px 12px", borderRadius: 10,
                         background: baseSuficiente ? "#dcfce7" : "#fef3c7",

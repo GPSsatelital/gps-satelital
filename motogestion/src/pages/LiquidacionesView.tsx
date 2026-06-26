@@ -288,10 +288,16 @@ export default function LiquidacionesView() {
                     <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0284c7", fontSize: 13 }}>Ver documento actual</a>
                   </div>
                 )}
-                <label style={{ ...btn("#0284c7"), display: "inline-block", cursor: "pointer" }}>
-                  Seleccionar archivo
-                  <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
-                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ ...btn("#0284c7"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
+                  </label>
+                  <label style={{ ...btn("#475569"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    🖼 Galería / PDF
+                    <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
+                  </label>
+                </div>
               </div>
             )}
 

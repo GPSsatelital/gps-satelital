@@ -459,6 +459,9 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | Día extra quincenal/mensual calculado como total/7 | El día extra es `pagoDiaLS` completo (tarifa + ahorro L-S) |
 | Inventar valores de dropdown para tarifas | Pedir los 4 valores directos al funcionario: tarifa_ls, tarifa_dom, ahorro_ls, ahorro_dom |
 | `ahorro_domingo` faltante en BD | Migración 020 agrega la columna — aplicar en Supabase SQL Editor |
+| Contrato nuevo aparece en mora | Pasar `fecha_entrega` a `calcularEstadoCartera` y `calcEstadoCuenta` — si entrega >= inicio período → Al día |
+| Pendiente muestra período completo en contrato nuevo | Usar `calcProrrateoInicial()` cuando `enProrrateo === true` |
+| RLS contratos bloqueando insert | Políticas usaban `current_role()` — corregir a `public.mi_rol()` con roles ADMIN, ADMIN_PRINCIPAL, SECRETARIA |
 
 ---
 
@@ -492,6 +495,12 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ### Pendientes manuales ⚠️
 - Desplegar Edge Function: `supabase functions deploy manage-users`
+
+### Reglas de cartera — CobrosView ✅
+- **Contrato nuevo sin pagos:** `calcularEstadoCartera` y `calcEstadoCuenta` reciben `fecha_entrega`. Si `fecha_entrega >= inicioPeriodo` (último día de pago) → "Al día", no mora.
+- **Pendiente en prorrateo:** Si el contrato está en período de prorrateo (entregado después del último día de pago, sin pagos), `cuotaPactada` usa `calcProrrateoInicial()` en vez de `valor_semanal`. Itera día a día detectando domingos igual que el wizard.
+- **`calcProrrateoInicial`:** Misma lógica que `calcPrimerPago` del wizard — usa `tarifa_diaria + ahorro_diario` para L-S y `tarifa_domingo + ahorro_domingo` para domingos.
+- **RLS contratos:** Políticas INSERT/UPDATE usan `public.mi_rol()` — roles permitidos: `ADMIN`, `ADMIN_PRINCIPAL`, `SECRETARIA`.
 
 ### Completado en WizardContrato paso 1 ✅
 - 4 inputs directos: tarifa_ls, tarifa_dom, ahorro_ls, ahorro_dom

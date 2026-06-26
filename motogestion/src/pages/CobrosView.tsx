@@ -183,6 +183,7 @@ function calcEstadoCuenta(
   formaPago: string,
   diaPago: string,
   pagosConfirmados: Array<{ fecha: string }>,
+  fechaEntrega?: string | null,
 ): EstadoCuenta {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -196,7 +197,8 @@ function calcEstadoCuenta(
 
   if (esDiario) {
     if (!ultimoPago) {
-      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyISO, diasEstado: 999, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
+      // Contrato diario nuevo sin pagos: al día hasta mañana
+      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyISO, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
     }
     const ultimo = new Date(ultimoPago + "T00:00:00");
     const diasDesde = Math.floor((hoy.getTime() - ultimo.getTime()) / 86400000);
@@ -224,6 +226,15 @@ function calcEstadoCuenta(
     return {
       formaPago, diaPago, ultimoPago: pagoPeriodo.fecha,
       pagadoHasta: pagadoHasta.toISOString().slice(0, 10),
+      proximoPago, diasEstado: 0,
+      etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
+    };
+  }
+
+  // Si el contrato fue entregado después del inicio del período → aún no vence el primer cobro
+  if (fechaEntrega && fechaEntrega >= inicioPeriodo) {
+    return {
+      formaPago, diaPago, ultimoPago: null, pagadoHasta: null,
       proximoPago, diasEstado: 0,
       etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
     };
@@ -941,6 +952,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       contratoDetalle.forma_pago ?? "semanal",
       contratoDetalle.dia_pago ?? "Lunes",
       pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
+      contratoDetalle.fecha_entrega ?? null,
     );
     const protocolo = calcProtocoloStep(contratoDetalle.diasSinPago);
     const totalPendiente = cuotaPendiente + contratoDetalle.deudaContrato + (contratoDetalle.convenioActivo?.cuota_por_periodo ?? 0);

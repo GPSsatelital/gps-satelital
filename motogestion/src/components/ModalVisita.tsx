@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useClientes } from "../hooks/useClientes";
+import { useVisitas } from "../hooks/useVisitas";
 
 interface Props {
   clienteId: string;
@@ -37,6 +38,11 @@ const sectionTitle: React.CSSProperties = {
 
 export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuardada }: Props) {
   const { actualizarCliente } = useClientes();
+  const { subirFotoVisita } = useVisitas();
+
+  const [fotoCliente, setFotoCliente] = useState<File | null>(null);
+  const [fotoFachada, setFotoFachada] = useState<File | null>(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const [viveAlli, setViveAlli] = useState<"Sí" | "No" | "No encontrado" | "">("");
   const [tiempoResidencia, setTiempoResidencia] = useState("");
@@ -80,7 +86,21 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
     }
 
     setGuardando(true);
+    setSubiendoFoto(true);
     setError(null);
+
+    let urlCliente: string | null = null;
+    let urlFachada: string | null = null;
+
+    if (fotoCliente) {
+      const r = await subirFotoVisita(fotoCliente, clienteId, "funcionario");
+      if (r.url) urlCliente = r.url;
+    }
+    if (fotoFachada) {
+      const r = await subirFotoVisita(fotoFachada, clienteId, "fachada");
+      if (r.url) urlFachada = r.url;
+    }
+    setSubiendoFoto(false);
 
     const entrevista = {
       viveAlli,
@@ -100,7 +120,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       entrevista,
       ubicacion: ubicacion ?? null,
       fecha: new Date().toISOString().slice(0, 10),
-      fotos: { clienteFuncionario: null, fachada: null },
+      fotos: { clienteFuncionario: urlCliente, fachada: urlFachada },
     });
 
     if (insErr) {
@@ -232,7 +252,36 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
             </div>
           </div>
 
-          {/* Sección 3: Ubicación GPS */}
+          {/* Sección 3: Fotos */}
+          <div>
+            <div style={sectionTitle}>Fotos de la visita</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <div style={labelStyle}>Foto cliente + funcionario</div>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                    📷 {fotoCliente ? fotoCliente.name : "Tomar / seleccionar foto"}
+                  </span>
+                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                    onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
+                </label>
+                {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}
+              </div>
+              <div>
+                <div style={labelStyle}>Foto fachada</div>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <span style={{ padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                    📷 {fotoFachada ? fotoFachada.name : "Tomar / seleccionar foto"}
+                  </span>
+                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                    onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
+                </label>
+                {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ Lista para subir</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Sección 4: Ubicación GPS */}
           <div>
             <div style={sectionTitle}>Ubicación GPS</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -274,7 +323,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
             disabled={guardando}
             style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, cursor: guardando ? "not-allowed" : "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
           >
-            {guardando ? "Guardando..." : "Guardar visita"}
+            {subiendoFoto ? "Subiendo fotos..." : guardando ? "Guardando..." : "Guardar visita"}
           </button>
         </div>
       </div>

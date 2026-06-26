@@ -191,12 +191,12 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const valorSemanal = Number(form.valor_semanal) || 0;
   const tarifaDiaria = Number(form.tarifa_diaria) || 27000;
   const tarifaDomingo = Math.ceil(tarifaDiaria / 2 / 1000) * 1000;
+  const pagoDiaLS = valorSemanal > 0 ? Math.round(valorSemanal / 6.5 / 1000) * 1000 : tarifaDiaria;
+  const pagoDiaDom = valorSemanal > 0 ? Math.ceil(pagoDiaLS / 2 / 1000) * 1000 : tarifaDomingo;
+  const ahorroDiaLS = Math.max(pagoDiaLS - tarifaDiaria, 0);
+  const ahorroDiaDom = Math.max(pagoDiaDom - tarifaDomingo, 0);
   const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
   const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
-  const ahorroDiaLS = ahorroSemana > 0 ? Math.round(ahorroSemana / (6 + tarifaDomingo / tarifaDiaria)) : 0;
-  const ahorroDiaDom = ahorroSemana > 0 ? ahorroSemana - 6 * ahorroDiaLS : 0;
-  const pagoDiaLS = tarifaDiaria + ahorroDiaLS;
-  const pagoDiaDom = tarifaDomingo + ahorroDiaDom;
   const cuotaDiaria = form.forma_pago !== "Diario" && valorSemanal > 0
     ? Math.round(valorSemanal / (form.forma_pago === "Semanal" ? 7 : form.forma_pago === "Quincenal" ? 15 : 30))
     : tarifaDiaria;

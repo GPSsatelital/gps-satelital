@@ -505,6 +505,13 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `ahorro_domingo` guardado en BD al crear contrato
 
 ### Pendiente 🔲
+- **Gestión de permisos por usuario (UsuariosView):**
+  - Lista de usuarios con su rol actual
+  - Al seleccionar un usuario → mostrar permisos activos e inactivos (toggle)
+  - Permisos organizados por categoría (módulos, acciones, funciones específicas)
+  - Jerarquía: ADMIN_PRINCIPAL puede todo → ADMIN → SECRETARIA → MECANICO → SOCIO
+  - Permisos granulares por ViewKey + acciones específicas (registrar efectivo, crear contrato, etc.)
+  - Base: `profiles.permisos` (jsonb) ya existe — expandir su estructura
 - Integración GPS real (sirena + apagado remoto)
 - WhatsApp automático
 - Reportes exportables PDF/Excel

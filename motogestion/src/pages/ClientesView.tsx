@@ -1365,7 +1365,7 @@ type DetalleProps = {
   onEdit: () => void;
   onVisita: () => void;
   onExcepcion: () => void;
-  onEstado: (id: string, estado: ClienteEstado) => void;
+  onEstado: (id: string, estado: ClienteEstado) => Promise<{ error: string | null }> | void;
   onAprobarVisita: (id: string, clienteId: string) => void;
   onRepetirVisita: (id: string, clienteId: string) => void;
   onEliminar?: () => void;
@@ -1596,23 +1596,53 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       {/* Decisión final — siempre al final del detalle */}
       {esAdmin && selectedCliente.estado === "Pendiente evaluación" && (
-        <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7", marginTop: 4 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              onClick={() => onEstado(selectedCliente.id, "Aprobado")}
-              style={{ flex: 1, padding: "12px 20px", background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: "pointer" }}
-            >
-              ✅ Aprobar cliente
-            </button>
-            <button
-              onClick={() => onEstado(selectedCliente.id, "Rechazado")}
-              style={{ flex: 1, padding: "12px 20px", background: "#fee2e2", color: "#991b1b", border: "2px solid #fca5a5", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: "pointer" }}
-            >
-              ❌ Rechazar cliente
-            </button>
-          </div>
+        <DecisionFinal clienteId={selectedCliente.id} onEstado={onEstado} />
+      )}
+    </div>
+  );
+}
+
+function DecisionFinal({ clienteId, onEstado }: { clienteId: string; onEstado: (id: string, estado: ClienteEstado) => Promise<{ error: string | null }> | void }) {
+  const [procesando, setProcesando] = useState<"Aprobado" | "Rechazado" | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  async function decidir(estado: "Aprobado" | "Rechazado") {
+    if (procesando) return;
+    setProcesando(estado);
+    setErrorMsg(null);
+    try {
+      const result = await onEstado(clienteId, estado);
+      if (result && result.error) setErrorMsg(result.error);
+    } catch (e) {
+      setErrorMsg(String(e));
+    } finally {
+      setProcesando(null);
+    }
+  }
+
+  return (
+    <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7", marginTop: 4 }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
+      <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          onClick={() => decidir("Aprobado")}
+          disabled={!!procesando}
+          style={{ flex: 1, padding: "12px 20px", background: procesando ? "#94a3b8" : "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+        >
+          {procesando === "Aprobado" ? "Aprobando..." : "✅ Aprobar cliente"}
+        </button>
+        <button
+          onClick={() => decidir("Rechazado")}
+          disabled={!!procesando}
+          style={{ flex: 1, padding: "12px 20px", background: "#fee2e2", color: "#991b1b", border: "2px solid #fca5a5", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+        >
+          {procesando === "Rechazado" ? "Rechazando..." : "❌ Rechazar cliente"}
+        </button>
+      </div>
+      {errorMsg && (
+        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: "#fee2e2", color: "#991b1b", fontWeight: 700, fontSize: 13 }}>
+          ⚠️ Error: {errorMsg}
         </div>
       )}
     </div>

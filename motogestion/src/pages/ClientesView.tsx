@@ -926,7 +926,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           return (
             <button
               key={pill.filter + pill.modo}
-              onClick={() => { setModoVista(pill.modo); setFiltroEstado(pill.filter); }}
+              onClick={() => { setModoVista(pill.modo); setFiltroEstado(pill.filter); setSelectedId(null); }}
               style={{
                 border: "none", borderRadius: 999, padding: "5px 12px",
                 fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
@@ -1542,18 +1542,6 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         </div>
       )}
 
-      {/* Decisión final del cliente — solo tras revisar la(s) visita(s) */}
-      {esAdmin && selectedCliente.estado === "Pendiente evaluación" && (
-        <div style={{ padding: 14, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita, decide si el cliente queda aprobado o rechazado.</div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button onClick={() => onEstado(selectedCliente.id, "Aprobado")} style={{ background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>✅ Aprobar cliente</button>
-            <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>❌ Rechazar cliente</button>
-          </div>
-        </div>
-      )}
-
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <ClienteBadge estado={estadoVisual(selectedCliente)} />
         <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>
@@ -1604,6 +1592,28 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             </div>
           </div>
         </>
+      )}
+
+      {/* Decisión final — siempre al final del detalle */}
+      {esAdmin && selectedCliente.estado === "Pendiente evaluación" && (
+        <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7", marginTop: 4 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={() => onEstado(selectedCliente.id, "Aprobado")}
+              style={{ flex: 1, padding: "12px 20px", background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+            >
+              ✅ Aprobar cliente
+            </button>
+            <button
+              onClick={() => onEstado(selectedCliente.id, "Rechazado")}
+              style={{ flex: 1, padding: "12px 20px", background: "#fee2e2", color: "#991b1b", border: "2px solid #fca5a5", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+            >
+              ❌ Rechazar cliente
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

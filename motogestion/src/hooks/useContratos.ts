@@ -125,15 +125,15 @@ export function useContratos() {
     };
   }, [fetchContratos]);
 
-  async function crearContrato(nuevo: NuevoContrato) {
-    const { error } = await supabase.from("contratos").insert({
+  async function crearContrato(nuevo: NuevoContrato): Promise<{ id: string | null; error: string | null }> {
+    const { data, error } = await supabase.from("contratos").insert({
       ...nuevo,
       estado: "En proceso",
       meses: nuevo.forma_pago === "Diario" ? null : nuevo.meses,
       ahorro_acumulado: nuevo.ahorro_inicial ?? 0,
       base_completada: false,
-    });
-    return { error: error?.message ?? null };
+    }).select("id").single();
+    return { id: data?.id ?? null, error: error?.message ?? null };
   }
 
   async function firmarCliente(id: string) {

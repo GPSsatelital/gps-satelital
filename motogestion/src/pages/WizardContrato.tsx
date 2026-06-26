@@ -190,6 +190,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
   const valorSemanal = Number(form.valor_semanal) || 0;
   const tarifaDiaria = Number(form.tarifa_diaria) || 27000;
+  const tarifaDomingo = Math.ceil(tarifaDiaria / 2 / 1000) * 1000;
+  const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
+  const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
+  const ahorroDiaLS = ahorroSemana > 0 ? Math.round(ahorroSemana / (6 + tarifaDomingo / tarifaDiaria)) : 0;
+  const ahorroDiaDom = ahorroSemana > 0 ? ahorroSemana - 6 * ahorroDiaLS : 0;
+  const pagoDiaLS = tarifaDiaria + ahorroDiaLS;
+  const pagoDiaDom = tarifaDomingo + ahorroDiaDom;
   const cuotaDiaria = form.forma_pago !== "Diario" && valorSemanal > 0
     ? Math.round(valorSemanal / (form.forma_pago === "Semanal" ? 7 : form.forma_pago === "Quincenal" ? 15 : 30))
     : tarifaDiaria;
@@ -239,7 +246,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         fecha_entrega: form.fecha_entrega,
         tipo_ruta: cliente.ruta_contrato ?? "tiempo_definido",
         tarifa_diaria: tarifaDiaria,
-        tarifa_domingo: Math.round(tarifaDiaria / 2),
+        tarifa_domingo: Math.ceil(tarifaDiaria / 2 / 1000) * 1000,
         ahorro_diario: ahorroDiario,
         base_inicial: baseRequerida || 510000,
         estado: "En proceso",
@@ -394,7 +401,12 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 <label style={labelStyle}>Cliente</label>
                 <select style={inputStyle} value={form.cliente_id} onChange={e => {
                   const c = clientes.find(cl => cl.id === e.target.value);
-                  setForm(p => ({ ...p, cliente_id: e.target.value, forma_pago: c?.ruta_contrato === "diario" ? "Diario" : p.forma_pago }));
+                  setForm(p => ({
+                    ...p,
+                    cliente_id: e.target.value,
+                    forma_pago: c?.ruta_contrato === "diario" ? "Diario" : p.forma_pago,
+                    ahorro_inicial: c?.ingreso_inicial ? String(c.ingreso_inicial) : p.ahorro_inicial,
+                  }));
                 }}>
                   <option value="">Seleccionar cliente aprobado</option>
                   {clientesAprobados.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()} · {c.cedula}</option>)}
@@ -414,7 +426,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <div>
                 <label style={labelStyle}>Tarifa diaria empresa</label>
                 <select style={inputStyle} value={form.tarifa_diaria} onChange={e => setForm(p => ({ ...p, tarifa_diaria: e.target.value }))}>
-                  {TARIFAS.map(v => <option key={v} value={String(v)}>$ {fmt(v)}/día · domingo $ {fmt(Math.round(v / 2))}</option>)}
+                  {TARIFAS.map(v => <option key={v} value={String(v)}>$ {fmt(v)}/día · domingo $ {fmt(Math.ceil(v / 2 / 1000) * 1000)}</option>)}
                 </select>
               </div>
 
@@ -425,10 +437,35 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     <select style={inputStyle} value={form.valor_semanal} onChange={e => setForm(p => ({ ...p, valor_semanal: e.target.value }))}>
                       <option value="">Seleccionar</option>
                       {(VALORES[form.forma_pago] ?? []).map(v => (
-                        <option key={v} value={String(v)}>$ {fmt(v)} · $ {fmt(Math.round(v / (form.forma_pago === "Semanal" ? 7 : form.forma_pago === "Quincenal" ? 15 : 30)))}/día</option>
+                        <option key={v} value={String(v)}>$ {fmt(v)}</option>
                       ))}
                     </select>
                   </div>
+
+                  {valorSemanal > 0 && (
+                    <div style={{ padding: "12px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
+                      <div style={{ fontWeight: 800, color: "#0369a1", marginBottom: 8 }}>Desglose del período</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, fontSize: 12, color: "#334155", marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700, color: "#64748b" }}>Día</div>
+                        <div style={{ fontWeight: 700, color: "#64748b" }}>Tarifa empresa</div>
+                        <div style={{ fontWeight: 700, color: "#64748b" }}>Ahorro cliente</div>
+                        <div style={{ fontWeight: 700, color: "#64748b" }}>Pago día</div>
+                        <div>L–S (×6)</div>
+                        <div>$ {fmt(tarifaDiaria)}</div>
+                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDiaLS)}</div>
+                        <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaLS)}</div>
+                        <div>Domingo</div>
+                        <div>$ {fmt(tarifaDomingo)}</div>
+                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDiaDom)}</div>
+                        <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaDom)}</div>
+                      </div>
+                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "#64748b" }}>Empresa recibe: <strong>$ {fmt(tarifaSemana)}</strong></span>
+                        <span style={{ color: "#166534" }}>Ahorro semana: <strong>$ {fmt(ahorroSemana)}</strong></span>
+                        <span style={{ color: "#0369a1" }}>Total: <strong>$ {fmt(valorSemanal)}</strong></span>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label style={labelStyle}>Día de pago</label>
@@ -465,7 +502,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     <label style={labelStyle}>Base inicial entregada</label>
                     <input type="number" style={inputStyle} value={form.ahorro_inicial}
                       onChange={e => setForm(p => ({ ...p, ahorro_inicial: e.target.value }))} placeholder="$ 0" />
-                    {baseRequerida > 0 && (
+                    {valorSemanal > 0 && baseRequerida > 0 && (
                       <div style={{
                         marginTop: 8, padding: "10px 12px", borderRadius: 10,
                         background: baseSuficiente ? "#dcfce7" : "#fef3c7",

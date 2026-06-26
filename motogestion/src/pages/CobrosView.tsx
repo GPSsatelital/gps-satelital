@@ -471,6 +471,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [metodo, setMetodo] = useState<MetodoPago>("Efectivo");
   const [formError, setFormError] = useState<string | null>(null);
   const [formExito, setFormExito] = useState(false);
+  const [procesando, setProcesando] = useState(false);
 
   // Gestion form state
   const [tipoGestion, setTipoGestion] = useState<TipoGestion>("llamada");
@@ -708,6 +709,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   async function handleRegistrarPagoModal() {
+    if (modalSubiendo) return;
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
@@ -762,22 +764,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleRegistrarPago() {
+    if (procesando) return;
     if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
     if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
     setFormError(null);
     setFormExito(false);
-
-    const { error } = await registrarPago(
-      contratoSeleccionadoId,
-      montoIngresado,
-      metodo,
-      desglose,
-      contratoDetalle?.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
-    );
-    if (error) { setFormError(error); return; }
-    setValor("");
-    setFormExito(true);
-    setTimeout(() => setFormExito(false), 3000);
+    setProcesando(true);
+    try {
+      const { error } = await registrarPago(
+        contratoSeleccionadoId,
+        montoIngresado,
+        metodo,
+        desglose,
+        contratoDetalle?.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
+      );
+      if (error) { setFormError(error); return; }
+      setValor("");
+      setFormExito(true);
+      setTimeout(() => setFormExito(false), 3000);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function handleAplicarSaldo() {
@@ -795,41 +802,59 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   async function handleRegistrarDeuda() {
+    if (procesando) return;
     if (!contratoSeleccionadoId || !profile) return;
     if (!deudaMonto || Number(deudaMonto) <= 0) { setDeudaError("Ingresa un monto válido."); return; }
     if (!deudaDescripcion.trim()) { setDeudaError("Ingresa una descripción."); return; }
     setDeudaError(null);
-    const { error } = await registrarDeuda(contratoSeleccionadoId, deudaConcepto, deudaDescripcion, Number(deudaMonto), profile.id);
-    if (error) { setDeudaError(error); return; }
-    setDeudaMonto(""); setDeudaDescripcion("");
-    setDeudaExito(true); setMostrarFormDeuda(false);
-    setTimeout(() => setDeudaExito(false), 3000);
+    setProcesando(true);
+    try {
+      const { error } = await registrarDeuda(contratoSeleccionadoId, deudaConcepto, deudaDescripcion, Number(deudaMonto), profile.id);
+      if (error) { setDeudaError(error); return; }
+      setDeudaMonto(""); setDeudaDescripcion("");
+      setDeudaExito(true); setMostrarFormDeuda(false);
+      setTimeout(() => setDeudaExito(false), 3000);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function handleCrearConvenio() {
+    if (procesando) return;
     if (!contratoSeleccionadoId || !profile) return;
     if (!convDeudaTotal || !convCuota || !convCuotas || !convFechaLimite || !convConcepto.trim()) {
       setConvError("Completa todos los campos."); return;
     }
     setConvError(null);
-    const { error } = await crearConvenio(
-      contratoSeleccionadoId, Number(convDeudaTotal), Number(convCuota),
-      Number(convCuotas), convFechaLimite, convConcepto, profile.id
-    );
-    if (error) { setConvError(error); return; }
-    setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto("");
-    setConvExito(true); setMostrarFormConvenio(false);
-    setTimeout(() => setConvExito(false), 3000);
+    setProcesando(true);
+    try {
+      const { error } = await crearConvenio(
+        contratoSeleccionadoId, Number(convDeudaTotal), Number(convCuota),
+        Number(convCuotas), convFechaLimite, convConcepto, profile.id
+      );
+      if (error) { setConvError(error); return; }
+      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto("");
+      setConvExito(true); setMostrarFormConvenio(false);
+      setTimeout(() => setConvExito(false), 3000);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function handleRegistrarGestion() {
+    if (procesando) return;
     if (!contratoSeleccionadoId || !profile) return;
     setGestionError(null);
-    const { error } = await registrarGestion(contratoSeleccionadoId, tipoGestion, resultadoGestion, profile.id);
-    if (error) { setGestionError(error); return; }
-    setResultadoGestion("");
-    setGestionExito(true);
-    setTimeout(() => setGestionExito(false), 3000);
+    setProcesando(true);
+    try {
+      const { error } = await registrarGestion(contratoSeleccionadoId, tipoGestion, resultadoGestion, profile.id);
+      if (error) { setGestionError(error); return; }
+      setResultadoGestion("");
+      setGestionExito(true);
+      setTimeout(() => setGestionExito(false), 3000);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function handleAccionRapida(contratoId: string, tipo: string) {
@@ -840,6 +865,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   async function handleCampoSubmit() {
+    if (procesando) return;
     if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
     if (!profile) { setCampoError("Sesión no válida"); return; }
     const monto = Number(campoMonto);
@@ -855,13 +881,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
     const folio = generarFolio();
 
-    const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio);
-    if (error) { setCampoError(error); return; }
-    if (campoNota.trim()) {
-      await registrarGestion(campoContratoId, "cobro_campo", `Efectivo recuperado en campo (${folio}): $${fmt(monto)}. ${campoNota}`, profile.id);
+    setProcesando(true);
+    try {
+      const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio);
+      if (error) { setCampoError(error); return; }
+      if (campoNota.trim()) {
+        await registrarGestion(campoContratoId, "cobro_campo", `Efectivo recuperado en campo (${folio}): $${fmt(monto)}. ${campoNota}`, profile.id);
+      }
+      setCampoExito(true);
+      setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoNota(""); setCampoError(""); }, 2500);
+    } finally {
+      setProcesando(false);
     }
-    setCampoExito(true);
-    setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoNota(""); setCampoError(""); }, 2500);
   }
 
   // ── Pagos pendientes de confirmación (transferencias + cobros en campo) ─────
@@ -1077,8 +1108,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               ✅ Pago registrado.
             </div>
           )}
-          <button onClick={handleRegistrarPago} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px" }}>
-            Registrar pago
+          <button onClick={handleRegistrarPago} disabled={procesando} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px", opacity: procesando ? 0.6 : 1 }}>
+            {procesando ? "Registrando..." : "Registrar pago"}
           </button>
         </div>
 
@@ -1122,7 +1153,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
               {gestionError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>}
               {gestionExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Gestión registrada.</div>}
-              <button onClick={handleRegistrarGestion} style={secondaryBtn}>Registrar gestión</button>
+              <button onClick={handleRegistrarGestion} disabled={procesando} style={{ ...secondaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar gestión"}</button>
               {gestionesContrato.length > 0 && (
                 <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
                   {gestionesContrato.map(g => (
@@ -1180,7 +1211,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       </div>
                       {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
                       {deudaExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Deuda registrada.</div>}
-                      <button onClick={handleRegistrarDeuda} style={primaryBtn}>Registrar deuda</button>
+                      <button onClick={handleRegistrarDeuda} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar deuda"}</button>
                     </div>
                   )}
                 </div>
@@ -1245,7 +1276,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       </div>
                       {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
                       {convExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
-                      <button onClick={handleCrearConvenio} style={primaryBtn}>Crear convenio</button>
+                      <button onClick={handleCrearConvenio} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
                     </div>
                   )}
                 </div>
@@ -1833,7 +1864,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       </div>
                     )}
                     <div style={{ display: "flex", gap: 10 }}>
-                      <button onClick={handleCampoSubmit} style={primaryBtn}>Registrar cobro en campo</button>
+                      <button onClick={handleCampoSubmit} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
                       <button onClick={() => setCampoContratoId(null)} style={secondaryBtn}>Cancelar</button>
                     </div>
                   </div>

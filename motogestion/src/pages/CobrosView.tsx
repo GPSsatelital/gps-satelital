@@ -2112,7 +2112,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {modalMetodo === "Transferencia" && (
               <div style={{ marginBottom: 18 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Foto del comprobante *</label>
-                <input type="file" accept="image/*" capture="environment" onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} style={{ fontSize: 13 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13 }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                    🖼 Galería
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
                 {modalComprobante && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✓ {modalComprobante.name}</div>}
                 <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>La transferencia quedará pendiente hasta que la secretaria confirme que entró a la cuenta.</div>
               </div>

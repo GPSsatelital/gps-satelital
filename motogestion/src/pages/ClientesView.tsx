@@ -691,12 +691,16 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     );
   }
 
+  const [guardandoVisita, setGuardandoVisita] = useState(false);
+
   async function registrarVisita() {
-    if (!selectedCliente) return;
+    if (!selectedCliente || guardandoVisita) return;
     if (!entrevista.viveAlli || !entrevista.tiempoResidencia || !entrevista.tipoVivienda) {
       alert("Completa mínimo: vive allí, tiempo de residencia y tipo de vivienda.");
       return;
     }
+
+    setGuardandoVisita(true);
 
     let urlClienteFuncionario: string | null = null;
     let urlFachada: string | null = null;
@@ -715,6 +719,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       fotos: { clienteFuncionario: urlClienteFuncionario, fachada: urlFachada },
       ubicacion,
     });
+
+    setGuardandoVisita(false);
 
     if (error) {
       alert(error);
@@ -762,13 +768,13 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
 
   const KPI_PILLS = [
-    { label: "Todos", count: clientes.length, color: "#334155", bg: "#e2e8f0", filter: "" },
-    { label: "En proceso", count: clientes.filter(c => c.estado === "En proceso").length, color: "#334155", bg: "#e2e8f0", filter: "En proceso" },
-    { label: "Listos visita", count: clientes.filter(c => c.estado === "Listo para visita").length, color: "#1d4ed8", bg: "#dbeafe", filter: "Listo para visita" },
-    { label: "Pend. eval.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, color: "#92400e", bg: "#fef3c7", filter: "Pendiente evaluación" },
-    { label: "Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, color: "#166534", bg: "#dcfce7", filter: "Aprobado" },
-    { label: "Activos", count: clientes.filter(c => c.estado === "Activo").length, color: "#166534", bg: "#bbf7d0", filter: "Activo" },
-    { label: "Clientes en riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora" },
+    { label: "Todos", count: clientes.length, color: "#334155", bg: "#e2e8f0", filter: "", modo: "todos" as const },
+    { label: "En proceso", count: clientes.filter(c => c.estado === "En proceso").length, color: "#334155", bg: "#e2e8f0", filter: "En proceso", modo: "todos" as const },
+    { label: "Listos visita", count: clientes.filter(c => c.estado === "Listo para visita").length, color: "#1d4ed8", bg: "#dbeafe", filter: "Listo para visita", modo: "todos" as const },
+    { label: "Pend. aprob.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, color: "#92400e", bg: "#fef3c7", filter: "Pendiente evaluación", modo: "pendientes" as const },
+    { label: "Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, color: "#166534", bg: "#dcfce7", filter: "Aprobado", modo: "todos" as const },
+    { label: "Activos", count: clientes.filter(c => c.estado === "Activo").length, color: "#166534", bg: "#bbf7d0", filter: "Activo", modo: "todos" as const },
+    { label: "En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora", modo: "todos" as const },
   ];
 
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
@@ -899,16 +905,18 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {error && <div style={{ marginBottom: 10, color: "#991b1b", fontSize: 13 }}>Error: {error}</div>}
 
-      {/* KPI pills */}
-      <div style={{ display: "flex", overflowX: "auto", gap: 8, paddingBottom: 4, marginBottom: 14 }}>
+      {/* Filtros fusionados — una sola fila con wrap */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
         {KPI_PILLS.map(pill => {
-          const active = filtroEstado === pill.filter && modoVista === "todos";
+          const active = pill.modo === "pendientes"
+            ? modoVista === "pendientes"
+            : modoVista === "todos" && filtroEstado === pill.filter;
           return (
             <button
-              key={pill.filter}
-              onClick={() => { setModoVista("todos"); setFiltroEstado(pill.filter); }}
+              key={pill.filter + pill.modo}
+              onClick={() => { setModoVista(pill.modo); setFiltroEstado(pill.filter); }}
               style={{
-                flexShrink: 0, border: "none", borderRadius: 999, padding: "6px 14px",
+                border: "none", borderRadius: 999, padding: "5px 12px",
                 fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
                 background: active ? pill.color : pill.bg,
                 color: active ? "white" : pill.color,
@@ -918,16 +926,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             </button>
           );
         })}
-      </div>
-
-      {/* Vista toggle */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button onClick={() => setModoVista("todos")} style={miniBtn(modoVista === "todos" ? "#dbeafe" : "#e2e8f0", modoVista === "todos" ? "#1d4ed8" : "#334155")}>
-          Todos
-        </button>
-        <button onClick={() => setModoVista("pendientes")} style={miniBtn(modoVista === "pendientes" ? "#fef3c7" : "#e2e8f0", modoVista === "pendientes" ? "#92400e" : "#334155")}>
-          Pendientes de aprobación ({clientes.filter((c) => c.estado === "Pendiente evaluación").length})
-        </button>
       </div>
 
       {modoVista === "pendientes" && (
@@ -1339,7 +1337,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setVisitaOpen(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={registrarVisita} style={primaryBtn}>Guardar visita</button>
+              <button onClick={registrarVisita} disabled={guardandoVisita} style={primaryBtn}>{guardandoVisita ? "Guardando..." : "Guardar visita"}</button>
             </div>
           </div>
         </div>

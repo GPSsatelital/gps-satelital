@@ -63,13 +63,6 @@ const CHECKLIST = [
   "Sin daños visibles",
 ];
 
-function calcBaseRequerida(forma: FormaPago, valorSemanal: number): number {
-  if (forma === "Diario") return 0;
-  const cd = Math.round(valorSemanal / 7);
-  if (forma === "Semanal") return 308000 + valorSemanal;
-  if (forma === "Quincenal") return 308000 + 2 * valorSemanal + cd;
-  return 308000 + 4 * valorSemanal + 2 * cd;
-}
 
 function calcPrimerPago(fecha: string, dia: "Lunes" | "Miércoles", cuotaDiaria: number) {
   const base = new Date(fecha + "T00:00:00");
@@ -211,10 +204,18 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const pagoDiaLS = tarifaDiaria + ahorroLS;
   const pagoDiaDom = tarifaDomingo + ahorroDom;
   const valorSemanal = tarifaDiaria > 0 && tarifaDomingo > 0 ? 6 * pagoDiaLS + pagoDiaDom : 0;
+  const valorQuincenal = valorSemanal > 0 ? 2 * valorSemanal + pagoDiaLS : 0;
+  const valorMensual = valorSemanal > 0 ? 4 * valorSemanal + 2 * pagoDiaLS : 0;
+  const valorPeriodo = form.forma_pago === "Semanal" ? valorSemanal
+    : form.forma_pago === "Quincenal" ? valorQuincenal
+    : form.forma_pago === "Mensual" ? valorMensual : 0;
   const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
   const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
   const cuotaDiaria = pagoDiaLS > 0 ? pagoDiaLS : tarifaDiaria;
-  const baseRequerida = calcBaseRequerida(form.forma_pago, valorSemanal);
+  const baseRequerida = form.forma_pago === "Diario" ? 0
+    : form.forma_pago === "Semanal" ? 308000 + valorSemanal
+    : form.forma_pago === "Quincenal" ? 308000 + valorQuincenal
+    : 308000 + valorMensual;
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
 
@@ -466,10 +467,17 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                         <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDom)}</div>
                         <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaDom)}</div>
                       </div>
-                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-                        <span style={{ color: "#64748b", fontSize: 12 }}>Empresa: <strong>$ {fmt(tarifaSemana)}</strong></span>
-                        <span style={{ color: "#166534", fontSize: 12 }}>Ahorro semana: <strong>$ {fmt(ahorroSemana)}</strong></span>
-                        <span style={{ color: "#0369a1", fontSize: 13, fontWeight: 800 }}>Total {form.forma_pago === "Semanal" ? "sem" : form.forma_pago === "Quincenal" ? "quinc" : "mes"}: $ {fmt(valorSemanal)}</span>
+                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                          <span style={{ color: "#64748b", fontSize: 12 }}>Empresa/sem: <strong>$ {fmt(tarifaSemana)}</strong></span>
+                          <span style={{ color: "#166534", fontSize: 12 }}>Ahorro/sem: <strong>$ {fmt(ahorroSemana)}</strong></span>
+                          <span style={{ color: "#64748b", fontSize: 12 }}>Total/sem: <strong>$ {fmt(valorSemanal)}</strong></span>
+                        </div>
+                        {form.forma_pago !== "Semanal" && (
+                          <div style={{ background: "#0284c7", color: "white", borderRadius: 8, padding: "6px 10px", fontWeight: 800, fontSize: 13, textAlign: "center" }}>
+                            Total {form.forma_pago}: $ {fmt(valorPeriodo)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

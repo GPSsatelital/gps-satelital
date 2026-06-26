@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
-import { generarHTMLContrato, generarHTMLPagare } from "../hooks/useDocumentos";
+import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
 
 type Props = {
   clientes: Cliente[];
@@ -59,7 +59,8 @@ const CHECKLIST = [
   "Espejos completos",
   "Llantas en buen estado",
   "Tanque con combustible",
-  "GPS instalado y activo",
+  "Prueba de sirena activada",
+  "Prueba de apagado remoto",
   "Sin daños visibles",
 ];
 
@@ -174,8 +175,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
   // Steps 3-4 firmas
   const [firmaContrato, setFirmaContrato] = useState<string | null>(null);
+  const [firmaContratoAcomp, setFirmaContratoAcomp] = useState<string | null>(null);
   const [leido3, setLeido3] = useState(false);
   const [firmaPagare, setFirmaPagare] = useState<string | null>(null);
+  const [firmaPagareAcomp, setFirmaPagareAcomp] = useState<string | null>(null);
   const [leido4, setLeido4] = useState(false);
 
   // Step 5 certificado
@@ -306,11 +309,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   async function handleStep3() {
     if (!leido3) { setError("Confirma que has leído el documento."); return; }
     if (!firmaContrato) { setError("Dibuja la firma del cliente antes de continuar."); return; }
+    if (!firmaContratoAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
     if (!contratoId) return;
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
       const url = await subirFirmaCanvas(firmaContrato, `firmas/${contratoId}/contrato.png`);
+      await subirFirmaCanvas(firmaContratoAcomp, `firmas/${contratoId}/contrato_acompanante.png`);
       if (url) await supabase.from("contratos").update({ contrato_pdf_url: url }).eq("id", contratoId);
       setStep(4);
     } finally {
@@ -322,11 +327,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   async function handleStep4() {
     if (!leido4) { setError("Confirma que has leído el documento."); return; }
     if (!firmaPagare) { setError("Dibuja la firma del cliente antes de continuar."); return; }
+    if (!firmaPagareAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
     if (!contratoId) return;
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
       const url = await subirFirmaCanvas(firmaPagare, `firmas/${contratoId}/pagare.png`);
+      await subirFirmaCanvas(firmaPagareAcomp, `firmas/${contratoId}/pagare_acompanante.png`);
       if (url) await supabase.from("contratos").update({ pagare_pdf_url: url }).eq("id", contratoId);
       setStep(5);
     } finally {
@@ -601,7 +608,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el contrato de arrendamiento</span>
               </label>
-              <CanvasFirma key="firma-contrato" label="Firma del cliente" onChange={setFirmaContrato} />
+              <CanvasFirma key="firma-contrato-cliente" label="Firma del cliente" onChange={setFirmaContrato} />
+              <CanvasFirma key="firma-contrato-acomp" label="Firma del acompañante" onChange={setFirmaContratoAcomp} />
             </div>
           )}
 
@@ -617,18 +625,26 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el pagaré y carta de instrucciones</span>
               </label>
-              <CanvasFirma key="firma-pagare" label="Firma del cliente" onChange={setFirmaPagare} />
+              <CanvasFirma key="firma-pagare-cliente" label="Firma del cliente" onChange={setFirmaPagare} />
+              <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" onChange={setFirmaPagareAcomp} />
             </div>
           )}
 
           {/* ── PASO 5: Foto certificado ── */}
-          {step === 5 && (
+          {step === 5 && clienteActual && contratoData && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ padding: "14px 16px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>📋 Instrucciones</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>📋 Certificado de conocimiento</div>
                 <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
-                  El cliente ya llenó el certificado de conocimiento físicamente. Toma una foto al documento completo y súbela aquí.
+                  Verifica que el cliente haya leído y firmado el documento físico. El contenido del certificado es:
                 </div>
+              </div>
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", maxHeight: 300, overflowY: "auto", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, lineHeight: 1.7, color: "#334155" }}
+                  dangerouslySetInnerHTML={{ __html: generarHTMLCertificado(contratoData, clienteActual) }} />
+              </div>
+              <div style={{ padding: "10px 14px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
+                Ahora toma una foto al documento físico firmado y súbela como evidencia.
               </div>
 
               <div style={{ display: "flex", gap: 10 }}>

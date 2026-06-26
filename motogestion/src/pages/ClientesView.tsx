@@ -628,6 +628,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   }
 
   async function guardarEdicion() {
+    if (guardando) return;
     if (!editForm) return;
 
     if (!editForm.nombre.trim() || !editForm.cedula.trim() || !editForm.direccion.trim() || !editForm.telefono.trim()) {
@@ -640,20 +641,25 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       ? editForm.estado
       : calcularEstado(editForm.documentos_cliente, editForm.documentos_acompanante);
 
-    const { error } = await actualizarCliente(editForm.id, {
-      ...editForm,
-      whatsapp: editForm.mismo_whatsapp ? editForm.telefono : editForm.whatsapp,
-      estado: estadoFinal,
-    });
+    setGuardando(true);
+    try {
+      const { error } = await actualizarCliente(editForm.id, {
+        ...editForm,
+        whatsapp: editForm.mismo_whatsapp ? editForm.telefono : editForm.whatsapp,
+        estado: estadoFinal,
+      });
 
-    if (error) {
-      setFormError(error);
-      return;
+      if (error) {
+        setFormError(error);
+        return;
+      }
+
+      setEditOpen(false);
+      setEditForm(null);
+      setFormError(null);
+    } finally {
+      setGuardando(false);
     }
-
-    setEditOpen(false);
-    setEditForm(null);
-    setFormError(null);
   }
 
   function abrirExcepcion(cliente: Cliente) {
@@ -667,6 +673,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   }
 
   async function confirmarExcepcion() {
+    if (guardando) return;
     if (!selectedCliente) return;
     if (!excepcionMotivo.trim()) {
       alert("Debes escribir la nota exacta de por qué se permite continuar sin todos los documentos.");
@@ -676,8 +683,13 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       alert("Debes definir un plazo máximo para ingresar los documentos faltantes.");
       return;
     }
-    await aplicarExcepcion(selectedCliente.id, excepcionMotivo.trim(), excepcionPlazo);
-    setExcepcionOpen(false);
+    setGuardando(true);
+    try {
+      await aplicarExcepcion(selectedCliente.id, excepcionMotivo.trim(), excepcionPlazo);
+      setExcepcionOpen(false);
+    } finally {
+      setGuardando(false);
+    }
   }
 
   function capturarUbicacion() {
@@ -1207,7 +1219,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => { setEditOpen(false); setFormError(null); }} style={secondaryBtn}>Cancelar</button>
-              <button onClick={guardarEdicion} style={primaryBtn}>Guardar cambios</button>
+              <button onClick={guardarEdicion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Guardar cambios"}</button>
             </div>
           </div>
         </div>
@@ -1229,7 +1241,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setExcepcionOpen(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={confirmarExcepcion} style={primaryBtn}>Confirmar excepción</button>
+              <button onClick={confirmarExcepcion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Confirmar excepción"}</button>
             </div>
           </div>
         </div>

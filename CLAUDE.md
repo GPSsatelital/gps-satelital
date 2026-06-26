@@ -155,23 +155,48 @@ Los 7 días de la semana NO valen lo mismo. El desglose correcto para contrato $
 - Total semana = 6 × pago_dia_LS + pago_dom
 - **NUNCA mostrar ni calcular como total/7** — esa cifra no tiene significado real
 
-### Cuota diaria para prorrateo
-Cuando hay que calcular días sueltos (prorrateo hasta primer día de pago):
+### Prorrateo hasta primer día de pago (CRÍTICO)
+El día de entrega NO se incluye. El primer día de pago SÍ se incluye.
+Si hay un domingo en el rango → cobrar `pagoDiaDom` ese día, no `pagoDiaLS`.
+**Implementación correcta — iterar día a día:**
+```ts
+function calcPrimerPago(fecha, dia, pagoDiaLS, pagoDiaDom) {
+  const base = new Date(fecha + "T00:00:00");
+  const dow = base.getDay();
+  const target = dia === "Lunes" ? 1 : 3;
+  const dias = ((target - dow + 7) % 7) || 7;
+  let total = 0;
+  for (let i = 1; i <= dias; i++) {
+    const d = new Date(base); d.setDate(d.getDate() + i);
+    total += d.getDay() === 0 ? pagoDiaDom : pagoDiaLS;
+  }
+  ...
+}
 ```
-cuota_dia_LS = valor_semanal × 6/7 / 6 = valor_semanal / 7  ← solo para prorrateo L-S
-cuota_domingo = valor_semanal × 1/7              ← solo para prorrateo domingo
-```
-Para prorrateo simple se puede usar `valor_semanal / 7` como aproximación.
+**NUNCA** multiplicar cuotaDiaria × dias sin detectar domingos.
 
 ### Base inicial requerida
 ```
-Semanal:   $308.000 + valor_semanal
-Quincenal: $308.000 + 2 × valor_semanal + Math.round(valor_semanal / 7)
-Mensual:   $308.000 + 4 × valor_semanal + 2 × Math.round(valor_semanal / 7)
+Semanal:   $308.000 + valorSemanal
+Quincenal: $308.000 + valorQuincenal  (= 2×valorSemanal + pagoDiaLS)
+Mensual:   $308.000 + valorMensual    (= 4×valorSemanal + 2×pagoDiaLS)
 Diario:    $0 (no aplica — están ahorrando)
 ```
-Desglose: $308.000 = ahorro requerido | el resto = período(s) adelantados
-**No mostrar el aviso de base faltante hasta que el usuario haya seleccionado el valor del período.**
+El día extra de quincenal/mensual es un día L-S completo (`pagoDiaLS = tarifaLS + ahorroLS`), NO total/7.
+Desglose: $308.000 = ahorro requerido | el resto = período(s) adelantados.
+**No mostrar el aviso de base hasta que `valorSemanal > 0` Y haya cliente seleccionado.**
+
+### Inputs del wizard paso 1 — 4 valores directos
+El funcionario ingresa directamente (no hay dropdowns inventados):
+- `tarifa_ls`: tarifa L-S por día (ej. $27.000)
+- `tarifa_dom`: tarifa domingo (ej. $14.000)
+- `ahorro_ls`: ahorro L-S por día (ej. $4.000)
+- `ahorro_dom`: ahorro domingo (ej. $2.000)
+El sistema calcula todo lo demás: `pagoDiaLS`, `pagoDiaDom`, `valorSemanal`, `valorQuincenal`, `valorMensual`.
+
+### Campo `ahorro_domingo` en BD
+- Tabla `contratos` tiene columna `ahorro_domingo numeric default 0` (migración 020)
+- Se guarda junto con `tarifa_diaria`, `tarifa_domingo`, `ahorro_diario` al crear contrato
 
 ### Ahorro acumulado (contrato diario)
 - Cada pago: ahorro = pago - tarifa del día
@@ -333,7 +358,7 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 **Estados:** `Disponible` | `Asignada` | `En taller` | `Garantía` | `Fiscalía` | `Tránsito` | `Recuperada` | `Suspendida`
 
 ### `contratos`
-`id` | `cliente_id` FK | `moto_id` FK nullable | `forma_pago` (Diario/Semanal/Quincenal/Mensual) | `dia_pago` | `valor_semanal` | `tarifa_diaria` | `tarifa_domingo` | `ahorro_diario` | `meses` | **`ahorro_inicial`** (pre-cargado desde `clientes.ingreso_inicial`) | `ahorro_acumulado` | `base_completada` | `base_inicial` | `fecha_entrega` | `firma_cliente` | `firma_responsable` | `contrato_pdf_url` | `certificado_pdf_url` | `pagare_pdf_url` | `estado` (En proceso/Activo/Finalizado/Cancelado/Suspendido)
+`id` | `cliente_id` FK | `moto_id` FK nullable | `forma_pago` (Diario/Semanal/Quincenal/Mensual) | `dia_pago` | `valor_semanal` | `tarifa_diaria` | `tarifa_domingo` | `ahorro_diario` | **`ahorro_domingo`** | `meses` | **`ahorro_inicial`** (pre-cargado desde `clientes.ingreso_inicial`) | `ahorro_acumulado` | `base_completada` | `base_inicial` | `fecha_entrega` | `firma_cliente` | `firma_responsable` | `contrato_pdf_url` | `certificado_pdf_url` | `pagare_pdf_url` | `estado` (En proceso/Activo/Finalizado/Cancelado/Suspendido)
 
 ### `pagos`
 `id` | `contrato_id` FK | `registrado_por` FK | `valor` | `metodo` (Efectivo/Transferencia) | `estado` (Confirmado/Pendiente/Rechazado) | `tipo_registro` (normal/campo/transferencia) | `comprobante_url` | `aplicado` (jsonb) | `entregado_caja` | `folio` | `fecha`
@@ -422,8 +447,12 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | Tarifa domingo = tarifa/2 exacta | Usar `Math.ceil(tarifa/2/1000)*1000` |
 | Cuota diaria = total/7 | Los 7 días NO son iguales — L-S ≠ domingo |
 | `ahorro_inicial` del wizard vacío | Pre-cargar desde `clientes.ingreso_inicial` |
-| Mostrar alerta de base antes de elegir valor período | Solo mostrar cuando `valor_semanal > 0` |
+| Mostrar alerta de base antes de cliente/valor | Solo mostrar cuando `form.cliente_id && valorSemanal > 0` |
 | Trigger `enforce_cliente_estado_change` con `current_role()` | Usar `mi_rol()` — retorna el rol real de la app, no el de Postgres |
+| Prorrateo sin detectar domingos | Iterar día a día con `getDay() === 0` — domingos tienen precio diferente |
+| Día extra quincenal/mensual calculado como total/7 | El día extra es `pagoDiaLS` completo (tarifa + ahorro L-S) |
+| Inventar valores de dropdown para tarifas | Pedir los 4 valores directos al funcionario: tarifa_ls, tarifa_dom, ahorro_ls, ahorro_dom |
+| `ahorro_domingo` faltante en BD | Migración 020 agrega la columna — aplicar en Supabase SQL Editor |
 
 ---
 
@@ -453,17 +482,25 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `016_profiles_permisos.sql` ✅
 - `017_bucket_documentos.sql` ✅
 - `019_fix_cliente_estado_trigger.sql` — corrige trigger para usar `mi_rol()` ⚠️ PENDIENTE APLICAR EN SUPABASE
+- `020_ahorro_domingo.sql` — agrega columna `ahorro_domingo` a contratos ⚠️ PENDIENTE APLICAR EN SUPABASE
 
 ### Pendientes manuales ⚠️
 - Aplicar `019_fix_cliente_estado_trigger.sql` en SQL Editor de Supabase
+- Aplicar `020_ahorro_domingo.sql` en SQL Editor de Supabase
 - Desplegar Edge Function: `supabase functions deploy manage-users`
 
+### Completado en WizardContrato paso 1 ✅
+- 4 inputs directos: tarifa_ls, tarifa_dom, ahorro_ls, ahorro_dom
+- Cálculo automático de valorSemanal, valorQuincenal, valorMensual
+- Desglose visual por día (tabla L-S vs Domingo)
+- Base inicial pre-cargada desde `clientes.ingreso_inicial`
+- Tarjeta comparativa: pagó al registrarse | requerido | falta o suficiente
+- Prorrateo día a día con detección de domingos
+- Alerta de base solo cuando `form.cliente_id && valorSemanal > 0`
+- MoneyInput con $ y separadores de mil
+- `ahorro_domingo` guardado en BD al crear contrato
+
 ### Pendiente 🔲
-- Corregir WizardContrato paso 1:
-  - Tarifa domingo: usar `Math.ceil(tarifa/2/1000)*1000`
-  - Pre-cargar `ahorro_inicial` desde `clientes.ingreso_inicial`
-  - Dropdown valor período: mostrar desglose real (no total/7)
-  - No mostrar alerta de base hasta que haya valor de período seleccionado
 - Integración GPS real (sirena + apagado remoto)
 - WhatsApp automático
 - Reportes exportables PDF/Excel
@@ -484,4 +521,4 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | andres@hotmail.com | EMIRO | SUBADMIN |
 | angela@hotmail.com | ANGELA | SECRETARIA |
 
-**Próxima tarea confirmada:** corregir WizardContrato paso 1 (los 4 puntos listados en Pendiente 🔲 arriba).
+**Estado de WizardContrato.tsx:** Paso 1 completamente corregido. Pasos 2-6 sin cambios.

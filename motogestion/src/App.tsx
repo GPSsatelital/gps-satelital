@@ -93,7 +93,15 @@ const SIDE_GROUPS: SideGroup[] = [
     ],
   },
   {
-    label: "FLOTA",
+    label: "COBROS & DINERO",
+    items: [
+      { key: "cobro_diario", label: "Cobro Diario", icon: "📅" },
+      { key: "historial_pagos", label: "Historial Pagos", icon: "🧾" },
+      { key: "caja", label: "Caja Diaria", icon: "💰" },
+    ],
+  },
+  {
+    label: "FLOTA & TALLER",
     items: [
       {
         key: "motos", label: "Motos", icon: "🏍️",
@@ -106,25 +114,20 @@ const SIDE_GROUPS: SideGroup[] = [
         ],
       },
       { key: "taller", label: "Taller", icon: "🔧" },
+      { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
     ],
   },
   {
-    label: "FINANZAS",
-    adminOnly: true,
+    label: "SEGUIMIENTO",
     items: [
-      { key: "cobro_diario", label: "Cobro Diario", icon: "📅" },
       { key: "alertas", label: "Alertas", icon: "🔔" },
       { key: "inmovilizaciones", label: "Inmovilizaciones", icon: "🚨" },
-      { key: "historial_pagos", label: "Historial Pagos", icon: "🧾" },
       { key: "reportes", label: "Reportes", icon: "📈" },
-      { key: "caja", label: "Caja Diaria", icon: "💰" },
-      { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
       { key: "referidos", label: "Referidos", icon: "🤝" },
     ],
   },
   {
     label: "ADMINISTRACIÓN",
-    adminOnly: true,
     items: [
       { key: "usuarios", label: "Usuarios & Roles", icon: "👤" },
       { key: "configuracion", label: "Configuración", icon: "⚙️" },
@@ -278,20 +281,46 @@ function MasSheet({
   puedeVer: (v: ViewKey) => boolean;
   onClose: () => void;
 }) {
-  const extras: Array<{ key: ViewKey; icon: string; label: string; desc: string; adminOnly?: boolean }> = [
-    { key: "contratos",     icon: "📄", label: "Contratos",    desc: "Gestión de contratos activos" },
-    { key: "cobro_diario",  icon: "📅", label: "Cobro Diario",  desc: "Estado de pago del día",               adminOnly: true },
-    { key: "alertas",       icon: "🔔", label: "Alertas",       desc: "Mora, SOAT, tecno y situaciones activas", adminOnly: true },
-    { key: "inmovilizaciones", icon: "🚨", label: "Inmovilizaciones", desc: "Motos a recuperar por mora",           adminOnly: true },
-    { key: "reportes",      icon: "📈", label: "Reportes",      desc: "Recaudo, mora, flota y alertas",         adminOnly: true },
-    { key: "referidos",     icon: "🤝", label: "Referidos",     desc: "Programa de referidos y premios",        adminOnly: true },
-    { key: "historial_pagos", icon: "🧾", label: "Historial Pagos", desc: "Todos los pagos con filtros avanzados", adminOnly: true },
-    { key: "caja",          icon: "💰", label: "Caja Diaria",  desc: "Cierre de caja y confirmación de pagos" },
-    { key: "taller",        icon: "🔧", label: "Taller",       desc: "Órdenes de mantenimiento" },
-    { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación",     adminOnly: true },
-    { key: "usuarios",      icon: "👤", label: "Usuarios",      desc: "Roles y accesos",           adminOnly: true },
-    { key: "configuracion", icon: "⚙️", label: "Configuración", desc: "Ajustes del sistema y cuenta" },
+  // Módulos agrupados por sección — misma taxonomía que el sidebar desktop
+  const secciones: Array<{ titulo: string; items: Array<{ key: ViewKey; icon: string; label: string; desc: string }> }> = [
+    {
+      titulo: "COBROS & DINERO",
+      items: [
+        { key: "cobro_diario",    icon: "📅", label: "Cobro Diario",    desc: "Estado de pago del día" },
+        { key: "historial_pagos", icon: "🧾", label: "Historial Pagos", desc: "Todos los pagos con filtros avanzados" },
+        { key: "caja",            icon: "💰", label: "Caja Diaria",     desc: "Cierre de caja y confirmación de pagos" },
+      ],
+    },
+    {
+      titulo: "FLOTA & TALLER",
+      items: [
+        { key: "taller",        icon: "🔧", label: "Taller",        desc: "Órdenes de mantenimiento" },
+        { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación de contratos" },
+      ],
+    },
+    {
+      titulo: "SEGUIMIENTO",
+      items: [
+        { key: "alertas",          icon: "🔔", label: "Alertas",          desc: "Mora, SOAT, tecno y situaciones activas" },
+        { key: "inmovilizaciones", icon: "🚨", label: "Inmovilizaciones", desc: "Motos a recuperar por mora" },
+        { key: "reportes",         icon: "📈", label: "Reportes",         desc: "Recaudo, mora, flota y alertas" },
+        { key: "referidos",        icon: "🤝", label: "Referidos",        desc: "Programa de referidos y premios" },
+      ],
+    },
+    {
+      titulo: "ADMINISTRACIÓN",
+      items: [
+        { key: "usuarios",      icon: "👤", label: "Usuarios",      desc: "Roles y accesos" },
+        { key: "configuracion", icon: "⚙️", label: "Configuración", desc: "Ajustes del sistema y cuenta" },
+        { key: "importacion",   icon: "📥", label: "Importación Excel", desc: "Carga masiva de datos" },
+      ],
+    },
   ];
+
+  // Filtrar items por permiso y quedarse solo con secciones que tengan al menos uno visible
+  const seccionesVisibles = secciones
+    .map(s => ({ ...s, items: s.items.filter(i => puedeVer(i.key)) }))
+    .filter(s => s.items.length > 0);
 
   return (
     <>
@@ -301,26 +330,31 @@ function MasSheet({
         background: "white", borderRadius: "20px 20px 0 0",
         padding: "12px 0 32px",
         boxShadow: "0 -8px 40px rgba(15,23,42,0.2)",
+        maxHeight: "85dvh", overflowY: "auto",
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e2e8f0", margin: "0 auto 20px" }} />
-        <div style={{ padding: "0 20px 12px", fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em" }}>MÁS MÓDULOS</div>
-        {extras.filter(e => puedeVer(e.key)).map(e => (
-          <button
-            key={e.key}
-            onClick={() => { navigate(e.key); onClose(); }}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 16,
-              padding: "14px 20px", border: "none", background: ctx.view === e.key ? "#eff6ff" : "transparent",
-              cursor: "pointer", textAlign: "left",
-            }}
-          >
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{e.icon}</div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{e.label}</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{e.desc}</div>
-            </div>
-            <span style={{ marginLeft: "auto", color: "#cbd5e1", fontSize: 18 }}>›</span>
-          </button>
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e2e8f0", margin: "0 auto 16px" }} />
+        {seccionesVisibles.map((seccion, si) => (
+          <div key={seccion.titulo}>
+            <div style={{ padding: si === 0 ? "0 20px 8px" : "16px 20px 8px", fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em" }}>{seccion.titulo}</div>
+            {seccion.items.map(e => (
+              <button
+                key={e.key}
+                onClick={() => { navigate(e.key); onClose(); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 16,
+                  padding: "12px 20px", border: "none", background: ctx.view === e.key ? "#eff6ff" : "transparent",
+                  cursor: "pointer", textAlign: "left",
+                }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{e.icon}</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{e.label}</div>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{e.desc}</div>
+                </div>
+                <span style={{ marginLeft: "auto", color: "#cbd5e1", fontSize: 18 }}>›</span>
+              </button>
+            ))}
+          </div>
         ))}
       </div>
     </>

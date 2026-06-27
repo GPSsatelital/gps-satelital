@@ -1054,10 +1054,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
               <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(pagadoEnPeriodo)}</div>
             </div>
-            <div style={{ background: cuotaPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Pendiente</div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: cuotaPendiente > 0 ? "#991b1b" : "#166534" }}>
-                {cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
+            <div style={{ background: enProrrateo ? "#eff6ff" : cuotaPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+                {enProrrateo ? "Próx. pago" : "Pendiente"}
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : cuotaPendiente > 0 ? "#991b1b" : "#166534" }}>
+                {enProrrateo ? `$ ${fmt(cuotaPactada)}` : cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
               </div>
             </div>
           </div>
@@ -1430,8 +1432,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   {pendiente > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#991b1b", background: "#fee2e2", borderRadius: 8, padding: "2px 8px" }}>
-                      Debe ${fmt(pendiente)}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: enProrrateoLista ? "#0284c7" : "#991b1b", background: enProrrateoLista ? "#eff6ff" : "#fee2e2", borderRadius: 8, padding: "2px 8px" }}>
+                      {enProrrateoLista ? `Próx. pago $${fmt(pendiente)}` : `Debe $${fmt(pendiente)}`}
                     </span>
                   ) : (
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 8, padding: "2px 8px" }}>

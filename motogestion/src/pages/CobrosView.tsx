@@ -1598,10 +1598,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const FILTROS_CONTRATOS: { key: FiltroContratos; label: string; count: number }[] = [
     { key: "todos", label: "Todos", count: resumenContratos.length },
-    { key: "mora", label: "Mora", count: enMora.length },
-    { key: "gabela", label: "Gabela", count: enGabela.length },
-    { key: "al-dia", label: "Al día", count: alDia.length },
-    { key: "pagan-hoy", label: "Pagan hoy", count: totalPaganHoy },
+    { key: "mora", label: "🔴 Mora", count: enMora.length },
+    { key: "gabela", label: "🟡 Gabela", count: enGabela.length },
+    { key: "al-dia", label: "🟢 Al día", count: alDia.length },
+    { key: "pagan-hoy", label: "🔵 Pagan hoy", count: totalPaganHoy },
   ];
 
   // On mobile with a selected contract → show only detail

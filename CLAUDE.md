@@ -139,6 +139,15 @@ ViewKey = "dashboard" | "clientes" | "motos" | "contratos" | "cobros"
 **Mobile:** Bottom tab bar (Panel/Clientes/Cartera/Motos/Contratos/☰Más) + `MasSheet` overlay
 **Desktop:** Sidebar `#0f172a`, 240px expandido / 64px colapsado
 
+### Secciones de navegación (móvil `MasSheet` y desktop `SIDE_GROUPS` — MISMA taxonomía)
+- **OPERACIONES** (solo desktop; en móvil son tabs fijas abajo): Clientes · Contratos · Cartera & Cobros
+- **COBROS & DINERO**: Cobro Diario · Historial Pagos · Caja Diaria
+- **FLOTA & TALLER**: Motos (solo desktop) · Taller · Liquidaciones
+- **SEGUIMIENTO**: Alertas · Inmovilizaciones · Reportes · Referidos
+- **ADMINISTRACIÓN**: Usuarios · Configuración · Importación Excel
+- La hoja Más (móvil) agrupa por estas secciones; cada sección se oculta si el rol no tiene ningún módulo visible (`puedeVer`). Contratos NO va en Más (está fijo en la barra inferior).
+- Al agregar un módulo nuevo: ubicarlo en su sección tanto en `SIDE_GROUPS` (desktop) como en `secciones` del `MasSheet` (móvil) para mantener consistencia.
+
 ---
 
 ## FÓRMULAS Y CÁLCULOS EXACTOS

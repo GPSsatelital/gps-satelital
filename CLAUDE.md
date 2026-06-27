@@ -576,8 +576,14 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - Filtrado global por `useScope()` en: MotosView, ContratosView, CobrosView, TallerView, LiquidacionesView, ClientesView, DashboardView, CampanaAlertas, BusquedaGlobal
 - Reglas decididas: visitas se asignan (no pool); SUBADMIN no registra clientes; una moto = un sub-admin
 
+### Completado — Panel HOY ✅
+- Pestaña **"📋 Hoy"** (por defecto) en CobrosView, organizada por TAREA no por estado.
+- Agrupa por urgencia sin duplicar: Recolección (mora real >3d) → Mora → Gabela → Pagan hoy. Solo muestra pendientes (Al día no aparece).
+- Tareas como botones: Mensaje (abre WhatsApp + registra), Llamar (abre `tel:` + registra), Sirena (registra, 3 seg, GPS real pendiente), Recolección (registra orden).
+- "Tarea hecha hoy" = existe gestión de ese tipo con `fecha=hoy` → check verde. Todo queda en `gestiones_cobro`.
+- Hereda filtrado SUBADMIN (cada quien ve solo tareas de sus motos).
+
 ### Pendiente 🔲
-- **Panel "HOY" de tareas (dentro de Cartera/CobrosView):** pestaña por defecto, organizada por TAREA (no por estado), agrupada por urgencia (Recolección → Mora → Gabela → Pagan hoy). Cada cliente muestra tareas pendientes (Mensaje/Llamar/Sirena) como botones; al hacerlas se registran en `gestiones_cobro` con `fecha=hoy`. Decisiones tomadas: marcar tareas MIXTO (mensaje/WhatsApp auto al abrir, llamada/sirena manual); todas visibles recomendadas en orden; sirena gabela 3 seg (por ahora solo registra, GPS real pendiente); solo muestra pendientes (Al día no aparece); filtrado por SUBADMIN ya aplica.
 - **Gestión de permisos por usuario (UsuariosView):**
   - Lista de usuarios con su rol actual
   - Al seleccionar un usuario → mostrar permisos activos e inactivos (toggle)

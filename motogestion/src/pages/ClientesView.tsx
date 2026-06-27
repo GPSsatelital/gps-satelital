@@ -14,6 +14,7 @@ import {
 } from "../hooks/useClientes";
 import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
+import { useScope } from "../contexts/SubadminScopeContext";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -265,13 +266,15 @@ const FILTROS_CLIENTE = [
   { label: "Rechazados", filter: "Rechazado" },
 ];
 
-function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRechazar }: {
+function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRechazar, onAsignarVisita, subadmins }: {
   clientes: Cliente[];
   visitas: Visita[];
   role: string;
   onAprobar: (clienteId: string, visitaId: string) => Promise<void>;
   onRepetir: (clienteId: string, visitaId: string) => Promise<void>;
   onRechazar: (clienteId: string, visitaId: string, motivo: string) => Promise<void>;
+  onAsignarVisita?: (visitaId: string, subadminId: string | null) => Promise<void>;
+  subadmins?: { id: string; nombre: string }[];
 }) {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [rechazando, setRechazando] = useState<string | null>(null);
@@ -409,6 +412,21 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                   )}
                 </div>
 
+                {/* Asignación de visita a sub-admin */}
+                {esAdmin && visita && onAsignarVisita && subadmins && subadmins.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>Asignar visita a sub-admin</div>
+                    <select
+                      value={visita.asignada_a ?? ""}
+                      onChange={e => onAsignarVisita(visita.id, e.target.value || null)}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 13 }}
+                    >
+                      <option value="">— Sin asignar —</option>
+                      {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                  </div>
+                )}
+
                 {/* Acciones */}
                 {esAdmin && visita && (
                   <div style={{ marginTop: 16 }}>
@@ -506,8 +524,23 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     return () => window.removeEventListener("resize", fn);
   }, []);
 
-  const { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
-  const { visitas, crearVisita, resolverVisita, subirFotoVisita } = useVisitas();
+  const { clienteIdsPermitidos, filtrarVisitas, esSubadmin } = useScope();
+  const esAdminOSuperior = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
+  useEffect(() => {
+    if (!esAdminOSuperior) return;
+    import("../lib/supabase").then(({ supabase }) => {
+      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
+        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
+      });
+    });
+  }, [esAdminOSuperior]);
+  const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
+  const clientes = esSubadmin && clienteIdsPermitidos
+    ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !["Activo","En riesgo","En mora"].includes(c.estado))
+    : todosClientes;
+  const { visitas: todasVisitas, crearVisita, resolverVisita, subirFotoVisita, asignarVisita } = useVisitas();
+  const visitas = filtrarVisitas(todasVisitas);
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
@@ -958,6 +991,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             await cambiarEstadoCliente(clienteId, "Rechazado");
             if (motivo) await actualizarCliente(clienteId, { estado: "Rechazado" } as never);
           }}
+          onAsignarVisita={async (visitaId, subadminId) => { await asignarVisita(visitaId, subadminId); }}
+          subadmins={subadmins}
         />
       )}
 

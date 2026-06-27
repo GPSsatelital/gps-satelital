@@ -3,6 +3,7 @@ import { useContratos, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
+import { useScope } from "../contexts/SubadminScopeContext";
 import WizardContrato from "./WizardContrato";
 import type { Contrato } from "../hooks/useContratos";
 
@@ -67,7 +68,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const role = profile?.role ?? "SECRETARIA";
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
-  const { contratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato } = useContratos();
+  const { filtrarContratos } = useScope();
+  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato } = useContratos();
+  const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
 

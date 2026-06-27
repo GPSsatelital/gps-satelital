@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
+import { useSubadminScope } from "./hooks/useSubadminScope";
 import { MODULOS_SIEMPRE } from "./lib/modulos";
 import BusquedaGlobal from "./components/BusquedaGlobal";
 import { useClientes } from "./hooks/useClientes";
@@ -365,6 +367,8 @@ function Shell() {
   const esAdmin = roleActual === "ADMIN" || roleActual === "ADMIN_PRINCIPAL";
   const esMecanico = roleActual === "MECANICO";
 
+  const scope = useSubadminScope(profile, motos, contratos);
+
   // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
   function accesoPorRol(view: ViewKey): boolean {
     if (view === "importacion") return roleActual === "ADMIN_PRINCIPAL";
@@ -447,6 +451,7 @@ function Shell() {
   }
 
   const contentView = (
+    <SubadminScopeProvider scope={scope}>
     <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
@@ -468,6 +473,7 @@ function Shell() {
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
     </div>
+    </SubadminScopeProvider>
   );
 
   // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────

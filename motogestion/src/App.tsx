@@ -455,7 +455,6 @@ function Shell() {
   }
 
   const contentView = (
-    <SubadminScopeProvider scope={scope}>
     <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
@@ -477,7 +476,6 @@ function Shell() {
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
     </div>
-    </SubadminScopeProvider>
   );
 
   // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
@@ -487,6 +485,7 @@ function Shell() {
       : BOTTOM_TABS.filter(t => t.key === "dashboard" || puedeVer(t.key));
 
     return (
+      <SubadminScopeProvider scope={scope}>
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#0f172a", background: "#f1f5f9" }}>
         <InstallBanner />
 
@@ -588,11 +587,13 @@ function Shell() {
         {masOpen && <MasSheet ctx={ctx} navigate={navigate} puedeVer={puedeVer} onClose={() => setMasOpen(false)} />}
         {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
       </div>
+      </SubadminScopeProvider>
     );
   }
 
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
+    <SubadminScopeProvider scope={scope}>
     <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
       <InstallBanner />
       <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
@@ -654,6 +655,7 @@ function Shell() {
       </div>
       {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
     </div>
+    </SubadminScopeProvider>
   );
 }
 

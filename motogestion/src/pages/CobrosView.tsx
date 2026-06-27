@@ -740,6 +740,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [expandidoId, setExpandidoId] = useState<string | null>(null);
+  const [seccionExpandida, setSeccionExpandida] = useState<string | null>(null);
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
   const gestionesContrato = contratoSeleccionadoId
@@ -1686,111 +1688,202 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ))}
       </div>
 
-      {/* Panel HOY — tareas del día agrupadas por urgencia */}
-      {activeTab === "hoy" && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ ...card, marginBottom: 16, background: "#eff6ff", border: "1px solid #bae6fd" }}>
-            <div style={{ fontSize: 14, color: "#0369a1", fontWeight: 700 }}>
-              📋 Tus tareas de hoy ({totalTareasHoy})
-            </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              Ordenadas por urgencia. Toca cada tarea al completarla — queda registrada en el historial de gestión.
-            </div>
-          </div>
+      {/* Panel HOY — tareas del día agrupadas por urgencia (G+H+I+J) */}
+      {activeTab === "hoy" && (() => {
+        const grupos = [
+          { key: "recoleccion", emoji: "🚚", titulo: "Recolección física", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
+            tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Ordenar recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
+          { key: "mora", emoji: "🔴", titulo: "En mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
+            tareas: [
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "sirena" as TipoGestion, label: "🔊 Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+            ] },
+          { key: "gabela", emoji: "🟡", titulo: "En gabela", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
+            tareas: [
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "sirena" as TipoGestion, label: "🔊 Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+            ] },
+          { key: "pagan-hoy", emoji: "🔵", titulo: "Pagan hoy", color: "#0284c7", bg: "#eff6ff", lista: panelHoy.paganHoy,
+            tareas: [
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+            ] },
+        ] as const;
 
-          {/* Resumen de efectivo recogido en campo (conciliación) */}
-          {puedeCobroCampo && misCobrosCampoHoy.count > 0 && (
-            <div style={{ ...card, marginBottom: 16, background: "#f0fdf4", border: "1px solid #bbf7d0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>💵 Recogiste hoy: $ {fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
+        // Calcular tareas totales y hechas por contrato en un grupo
+        function tareasInfo(c: typeof resumenContratos[number], tiposTareas: readonly { tipo: TipoGestion }[]) {
+          const total = tiposTareas.length + (puedeCobroCampo ? 1 : 0);
+          const hechas = tiposTareas.filter(t => gestionHechaHoy(c.id, t.tipo)).length;
+          return { total, hechas, todasHechas: hechas >= tiposTareas.length };
+        }
+
+        return (
+          <div style={{ marginTop: 20 }}>
+            {/* G — Mini-resumen tocable */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
+              {grupos.filter(g => g.lista.length > 0).map(g => (
+                <button
+                  key={g.key}
+                  onClick={() => setSeccionExpandida(seccionExpandida === g.key ? null : g.key)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: seccionExpandida === g.key ? g.color : "white",
+                    color: seccionExpandida === g.key ? "white" : g.color,
+                    border: `2px solid ${g.color}`,
+                    borderRadius: 999, padding: "6px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                    boxShadow: "0 2px 8px rgba(15,23,42,0.07)",
+                  }}
+                >
+                  <span>{g.emoji}</span>
+                  <span>{g.lista.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>{g.titulo}</span>
+                </button>
+              ))}
+              {totalTareasHoy === 0 && (
+                <span style={{ fontSize: 13, color: "#94a3b8", padding: "6px 0" }}>Sin tareas hoy 🎉</span>
+              )}
+            </div>
+
+            {/* Resumen de efectivo recogido en campo */}
+            {puedeCobroCampo && misCobrosCampoHoy.count > 0 && (
+              <div style={{ ...card, marginBottom: 14, background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 14px" }}>
+                <div style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>💵 Recogiste hoy: ${fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
                 {misCobrosCampoHoy.pendienteEntregar > 0 && (
-                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>Pendiente entregar a caja: <strong>$ {fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
+                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>Pendiente entregar a caja: <strong>${fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {totalTareasHoy === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
-              <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
-              <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
-            </div>
-          ) : (
-            <div style={{ maxHeight: isMobile ? "64vh" : "68vh", overflowY: "auto", paddingRight: 2 }}>
-            {([
-              { key: "recoleccion", titulo: "🚚 Recolección física", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
-                tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Ordenar recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
-              { key: "mora", titulo: "🔴 En mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
-                tareas: [
-                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-                  { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
-                ] },
-              { key: "gabela", titulo: "🟡 En gabela (día de gracia)", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
-                tareas: [
-                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-                  { tipo: "sirena" as TipoGestion, label: "Sirena (3 seg)", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
-                ] },
-              { key: "pagan-hoy", titulo: "🔵 Pagan hoy", color: "#0284c7", bg: "#eff6ff", lista: panelHoy.paganHoy,
-                tareas: [
-                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-                ] },
-            ] as const).filter(g => g.lista.length > 0).map(grupo => (
-              <div key={grupo.key} style={{ marginBottom: 22 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, color: grupo.color }}>{grupo.titulo}</span>
-                  <span style={{ background: grupo.bg, color: grupo.color, borderRadius: 999, padding: "1px 9px", fontSize: 12, fontWeight: 700 }}>{grupo.lista.length}</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {grupo.lista.map(c => {
-                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                    const moto = motos.find(m => m.id === c.moto_id);
-                    return (
-                      <div key={c.id} style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", borderLeft: `4px solid ${grupo.color}` }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                          <div
-                            onClick={() => setContratoSeleccionadoId(c.id)}
-                            style={{ cursor: "pointer", minWidth: 0 }}
-                          >
-                            <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>{cliente?.nombre ?? "Sin cliente"}</div>
-                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                              {moto && <span style={{ color: "#0284c7", fontWeight: 700 }}>🏍️ {moto.placa}</span>}
-                              {c.diasSinPago > 0 && c.diasSinPago < 999 && <span> · {c.diasSinPago}d sin pago</span>}
-                            </div>
-                          </div>
-                          <EstadoBadge estado={c.estadoCartera} />
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                          {grupo.tareas.map(t => {
-                            const hecha = gestionHechaHoy(c.id, t.tipo);
-                            return (
-                              <button
-                                key={t.tipo}
-                                onClick={() => t.action(c)}
-                                style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}
-                              >
-                                {hecha ? "✓ " : ""}{t.label}
-                              </button>
-                            );
-                          })}
-                          {puedeCobroCampo && (
-                            <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#dcfce7", "#166534")}>
-                              💵 Cobrar
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* H+I+J — Grupos con tarjetas compactas expandibles, pendientes primero */}
+            {totalTareasHoy === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
+                <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
               </div>
-            ))}
-            </div>
-          )}
-        </div>
-      )}
+            ) : (
+              <div style={{ maxHeight: isMobile ? "60vh" : "66vh", overflowY: "auto", paddingRight: 2, display: "flex", flexDirection: "column", gap: 20 }}>
+                {grupos.filter(g => g.lista.length > 0).map(grupo => {
+                  const soloSeccion = seccionExpandida !== null && seccionExpandida !== grupo.key;
+                  if (soloSeccion) return null;
+
+                  // I — pendientes primero, resueltos al fondo
+                  const ordenada = [...grupo.lista].sort((a, b) => {
+                    const aHecha = grupo.tareas.every(t => gestionHechaHoy(a.id, t.tipo));
+                    const bHecha = grupo.tareas.every(t => gestionHechaHoy(b.id, t.tipo));
+                    if (aHecha && !bHecha) return 1;
+                    if (!aHecha && bHecha) return -1;
+                    return 0;
+                  });
+
+                  return (
+                    <div key={grupo.key}>
+                      {/* Encabezado de sección */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: grupo.color }}>{grupo.emoji} {grupo.titulo}</span>
+                        <span style={{ background: grupo.bg, color: grupo.color, borderRadius: 999, padding: "1px 8px", fontSize: 12, fontWeight: 700 }}>{grupo.lista.length}</span>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {ordenada.map(c => {
+                          const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                          const moto = motos.find(m => m.id === c.moto_id);
+                          const { hechas, total: totalT, todasHechas } = tareasInfo(c, grupo.tareas);
+                          const expandido = expandidoId === `${grupo.key}-${c.id}`;
+
+                          return (
+                            <div
+                              key={c.id}
+                              style={{
+                                background: todasHechas ? "#f8fafc" : "white",
+                                borderRadius: 12,
+                                border: `1px solid ${todasHechas ? "#e2e8f0" : grupo.color + "55"}`,
+                                borderLeft: `4px solid ${todasHechas ? "#cbd5e1" : grupo.color}`,
+                                opacity: todasHechas ? 0.65 : 1,
+                                overflow: "hidden",
+                              }}
+                            >
+                              {/* Fila colapsada — H */}
+                              <div
+                                onClick={() => setExpandidoId(expandido ? null : `${grupo.key}-${c.id}`)}
+                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", cursor: "pointer", gap: 8 }}
+                              >
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "#0f172a" }}>{cliente?.nombre ?? "Sin cliente"}</span>
+                                  {moto && <span style={{ fontSize: 12, color: "#0284c7", fontWeight: 600, marginLeft: 8 }}>🏍️ {moto.placa}</span>}
+                                  {c.diasSinPago > 0 && c.diasSinPago < 999 && (
+                                    <span style={{ fontSize: 11, color: "#991b1b", marginLeft: 6 }}>{c.diasSinPago}d</span>
+                                  )}
+                                </div>
+                                {/* J — Contador de tareas */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                  {todasHechas ? (
+                                    <span style={{ fontSize: 11, color: "#166534", fontWeight: 700, background: "#dcfce7", borderRadius: 999, padding: "2px 8px" }}>✓ Listo</span>
+                                  ) : (
+                                    <span style={{ fontSize: 11, color: grupo.color, fontWeight: 700, background: grupo.bg, borderRadius: 999, padding: "2px 8px" }}>
+                                      {hechas}/{totalT} tareas
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: 14, color: "#94a3b8" }}>{expandido ? "▲" : "▼"}</span>
+                                </div>
+                              </div>
+
+                              {/* Cuerpo expandido — H */}
+                              {expandido && (
+                                <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${grupo.color}22` }}>
+                                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 8 }}>
+                                    {c.diasSinPago > 0 && c.diasSinPago < 999 && `${c.diasSinPago} días sin pago · `}
+                                    {c.deudaContrato > 0 && `Deuda: $${fmt(c.deudaContrato)} · `}
+                                    Debe pagar: <strong style={{ color: "#0f172a" }}>
+                                      ${fmt((() => {
+                                        const cuotaP = c.forma_pago === "Diario"
+                                          ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
+                                          : c.valor_semanal;
+                                        const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
+                                        return Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
+                                      })())}
+                                    </strong>
+                                  </div>
+                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                    {grupo.tareas.map(t => {
+                                      const hecha = gestionHechaHoy(c.id, t.tipo);
+                                      return (
+                                        <button
+                                          key={t.tipo}
+                                          onClick={() => t.action(c)}
+                                          style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}
+                                        >
+                                          {hecha ? "✓ " : ""}{t.label}
+                                        </button>
+                                      );
+                                    })}
+                                    {puedeCobroCampo && (
+                                      <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#dcfce7", "#166534")}>
+                                        💵 Cobrar
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => setContratoSeleccionadoId(c.id)}
+                                      style={miniBtn("#f1f5f9", "#334155")}
+                                    >
+                                      Ver ficha →
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* DINERO — sub-chips */}
       {activeTab === "dinero" && (

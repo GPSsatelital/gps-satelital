@@ -23,6 +23,7 @@ export type Moto = {
   condicion_ingreso: CondicionIngreso | null;
   color: string | null;
   observaciones: string | null;
+  subadmin_id?: string | null;
   // campos de retención
   retencion_fecha?: string | null;
   retencion_numero_caso?: string | null;
@@ -102,5 +103,10 @@ export function useMotos() {
     return { error: error?.message ?? null };
   }
 
-  return { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion };
+  async function asignarSubadmin(motoId: string, subadminId: string | null) {
+    const { error } = await supabase.from("motos").update({ subadmin_id: subadminId, updated_at: new Date().toISOString() }).eq("id", motoId);
+    return { error: error?.message ?? null };
+  }
+
+  return { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin };
 }

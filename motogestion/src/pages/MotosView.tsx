@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
+import { useScope } from "../contexts/SubadminScopeContext";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -48,7 +49,18 @@ import type { ViewKey } from "../App";
 
 export default function MotosView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
-  const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion } = useMotos();
+  const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
+  const { filtrarMotos } = useScope();
+  const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const [subadmins, setSubadmins] = React.useState<{ id: string; nombre: string }[]>([]);
+  React.useEffect(() => {
+    if (!esAdminOSuperior) return;
+    import("../lib/supabase").then(({ supabase }) => {
+      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
+        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
+      });
+    });
+  }, [esAdminOSuperior]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth < 900);
@@ -117,12 +129,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   });
 
   const filtered = useMemo(() => {
-    let list = motos.filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
+    let list = filtrarMotos(motos).filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
     else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
     return list;
-  }, [motos, query, filtroEstado]);
+  }, [motos, query, filtroEstado, filtrarMotos]);
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
@@ -372,6 +384,21 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <option value="Recuperada">Recuperada</option>
           </select>
         </div>
+        {esAdminOSuperior && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>Sub-admin a cargo</div>
+            <select
+              value={selectedMoto.subadmin_id ?? ""}
+              onChange={e => asignarSubadmin(selectedMoto.id, e.target.value || null)}
+              style={inputStyle}
+            >
+              <option value="">— Sin asignar —</option>
+              {subadmins.map(s => (
+                <option key={s.id} value={s.id}>{s.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {historialDeMoto(selectedMoto.id).length > 0 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#334155" }}>Historial ubicaciones</div>

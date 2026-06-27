@@ -16,6 +16,7 @@ import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
+import { useScope } from "../contexts/SubadminScopeContext";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -468,10 +469,12 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CobrosView({ initialOpenForm = false, onNavigate }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile } = useAuth();
+  const { filtrarContratos } = useScope();
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, pagosDelContrato } =
     usePagos();
-  const { contratos, loading: loadingContratos } = useContratos();
+  const { contratos: todosContratos, loading: loadingContratos } = useContratos();
+  const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { deudas, registrarDeuda } = useDeudas();

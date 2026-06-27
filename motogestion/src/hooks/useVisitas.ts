@@ -9,6 +9,7 @@ export type Visita = {
   cliente_id: string;
   estado: VisitaEstado;
   resultado: VisitaResultado;
+  asignada_a: string | null;
   entrevista: {
     viveAlli: string;
     tiempoResidencia: string;
@@ -84,6 +85,11 @@ export function useVisitas() {
     return { error: error?.message ?? null };
   }
 
+  async function asignarVisita(id: string, subadminId: string | null) {
+    const { error } = await supabase.from("visitas").update({ asignada_a: subadminId }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
   async function subirFotoVisita(file: File, clienteId: string, tipo: string): Promise<{ url: string | null; error: string | null }> {
     const ext = file.name.split(".").pop() || "jpg";
     const path = `visitas/${clienteId}/${tipo}-${Date.now()}.${ext}`;
@@ -93,5 +99,5 @@ export function useVisitas() {
     return { url: data.publicUrl, error: null };
   }
 
-  return { visitas, loading, error, crearVisita, resolverVisita, subirFotoVisita };
+  return { visitas, loading, error, crearVisita, resolverVisita, subirFotoVisita, asignarVisita };
 }

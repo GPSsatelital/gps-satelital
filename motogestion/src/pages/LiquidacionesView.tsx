@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useLiquidaciones, type Liquidacion, type DetalleDano, type DetalleDeuda, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
-import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
+import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -67,10 +67,11 @@ export default function LiquidacionesView() {
   const role = profile?.role ?? "SECRETARIA";
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
+  const { filtrarMotos } = useScope();
   const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, confirmarCierre } = useLiquidaciones();
-  useContratos();
   const { clientes } = useClientes();
-  const { motos } = useMotos();
+  const { motos: todasMotos } = useMotos();
+  const motos = filtrarMotos(todasMotos);
 
   const [sel, setSel] = useState<Liquidacion | null>(null);
 

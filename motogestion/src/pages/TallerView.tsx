@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useTaller, type TallerEstado, type TallerItem, type NuevoTallerItem } from "../hooks/useTaller";
 import { useMotos } from "../hooks/useMotos";
 import { supabase } from "../lib/supabase";
+import { useScope } from "../contexts/SubadminScopeContext";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -505,7 +506,9 @@ ${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label
 
 export default function TallerView() {
   const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso } = useTaller();
-  const { motos } = useMotos();
+  const { motos: todasMotos } = useMotos();
+  const { filtrarMotos } = useScope();
+  const motos = filtrarMotos(todasMotos);
 
   const [tab, setTab] = useState<"activas" | "historial">("activas");
   const [seleccionId, setSeleccionId] = useState<string | null>(null);

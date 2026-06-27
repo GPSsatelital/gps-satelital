@@ -384,6 +384,18 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 
 ## COBROS Y CARTERA
 
+### Estructura del módulo Cartera (CobrosView) — 4 secciones ✅
+De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por estado):
+| Sección | Qué muestra | Sub-navegación interna |
+|---------|-------------|------------------------|
+| 📋 **Hoy** (default) | Tareas del día por urgencia (Recolección→Mora→Gabela→Pagan hoy) + resumen efectivo recogido | — (lista en recuadro con scroll) |
+| 📁 **Contratos** | Lista navegable de toda la cartera | Chips: Todos/Mora/Gabela/Al día/Pagan hoy + buscador (recuadro con scroll) |
+| 💵 **Dinero** | Confirmar pagos + cobrar en campo | Sub-chips: Por confirmar / Cobrar en campo |
+| 🧾 **Historial** | Todos los pagos con filtros | (recuadro con scroll) |
+- **Los KPIs** (Pagan hoy/Recaudado/Gabela/Mora) navegan a Contratos con el filtro puesto (o a Historial).
+- **Listas dentro de recuadros** (`maxHeight ~64vh + overflowY:auto`) para que no ocupen toda la pantalla.
+- Mora/Gabela/Pagan-hoy/Recolección/Protocolo ya NO son pestañas: viven dentro de **Hoy** (tareas) o como **filtro de Contratos**. Cero funcionalidad perdida.
+
 ### Protocolo de mora (orden estricto)
 1. **Día de pago** → mensaje WhatsApp durante la mañana
 2. **Día de gabela** → mensaje + llamada + sirena máx 5-10 seg (vehículo **detenido**)
@@ -638,6 +650,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 2. **Panel "📋 Hoy"** en Cartera (pestaña por defecto) — tareas del día por urgencia (Recolección → Mora → Gabela → Pagan hoy), botones Mensaje/Llamar/Sirena/Recolección que registran en `gestiones_cobro`; "hecho hoy" = gestión con `fecha=hoy`.
 3. **Navegación reorganizada** — hoja Más (móvil) y sidebar (desktop) con MISMA taxonomía: Operaciones · Cobros & Dinero · Flota & Taller · Seguimiento · Administración.
 4. **Cobro en campo completo** (mig 023 `pagos.ubicacion`) — quién: ADMIN/AP/SUBADMIN; cualquier contrato (mora/gabela arriba); referencia "Debe pagar"; GPS + foto opcional; recibo provisional WhatsApp; botón "💵 Cobrar" en panel Hoy + resumen de efectivo; conciliación por funcionario en Caja Diaria; flujo 2 pasos (entregar → confirmar). Ver sección "Cobro en campo" en COBROS Y CARTERA.
+5. **Cartera reorganizada: 11 pestañas → 4 secciones** (Hoy · Contratos · Dinero · Historial). Listas dentro de recuadros con scroll propio. KPIs navegan a Contratos con filtro. Ver "Estructura del módulo Cartera" en COBROS Y CARTERA.
 
 ### Migraciones ya aplicadas en Supabase por el usuario
 - `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ (confirmar)

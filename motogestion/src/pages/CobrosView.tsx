@@ -456,7 +456,9 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
   );
 }
 
-type TabKey = "hoy" | "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "por-confirmar" | "protocolo" | "campo" | "recoleccion" | "historial";
+type TabKey = "hoy" | "contratos" | "dinero" | "historial";
+type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy";
+type DineroTab = "por-confirmar" | "campo";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -489,6 +491,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }, []);
 
   const [activeTab, setActiveTab] = useState<TabKey>("hoy");
+  const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
+  const [dineroTab, setDineroTab] = useState<DineroTab>("por-confirmar");
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
@@ -545,7 +549,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [detailTab, setDetailTab] = useState<"gestiones" | "deudas" | "convenios" | "historial">("gestiones");
 
   // Protocolo / Campo / Recolección state
-  const [accionExitoId, setAccionExitoId] = useState<string | null>(null);
   const [campoContratoId, setCampoContratoId] = useState<string | null>(null);
   const [campoMonto, setCampoMonto] = useState("");
   const [campoNota, setCampoNota] = useState("");
@@ -555,7 +558,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [campoUbicacion, setCampoUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [campoGpsEstado, setCampoGpsEstado] = useState<"idle" | "capturando" | "ok" | "error">("idle");
   const [campoFoto, setCampoFoto] = useState<File | null>(null);
-  const [recoleccionOrdenada, setRecoleccionOrdenada] = useState<Set<string>>(new Set());
 
   const contratosActivos = contratos.filter(c => c.estado === "Activo");
 
@@ -617,7 +619,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const enMora = resumenContratos.filter(r => r.estadoCartera === "mora");
   const enGabela = resumenContratos.filter(r => r.estadoCartera === "gabela");
   const alDia = resumenContratos.filter(r => r.estadoCartera === "al-dia");
-  const enMoraCritica = resumenContratos.filter(r => r.diasSinPago > 3).length;
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
   const recaudadoSemanaTotal = resumenContratos.reduce((acc, r) => acc + r.pagadoEstaSemana, 0);
   // ── Pagan Hoy ─────────────────────────────────────────────────────────────
@@ -696,11 +697,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // ── Filtrar lista ─────────────────────────────────────────────────────────
   const listaFiltrada = useMemo(() => {
     let base: typeof resumenContratos;
-    if (activeTab === "gabela") base = enGabela;
-    else if (activeTab === "mora") base = enMora;
-    else if (activeTab === "al-dia") base = alDia;
-    else if (activeTab === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
-    else base = [...enMora, ...enGabela, ...alDia];
+    if (filtroContratos === "gabela") base = enGabela;
+    else if (filtroContratos === "mora") base = enMora;
+    else if (filtroContratos === "al-dia") base = alDia;
+    else if (filtroContratos === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
+    else base = resumenContratos;
 
     const q = busqueda.toLowerCase();
     if (!q) return base;
@@ -712,7 +713,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         (moto?.placa ?? "").toLowerCase().includes(q)
       );
     });
-  }, [activeTab, enMora, enGabela, alDia, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, resumenContratos, enMora, enGabela, alDia, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -973,12 +974,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     }
   }
 
-  async function handleAccionRapida(contratoId: string, tipo: string) {
-    if (!profile) return;
-    await registrarGestion(contratoId, tipo as TipoGestion, "Realizado", profile.id);
-    setAccionExitoId(contratoId);
-    setTimeout(() => setAccionExitoId(null), 2000);
-  }
 
   // Captura GPS del lugar del cobro
   function capturarGPSCampo() {
@@ -997,7 +992,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setCampoContratoId(contratoId);
     setCampoMonto(""); setCampoNota(""); setCampoError(""); setCampoFoto(null);
     setCampoUbicacion(null); setCampoGpsEstado("idle");
-    setActiveTab("campo");
+    setActiveTab("dinero"); setDineroTab("campo");
     capturarGPSCampo();
   }
 
@@ -1582,25 +1577,28 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   // ── KPI cards ─────────────────────────────────────────────────────────────
-  const kpis = [
-    { label: "Pagan hoy", value: totalPaganHoy, color: "#0284c7", bg: "#eff6ff", tab: "pagan-hoy" as TabKey },
-    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "#166534", bg: "#dcfce7", tab: "al-dia" as TabKey },
-    { label: "En gabela", value: enGabela.length, color: "#92400e", bg: "#fef3c7", tab: "gabela" as TabKey },
-    { label: "En mora", value: enMora.length, color: "#991b1b", bg: "#fee2e2", tab: "mora" as TabKey },
+  // Cada KPI lleva a Contratos con el filtro puesto (o a Historial)
+  function irAContratos(filtro: FiltroContratos) { setActiveTab("contratos"); setFiltroContratos(filtro); setContratoSeleccionadoId(null); }
+  const kpis: { label: string; value: string | number; sub?: string; color: string; bg: string; onClick: () => void }[] = [
+    { label: "Pagan hoy", value: totalPaganHoy, color: "#0284c7", bg: "#eff6ff", onClick: () => irAContratos("pagan-hoy") },
+    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "#166534", bg: "#dcfce7", onClick: () => { setActiveTab("historial"); setContratoSeleccionadoId(null); } },
+    { label: "En gabela", value: enGabela.length, color: "#92400e", bg: "#fef3c7", onClick: () => irAContratos("gabela") },
+    { label: "En mora", value: enMora.length, color: "#991b1b", bg: "#fee2e2", onClick: () => irAContratos("mora") },
   ];
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: "hoy", label: "📋 Hoy", count: totalTareasHoy },
+    { key: "contratos", label: "📁 Contratos", count: resumenContratos.length },
+    { key: "dinero", label: "💵 Dinero", count: pagosPendientes.length },
+    { key: "historial", label: "🧾 Historial" },
+  ];
+
+  const FILTROS_CONTRATOS: { key: FiltroContratos; label: string; count: number }[] = [
+    { key: "todos", label: "Todos", count: resumenContratos.length },
     { key: "mora", label: "Mora", count: enMora.length },
     { key: "gabela", label: "Gabela", count: enGabela.length },
-    { key: "pagan-hoy", label: "Pagan Hoy", count: totalPaganHoy },
     { key: "al-dia", label: "Al día", count: alDia.length },
-    { key: "todos", label: "Todos", count: resumenContratos.length },
-    { key: "por-confirmar", label: "Por confirmar", count: pagosPendientes.length },
-    { key: "protocolo", label: "Protocolo" },
-    { key: "campo", label: "Campo" },
-    { key: "recoleccion", label: "Recolección", count: enMoraCritica },
-    { key: "historial", label: "Historial" },
+    { key: "pagan-hoy", label: "Pagan hoy", count: totalPaganHoy },
   ];
 
   // On mobile with a selected contract → show only detail
@@ -1630,11 +1628,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
         {kpis.map(k => (
           <button
-            key={k.tab}
-            onClick={() => { setActiveTab(k.tab); setContratoSeleccionadoId(null); }}
+            key={k.label}
+            onClick={k.onClick}
             style={{
-              background: activeTab === k.tab ? k.bg : "white",
-              border: activeTab === k.tab ? `2px solid ${k.color}` : "2px solid transparent",
+              background: "white",
+              border: "2px solid transparent",
               borderRadius: 16,
               padding: "14px 16px",
               cursor: "pointer",
@@ -1644,7 +1642,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           >
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: k.color }}>{k.value}</div>
-            {"sub" in k && k.sub && (
+            {k.sub && (
               <div style={{ fontSize: 11, color: k.color, opacity: 0.75, marginTop: 2 }}>{k.sub}</div>
             )}
           </button>
@@ -1718,7 +1716,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
             </div>
           ) : (
-            ([
+            <div style={{ maxHeight: isMobile ? "64vh" : "68vh", overflowY: "auto", paddingRight: 2 }}>
+            {([
               { key: "recoleccion", titulo: "🚚 Recolección física", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
                 tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Ordenar recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
               { key: "mora", titulo: "🔴 En mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
@@ -1787,14 +1786,37 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   })}
                 </div>
               </div>
-            ))
+            ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* Por confirmar tab — transferencias y cobros en campo pendientes */}
-      {activeTab === "por-confirmar" && (
-        <div style={{ ...card }}>
+      {/* DINERO — sub-chips */}
+      {activeTab === "dinero" && (
+        <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 4 }}>
+          {([
+            { key: "por-confirmar" as DineroTab, label: `Por confirmar (${pagosPendientes.length})` },
+            { key: "campo" as DineroTab, label: "💵 Cobrar en campo" },
+          ]).map(s => (
+            <button
+              key={s.key}
+              onClick={() => { setDineroTab(s.key); setContratoSeleccionadoId(null); }}
+              style={{
+                background: dineroTab === s.key ? "#0284c7" : "#f1f5f9",
+                color: dineroTab === s.key ? "white" : "#334155",
+                border: "none", borderRadius: 999, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Por confirmar — transferencias y cobros en campo pendientes */}
+      {activeTab === "dinero" && dineroTab === "por-confirmar" && (
+        <div style={{ ...card, marginTop: 12 }}>
           <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>Pagos por confirmar</div>
           <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
             Transferencias por verificar y efectivo cobrado en campo por entregar/confirmar.
@@ -1912,7 +1934,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               ))}
             </div>
           </div>
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 10, maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
             {pagosFiltrados.length === 0 && <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>}
             {pagosFiltrados.map(p => {
               const contrato = contratos.find(c => c.id === p.contrato_id);
@@ -1968,120 +1990,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         </div>
       )}
 
-      {/* Pagan hoy tab — two sections */}
-      {activeTab === "pagan-hoy" && (
-        <div style={{ marginTop: 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Diario section */}
-            <div style={card}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 18 }}>📅</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>Pago diario</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>Pagan cada día hábil · {paganHoyDiario.length} contratos</div>
-                </div>
-              </div>
-              <input
-                style={{ ...inputStyle, marginBottom: 12 }}
-                placeholder="Buscar cliente o placa..."
-                value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-              />
-              <ListaContratos lista={paganHoyDiario.filter(c => {
-                const q = busqueda.toLowerCase();
-                if (!q) return true;
-                const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                const moto = motos.find(m => m.id === c.moto_id);
-                return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
-              })} />
-            </div>
-
-            {/* Periódico section */}
-            <div style={{ ...card, marginTop: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 18 }}>📆</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>Semanal / Quincenal / Mensual</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    {paganHoyPeriodico.length > 0
-                      ? `${paganHoyPeriodico.length} contratos con vencimiento hoy`
-                      : `Ningún contrato periódico vence hoy (${DIAS_LABEL[hoyDia]})`}
-                  </div>
-                </div>
-              </div>
-              <ListaContratos lista={paganHoyPeriodico.filter(c => {
-                const q = busqueda.toLowerCase();
-                if (!q) return true;
-                const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                const moto = motos.find(m => m.id === c.moto_id);
-                return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
-              })} />
-            </div>
-          </div>
-
-          {/* Detail panel — desktop only (mobile uses full screen) */}
-          {!isMobile && (
-            <div style={{ flex: "0 0 380px", maxWidth: 380 }}>
-              <PanelDetalle />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab Protocolo */}
-      {activeTab === "protocolo" && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ marginBottom: 12, fontSize: 14, color: "#64748b" }}>
-            Sigue el protocolo de mora en orden estricto.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[...resumenContratos]
-              .filter(r => r.diasSinPago >= 0)
-              .sort((a, b) => b.diasSinPago - a.diasSinPago)
-              .map(r => {
-                const cliente = clientes.find(cl => cl.id === r.cliente_id);
-                const moto = motos.find(m => m.id === r.moto_id);
-                const paso = calcProtocoloStep(r.diasSinPago);
-                return (
-                  <div key={r.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.08)", border: `1px solid ${paso.bg}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "#0f172a" }}>
-                          {cliente?.nombre || "Sin cliente"}
-                        </div>
-                        {moto && <div style={{ fontSize: 13, color: "#0284c7", fontWeight: 700 }}>🏍️ {moto.placa}</div>}
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                          {r.diasSinPago === 999 ? "Sin pagos registrados" : `${r.diasSinPago} día(s) sin pago`}
-                        </div>
-                      </div>
-                      <span style={{ padding: "4px 12px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: paso.bg, color: paso.color, border: `1px solid ${paso.color}33` }}>
-                        Paso {paso.paso}: {paso.label}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                      <button onClick={() => handleAccionRapida(r.id, "llamada")} style={miniBtn("#e0f2fe", "#0284c7")}>
-                        📞 Registrar llamada
-                      </button>
-                      <button onClick={() => handleAccionRapida(r.id, "sirena")} style={miniBtn("#fef3c7", "#92400e")}>
-                        📣 Registrar sirena
-                      </button>
-                      <button onClick={() => handleAccionRapida(r.id, "visita")} style={miniBtn("#f1f5f9", "#334155")}>
-                        🏠 Anotar visita
-                      </button>
-                    </div>
-                    {accionExitoId === r.id && (
-                      <div style={{ marginTop: 8, color: "#166534", fontWeight: 700, fontSize: 13 }}>✓ Registrado</div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
       {/* Tab Campo */}
-      {activeTab === "campo" && (
-        <div style={{ marginTop: 20 }}>
+      {activeTab === "dinero" && dineroTab === "campo" && (
+        <div style={{ marginTop: 12 }}>
           <div style={{ ...card, marginBottom: 16, background: "#fffbeb", border: "1px solid #fde68a" }}>
             <div style={{ fontSize: 14, color: "#92400e", fontWeight: 600 }}>
               Recuperas efectivo en campo → queda pendiente → la secretaria lo confirma en Caja.
@@ -2215,64 +2126,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         </div>
       )}
 
-      {/* Tab Recolección */}
-      {activeTab === "recoleccion" && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ ...card, marginBottom: 16, background: "#fff1f2", border: "1px solid #fecdd3" }}>
-            <div style={{ fontSize: 14, color: "#991b1b", fontWeight: 700 }}>
-              ⚠️ Llama al GPS y a la policía antes de acercarte al vehículo
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[...resumenContratos]
-              .filter(r => r.diasSinPago > 3)
-              .sort((a, b) => b.diasSinPago - a.diasSinPago)
-              .map(r => {
-                const cliente = clientes.find(cl => cl.id === r.cliente_id);
-                const moto = motos.find(m => m.id === r.moto_id);
-                const ordenada = recoleccionOrdenada.has(r.id);
-                return (
-                  <div key={r.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.08)", border: ordenada ? "2px solid #166534" : "1px solid #fecaca" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "#0f172a" }}>
-                          {cliente?.nombre || "Sin cliente"}
-                        </div>
-                        {moto && <div style={{ fontSize: 13, color: "#0284c7", fontWeight: 700 }}>🏍️ {moto.placa}</div>}
-                      </div>
-                      <span style={{ padding: "4px 12px", borderRadius: 999, fontWeight: 800, fontSize: 13, background: "#fee2e2", color: "#991b1b" }}>
-                        {r.diasSinPago === 999 ? "Sin pagos" : `${r.diasSinPago} días`}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                      <button
-                        onClick={() => {
-                          setRecoleccionOrdenada(prev => {
-                            const next = new Set(prev);
-                            if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
-                            return next;
-                          });
-                        }}
-                        style={ordenada ? miniBtn("#dcfce7", "#166534") : miniBtn("#fee2e2", "#991b1b")}
-                      >
-                        {ordenada ? "✓ Orden enviada" : "Ordenar recolección"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            {resumenContratos.filter(r => r.diasSinPago > 3).length === 0 && (
-              <div style={{ color: "#64748b", fontSize: 14 }}>No hay contratos con más de 3 días sin pago.</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Other tabs (gabela, mora, al-dia, todos) */}
-      {activeTab !== "hoy" && activeTab !== "pagan-hoy" && activeTab !== "historial" && activeTab !== "protocolo" && activeTab !== "campo" && activeTab !== "recoleccion" && activeTab !== "por-confirmar" && (
-        <div style={{ marginTop: 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
+      {/* CONTRATOS — lista navegable con chips de filtro */}
+      {activeTab === "contratos" && (
+        <div style={{ marginTop: 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Chips de filtro */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+              {FILTROS_CONTRATOS.map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => { setFiltroContratos(f.key); setContratoSeleccionadoId(null); }}
+                  style={{
+                    background: filtroContratos === f.key ? "#0284c7" : "#f1f5f9",
+                    color: filtroContratos === f.key ? "white" : "#334155",
+                    border: "none", borderRadius: 999, padding: "7px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                  }}
+                >
+                  {f.label} <span style={{ opacity: 0.7 }}>({f.count})</span>
+                </button>
+              ))}
+            </div>
             <div style={card}>
               <input
                 style={{ ...inputStyle, marginBottom: 12 }}
@@ -2280,7 +2154,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
               />
-              <ListaContratos lista={listaFiltrada} />
+              {/* Lista dentro de recuadro con scroll propio */}
+              <div style={{ maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
+                {listaFiltrada.length === 0
+                  ? <div style={{ textAlign: "center", padding: "28px 12px", color: "#94a3b8", fontSize: 14 }}>No hay contratos en este filtro.</div>
+                  : <ListaContratos lista={listaFiltrada} />}
+              </div>
             </div>
           </div>
 
@@ -2308,7 +2187,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               )}
               {puedeCobroCampo && (
                 <button
-                  onClick={() => { setFabOpen(false); setContratoSeleccionadoId(null); setActiveTab("campo"); }}
+                  onClick={() => { setFabOpen(false); setContratoSeleccionadoId(null); setActiveTab("dinero"); setDineroTab("campo"); }}
                   style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
                   💵 Cobro en campo
@@ -2322,7 +2201,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               const soloPago = puedePagoNormal && !puedeCobroCampo;
               const soloCampo = puedeCobroCampo && !puedePagoNormal;
               if (soloPago) { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); return; }
-              if (soloCampo) { setContratoSeleccionadoId(null); setActiveTab("campo"); return; }
+              if (soloCampo) { setContratoSeleccionadoId(null); setActiveTab("dinero"); setDineroTab("campo"); return; }
               setFabOpen(v => !v);
             }}
             aria-label="Acciones rápidas"

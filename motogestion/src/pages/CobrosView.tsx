@@ -551,6 +551,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [campoNota, setCampoNota] = useState("");
   const [campoError, setCampoError] = useState("");
   const [campoExito, setCampoExito] = useState(false);
+  const [campoBusqueda, setCampoBusqueda] = useState("");
+  const [campoUbicacion, setCampoUbicacion] = useState<{ lat: number; lng: number } | null>(null);
+  const [campoGpsEstado, setCampoGpsEstado] = useState<"idle" | "capturando" | "ok" | "error">("idle");
+  const [campoFoto, setCampoFoto] = useState<File | null>(null);
   const [recoleccionOrdenada, setRecoleccionOrdenada] = useState<Set<string>>(new Set());
 
   const contratosActivos = contratos.filter(c => c.estado === "Activo");
@@ -636,6 +640,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   function gestionHechaHoy(contratoId: string, tipo: TipoGestion): boolean {
     return gestiones.some(g => g.contrato_id === contratoId && g.tipo === tipo && g.fecha === hoyISOPanel);
   }
+
+  // Conciliación: cobros en campo que YO registré hoy (efectivo a entregar a caja)
+  const misCobrosCampoHoy = useMemo(() => {
+    if (!profile) return { total: 0, count: 0, pendienteEntregar: 0 };
+    const mios = pagos.filter(p => p.tipo_registro === "campo" && p.fecha === hoyISOPanel && p.registrado_por === profile.id);
+    const total = mios.reduce((acc, p) => acc + p.valor, 0);
+    const pendienteEntregar = mios.filter(p => !p.entregado_caja).reduce((acc, p) => acc + p.valor, 0);
+    return { total, count: mios.length, pendienteEntregar };
+  }, [pagos, profile, hoyISOPanel]);
 
   const panelHoy = useMemo(() => {
     const idsPaganHoy = new Set([...paganHoyDiario, ...paganHoyPeriodico].map(c => c.id));
@@ -967,6 +980,46 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setTimeout(() => setAccionExitoId(null), 2000);
   }
 
+  // Captura GPS del lugar del cobro
+  function capturarGPSCampo() {
+    if (!navigator.geolocation) { setCampoGpsEstado("error"); return; }
+    setCampoGpsEstado("capturando");
+    navigator.geolocation.getCurrentPosition(
+      pos => { setCampoUbicacion({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setCampoGpsEstado("ok"); },
+      () => setCampoGpsEstado("error"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
+
+  // Abre el formulario de cobro en campo para un contrato y captura GPS automáticamente
+  function abrirCobroCampo(contratoId: string) {
+    setContratoSeleccionadoId(null);
+    setCampoContratoId(contratoId);
+    setCampoMonto(""); setCampoNota(""); setCampoError(""); setCampoFoto(null);
+    setCampoUbicacion(null); setCampoGpsEstado("idle");
+    setActiveTab("campo");
+    capturarGPSCampo();
+  }
+
+  // Recibo provisional por WhatsApp al cliente
+  function enviarReciboCampo(r: typeof resumenContratos[number], monto: number, folio: string) {
+    const cliente = clientes.find(cl => cl.id === r.cliente_id);
+    const moto = motos.find(m => m.id === r.moto_id);
+    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
+    const num = tel.startsWith("57") ? tel : `57${tel}`;
+    const lineas = [
+      "🧾 *GPS SATELITAL — Recibo provisional (cobro en campo)*",
+      `Folio: ${folio}`,
+      `Fecha: ${new Date().toLocaleDateString("es-CO")}`,
+      `Cliente: ${(cliente?.nombre ?? "").toUpperCase()}`,
+      moto ? `Placa: ${moto.placa}` : "",
+      `Monto recibido: $${fmt(monto)}`,
+      "",
+      "⏳ Pago recibido en campo. Pendiente de validación en caja. Conserve este comprobante.",
+    ].filter(Boolean).join("\n");
+    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${encodeURIComponent(lineas)}`, "_blank");
+  }
+
   async function handleCampoSubmit() {
     if (procesando) return;
     if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
@@ -986,13 +1039,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
     setProcesando(true);
     try {
-      const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio);
-      if (error) { setCampoError(error); return; }
-      if (campoNota.trim()) {
-        await registrarGestion(campoContratoId, "cobro_campo", `Efectivo recuperado en campo (${folio}): $${fmt(monto)}. ${campoNota}`, profile.id);
+      // Foto opcional
+      let comprobanteUrl: string | undefined;
+      if (campoFoto) {
+        const { url, error: upErr } = await subirComprobante(campoFoto, campoContratoId);
+        if (upErr) { setCampoError(`Error subiendo foto: ${upErr}`); return; }
+        comprobanteUrl = url ?? undefined;
       }
+      const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio, { ubicacion: campoUbicacion, comprobanteUrl });
+      if (error) { setCampoError(error); return; }
+      const nota = `Efectivo recuperado en campo (${folio}): $${fmt(monto)}.${campoNota.trim() ? ` ${campoNota}` : ""}${campoUbicacion ? ` [GPS ${campoUbicacion.lat.toFixed(5)},${campoUbicacion.lng.toFixed(5)}]` : ""}`;
+      await registrarGestion(campoContratoId, "cobro_campo", nota, profile.id);
+      enviarReciboCampo(r, monto, folio);
       setCampoExito(true);
-      setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoNota(""); setCampoError(""); }, 2500);
+      setTimeout(() => { setCampoExito(false); setCampoContratoId(null); setCampoMonto(""); setCampoNota(""); setCampoError(""); setCampoFoto(null); setCampoUbicacion(null); setCampoGpsEstado("idle"); }, 2500);
     } finally {
       setProcesando(false);
     }
@@ -1640,6 +1700,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
           </div>
 
+          {/* Resumen de efectivo recogido en campo (conciliación) */}
+          {puedeCobroCampo && misCobrosCampoHoy.count > 0 && (
+            <div style={{ ...card, marginBottom: 16, background: "#f0fdf4", border: "1px solid #bbf7d0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>💵 Recogiste hoy: $ {fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
+                {misCobrosCampoHoy.pendienteEntregar > 0 && (
+                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>Pendiente entregar a caja: <strong>$ {fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
+                )}
+              </div>
+            </div>
+          )}
+
           {totalTareasHoy === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
@@ -1704,6 +1776,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                               </button>
                             );
                           })}
+                          {puedeCobroCampo && (
+                            <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#dcfce7", "#166534")}>
+                              💵 Cobrar
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -2007,33 +2084,49 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         <div style={{ marginTop: 20 }}>
           <div style={{ ...card, marginBottom: 16, background: "#fffbeb", border: "1px solid #fde68a" }}>
             <div style={{ fontSize: 14, color: "#92400e", fontWeight: 600 }}>
-              Admin recupera efectivo en campo → secretaria confirma
+              Recuperas efectivo en campo → queda pendiente → la secretaria lo confirma en Caja.
             </div>
           </div>
           {campoContratoId === null ? (
             <div>
-              <div style={{ marginBottom: 10, fontSize: 14, color: "#64748b" }}>Selecciona el contrato del cobro en campo:</div>
+              <input
+                style={{ ...inputStyle, marginBottom: 12 }}
+                placeholder="Buscar cliente o placa..."
+                value={campoBusqueda}
+                onChange={e => setCampoBusqueda(e.target.value)}
+              />
+              <div style={{ marginBottom: 10, fontSize: 13, color: "#64748b" }}>Selecciona el contrato. Los de <strong>mora/gabela</strong> aparecen primero.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[...enMora, ...enGabela].map(r => {
-                  const cliente = clientes.find(cl => cl.id === r.cliente_id);
-                  const moto = motos.find(m => m.id === r.moto_id);
-                  return (
-                    <div
-                      key={r.id}
-                      onClick={() => setCampoContratoId(r.id)}
-                      style={{ ...card, cursor: "pointer", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                        {moto && <div style={{ fontSize: 12, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                {(() => {
+                  const orden = (e: EstadoCartera) => e === "mora" ? 0 : e === "gabela" ? 1 : 2;
+                  const q = campoBusqueda.toLowerCase();
+                  const lista = [...resumenContratos]
+                    .filter(r => {
+                      if (!q) return true;
+                      const cliente = clientes.find(cl => cl.id === r.cliente_id);
+                      const moto = motos.find(m => m.id === r.moto_id);
+                      return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
+                    })
+                    .sort((a, b) => orden(a.estadoCartera) - orden(b.estadoCartera));
+                  if (lista.length === 0) return <div style={{ color: "#64748b", fontSize: 14 }}>No hay contratos.</div>;
+                  return lista.map(r => {
+                    const cliente = clientes.find(cl => cl.id === r.cliente_id);
+                    const moto = motos.find(m => m.id === r.moto_id);
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => abrirCobroCampo(r.id)}
+                        style={{ ...card, cursor: "pointer", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
+                          {moto && <div style={{ fontSize: 12, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                        </div>
+                        <EstadoBadge estado={r.estadoCartera} />
                       </div>
-                      <EstadoBadge estado={r.estadoCartera} />
-                    </div>
-                  );
-                })}
-                {enMora.length === 0 && enGabela.length === 0 && (
-                  <div style={{ color: "#64748b", fontSize: 14 }}>No hay contratos en mora o gabela.</div>
-                )}
+                    );
+                  });
+                })()}
               </div>
             </div>
           ) : (
@@ -2042,23 +2135,67 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 const r = resumenContratos.find(x => x.id === campoContratoId);
                 const cliente = r ? clientes.find(cl => cl.id === r.cliente_id) : null;
                 const moto = r ? motos.find(m => m.id === r.moto_id) : null;
+                // Referencia: cuánto debe pagar
+                const cuotaPact = r ? (r.forma_pago === "Diario"
+                  ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
+                  : r.valor_semanal) : 0;
+                const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0)) : 0;
+                const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
+                const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
                 return (
                   <div style={{ display: "grid", gap: 12 }}>
                     <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
                       <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
                       {moto && <div style={{ fontSize: 13, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
                     </div>
+
+                    {/* Referencia: cuánto debe pagar */}
+                    <div style={{ background: "#eff6ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#0369a1", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: "#0284c7" }}>$ {fmt(debeTotal)}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                        Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
+                      </div>
+                    </div>
+
                     <div>
                       <div style={labelStyle}>Monto recuperado ($)</div>
-                      <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder="Ej. 27000" />
+                      <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder={`Ej. ${debeTotal || 27000}`} />
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
+
+                    {/* GPS */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13, color: "#334155", fontWeight: 600 }}>📍 Ubicación:</span>
+                      {campoGpsEstado === "capturando" && <span style={{ fontSize: 13, color: "#92400e" }}>Capturando…</span>}
+                      {campoGpsEstado === "ok" && campoUbicacion && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✓ Capturada</span>}
+                      {campoGpsEstado === "error" && <span style={{ fontSize: 13, color: "#991b1b" }}>No disponible</span>}
+                      {campoGpsEstado === "idle" && <span style={{ fontSize: 13, color: "#64748b" }}>Sin capturar</span>}
+                      <button onClick={capturarGPSCampo} style={{ ...secondaryBtn, fontSize: 12, padding: "6px 10px" }}>{campoUbicacion ? "Recapturar" : "Capturar GPS"}</button>
+                    </div>
+
+                    {/* Foto opcional */}
+                    <div>
+                      <div style={labelStyle}>Foto (opcional)</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
+                          📷 Cámara
+                          <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
+                        </label>
+                        <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
+                          🖼 Galería
+                          <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
+                        </label>
+                        {campoFoto && <span style={{ fontSize: 12, color: "#166534", fontWeight: 700, alignSelf: "center" }}>✓ {campoFoto.name.slice(0, 20)}</span>}
+                      </div>
+                    </div>
+
                     <div>
                       <div style={labelStyle}>Nota (opcional)</div>
                       <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={campoNota} onChange={e => setCampoNota(e.target.value)} placeholder="Observaciones del cobro en campo..." />
                     </div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
                     <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e" }}>
-                      Quedará <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme. Podrás enviar el recibo provisional al cliente desde "Por confirmar".
+                      Al registrar: se manda <strong>recibo provisional</strong> al cliente por WhatsApp y queda <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme en Caja.
                     </div>
                     {campoError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
                     {campoExito && (
@@ -2068,7 +2205,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     )}
                     <div style={{ display: "flex", gap: 10 }}>
                       <button onClick={handleCampoSubmit} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
-                      <button onClick={() => setCampoContratoId(null)} style={secondaryBtn}>Cancelar</button>
+                      <button onClick={() => { setCampoContratoId(null); setCampoBusqueda(""); }} style={secondaryBtn}>Cancelar</button>
                     </div>
                   </div>
                 );

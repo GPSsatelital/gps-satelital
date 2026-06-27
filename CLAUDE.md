@@ -404,8 +404,17 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 | Registrar pago efectivo | Solo SECRETARIA |
 | Reportar transferencia (foto comprobante) | ADMIN jr o SECRETARIA |
 | Confirmar transferencia | SECRETARIA |
-| Cobro en campo | ADMIN crea reporte → SECRETARIA confirma |
+| Cobro en campo | ADMIN/ADMIN_PRINCIPAL/SUBADMIN recupera efectivo → SECRETARIA confirma |
 | Ver historial de pagos | Todos |
+
+### Cobro en campo — flujo y reglas (implementado ✅)
+- **Quién:** ADMIN, ADMIN_PRINCIPAL, SUBADMIN (no SECRETARIA — ella cobra en oficina).
+- **Sobre qué contratos:** cualquier contrato activo (no limitante), pero la lista **destaca mora/gabela arriba**.
+- **Flujo 2 pasos (doble control):** funcionario registra → marca "entregué a caja" (`entregado_caja`) → SECRETARIA confirma en Caja (`estado=Confirmado`).
+- **En el momento del cobro:** referencia "Debe pagar" (cuota período + deuda + convenio) · captura **GPS** (`pagos.ubicacion` jsonb, mig 023) · **foto opcional** (reúsa `pagos.comprobante_url`) · **recibo provisional** por WhatsApp.
+- **Dos entradas (misma puerta):** botón "+" global (busca cliente) y botón "💵 Cobrar" en cada tarjeta del panel Hoy.
+- **Conciliación:** resumen "recogiste hoy $X" en panel Hoy (por persona) + en **Caja Diaria** resumen por funcionario (total, pendiente entregar, sin confirmar).
+- `pagos.tipo_registro="campo"`, `forzarPendiente=true` (queda Pendiente aunque sea efectivo).
 
 ### Convenios
 - Máximo 3 por contrato
@@ -430,7 +439,7 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 `id` | `cliente_id` FK | `moto_id` FK nullable | `forma_pago` (Diario/Semanal/Quincenal/Mensual) | `dia_pago` | `valor_semanal` | `tarifa_diaria` | `tarifa_domingo` | `ahorro_diario` | **`ahorro_domingo`** | `meses` | **`ahorro_inicial`** (pre-cargado desde `clientes.ingreso_inicial`) | `ahorro_acumulado` | `base_completada` | `base_inicial` | `fecha_entrega` | `firma_cliente` | `firma_responsable` | `contrato_pdf_url` | `certificado_pdf_url` | `pagare_pdf_url` | `estado` (En proceso/Activo/Finalizado/Cancelado/Suspendido)
 
 ### `pagos`
-`id` | `contrato_id` FK | `registrado_por` FK | `valor` | `metodo` (Efectivo/Transferencia) | `estado` (Confirmado/Pendiente/Rechazado) | `tipo_registro` (normal/campo/transferencia) | `comprobante_url` | `aplicado` (jsonb) | `entregado_caja` | `folio` | `fecha`
+`id` | `contrato_id` FK | `registrado_por` FK | `valor` | `metodo` (Efectivo/Transferencia) | `estado` (Confirmado/Pendiente/Rechazado) | `tipo_registro` (normal/campo/transferencia) | `comprobante_url` (transferencia o foto de cobro en campo) | `aplicado` (jsonb) | `entregado_caja` | `folio` | **`ubicacion`** (jsonb {lat,lng} — GPS del cobro en campo, mig 023) | `fecha`
 
 ### `visitas`
 `id` | `cliente_id` FK | `estado` | `resultado` | `entrevista` (jsonb) | `fotos` (jsonb) | `ubicacion` ({lat, lng}) | `fecha` | `realizada_por` FK | **`asignada_a`** FK→profiles (sub-admin asignado a la visita)
@@ -559,6 +568,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `020_ahorro_domingo.sql` — agrega columna `ahorro_domingo` a contratos ✅
 - `021_motos_subadmin.sql` — agrega `motos.subadmin_id` (sub-admin a cargo) ✅
 - `022_visitas_asignacion.sql` — agrega `visitas.asignada_a` (sub-admin asignado a la visita) ✅
+- `023_pagos_ubicacion.sql` — agrega `pagos.ubicacion` (GPS del cobro en campo) ✅
 
 ### Pendientes manuales ⚠️
 - Desplegar Edge Function: `supabase functions deploy manage-users`

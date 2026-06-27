@@ -1751,7 +1751,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         return (
           <div style={{ marginTop: 20 }}>
             {/* Chips de filtro — igual que Contratos */}
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {CHIPS_HOY.map(ch => (
                 <button
                   key={ch.key}
@@ -1759,16 +1759,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   style={{
                     background: filtroHoy === ch.key ? "#0284c7" : "#f1f5f9",
                     color: filtroHoy === ch.key ? "white" : "#334155",
-                    border: "none", borderRadius: 999, padding: "7px 14px",
-                    fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                    border: "none", borderRadius: 999, padding: "5px 10px",
+                    fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
                   {ch.label}
                   <span style={{
-                    marginLeft: 6,
+                    marginLeft: 4,
                     background: filtroHoy === ch.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
                     color: filtroHoy === ch.key ? "white" : "#64748b",
-                    borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700,
+                    borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
                   }}>{ch.count}</span>
                 </button>
               ))}

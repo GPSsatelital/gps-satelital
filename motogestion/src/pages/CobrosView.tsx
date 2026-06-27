@@ -456,7 +456,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
   );
 }
 
-type TabKey = "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "por-confirmar" | "protocolo" | "campo" | "recoleccion" | "historial";
+type TabKey = "hoy" | "pagan-hoy" | "gabela" | "mora" | "al-dia" | "todos" | "por-confirmar" | "protocolo" | "campo" | "recoleccion" | "historial";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -488,7 +488,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("mora");
+  const [activeTab, setActiveTab] = useState<TabKey>("hoy");
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
@@ -630,6 +630,55 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     }), [resumenContratos, hoyDia]);
 
   const totalPaganHoy = paganHoyDiario.length + paganHoyPeriodico.length;
+
+  // ── Panel HOY: tareas del día agrupadas por urgencia (sin duplicar) ─────────
+  const hoyISOPanel = new Date().toISOString().slice(0, 10);
+  function gestionHechaHoy(contratoId: string, tipo: TipoGestion): boolean {
+    return gestiones.some(g => g.contrato_id === contratoId && g.tipo === tipo && g.fecha === hoyISOPanel);
+  }
+
+  const panelHoy = useMemo(() => {
+    const idsPaganHoy = new Set([...paganHoyDiario, ...paganHoyPeriodico].map(c => c.id));
+    const recoleccion: typeof resumenContratos = [];
+    const mora: typeof resumenContratos = [];
+    const gabela: typeof resumenContratos = [];
+    const paganHoy: typeof resumenContratos = [];
+    resumenContratos.forEach(c => {
+      // Recolección: solo mora real con >3 días (estadoCartera ya descarta contratos nuevos/prorrateo)
+      if (c.estadoCartera === "mora" && c.diasSinPago > 3 && c.diasSinPago < 999) recoleccion.push(c);
+      else if (c.estadoCartera === "mora") mora.push(c);
+      else if (c.estadoCartera === "gabela") gabela.push(c);
+      else if (idsPaganHoy.has(c.id)) paganHoy.push(c);
+    });
+    return { recoleccion, mora, gabela, paganHoy };
+  }, [resumenContratos, paganHoyDiario, paganHoyPeriodico]);
+
+  const totalTareasHoy = panelHoy.recoleccion.length + panelHoy.mora.length + panelHoy.gabela.length + panelHoy.paganHoy.length;
+
+  async function tareaMensaje(c: typeof resumenContratos[number]) {
+    if (!profile) return;
+    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
+    const num = tel.startsWith("57") ? tel : `57${tel}`;
+    const msg = encodeURIComponent(`Hola ${(cliente?.nombre ?? "").toUpperCase()}, le recordamos su pago de hoy en GPS Satelital. Cualquier duda estamos atentos. ¡Gracias!`);
+    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
+    await registrarGestion(c.id, "mensaje_recordatorio", "Mensaje de recordatorio enviado", profile.id);
+  }
+  async function tareaLlamar(c: typeof resumenContratos[number]) {
+    if (!profile) return;
+    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const tel = (cliente?.telefono || cliente?.whatsapp || "").replace(/\D/g, "");
+    if (tel.length >= 7) window.open(`tel:${tel}`, "_self");
+    await registrarGestion(c.id, "llamada", "Llamada realizada", profile.id);
+  }
+  async function tareaSirena(c: typeof resumenContratos[number]) {
+    if (!profile) return;
+    await registrarGestion(c.id, "sirena", "Sirena activada (3 seg, vehículo detenido)", profile.id);
+  }
+  async function tareaRecoleccion(c: typeof resumenContratos[number]) {
+    if (!profile) return;
+    await registrarGestion(c.id, "recoleccion", "Orden de recolección física emitida", profile.id);
+  }
 
   // ── Filtrar lista ─────────────────────────────────────────────────────────
   const listaFiltrada = useMemo(() => {
@@ -1481,6 +1530,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   ];
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
+    { key: "hoy", label: "📋 Hoy", count: totalTareasHoy },
     { key: "mora", label: "Mora", count: enMora.length },
     { key: "gabela", label: "Gabela", count: enGabela.length },
     { key: "pagan-hoy", label: "Pagan Hoy", count: totalPaganHoy },
@@ -1577,6 +1627,93 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </button>
         ))}
       </div>
+
+      {/* Panel HOY — tareas del día agrupadas por urgencia */}
+      {activeTab === "hoy" && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ ...card, marginBottom: 16, background: "#eff6ff", border: "1px solid #bae6fd" }}>
+            <div style={{ fontSize: 14, color: "#0369a1", fontWeight: 700 }}>
+              📋 Tus tareas de hoy ({totalTareasHoy})
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+              Ordenadas por urgencia. Toca cada tarea al completarla — queda registrada en el historial de gestión.
+            </div>
+          </div>
+
+          {totalTareasHoy === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
+              <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
+            </div>
+          ) : (
+            ([
+              { key: "recoleccion", titulo: "🚚 Recolección física", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
+                tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Ordenar recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
+              { key: "mora", titulo: "🔴 En mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
+                tareas: [
+                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+                  { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+                ] },
+              { key: "gabela", titulo: "🟡 En gabela (día de gracia)", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
+                tareas: [
+                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+                  { tipo: "sirena" as TipoGestion, label: "Sirena (3 seg)", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+                ] },
+              { key: "pagan-hoy", titulo: "🔵 Pagan hoy", color: "#0284c7", bg: "#eff6ff", lista: panelHoy.paganHoy,
+                tareas: [
+                  { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+                  { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+                ] },
+            ] as const).filter(g => g.lista.length > 0).map(grupo => (
+              <div key={grupo.key} style={{ marginBottom: 22 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontWeight: 800, fontSize: 15, color: grupo.color }}>{grupo.titulo}</span>
+                  <span style={{ background: grupo.bg, color: grupo.color, borderRadius: 999, padding: "1px 9px", fontSize: 12, fontWeight: 700 }}>{grupo.lista.length}</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {grupo.lista.map(c => {
+                    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                    const moto = motos.find(m => m.id === c.moto_id);
+                    return (
+                      <div key={c.id} style={{ background: "white", borderRadius: 14, padding: 14, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", borderLeft: `4px solid ${grupo.color}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                          <div
+                            onClick={() => setContratoSeleccionadoId(c.id)}
+                            style={{ cursor: "pointer", minWidth: 0 }}
+                          >
+                            <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>{cliente?.nombre ?? "Sin cliente"}</div>
+                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                              {moto && <span style={{ color: "#0284c7", fontWeight: 700 }}>🏍️ {moto.placa}</span>}
+                              {c.diasSinPago > 0 && c.diasSinPago < 999 && <span> · {c.diasSinPago}d sin pago</span>}
+                            </div>
+                          </div>
+                          <EstadoBadge estado={c.estadoCartera} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                          {grupo.tareas.map(t => {
+                            const hecha = gestionHechaHoy(c.id, t.tipo);
+                            return (
+                              <button
+                                key={t.tipo}
+                                onClick={() => t.action(c)}
+                                style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}
+                              >
+                                {hecha ? "✓ " : ""}{t.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Por confirmar tab — transferencias y cobros en campo pendientes */}
       {activeTab === "por-confirmar" && (
@@ -1995,7 +2132,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       )}
 
       {/* Other tabs (gabela, mora, al-dia, todos) */}
-      {activeTab !== "pagan-hoy" && activeTab !== "historial" && activeTab !== "protocolo" && activeTab !== "campo" && activeTab !== "recoleccion" && activeTab !== "por-confirmar" && (
+      {activeTab !== "hoy" && activeTab !== "pagan-hoy" && activeTab !== "historial" && activeTab !== "protocolo" && activeTab !== "campo" && activeTab !== "recoleccion" && activeTab !== "por-confirmar" && (
         <div style={{ marginTop: 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>

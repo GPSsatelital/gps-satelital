@@ -740,8 +740,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [expandidoId, setExpandidoId] = useState<string | null>(null);
-  const [seccionExpandida, setSeccionExpandida] = useState<string | null>(null);
+  type FiltroHoy = "todos" | "recoleccion" | "mora" | "gabela" | "pagan-hoy";
+  const [filtroHoy, setFiltroHoy] = useState<FiltroHoy>("todos");
+  const [busquedaHoy, setBusquedaHoy] = useState("");
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
   const gestionesContrato = contratoSeleccionadoId
@@ -1688,67 +1689,94 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ))}
       </div>
 
-      {/* Panel HOY — tareas del día agrupadas por urgencia (G+H+I+J) */}
+      {/* Panel HOY — mismo diseño que Contratos */}
       {activeTab === "hoy" && (() => {
-        const grupos = [
-          { key: "recoleccion", emoji: "🚚", titulo: "Recolección física", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
-            tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Ordenar recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
-          { key: "mora", emoji: "🔴", titulo: "En mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
+        type TareasDef = readonly { tipo: TipoGestion; label: string; action: (c: typeof resumenContratos[number]) => void; bg: string; color: string }[];
+        const GRUPOS_HOY: { key: FiltroHoy; emoji: string; titulo: string; color: string; bg: string; lista: typeof resumenContratos; tareas: TareasDef }[] = [
+          { key: "recoleccion", emoji: "🚚", titulo: "Recolección", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
+            tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
+          { key: "mora", emoji: "🔴", titulo: "Mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-              { tipo: "sirena" as TipoGestion, label: "🔊 Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
             ] },
-          { key: "gabela", emoji: "🟡", titulo: "En gabela", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
+          { key: "gabela", emoji: "🟡", titulo: "Gabela", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-              { tipo: "sirena" as TipoGestion, label: "🔊 Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
             ] },
           { key: "pagan-hoy", emoji: "🔵", titulo: "Pagan hoy", color: "#0284c7", bg: "#eff6ff", lista: panelHoy.paganHoy,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "💬 Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "📞 Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
             ] },
-        ] as const;
+        ];
 
-        // Calcular tareas totales y hechas por contrato en un grupo
-        function tareasInfo(c: typeof resumenContratos[number], tiposTareas: readonly { tipo: TipoGestion }[]) {
-          const total = tiposTareas.length + (puedeCobroCampo ? 1 : 0);
-          const hechas = tiposTareas.filter(t => gestionHechaHoy(c.id, t.tipo)).length;
-          return { total, hechas, todasHechas: hechas >= tiposTareas.length };
-        }
+        // Lista activa según filtro + búsqueda
+        const grupoActivo = filtroHoy === "todos"
+          ? { tareas: GRUPOS_HOY[1].tareas as TareasDef, lista: [...panelHoy.recoleccion, ...panelHoy.mora, ...panelHoy.gabela, ...panelHoy.paganHoy], color: "#0f172a", bg: "#f1f5f9" }
+          : GRUPOS_HOY.find(g => g.key === filtroHoy) ?? GRUPOS_HOY[1];
+
+        const qHoy = busquedaHoy.toLowerCase();
+        const listaHoy = grupoActivo.lista.filter(c => {
+          if (!qHoy) return true;
+          const cliente = clientes.find(cl => cl.id === c.cliente_id);
+          const moto = motos.find(m => m.id === c.moto_id);
+          return (cliente?.nombre ?? "").toLowerCase().includes(qHoy) || (moto?.placa ?? "").toLowerCase().includes(qHoy);
+        });
+
+        // Pendientes primero (I): los que tienen alguna tarea sin hacer van arriba
+        const listaOrdenada = [...listaHoy].sort((a, b) => {
+          const tareasDe = (c: typeof resumenContratos[number]) => {
+            const g = GRUPOS_HOY.find(gr => gr.lista.some(x => x.id === c.id));
+            return g ? g.tareas : [];
+          };
+          const aHecha = tareasDe(a).every(t => gestionHechaHoy(a.id, t.tipo));
+          const bHecha = tareasDe(b).every(t => gestionHechaHoy(b.id, t.tipo));
+          if (aHecha && !bHecha) return 1;
+          if (!aHecha && bHecha) return -1;
+          return 0;
+        });
+
+        const CHIPS_HOY: { key: FiltroHoy; label: string; count: number }[] = [
+          { key: "todos", label: "Todos", count: totalTareasHoy },
+          { key: "recoleccion", label: "🚚 Recolec.", count: panelHoy.recoleccion.length },
+          { key: "mora", label: "🔴 Mora", count: panelHoy.mora.length },
+          { key: "gabela", label: "🟡 Gabela", count: panelHoy.gabela.length },
+          { key: "pagan-hoy", label: "🔵 Pagan hoy", count: panelHoy.paganHoy.length },
+        ];
 
         return (
           <div style={{ marginTop: 20 }}>
-            {/* G — Mini-resumen tocable */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto", paddingBottom: 2 }}>
-              {grupos.filter(g => g.lista.length > 0).map(g => (
+            {/* Chips de filtro — igual que Contratos */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+              {CHIPS_HOY.map(ch => (
                 <button
-                  key={g.key}
-                  onClick={() => setSeccionExpandida(seccionExpandida === g.key ? null : g.key)}
+                  key={ch.key}
+                  onClick={() => setFiltroHoy(ch.key)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    background: seccionExpandida === g.key ? g.color : "white",
-                    color: seccionExpandida === g.key ? "white" : g.color,
-                    border: `2px solid ${g.color}`,
-                    borderRadius: 999, padding: "6px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                    boxShadow: "0 2px 8px rgba(15,23,42,0.07)",
+                    background: filtroHoy === ch.key ? "#0284c7" : "#f1f5f9",
+                    color: filtroHoy === ch.key ? "white" : "#334155",
+                    border: "none", borderRadius: 999, padding: "7px 14px",
+                    fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                   }}
                 >
-                  <span>{g.emoji}</span>
-                  <span>{g.lista.length}</span>
-                  <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>{g.titulo}</span>
+                  {ch.label}
+                  <span style={{
+                    marginLeft: 6,
+                    background: filtroHoy === ch.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
+                    color: filtroHoy === ch.key ? "white" : "#64748b",
+                    borderRadius: 999, padding: "1px 7px", fontSize: 11, fontWeight: 700,
+                  }}>{ch.count}</span>
                 </button>
               ))}
-              {totalTareasHoy === 0 && (
-                <span style={{ fontSize: 13, color: "#94a3b8", padding: "6px 0" }}>Sin tareas hoy 🎉</span>
-              )}
             </div>
 
-            {/* Resumen de efectivo recogido en campo */}
+            {/* Resumen campo */}
             {puedeCobroCampo && misCobrosCampoHoy.count > 0 && (
-              <div style={{ ...card, marginBottom: 14, background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 14px" }}>
+              <div style={{ marginTop: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 14px" }}>
                 <div style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>💵 Recogiste hoy: ${fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
                 {misCobrosCampoHoy.pendienteEntregar > 0 && (
                   <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>Pendiente entregar a caja: <strong>${fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
@@ -1756,125 +1784,92 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
             )}
 
-            {/* H+I+J — Grupos con tarjetas compactas expandibles, pendientes primero */}
+            {/* Buscador — igual que Contratos */}
+            <div style={{ marginTop: 12 }}>
+              <input
+                value={busquedaHoy}
+                onChange={e => setBusquedaHoy(e.target.value)}
+                placeholder="Buscar cliente o placa..."
+                style={{ ...inputStyle, background: "white" }}
+              />
+            </div>
+
+            {/* Lista en recuadro con scroll — igual que Contratos */}
             {totalTareasHoy === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
                 <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
               </div>
             ) : (
-              <div style={{ maxHeight: isMobile ? "60vh" : "66vh", overflowY: "auto", paddingRight: 2, display: "flex", flexDirection: "column", gap: 20 }}>
-                {grupos.filter(g => g.lista.length > 0).map(grupo => {
-                  const soloSeccion = seccionExpandida !== null && seccionExpandida !== grupo.key;
-                  if (soloSeccion) return null;
+              <div style={{ marginTop: 12, background: "white", borderRadius: 16, padding: 12, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                {listaOrdenada.length === 0 ? (
+                  <div style={{ color: "#64748b", fontSize: 14, padding: "12px 0" }}>Sin resultados.</div>
+                ) : listaOrdenada.map(c => {
+                  const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                  const moto = motos.find(m => m.id === c.moto_id);
+                  const grupoC = GRUPOS_HOY.find(g => g.lista.some(x => x.id === c.id));
+                  const tareasDe = grupoC ? grupoC.tareas : [];
+                  const todasHechas = tareasDe.length > 0 && tareasDe.every(t => gestionHechaHoy(c.id, t.tipo));
+                  const borderColor = grupoC ? grupoC.color : "#e2e8f0";
 
-                  // I — pendientes primero, resueltos al fondo
-                  const ordenada = [...grupo.lista].sort((a, b) => {
-                    const aHecha = grupo.tareas.every(t => gestionHechaHoy(a.id, t.tipo));
-                    const bHecha = grupo.tareas.every(t => gestionHechaHoy(b.id, t.tipo));
-                    if (aHecha && !bHecha) return 1;
-                    if (!aHecha && bHecha) return -1;
-                    return 0;
-                  });
+                  // Monto que debe pagar
+                  const cuotaP = c.forma_pago === "Diario"
+                    ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
+                    : c.valor_semanal;
+                  const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
+                  const debePagar = Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
 
                   return (
-                    <div key={grupo.key}>
-                      {/* Encabezado de sección */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontWeight: 800, fontSize: 14, color: grupo.color }}>{grupo.emoji} {grupo.titulo}</span>
-                        <span style={{ background: grupo.bg, color: grupo.color, borderRadius: 999, padding: "1px 8px", fontSize: 12, fontWeight: 700 }}>{grupo.lista.length}</span>
+                    <div
+                      key={c.id}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 14,
+                        border: todasHechas ? "1px solid #e2e8f0" : `1px solid ${borderColor}44`,
+                        borderLeft: `4px solid ${todasHechas ? "#cbd5e1" : borderColor}`,
+                        background: todasHechas ? "#f8fafc" : "white",
+                        opacity: todasHechas ? 0.6 : 1,
+                        display: "flex", flexDirection: "column", gap: 10,
+                      }}
+                    >
+                      {/* Fila superior: nombre + badge — clic va al detalle */}
+                      <div
+                        onClick={() => setContratoSeleccionadoId(c.id)}
+                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, cursor: "pointer" }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>
+                            {cliente?.nombre ?? "Sin cliente"}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                            {moto && <span style={{ color: "#0284c7", fontWeight: 600 }}>🏍️ {moto.placa} · </span>}
+                            {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
+                              ? <span style={{ color: "#991b1b", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
+                              : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${c.dia_pago}`}</span>
+                            }
+                          </div>
+                        </div>
+                        <EstadoBadge estado={c.estadoCartera} />
                       </div>
 
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {ordenada.map(c => {
-                          const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                          const moto = motos.find(m => m.id === c.moto_id);
-                          const { hechas, total: totalT, todasHechas } = tareasInfo(c, grupo.tareas);
-                          const expandido = expandidoId === `${grupo.key}-${c.id}`;
-
-                          return (
-                            <div
-                              key={c.id}
-                              style={{
-                                background: todasHechas ? "#f8fafc" : "white",
-                                borderRadius: 12,
-                                border: `1px solid ${todasHechas ? "#e2e8f0" : grupo.color + "55"}`,
-                                borderLeft: `4px solid ${todasHechas ? "#cbd5e1" : grupo.color}`,
-                                opacity: todasHechas ? 0.65 : 1,
-                                overflow: "hidden",
-                              }}
-                            >
-                              {/* Fila colapsada — H */}
-                              <div
-                                onClick={() => setExpandidoId(expandido ? null : `${grupo.key}-${c.id}`)}
-                                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", cursor: "pointer", gap: 8 }}
-                              >
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                  <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "#0f172a" }}>{cliente?.nombre ?? "Sin cliente"}</span>
-                                  {moto && <span style={{ fontSize: 12, color: "#0284c7", fontWeight: 600, marginLeft: 8 }}>🏍️ {moto.placa}</span>}
-                                  {c.diasSinPago > 0 && c.diasSinPago < 999 && (
-                                    <span style={{ fontSize: 11, color: "#991b1b", marginLeft: 6 }}>{c.diasSinPago}d</span>
-                                  )}
-                                </div>
-                                {/* J — Contador de tareas */}
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                                  {todasHechas ? (
-                                    <span style={{ fontSize: 11, color: "#166534", fontWeight: 700, background: "#dcfce7", borderRadius: 999, padding: "2px 8px" }}>✓ Listo</span>
-                                  ) : (
-                                    <span style={{ fontSize: 11, color: grupo.color, fontWeight: 700, background: grupo.bg, borderRadius: 999, padding: "2px 8px" }}>
-                                      {hechas}/{totalT} tareas
-                                    </span>
-                                  )}
-                                  <span style={{ fontSize: 14, color: "#94a3b8" }}>{expandido ? "▲" : "▼"}</span>
-                                </div>
-                              </div>
-
-                              {/* Cuerpo expandido — H */}
-                              {expandido && (
-                                <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${grupo.color}22` }}>
-                                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 8 }}>
-                                    {c.diasSinPago > 0 && c.diasSinPago < 999 && `${c.diasSinPago} días sin pago · `}
-                                    {c.deudaContrato > 0 && `Deuda: $${fmt(c.deudaContrato)} · `}
-                                    Debe pagar: <strong style={{ color: "#0f172a" }}>
-                                      ${fmt((() => {
-                                        const cuotaP = c.forma_pago === "Diario"
-                                          ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-                                          : c.valor_semanal;
-                                        const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
-                                        return Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
-                                      })())}
-                                    </strong>
-                                  </div>
-                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                                    {grupo.tareas.map(t => {
-                                      const hecha = gestionHechaHoy(c.id, t.tipo);
-                                      return (
-                                        <button
-                                          key={t.tipo}
-                                          onClick={() => t.action(c)}
-                                          style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}
-                                        >
-                                          {hecha ? "✓ " : ""}{t.label}
-                                        </button>
-                                      );
-                                    })}
-                                    {puedeCobroCampo && (
-                                      <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#dcfce7", "#166534")}>
-                                        💵 Cobrar
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => setContratoSeleccionadoId(c.id)}
-                                      style={miniBtn("#f1f5f9", "#334155")}
-                                    >
-                                      Ver ficha →
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                      {/* Fila inferior: monto + botones de tarea */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}>
+                          {todasHechas ? "✓ Listo" : debePagar > 0 ? `Debe $${fmt(debePagar)}` : "Al día"}
+                        </span>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {tareasDe.map(t => {
+                            const hecha = gestionHechaHoy(c.id, t.tipo);
+                            return (
+                              <button key={t.tipo} onClick={() => t.action(c)} style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}>
+                                {hecha ? "✓ " : ""}{t.label}
+                              </button>
+                            );
+                          })}
+                          {puedeCobroCampo && (
+                            <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#f0fdf4", "#166534")}>💵 Cobrar</button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

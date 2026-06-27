@@ -611,7 +611,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa.
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio.
 
 **Usuarios en producción:**
 | Email | Nombre | Rol |
@@ -622,3 +622,16 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | angela@hotmail.com | ANGELA | SECRETARIA |
 
 **Estado de WizardContrato.tsx:** Paso 1 completamente corregido. Pasos 2-6 sin cambios.
+
+### Lo hecho en esta sesión ✅
+1. **SUBADMIN scope completo** — `motos.subadmin_id` (mig 021) + `visitas.asignada_a` (mig 022). Hook `useSubadminScope`/`useScope` + `SubadminScopeProvider` (envuelve TODO el layout, header incluido). Filtrado global en: Motos, Contratos, Cobros, Taller, Liquidaciones, Clientes, Dashboard, CampanaAlertas, BusquedaGlobal. Selector de asignación de moto (MotosView) y de visita (ClientesView/PanelAprobacion), solo ADMIN/AP.
+2. **Panel "📋 Hoy"** en Cartera (pestaña por defecto) — tareas del día por urgencia (Recolección → Mora → Gabela → Pagan hoy), botones Mensaje/Llamar/Sirena/Recolección que registran en `gestiones_cobro`; "hecho hoy" = gestión con `fecha=hoy`.
+3. **Navegación reorganizada** — hoja Más (móvil) y sidebar (desktop) con MISMA taxonomía: Operaciones · Cobros & Dinero · Flota & Taller · Seguimiento · Administración.
+
+### Migraciones ya aplicadas en Supabase por el usuario
+- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅
+
+### Próximos pasos sugeridos 🔲
+- **Barra inferior por rol** (opción C que quedó pendiente) — cada rol vería abajo sus 5 módulos más usados (ej. SUBADMIN: Panel·Cartera·Motos·Taller·Más).
+- **Gestión de permisos por usuario (UsuariosView)** — ver sección Pendiente arriba.
+- Integración GPS real (sirena/apagado) · WhatsApp automático · Reportes PDF/Excel · APK Capacitor.

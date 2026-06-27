@@ -645,17 +645,26 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 **Estado de WizardContrato.tsx:** Paso 1 completamente corregido. Pasos 2-6 sin cambios.
 
+### Lo hecho en sesiones anteriores ✅
+1. **SUBADMIN scope completo** — `motos.subadmin_id` (mig 021) + `visitas.asignada_a` (mig 022). Hook `useSubadminScope`/`useScope` + `SubadminScopeProvider` (envuelve TODO el layout, header incluido). Filtrado global en: Motos, Contratos, Cobros, Taller, Liquidaciones, Clientes, Dashboard, CampanaAlertas, BusquedaGlobal.
+2. **Navegación reorganizada** — hoja Más (móvil) y sidebar (desktop) con MISMA taxonomía: Operaciones · Cobros & Dinero · Flota & Taller · Seguimiento · Administración.
+3. **Cobro en campo completo** (mig 023 `pagos.ubicacion`) — GPS + foto opcional + recibo provisional WhatsApp + flujo 2 pasos (entregar → confirmar) + conciliación en Caja Diaria.
+4. **Cartera reorganizada: 11 pestañas → 4 secciones** (Hoy · Contratos · Dinero · Historial). Listas dentro de recuadros con scroll propio. KPIs navegan a Contratos con filtro.
+
 ### Lo hecho en esta sesión ✅
-1. **SUBADMIN scope completo** — `motos.subadmin_id` (mig 021) + `visitas.asignada_a` (mig 022). Hook `useSubadminScope`/`useScope` + `SubadminScopeProvider` (envuelve TODO el layout, header incluido). Filtrado global en: Motos, Contratos, Cobros, Taller, Liquidaciones, Clientes, Dashboard, CampanaAlertas, BusquedaGlobal. Selector de asignación de moto (MotosView) y de visita (ClientesView/PanelAprobacion), solo ADMIN/AP.
-2. **Panel "📋 Hoy"** en Cartera (pestaña por defecto) — tareas del día por urgencia (Recolección → Mora → Gabela → Pagan hoy), botones Mensaje/Llamar/Sirena/Recolección que registran en `gestiones_cobro`; "hecho hoy" = gestión con `fecha=hoy`.
-3. **Navegación reorganizada** — hoja Más (móvil) y sidebar (desktop) con MISMA taxonomía: Operaciones · Cobros & Dinero · Flota & Taller · Seguimiento · Administración.
-4. **Cobro en campo completo** (mig 023 `pagos.ubicacion`) — quién: ADMIN/AP/SUBADMIN; cualquier contrato (mora/gabela arriba); referencia "Debe pagar"; GPS + foto opcional; recibo provisional WhatsApp; botón "💵 Cobrar" en panel Hoy + resumen de efectivo; conciliación por funcionario en Caja Diaria; flujo 2 pasos (entregar → confirmar). Ver sección "Cobro en campo" en COBROS Y CARTERA.
-5. **Cartera reorganizada: 11 pestañas → 4 secciones** (Hoy · Contratos · Dinero · Historial). Listas dentro de recuadros con scroll propio. KPIs navegan a Contratos con filtro. Ver "Estructura del módulo Cartera" en COBROS Y CARTERA.
+5. **Panel Hoy rediseñado** — mismo diseño que la sección Contratos:
+   - Chips de filtro: `Todos · 🚚 Recolec. · 🔴 Mora · 🟡 Gabela · 🔵 Pagan hoy` (con flexWrap, sin scroll lateral)
+   - Buscador por nombre/placa
+   - Lista dentro de recuadro con scroll (`maxHeight 56/62vh`)
+   - Tarjetas siempre abiertas: nombre + placa + badge de estado + botones de tarea visibles directo
+   - Pendientes primero (tarjetas con tareas sin hacer arriba; resueltas en gris/opaco abajo)
+   - Monto "Debe pagar" visible en cada tarjeta
+6. **Emojis en chips de Contratos** — `🔴 Mora · 🟡 Gabela · 🟢 Al día · 🔵 Pagan hoy` igual que en Hoy
 
 ### Migraciones ya aplicadas en Supabase por el usuario
-- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ (confirmar)
+- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅
 
 ### Próximos pasos sugeridos 🔲
-- **Barra inferior por rol** (opción C que quedó pendiente) — cada rol vería abajo sus 5 módulos más usados (ej. SUBADMIN: Panel·Cartera·Motos·Taller·Más).
-- **Gestión de permisos por usuario (UsuariosView)** — ver sección Pendiente arriba.
+- **Gestión de permisos por usuario (UsuariosView)** — lista de usuarios, toggle de permisos activos/inactivos por módulo, organizado por categoría, jerarquía por rol, base: `profiles.permisos` (jsonb).
+- **Barra inferior por rol** — cada rol vería abajo sus 5 módulos más usados (ej. SUBADMIN: Panel·Cartera·Motos·Taller·Más).
 - Integración GPS real (sirena/apagado) · WhatsApp automático · Reportes PDF/Excel · APK Capacitor.

@@ -44,6 +44,11 @@ Antes de escribir cualquier línea de código, declarar explícitamente:
 
 El usuario confirma antes de codificar. Esto evita implementar cosas sin sentido o desconectadas.
 
+### REGLA DE MAPEO INTEGRAL — OBLIGATORIO SIEMPRE
+**Antes de cualquier cambio, mapear TODOS los paneles/vistas/componentes que tocan el mismo dato y verificar cómo se relacionan.** No basta con cambiar el aspecto puntual: un cambio o filtro debe quedar integrado en TODO el sistema (dashboard, campana de alertas, búsqueda global, fichas, listas, KPIs, etc.), no solo donde se pensó primero.
+- Ejemplo de error: filtrar contratos por SUBADMIN en CobrosView pero olvidar el Dashboard, la campana de alertas y la búsqueda global → datos inconsistentes según la pantalla.
+- Mecánica: `grep` de los hooks involucrados (`useMotos`, `useContratos`, `useClientes`, `useAlertas`, etc.) en TODAS las vistas → confirmar cuáles cargan el dato y cuáles ya aplican la regla.
+
 ---
 
 ## STACK
@@ -100,16 +105,24 @@ Cada grupo es un **portafolio de inversión independiente** — estadísticas, r
 
 | Rol | Quién es | Qué puede hacer |
 |-----|---------|-----------------|
-| `ADMIN_PRINCIPAL` | Fundador + Admin general | Todo sin restricción |
-| `ADMIN` | Admin jr (hasta 4, hoy 1) | Gestión de sus motos asignadas, reportar transferencias, ver pagos, gestión de cobro, NO registrar efectivo |
+| `ADMIN_PRINCIPAL` | Fundador + Admin general (dueño y jefe de todo) | Todo sin restricción · ve TODO |
+| `ADMIN` | Encargado de toda la operación (una sola persona) | Todo de la operación · ve TODO · NO registra efectivo |
+| `SUBADMIN` | Admin jr (hasta 4) — gestiona su grupo de motos asignadas en el día a día | **Solo ve/actúa sobre SUS motos asignadas** y las visitas que le asignen · gestión de cobro · NO registra efectivo, NO registra clientes, NO elige motos |
 | `SECRETARIA` | Secretaria/aux contable | Registrar pagos efectivo, confirmar transferencias, visitas, registro clientes, gestión cobro |
 | `MECANICO` | Mecánico de taller | Solo módulo taller |
 | `SOCIO` | Los 3 socios | Solo lectura de dashboard de su grupo |
 
+> ⚠️ **Jerarquía real (corrección):** El `ADMIN` NO es "admin jr". `ADMIN` = encargado de toda la operación (ve todo). El **admin jr es el `SUBADMIN`** (filtrado por sus motos). Orden: ADMIN_PRINCIPAL → ADMIN → SUBADMIN → SECRETARIA → MECANICO.
+
+### SUBADMIN — filtrado global por motos asignadas (ver sección dedicada abajo)
+- `motos.subadmin_id` define qué motos gestiona cada SUBADMIN (lo asigna ADMIN/ADMIN_PRINCIPAL en MotosView).
+- `visitas.asignada_a` define qué visitas debe hacer cada SUBADMIN (lo asigna ADMIN/ADMIN_PRINCIPAL en ClientesView → PanelAprobacion).
+- El SUBADMIN NO registra clientes: el embudo de ingreso (registro, documentos) lo hacen SECRETARIA/ADMIN/ADMIN_PRINCIPAL. El SUBADMIN solo hace las visitas que le asignen y, una vez existe contrato sobre su moto, gestiona ese cliente.
+
 ### Reglas críticas de permisos
 - **Solo secretaria registra pagos en efectivo**
-- **Admin jr NO puede:** registrar efectivo, crear contratos (a menos que admin principal delegue)
-- **Cobro en campo:** admin recupera efectivo → crea "reporte de cobro en campo" → secretaria confirma y registra
+- **SUBADMIN (admin jr) NO puede:** registrar efectivo, crear contratos, registrar clientes, elegir motos (a menos que admin principal delegue)
+- **Cobro en campo:** admin/subadmin recupera efectivo → crea "reporte de cobro en campo" → secretaria confirma y registra
 - Trigger `enforce_cliente_estado_change()` usa `public.mi_rol()` (no `current_role()`) para verificar rol real
 
 ---
@@ -248,6 +261,47 @@ Esta sección es CRÍTICA. Antes de tocar cualquier módulo, verificar si afecta
 
 ---
 
+## SUBADMIN — SCOPE Y FILTRADO GLOBAL (arquitectura)
+
+El SUBADMIN solo ve/gestiona lo relacionado con **sus motos asignadas**. Esto aplica a TODO el sistema (ver REGLA DE MAPEO INTEGRAL).
+
+### Anclas en BD
+- `motos.subadmin_id` (migración 021) → moto a cargo de un sub-admin (null = sin asignar). Una moto = un solo sub-admin.
+- `visitas.asignada_a` (migración 022) → sub-admin que debe realizar la visita.
+
+### Hook central: `useSubadminScope(profile, motos, contratos)` → `useScope()` (contexto)
+- Archivo: `src/hooks/useSubadminScope.ts` + `src/contexts/SubadminScopeContext.tsx` (proveedor envuelve todas las vistas en App.tsx).
+- Calcula: `esSubadmin`, `misMotoIds`, `misContratoIds`, `clienteIdsPermitidos`.
+- Expone filtros: `filtrarMotos`, `filtrarContratos`, `filtrarVisitas`, `filtrarPorCliente`, `filtrarPorContrato`.
+- Para roles ≠ SUBADMIN los filtros devuelven la lista completa (sin restricción).
+
+### Cadena de filtrado (la moto es el ancla)
+```
+misMotoIds = motos donde subadmin_id === yo
+  → misContratoIds = contratos cuyo moto_id ∈ misMotoIds
+    → clienteIdsPermitidos = clientes de esos contratos
+    → pagos/convenios/deudas filtrados por contrato_id ∈ misContratoIds
+  → taller filtrado por moto_id ∈ misMotoIds
+visitas filtradas por asignada_a === yo (NO por moto — el prospecto aún no tiene moto)
+```
+
+### Vistas/componentes que aplican el scope (mantener sincronizadas SIEMPRE)
+| Lugar | Qué filtra |
+|-------|-----------|
+| `MotosView` | `filtrarMotos` + selector de asignación de sub-admin (solo ADMIN/AP) |
+| `ContratosView` | `filtrarContratos` |
+| `CobrosView` | `filtrarContratos` |
+| `TallerView` | `filtrarMotos` (taller por moto_id) |
+| `LiquidacionesView` | `filtrarMotos` |
+| `ClientesView` | clientes por `clienteIdsPermitidos` (+ pool intake) · `filtrarVisitas` · selector asignación visita |
+| `DashboardView` | motos/contratos/clientes/pagos/convenios/taller filtrados → KPIs y alertas |
+| `CampanaAlertas` (🔔) | mismas entradas filtradas → alertas filtradas |
+| `BusquedaGlobal` | recibe clientes/motos/contratos ya filtrados desde App.tsx |
+
+> Al agregar una vista nueva o un módulo que cargue motos/contratos/clientes/pagos/alertas, **DEBE** aplicar `useScope()`. Si no, el SUBADMIN verá datos de otros.
+
+---
+
 ## PROCESO COMPLETO DE UN CLIENTE NUEVO
 
 ### Paso 1 — Registro inicial (`ClientesView`)
@@ -359,7 +413,7 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 **Estados:** `En proceso` → `Listo para visita` → `Pendiente evaluación` → `Aprobado` → `Activo` → `En riesgo` / `En mora` → `Retirado` / `Rechazado` / `Lista negra`
 
 ### `motos`
-`id` | `placa` (UNIQUE) | `marca` | `modelo` | `color` | `grupo` (COSTA/PRADERA/RASTREADOR/USADAS) | `estado` | `condicion_ingreso` | `numero_motor` | `numero_chasis` | `cilindraje` | `fecha_seguro` | `fecha_tecnomecanica` | `propietario` | `observaciones` | `ubicacion_fisica` | `kilometraje_inicial` | `fotos_entrega` (jsonb) | `created_at`
+`id` | `placa` (UNIQUE) | `marca` | `modelo` | `color` | `grupo` (COSTA/PRADERA/RASTREADOR/USADAS) | `estado` | `condicion_ingreso` | `numero_motor` | `numero_chasis` | `cilindraje` | `fecha_seguro` | `fecha_tecnomecanica` | `propietario` | `observaciones` | **`subadmin_id`** FK→profiles (sub-admin a cargo) | `ubicacion_fisica` | `kilometraje_inicial` | `fotos_entrega` (jsonb) | `created_at`
 
 **Estados:** `Disponible` | `Asignada` | `En taller` | `Garantía` | `Fiscalía` | `Tránsito` | `Recuperada` | `Suspendida`
 
@@ -370,7 +424,7 @@ Si firma en otro día → prorrateo hasta el próximo día de pago.
 `id` | `contrato_id` FK | `registrado_por` FK | `valor` | `metodo` (Efectivo/Transferencia) | `estado` (Confirmado/Pendiente/Rechazado) | `tipo_registro` (normal/campo/transferencia) | `comprobante_url` | `aplicado` (jsonb) | `entregado_caja` | `folio` | `fecha`
 
 ### `visitas`
-`id` | `cliente_id` FK | `estado` | `resultado` | `entrevista` (jsonb) | `fotos` (jsonb) | `ubicacion` ({lat, lng}) | `fecha` | `realizada_por` FK
+`id` | `cliente_id` FK | `estado` | `resultado` | `entrevista` (jsonb) | `fotos` (jsonb) | `ubicacion` ({lat, lng}) | `fecha` | `realizada_por` FK | **`asignada_a`** FK→profiles (sub-admin asignado a la visita)
 
 ### `liquidaciones`
 6 etapas: Iniciada → En taller → Calculada → Documento generado → Firmada → Cerrada
@@ -493,6 +547,8 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `017_bucket_documentos.sql` ✅
 - `019_fix_cliente_estado_trigger.sql` — corrige trigger para usar `mi_rol()` ✅
 - `020_ahorro_domingo.sql` — agrega columna `ahorro_domingo` a contratos ✅
+- `021_motos_subadmin.sql` — agrega `motos.subadmin_id` (sub-admin a cargo) ✅
+- `022_visitas_asignacion.sql` — agrega `visitas.asignada_a` (sub-admin asignado a la visita) ✅
 
 ### Pendientes manuales ⚠️
 - Desplegar Edge Function: `supabase functions deploy manage-users`
@@ -514,7 +570,14 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - MoneyInput con $ y separadores de mil
 - `ahorro_domingo` guardado en BD al crear contrato
 
+### Completado — SUBADMIN scope ✅
+- Asignación de motos a sub-admin (`motos.subadmin_id`) + selector en MotosView (solo ADMIN/AP)
+- Asignación de visitas a sub-admin (`visitas.asignada_a`) + selector en ClientesView/PanelAprobacion
+- Filtrado global por `useScope()` en: MotosView, ContratosView, CobrosView, TallerView, LiquidacionesView, ClientesView, DashboardView, CampanaAlertas, BusquedaGlobal
+- Reglas decididas: visitas se asignan (no pool); SUBADMIN no registra clientes; una moto = un sub-admin
+
 ### Pendiente 🔲
+- **Panel "HOY" de tareas (dentro de Cartera/CobrosView):** pestaña por defecto, organizada por TAREA (no por estado), agrupada por urgencia (Recolección → Mora → Gabela → Pagan hoy). Cada cliente muestra tareas pendientes (Mensaje/Llamar/Sirena) como botones; al hacerlas se registran en `gestiones_cobro` con `fecha=hoy`. Decisiones tomadas: marcar tareas MIXTO (mensaje/WhatsApp auto al abrir, llamada/sirena manual); todas visibles recomendadas en orden; sirena gabela 3 seg (por ahora solo registra, GPS real pendiente); solo muestra pendientes (Al día no aparece); filtrado por SUBADMIN ya aplica.
 - **Gestión de permisos por usuario (UsuariosView):**
   - Lista de usuarios con su rol actual
   - Al seleccionar un usuario → mostrar permisos activos e inactivos (toggle)

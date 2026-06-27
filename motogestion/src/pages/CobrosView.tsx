@@ -1034,7 +1034,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
               <span>Próximo: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
             </div>
-            {contratoDetalle.diasSinPago > 0 && (
+            {contratoDetalle.diasSinPago > 0 && !enProrrateo && (
               <span style={{ fontSize: 12, fontWeight: 700, color: protocolo.color, background: protocolo.bg, borderRadius: 8, padding: "3px 10px" }}>
                 Paso {protocolo.paso}: {protocolo.label}
               </span>

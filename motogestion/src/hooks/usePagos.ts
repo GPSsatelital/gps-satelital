@@ -41,6 +41,7 @@ export type Pago = {
   convenio_id: string | null;
   entregado_caja: boolean;
   folio: string | null;
+  ubicacion: { lat: number; lng: number } | null;
   fecha: string;
   created_at: string;
 };
@@ -169,7 +170,7 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean },
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null },
   ) {
     const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
     const estado: PagoEstado = (metodo === "Efectivo" && !opts?.forzarPendiente) ? "Confirmado" : "Pendiente";
@@ -198,6 +199,7 @@ export function usePagos() {
       aplicado_saldo_favor: aplicado.saldo,
       convenio_id: opts?.convenioId ?? null,
       folio: opts?.folio ?? null,
+      ubicacion: opts?.ubicacion ?? null,
     });
     return { error: error?.message ?? null };
   }
@@ -220,12 +222,15 @@ export function usePagos() {
     aplicado: AplicadoPago,
     cobradoPorId: string,
     folio: string,
+    extras?: { ubicacion?: { lat: number; lng: number } | null; comprobanteUrl?: string },
   ) {
     return registrarPago(contratoId, valor, "Efectivo", aplicado, {
       tipoRegistro: "campo",
       registradoPor: cobradoPorId,
       folio,
       forzarPendiente: true,
+      ubicacion: extras?.ubicacion ?? null,
+      comprobanteUrl: extras?.comprobanteUrl,
     });
   }
 

@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -60,6 +61,31 @@ export default function CajaView() {
 
   const pagosEfectivo = useMemo(() => pagosDia.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo"), [pagosDia]);
   const pagosTransfer = useMemo(() => pagosDia.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia"), [pagosDia]);
+
+  // Nombres de los funcionarios (para la conciliación de cobros en campo)
+  const [nombresPorId, setNombresPorId] = useState<Record<string, string>>({});
+  useEffect(() => {
+    supabase.from("profiles").select("id, nombre").then(({ data }) => {
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((p: { id: string; nombre: string }) => { map[p.id] = p.nombre; });
+      setNombresPorId(map);
+    });
+  }, []);
+
+  // Conciliación: efectivo cobrado en campo, agrupado por funcionario
+  const conciliacionCampo = useMemo(() => {
+    const campo = pagosDia.filter(p => p.tipo_registro === "campo");
+    const porPersona: Record<string, { nombre: string; total: number; count: number; pendienteEntregar: number; pendienteConfirmar: number }> = {};
+    campo.forEach(p => {
+      const id = p.registrado_por ?? "—";
+      if (!porPersona[id]) porPersona[id] = { nombre: nombresPorId[id] ?? "Funcionario", total: 0, count: 0, pendienteEntregar: 0, pendienteConfirmar: 0 };
+      porPersona[id].total += p.valor;
+      porPersona[id].count += 1;
+      if (!p.entregado_caja) porPersona[id].pendienteEntregar += p.valor;
+      if (p.estado === "Pendiente") porPersona[id].pendienteConfirmar += p.valor;
+    });
+    return Object.values(porPersona).sort((a, b) => b.total - a.total);
+  }, [pagosDia, nombresPorId]);
 
   const fechaObj = new Date(fecha + "T00:00:00");
   const fechaDisplay = `${DIAS[fechaObj.getDay()]} ${fechaObj.getDate()} de ${MESES[fechaObj.getMonth()]} ${fechaObj.getFullYear()}`;
@@ -192,6 +218,29 @@ export default function CajaView() {
     </div>
   );
 
+  const seccionConciliacionCampo = conciliacionCampo.length > 0 && (
+    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 16, padding: "16px 20px" }}>
+      <div style={{ fontWeight: 800, fontSize: 13, color: "#166534", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+        💵 Cobros en campo — efectivo a recibir por funcionario
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {conciliacionCampo.map((p, i) => (
+          <div key={i} style={{ background: "white", borderRadius: 12, padding: "10px 14px", border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>{p.nombre}</div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#166534" }}>${fmt(p.total)}</div>
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+              {p.count} cobro(s)
+              {p.pendienteEntregar > 0 && <span style={{ color: "#92400e", fontWeight: 700 }}> · Pendiente entregar: ${fmt(p.pendienteEntregar)}</span>}
+              {p.pendienteConfirmar > 0 && <span style={{ color: "#0369a1", fontWeight: 700 }}> · Sin confirmar: ${fmt(p.pendienteConfirmar)}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const resumenFooter = (
     <div style={{ background: "#0f172a", borderRadius: 16, padding: "20px 24px" }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 16 }}>
@@ -276,6 +325,13 @@ export default function CajaView() {
           </div>
         </div>
       </div>
+
+      {/* Conciliación de cobros en campo por funcionario */}
+      {seccionConciliacionCampo && (
+        <div style={{ marginBottom: 20 }}>
+          {seccionConciliacionCampo}
+        </div>
+      )}
 
       {/* Pendientes */}
       {resumen.pendientes.length > 0 && (

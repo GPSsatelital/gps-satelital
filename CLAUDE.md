@@ -517,6 +517,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | Pendiente muestra período completo en contrato nuevo | Usar `calcProrrateoInicial()` cuando `enProrrateo === true` — aplica tanto en panel detalle como en lista |
 | "Xd sin pagar" aparece aunque esté al día | Agregar condición `c.estadoCartera !== "al-dia"` antes de mostrar el texto |
 | RLS contratos bloqueando insert | Políticas usaban `current_role()` — corregir a `public.mi_rol()` con roles ADMIN, ADMIN_PRINCIPAL, SECRETARIA |
+| `useScope()` fuera del `SubadminScopeProvider` → app no abre (throw) | El provider debe envolver TODO el layout (header incluido), no solo el contenido. `CampanaAlertas` y `BusquedaGlobal` viven en el header → si usan `useScope`, deben estar dentro del provider. Verificar el árbol de render, no solo el archivo. |
 
 ---
 

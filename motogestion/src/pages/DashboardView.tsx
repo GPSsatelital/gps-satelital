@@ -6,6 +6,7 @@ import { usePagos } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas } from "../hooks/useAlertas";
+import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -53,12 +54,20 @@ export default function DashboardView({ onNavigate }: {
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  const { motos, loading: lM } = useMotos();
-  const { clientes, loading: lC } = useClientes();
-  const { contratos, loading: lCt } = useContratos();
-  const { pagos, loading: lP } = usePagos();
-  const { taller, loading: lT } = useTaller();
-  const { convenios } = useConvenios();
+  const { esSubadmin, misMotoIds, filtrarMotos, filtrarContratos, filtrarPorCliente, filtrarPorContrato } = useScope();
+  const { motos: todasMotos, loading: lM } = useMotos();
+  const { clientes: todosClientes, loading: lC } = useClientes();
+  const { contratos: todosContratos, loading: lCt } = useContratos();
+  const { pagos: todosPagos, loading: lP } = usePagos();
+  const { taller: todoTaller, loading: lT } = useTaller();
+  const { convenios: todosConvenios } = useConvenios();
+
+  const motos = filtrarMotos(todasMotos);
+  const clientes = filtrarPorCliente(todosClientes);
+  const contratos = filtrarContratos(todosContratos);
+  const pagos = filtrarPorContrato(todosPagos);
+  const taller = esSubadmin ? todoTaller.filter(t => t.moto_id != null && misMotoIds.has(t.moto_id)) : todoTaller;
+  const convenios = filtrarPorContrato(todosConvenios);
 
   // Misma fuente de alertas que la campana y la vista de Alertas
   const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios });

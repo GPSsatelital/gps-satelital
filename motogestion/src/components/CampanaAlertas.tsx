@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
+import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
 
 const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: string; dot: string }> = {
@@ -42,11 +43,18 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const [abierto, setAbierto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const { motos } = useMotos();
-  const { contratos } = useContratos();
-  const { clientes } = useClientes();
-  const { pagos } = usePagos();
-  const { convenios } = useConvenios();
+  const { filtrarMotos, filtrarContratos, filtrarPorCliente, filtrarPorContrato } = useScope();
+  const { motos: todasMotos } = useMotos();
+  const { contratos: todosContratos } = useContratos();
+  const { clientes: todosClientes } = useClientes();
+  const { pagos: todosPagos } = usePagos();
+  const { convenios: todosConvenios } = useConvenios();
+
+  const motos = filtrarMotos(todasMotos);
+  const contratos = filtrarContratos(todosContratos);
+  const clientes = filtrarPorCliente(todosClientes);
+  const pagos = filtrarPorContrato(todosPagos);
+  const convenios = filtrarPorContrato(todosConvenios);
 
   const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
   const criticos = alertas.filter(a => a.nivel === "critico").length;

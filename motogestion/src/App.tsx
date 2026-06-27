@@ -353,7 +353,7 @@ function Shell() {
   const { session, profile, loading, signOut } = useAuth();
   const isMobile = useIsMobile();
 
-  const { clientes } = useClientes();
+  const { clientes: todosClientes } = useClientes();
   const { motos } = useMotos();
   const { contratos } = useContratos();
   const [ctx, setCtx] = useState<NavContext>({ view: "dashboard", filter: "" });
@@ -368,6 +368,10 @@ function Shell() {
   const esMecanico = roleActual === "MECANICO";
 
   const scope = useSubadminScope(profile, motos, contratos);
+  // Datos filtrados por scope para la búsqueda global (SUBADMIN solo ve lo suyo)
+  const clientes = scope.filtrarPorCliente(todosClientes);
+  const motosScope = scope.filtrarMotos(motos);
+  const contratosScope = scope.filtrarContratos(contratos);
 
   // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
   function accesoPorRol(view: ViewKey): boolean {
@@ -582,7 +586,7 @@ function Shell() {
         </nav>
 
         {masOpen && <MasSheet ctx={ctx} navigate={navigate} puedeVer={puedeVer} onClose={() => setMasOpen(false)} />}
-        {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motos} contratos={contratos} />}
+        {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
       </div>
     );
   }
@@ -648,7 +652,7 @@ function Shell() {
           {contentView}
         </main>
       </div>
-      {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motos} contratos={contratos} />}
+      {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
     </div>
   );
 }

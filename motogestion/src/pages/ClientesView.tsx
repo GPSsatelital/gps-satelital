@@ -964,7 +964,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </div>
             </div>
           ) : (
-            <div>
+            <div style={{ ...card }}>
               <div style={{ marginBottom: 10 }}>
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={inputStyle} />
               </div>
@@ -981,7 +981,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   <button
                     key={cliente.id}
                     onClick={() => setSelectedId(cliente.id)}
-                    style={{ width: "100%", background: "white", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", alignItems: "center", gap: 10 }}
+                    style={{ width: "100%", background: "#f8fafc", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>

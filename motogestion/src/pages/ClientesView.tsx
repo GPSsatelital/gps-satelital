@@ -23,9 +23,6 @@ const card: React.CSSProperties = { background: "white", borderRadius: 16, paddi
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
 const secondaryBtn: React.CSSProperties = { background: "white", border: "1px solid #cbd5e1", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "#334155" };
 
-function miniBtn(bg: string, color: string): React.CSSProperties {
-  return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
-}
 
 function formatDate(date: string | null) {
   if (!date) return "Sin registrar";
@@ -539,7 +536,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const clientes = esSubadmin && clienteIdsPermitidos
     ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !["Activo","En riesgo","En mora"].includes(c.estado))
     : todosClientes;
-  const { visitas: todasVisitas, crearVisita, resolverVisita, subirFotoVisita, asignarVisita } = useVisitas();
+  const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
@@ -548,9 +545,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const [open, setOpen] = useState(initialOpenForm);
   const [editOpen, setEditOpen] = useState(false);
   const [excepcionOpen, setExcepcionOpen] = useState(false);
-  const [visitaOpen, setVisitaOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [modoVista, setModoVista] = useState<"todos" | "pendientes">("todos");
   const [filtroEstado, setFiltroEstado] = useState(initialFilter);
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -562,28 +557,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const [form, setForm] = useState<NuevoCliente>(emptyForm());
   const [editForm, setEditForm] = useState<(NuevoCliente & { id: string }) | null>(null);
 
-  const [entrevista, setEntrevista] = useState({
-    viveAlli: "",
-    tiempoResidencia: "",
-    tipoVivienda: "",
-    composicionFamiliar: "",
-    estabilidadLaboral: "",
-    dudasCliente: "",
-    observaciones: "",
-    recomendacion: "",
-  });
-  const [fotoCliente, setFotoCliente] = useState<File | null>(null);
-  const [fotoFachada, setFotoFachada] = useState<File | null>(null);
-  const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null);
-
-  const baseClientes = modoVista === "pendientes" ? clientes.filter((c) => c.estado === "Pendiente evaluación") : clientes;
-
   const filtered = useMemo(() => {
-    let list = baseClientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
+    let list = clientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "mora") list = list.filter(c => c.estado === "En mora" || c.estado === "En riesgo");
     else if (filtroEstado) list = list.filter(c => c.estado === filtroEstado);
     return list;
-  }, [baseClientes, query, filtroEstado]);
+  }, [clientes, query, filtroEstado]);
 
   const selectedCliente: Cliente | null = clientes.find(c => c.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
@@ -725,62 +704,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     }
   }
 
-  function capturarUbicacion() {
-    if (!navigator.geolocation) {
-      alert("GPS no disponible en este dispositivo o navegador.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUbicacion({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => alert("No se pudo capturar la ubicación. Revisa permisos de GPS.")
-    );
-  }
-
-  const [guardandoVisita, setGuardandoVisita] = useState(false);
-
-  async function registrarVisita() {
-    if (!selectedCliente || guardandoVisita) return;
-    if (!entrevista.viveAlli || !entrevista.tiempoResidencia || !entrevista.tipoVivienda) {
-      alert("Completa mínimo: vive allí, tiempo de residencia y tipo de vivienda.");
-      return;
-    }
-
-    setGuardandoVisita(true);
-
-    let urlClienteFuncionario: string | null = null;
-    let urlFachada: string | null = null;
-    if (fotoCliente) {
-      const r = await subirFotoVisita(fotoCliente, selectedCliente.id, "funcionario");
-      if (r.url) urlClienteFuncionario = r.url;
-    }
-    if (fotoFachada) {
-      const r = await subirFotoVisita(fotoFachada, selectedCliente.id, "fachada");
-      if (r.url) urlFachada = r.url;
-    }
-
-    const { error } = await crearVisita({
-      cliente_id: selectedCliente.id,
-      entrevista,
-      fotos: { clienteFuncionario: urlClienteFuncionario, fachada: urlFachada },
-      ubicacion,
-    });
-
-    setGuardandoVisita(false);
-
-    if (error) {
-      alert(error);
-      return;
-    }
-
-    await cambiarEstadoCliente(selectedCliente.id, "Pendiente evaluación");
-
-    setEntrevista({ viveAlli: "", tiempoResidencia: "", tipoVivienda: "", composicionFamiliar: "", estabilidadLaboral: "", dudasCliente: "", observaciones: "", recomendacion: "" });
-    setFotoCliente(null);
-    setFotoFachada(null);
-    setUbicacion(null);
-    setVisitaOpen(false);
-  }
-
   // "Aprobar visita" solo valida que la visita se hizo bien; el cliente queda en
   // "Pendiente evaluación" para la decisión final (Aprobar/Rechazar cliente).
   async function handleAprobarVisita(id: string, clienteId: string) {
@@ -812,14 +735,14 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
   if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
 
-  const KPI_PILLS = [
-    { label: "Todos", count: clientes.length, color: "#334155", bg: "#e2e8f0", filter: "", modo: "todos" as const },
-    { label: "En proceso", count: clientes.filter(c => c.estado === "En proceso").length, color: "#334155", bg: "#e2e8f0", filter: "En proceso", modo: "todos" as const },
-    { label: "Listos visita", count: clientes.filter(c => c.estado === "Listo para visita").length, color: "#1d4ed8", bg: "#dbeafe", filter: "Listo para visita", modo: "todos" as const },
-    { label: "Pend. aprob.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, color: "#92400e", bg: "#fef3c7", filter: "Pendiente evaluación", modo: "pendientes" as const },
-    { label: "Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, color: "#166534", bg: "#dcfce7", filter: "Aprobado", modo: "todos" as const },
-    { label: "Activos", count: clientes.filter(c => c.estado === "Activo").length, color: "#166534", bg: "#bbf7d0", filter: "Activo", modo: "todos" as const },
-    { label: "En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, color: "#991b1b", bg: "#fee2e2", filter: "mora", modo: "todos" as const },
+  const CHIPS_CLIENTES = [
+    { label: "Todos", count: clientes.length, filter: "" },
+    { label: "🔘 En proceso", count: clientes.filter(c => c.estado === "En proceso").length, filter: "En proceso" },
+    { label: "🏠 Para visita", count: clientes.filter(c => c.estado === "Listo para visita").length, filter: "Listo para visita" },
+    { label: "🟡 Pend. aprob.", count: clientes.filter(c => c.estado === "Pendiente evaluación").length, filter: "Pendiente evaluación" },
+    { label: "🟢 Aprobados", count: clientes.filter(c => c.estado === "Aprobado").length, filter: "Aprobado" },
+    { label: "✅ Activos", count: clientes.filter(c => c.estado === "Activo").length, filter: "Activo" },
+    { label: "🔴 En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, filter: "mora" },
   ];
 
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
@@ -950,30 +873,31 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {error && <div style={{ marginBottom: 10, color: "#991b1b", fontSize: 13 }}>Error: {error}</div>}
 
-      {/* Filtros fusionados — una sola fila con wrap */}
+      {/* Chips de filtro */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-        {KPI_PILLS.map(pill => {
-          const active = pill.modo === "pendientes"
-            ? modoVista === "pendientes"
-            : modoVista === "todos" && filtroEstado === pill.filter;
-          return (
-            <button
-              key={pill.filter + pill.modo}
-              onClick={() => { setModoVista(pill.modo); setFiltroEstado(pill.filter); setSelectedId(null); }}
-              style={{
-                border: "none", borderRadius: 999, padding: "5px 12px",
-                fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-                background: active ? pill.color : pill.bg,
-                color: active ? "white" : pill.color,
-              }}
-            >
-              {pill.label} ({pill.count})
-            </button>
-          );
-        })}
+        {CHIPS_CLIENTES.map(chip => (
+          <button
+            key={chip.filter}
+            onClick={() => { setFiltroEstado(chip.filter); setSelectedId(null); }}
+            style={{
+              border: "none", borderRadius: 999, padding: "5px 12px",
+              fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+              background: filtroEstado === chip.filter ? "#0284c7" : "#f1f5f9",
+              color: filtroEstado === chip.filter ? "white" : "#334155",
+            }}
+          >
+            {chip.label}
+            <span style={{
+              marginLeft: 4,
+              background: filtroEstado === chip.filter ? "rgba(255,255,255,0.3)" : "#e2e8f0",
+              color: filtroEstado === chip.filter ? "white" : "#64748b",
+              borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
+            }}>{chip.count}</span>
+          </button>
+        ))}
       </div>
 
-      {modoVista === "pendientes" && (
+      {filtroEstado === "Pendiente evaluación" ? (
         <PanelAprobacion
           clientes={clientes.filter(c => c.estado === "Pendiente evaluación")}
           visitas={visitas}
@@ -994,9 +918,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           onAsignarVisita={async (visitaId, subadminId) => { await asignarVisita(visitaId, subadminId); }}
           subadmins={subadmins}
         />
-      )}
-
-      {modoVista === "todos" && (
+      ) : (
         isMobile ? (
           /* ---- MOBILE LAYOUT ---- */
           selectedId && selectedCliente ? (
@@ -1032,7 +954,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   role={role}
                   visitas={visitasDelCliente(selectedCliente.id)}
                   onEdit={() => abrirEdicion(selectedCliente)}
-                  onVisita={() => setVisitaOpen(true)}
+                  onVisita={() => { setClienteVisitaId(selectedCliente.id); setClienteVisitaNombre(selectedCliente.nombre); }}
                   onExcepcion={() => abrirExcepcion(selectedCliente)}
                   onEstado={cambiarEstadoCliente}
                   onAprobarVisita={handleAprobarVisita}
@@ -1054,7 +976,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 </div>
               )}
               {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
-              <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "grid", gap: 8, maxHeight: "62vh", overflowY: "auto" }}>
                 {filtered.map((cliente) => (
                   <button
                     key={cliente.id}
@@ -1189,7 +1111,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     role={role}
                     visitas={visitasDelCliente(selectedCliente.id)}
                     onEdit={() => abrirEdicion(selectedCliente)}
-                    onVisita={() => setVisitaOpen(true)}
+                    onVisita={() => { setClienteVisitaId(selectedCliente.id); setClienteVisitaNombre(selectedCliente.nombre); }}
                     onExcepcion={() => abrirExcepcion(selectedCliente)}
                     onEstado={cambiarEstadoCliente}
                     onAprobarVisita={handleAprobarVisita}
@@ -1293,102 +1215,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         />
       )}
 
-      {visitaOpen && selectedCliente && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }} onClick={() => setVisitaOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
-            <h3 style={{ margin: 0 }}>Registrar visita · <span style={{ textTransform: "uppercase" }}>{selectedCliente.nombre}</span></h3>
-
-            <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
-              <div>
-                <div style={labelStyle}>¿El cliente vive en la dirección registrada?</div>
-                <select style={inputStyle} value={entrevista.viveAlli} onChange={(e) => setEntrevista((p) => ({ ...p, viveAlli: e.target.value }))}>
-                  <option value="">Seleccionar</option>
-                  <option value="Sí">Sí</option>
-                  <option value="No">No</option>
-                  <option value="No fue posible confirmar">No fue posible confirmar</option>
-                </select>
-              </div>
-              <div>
-                <div style={labelStyle}>¿Cuánto tiempo lleva viviendo allí?</div>
-                <input style={inputStyle} placeholder="Ej. 2 años" value={entrevista.tiempoResidencia} onChange={(e) => setEntrevista((p) => ({ ...p, tiempoResidencia: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Tipo de vivienda</div>
-                <select style={inputStyle} value={entrevista.tipoVivienda} onChange={(e) => setEntrevista((p) => ({ ...p, tipoVivienda: e.target.value }))}>
-                  <option value="">Seleccionar</option>
-                  <option value="Propia">Propia</option>
-                  <option value="Familiar">Familiar</option>
-                  <option value="Alquilada">Alquilada</option>
-                </select>
-              </div>
-              <div>
-                <div style={labelStyle}>Composición familiar</div>
-                <input style={inputStyle} placeholder="Ej. Esposa e hijo de 3 años" value={entrevista.composicionFamiliar} onChange={(e) => setEntrevista((p) => ({ ...p, composicionFamiliar: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Estabilidad laboral / fuente de ingresos</div>
-                <input style={inputStyle} placeholder="Ej. Mototaxista independiente, estable" value={entrevista.estabilidadLaboral} onChange={(e) => setEntrevista((p) => ({ ...p, estabilidadLaboral: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Dudas o preguntas del cliente</div>
-                <input style={inputStyle} placeholder="¿Qué preguntas hizo el cliente?" value={entrevista.dudasCliente} onChange={(e) => setEntrevista((p) => ({ ...p, dudasCliente: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Observaciones del visitador</div>
-                <textarea style={{ ...inputStyle, minHeight: 70 }} value={entrevista.observaciones} onChange={(e) => setEntrevista((p) => ({ ...p, observaciones: e.target.value }))} />
-              </div>
-              <div>
-                <div style={labelStyle}>Recomendación</div>
-                <select style={inputStyle} value={entrevista.recomendacion} onChange={(e) => setEntrevista((p) => ({ ...p, recomendacion: e.target.value }))}>
-                  <option value="">Seleccionar</option>
-                  <option value="Aprobado">Aprobado</option>
-                  <option value="Rechazado">Rechazado</option>
-                  <option value="Pendiente">Pendiente — requiere más información</option>
-                </select>
-              </div>
-
-              <div>
-                <div style={labelStyle}>Foto personas + funcionario</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13 }}>
-                    📷 Cámara
-                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => setFotoCliente(e.target.files?.[0] ?? null)} />
-                  </label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
-                    🖼 Galería
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFotoCliente(e.target.files?.[0] ?? null)} />
-                  </label>
-                </div>
-                {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoCliente.name}</div>}
-              </div>
-              <div>
-                <div style={labelStyle}>Foto fachada</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13 }}>
-                    📷 Cámara
-                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => setFotoFachada(e.target.files?.[0] ?? null)} />
-                  </label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
-                    🖼 Galería
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFotoFachada(e.target.files?.[0] ?? null)} />
-                  </label>
-                </div>
-                {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoFachada.name}</div>}
-              </div>
-
-              <div>
-                <button type="button" onClick={capturarUbicacion} style={miniBtn("#e0f2fe", "#0369a1")}>Capturar ubicación GPS</button>
-                {ubicacion && <span style={{ marginLeft: 10, fontSize: 13, color: "#166534" }}>✔ Ubicación capturada</span>}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setVisitaOpen(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={registrarVisita} disabled={guardandoVisita} style={primaryBtn}>{guardandoVisita ? "Guardando..." : "Guardar visita"}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

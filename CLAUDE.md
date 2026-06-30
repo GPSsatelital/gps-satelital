@@ -59,12 +59,12 @@ El usuario confirma antes de codificar. Esto evita implementar cosas sin sentido
 - Ejemplo de error: filtrar contratos por SUBADMIN en CobrosView pero olvidar el Dashboard, la campana de alertas y la búsqueda global → datos inconsistentes según la pantalla.
 - Mecánica: `grep` de los hooks involucrados (`useMotos`, `useContratos`, `useClientes`, `useAlertas`, etc.) en TODAS las vistas → confirmar cuáles cargan el dato y cuáles ya aplican la regla.
 
-#### Checklist obligatoria al corregir un bug de CÁLCULO (cuotas, mora, deuda, prorrateo, tarifas)
-Antes de dar el fix por terminado:
-1. `grep` del campo de BD o variable involucrada (ej. `valor_semanal`, `cuotaPactada`) en **todo `src/`**, no solo en el archivo donde se detectó el bug.
-2. Listar explícitamente en el chat **cada lugar** donde aparece ese cálculo (archivo + línea).
-3. Confirmar uno por uno cuáles aplican el mismo fix y cuáles no (con su razón).
-4. Solo entonces aplicar el fix en todos los sitios confirmados y correr `tsc --noEmit`.
+#### Checklist obligatoria antes de cerrar CUALQUIER tarea (cálculos, funciones, validaciones, permisos, textos, lo que sea)
+No basta con que la tarea funcione donde se probó. Antes de darla por terminada:
+1. `grep` de la lógica/función/variable/condición involucrada en **todo `src/`**, no solo en el archivo donde se hizo el cambio — buscar si está duplicada o repetida en otro componente.
+2. Listar explícitamente en el chat **cada lugar** donde aparece esa misma lógica (archivo + línea).
+3. Confirmar uno por uno cuáles deben recibir el mismo cambio y cuáles no (con su razón).
+4. Solo entonces aplicar el cambio en todos los sitios confirmados y correr `tsc --noEmit`.
 - Ejemplo de error real: se corrigió el cálculo de prorrateo en el panel de detalle, el modal de pago rápido y el cobro en campo, pero quedaron sueltos la lista de Contratos, el panel Hoy y la pantalla de referencia del formulario de campo — mismo bug visible en 3 pantallas más después de "terminado" el fix.
 
 ---

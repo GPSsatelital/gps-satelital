@@ -599,6 +599,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
 
       const saldoAFavor = confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
+      const sinPagosNunca = confirmados.length === 0;
 
       return {
         ...contrato,
@@ -612,6 +613,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         diasSinPago,
         ultimaGestion,
         saldoAFavor,
+        sinPagosNunca,
       };
     });
   }, [contratosActivos, pagos, deudas, convenios]);
@@ -753,16 +755,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const montoIngresado = Number(valor) || 0;
   const esDomingo = new Date().getDay() === 0;
 
-  // Detectar si está en período de prorrateo (contrato nuevo, entregado después del último día de pago)
-  const enProrrateo = (() => {
-    if (!contratoDetalle || contratoDetalle.forma_pago === "Diario" || !contratoDetalle.fecha_entrega) return false;
-    if ((contratoDetalle.pagadoEstaSemana ?? 0) > 0) return false;
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const target = DIAS[contratoDetalle.dia_pago] ?? 1;
-    const d = new Date(hoy);
-    while (d.getDay() !== target) d.setDate(d.getDate() - 1);
-    return contratoDetalle.fecha_entrega >= d.toISOString().slice(0, 10);
-  })();
+  // Detectar si está en período de prorrateo (contrato nuevo que nunca ha recibido un pago).
+  // Se mantiene en prorrateo sin importar los días de mora — el monto adeudado no
+  // salta a una semana completa hasta que se salde ese primer período.
+  const enProrrateo = !!contratoDetalle
+    && contratoDetalle.forma_pago !== "Diario"
+    && !!contratoDetalle.fecha_entrega
+    && (contratoDetalle.sinPagosNunca ?? true);
 
   const cuotaPactada = contratoDetalle
     ? (contratoDetalle.forma_pago === "Diario"
@@ -795,17 +794,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const modalMoto = modalContrato ? motos.find(m => m.id === modalContrato.moto_id) : null;
   const modalPagos = modalContratoId ? pagosDelContrato(modalContratoId).slice(0, 8) : [];
 
-  const modalEnProrrateo = modalContrato
-    ? (modalContrato.forma_pago !== "Diario" &&
-       (modalContrato.pagadoEstaSemana ?? 0) === 0 &&
-       !!modalContrato.fecha_entrega && (() => {
-         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-         const target = DIAS[modalContrato.dia_pago] ?? 1;
-         const d = new Date(hoy);
-         while (d.getDay() !== target) d.setDate(d.getDate() - 1);
-         return modalContrato.fecha_entrega! >= d.toISOString().slice(0, 10);
-       })())
-    : false;
+  const modalEnProrrateo = !!modalContrato
+    && modalContrato.forma_pago !== "Diario"
+    && !!modalContrato.fecha_entrega
+    && (modalContrato.sinPagosNunca ?? true);
   const modalCuotaPactada = modalContrato
     ? (modalContrato.forma_pago === "Diario"
         ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo, modalContrato.tarifa_domingo)
@@ -1046,9 +1038,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const r = resumenContratos.find(x => x.id === campoContratoId);
     if (!r) { setCampoError("Contrato no encontrado"); return; }
 
+    const enProrrateoCampo = r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
     const cuotaPact = r.forma_pago === "Diario"
       ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
-      : r.valor_semanal;
+      : enProrrateoCampo
+        ? calcProrrateoInicial(r)
+        : r.valor_semanal;
     const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0);
     const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);

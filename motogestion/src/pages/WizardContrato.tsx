@@ -254,6 +254,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (form.forma_pago !== "Diario" && !form.meses) { setError("Ingresa la duración en meses."); return; }
     const cliente = clientes.find(c => c.id === form.cliente_id);
     if (!cliente) { setError("Cliente no encontrado."); return; }
+    if (cliente.estado !== "Aprobado") { setError("El cliente debe estar en estado 'Aprobado' para crear un contrato."); return; }
 
     const diaPago = form.forma_pago === "Diario" ? "Diario" : form.dia_pago;
 

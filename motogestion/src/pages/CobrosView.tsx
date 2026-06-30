@@ -795,10 +795,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const modalMoto = modalContrato ? motos.find(m => m.id === modalContrato.moto_id) : null;
   const modalPagos = modalContratoId ? pagosDelContrato(modalContratoId).slice(0, 8) : [];
 
+  const modalEnProrrateo = modalContrato
+    ? (modalContrato.forma_pago !== "Diario" &&
+       (modalContrato.pagadoEstaSemana ?? 0) === 0 &&
+       !!modalContrato.fecha_entrega && (() => {
+         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+         const target = DIAS[modalContrato.dia_pago] ?? 1;
+         const d = new Date(hoy);
+         while (d.getDay() !== target) d.setDate(d.getDate() - 1);
+         return modalContrato.fecha_entrega! >= d.toISOString().slice(0, 10);
+       })())
+    : false;
   const modalCuotaPactada = modalContrato
     ? (modalContrato.forma_pago === "Diario"
         ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo, modalContrato.tarifa_domingo)
-        : modalContrato.valor_semanal)
+        : modalEnProrrateo
+          ? calcProrrateoInicial(modalContrato)
+          : modalContrato.valor_semanal)
     : 0;
   const modalPagadoPeriodo = modalContrato?.forma_pago === "Diario"
     ? (modalContrato?.recaudadoHoy ?? 0)
@@ -908,17 +921,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   async function handleAplicarSaldo() {
+    if (procesando) return;
     if (!contratoSeleccionadoId || !contratoDetalle) return;
     const saldo = contratoDetalle.saldoAFavor ?? 0;
     if (saldo <= 0) return;
-    const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
-    const { error } = await registrarPago(
-      contratoSeleccionadoId, saldo, "Efectivo", aplicado,
-      contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
-    );
-    if (error) { setFormError(error); return; }
-    setSaldoExito(true);
-    setTimeout(() => setSaldoExito(false), 3000);
+    setProcesando(true);
+    try {
+      const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
+      const { error } = await registrarPago(
+        contratoSeleccionadoId, saldo, "Efectivo", aplicado,
+        contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
+      );
+      if (error) { setFormError(error); return; }
+      setSaldoExito(true);
+      setTimeout(() => setSaldoExito(false), 3000);
+    } finally {
+      setProcesando(false);
+    }
   }
 
   async function handleRegistrarDeuda() {
@@ -1232,7 +1251,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={labelStyle}>Método</div>
               <select style={inputStyle} value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)}>
                 <option value="Efectivo">Efectivo (confirma automático)</option>
-                <option value="Nequi">Nequi (queda pendiente)</option>
+                <option value="Transferencia">Transferencia (queda pendiente)</option>
               </select>
             </div>
           </div>

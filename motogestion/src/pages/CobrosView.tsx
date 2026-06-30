@@ -1504,15 +1504,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const seleccionado = c.id === contratoSeleccionadoId;
           const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
 
-          const enProrrateoLista = (() => {
-            if (c.forma_pago === "Diario" || !c.fecha_entrega) return false;
-            if ((c.pagadoEstaSemana ?? 0) > 0) return false;
-            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-            const target = DIAS[c.dia_pago] ?? 1;
-            const d = new Date(hoy);
-            while (d.getDay() !== target) d.setDate(d.getDate() - 1);
-            return c.fecha_entrega >= d.toISOString().slice(0, 10);
-          })();
+          const enProrrateoLista = c.forma_pago !== "Diario" && !!c.fecha_entrega && (c.sinPagosNunca ?? true);
           const cuotaPact = c.forma_pago === "Diario"
             ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
             : enProrrateoLista ? calcProrrateoInicial(c) : c.valor_semanal;
@@ -1827,9 +1819,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const borderColor = grupoC ? grupoC.color : "#e2e8f0";
 
                   // Monto que debe pagar
+                  const enProrrateoHoy = c.forma_pago !== "Diario" && !!c.fecha_entrega && (c.sinPagosNunca ?? true);
                   const cuotaP = c.forma_pago === "Diario"
                     ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-                    : c.valor_semanal;
+                    : enProrrateoHoy ? calcProrrateoInicial(c) : c.valor_semanal;
                   const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
                   const debePagar = Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
 
@@ -2149,9 +2142,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 const cliente = r ? clientes.find(cl => cl.id === r.cliente_id) : null;
                 const moto = r ? motos.find(m => m.id === r.moto_id) : null;
                 // Referencia: cuánto debe pagar
+                const enProrrateoRef = !!r && r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
                 const cuotaPact = r ? (r.forma_pago === "Diario"
                   ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
-                  : r.valor_semanal) : 0;
+                  : enProrrateoRef ? calcProrrateoInicial(r) : r.valor_semanal) : 0;
                 const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0)) : 0;
                 const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
                 const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);

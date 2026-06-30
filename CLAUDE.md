@@ -10,6 +10,16 @@ Supabase: `jvfkprkjysjffhzjitgl` | Repo: `GPSsatelital/gps-satelital` | Producci
 
 ---
 
+## REGLA DE CONTEXT7 — OBLIGATORIO SIEMPRE
+
+Cuando la tarea o pregunta involucre cualquiera de estas librerías: **Supabase** (BD, auth, storage, RLS, realtime, políticas), **React** (hooks, contextos, renders), **TypeScript** (tipos, interfaces, generics) o **Vite** (build, env, PWA) — sugerir explícitamente al usuario:
+
+> "💡 Esta pregunta involucra [librería]. Te sugiero agregar **'use context7'** a tu mensaje para que traiga la documentación actualizada y evitar que te dé una API desactualizada."
+
+Indicar siempre: qué librería detecté, por qué conviene usarlo en ese caso puntual, y qué información específica traería.
+
+---
+
 ## REGLA DE PREGUNTAS — OBLIGATORIO SIEMPRE
 
 **Hacer las preguntas UNA POR UNA (nunca varias juntas), y siempre ofreciendo opciones para autoseleccionar la respuesta.**
@@ -48,6 +58,14 @@ El usuario confirma antes de codificar. Esto evita implementar cosas sin sentido
 **Antes de cualquier cambio, mapear TODOS los paneles/vistas/componentes que tocan el mismo dato y verificar cómo se relacionan.** No basta con cambiar el aspecto puntual: un cambio o filtro debe quedar integrado en TODO el sistema (dashboard, campana de alertas, búsqueda global, fichas, listas, KPIs, etc.), no solo donde se pensó primero.
 - Ejemplo de error: filtrar contratos por SUBADMIN en CobrosView pero olvidar el Dashboard, la campana de alertas y la búsqueda global → datos inconsistentes según la pantalla.
 - Mecánica: `grep` de los hooks involucrados (`useMotos`, `useContratos`, `useClientes`, `useAlertas`, etc.) en TODAS las vistas → confirmar cuáles cargan el dato y cuáles ya aplican la regla.
+
+#### Checklist obligatoria al corregir un bug de CÁLCULO (cuotas, mora, deuda, prorrateo, tarifas)
+Antes de dar el fix por terminado:
+1. `grep` del campo de BD o variable involucrada (ej. `valor_semanal`, `cuotaPactada`) en **todo `src/`**, no solo en el archivo donde se detectó el bug.
+2. Listar explícitamente en el chat **cada lugar** donde aparece ese cálculo (archivo + línea).
+3. Confirmar uno por uno cuáles aplican el mismo fix y cuáles no (con su razón).
+4. Solo entonces aplicar el fix en todos los sitios confirmados y correr `tsc --noEmit`.
+- Ejemplo de error real: se corrigió el cálculo de prorrateo en el panel de detalle, el modal de pago rápido y el cobro en campo, pero quedaron sueltos la lista de Contratos, el panel Hoy y la pantalla de referencia del formulario de campo — mismo bug visible en 3 pantallas más después de "terminado" el fix.
 
 ---
 

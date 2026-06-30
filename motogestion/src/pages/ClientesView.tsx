@@ -533,11 +533,15 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     });
   }, [esAdminOSuperior]);
   const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
-  const clientes = esSubadmin && clienteIdsPermitidos
-    ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !["Activo","En riesgo","En mora"].includes(c.estado))
-    : todosClientes;
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);
+  // Clientes con visita asignada a este SUBADMIN (embudo de ingreso)
+  const clienteIdsConVisitaAsignada = esSubadmin
+    ? new Set(visitas.map(v => v.cliente_id))
+    : null;
+  const clientes = esSubadmin && clienteIdsPermitidos
+    ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !!(clienteIdsConVisitaAsignada?.has(c.id)))
+    : todosClientes;
 
   const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);

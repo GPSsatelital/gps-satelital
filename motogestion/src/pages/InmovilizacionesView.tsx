@@ -5,6 +5,8 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
 import { useGestiones } from "../hooks/useGestiones";
+import { useDeudas } from "../hooks/useDeudas";
+import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -45,16 +47,9 @@ const PRIO: Record<Prioridad, { bg: string; color: string; border: string; label
 
 type FiltroP = "todos" | "criticos" | "en_proceso" | Prioridad;
 
-function protocoloPasos(dias: number) {
-  return [
-    { num: 1, label: "Mensaje WA",         done: dias >= 1, active: dias === 0 },
-    { num: 2, label: "Llamada + gabela",    done: dias >= 2, active: dias === 1 },
-    { num: 3, label: "Apagado remoto",      done: dias >= 3, active: dias === 2 },
-    { num: 4, label: "Inmovilización",      done: dias >= 4, active: dias === 3 },
-    { num: 5, label: "Plazo extra (2d)",    done: dias >= 6, active: dias >= 4 && dias < 6 },
-    { num: 6, label: "Recolección física",  done: false,     active: dias >= 6 },
-  ];
-}
+// Protocolo actual: mensaje → llamada → apagado/recolección, disponibles el mismo día en
+// que el contrato entra en mora (el funcionario escala según si hay respuesta o no).
+// Los pasos ya no dependen de un número fijo de días — se gestionan desde el Panel Hoy de Cartera.
 
 export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -64,18 +59,21 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { contratos } = useContratos();
+  const { contratos, reactivarContrato, finalizarContrato } = useContratos();
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { pagos }     = usePagos();
   const { gestiones } = useGestiones();
+  const { deudas }    = useDeudas();
+  const { profile }   = useAuth();
+  const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
   const [busqueda, setBusqueda]       = useState("");
   const [filtro, setFiltro]           = useState<FiltroP>("todos");
   const [expandido, setExpandido]     = useState<string | null>(null);
-  const [recuperadas, setRecuperadas] = useState<Set<string>>(new Set());
+  const [procesandoId, setProcesandoId] = useState<string | null>(null);
 
   const hoy = new Date().toISOString().slice(0, 10);
   const inicioSemana = (() => {
@@ -144,9 +142,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   }), [filas]);
 
   const filtradas = useMemo(() => {
-    let lista = filas.filter(f => !recuperadas.has(f.contratoId));
+    let lista = filas;
     if (filtro === "criticos")   lista = lista.filter(f => f.prioridad === "critica");
-    if (filtro === "en_proceso") lista = lista.filter(f => f.recoleccionOrdenada);
     if (filtro === "critica")    lista = lista.filter(f => f.prioridad === "critica");
     if (filtro === "alta")       lista = lista.filter(f => f.prioridad === "alta");
     if (filtro === "media")      lista = lista.filter(f => f.prioridad === "media");
@@ -155,12 +152,71 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       lista = lista.filter(f => f.clienteNombre.toLowerCase().includes(q) || f.placa.toLowerCase().includes(q));
     }
     return lista;
-  }, [filas, busqueda, filtro, recuperadas]);
+  }, [filas, busqueda, filtro]);
 
-  const enRecoleccion = useMemo(() =>
-    filas.filter(f => f.recoleccionOrdenada && !recuperadas.has(f.contratoId)),
-    [filas, recuperadas]
-  );
+  // ── Motos retenidas — datos reales de BD (contrato Suspendido + moto Recuperada) ──
+  type MotoRetenida = {
+    contratoId: string;
+    clienteId: string;
+    clienteNombre: string;
+    clienteTel: string;
+    motoId: string | null;
+    placa: string;
+    marca: string;
+    modelo: string;
+    deudasPendientes: { id: string; concepto: string; descripcion: string; monto_pendiente: number }[];
+    totalPendiente: number;
+  };
+
+  const motosRetenidas: MotoRetenida[] = useMemo(() => {
+    return contratos
+      .filter(c => c.estado === "Suspendido")
+      .map(c => {
+        const cliente = clientes.find(cl => cl.id === c.cliente_id);
+        const moto = motos.find(m => m.id === c.moto_id);
+        const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada");
+        return {
+          contratoId: c.id,
+          clienteId: c.cliente_id,
+          clienteNombre: cliente?.nombre ?? "Sin nombre",
+          clienteTel: cliente?.whatsapp ?? cliente?.telefono ?? "",
+          motoId: c.moto_id ?? null,
+          placa: moto?.placa ?? "Sin placa",
+          marca: moto?.marca ?? "",
+          modelo: moto?.modelo ?? "",
+          deudasPendientes: deudasC.map(d => ({ id: d.id, concepto: d.concepto, descripcion: d.descripcion, monto_pendiente: d.monto_pendiente })),
+          totalPendiente: deudasC.reduce((acc, d) => acc + d.monto_pendiente, 0),
+        };
+      });
+  }, [contratos, clientes, motos, deudas]);
+
+  async function handleDevolverMoto(m: MotoRetenida) {
+    if (procesandoId) return;
+    if (m.totalPendiente > 0) {
+      alert("El cliente debe saldar toda la deuda pendiente (multa + cuota atrasada) antes de recuperar la moto.");
+      return;
+    }
+    if (!window.confirm(`¿Confirmas devolver la moto ${m.placa} a ${m.clienteNombre}? El contrato vuelve a Activo.`)) return;
+    setProcesandoId(m.contratoId);
+    try {
+      const { error } = await reactivarContrato(m.contratoId, m.motoId);
+      if (error) alert("Error al reactivar el contrato: " + error);
+    } finally {
+      setProcesandoId(null);
+    }
+  }
+
+  async function handleReasignarMoto(m: MotoRetenida) {
+    if (procesandoId) return;
+    if (!window.confirm(`¿Confirmas finalizar el contrato de ${m.clienteNombre} y liberar la moto ${m.placa} para asignarla a otro cliente?`)) return;
+    setProcesandoId(m.contratoId);
+    try {
+      const { error } = await finalizarContrato(m.contratoId, m.motoId);
+      if (error) alert("Error al finalizar el contrato: " + error);
+    } finally {
+      setProcesandoId(null);
+    }
+  }
 
   function abrirWA(tel: string, nombre: string, dias: number) {
     if (!tel) return;
@@ -168,10 +224,6 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     const msg = `Hola ${n}, su moto lleva ${dias} días sin pago. Es urgente que se comunique con nosotros para evitar la recolección del vehículo. GPS Satelital ⚠️`;
     const num = tel.replace(/\D/g, "");
     window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(msg)}`, "_blank");
-  }
-
-  function marcarRecuperada(id: string) {
-    setRecuperadas(prev => { const next = new Set(prev); next.add(id); return next; });
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [
@@ -270,9 +322,6 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         {filtradas.map(f => {
           const s = PRIO[f.prioridad];
           const abierto = expandido === f.contratoId;
-          const pasos = protocoloPasos(f.diasSinPago);
-          const esRecuperada = recuperadas.has(f.contratoId);
-          if (esRecuperada) return null;
 
           return (
             <div key={f.contratoId} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
@@ -381,12 +430,6 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     >
                       📋 Gestión
                     </button>
-                    <button
-                      onClick={() => marcarRecuperada(f.contratoId)}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
-                    >
-                      ✓ Recuperada
-                    </button>
                     {onNavigate && (
                       <>
                         <button
@@ -433,24 +476,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               {abierto && (
                 <div style={{ borderTop: `1px solid ${s.border}`, padding: "14px 16px", background: "rgba(255,255,255,0.7)" }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                    Protocolo de mora — estado actual
+                    Protocolo de mora
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {pasos.map(p => (
-                      <div
-                        key={p.num}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 6,
-                          padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700,
-                          background: p.done ? "#dcfce7" : p.active ? s.bg : "#f8fafc",
-                          color: p.done ? "#166534" : p.active ? s.color : "#94a3b8",
-                          border: p.active ? `2px solid ${s.color}` : "1px solid transparent",
-                        }}
-                      >
-                        <span>{p.done ? "✓" : p.active ? "▶" : p.num}</span>
-                        <span>{p.label}</span>
-                      </div>
-                    ))}
+                  <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
+                    Mensaje → Llamada → Apagado/Recolección — disponibles desde el primer día de mora. El funcionario escala
+                    según si logra contacto o hay pago, pudiendo pasar los 3 pasos el mismo día. La recolección física se
+                    ejecuta desde el Panel Hoy de Cartera.
                   </div>
                   <div style={{ marginTop: 10, padding: "8px 12px", background: "white", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12, color: "#64748b" }}>
                     <strong style={{ color: "#0f172a" }}>Regla GPS:</strong> Sirena máx. 10 seg · Apagado máx. 1 hora · Solo vehículo{" "}
@@ -463,57 +494,76 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         })}
       </div>
 
-      {/* Orden de recolección section */}
-      {enRecoleccion.length > 0 && (
-        <div style={{ background: "#fff5f5", border: "2px solid #fecaca", borderRadius: 16, padding: "18px 20px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 22 }}>🚔</span>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#991b1b" }}>Órdenes de recolección activas</div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>
-                {enRecoleccion.length} moto{enRecoleccion.length !== 1 ? "s" : ""} — coordinar con equipo de campo y policía
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "grid", gap: 8 }}>
-            {enRecoleccion.map(f => (
-              <div key={f.contratoId} style={{
-                background: "white", border: "1px solid #fecaca", borderRadius: 12,
-                padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10,
-              }}>
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>
-                    {f.placa} · {f.clienteNombre}
+      {/* Motos retenidas — datos reales (contrato Suspendido + moto Recuperada) */}
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "#0f172a" }}>🔒 Motos retenidas</h3>
+        <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
+          Motos ya recolectadas, en poder de la empresa — esperando que el cliente salde su deuda para recuperarla.
+        </p>
+      </div>
+
+      {motosRetenidas.length === 0 ? (
+        <div style={{ background: "white", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 28 }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>No hay motos retenidas</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
+          {motosRetenidas.map(m => {
+            const alDia = m.totalPendiente <= 0;
+            const procesandoEsta = procesandoId === m.contratoId;
+            return (
+              <div key={m.contratoId} style={{ background: "#fff5f5", border: "2px solid #fecaca", borderRadius: 16, padding: "14px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "#0f172a" }}>
+                      {m.placa} · {m.clienteNombre}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{m.marca} {m.modelo}</div>
+                    <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
+                      {m.deudasPendientes.length === 0 ? (
+                        <span style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>✓ Sin deudas pendientes</span>
+                      ) : m.deudasPendientes.map(d => (
+                        <div key={d.id} style={{ fontSize: 12, color: "#991b1b" }}>
+                          {d.concepto === "multa_recoleccion" ? "Multa por recolección/inmovilización" : d.descripcion}: <strong>${fmt(d.monto_pendiente)}</strong>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 13, fontWeight: 800, color: alDia ? "#166534" : "#991b1b", marginTop: 2 }}>
+                        Total pendiente: ${fmt(m.totalPendiente)}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                    {f.marca} {f.modelo} · {f.diasSinPago === 999 ? "Sin historial" : `${f.diasSinPago} días sin pago`}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {f.clienteTel && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    {m.clienteTel && (
+                      <button
+                        onClick={() => window.open(`tel:+57${m.clienteTel.replace(/\D/g, "")}`)}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}
+                      >
+                        📞 Llamar
+                      </button>
+                    )}
                     <button
-                      onClick={() => window.open(`tel:+57${f.clienteTel.replace(/\D/g, "")}`)}
-                      style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}
+                      onClick={() => handleDevolverMoto(m)}
+                      disabled={!alDia || procesandoEsta}
+                      title={!alDia ? "Debe saldar toda la deuda pendiente primero" : ""}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!alDia || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: alDia ? "#dcfce7" : "#f1f5f9", color: alDia ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
                     >
-                      📞 Llamar
+                      {procesandoEsta ? "Procesando..." : "✓ Devolver moto"}
                     </button>
-                  )}
-                  <button
-                    onClick={() => marcarRecuperada(f.contratoId)}
-                    style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
-                  >
-                    ✓ Marcar recuperada
-                  </button>
-                  <span style={{ padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>
-                    ${fmt(f.deudaEstimada)} adeudado
-                  </span>
+                    {esAdmin && (
+                      <button
+                        onClick={() => handleReasignarMoto(m)}
+                        disabled={procesandoEsta}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: procesandoEsta ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e", opacity: procesandoEsta ? 0.6 : 1 }}
+                      >
+                        {procesandoEsta ? "Procesando..." : "↺ Reasignar a otro cliente"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 12, padding: "8px 12px", background: "white", borderRadius: 10, border: "1px solid #fecaca", fontSize: 12, color: "#991b1b", fontWeight: 700 }}>
-            ⚠️ Nunca acercarse al vehículo sin acompañamiento policial. Llamar a GPS + Policía primero.
-          </div>
+            );
+          })}
         </div>
       )}
 

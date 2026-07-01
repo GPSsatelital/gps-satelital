@@ -414,13 +414,18 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 - **Listas dentro de recuadros** (`maxHeight ~64vh + overflowY:auto`) para que no ocupen toda la pantalla.
 - Mora/Gabela/Pagan-hoy/Recolección/Protocolo ya NO son pestañas: viven dentro de **Hoy** (tareas) o como **filtro de Contratos**. Cero funcionalidad perdida.
 
-### Protocolo de mora (orden estricto)
-1. **Día de pago** → mensaje WhatsApp durante la mañana
-2. **Día de gabela** → mensaje + llamada + sirena máx 5-10 seg (vehículo **detenido**)
-3. **Apagado remoto** → solo detenido · máx 1 hora · luego proceder a inmovilización física
-4. **Mora** → aparece en lista de inmovilizaciones
-5. **Plazo extra** → máx 2 días adicionales, requiere motivo escrito
-6. **Sin cumplimiento** → orden de recolección física
+### Protocolo de mora (escalación por respuesta, no por días fijos)
+- **Día de pago** → mensaje WhatsApp durante la mañana
+- **Día de gabela** (1 día sin pagar) → sigue el mensaje
+- **Mora** (día siguiente a gabela) → gestión exhaustiva hasta que pague o se retenga la moto:
+  1. **Mensaje** — si no hay contacto ni pago →
+  2. **Llamada** — si no hay respuesta →
+  3. **Apagado remoto o Recolección física** (vehículo detenido)
+  - Los 3 pasos están disponibles desde el primer día de mora — el funcionario decide cuándo escalar según la respuesta obtenida, **puede pasar los 3 el mismo día** si no hay respuesta. No hay bloqueo por tiempo.
+- **Plazo extra** (chance al cliente) → ADMIN, ADMIN_PRINCIPAL o SUBADMIN pueden otorgar 1-2 días adicionales con motivo escrito obligatorio. Mientras esté vigente, el contrato sale del balde "Recolección" (no se puede recolectar durante ese margen). Al vencer sin pago, vuelve automáticamente a la cola.
+- **Recolección física** → al confirmarla: `contratos.estado → "Suspendido"`, `motos.estado → "Recuperada"`, y se crea automáticamente una deuda de **$20.000** (concepto `multa_recoleccion`, "Multa por recolección/inmovilización") — se cobra cada vez que se recolecta, no una sola vez de por vida.
+- **Devolver la moto** → el cliente la recupera solo cuando salda **toda deuda pendiente del contrato** (multa + cuota atrasada que se registre como deuda `tarifa_atrasada`). Se gestiona desde Inmovilizaciones → sección "Motos retenidas".
+- **Si el cliente se demora mucho en resolver** → el ADMIN/ADMIN_PRINCIPAL puede reasignar la moto a otro cliente (la moto nunca debe dejar de producir) — finaliza el contrato anterior a la fecha de retención y libera la moto para un nuevo contrato.
 
 ### Orden de aplicación de cada pago
 1. Cuota pactada del período (tarifa + ahorro)

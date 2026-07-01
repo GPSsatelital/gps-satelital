@@ -407,7 +407,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 5, flexShrink: isMobile ? 1 : 0, flexWrap: "wrap", minWidth: 0 }}>
                     {f.clienteTel && (
                       <>
                         <button

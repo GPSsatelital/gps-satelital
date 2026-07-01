@@ -8,6 +8,10 @@ Supabase: `jvfkprkjysjffhzjitgl` | Repo: `GPSsatelital/gps-satelital` | Producci
 
 **Nunca implementar nada sin antes describir el plan y esperar confirmación explícita del usuario.**
 
+### REGLA DE VERIFICACIÓN PREVIA — OBLIGATORIO SIEMPRE
+Esto aplica también **dentro** de una tarea ya aprobada, no solo al inicio. Si al escribir un cambio surge una decisión con más de una interpretación válida (ej. "¿exactamente qué roles ven esto?", "¿este dato incluye o excluye tal caso?"), **detenerse y preguntar antes de escribir el código** — no implementar la primera interpretación y corregirla después si sale mal. Autocorregir sobre la marcha es señal de que faltó verificar antes de tocar el código.
+- Ejemplo de error real: se escribió una condición de permisos usando `esSecretaria` sin verificar antes si ADMIN debía quedar incluido — resultó que sí, y hubo que corregir la condición ya escrita en vez de haber preguntado primero.
+
 ---
 
 ## REGLA DE CONTEXT7 — OBLIGATORIO SIEMPRE

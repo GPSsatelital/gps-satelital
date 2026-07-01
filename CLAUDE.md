@@ -46,6 +46,9 @@ El estilo visual actual (paleta, tipografía, componentes) **no es intocable** �
 - Las convenciones técnicas ya fijas: `style={{}}` inline puro (cero Tailwind/MUI/Bootstrap), mobile-first con `useIsMobile()`
 - Cualquier cambio visual sigue pasando por la REGLA DE AUTORIZACIÓN — proponer el cambio y esperar confirmación antes de aplicarlo, especialmente si toca muchas pantallas (mapeo integral)
 
+### Theme Factory (paleta/tipografía)
+Genera referencia de paleta de colores y tipografía (temas preseleccionados o a medida) — NO se auto-aplica al código. Traducir manualmente el tema elegido al sistema de estilos inline existente (mismas reglas de protección que Frontend Design arriba). Usar en conjunto con Frontend Design: Theme Factory define qué colores/fuentes, Frontend Design decide cómo se componen visualmente.
+
 ### codebase-memory — prioridad sobre grep manual
 Para preguntas de "¿dónde está X en todo el proyecto?" o "¿cómo se conecta este módulo con otros?" — consultar primero el grafo indexado de `codebase-memory` en vez de `grep`/`Explore` archivo por archivo (gasta muchos menos tokens). Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar grep manual y re-indexar (`index_repository`) sin necesidad de preguntar — es una acción segura y de bajo costo.
 

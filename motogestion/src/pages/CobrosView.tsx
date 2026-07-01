@@ -557,6 +557,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [campoBusqueda, setCampoBusqueda] = useState("");
   const [campoUbicacion, setCampoUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [campoGpsEstado, setCampoGpsEstado] = useState<"idle" | "capturando" | "ok" | "error">("idle");
+  const [busquedaTransferencias, setBusquedaTransferencias] = useState("");
+  const [busquedaCampoConfirmar, setBusquedaCampoConfirmar] = useState("");
+  const [filtroCampoConfirmar, setFiltroCampoConfirmar] = useState<"todos" | "por-entregar" | "entregado">("todos");
   const [campoFoto, setCampoFoto] = useState<File | null>(null);
 
   const contratosActivos = contratos.filter(c => c.estado === "Activo");
@@ -1941,8 +1944,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
       {/* Por confirmar — separado en Transferencias y Efectivo de campo */}
       {activeTab === "dinero" && (() => {
-        const transferencias = pagosPendientes.filter(p => p.tipo_registro !== "campo");
-        const efectivoCampo = pagosPendientes.filter(p => p.tipo_registro === "campo");
+        function coincideBusqueda(p: typeof pagosPendientes[number], q: string) {
+          if (!q.trim()) return true;
+          const contrato = contratos.find(c => c.id === p.contrato_id);
+          const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+          const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+          const qq = q.toLowerCase();
+          return (cliente?.nombre ?? "").toLowerCase().includes(qq) || (moto?.placa ?? "").toLowerCase().includes(qq);
+        }
+
+        const transferencias = pagosPendientes
+          .filter(p => p.tipo_registro !== "campo")
+          .filter(p => coincideBusqueda(p, busquedaTransferencias));
+
+        const efectivoCampo = pagosPendientes
+          .filter(p => p.tipo_registro === "campo")
+          .filter(p => coincideBusqueda(p, busquedaCampoConfirmar))
+          .filter(p => {
+            if (filtroCampoConfirmar === "por-entregar") return !p.entregado_caja;
+            if (filtroCampoConfirmar === "entregado") return !!p.entregado_caja;
+            return true;
+          });
 
         function renderPagoCard(p: typeof pagosPendientes[number]) {
           const contrato = contratos.find(c => c.id === p.contrato_id);
@@ -2023,32 +2045,66 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         }
 
         return (
-          <div style={{ marginTop: 12, display: "grid", gap: 16 }}>
-            <div style={card}>
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
-              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Comprobantes de transferencia esperando verificación.</div>
-              {transferencias.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
-                  <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
-                  Sin transferencias pendientes.
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "44vh", overflowY: "auto", paddingRight: 2 }}>
-                  {transferencias.map(renderPagoCard)}
-                </div>
-              )}
-            </div>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
+            {/* Transferencias — solo staff de oficina, SUBADMIN no confirma transferencias */}
+            {(esSecretaria || esAdmin) && (
+              <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
+                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>Comprobantes de transferencia esperando verificación.</div>
+                <input
+                  style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
+                  placeholder="Buscar cliente o placa..."
+                  value={busquedaTransferencias}
+                  onChange={e => setBusquedaTransferencias(e.target.value)}
+                />
+                {transferencias.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                    Sin transferencias pendientes.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "60vh", overflowY: "auto", paddingRight: 2 }}>
+                    {transferencias.map(renderPagoCard)}
+                  </div>
+                )}
+              </div>
+            )}
 
-            <div style={card}>
+            <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
               <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>💵 Efectivo de campo por confirmar</div>
-              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
+              <input
+                style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
+                placeholder="Buscar cliente o placa..."
+                value={busquedaCampoConfirmar}
+                onChange={e => setBusquedaCampoConfirmar(e.target.value)}
+              />
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {([
+                  { key: "todos" as const, label: "Todos" },
+                  { key: "por-entregar" as const, label: "Por entregar" },
+                  { key: "entregado" as const, label: "Entregado, falta confirmar" },
+                ]).map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFiltroCampoConfirmar(f.key)}
+                    style={{
+                      background: filtroCampoConfirmar === f.key ? "#0284c7" : "#f1f5f9",
+                      color: filtroCampoConfirmar === f.key ? "white" : "#334155",
+                      border: "none", borderRadius: 999, padding: "5px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               {efectivoCampo.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
                   <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
                   Sin cobros de campo pendientes.
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "44vh", overflowY: "auto", paddingRight: 2 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "60vh", overflowY: "auto", paddingRight: 2 }}>
                   {efectivoCampo.map(renderPagoCard)}
                 </div>
               )}

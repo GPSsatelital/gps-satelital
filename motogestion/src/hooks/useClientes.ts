@@ -68,6 +68,7 @@ export type Cliente = {
   lista_negra: boolean;
   motivo_lista_negra: string | null;
   lista_negra_reversible: boolean;
+  visita_asignada_a: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -165,6 +166,11 @@ export function useClientes() {
     return { error: error?.message ?? null };
   }
 
+  async function asignarVisitaCliente(id: string, subadminId: string | null) {
+    const { error } = await supabase.from("clientes").update({ visita_asignada_a: subadminId }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
   async function aplicarExcepcion(id: string, motivo: string, plazo: string) {
     const { error } = await supabase
       .from("clientes")
@@ -178,5 +184,5 @@ export function useClientes() {
     return { error: error?.message ?? null };
   }
 
-  return { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento };
+  return { clientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente };
 }

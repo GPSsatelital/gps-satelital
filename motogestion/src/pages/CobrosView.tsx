@@ -458,7 +458,6 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
 
 type TabKey = "hoy" | "contratos" | "dinero" | "historial";
 type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy";
-type DineroTab = "por-confirmar" | "campo";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -492,7 +491,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const [activeTab, setActiveTab] = useState<TabKey>("hoy");
   const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
-  const [dineroTab, setDineroTab] = useState<DineroTab>("por-confirmar");
+  const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
 
@@ -1032,14 +1031,29 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     );
   }
 
-  // Abre el formulario de cobro en campo para un contrato y captura GPS automáticamente
+  // Abre el modal de cobro en campo para un contrato y captura GPS automáticamente
   function abrirCobroCampo(contratoId: string) {
     setContratoSeleccionadoId(null);
     setCampoContratoId(contratoId);
     setCampoMonto(""); setCampoNota(""); setCampoError(""); setCampoFoto(null);
     setCampoUbicacion(null); setCampoGpsEstado("idle");
-    setActiveTab("dinero"); setDineroTab("campo");
+    setModalCampoAbierto(true);
     capturarGPSCampo();
+  }
+
+  // Abre el modal de cobro en campo en modo búsqueda (sin contrato preseleccionado)
+  function abrirModalCampoBusqueda() {
+    setCampoContratoId(null);
+    setCampoBusqueda("");
+    setModalCampoAbierto(true);
+  }
+
+  function cerrarModalCampo() {
+    setModalCampoAbierto(false);
+    setCampoContratoId(null);
+    setCampoBusqueda("");
+    setCampoMonto(""); setCampoNota(""); setCampoError(""); setCampoFoto(null);
+    setCampoUbicacion(null); setCampoGpsEstado("idle");
   }
 
   // Recibo provisional por WhatsApp al cliente
@@ -1507,7 +1521,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <PagoBadge estado={p.estado} />
-                    {p.estado === "Pendiente" && (
+                    {p.estado === "Pendiente" && esSecretaria && (
                       <>
                         <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
                         <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
@@ -1630,7 +1644,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: "hoy", label: "📋 Hoy", count: totalTareasHoy },
     { key: "contratos", label: "📁 Contratos", count: resumenContratos.length },
-    { key: "dinero", label: "💵 Dinero", count: pagosPendientes.length },
+    { key: "dinero", label: "⏳ Por confirmar", count: pagosPendientes.length },
     { key: "historial", label: "🧾 Historial" },
   ];
 
@@ -1925,123 +1939,123 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         );
       })()}
 
-      {/* DINERO — sub-chips */}
-      {activeTab === "dinero" && (
-        <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 4 }}>
-          {([
-            { key: "por-confirmar" as DineroTab, label: `Por confirmar (${pagosPendientes.length})` },
-            { key: "campo" as DineroTab, label: "💵 Cobrar en campo" },
-          ]).map(s => (
-            <button
-              key={s.key}
-              onClick={() => { setDineroTab(s.key); setContratoSeleccionadoId(null); }}
-              style={{
-                background: dineroTab === s.key ? "#0284c7" : "#f1f5f9",
-                color: dineroTab === s.key ? "white" : "#334155",
-                border: "none", borderRadius: 999, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Por confirmar — separado en Transferencias y Efectivo de campo */}
+      {activeTab === "dinero" && (() => {
+        const transferencias = pagosPendientes.filter(p => p.tipo_registro !== "campo");
+        const efectivoCampo = pagosPendientes.filter(p => p.tipo_registro === "campo");
 
-      {/* Por confirmar — transferencias y cobros en campo pendientes */}
-      {activeTab === "dinero" && dineroTab === "por-confirmar" && (
-        <div style={{ ...card, marginTop: 12 }}>
-          <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>Pagos por confirmar</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
-            Transferencias por verificar y efectivo cobrado en campo por entregar/confirmar.
-          </div>
-          {pagosPendientes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 16px", color: "#94a3b8" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-              No hay pagos pendientes de confirmación.
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {pagosPendientes.map(p => {
-                const contrato = contratos.find(c => c.id === p.contrato_id);
-                const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
-                const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
-                const esCampo = p.tipo_registro === "campo";
-                return (
-                  <div key={p.id} style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 14, padding: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                          {moto ? `🏍️ ${moto.placa} · ` : ""}{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}
-                        </div>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                          <span style={{ padding: "3px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700 }}>
-                            {esCampo ? "💵 Cobro en campo" : "🏦 Transferencia"}
-                          </span>
-                          <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", color: "#0f172a", fontSize: 11, fontWeight: 800 }}>
-                            $ {fmt(p.valor)}
-                          </span>
-                          {esCampo && (
-                            <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "#dcfce7" : "#fef3c7", color: p.entregado_caja ? "#166534" : "#92400e", fontSize: 11, fontWeight: 700 }}>
-                              {p.entregado_caja ? "Entregado a secretaria" : "En poder del admin"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {/* Foto comprobante */}
-                      {p.comprobante_url && (
-                        <img
-                          src={p.comprobante_url}
-                          onClick={() => setFotoAmpliada(p.comprobante_url)}
-                          style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Acciones */}
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                      {esCampo && !p.entregado_caja && (
-                        <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>📤 Entregué a secretaria</button>
-                      )}
-
-                      {/* Confirmar: abre recibo al confirmar */}
-                      {(!esCampo || p.entregado_caja) && esSecretaria && (
-                        <button
-                          onClick={async () => {
-                            const { error: errConf } = await confirmarPago(p.id);
-                            if (!errConf) {
-                              const contrato = contratos.find(c => c.id === p.contrato_id);
-                              const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
-                              const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
-                              setReciboData({
-                                folio: p.folio ?? "—",
-                                fecha: p.fecha,
-                                clienteNombre: cliente?.nombre ?? "",
-                                clienteTel: cliente?.telefono ?? "",
-                                clienteWhatsapp: cliente?.whatsapp ?? "",
-                                placa: moto?.placa ?? "",
-                                valor: p.valor,
-                                metodo: p.metodo,
-                                estado: "Confirmado",
-                              });
-                            }
-                          }}
-                          style={miniBtn("#16a34a", "#ffffff")}
-                        >
-                          ✓ Confirmar recibido
-                        </button>
-                      )}
-                      {esSecretaria && (
-                        <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
-                      )}
-                    </div>
+        function renderPagoCard(p: typeof pagosPendientes[number]) {
+          const contrato = contratos.find(c => c.id === p.contrato_id);
+          const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+          const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+          const esCampo = p.tipo_registro === "campo";
+          return (
+            <div key={p.id} style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 14, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    {moto ? `🏍️ ${moto.placa} · ` : ""}{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}
                   </div>
-                );
-              })}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700 }}>
+                      {esCampo ? "💵 Cobro en campo" : "🏦 Transferencia"}
+                    </span>
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", color: "#0f172a", fontSize: 11, fontWeight: 800 }}>
+                      $ {fmt(p.valor)}
+                    </span>
+                    {esCampo && (
+                      <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "#dcfce7" : "#fef3c7", color: p.entregado_caja ? "#166534" : "#92400e", fontSize: 11, fontWeight: 700 }}>
+                        {p.entregado_caja ? "Entregado a secretaria" : "En poder del admin"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* Foto comprobante */}
+                {p.comprobante_url && (
+                  <img
+                    src={p.comprobante_url}
+                    onClick={() => setFotoAmpliada(p.comprobante_url)}
+                    style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}
+                  />
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                {esCampo && !p.entregado_caja && puedeCobroCampo && (
+                  <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>📤 Entregué a secretaria</button>
+                )}
+
+                {/* Confirmar: abre recibo al confirmar — solo staff de oficina */}
+                {(!esCampo || p.entregado_caja) && esSecretaria && (
+                  <button
+                    onClick={async () => {
+                      const { error: errConf } = await confirmarPago(p.id);
+                      if (!errConf) {
+                        const contrato = contratos.find(c => c.id === p.contrato_id);
+                        const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
+                        const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+                        setReciboData({
+                          folio: p.folio ?? "—",
+                          fecha: p.fecha,
+                          clienteNombre: cliente?.nombre ?? "",
+                          clienteTel: cliente?.telefono ?? "",
+                          clienteWhatsapp: cliente?.whatsapp ?? "",
+                          placa: moto?.placa ?? "",
+                          valor: p.valor,
+                          metodo: p.metodo,
+                          estado: "Confirmado",
+                        });
+                      }
+                    }}
+                    style={miniBtn("#16a34a", "#ffffff")}
+                  >
+                    ✓ Confirmar recibido
+                  </button>
+                )}
+                {esSecretaria && (
+                  <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          );
+        }
+
+        return (
+          <div style={{ marginTop: 12, display: "grid", gap: 16 }}>
+            <div style={card}>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Comprobantes de transferencia esperando verificación.</div>
+              {transferencias.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                  Sin transferencias pendientes.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "44vh", overflowY: "auto", paddingRight: 2 }}>
+                  {transferencias.map(renderPagoCard)}
+                </div>
+              )}
+            </div>
+
+            <div style={card}>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>💵 Efectivo de campo por confirmar</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
+              {efectivoCampo.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                  Sin cobros de campo pendientes.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: isMobile ? "40vh" : "44vh", overflowY: "auto", paddingRight: 2 }}>
+                  {efectivoCampo.map(renderPagoCard)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Visor de foto del comprobante */}
       {fotoAmpliada && (
@@ -2091,7 +2105,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <PagoBadge estado={p.estado} />
-                    {p.estado === "Pendiente" && (
+                    {p.estado === "Pendiente" && esSecretaria && (
                       <>
                         <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
                         <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
@@ -2123,140 +2137,152 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         </div>
       )}
 
-      {/* Tab Campo */}
-      {activeTab === "dinero" && dineroTab === "campo" && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ ...card, marginBottom: 16, background: "#fffbeb", border: "1px solid #fde68a" }}>
-            <div style={{ fontSize: 14, color: "#92400e", fontWeight: 600 }}>
-              Recuperas efectivo en campo → queda pendiente → la secretaria lo confirma en Caja.
+      {/* Modal flotante — Cobro en campo */}
+      {modalCampoAbierto && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}
+          onClick={cerrarModalCampo}
+        >
+          <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 120px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>💵 Cobro en campo</h3>
+              <button onClick={cerrarModalCampo} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
             </div>
-          </div>
-          {campoContratoId === null ? (
-            <div>
-              <input
-                style={{ ...inputStyle, marginBottom: 12 }}
-                placeholder="Buscar cliente o placa..."
-                value={campoBusqueda}
-                onChange={e => setCampoBusqueda(e.target.value)}
-              />
-              <div style={{ marginBottom: 10, fontSize: 13, color: "#64748b" }}>Selecciona el contrato. Los de <strong>mora/gabela</strong> aparecen primero.</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(() => {
-                  const orden = (e: EstadoCartera) => e === "mora" ? 0 : e === "gabela" ? 1 : 2;
-                  const q = campoBusqueda.toLowerCase();
-                  const lista = [...resumenContratos]
-                    .filter(r => {
-                      if (!q) return true;
-                      const cliente = clientes.find(cl => cl.id === r.cliente_id);
-                      const moto = motos.find(m => m.id === r.moto_id);
-                      return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
-                    })
-                    .sort((a, b) => orden(a.estadoCartera) - orden(b.estadoCartera));
-                  if (lista.length === 0) return <div style={{ color: "#64748b", fontSize: 14 }}>No hay contratos.</div>;
-                  return lista.map(r => {
-                    const cliente = clientes.find(cl => cl.id === r.cliente_id);
-                    const moto = motos.find(m => m.id === r.moto_id);
-                    return (
-                      <div
-                        key={r.id}
-                        onClick={() => abrirCobroCampo(r.id)}
-                        style={{ ...card, cursor: "pointer", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                          {moto && <div style={{ fontSize: 12, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
-                        </div>
-                        <EstadoBadge estado={r.estadoCartera} />
-                      </div>
-                    );
-                  });
-                })()}
+
+            <div style={{ ...card, marginBottom: 14, background: "#fffbeb", border: "1px solid #fde68a", padding: "10px 14px" }}>
+              <div style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+                Recuperas efectivo en campo → queda pendiente → la secretaria lo confirma.
               </div>
             </div>
-          ) : (
-            <div style={card}>
-              {(() => {
-                const r = resumenContratos.find(x => x.id === campoContratoId);
-                const cliente = r ? clientes.find(cl => cl.id === r.cliente_id) : null;
-                const moto = r ? motos.find(m => m.id === r.moto_id) : null;
-                // Referencia: cuánto debe pagar
-                const enProrrateoRef = !!r && r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
-                const cuotaPact = r ? (r.forma_pago === "Diario"
-                  ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
-                  : enProrrateoRef ? calcProrrateoInicial(r) : r.valor_semanal) : 0;
-                const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0)) : 0;
-                const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
-                const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
-                return (
-                  <div style={{ display: "grid", gap: 12 }}>
-                    <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
-                      <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                      {moto && <div style={{ fontSize: 13, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
-                    </div>
 
-                    {/* Referencia: cuánto debe pagar */}
-                    <div style={{ background: "#eff6ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "10px 14px" }}>
-                      <div style={{ fontSize: 11, color: "#0369a1", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: "#0284c7" }}>$ {fmt(debeTotal)}</div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                        Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
+            {campoContratoId === null ? (
+              <div>
+                <input
+                  style={{ ...inputStyle, marginBottom: 12 }}
+                  placeholder="Buscar cliente o placa..."
+                  value={campoBusqueda}
+                  autoFocus
+                  onChange={e => setCampoBusqueda(e.target.value)}
+                />
+                <div style={{ marginBottom: 10, fontSize: 13, color: "#64748b" }}>Selecciona el contrato. Los de <strong>mora/gabela</strong> aparecen primero.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "50vh", overflowY: "auto", paddingRight: 2 }}>
+                  {(() => {
+                    const orden = (e: EstadoCartera) => e === "mora" ? 0 : e === "gabela" ? 1 : 2;
+                    const q = campoBusqueda.toLowerCase();
+                    const lista = [...resumenContratos]
+                      .filter(r => {
+                        if (!q) return true;
+                        const cliente = clientes.find(cl => cl.id === r.cliente_id);
+                        const moto = motos.find(m => m.id === r.moto_id);
+                        return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
+                      })
+                      .sort((a, b) => orden(a.estadoCartera) - orden(b.estadoCartera));
+                    if (lista.length === 0) return <div style={{ color: "#64748b", fontSize: 14, textAlign: "center", padding: "16px 0" }}>No tienes contratos asignados disponibles para cobrar.</div>;
+                    return lista.map(r => {
+                      const cliente = clientes.find(cl => cl.id === r.cliente_id);
+                      const moto = motos.find(m => m.id === r.moto_id);
+                      return (
+                        <div
+                          key={r.id}
+                          onClick={() => abrirCobroCampo(r.id)}
+                          style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", border: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
+                            {moto && <div style={{ fontSize: 12, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                          </div>
+                          <EstadoBadge estado={r.estadoCartera} />
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div>
+                {(() => {
+                  const r = resumenContratos.find(x => x.id === campoContratoId);
+                  const cliente = r ? clientes.find(cl => cl.id === r.cliente_id) : null;
+                  const moto = r ? motos.find(m => m.id === r.moto_id) : null;
+                  // Referencia: cuánto debe pagar
+                  const enProrrateoRef = !!r && r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
+                  const cuotaPact = r ? (r.forma_pago === "Diario"
+                    ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
+                    : enProrrateoRef ? calcProrrateoInicial(r) : r.valor_semanal) : 0;
+                  const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0)) : 0;
+                  const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
+                  const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
+                  return (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                        <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
+                        {moto && <div style={{ fontSize: 13, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                      </div>
+
+                      {/* Referencia: cuánto debe pagar */}
+                      <div style={{ background: "#eff6ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 11, color: "#0369a1", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#0284c7" }}>$ {fmt(debeTotal)}</div>
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                          Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={labelStyle}>Monto recuperado ($)</div>
+                        <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder={`Ej. ${debeTotal || 27000}`} />
+                      </div>
+
+                      {/* GPS */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, color: "#334155", fontWeight: 600 }}>📍 Ubicación:</span>
+                        {campoGpsEstado === "capturando" && <span style={{ fontSize: 13, color: "#92400e" }}>Capturando…</span>}
+                        {campoGpsEstado === "ok" && campoUbicacion && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✓ Capturada</span>}
+                        {campoGpsEstado === "error" && <span style={{ fontSize: 13, color: "#991b1b" }}>No disponible</span>}
+                        {campoGpsEstado === "idle" && <span style={{ fontSize: 13, color: "#64748b" }}>Sin capturar</span>}
+                        <button onClick={capturarGPSCampo} style={{ ...secondaryBtn, fontSize: 12, padding: "6px 10px" }}>{campoUbicacion ? "Recapturar" : "Capturar GPS"}</button>
+                      </div>
+
+                      {/* Foto opcional */}
+                      <div>
+                        <div style={labelStyle}>Foto (opcional)</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
+                            📷 Cámara
+                            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
+                          </label>
+                          <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
+                            🖼 Galería
+                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
+                          </label>
+                          {campoFoto && <span style={{ fontSize: 12, color: "#166534", fontWeight: 700, alignSelf: "center" }}>✓ {campoFoto.name.slice(0, 20)}</span>}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={labelStyle}>Nota (opcional)</div>
+                        <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={campoNota} onChange={e => setCampoNota(e.target.value)} placeholder="Observaciones del cobro en campo..." />
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
+                      <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e" }}>
+                        Al registrar: se manda <strong>recibo provisional</strong> al cliente por WhatsApp y queda <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme en Caja.
+                      </div>
+                      {campoError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
+                      {campoExito && (
+                        <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
+                          ✓ Cobro en campo registrado (pendiente de entrega a caja)
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={handleCampoSubmit} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
+                        <button onClick={() => { setCampoContratoId(null); setCampoBusqueda(""); }} style={secondaryBtn}>Cancelar</button>
                       </div>
                     </div>
-
-                    <div>
-                      <div style={labelStyle}>Monto recuperado ($)</div>
-                      <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder={`Ej. ${debeTotal || 27000}`} />
-                    </div>
-
-                    {/* GPS */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 13, color: "#334155", fontWeight: 600 }}>📍 Ubicación:</span>
-                      {campoGpsEstado === "capturando" && <span style={{ fontSize: 13, color: "#92400e" }}>Capturando…</span>}
-                      {campoGpsEstado === "ok" && campoUbicacion && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✓ Capturada</span>}
-                      {campoGpsEstado === "error" && <span style={{ fontSize: 13, color: "#991b1b" }}>No disponible</span>}
-                      {campoGpsEstado === "idle" && <span style={{ fontSize: 13, color: "#64748b" }}>Sin capturar</span>}
-                      <button onClick={capturarGPSCampo} style={{ ...secondaryBtn, fontSize: 12, padding: "6px 10px" }}>{campoUbicacion ? "Recapturar" : "Capturar GPS"}</button>
-                    </div>
-
-                    {/* Foto opcional */}
-                    <div>
-                      <div style={labelStyle}>Foto (opcional)</div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
-                          📷 Cámara
-                          <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
-                        </label>
-                        <label style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", cursor: "pointer" }}>
-                          🖼 Galería
-                          <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
-                        </label>
-                        {campoFoto && <span style={{ fontSize: 12, color: "#166534", fontWeight: 700, alignSelf: "center" }}>✓ {campoFoto.name.slice(0, 20)}</span>}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={labelStyle}>Nota (opcional)</div>
-                      <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={campoNota} onChange={e => setCampoNota(e.target.value)} placeholder="Observaciones del cobro en campo..." />
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
-                    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e" }}>
-                      Al registrar: se manda <strong>recibo provisional</strong> al cliente por WhatsApp y queda <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme en Caja.
-                    </div>
-                    {campoError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
-                    {campoExito && (
-                      <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
-                        ✓ Cobro en campo registrado (pendiente de entrega a caja)
-                      </div>
-                    )}
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button onClick={handleCampoSubmit} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
-                      <button onClick={() => { setCampoContratoId(null); setCampoBusqueda(""); }} style={secondaryBtn}>Cancelar</button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+                  );
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -2321,7 +2347,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               )}
               {puedeCobroCampo && (
                 <button
-                  onClick={() => { setFabOpen(false); setContratoSeleccionadoId(null); setActiveTab("dinero"); setDineroTab("campo"); }}
+                  onClick={() => { setFabOpen(false); abrirModalCampoBusqueda(); }}
                   style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
                   💵 Cobro en campo
@@ -2335,7 +2361,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               const soloPago = puedePagoNormal && !puedeCobroCampo;
               const soloCampo = puedeCobroCampo && !puedePagoNormal;
               if (soloPago) { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); return; }
-              if (soloCampo) { setContratoSeleccionadoId(null); setActiveTab("dinero"); setDineroTab("campo"); return; }
+              if (soloCampo) { abrirModalCampoBusqueda(); return; }
               setFabOpen(v => !v);
             }}
             aria-label="Acciones rápidas"

@@ -36,6 +36,16 @@ Objetivo: equilibrio entre consumo (tokens/tiempo) y calidad — priorizando que
 
 **Regla general:** no usar ninguna de estas en tareas simples o puntuales (fixes de una línea, preguntas de negocio, ajustes de UI menores) — ahí solo agregan overhead sin beneficio.
 
+### Frontend Design (plugin oficial de Anthropic)
+El estilo visual actual (paleta, tipografía, componentes) **no es intocable** — se puede replantear y mejorar. Usarlo tanto para proponer mejoras visuales a pantallas existentes como para diseñar pantallas nuevas.
+
+**Lo que SÍ se puede cambiar:** colores, tipografía, espaciados, animaciones, composición visual — cualquier decisión puramente estética.
+
+**Lo que NUNCA se puede tocar al aplicar este plugin:**
+- La estructura funcional del sistema (flujos, navegación, lógica de negocio, fórmulas, permisos por rol)
+- Las convenciones técnicas ya fijas: `style={{}}` inline puro (cero Tailwind/MUI/Bootstrap), mobile-first con `useIsMobile()`
+- Cualquier cambio visual sigue pasando por la REGLA DE AUTORIZACIÓN — proponer el cambio y esperar confirmación antes de aplicarlo, especialmente si toca muchas pantallas (mapeo integral)
+
 ### codebase-memory — prioridad sobre grep manual
 Para preguntas de "¿dónde está X en todo el proyecto?" o "¿cómo se conecta este módulo con otros?" — consultar primero el grafo indexado de `codebase-memory` en vez de `grep`/`Explore` archivo por archivo (gasta muchos menos tokens). Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar grep manual y re-indexar (`index_repository`) sin necesidad de preguntar — es una acción segura y de bajo costo.
 

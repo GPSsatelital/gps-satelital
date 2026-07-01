@@ -20,15 +20,31 @@ Indicar siempre: qué librería detecté, por qué conviene usarlo en ese caso p
 
 ---
 
-## REGLA DE HERRAMIENTAS MCP BAJO DEMANDA — OBLIGATORIO SIEMPRE
+## POLÍTICA DE HERRAMIENTAS MCP — OBLIGATORIO SIEMPRE
 
-Estas herramientas NO se activan solas (evitar forzarlas en cada mensaje sería costoso en tokens/tiempo) — evaluar en cada tarea si aplican y sugerirlas, igual que con Context7:
+Objetivo: equilibrio entre consumo (tokens/tiempo) y calidad — priorizando que el resultado quede bien estructurado. Cada herramienta tiene un rol único para no duplicar esfuerzo entre ellas.
 
-- **Sequential-thinking**: cuando el problema es complejo y se beneficia de razonamiento explícito paso a paso (ej. depurar un bug con múltiples causas posibles, diseñar una migración de datos delicada). Sugerir: "💡 Este problema tiene varias partes interdependientes, te sugiero que use sequential-thinking para razonarlo paso a paso antes de proponer la solución."
-- **Superpowers**: cuando la tarea es una feature grande o un rediseño (no un fix puntual) que se beneficia de un flujo disciplinado (brainstorm → spec → plan → implementación con revisión). Sugerir: "💡 Esta es una feature grande, te sugiero usar el flujo de Superpowers para no saltar directo a codificar sin plan."
-- **Taskmaster**: cuando el trabajo se puede/debe partir en muchas tareas con dependencias entre sí (ej. un módulo nuevo con varias etapas). Sugerir: "💡 Esto tiene varias etapas dependientes, te sugiero usar Taskmaster para desglosarlo y no perder el hilo."
+### Automáticas (no requieren acción del usuario)
+- **claude-mem** — memoria de continuidad de sesión (qué se hizo, decisiones, hilo de la conversación). Hooks ya activos (SessionStart, PostToolUse, Stop).
+- **MemPalace** — memoria de hechos/entidades a largo plazo (personas, proyectos, relaciones), NO continuidad conversacional (eso ya lo cubre claude-mem). Hooks de guardado ya activos. Solo consultar sus datos cuando la pregunta sea sobre "qué sabemos de X" — no en cada mensaje, para no duplicar con claude-mem.
 
-No usar estas herramientas de forma automática en tareas simples o puntuales (fixes de una línea, preguntas de negocio, ajustes de UI menores) — ahí solo agregan overhead sin beneficio.
+### Bajo demanda — evaluar en cada tarea y sugerir (no forzar)
+- **Context7**: cuando la tarea involucra Supabase, React, TypeScript o Vite. Sugerir con el formato ya definido en la regla de Context7.
+- **Sequential-thinking**: solo en problemas realmente complejos con múltiples causas/partes interdependientes (ej. depurar un bug con varias causas posibles). Sugerir: "💡 Este problema tiene varias partes interdependientes, te sugiero usar sequential-thinking para razonarlo paso a paso."
+- **Taskmaster**: solo cuando el trabajo tiene muchas etapas dependientes entre sí (ej. un módulo nuevo con varias fases). Sugerir: "💡 Esto tiene varias etapas dependientes, te sugiero usar Taskmaster para desglosarlo."
+- **Superpowers**: NO usar como regla general — la disciplina que ofrece (brainstorm→spec→plan→revisión) ya la cubren nativamente la REGLA DE AUTORIZACIÓN y la REGLA DE MAPEO INTEGRAL de este mismo archivo, sin el overhead de su flujo completo. Reservarlo solo si el usuario lo pide explícitamente para una feature específica.
+
+**Regla general:** no usar ninguna de estas en tareas simples o puntuales (fixes de una línea, preguntas de negocio, ajustes de UI menores) — ahí solo agregan overhead sin beneficio.
+
+### codebase-memory — prioridad sobre grep manual
+Para preguntas de "¿dónde está X en todo el proyecto?" o "¿cómo se conecta este módulo con otros?" — consultar primero el grafo indexado de `codebase-memory` en vez de `grep`/`Explore` archivo por archivo (gasta muchos menos tokens). Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar grep manual y re-indexar (`index_repository`) sin necesidad de preguntar — es una acción segura y de bajo costo.
+
+### Autonomía delegada (no requiere confirmación previa)
+- Elegir qué MCP de memoria consultar según el tipo de pregunta
+- Decidir cuándo usar codebase-memory vs grep
+- Re-indexar codebase-memory cuando se detecte desactualizado
+
+Esto NO cambia la REGLA DE AUTORIZACIÓN: implementar código o tocar la base de datos sigue requiriendo plan + confirmación explícita, sin excepción, sin importar qué herramienta se use por debajo.
 
 ---
 

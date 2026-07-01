@@ -992,7 +992,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   <button
                     key={cliente.id}
                     onClick={() => setSelectedId(cliente.id)}
-                    style={{ width: "100%", background: "#f8fafc", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
+                    style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#f8fafc", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
@@ -1055,7 +1055,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                       key={cliente.id}
                       onClick={() => setSelectedId(cliente.id)}
                       style={{
-                        width: "100%", display: "flex", alignItems: "center", gap: 10,
+                        width: "100%", minWidth: 0, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 10,
                         padding: "10px 12px", borderRadius: 10, border: "none",
                         background: activo ? "#eff6ff" : "#f8fafc",
                         cursor: "pointer", textAlign: "left",

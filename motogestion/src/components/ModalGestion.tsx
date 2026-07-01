@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   contratoId: string;
@@ -47,42 +48,51 @@ const RESULTADOS: ResultadoGestion[] = [
 
 export default function ModalGestion({ contratoId, clienteNombre, onClose }: Props) {
   const { registrarGestion } = useGestiones();
+  const { profile } = useAuth();
+  const puedeDarPlazoExtra = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL" || profile?.role === "SUBADMIN";
+  const tiposDisponibles = puedeDarPlazoExtra ? TIPOS : TIPOS.filter(t => t.value !== "plazo_extra");
 
   const [tipo, setTipo] = useState<TipoGestion>("llamada");
   const [resultado, setResultado] = useState<ResultadoGestion>("Contactado");
   const [observacion, setObservacion] = useState("");
   const [diasPlazo, setDiasPlazo] = useState("");
+  const [motivoPlazo, setMotivoPlazo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit() {
+    if (saving) return;
+    if (!profile) { setError("Sesión no válida."); return; }
+    let extras: { plazo_extra_dias?: number; plazo_extra_motivo?: string; plazo_extra_fecha_limite?: string } | undefined;
     if (tipo === "plazo_extra") {
       const dias = Number(diasPlazo);
       if (!diasPlazo || dias < 1 || dias > 2) {
         setError("El plazo extra es máximo 2 días. Ingresa 1 o 2.");
         return;
       }
+      if (!motivoPlazo.trim()) {
+        setError("El motivo del plazo extra es obligatorio.");
+        return;
+      }
+      const limite = new Date();
+      limite.setDate(limite.getDate() + dias);
+      extras = {
+        plazo_extra_dias: dias,
+        plazo_extra_motivo: motivoPlazo.trim(),
+        plazo_extra_fecha_limite: limite.toISOString().slice(0, 10),
+      };
     }
     setError(null);
     setSaving(true);
-
-    // Use the existing registrarGestion API (no profile needed here — hook reads profile internally)
-    // We pass a dummy registradoPor since the hook doesn't need it from here for the modal variant
-    const { error: err } = await registrarGestion(
-      contratoId,
-      tipo,
-      resultado,
-      "", // registradoPor — hook will use supabase session
-      tipo === "plazo_extra"
-        ? { plazo_extra_dias: Number(diasPlazo) }
-        : undefined,
-    );
-
-    setSaving(false);
-    if (err) { setError(err); return; }
-    setExito(true);
-    setTimeout(() => onClose(), 1200);
+    try {
+      const { error: err } = await registrarGestion(contratoId, tipo, resultado, profile.id, extras);
+      if (err) { setError(err); return; }
+      setExito(true);
+      setTimeout(() => onClose(), 1200);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -139,7 +149,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose }: Pro
             value={tipo}
             onChange={e => { setTipo(e.target.value as TipoGestion); setError(null); }}
           >
-            {TIPOS.map(t => (
+            {tiposDisponibles.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
@@ -147,18 +157,29 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose }: Pro
 
         {/* Días plazo — solo si plazo_extra */}
         {tipo === "plazo_extra" && (
-          <div>
-            <div style={labelStyle}>¿Cuántos días adicionales? (máx. 2)</div>
-            <input
-              type="number"
-              min={1}
-              max={2}
-              style={inputStyle}
-              value={diasPlazo}
-              onChange={e => setDiasPlazo(e.target.value)}
-              placeholder="1 o 2"
-            />
-          </div>
+          <>
+            <div>
+              <div style={labelStyle}>¿Cuántos días adicionales? (máx. 2)</div>
+              <input
+                type="number"
+                min={1}
+                max={2}
+                style={inputStyle}
+                value={diasPlazo}
+                onChange={e => setDiasPlazo(e.target.value)}
+                placeholder="1 o 2"
+              />
+            </div>
+            <div>
+              <div style={labelStyle}>Motivo del plazo extra (obligatorio)</div>
+              <textarea
+                style={{ ...inputStyle, resize: "vertical", minHeight: 60 }}
+                value={motivoPlazo}
+                onChange={e => setMotivoPlazo(e.target.value)}
+                placeholder="¿Por qué se le da esta chance al cliente?"
+              />
+            </div>
+          </>
         )}
 
         {/* Resultado */}

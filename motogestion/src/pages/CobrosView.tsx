@@ -475,7 +475,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, pagosDelContrato } =
     usePagos();
-  const { contratos: todosContratos, loading: loadingContratos } = useContratos();
+  const { contratos: todosContratos, loading: loadingContratos, suspenderContrato } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -517,6 +517,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [formError, setFormError] = useState<string | null>(null);
   const [formExito, setFormExito] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [recolectandoId, setRecolectandoId] = useState<string | null>(null);
 
   // Gestion form state
   const [tipoGestion, setTipoGestion] = useState<TipoGestion>("llamada");
@@ -653,6 +654,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return { total, count: mios.length, pendienteEntregar };
   }, [pagos, profile, hoyISOPanel]);
 
+  const hoyISOPlazo = new Date().toISOString().slice(0, 10);
+  // Contratos con un "plazo extra" vigente (fecha_limite aún no vencida) — no deben ir a Recolección
+  const contratosConPlazoVigente = useMemo(() => {
+    const set = new Set<string>();
+    const porContrato = new Map<string, string>(); // contrato_id -> fecha_limite más reciente
+    gestiones
+      .filter(g => g.tipo === "plazo_extra" && g.plazo_extra_fecha_limite)
+      .forEach(g => {
+        const actual = porContrato.get(g.contrato_id);
+        if (!actual || g.plazo_extra_fecha_limite! > actual) porContrato.set(g.contrato_id, g.plazo_extra_fecha_limite!);
+      });
+    porContrato.forEach((fechaLimite, contratoId) => {
+      if (fechaLimite >= hoyISOPlazo) set.add(contratoId);
+    });
+    return set;
+  }, [gestiones, hoyISOPlazo]);
+
   const panelHoy = useMemo(() => {
     const idsPaganHoy = new Set([...paganHoyDiario, ...paganHoyPeriodico].map(c => c.id));
     const recoleccion: typeof resumenContratos = [];
@@ -661,13 +679,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const paganHoy: typeof resumenContratos = [];
     resumenContratos.forEach(c => {
       // Recolección: solo mora real con >3 días (estadoCartera ya descarta contratos nuevos/prorrateo)
-      if (c.estadoCartera === "mora" && c.diasSinPago > 3 && c.diasSinPago < 999) recoleccion.push(c);
+      // Si tiene un plazo extra vigente, se queda en Mora — no se puede recolectar durante ese margen.
+      if (c.estadoCartera === "mora" && c.diasSinPago > 3 && c.diasSinPago < 999 && !contratosConPlazoVigente.has(c.id)) recoleccion.push(c);
       else if (c.estadoCartera === "mora") mora.push(c);
       else if (c.estadoCartera === "gabela") gabela.push(c);
       else if (idsPaganHoy.has(c.id)) paganHoy.push(c);
     });
     return { recoleccion, mora, gabela, paganHoy };
-  }, [resumenContratos, paganHoyDiario, paganHoyPeriodico]);
+  }, [resumenContratos, paganHoyDiario, paganHoyPeriodico, contratosConPlazoVigente]);
 
   const totalTareasHoy = panelHoy.recoleccion.length + panelHoy.mora.length + panelHoy.gabela.length + panelHoy.paganHoy.length;
 
@@ -692,8 +711,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     await registrarGestion(c.id, "sirena", "Sirena activada (3 seg, vehículo detenido)", profile.id);
   }
   async function tareaRecoleccion(c: typeof resumenContratos[number]) {
-    if (!profile) return;
-    await registrarGestion(c.id, "recoleccion", "Orden de recolección física emitida", profile.id);
+    if (!profile || recolectandoId) return;
+    const confirmado = window.confirm("¿Confirmas que la moto fue recolectada físicamente? Esto suspenderá el contrato, marcará la moto como Recuperada y generará la multa de $20.000 por recolección/inmovilización.");
+    if (!confirmado) return;
+    setRecolectandoId(c.id);
+    try {
+      await registrarGestion(c.id, "recoleccion", "Orden de recolección física emitida — moto recolectada", profile.id);
+      const { error: errSuspender } = await suspenderContrato(c.id, c.moto_id ?? null);
+      if (errSuspender) { alert("Error al suspender el contrato: " + errSuspender); return; }
+      const { error: errDeuda } = await registrarDeuda(
+        c.id, "multa_recoleccion", "Multa por recolección/inmovilización", 20000, profile.id,
+      );
+      if (errDeuda) { alert("Error al registrar la multa: " + errDeuda); return; }
+    } finally {
+      setRecolectandoId(null);
+    }
   }
 
   // ── Filtrar lista ─────────────────────────────────────────────────────────
@@ -1867,9 +1899,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {
                             const hecha = gestionHechaHoy(c.id, t.tipo);
+                            const bloqueado = t.tipo === "recoleccion" && recolectandoId === c.id;
                             return (
-                              <button key={t.tipo} onClick={() => t.action(c)} style={hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)}>
-                                {hecha ? "✓ " : ""}{t.label}
+                              <button
+                                key={t.tipo}
+                                onClick={() => t.action(c)}
+                                disabled={bloqueado}
+                                style={{ ...(hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)), opacity: bloqueado ? 0.6 : 1 }}
+                              >
+                                {bloqueado ? "Recolectando..." : hecha ? `✓ ${t.label}` : t.label}
                               </button>
                             );
                           })}

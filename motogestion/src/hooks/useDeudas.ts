@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "otro";
+export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "multa_recoleccion" | "otro";
 export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada";
 
 export type Deuda = {

@@ -189,6 +189,18 @@ export function useContratos() {
     return { error: null };
   }
 
+  async function reactivarContrato(id: string, motoId: string | null) {
+    const { error: errContrato } = await supabase.from("contratos").update({ estado: "Activo" }).eq("id", id);
+    if (errContrato) return { error: errContrato.message };
+
+    if (motoId) {
+      const { error: errMoto } = await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoId);
+      if (errMoto) return { error: errMoto.message };
+    }
+
+    return { error: null };
+  }
+
   async function finalizarContrato(id: string, motoId: string | null) {
     const { error: errContrato } = await supabase.from("contratos").update({ estado: "Finalizado" }).eq("id", id);
     if (errContrato) return { error: errContrato.message };
@@ -220,6 +232,7 @@ export function useContratos() {
     activarContrato,
     cancelarContrato,
     suspenderContrato,
+    reactivarContrato,
     finalizarContrato,
     actualizarAhorro,
     calcularEquivalenciasDiarias,

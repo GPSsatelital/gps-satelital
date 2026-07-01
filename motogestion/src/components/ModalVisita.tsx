@@ -37,7 +37,7 @@ const sectionTitle: React.CSSProperties = {
 };
 
 export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuardada }: Props) {
-  const { actualizarCliente } = useClientes();
+  const { actualizarCliente, clientes } = useClientes();
   const { subirFotoVisita } = useVisitas();
 
   const [fotoCliente, setFotoCliente] = useState<File | null>(null);
@@ -113,6 +113,8 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       recomendacion,
     };
 
+    const clienteActual = clientes.find(c => c.id === clienteId);
+
     const { error: insErr } = await supabase.from("visitas").insert({
       cliente_id: clienteId,
       estado: "Completada",
@@ -121,6 +123,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       ubicacion: ubicacion ?? null,
       fecha: new Date().toISOString().slice(0, 10),
       fotos: { clienteFuncionario: urlCliente, fachada: urlFachada },
+      asignada_a: clienteActual?.visita_asignada_a ?? null,
     });
 
     if (insErr) {

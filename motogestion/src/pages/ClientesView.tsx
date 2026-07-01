@@ -532,7 +532,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       });
     });
   }, [esAdminOSuperior]);
-  const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento } = useClientes();
+  const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente } = useClientes();
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);
   // Clientes con visita asignada a este SUBADMIN (embudo de ingreso)
@@ -964,6 +964,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   onAprobarVisita={handleAprobarVisita}
                   onRepetirVisita={handleRepetirVisita}
                   onEliminar={() => handleEliminarCliente(selectedCliente.id)}
+                  subadmins={subadmins}
+                  onAsignarVisitaCliente={async (clienteId, subadminId) => { await asignarVisitaCliente(clienteId, subadminId); }}
                 />
               </div>
             </div>
@@ -1121,6 +1123,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     onAprobarVisita={handleAprobarVisita}
                     onRepetirVisita={handleRepetirVisita}
                     onEliminar={() => handleEliminarCliente(selectedCliente.id)}
+                    subadmins={subadmins}
+                    onAsignarVisitaCliente={async (clienteId, subadminId) => { await asignarVisitaCliente(clienteId, subadminId); }}
                   />
                 </>
               ) : (
@@ -1234,13 +1238,15 @@ type DetalleProps = {
   onAprobarVisita: (id: string, clienteId: string) => void;
   onRepetirVisita: (id: string, clienteId: string) => void;
   onEliminar?: () => void;
+  subadmins?: { id: string; nombre: string }[];
+  onAsignarVisitaCliente?: (clienteId: string, subadminId: string | null) => Promise<void>;
 };
 
 function miniBtn2(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
 }
 
-function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar }: DetalleProps) {
+function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const esPrincipal = role === "ADMIN_PRINCIPAL";
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
@@ -1412,6 +1418,19 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>
         {selectedCliente.estado === "Listo para visita" && (
           <button onClick={onVisita} style={miniBtn2("#dbeafe", "#1d4ed8")}>Registrar visita</button>
+        )}
+        {esAdmin && selectedCliente.estado === "Listo para visita" && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Asignar a:</span>
+            <select
+              value={selectedCliente.visita_asignada_a ?? ""}
+              onChange={e => onAsignarVisitaCliente(selectedCliente.id, e.target.value || null)}
+              style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 12 }}
+            >
+              <option value="">— Sin asignar —</option>
+              {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
         )}
         {esAdmin && (
           <>

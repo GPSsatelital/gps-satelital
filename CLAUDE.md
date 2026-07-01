@@ -135,6 +135,8 @@ No basta con que la tarea funcione donde se probó. Antes de darla por terminada
 - **Nombres:** Todos los nombres de personas → `textTransform: "uppercase"` en CSS
 - **TypeScript:** Siempre resolver errores TS antes de hacer push. `npm run build` debe pasar.
 - **Responsive:** Mobile-first. `useIsMobile()` = `window.innerWidth < 900`. Bottom tab bar en móvil, sidebar en desktop.
+- **Tamaño de referencia móvil — OBLIGATORIO SIEMPRE:** **375px de ancho** (iPhone SE / el celular angosto más común) es el estándar contra el que se prueba cualquier pantalla o ajuste móvil. Si se ve bien a 375px, se ve bien en cualquier celular más ancho hasta el punto de quiebre (900px). Todo cambio de UI se verifica visualmente a este ancho antes de darlo por terminado.
+- **Estilos compartidos — OBLIGATORIO SIEMPRE:** Usar `src/styles/shared.ts` (`card`, `inputStyle`, `labelStyle`, `primaryBtn`, `secondaryBtn`, `listaConScroll(isMobile)`) en vez de redefinir estos estilos en cada pantalla. Cualquier lista nueva usa `listaConScroll(isMobile)` para quedar dentro de un recuadro con su propio scroll — nunca una lista debe poder ocupar toda la pantalla sin límite.
 - **Botones que crean/guardan registros (anti-doble-clic) — OBLIGATORIO SIEMPRE:** Todo botón que inserte o guarde en la BD (registrar, crear, guardar, confirmar excepción, etc.) DEBE:
   1. Tener un estado `procesando`/`guardando` (`useState(false)`).
   2. Al inicio del handler: `if (procesando) return;` y luego `setProcesando(true)` envuelto en `try { ... } finally { setProcesando(false) }`.

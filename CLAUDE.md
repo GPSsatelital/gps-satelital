@@ -49,8 +49,8 @@ El estilo visual actual (paleta, tipografía, componentes) **no es intocable** �
 ### Theme Factory (paleta/tipografía)
 Genera referencia de paleta de colores y tipografía (temas preseleccionados o a medida) — NO se auto-aplica al código. Traducir manualmente el tema elegido al sistema de estilos inline existente (mismas reglas de protección que Frontend Design arriba). Usar en conjunto con Frontend Design: Theme Factory define qué colores/fuentes, Frontend Design decide cómo se componen visualmente.
 
-### codebase-memory — prioridad sobre grep manual
-Para preguntas de "¿dónde está X en todo el proyecto?" o "¿cómo se conecta este módulo con otros?" — consultar primero el grafo indexado de `codebase-memory` en vez de `grep`/`Explore` archivo por archivo (gasta muchos menos tokens). Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar grep manual y re-indexar (`index_repository`) sin necesidad de preguntar — es una acción segura y de bajo costo.
+### codebase-memory — SIEMPRE ACTIVA (única de este grupo)
+A diferencia de las demás herramientas bajo demanda, esta se consulta **siempre por defecto**, sin evaluar caso por caso — consultarla es barato y nunca perjudica. Para cualquier pregunta de "¿dónde está X en todo el proyecto?" o "¿cómo se conecta este módulo con otros?", usar primero el grafo indexado de `codebase-memory` en vez de `grep`/`Explore` archivo por archivo (gasta muchos menos tokens). Si el grafo no tiene la respuesta o parece desactualizado, recién ahí usar grep manual y re-indexar (`index_repository`) sin necesidad de preguntar — es una acción segura y de bajo costo.
 
 ### Autonomía delegada (no requiere confirmación previa)
 - Elegir qué MCP de memoria consultar según el tipo de pregunta

@@ -2345,7 +2345,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
       {/* CONTRATOS — lista navegable con chips de filtro */}
       {activeTab === "contratos" && (
-        <div style={{ marginTop: 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: "start" }}>
+        <div style={{ marginTop: 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: isMobile ? "stretch" : "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Chips de filtro */}

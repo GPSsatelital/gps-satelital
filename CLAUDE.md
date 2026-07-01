@@ -513,10 +513,11 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 
 ### Cobro en campo — flujo y reglas (implementado ✅)
 - **Quién:** ADMIN, ADMIN_PRINCIPAL, SUBADMIN (no SECRETARIA — ella cobra en oficina).
-- **Sobre qué contratos:** cualquier contrato activo (no limitante), pero la lista **destaca mora/gabela arriba**.
-- **Flujo 2 pasos (doble control):** funcionario registra → marca "entregué a caja" (`entregado_caja`) → SECRETARIA confirma en Caja (`estado=Confirmado`).
+- **Sobre qué contratos:** ADMIN/ADMIN_PRINCIPAL ven cualquier contrato activo; **SUBADMIN solo los de sus clientes asignados** (mismo scope que el resto del sistema — ver SUBADMIN SCOPE). Si no tiene nada asignado, la lista de búsqueda sale vacía a propósito. La lista **destaca mora/gabela arriba**.
+- **Flujo 2 pasos (doble control):** funcionario registra → marca "entregué a secretaria" (`entregado_caja`) → SECRETARIA confirma (`estado=Confirmado`). Confirmar/rechazar un pago (en cualquier pantalla) es acción exclusiva de SECRETARIA/ADMIN/ADMIN_PRINCIPAL — nunca visible para SUBADMIN.
 - **En el momento del cobro:** referencia "Debe pagar" (cuota período + deuda + convenio) · captura **GPS** (`pagos.ubicacion` jsonb, mig 023) · **foto opcional** (reúsa `pagos.comprobante_url`) · **recibo provisional** por WhatsApp.
-- **Dos entradas (misma puerta):** botón "+" global (busca cliente) y botón "💵 Cobrar" en cada tarjeta del panel Hoy.
+- **Dos entradas (misma puerta), ambas abren la misma ventana flotante:** botón "+" global (busca cliente) y botón "💵 Cobrar" en cada tarjeta del panel Hoy.
+- **Pestaña "⏳ Por confirmar"** (antes "💵 Dinero"): separada en 2 bloques siempre visibles — 🏦 Transferencias por confirmar y 💵 Efectivo de campo por confirmar — cada uno con su propio recuadro de scroll.
 - **Conciliación:** resumen "recogiste hoy $X" en panel Hoy (por persona) + en **Caja Diaria** resumen por funcionario (total, pendiente entregar, sin confirmar).
 - `pagos.tipo_registro="campo"`, `forzarPendiente=true` (queda Pendiente aunque sea efectivo).
 

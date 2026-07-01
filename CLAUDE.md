@@ -329,6 +329,34 @@ Esta sección es CRÍTICA. Antes de tocar cualquier módulo, verificar si afecta
 
 ---
 
+## SEGURIDAD — RLS (Row Level Security) EN SUPABASE
+
+**El filtrado por rol se hace en DOS capas, no solo una:**
+1. **Frontend** (`useScope()`) — oculta/filtra en la pantalla, mejora la experiencia
+2. **RLS en Postgres** (migración `026_rls_hardening.sql`) — la capa real de seguridad. Sin esto, cualquiera con sesión abierta podía consultar Supabase directo (devtools del navegador) y ver datos de otros roles/subadmins, sin importar lo que la pantalla mostrara
+
+**Nunca confiar solo en el filtrado del frontend para proteger datos sensibles — siempre debe existir la política RLS equivalente.**
+
+### Funciones de scope reutilizables (una sola fuente de verdad en SQL)
+- `public.mi_rol()` / `public.mi_grupo()` — rol y grupo del usuario actual
+- `public.mis_moto_ids_subadmin()` / `public.mis_contratos_subadmin()` / `public.mis_clientes_subadmin()` — scope del SUBADMIN
+- `public.mis_moto_ids_socio()` / `public.mis_contratos_socio()` / `public.mis_clientes_socio()` — scope del SOCIO (por `grupo`)
+
+Si el scope cambia algún día, se edita **una sola función**, no cada política suelta — mismo principio que la REGLA DE MAPEO INTEGRAL, aplicado a SQL.
+
+### Matriz de acceso por tabla (post-migración 026)
+| Tabla | ADMIN/ADMIN_PRINCIPAL | SECRETARIA | SUBADMIN | SOCIO | MECANICO |
+|---|---|---|---|---|---|
+| `clientes`, `contratos`, `deudas`, `convenios`, `pagos` | Todo | Todo | Solo lo suyo (por moto) | Solo su grupo | Sin acceso |
+| `motos` (lectura) | Todo | Todo | Solo las suyas | Solo su grupo | Todo (taller) |
+| `gestiones_cobro`, `visitas` | Todo | Todo | Solo lo suyo | Sin acceso | Sin acceso |
+| `liquidaciones`, `caja_diaria`, `historial_ubicaciones`, `recepciones_vehiculo`, `acuerdos_tiempo_rodado` | Todo | Todo | Sin acceso | Sin acceso | Sin acceso |
+
+### Pendiente (deferido intencionalmente)
+`motos` INSERT/UPDATE y toda la tabla `taller` siguen abiertas a cualquier autenticado — se endurecen cuando se rediseñe el módulo de taller e integración con la operación diaria.
+
+---
+
 ## SUBADMIN — SCOPE Y FILTRADO GLOBAL (arquitectura)
 
 El SUBADMIN solo ve/gestiona lo relacionado con **sus motos asignadas**. Esto aplica a TODO el sistema (ver REGLA DE MAPEO INTEGRAL).
@@ -645,6 +673,9 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 - `021_motos_subadmin.sql` — agrega `motos.subadmin_id` (sub-admin a cargo) ✅
 - `022_visitas_asignacion.sql` — agrega `visitas.asignada_a` (sub-admin asignado a la visita) ✅
 - `023_pagos_ubicacion.sql` — agrega `pagos.ubicacion` (GPS del cobro en campo) ✅
+- `024_multa_recoleccion.sql` — agrega concepto `multa_recoleccion` a deudas ✅
+- `025_clientes_visita_asignada.sql` — agrega `clientes.visita_asignada_a` ✅
+- `026_rls_hardening.sql` — endurece RLS: el scope por rol (SUBADMIN/SOCIO/MECANICO) ahora se cumple también en la base de datos, no solo en el frontend ⚠️ **pendiente aplicar en Supabase**
 
 ### Pendientes manuales ⚠️
 - Desplegar Edge Function: `supabase functions deploy manage-users`

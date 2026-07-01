@@ -1647,7 +1647,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: "hoy", label: "📋 Hoy", count: totalTareasHoy },
     { key: "contratos", label: "📁 Contratos", count: resumenContratos.length },
-    { key: "dinero", label: "⏳ Por confirmar", count: pagosPendientes.length },
+    { key: "dinero", label: isMobile ? "⏳ Confirmar" : "⏳ Por confirmar", count: pagosPendientes.length },
     { key: "historial", label: "🧾 Historial" },
   ];
 
@@ -1708,7 +1708,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", gap: 8, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
+      <div style={{ display: "flex", gap: isMobile ? 5 : 8, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
         {tabs.map(t => (
           <button
             key={t.key}
@@ -1718,9 +1718,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               color: activeTab === t.key ? "white" : "#334155",
               border: "none",
               borderRadius: 999,
-              padding: "8px 16px",
+              padding: isMobile ? "6px 9px" : "8px 16px",
               fontWeight: 700,
-              fontSize: 13,
+              fontSize: isMobile ? 11.5 : 13,
               cursor: "pointer",
               whiteSpace: "nowrap",
               flexShrink: 0,
@@ -1729,12 +1729,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {t.label}
             {t.count !== undefined && (
               <span style={{
-                marginLeft: 6,
+                marginLeft: isMobile ? 4 : 6,
                 background: activeTab === t.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
                 color: activeTab === t.key ? "white" : "#64748b",
                 borderRadius: 999,
-                padding: "1px 7px",
-                fontSize: 11,
+                padding: isMobile ? "1px 5px" : "1px 7px",
+                fontSize: isMobile ? 10 : 11,
                 fontWeight: 700,
               }}>
                 {t.count}

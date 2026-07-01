@@ -39,6 +39,7 @@ const card: React.CSSProperties = {
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+  boxSizing: "border-box",
 };
 const primaryBtn: React.CSSProperties = {
   background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
@@ -1708,7 +1709,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", gap: isMobile ? 5 : 8, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
+      <div style={{ display: "flex", gap: isMobile ? 3 : 8, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
         {tabs.map(t => (
           <button
             key={t.key}
@@ -1718,9 +1719,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               color: activeTab === t.key ? "white" : "#334155",
               border: "none",
               borderRadius: 999,
-              padding: isMobile ? "6px 9px" : "8px 16px",
+              padding: isMobile ? "5px 6px" : "8px 16px",
               fontWeight: 700,
-              fontSize: isMobile ? 11.5 : 13,
+              fontSize: isMobile ? 10.5 : 13,
               cursor: "pointer",
               whiteSpace: "nowrap",
               flexShrink: 0,
@@ -1729,12 +1730,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {t.label}
             {t.count !== undefined && (
               <span style={{
-                marginLeft: isMobile ? 4 : 6,
+                marginLeft: isMobile ? 3 : 6,
                 background: activeTab === t.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
                 color: activeTab === t.key ? "white" : "#64748b",
                 borderRadius: 999,
-                padding: isMobile ? "1px 5px" : "1px 7px",
-                fontSize: isMobile ? 10 : 11,
+                padding: isMobile ? "1px 4px" : "1px 7px",
+                fontSize: isMobile ? 9.5 : 11,
                 fontWeight: 700,
               }}>
                 {t.count}

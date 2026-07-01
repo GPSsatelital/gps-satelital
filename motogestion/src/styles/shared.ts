@@ -9,6 +9,7 @@ export const card: CSSProperties = {
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+  boxSizing: "border-box",
 };
 
 export const inputStyle: CSSProperties = {

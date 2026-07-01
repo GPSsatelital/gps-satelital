@@ -20,6 +20,18 @@ Indicar siempre: qué librería detecté, por qué conviene usarlo en ese caso p
 
 ---
 
+## REGLA DE HERRAMIENTAS MCP BAJO DEMANDA — OBLIGATORIO SIEMPRE
+
+Estas herramientas NO se activan solas (evitar forzarlas en cada mensaje sería costoso en tokens/tiempo) — evaluar en cada tarea si aplican y sugerirlas, igual que con Context7:
+
+- **Sequential-thinking**: cuando el problema es complejo y se beneficia de razonamiento explícito paso a paso (ej. depurar un bug con múltiples causas posibles, diseñar una migración de datos delicada). Sugerir: "💡 Este problema tiene varias partes interdependientes, te sugiero que use sequential-thinking para razonarlo paso a paso antes de proponer la solución."
+- **Superpowers**: cuando la tarea es una feature grande o un rediseño (no un fix puntual) que se beneficia de un flujo disciplinado (brainstorm → spec → plan → implementación con revisión). Sugerir: "💡 Esta es una feature grande, te sugiero usar el flujo de Superpowers para no saltar directo a codificar sin plan."
+- **Taskmaster**: cuando el trabajo se puede/debe partir en muchas tareas con dependencias entre sí (ej. un módulo nuevo con varias etapas). Sugerir: "💡 Esto tiene varias etapas dependientes, te sugiero usar Taskmaster para desglosarlo y no perder el hilo."
+
+No usar estas herramientas de forma automática en tareas simples o puntuales (fixes de una línea, preguntas de negocio, ajustes de UI menores) — ahí solo agregan overhead sin beneficio.
+
+---
+
 ## REGLA DE PREGUNTAS — OBLIGATORIO SIEMPRE
 
 **Hacer las preguntas UNA POR UNA (nunca varias juntas), y siempre ofreciendo opciones para autoseleccionar la respuesta.**

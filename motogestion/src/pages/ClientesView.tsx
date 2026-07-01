@@ -535,9 +535,14 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente } = useClientes();
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);
-  // Clientes con visita asignada a este SUBADMIN (embudo de ingreso)
+  // Clientes con visita asignada a este SUBADMIN (embudo de ingreso) — considera tanto
+  // visitas ya realizadas (asignada_a en visitas) como visitas pendientes por realizar
+  // (visita_asignada_a en el cliente, antes de que exista el registro de visita).
   const clienteIdsConVisitaAsignada = esSubadmin
-    ? new Set(visitas.map(v => v.cliente_id))
+    ? new Set([
+        ...visitas.map(v => v.cliente_id),
+        ...todosClientes.filter(c => c.visita_asignada_a === profile?.id).map(c => c.id),
+      ])
     : null;
   const clientes = esSubadmin && clienteIdsPermitidos
     ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !!(clienteIdsConVisitaAsignada?.has(c.id)))

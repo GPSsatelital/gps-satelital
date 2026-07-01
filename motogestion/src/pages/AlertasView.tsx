@@ -261,7 +261,7 @@ export default function AlertasView({ onNavegar }: Props) {
           </div>
 
           {/* Right: actions */}
-          <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 5, flexShrink: isMobile ? 1 : 0, flexWrap: "wrap", minWidth: 0 }}>
             {tel && (
               <>
                 <button onClick={() => llamar(a.clienteId)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}>

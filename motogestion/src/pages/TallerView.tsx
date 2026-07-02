@@ -7,6 +7,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import MoneyInput from "../components/MoneyInput";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -207,13 +208,11 @@ function RepuestosEditor({ items, onChange }: { items: RepuestoItem[]; onChange:
             onChange={e => actualizar(i, "cantidad", Number(e.target.value) || 1)}
             title="Cantidad"
           />
-          <input
-            type="number"
-            style={{ ...inputStyle, flex: 2, minWidth: 70 }}
-            value={item.costo || ""}
-            onChange={e => actualizar(i, "costo", Number(e.target.value) || 0)}
+          <MoneyInput
+            style={{ flex: 2, minWidth: 70 }}
+            value={item.costo ? String(item.costo) : ""}
+            onChange={v => actualizar(i, "costo", Number(v) || 0)}
             placeholder="$ costo u."
-            title="Costo unitario"
           />
           <button onClick={() => eliminar(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "0 2px", flexShrink: 0 }}>✕</button>
         </div>
@@ -307,10 +306,7 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
           />
         </div>
         <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
-        <div>
-          <label style={labelStyle}>Mano de obra ($)</label>
-          <input type="number" style={inputStyle} value={costoManoObra} onChange={(e) => setCostoManoObra(e.target.value)} placeholder="0" />
-        </div>
+        <MoneyInput label="Mano de obra" value={costoManoObra} onChange={setCostoManoObra} />
         {costoTotal > 0 && (
           <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
             <span style={{ color: "#64748b" }}>Repuestos: <strong>${costoRepuestos.toLocaleString("es-CO")}</strong></span>
@@ -374,10 +370,7 @@ function ActualizarModal({
           </select>
         </div>
         <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
-        <div>
-          <label style={labelStyle}>Mano de obra adicional ($)</label>
-          <input type="number" style={inputStyle} value={manoObraExtra} onChange={(e) => setManoObraExtra(e.target.value)} placeholder="0" />
-        </div>
+        <MoneyInput label="Mano de obra adicional" value={manoObraExtra} onChange={setManoObraExtra} />
         {costoExtra > 0 && (
           <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
             Nuevo total acumulado: <strong style={{ color: "#0284c7" }}>{formatCOP(item.costo + costoExtra)}</strong>

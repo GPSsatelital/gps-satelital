@@ -205,6 +205,29 @@ export function useContratos() {
     return { error: null };
   }
 
+  // Borra por completo un contrato que nunca llegó a activarse (wizard abierto/abandonado
+  // por error) — a diferencia de cancelarContrato(), esto elimina la fila y cualquier
+  // foto/firma ya subida, para que no quede rastro de un intento que nunca fue real.
+  async function eliminarContratoEnProceso(contrato: Contrato) {
+    if (contrato.estado !== "En proceso") return { error: "Solo se puede eliminar un contrato En proceso." };
+
+    for (const carpeta of ["firmas", "certificados", "contratos-docs"]) {
+      const { data: archivos } = await supabase.storage.from("documentos").list(`${carpeta}/${contrato.id}`);
+      if (archivos && archivos.length > 0) {
+        await supabase.storage.from("documentos").remove(archivos.map(a => `${carpeta}/${contrato.id}/${a.name}`));
+      }
+    }
+
+    if (contrato.moto_id) {
+      await supabase.from("motos").update({ estado: "Disponible" }).eq("id", contrato.moto_id);
+    }
+
+    await supabase.from("contratos_auditoria").delete().eq("contrato_id", contrato.id);
+
+    const { error } = await supabase.from("contratos").delete().eq("id", contrato.id);
+    return { error: error?.message ?? null };
+  }
+
   async function suspenderContrato(id: string, motoId: string | null) {
     const { error: errContrato } = await supabase.from("contratos").update({ estado: "Suspendido" }).eq("id", id);
     if (errContrato) return { error: errContrato.message };
@@ -344,6 +367,7 @@ export function useContratos() {
     asignarMoto,
     activarContrato,
     cancelarContrato,
+    eliminarContratoEnProceso,
     suspenderContrato,
     reactivarContrato,
     finalizarContrato,

@@ -3,8 +3,9 @@ import { supabase } from "../lib/supabase";
 import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
-import { calcularFechaFinContrato } from "../hooks/useContratos";
+import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
+import MoneyInput from "../components/MoneyInput";
 
 type Props = {
   clientes: Cliente[];
@@ -33,26 +34,6 @@ const btnSecondary: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-function MoneyInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
-  const [focused, setFocused] = useState(false);
-  const num = Number(value) || 0;
-  const display = focused ? value : (num > 0 ? "$ " + num.toLocaleString("es-CO") : "");
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <input
-        style={inputStyle}
-        type="text"
-        inputMode="numeric"
-        value={display}
-        onFocus={e => { setFocused(true); e.target.select(); }}
-        onBlur={() => setFocused(false)}
-        onChange={e => onChange(e.target.value.replace(/\D/g, ""))}
-        placeholder={placeholder ?? "$ 0"}
-      />
-    </div>
-  );
-}
 const CHECKLIST = [
   "Luces delanteras funcionando",
   "Luces traseras funcionando",
@@ -142,12 +123,27 @@ function CanvasFirma({ label, onChange }: { label: string; onChange: (data: stri
 const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega"];
 
 export default function WizardContrato({ clientes, motos, contratos, contratoInicial, stepInicial, onClose, onCompletado }: Props) {
+  const { eliminarContratoEnProceso } = useContratos();
   const [step, setStep] = useState(stepInicial ?? 1);
   const [contratoId, setContratoId] = useState<string | null>(contratoInicial?.id ?? null);
   const [contratoData, setContratoData] = useState<Contrato | null>(contratoInicial ?? null);
   const [motoId, setMotoId] = useState<string | null>(contratoInicial?.moto_id ?? null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+
+  async function handleCancelarYEliminar() {
+    if (!contratoId || !contratoData || eliminando) return;
+    if (!confirm("¿Eliminar este intento de contrato? Se borrará por completo (moto liberada, fotos/firmas eliminadas). No se puede deshacer.")) return;
+    setEliminando(true);
+    try {
+      const { error: err } = await eliminarContratoEnProceso({ ...contratoData, moto_id: motoId });
+      if (err) { setError(err); return; }
+      onClose();
+    } finally {
+      setEliminando(false);
+    }
+  }
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -403,7 +399,19 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <div style={{ fontSize: 16, fontWeight: 900, color: "white" }}>{pasoTitulos[step - 1]}</div>
               {clienteActual && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
             </div>
-            <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {contratoId && (
+                <button
+                  onClick={handleCancelarYEliminar}
+                  disabled={eliminando}
+                  title="Eliminar este intento de contrato por completo"
+                  style={{ background: "rgba(248,113,113,0.15)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", color: "#fca5a5", opacity: eliminando ? 0.6 : 1 }}
+                >
+                  {eliminando ? "Eliminando..." : "🗑️ Cancelar y eliminar"}
+                </button>
+              )}
+              <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
           </div>
           {/* Stepper */}
           <div style={{ display: "flex", gap: 4, marginTop: 12 }}>

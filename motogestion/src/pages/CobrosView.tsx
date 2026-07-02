@@ -1308,12 +1308,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
               <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(pagadoEnPeriodo)}</div>
             </div>
-            <div style={{ background: enProrrateo ? "#eff6ff" : cuotaPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
+            {/* "Al día" solo si de verdad no debe nada — incluye deuda pendiente y convenio,
+                no solo la cuota de esta semana (mismo criterio que Panel Hoy y Cobro en campo). */}
+            <div style={{ background: enProrrateo ? "#eff6ff" : totalPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
                 {enProrrateo ? "Próx. pago" : "Pendiente"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : cuotaPendiente > 0 ? "#991b1b" : "#166534" }}>
-                {enProrrateo ? `$ ${fmt(cuotaPactada)}` : cuotaPendiente > 0 ? `$ ${fmt(cuotaPendiente)}` : "✓ Al día"}
+              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : totalPendiente > 0 ? "#991b1b" : "#166534" }}>
+                {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalPendiente > 0 ? `$ ${fmt(totalPendiente)}` : "✓ Al día"}
               </div>
             </div>
           </div>
@@ -1684,7 +1686,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
             : enProrrateoLista ? calcProrrateoInicial(c) : c.valor_semanal;
           const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
-          const pendiente = Math.max(cuotaPact - pagadoP, 0);
+          // Incluye deuda pendiente y convenio — mismo criterio que Panel Hoy, para no mostrar
+          // "Al día" a alguien que arrastra deuda de apertura u otra deuda registrada.
+          const pendiente = Math.max(cuotaPact - pagadoP, 0) + c.deudaContrato + c.cuotaConvenio;
 
           return (
             <div

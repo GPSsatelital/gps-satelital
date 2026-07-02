@@ -13,13 +13,16 @@ const secondaryBtn: React.CSSProperties = { background: "#f1f5f9", border: "none
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
+// Días hasta que se cumpla el PLAZO TOTAL del contrato (no un solo período de pago) —
+// mismo cálculo que la alerta "traspaso próximo" (useAlertas.ts): fecha_entrega + meses*30.
+// Antes usaba solo 1 período (7/15/30 días), así que cualquier contrato con más de esa
+// antigüedad quedaba marcado "Vencido" para siempre así estuviera al día en sus pagos.
 function calcularDiasHastaVencimiento(contrato: Contrato): number | null {
-  if (!contrato.fecha_entrega) return null;
+  if (!contrato.fecha_entrega || !contrato.meses) return null;
   if (contrato.forma_pago === "Diario") return null;
-  const diasPeriodo = contrato.forma_pago === "Semanal" ? 7 : contrato.forma_pago === "Quincenal" ? 15 : 30;
   const entrega = new Date(contrato.fecha_entrega + "T00:00:00");
   const vencimiento = new Date(entrega);
-  vencimiento.setDate(vencimiento.getDate() + diasPeriodo);
+  vencimiento.setDate(vencimiento.getDate() + contrato.meses * 30);
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   return Math.round((vencimiento.getTime() - hoy.getTime()) / 86400000);
 }

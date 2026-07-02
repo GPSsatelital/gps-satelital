@@ -150,12 +150,20 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
           ) : errorKey?.key === key ? (
             <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 700 }}>⛔ {errorKey.msg}</div>
           ) : doc[key].ok ? (
-            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700 }}>
-              {esUrl(doc[key].file) ? (
-                <a href={doc[key].file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
-              ) : (
-                <span style={{ color: "#16a34a" }}>✔ Cargado</span>
-              )}
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>
+                {esUrl(doc[key].file) ? (
+                  <a href={doc[key].file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
+                ) : (
+                  <span style={{ color: "#16a34a" }}>✔ Cargado</span>
+                )}
+              </div>
+              <button
+                onClick={() => onChange({ ...doc, [key]: { ok: false, file: null } })}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#991b1b", padding: 0 }}
+              >
+                🗑️ Quitar / volver a intentar
+              </button>
             </div>
           ) : (
             <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b" }}>Documento pendiente</div>

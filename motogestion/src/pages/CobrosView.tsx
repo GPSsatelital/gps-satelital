@@ -1772,7 +1772,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   if (isMobile && contratoSeleccionadoId) {
     return (
       <div style={{ padding: "0 0 80px" }}>
-        <PanelDetalle />
+        {PanelDetalle()}
       </div>
     );
   }
@@ -2504,7 +2504,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {/* Detail panel — desktop only */}
           {!isMobile && (
             <div style={{ flex: "0 0 380px", maxWidth: 380 }}>
-              <PanelDetalle />
+              {PanelDetalle()}
             </div>
           )}
         </div>

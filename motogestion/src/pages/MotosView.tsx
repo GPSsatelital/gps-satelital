@@ -357,8 +357,6 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               { key: "color", label: "Color" }, { key: "cilindraje", label: "Cilindraje" },
               { key: "numero_motor", label: "N° Motor" }, { key: "numero_chasis", label: "N° Chasis" },
               { key: "propietario", label: "Propietario" },
-              { key: "fecha_seguro", label: "SOAT (YYYY-MM-DD)" },
-              { key: "fecha_tecnomecanica", label: "Tecnomecánica (YYYY-MM-DD)" },
             ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
               <div key={key}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>{label}</div>
@@ -366,6 +364,16 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
               </div>
             ))}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>SOAT vence</div>
+              <input type="date" value={(editForm.fecha_seguro as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, fecha_seguro: e.target.value }))}
+                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Tecnomecánica vence</div>
+              <input type="date" value={(editForm.fecha_tecnomecanica as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, fecha_tecnomecanica: e.target.value }))}
+                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+            </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
               <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
@@ -477,7 +485,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "0 0 12px 0" }}>
               ← Volver a la lista
             </button>
-            <div style={card}><DetallePanel /></div>
+            <div style={card}>{DetallePanel()}</div>
           </div>
         ) : (
           <div>
@@ -538,7 +546,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           </div>
           <div style={{ ...card, flex: "0 0 340px", minWidth: 0 }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 17 }}>Detalle de moto</h3>
-            <DetallePanel />
+            {DetallePanel()}
           </div>
         </div>
       )}

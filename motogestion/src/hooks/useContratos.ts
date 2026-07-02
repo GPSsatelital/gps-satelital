@@ -55,6 +55,19 @@ export function calcularProrrateo(contrato: Contrato, dias: number, esLiquidacio
   return valorDia * dias;
 }
 
+// Fecha del corte de cuentas de la migración: los saldos anteriores viven como
+// deuda de apertura, así que ningún reloj de "días sin pago" puede arrancar antes.
+export const FECHA_CORTE_MIGRACION = "2026-07-01";
+
+// Días sin pago registrado. Sin pagos en el sistema: cuenta desde la entrega,
+// pero nunca antes del corte de migración.
+export function diasDesdeUltimoPago(ultimoPagoFecha: string | null, fechaEntrega: string | null): number | null {
+  const base = ultimoPagoFecha
+    ?? (fechaEntrega ? (fechaEntrega > FECHA_CORTE_MIGRACION ? fechaEntrega : FECHA_CORTE_MIGRACION) : null);
+  if (!base) return null;
+  return Math.floor((Date.now() - new Date(base + "T00:00:00").getTime()) / 86400000);
+}
+
 // Calcula los días hasta el próximo lunes o miércoles
 export function diasHastaProximoDiaPago(fechaBase: string): { diasHasta: number; proximaFecha: string; diaSemana: string } {
   const base = new Date(fechaBase + "T00:00:00");
@@ -222,6 +235,54 @@ export function useContratos() {
     return { error: error?.message ?? null, baseCompletada: completada };
   }
 
+  const CAMPOS_EDITABLES_LABEL: Record<string, string> = {
+    forma_pago: "Modalidad",
+    dia_pago: "Día de pago",
+    valor_semanal: "Valor por período",
+    tarifa_diaria: "Tarifa L-S",
+    tarifa_domingo: "Tarifa domingo",
+    ahorro_diario: "Ahorro L-S",
+    ahorro_domingo: "Ahorro domingo",
+    meses: "Meses",
+    ahorro_inicial: "Ahorro inicial",
+    fecha_entrega: "Fecha entrega",
+    ahorro_acumulado: "Ahorro acumulado",
+  };
+
+  async function editarContrato(
+    contratoActual: Contrato,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado">>,
+    editadoPor: string,
+  ) {
+    const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(
+      campo => cambios[campo] !== undefined && cambios[campo] !== (contratoActual as any)[campo]
+    );
+    if (camposModificados.length === 0) return { error: null };
+
+    const { error } = await supabase.from("contratos").update(cambios).eq("id", contratoActual.id);
+    if (error) return { error: error.message };
+
+    const filasAuditoria = camposModificados.map(campo => ({
+      contrato_id: contratoActual.id,
+      campo: CAMPOS_EDITABLES_LABEL[campo] ?? campo,
+      valor_anterior: String((contratoActual as any)[campo] ?? ""),
+      valor_nuevo: String((cambios as any)[campo] ?? ""),
+      editado_por: editadoPor,
+    }));
+    await supabase.from("contratos_auditoria").insert(filasAuditoria);
+
+    return { error: null };
+  }
+
+  async function obtenerAuditoria(contratoId: string) {
+    const { data, error } = await supabase
+      .from("contratos_auditoria")
+      .select("*, profiles(nombre)")
+      .eq("contrato_id", contratoId)
+      .order("created_at", { ascending: false });
+    return { data: data ?? [], error: error?.message ?? null };
+  }
+
   return {
     contratos,
     loading,
@@ -235,6 +296,8 @@ export function useContratos() {
     reactivarContrato,
     finalizarContrato,
     actualizarAhorro,
+    editarContrato,
+    obtenerAuditoria,
     calcularEquivalenciasDiarias,
     calcularProrrateo,
   };

@@ -13,6 +13,8 @@ import {
   type RutaContrato,
 } from "../hooks/useClientes";
 import { useVisitas, type Visita } from "../hooks/useVisitas";
+import { useContratos } from "../hooks/useContratos";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 
@@ -557,6 +559,18 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const [query, setQuery] = useState("");
   const [filtroEstado, setFiltroEstado] = useState(initialFilter);
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
+  const { contratos: todosContratosGrupo } = useContratos();
+  const { motos: todasMotosGrupo } = useMotos();
+  const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
+  const grupoDelCliente = useMemo(() => {
+    const map = new Map<string, GrupoMoto>();
+    for (const c of todosContratosGrupo) {
+      if (!c.moto_id) continue;
+      const moto = todasMotosGrupo.find(m => m.id === c.moto_id);
+      if (moto) map.set(c.cliente_id, moto.grupo);
+    }
+    return map;
+  }, [todosContratosGrupo, todasMotosGrupo]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [excepcionMotivo, setExcepcionMotivo] = useState("");
   const [excepcionPlazo, setExcepcionPlazo] = useState("");
@@ -570,8 +584,31 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     let list = clientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "mora") list = list.filter(c => c.estado === "En mora" || c.estado === "En riesgo");
     else if (filtroEstado) list = list.filter(c => c.estado === filtroEstado);
+    if (filtroGrupo !== "todos") list = list.filter(c => grupoDelCliente.get(c.id) === filtroGrupo);
     return list;
-  }, [clientes, query, filtroEstado]);
+  }, [clientes, query, filtroEstado, filtroGrupo, grupoDelCliente]);
+
+  const GRUPOS_FILTRO_CLIENTES: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  function ChipsGrupo() {
+    return (
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {GRUPOS_FILTRO_CLIENTES.map(g => (
+          <button
+            key={g}
+            onClick={() => setFiltroGrupo(g)}
+            style={{
+              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700,
+              background: filtroGrupo === g ? "#0284c7" : "#f1f5f9",
+              color: filtroGrupo === g ? "white" : "#334155",
+            }}
+          >
+            {g === "todos" ? "Todos" : g}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   const selectedCliente: Cliente | null = clientes.find(c => c.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
@@ -979,6 +1016,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               <div style={{ marginBottom: 10 }}>
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={inputStyle} />
               </div>
+              <ChipsGrupo />
               {filtered.length === 0 && clientes.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 24px" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
@@ -1038,6 +1076,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   >{f.label}</button>
                 ))}
               </div>
+              <ChipsGrupo />
               <div style={{ display: "grid", gap: 6, maxHeight: "70vh", overflowY: "auto" }}>
                 {filtered.length === 0 && clientes.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 24px" }}>

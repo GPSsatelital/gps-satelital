@@ -763,11 +763,29 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
    - Pendientes primero (tarjetas con tareas sin hacer arriba; resueltas en gris/opaco abajo)
    - Monto "Debe pagar" visible en cada tarjeta
 6. **Emojis en chips de Contratos** — `🔴 Mora · 🟡 Gabela · 🟢 Al día · 🔵 Pagan hoy` igual que en Hoy
+7. **RLS hardening (mig 026)** — auditoría completa de Supabase encontró tablas sensibles abiertas (`USING(true)`). Se crearon funciones de scope reutilizables (`mi_rol()`, `mis_contratos_subadmin()`, etc.) y se blindaron políticas por rol en clientes/contratos/motos/deudas/convenios/gestiones_cobro/pagos/visitas/liquidaciones/caja_diaria/historial_ubicaciones/recepciones_vehiculo/acuerdos_tiempo_rodado. Aplicada en Supabase ✅.
+8. **REGLA DE VERIFICACIÓN PREVIA** agregada a CLAUDE.md — cualquier decisión ambigua se pregunta ANTES de escribir código, incluso a mitad de tarea ya aprobada.
+9. **Bugs de permisos reales corregidos en CobrosView** — SECRETARIA veía botón "Entregué a secretaria" que no le correspondía; SUBADMIN veía "Confirmar"/"Rechazar" pago (2 lugares) — ambos exclusivos de SECRETARIA/ADMIN/ADMIN_PRINCIPAL.
+10. **Cobro en campo → modal flotante** — dejó de ser pestaña fija; ahora se abre desde botón "+" global o "💵 Cobrar" en cada tarjeta de Hoy.
+11. **Pestaña "💵 Dinero" → "⏳ Por confirmar"** — 2 columnas (lado a lado en desktop, apiladas en móvil): Transferencias por confirmar (oculto a SUBADMIN) y Efectivo de campo por confirmar, cada una con buscador + scroll propio.
+12. **Auditoría móvil 375px (parcial, pausada)** — `src/styles/shared.ts` creado (`card`/`inputStyle`/`labelStyle`/`primaryBtn`/`secondaryBtn`/`listaConScroll`). 2 bugs reales corregidos en Cartera: falta `boxSizing:"border-box"` (desborde de 32px) y `alignItems:"start"` sin condicional mobile (rompía columna en 375px). **Pendiente:** revisar el resto de pantallas (Motos, Usuarios, Liquidaciones, Configuración, Alertas, Inmovilizaciones, Reportes, Referidos, Importación, Caja, HistorialPagos, WizardContrato, Login, fichas).
+13. **Migración de datos reales — grupo PRADERA** ✅:
+    - Se eliminaron 177 registros de otros grupos (motos/contratos/clientes no-Pradera) por decisión del usuario — no había uso diario aún en esos grupos. **Nota importante:** el primer intento de borrado pareció exitoso (verificación mostró 52/52/52) pero el `COMMIT` se corrió como consulta separada y no se aplicó — quedó revertido en silencio. Se detectó días después porque volvían a aparecer 226-229 registros. Se corrigió regenerando el DELETE completo (orden correcto de FKs: pagos→gestiones_cobro→convenios→deudas→acuerdos_tiempo_rodado→recepciones_vehiculo→liquidaciones→visitas→historial_ubicaciones→taller→contratos→motos→clientes) como **un solo bloque `BEGIN...COMMIT` en una sola ejecución** — confirmado 52/52/52 real. **Regla para toda operación destructiva futura en Supabase SQL Editor: el script completo, incluyendo el `COMMIT;` final, debe pegarse y ejecutarse de una sola vez — nunca separar `BEGIN`/operación de un lado y `COMMIT` en una ejecución aparte.**
+    - Tabla `referidos` (documentada en CLAUDE.md, sistema de premios) **no existe en la BD real** — la migración 010 nunca la creó o se perdió. Sin código en frontend que la use tampoco. Pendiente crear si se retoma el sistema de referidos.
+    - Quedaron 52 motos/contratos/clientes de Pradera. De esos, **44 contratos corregidos** con datos reales (cédula, teléfono, whatsapp, forma_pago, tarifa_diaria/domingo, ahorro_diario/domingo, valor_semanal, meses, `ahorro_inicial`, `clientes.ingreso_inicial`, fecha_entrega, ahorro_acumulado) desde `MIGRACION_GPS_SATELITAL_v2 (1).xlsx` (hojas CONTRATOS_PRADERA + ARQUEO_PRADERA). Deuda de apertura insertada donde aplicaba (DEUDA_ACTUAL + saldo a favor negativo tratado como deuda adicional).
+    - Script ejecutado y confirmado por el usuario ✅ (`motogestion/migracion_datos/update_pradera_v2.sql`, gitignored — contiene PII real).
+    - **Limpieza post-migración (2 jul 2026):** se borraron TODOS los pagos, gestiones_cobro y caja_diaria (eran de una migración de prueba anterior — verificado 0/0/0). Se corrigieron los **nombres** de los 44 clientes (el script original actualizaba cédula/teléfono pero no `nombre`). Verificado: cero deudas residuales de prueba — solo existen las deudas de apertura del arqueo.
+    - **Pendiente:** 2 contratos sin tarifa/ahorro/base en el Excel — `RMZ69H` (JESUS DAVID SIERRA CASSIANI) y `RMZ64H` (DELCY JUDITH YEPES OCHOA) — faltan por completar cuando el usuario tenga esos datos.
+    - **Pendiente:** datos técnicos de las 52 motos (marca, modelo, color, número de motor/chasis, cilindraje, SOAT, tecnomecánica) — hoja MOTOS_PRADERA llegó vacía, usuario aún no tiene esa info a la mano.
+    - **Pendiente:** repetir el mismo proceso para grupos COSTA y RASTREADOR (aún no iniciado, deliberadamente diferido).
 
 ### Migraciones ya aplicadas en Supabase por el usuario
-- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅
+- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅
 
 ### Próximos pasos sugeridos 🔲
+- Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga.
+- Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
+- Retomar auditoría móvil 375px en las pantallas restantes.
 - **Gestión de permisos por usuario (UsuariosView)** — lista de usuarios, toggle de permisos activos/inactivos por módulo, organizado por categoría, jerarquía por rol, base: `profiles.permisos` (jsonb).
 - **Barra inferior por rol** — cada rol vería abajo sus 5 módulos más usados (ej. SUBADMIN: Panel·Cartera·Motos·Taller·Más).
 - Integración GPS real (sirena/apagado) · WhatsApp automático · Reportes PDF/Excel · APK Capacitor.

@@ -70,6 +70,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { cambiarUbicacion, registrarRecepcion, historialDeMoto } = useUbicaciones();
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
+  const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(initialOpenForm);
   const [openRecepcion, setOpenRecepcion] = useState(false);
@@ -133,8 +134,31 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
     else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
+    if (filtroGrupo !== "todos") list = list.filter(m => m.grupo === filtroGrupo);
     return list;
-  }, [motos, query, filtroEstado, filtrarMotos]);
+  }, [motos, query, filtroEstado, filtroGrupo, filtrarMotos]);
+
+  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  function ChipsGrupo() {
+    return (
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {GRUPOS_FILTRO.map(g => (
+          <button
+            key={g}
+            onClick={() => setFiltroGrupo(g)}
+            style={{
+              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700,
+              background: filtroGrupo === g ? "#0284c7" : "#f1f5f9",
+              color: filtroGrupo === g ? "white" : "#334155",
+            }}
+          >
+            {g === "todos" ? "Todos" : g}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
 
@@ -437,6 +461,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         ) : (
           <div>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 12 }} />
+            <ChipsGrupo />
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {filtered.map((moto) => {
@@ -463,6 +488,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
+            <ChipsGrupo />
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map((moto) => {

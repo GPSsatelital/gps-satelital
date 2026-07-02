@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { usePagos } from "../hooks/usePagos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { useDeudas } from "../hooks/useDeudas";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -133,6 +134,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { contratos } = useContratos();
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
+  const { deudas }    = useDeudas();
 
   const hoyStr = new Date().toISOString().slice(0, 10);
   const { desde, hasta } = getRango(rango);
@@ -189,9 +191,25 @@ export default function ReportesView({ onNavigate }: Props) {
   const enMora = useMemo(() => contratosActivos.map(c => {
     const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
     const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    const dias = ultimo ? Math.floor((new Date().getTime() - new Date(ultimo.fecha + "T00:00:00").getTime()) / 86400000) : 999;
+    const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10)) ?? 0;
     return { contrato: c, diasSinPago: dias, ultimoPago: ultimo?.fecha ?? null };
   }).filter(e => e.diasSinPago > 2), [contratosActivos, pagos]);
+
+  // Deuda real por contrato (tabla deudas) — no estimada por días
+  const deudaDelContrato = useMemo(() => {
+    const map = new Map<string, number>();
+    deudas.filter(d => d.estado !== "pagada").forEach(d => {
+      map.set(d.contrato_id, (map.get(d.contrato_id) ?? 0) + d.monto_pendiente);
+    });
+    return map;
+  }, [deudas]);
+
+  const deudaTotalCartera = useMemo(() => {
+    const activosIds = new Set(contratosActivos.map(c => c.id));
+    let total = 0;
+    deudaDelContrato.forEach((v, contratoId) => { if (activosIds.has(contratoId)) total += v; });
+    return total;
+  }, [deudaDelContrato, contratosActivos]);
 
   const moraDetallada = useMemo(() => enMora.map(({ contrato: c, diasSinPago, ultimoPago }) => {
     const cliente = clientes.find(cl => cl.id === c.cliente_id);
@@ -199,9 +217,9 @@ export default function ReportesView({ onNavigate }: Props) {
     return {
       id: c.id, clienteId: c.cliente_id, motoId: c.moto_id ?? null,
       cliente: cliente?.nombre ?? "—", placa: moto?.placa ?? "—",
-      diasSinPago, deudaEstimada: Math.min(diasSinPago, 30) * (c.tarifa_diaria ?? 27000), ultimoPago,
+      diasSinPago, deudaPendiente: deudaDelContrato.get(c.id) ?? 0, ultimoPago,
     };
-  }).sort((a, b) => b.diasSinPago - a.diasSinPago), [enMora, clientes, motos]);
+  }).sort((a, b) => b.diasSinPago - a.diasSinPago), [enMora, clientes, motos, deudaDelContrato]);
 
   const enMoraCritica = enMora.filter(e => e.diasSinPago > 7).length;
 
@@ -297,7 +315,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
     const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
     const gruposHTML = reporteGrupos.map(g => `<tr><td style="padding:8px 12px;font-weight:700;">${g.grupo}</td><td style="padding:8px 12px;text-align:center;">${g.motosAsignadas}</td><td style="padding:8px 12px;text-align:center;">$ ${fmt(g.recaudo)}</td><td style="padding:8px 12px;text-align:center;">${g.contratosActivos}</td><td style="padding:8px 12px;text-align:center;color:${g.enMora > 0 ? "#991b1b" : "#166534"};">${g.enMora}</td></tr>`).join("");
-    const moraHTML = moraDetallada.slice(0, 30).map(m => `<tr><td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td><td style="padding:8px 12px;">${m.placa}</td><td style="padding:8px 12px;text-align:center;color:#991b1b;font-weight:700;">${m.diasSinPago}</td><td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaEstimada)}</td><td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
+    const moraHTML = moraDetallada.slice(0, 30).map(m => `<tr><td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td><td style="padding:8px 12px;">${m.placa}</td><td style="padding:8px 12px;text-align:center;color:#991b1b;font-weight:700;">${m.diasSinPago}</td><td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaPendiente)}</td><td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:14px;}h1{font-size:22px;margin-bottom:4px;}h2{font-size:16px;margin:24px 0 10px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;}.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:14px 20px;min-width:130px;}.kpi-val{font-size:20px;font-weight:800;color:#0284c7;}.kpi-lbl{font-size:11px;color:#64748b;text-transform:uppercase;margin-top:2px;}table{width:100%;border-collapse:collapse;font-size:13px;}th{background:#f1f5f9;padding:8px 12px;text-align:left;font-weight:700;color:#64748b;}tr:nth-child(even){background:#f8fafc;}footer{margin-top:32px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
       <h1>Reporte MotoGestión — GPS Satelital Cartagena</h1>
       <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy}</p>
@@ -306,7 +324,7 @@ export default function ReportesView({ onNavigate }: Props) {
       <h2>Recaudo por Grupo</h2>
       <table><thead><tr><th>Grupo</th><th>Motos asignadas</th><th>Recaudo período</th><th>Contratos activos</th><th>En mora</th></tr></thead><tbody>${gruposHTML}</tbody></table>
       <h2>Mora y Cartera Vencida (${moraDetallada.length} contratos)</h2>
-      ${moraDetallada.length === 0 ? "<p style='color:#166534;'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda estimada</th><th>Último pago</th></tr></thead><tbody>${moraHTML}</tbody></table>`}
+      ${moraDetallada.length === 0 ? "<p style='color:#166534;'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda pendiente</th><th>Último pago</th></tr></thead><tbody>${moraHTML}</tbody></table>`}
       <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();
@@ -486,7 +504,7 @@ export default function ReportesView({ onNavigate }: Props) {
             <KPI label="Al día"       value={String(contratosActivos.length - enMora.length)} color="#166534" bg="#f0fdf4" />
             <KPI label="En mora"      value={String(enMora.length - enMoraCritica)}           color="#92400e" bg="#fefce8" />
             <KPI label="Mora crítica" value={String(enMoraCritica)}                            color="#991b1b" bg="#fff5f5" />
-            <KPI label="Deuda total"  value={`$ ${fmt(moraDetallada.reduce((a, m) => a + m.deudaEstimada, 0))}`} color="#991b1b" />
+            <KPI label="Deuda total"  value={`$ ${fmt(deudaTotalCartera)}`} color="#991b1b" />
           </div>
 
           {/* Barras cartera */}
@@ -526,7 +544,7 @@ export default function ReportesView({ onNavigate }: Props) {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d sin pago</span>
-                        <span style={{ fontWeight: 800, color: "#991b1b", fontSize: 14 }}>$ {fmt(m.deudaEstimada)}</span>
+                        <span style={{ fontWeight: 800, color: "#991b1b", fontSize: 14 }}>$ {fmt(m.deudaPendiente)}</span>
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
                         Último pago: {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}
@@ -553,7 +571,7 @@ export default function ReportesView({ onNavigate }: Props) {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
-                        {["Cliente","Placa","Días sin pago","Deuda estimada","Último pago",""].map(h => (
+                        {["Cliente","Placa","Días sin pago","Deuda pendiente","Último pago",""].map(h => (
                           <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
                         ))}
                       </tr>
@@ -566,7 +584,7 @@ export default function ReportesView({ onNavigate }: Props) {
                           <td style={{ padding: "8px 10px" }}>
                             <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d</span>
                           </td>
-                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaEstimada)}</td>
+                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaPendiente)}</td>
                           <td style={{ padding: "8px 10px", color: "#64748b" }}>{m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}</td>
                           <td style={{ padding: "8px 6px" }}>
                             {onNavigate && (
@@ -762,10 +780,10 @@ export default function ReportesView({ onNavigate }: Props) {
               },
               {
                 label: "⬇️ CSV — Mora actual",
-                desc: `${moraDetallada.length} contratos en mora · Cliente, Placa, Días, Deuda, Último pago`,
+                desc: `${moraDetallada.length} contratos en mora · Cliente, Placa, Días, Deuda pendiente, Último pago`,
                 onClick: () => {
-                  const filas = moraDetallada.map(m => [m.cliente.replace(/,/g," "), m.placa, String(m.diasSinPago), String(m.deudaEstimada), m.ultimoPago ?? "Sin pagos"]);
-                  exportarCSV(filas, ["Cliente","Placa","Dias sin pago","Deuda estimada","Ultimo pago"], `mora-${hoyStr}.csv`);
+                  const filas = moraDetallada.map(m => [m.cliente.replace(/,/g," "), m.placa, String(m.diasSinPago), String(m.deudaPendiente), m.ultimoPago ?? "Sin pagos"]);
+                  exportarCSV(filas, ["Cliente","Placa","Dias sin pago","Deuda pendiente","Ultimo pago"], `mora-${hoyStr}.csv`);
                 },
               },
               ...(alertasVencimiento.length > 0 ? [{

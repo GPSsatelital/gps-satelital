@@ -775,16 +775,34 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
     - Quedaron 52 motos/contratos/clientes de Pradera. De esos, **44 contratos corregidos** con datos reales (cédula, teléfono, whatsapp, forma_pago, tarifa_diaria/domingo, ahorro_diario/domingo, valor_semanal, meses, `ahorro_inicial`, `clientes.ingreso_inicial`, fecha_entrega, ahorro_acumulado) desde `MIGRACION_GPS_SATELITAL_v2 (1).xlsx` (hojas CONTRATOS_PRADERA + ARQUEO_PRADERA). Deuda de apertura insertada donde aplicaba (DEUDA_ACTUAL + saldo a favor negativo tratado como deuda adicional).
     - Script ejecutado y confirmado por el usuario ✅ (`motogestion/migracion_datos/update_pradera_v2.sql`, gitignored — contiene PII real).
     - **Limpieza post-migración (2 jul 2026):** se borraron TODOS los pagos, gestiones_cobro y caja_diaria (eran de una migración de prueba anterior — verificado 0/0/0). Se corrigieron los **nombres** de los 44 clientes (el script original actualizaba cédula/teléfono pero no `nombre`). Verificado: cero deudas residuales de prueba — solo existen las deudas de apertura del arqueo.
+    - **Saneo final (2 jul 2026, verificado con query de 4 chequeos ✅):** deudas de apertura duplicadas eliminadas (el script v2 se corrió 2 veces — los UPDATE son idempotentes pero los INSERT de deudas se duplicaron), `RMZ47H.fecha_entrega` corregida a 2025-10-09 (el Excel traía 2026 por error de digitación), contrato RMZ67H reactivado (se canceló sin querer probando la app), migración 027 aplicada.
+    - **FECHA DE CORTE DE MIGRACIÓN: 2026-07-01** — constante `FECHA_CORTE_MIGRACION` en `useContratos.ts`, con helper `diasDesdeUltimoPago()`. Ningún reloj de "días sin pago" arranca antes del corte; los saldos previos viven como deuda de apertura. Al migrar COSTA/RASTREADOR evaluar si la fecha se actualiza o se maneja por grupo.
     - **Pendiente:** 2 contratos sin tarifa/ahorro/base en el Excel — `RMZ69H` (JESUS DAVID SIERRA CASSIANI) y `RMZ64H` (DELCY JUDITH YEPES OCHOA) — faltan por completar cuando el usuario tenga esos datos.
     - **Pendiente:** datos técnicos de las 52 motos (marca, modelo, color, número de motor/chasis, cilindraje, SOAT, tecnomecánica) — hoja MOTOS_PRADERA llegó vacía, usuario aún no tiene esa info a la mano.
     - **Pendiente:** repetir el mismo proceso para grupos COSTA y RASTREADOR (aún no iniciado, deliberadamente diferido).
 
+14. **Herramientas post-migración desplegadas a producción (2 jul 2026, commit `4b5025a` en main)** ✅:
+    - **Fix prorrateo:** `estaEnProrrateo()` compartida — prorrateo solo si `fecha_entrega >= inicio del período` Y sin pagos (el código solo chequeaba "sin pagos" → los 44 migrados mostraban cuota de prorrateo falsa). Aplicada en los 5 puntos de CobrosView. Verificado en navegador: cuota real $195.000.
+    - **Reloj "días sin pagar" con corte:** `diasDesdeUltimoPago()` usada en CobrosView y DashboardView (antes cada uno tenía su copia). Migrados muestran días desde el corte, no desde la entrega — entran a Recolección solo tras >3 días de mora real en el sistema nuevo, igual que cualquier cliente.
+    - **Modal "Editar contrato"** (`ModalEditarContrato.tsx`, solo ADMIN/AP, cualquier estado) con historial de auditoría visible — tabla `contratos_auditoria` (mig 027): campo, valor anterior/nuevo, quién, cuándo. `editarContrato()`/`obtenerAuditoria()` en useContratos.
+    - **Editar/eliminar deudas** desde detalle del contrato en Cartera (solo ADMIN/AP): concepto, descripción, monto original y pendiente — con auditoría en la misma tabla 027 y sincronización de estado (pendiente→pagada al llegar a $0; conserva en_convenio). Validación: pendiente ≤ original.
+    - **Reactivar contrato** (botón para Cancelados) + confirmación en Cancelar (antes cancelaba con un solo clic — así fue el accidente de RMZ67H).
+    - **Chips de filtro por grupo** (Todos/COSTA/PRADERA/RASTREADOR/USADAS) en MotosView, ContratosView, ClientesView (grupo vía contrato→moto) y CobrosView pestaña Contratos.
+    - Lección de verificación: el fix de prorrateo y los duplicados de deudas solo se detectaron **verificando en el navegador con datos reales** (RMZ62H mostraba $105.000 y $780.000) — no bastaba tsc+build.
+
+### Plan acordado para completar la migración (fases)
+- **Fase 2 — completar datos por la app (sin más SQL masivo):** aprovechar el día de pago (miércoles) para completar documentos de cliente/acompañante (ClientesView), datos técnicos de motos (MotosView → ✏️ Editar datos), cifras de los contratos pendientes (Modal Editar contrato). **Gap conocido:** no existe forma de adjuntar documentos firmados (contrato/pagaré escaneado) a un contrato ya creado — el wizard solo los captura al crear. Pendiente construir "adjuntar documento" en el detalle.
+- **Fase 3 — cartera clara:** cada cliente = cuota período + deuda de apertura + convenio. Semanas sin rodar/cobrar → deuda `tarifa_atrasada` o `acuerdos_tiempo_rodado`.
+- **Fase 4 (pendiente de evaluar, el usuario dijo "después"):** estado de cuenta de apertura imprimible por cliente, para que firme aceptando su saldo del corte — respaldo legal de la cifra migrada.
+
 ### Migraciones ya aplicadas en Supabase por el usuario
-- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅
+- `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅ · `027_contratos_auditoria.sql` ✅
 
 ### Próximos pasos sugeridos 🔲
-- Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga.
+- Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
+- "Adjuntar documento" al contrato ya creado (contrato/pagaré firmado escaneado).
+- Estado de cuenta de apertura firmable (fase 4 — pendiente de evaluar).
 - Retomar auditoría móvil 375px en las pantallas restantes.
 - **Gestión de permisos por usuario (UsuariosView)** — lista de usuarios, toggle de permisos activos/inactivos por módulo, organizado por categoría, jerarquía por rol, base: `profiles.permisos` (jsonb).
 - **Barra inferior por rol** — cada rol vería abajo sus 5 módulos más usados (ej. SUBADMIN: Panel·Cartera·Motos·Taller·Más).

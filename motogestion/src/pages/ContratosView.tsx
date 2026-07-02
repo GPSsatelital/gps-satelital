@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useContratos, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import WizardContrato from "./WizardContrato";
+import ModalEditarContrato from "../components/ModalEditarContrato";
 import type { Contrato } from "../hooks/useContratos";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -69,7 +70,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
   const { filtrarContratos } = useScope();
-  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato } = useContratos();
+  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato, reactivarContrato } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -85,11 +86,13 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   useEffect(() => { setFiltroEstado(initialFilter); }, [initialFilter]);
 
   const [busqueda, setBusqueda] = useState("");
+  const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(initialOpenForm && puedeCrear);
   const [wizardContrato, setWizardContrato] = useState<Contrato | undefined>(undefined);
   const [wizardStep0, setWizardStep0] = useState<number | undefined>(undefined);
   const [accionError, setAccionError] = useState<string | null>(null);
+  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
 
   useEffect(() => { if (initialOpenForm && puedeCrear) setWizardOpen(true); }, [initialOpenForm, puedeCrear]);
 
@@ -101,6 +104,10 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     const q = busqueda.toLowerCase();
     return contratos.filter(c => {
       if (filtroEstado && c.estado !== filtroEstado) return false;
+      if (filtroGrupo !== "todos") {
+        const moto = motos.find(m => m.id === c.moto_id);
+        if (moto?.grupo !== filtroGrupo) return false;
+      }
       if (!q) return true;
       const cliente = clientes.find(cl => cl.id === c.cliente_id);
       const moto = motos.find(m => m.id === c.moto_id);
@@ -110,7 +117,29 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
         (cliente?.cedula ?? "").includes(q)
       );
     });
-  }, [contratos, filtroEstado, busqueda, clientes, motos]);
+  }, [contratos, filtroEstado, filtroGrupo, busqueda, clientes, motos]);
+
+  const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  function ChipsGrupo() {
+    return (
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {GRUPOS_FILTRO.map(g => (
+          <button
+            key={g}
+            onClick={() => setFiltroGrupo(g)}
+            style={{
+              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700,
+              background: filtroGrupo === g ? "#0284c7" : "#f1f5f9",
+              color: filtroGrupo === g ? "white" : "#334155",
+            }}
+          >
+            {g === "todos" ? "Todos" : g}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   const contratoSeleccionado = contratosFiltrados.find(c => c.id === selectedId) ?? (isMobile ? null : contratosFiltrados[0] ?? null);
   const clienteDetalle = contratoSeleccionado ? clientes.find(cl => cl.id === contratoSeleccionado.cliente_id) : null;
@@ -196,10 +225,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
         </div>
 
         {/* Acciones */}
-        {puedeCrear && c.estado !== "Cancelado" && c.estado !== "Finalizado" && (
+        {puedeCrear && c.estado !== "Finalizado" && (
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: "#334155" }}>Acciones</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {c.estado === "Cancelado" && (
+                <button onClick={async () => {
+                  if (!confirm("¿Reactivar este contrato? Quedará Activo otra vez y la moto pasará a Asignada.")) return;
+                  const { error } = await reactivarContrato(c.id, c.moto_id);
+                  if (error) setAccionError(error);
+                }} style={{ background: "#dcfce7", color: "#166534", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  ↩️ Reactivar contrato
+                </button>
+              )}
               {c.estado === "En proceso" && (
                 <button onClick={() => abrirWizardContinuar(c)} style={{
                   padding: "12px 16px", borderRadius: 14, border: "none",
@@ -223,9 +261,15 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   🏁 Finalizar contrato
                 </button>
               )}
-              <button onClick={() => cancelarContrato(c.id, c.moto_id)} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                ❌ Cancelar contrato
-              </button>
+              {c.estado !== "Cancelado" && (
+                <button onClick={async () => {
+                  if (!confirm("¿Cancelar este contrato? La moto quedará Disponible para asignarse a otro cliente.")) return;
+                  const { error } = await cancelarContrato(c.id, c.moto_id);
+                  if (error) setAccionError(error);
+                }} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  ❌ Cancelar contrato
+                </button>
+              )}
             </div>
             {accionError && (
               <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "#fee2e2", color: "#991b1b", fontWeight: 600, fontSize: 13, display: "flex", justifyContent: "space-between" }}>
@@ -236,10 +280,29 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           </div>
         )}
 
+        {puedeCrear && (
+          <div style={card}>
+            <button
+              onClick={() => setModalEditarAbierto(true)}
+              style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+            >
+              ✏️ Editar contrato
+            </button>
+          </div>
+        )}
+
         {c.firma_cliente && (
           <div style={{ ...card, padding: "12px 16px" }}>
             <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>✅ Documentos firmados</div>
           </div>
+        )}
+
+        {modalEditarAbierto && (
+          <ModalEditarContrato
+            contrato={c}
+            clienteNombre={clienteDetalle.nombre}
+            onClose={() => setModalEditarAbierto(false)}
+          />
         )}
       </div>
     );
@@ -293,9 +356,11 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
         ))}
       </div>
 
-      <input style={{ width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box", marginBottom: 16 }}
+      <input style={{ width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box", marginBottom: 12 }}
         placeholder="Buscar por nombre, cédula o placa..."
         value={busqueda} onChange={e => { setBusqueda(e.target.value); setSelectedId(null); }} />
+
+      <ChipsGrupo />
 
       <div style={{ display: "flex", gap: 20, alignItems: "start" }}>
         {/* Lista */}

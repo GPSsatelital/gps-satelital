@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, Fragment } from "react";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
@@ -219,19 +219,16 @@ export default function DashboardView({ onNavigate }: {
   // ── Top 5 sin pago ─────────────────────────────────────────────────────────
   const top5SinPago = useMemo(() => {
     if (loading || !stats) return [];
-    const todayStr = new Date().toISOString().slice(0, 10);
     return contratos
       .filter(c => c.estado === "Activo")
       .map(c => {
         const ultimoPago = pagos
           .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
           .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-        const desde = ultimoPago
-          ? new Date(ultimoPago.fecha + "T00:00:00")
-          : (c.fecha_entrega ? new Date(c.fecha_entrega + "T00:00:00") : new Date(c.created_at));
-        const diasSinPago = Math.floor(
-          (new Date(todayStr + "T00:00:00").getTime() - desde.getTime()) / 86400000
-        );
+        const diasSinPago = diasDesdeUltimoPago(
+          ultimoPago?.fecha ?? null,
+          c.fecha_entrega ?? c.created_at.slice(0, 10),
+        ) ?? 0;
         return { contrato: c, diasSinPago };
       })
       .filter(r => r.diasSinPago > 1)

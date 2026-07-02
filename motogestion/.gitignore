@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .env
 
+# Datos reales de migración (PII de clientes — nunca subir a git)
+migracion_datos/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

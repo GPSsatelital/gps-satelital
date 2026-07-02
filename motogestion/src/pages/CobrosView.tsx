@@ -9,10 +9,10 @@ import {
   type PagoEstado,
   type AplicadoPago,
 } from "../hooks/usePagos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
-import { useDeudas, type ConceptoDeuda } from "../hooks/useDeudas";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
@@ -260,6 +260,22 @@ function calcEstadoCuenta(
   };
 }
 
+// Un contrato está en prorrateo solo si fue entregado DESPUÉS del último día de pago
+// y aún no registra pagos. La sola ausencia de pagos no basta: un contrato migrado
+// (saldo de apertura, sin historial) fue entregado hace meses y debe cuota completa.
+function estaEnProrrateo(
+  c: { forma_pago: string; fecha_entrega?: string | null; dia_pago: string },
+  sinPagosNunca: boolean,
+): boolean {
+  if (c.forma_pago === "Diario" || !c.fecha_entrega || !sinPagosNunca) return false;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const target = DIAS[c.dia_pago] ?? 1;
+  const d = new Date(hoy);
+  while (d.getDay() !== target) d.setDate(d.getDate() - 1);
+  return c.fecha_entrega >= d.toISOString().slice(0, 10);
+}
+
 // Calcula el valor real del primer pago (prorrateo) para contratos nuevos
 function calcProrrateoInicial(contrato: { fecha_entrega: string | null; dia_pago: string; tarifa_diaria?: number; ahorro_diario?: number; tarifa_domingo?: number; ahorro_domingo?: number }): number {
   if (!contrato.fecha_entrega) return 0;
@@ -479,7 +495,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
-  const { deudas, registrarDeuda } = useDeudas();
+  const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
 
@@ -492,6 +508,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const [activeTab, setActiveTab] = useState<TabKey>("hoy");
   const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
+  const [filtroGrupoContratos, setFiltroGrupoContratos] = useState<"todos" | GrupoMoto>("todos");
   const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
@@ -543,6 +560,62 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
+  // Edición inline de deuda existente
+  const [deudaEditandoId, setDeudaEditandoId] = useState<string | null>(null);
+  const [editConcepto, setEditConcepto] = useState<ConceptoDeuda>("daño_vehiculo");
+  const [editDescripcion, setEditDescripcion] = useState("");
+  const [editMonto, setEditMonto] = useState("");
+  const [editMontoPendiente, setEditMontoPendiente] = useState("");
+  const [editDeudaError, setEditDeudaError] = useState<string | null>(null);
+  const [guardandoEditDeuda, setGuardandoEditDeuda] = useState(false);
+
+  function abrirEdicionDeuda(d: Deuda) {
+    setDeudaEditandoId(d.id);
+    setEditConcepto(d.concepto);
+    setEditDescripcion(d.descripcion);
+    setEditMonto(String(d.monto));
+    setEditMontoPendiente(String(d.monto_pendiente));
+    setEditDeudaError(null);
+  }
+
+  async function guardarEdicionDeuda(d: Deuda) {
+    if (guardandoEditDeuda || !profile) return;
+    const nuevoMontoOriginal = Number(editMonto);
+    const nuevoPendiente = Number(editMontoPendiente);
+    if (!editMonto || nuevoMontoOriginal < 0 || !editMontoPendiente || nuevoPendiente < 0) {
+      setEditDeudaError("Ingresa montos válidos.");
+      return;
+    }
+    if (nuevoPendiente > nuevoMontoOriginal) {
+      setEditDeudaError("El pendiente no puede ser mayor al monto original.");
+      return;
+    }
+    setGuardandoEditDeuda(true);
+    try {
+      const { error } = await editarDeuda(
+        d,
+        { concepto: editConcepto, descripcion: editDescripcion, monto: nuevoMontoOriginal, monto_pendiente: nuevoPendiente },
+        profile.id,
+      );
+      if (error) { setEditDeudaError(error); return; }
+      setDeudaEditandoId(null);
+    } finally {
+      setGuardandoEditDeuda(false);
+    }
+  }
+
+  async function handleEliminarDeuda(id: string) {
+    if (guardandoEditDeuda) return;
+    if (!confirm("¿Eliminar esta deuda? Esta acción no se puede deshacer.")) return;
+    setGuardandoEditDeuda(true);
+    try {
+      await eliminarDeuda(id);
+      setDeudaEditandoId(null);
+    } finally {
+      setGuardandoEditDeuda(false);
+    }
+  }
+
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
 
@@ -579,10 +652,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       const confirmados = todosPagos.filter(p => p.estado === "Confirmado");
       const pendientes = todosPagos.filter(p => p.estado === "Pendiente");
 
+      const deudaContrato = deudas
+        .filter(d => d.contrato_id === contrato.id && d.estado !== "pagada")
+        .reduce((acc, d) => acc + d.monto_pendiente, 0);
+
       const ultimoPagoFecha = [...confirmados].sort((a,b) => b.fecha.localeCompare(a.fecha))[0]?.fecha ?? null;
+      // Sin pagos nunca pero con deuda pendiente (ej. saldo de apertura migrado) → el reloj de mora
+      // arranca desde la entrega (topado al corte de migración), no desde el sentinel 999 (reservado
+      // para contratos genuinamente nuevos sin deuda). Evita que Recolección los ignore para siempre.
       const diasSinPago = ultimoPagoFecha
         ? Math.floor((Date.now() - new Date(ultimoPagoFecha + "T00:00:00").getTime()) / 86400000)
-        : 999;
+        : (contrato.fecha_entrega && deudaContrato > 0)
+          ? (diasDesdeUltimoPago(null, contrato.fecha_entrega) ?? 999)
+          : 999;
       const ultimaGestion = gestiones.filter(g => g.contrato_id === contrato.id)[0] ?? null;
 
       const pagadoEstaSemana = confirmados
@@ -594,10 +676,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .reduce((acc, p) => acc + p.valor, 0);
 
       const estadoCartera = calcularEstadoCartera(contrato.dia_pago, pagadoEstaSemana, contrato.valor_semanal, contrato.fecha_entrega ?? null);
-
-      const deudaContrato = deudas
-        .filter(d => d.contrato_id === contrato.id && d.estado !== "pagada")
-        .reduce((acc, d) => acc + d.monto_pendiente, 0);
 
       const convenioActivo = convenioActivoDelContrato(contrato.id);
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
@@ -740,6 +818,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     else if (filtroContratos === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
     else base = resumenContratos;
 
+    if (filtroGrupoContratos !== "todos") {
+      base = base.filter(c => motos.find(m => m.id === c.moto_id)?.grupo === filtroGrupoContratos);
+    }
+
     const q = busqueda.toLowerCase();
     if (!q) return base;
     return base.filter(c => {
@@ -750,7 +832,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         (moto?.placa ?? "").toLowerCase().includes(q)
       );
     });
-  }, [filtroContratos, resumenContratos, enMora, enGabela, alDia, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -794,9 +876,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // Se mantiene en prorrateo sin importar los días de mora — el monto adeudado no
   // salta a una semana completa hasta que se salde ese primer período.
   const enProrrateo = !!contratoDetalle
-    && contratoDetalle.forma_pago !== "Diario"
-    && !!contratoDetalle.fecha_entrega
-    && (contratoDetalle.sinPagosNunca ?? true);
+    && estaEnProrrateo(contratoDetalle, contratoDetalle.sinPagosNunca ?? true);
 
   const cuotaPactada = contratoDetalle
     ? (contratoDetalle.forma_pago === "Diario"
@@ -1088,7 +1168,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const r = resumenContratos.find(x => x.id === campoContratoId);
     if (!r) { setCampoError("Contrato no encontrado"); return; }
 
-    const enProrrateoCampo = r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
+    const enProrrateoCampo = estaEnProrrateo(r, r.sinPagosNunca ?? true);
     const cuotaPact = r.forma_pago === "Diario"
       ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
       : enProrrateoCampo
@@ -1403,13 +1483,58 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {deudasContrato.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: 14 }}>Sin deudas pendientes.</div>
               ) : deudasContrato.map(d => (
-                <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{d.descripcion}</div>
+                deudaEditandoId === d.id ? (
+                  <div key={d.id} style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 10 }}>
+                    <div>
+                      <div style={labelStyle}>Concepto</div>
+                      <select style={inputStyle} value={editConcepto} onChange={e => setEditConcepto(e.target.value as ConceptoDeuda)}>
+                        <option value="daño_vehiculo">Daño al vehículo</option>
+                        <option value="tarifa_atrasada">Tarifa atrasada</option>
+                        <option value="prestamo_repuesto">Préstamo repuestos</option>
+                        <option value="prestamo_eventualidad">Préstamo eventualidad</option>
+                        <option value="fotomulta">Fotomulta</option>
+                        <option value="multa_recoleccion">Multa recolección</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={labelStyle}>Descripción</div>
+                      <input style={inputStyle} value={editDescripcion} onChange={e => setEditDescripcion(e.target.value)} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div>
+                        <div style={labelStyle}>Monto original ($)</div>
+                        <input type="number" style={inputStyle} value={editMonto} onChange={e => setEditMonto(e.target.value)} />
+                      </div>
+                      <div>
+                        <div style={labelStyle}>Monto pendiente ($)</div>
+                        <input type="number" style={inputStyle} value={editMontoPendiente} onChange={e => setEditMontoPendiente(e.target.value)} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94a3b8" }}>Si el pendiente llega a $0, la deuda queda marcada como pagada automáticamente.</div>
+                    {editDeudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{editDeudaError}</div>}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => setDeudaEditandoId(null)} style={{ ...miniBtn("#f1f5f9", "#334155"), flex: 1 }}>Cancelar</button>
+                      <button onClick={() => handleEliminarDeuda(d.id)} disabled={guardandoEditDeuda} style={{ ...miniBtn("#fee2e2", "#991b1b"), flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>🗑️ Eliminar</button>
+                      <button onClick={() => guardarEdicionDeuda(d)} disabled={guardandoEditDeuda} style={{ ...primaryBtn, flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>
+                        {guardandoEditDeuda ? "Guardando..." : "Guardar"}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
-                </div>
+                ) : (
+                  <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{d.descripcion}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
+                      {esAdmin && (
+                        <button onClick={() => abrirEdicionDeuda(d)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15 }}>✏️</button>
+                      )}
+                    </div>
+                  </div>
+                )
               ))}
               {esAdmin && (
                 <div>
@@ -1554,7 +1679,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const seleccionado = c.id === contratoSeleccionadoId;
           const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
 
-          const enProrrateoLista = c.forma_pago !== "Diario" && !!c.fecha_entrega && (c.sinPagosNunca ?? true);
+          const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           const cuotaPact = c.forma_pago === "Diario"
             ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
             : enProrrateoLista ? calcProrrateoInicial(c) : c.valor_semanal;
@@ -1869,7 +1994,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const borderColor = grupoC ? grupoC.color : "#e2e8f0";
 
                   // Monto que debe pagar
-                  const enProrrateoHoy = c.forma_pago !== "Diario" && !!c.fecha_entrega && (c.sinPagosNunca ?? true);
+                  const enProrrateoHoy = estaEnProrrateo(c, c.sinPagosNunca ?? true);
                   const cuotaP = c.forma_pago === "Diario"
                     ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
                     : enProrrateoHoy ? calcProrrateoInicial(c) : c.valor_semanal;
@@ -2262,7 +2387,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const cliente = r ? clientes.find(cl => cl.id === r.cliente_id) : null;
                   const moto = r ? motos.find(m => m.id === r.moto_id) : null;
                   // Referencia: cuánto debe pagar
-                  const enProrrateoRef = !!r && r.forma_pago !== "Diario" && !!r.fecha_entrega && (r.sinPagosNunca ?? true);
+                  const enProrrateoRef = !!r && estaEnProrrateo(r, r.sinPagosNunca ?? true);
                   const cuotaPact = r ? (r.forma_pago === "Diario"
                     ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
                     : enProrrateoRef ? calcProrrateoInicial(r) : r.valor_semanal) : 0;
@@ -2361,6 +2486,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   }}
                 >
                   {f.label} <span style={{ opacity: 0.7 }}>({f.count})</span>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
+                <button
+                  key={g}
+                  onClick={() => setFiltroGrupoContratos(g)}
+                  style={{
+                    padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+                    fontSize: 12, fontWeight: 700,
+                    background: filtroGrupoContratos === g ? "#0284c7" : "#f1f5f9",
+                    color: filtroGrupoContratos === g ? "white" : "#334155",
+                  }}
+                >
+                  {g === "todos" ? "Todos" : g}
                 </button>
               ))}
             </div>

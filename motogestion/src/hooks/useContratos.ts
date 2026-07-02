@@ -32,8 +32,13 @@ export type Contrato = {
   base_inicial?: number;
   base_completada?: boolean;
   ahorro_acumulado?: number;
+  contrato_pdf_url?: string | null;
+  pagare_pdf_url?: string | null;
+  certificado_pdf_url?: string | null;
   created_at: string;
 };
+
+export type TipoDocumentoContrato = "contrato_pdf_url" | "pagare_pdf_url" | "certificado_pdf_url";
 
 export function calcularEquivalenciasDiarias(contrato: Contrato): {
   cuotaDiaria: number;
@@ -274,6 +279,42 @@ export function useContratos() {
     return { error: null };
   }
 
+  const DOCUMENTO_LABEL: Record<TipoDocumentoContrato, string> = {
+    contrato_pdf_url: "Documento: contrato firmado",
+    pagare_pdf_url: "Documento: pagaré firmado",
+    certificado_pdf_url: "Documento: certificado",
+  };
+
+  // Adjunta o reemplaza el escaneo/foto de un documento firmado en un contrato ya creado
+  // (el wizard solo los captura al momento de crear el contrato — esto cubre los contratos
+  // migrados o cualquier corrección posterior).
+  async function adjuntarDocumentoContrato(
+    contrato: Contrato,
+    tipo: TipoDocumentoContrato,
+    file: File,
+    editadoPor: string,
+  ): Promise<{ url: string | null; error: string | null }> {
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `contratos-docs/${contrato.id}/${tipo}-${Date.now()}.${ext}`;
+    const { error: up } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
+    if (up) return { url: null, error: up.message };
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+    const url = data.publicUrl;
+
+    const { error } = await supabase.from("contratos").update({ [tipo]: url }).eq("id", contrato.id);
+    if (error) return { url: null, error: error.message };
+
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: contrato.id,
+      campo: DOCUMENTO_LABEL[tipo],
+      valor_anterior: contrato[tipo] ? "Archivo anterior" : "Sin archivo",
+      valor_nuevo: "Archivo subido",
+      editado_por: editadoPor,
+    });
+
+    return { url, error: null };
+  }
+
   async function obtenerAuditoria(contratoId: string) {
     const { data, error } = await supabase
       .from("contratos_auditoria")
@@ -297,6 +338,7 @@ export function useContratos() {
     finalizarContrato,
     actualizarAhorro,
     editarContrato,
+    adjuntarDocumentoContrato,
     obtenerAuditoria,
     calcularEquivalenciasDiarias,
     calcularProrrateo,

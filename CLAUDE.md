@@ -802,6 +802,27 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 16. **"Adjuntar documento" al contrato ya creado — construido (2 jul 2026, commit `e484bfb` en main)** ✅: el wizard solo capturaba contrato/pagaré/certificado al crear el contrato (gap real para los 44 migrados, que nunca pasaron por el wizard). Nuevo modal `ModalDocumentosContrato.tsx` en ContratosView (botón "📎 Documentos del contrato", visible para ADMIN, ADMIN_PRINCIPAL y SECRETARIA), con cámara/galería por cada uno de los 3 documentos. `adjuntarDocumentoContrato()` en `useContratos.ts` sube al bucket `documentos` (mismo ya usado por el wizard) y registra el cambio en `contratos_auditoria`. Verificado en navegador.
 
+17. **"Tiempo rodado" construido y conectado (2 jul 2026, commit `2327692` en main)** ✅ — ⚠️ **falta correr la migración 028 en Supabase**:
+    - **`contratos.fecha_fin_contrato`** (mig 028) — antes el vencimiento se recalculaba siempre al vuelo (`fecha_entrega + meses*30`); ahora es un dato real guardado, editable desde el Modal Editar Contrato ("Fecha real fin de contrato") y auditado. Backfill automático con la misma fórmula para los contratos existentes. `WizardContrato` la calcula y guarda al crear un contrato nuevo. `useAlertas.ts` (traspaso próximo) y `ContratosView` (badge de vencimiento) ya leen esta columna en vez de recalcular.
+    - **Reglas de negocio acordadas con el usuario:** el tiempo rueda (se extiende `fecha_fin_contrato`) SOLO cuando la moto no estuvo en poder del cliente por algo ajeno a él (taller, fiscalía, tránsito, garantía) — nunca por simple atraso de pago con la moto en su poder (eso lo resuelve el protocolo de mora). La decisión "cobrar ahora vs rodar al final" la toma ADMIN/ADMIN_PRINCIPAL caso por caso (ej. según si el cliente tiene el dinero), y **siempre exige un documento firmado por el cliente** especificando el tiempo y el valor correspondiente, como respaldo legal de que su contrato no termina en la fecha que creía.
+    - **`ModalResolverTiempoFueraServicio.tsx`** (nuevo) — se abre automáticamente (solo para ADMIN/AP) al finalizar una orden en `TallerView` o al liberar una retención en `MotosView` (Fiscalía/Tránsito/Garantía), si hay un contrato Activo para esa moto y pasaron días de por medio. Calcula días × tarifa, deja elegir cobrar (crea `deuda` tipo `tarifa_atrasada`) o rodar (extiende `fecha_fin_contrato` + registra en auditoría), y bloquea confirmar sin subir el documento firmado.
+    - Usa la tabla `acuerdos_tiempo_rodado` y el hook `crearAcuerdoTiempo()`/`subirDocumentoAcuerdo()` que ya existían en el código desde antes pero nunca se habían conectado a ningún botón (código muerto).
+    - **Fix de paso:** `subirDocumentoAcuerdo()` apuntaba a un bucket `liquidaciones` que **nunca se creó** (ninguna migración lo registra en `storage.buckets` — la subida fallaba en silencio). Cambiado al bucket `documentos` ya existente y con RLS. `useLiquidaciones.ts` referencia el mismo bucket inexistente — **pendiente de revisar** (no se tocó, fuera del alcance de esta tarea).
+    - **Para los 44 migrados:** no hay eventos de taller/retención pendientes en el sistema nuevo — nada que resolver retroactivamente. Si el usuario sabe que a algún cliente en particular sí le pasó algo antes de existir el sistema (ej. RMZ62H — SIMON CORREA CANTILLO tuvo una semana en taller por accidente según la columna OBSERVACIONES del Excel de migración), se corrige directo la `fecha_fin_contrato` de ese contrato por el Modal Editar Contrato.
+
+### Migración pendiente de aplicar en Supabase ⚠️
+```sql
+alter table public.contratos
+  add column if not exists fecha_fin_contrato date;
+
+update public.contratos
+set fecha_fin_contrato = (fecha_entrega + make_interval(days => meses * 30))::date
+where fecha_entrega is not null
+  and meses is not null
+  and forma_pago <> 'Diario'
+  and fecha_fin_contrato is null;
+```
+
 ### Plan acordado para completar la migración (fases)
 - **Fase 2 — completar datos por la app (sin más SQL masivo):** aprovechar el día de pago (miércoles) para completar documentos de cliente/acompañante (ClientesView), datos técnicos de motos (MotosView → ✏️ Editar datos), cifras de los contratos pendientes (Modal Editar contrato). **Gap conocido:** no existe forma de adjuntar documentos firmados (contrato/pagaré escaneado) a un contrato ya creado — el wizard solo los captura al crear. Pendiente construir "adjuntar documento" en el detalle.
 - **Fase 3 — cartera clara:** cada cliente = cuota período + deuda de apertura + convenio. Semanas sin rodar/cobrar → deuda `tarifa_atrasada` o `acuerdos_tiempo_rodado`.
@@ -809,11 +830,13 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ### Migraciones ya aplicadas en Supabase por el usuario
 - `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅ · `027_contratos_auditoria.sql` ✅
+- `028_fecha_fin_contrato.sql` ⚠️ **pendiente de aplicar** (ver SQL arriba)
 
 ### Próximos pasos sugeridos 🔲
+- **Correr la migración 028** en Supabase (arriba) — sin esto, `fecha_fin_contrato` no persiste y todo sigue funcionando por el cálculo de respaldo, pero "tiempo rodado" no podrá guardar la extensión real.
 - Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
-- **Construir "tiempo rodado" hacia adelante:** conectar `acuerdos_tiempo_rodado`/`crearAcuerdoTiempo()` a botones reales en TallerView (salida de taller) y MotosView (liberar retención Fiscalía/Tránsito/Garantía) + agregar columna `fecha_fin_contrato` guardada/editable/auditada (en vez de calculada al vuelo). Ver hallazgo #15 arriba para la regla de negocio y el diseño ya acordados.
+- Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en `useUbicaciones.ts` (hallazgo #17), no se tocó por estar fuera del alcance de esa tarea.
 - Estado de cuenta de apertura firmable (fase 4 — pendiente de evaluar).
 - Retomar auditoría móvil 375px en las pantallas restantes.
 - **Gestión de permisos por usuario (UsuariosView)** — lista de usuarios, toggle de permisos activos/inactivos por módulo, organizado por categoría, jerarquía por rol, base: `profiles.permisos` (jsonb).

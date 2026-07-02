@@ -183,23 +183,25 @@ export function useUbicaciones() {
     creado_por: string;
   }) {
     const total = data.dias_en_empresa * data.valor_por_dia;
-    const { error } = await supabase.from("acuerdos_tiempo_rodado").insert({
+    const { data: inserted, error } = await supabase.from("acuerdos_tiempo_rodado").insert({
       ...data,
       total_a_cobrar: total,
       recepcion_id: data.recepcion_id ?? null,
       fecha_salida: data.fecha_salida ?? null,
       nueva_fecha_fin_contrato: data.nueva_fecha_fin_contrato ?? null,
       observaciones: data.observaciones ?? null,
-    });
-    return { error: error?.message ?? null };
+    }).select("id").single();
+    return { error: error?.message ?? null, id: inserted?.id ?? null };
   }
 
   async function subirDocumentoAcuerdo(acuerdoId: string, file: File) {
     const ext = file.name.split(".").pop();
     const path = `acuerdos/${acuerdoId}/firmado.${ext}`;
-    const { error: up } = await supabase.storage.from("liquidaciones").upload(path, file, { upsert: true });
+    // Bucket "documentos" (el mismo que usan contratos/clientes) — "liquidaciones" nunca se creó,
+    // ninguna migración lo registra en storage.buckets, así que la subida fallaba en silencio.
+    const { error: up } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
     if (up) return { error: up.message };
-    const { data } = supabase.storage.from("liquidaciones").getPublicUrl(path);
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
     const { error } = await supabase.from("acuerdos_tiempo_rodado").update({ documento_firmado_url: data.publicUrl }).eq("id", acuerdoId);
     return { error: error?.message ?? null };
   }

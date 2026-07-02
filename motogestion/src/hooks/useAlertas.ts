@@ -221,9 +221,12 @@ export function useAlertas({
     }
 
     // ── 7. TRASPASO PRÓXIMO (2 meses antes del vencimiento) ──────────────────
+    // fecha_fin_contrato es la fecha real guardada (corregible a mano, o movida por
+    // "tiempo rodado") — antes se recalculaba siempre desde fecha_entrega + meses,
+    // ignorando cualquier corrección o extensión ya registrada.
     for (const c of contratosActivos) {
-      if (!c.meses || !c.fecha_entrega) continue;
-      const fechaVenc = addDays(new Date(c.fecha_entrega + "T00:00:00"), c.meses * 30);
+      if (!c.fecha_fin_contrato && (!c.meses || !c.fecha_entrega)) continue;
+      const fechaVenc = c.fecha_fin_contrato ?? addDays(new Date(c.fecha_entrega! + "T00:00:00"), c.meses! * 30);
       if (fechaVenc <= iso60 && fechaVenc >= hoy) {
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto = motos.find(m => m.id === c.moto_id);

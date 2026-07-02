@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useContratos, type ContratoEstado } from "../hooks/useContratos";
+import { useContratos, calcularFechaFinContrato, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,16 +14,17 @@ const secondaryBtn: React.CSSProperties = { background: "#f1f5f9", border: "none
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-// Días hasta que se cumpla el PLAZO TOTAL del contrato (no un solo período de pago) —
-// mismo cálculo que la alerta "traspaso próximo" (useAlertas.ts): fecha_entrega + meses*30.
-// Antes usaba solo 1 período (7/15/30 días), así que cualquier contrato con más de esa
-// antigüedad quedaba marcado "Vencido" para siempre así estuviera al día en sus pagos.
+// Días hasta la fecha real de fin del contrato (fecha_fin_contrato, guardada — no un
+// solo período de pago). Antes se recalculaba siempre desde fecha_entrega + meses,
+// ignorando cualquier corrección o extensión ya registrada por "tiempo rodado".
 function calcularDiasHastaVencimiento(contrato: Contrato): number | null {
-  if (!contrato.fecha_entrega || !contrato.meses) return null;
   if (contrato.forma_pago === "Diario") return null;
-  const entrega = new Date(contrato.fecha_entrega + "T00:00:00");
-  const vencimiento = new Date(entrega);
-  vencimiento.setDate(vencimiento.getDate() + contrato.meses * 30);
+  let fechaFin = contrato.fecha_fin_contrato;
+  if (!fechaFin) {
+    if (!contrato.fecha_entrega || !contrato.meses) return null;
+    fechaFin = calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses);
+  }
+  const vencimiento = new Date(fechaFin + "T00:00:00");
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   return Math.round((vencimiento.getTime() - hoy.getTime()) / 86400000);
 }
@@ -206,6 +207,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             {!esDiario && <InfoRow label="Día de pago" value={c.dia_pago} />}
             {c.meses && <InfoRow label="Duración" value={`${c.meses} meses · ~${Math.round(c.meses * 4.33)} semanas`} />}
             {c.fecha_entrega && <InfoRow label="Fecha entrega" value={new Date(c.fecha_entrega + "T00:00:00").toLocaleDateString("es-CO")} />}
+            {!esDiario && (c.fecha_fin_contrato ?? (c.fecha_entrega && c.meses ? calcularFechaFinContrato(c.fecha_entrega, c.meses) : null)) && (
+              <InfoRow label="Fecha fin de contrato" value={new Date((c.fecha_fin_contrato ?? calcularFechaFinContrato(c.fecha_entrega!, c.meses!)) + "T00:00:00").toLocaleDateString("es-CO")} />
+            )}
           </div>
 
           {esDiario && (

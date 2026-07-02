@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
+import { calcularFechaFinContrato } from "../hooks/useContratos";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
 
 type Props = {
@@ -269,6 +270,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         meses: form.forma_pago === "Diario" ? null : Number(form.meses),
         ahorro_inicial: ahorroEntregado,
         fecha_entrega: form.fecha_entrega,
+        fecha_fin_contrato: form.forma_pago === "Diario" ? null : calcularFechaFinContrato(form.fecha_entrega, Number(form.meses)),
         tipo_ruta: cliente.ruta_contrato ?? "tiempo_definido",
         tarifa_diaria: tarifaDiaria,
         tarifa_domingo: tarifaDomingo,

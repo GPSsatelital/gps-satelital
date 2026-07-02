@@ -35,8 +35,18 @@ export type Contrato = {
   contrato_pdf_url?: string | null;
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;
+  fecha_fin_contrato?: string | null;
   created_at: string;
 };
+
+// Fecha real de fin de un contrato de tiempo definido: entrega + plazo pactado.
+// Se calcula una sola vez al crear el contrato y queda guardada (no se recalcula al vuelo),
+// para poder corregirla a mano o moverla con "tiempo rodado" sin perder el valor real.
+export function calcularFechaFinContrato(fechaEntrega: string, meses: number): string {
+  const d = new Date(fechaEntrega + "T00:00:00");
+  d.setDate(d.getDate() + meses * 30);
+  return d.toISOString().slice(0, 10);
+}
 
 export type TipoDocumentoContrato = "contrato_pdf_url" | "pagare_pdf_url" | "certificado_pdf_url";
 
@@ -252,11 +262,12 @@ export function useContratos() {
     ahorro_inicial: "Ahorro inicial",
     fecha_entrega: "Fecha entrega",
     ahorro_acumulado: "Ahorro acumulado",
+    fecha_fin_contrato: "Fecha fin de contrato",
   };
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "fecha_fin_contrato">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(

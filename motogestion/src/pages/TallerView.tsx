@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { useTaller, type TallerEstado, type TallerItem, type NuevoTallerItem } from "../hooks/useTaller";
 import { useMotos } from "../hooks/useMotos";
+import { useContratos, type Contrato } from "../hooks/useContratos";
 import { supabase } from "../lib/supabase";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useClientes } from "../hooks/useClientes";
+import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -507,14 +511,19 @@ ${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label
 export default function TallerView() {
   const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso } = useTaller();
   const { motos: todasMotos } = useMotos();
+  const { contratos } = useContratos();
+  const { clientes } = useClientes();
   const { filtrarMotos } = useScope();
   const motos = filtrarMotos(todasMotos);
+  const { profile } = useAuth();
+  const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
   const [tab, setTab] = useState<"activas" | "historial">("activas");
   const [seleccionId, setSeleccionId] = useState<string | null>(null);
   const [showNueva, setShowNueva] = useState(false);
   const [showActualizar, setShowActualizar] = useState(false);
   const [showCambioEstado, setShowCambioEstado] = useState(false);
+  const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: Contrato; motoPlaca: string; clienteNombre: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
   const activas = useMemo(() => taller.filter((t) => t.estado_tecnico !== "Finalizado"), [taller]);
   const historial = useMemo(() => taller.filter((t) => t.estado_tecnico === "Finalizado"), [taller]);
@@ -558,7 +567,25 @@ export default function TallerView() {
 
   async function handleFinalizar() {
     if (!seleccionado) return;
+    const fechaSalida = new Date().toISOString().slice(0, 10);
     await finalizarProceso(seleccionado.id, seleccionado.moto_id);
+    // Solo ADMIN/AP deciden cobrar vs rodar (misma jerarquía que Editar contrato) — si otro
+    // rol finaliza el taller, el tiempo queda pendiente de resolver manualmente después.
+    if (esAdminOSuperior) {
+      const contratoActivo = contratos.find(c => c.moto_id === seleccionado.moto_id && c.estado === "Activo");
+      const dias = Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(seleccionado.fecha_ingreso + "T00:00:00").getTime()) / 86400000);
+      if (contratoActivo && dias > 0) {
+        const cliente = clientes.find(cl => cl.id === contratoActivo.cliente_id);
+        const moto = motos.find(m => m.id === seleccionado.moto_id);
+        setTiempoFueraModal({
+          contrato: contratoActivo,
+          motoPlaca: moto?.placa ?? "",
+          clienteNombre: cliente?.nombre ?? "",
+          fechaEntrada: seleccionado.fecha_ingreso,
+          fechaSalida,
+        });
+      }
+    }
     setSeleccionId(null);
   }
 
@@ -743,6 +770,18 @@ export default function TallerView() {
             <button onClick={() => setShowCambioEstado(false)} style={{ ...dangerBtn, marginTop: 4 }}>Cancelar</button>
           </div>
         </Modal>
+      )}
+
+      {tiempoFueraModal && (
+        <ModalResolverTiempoFueraServicio
+          contrato={tiempoFueraModal.contrato}
+          clienteNombre={tiempoFueraModal.clienteNombre}
+          motoPlaca={tiempoFueraModal.motoPlaca}
+          motivo="Taller"
+          fechaEntrada={tiempoFueraModal.fechaEntrada}
+          fechaSalida={tiempoFueraModal.fechaSalida}
+          onClose={() => setTiempoFueraModal(null)}
+        />
       )}
     </div>
   );

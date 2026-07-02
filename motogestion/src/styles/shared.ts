@@ -49,6 +49,12 @@ export const secondaryBtn: CSSProperties = {
   color: "#334155",
 };
 
+// Formato de dinero — una sola fuente de verdad ($ + separador de miles).
+// Usar en cualquier lugar que muestre un monto: fmtMoney(195000) => "$ 195.000"
+export function fmtMoney(n: number): string {
+  return `$ ${Math.round(n).toLocaleString("es-CO")}`;
+}
+
 // Recuadro con scroll propio para listas — mismo tamaño en toda la app,
 // para que ninguna lista nueva ocupe toda la pantalla.
 // Usar: <div style={listaConScroll(isMobile)}>...</div>

@@ -5,6 +5,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import MoneyInput from "../components/MoneyInput";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const btn = (bg: string, color = "white"): React.CSSProperties => ({ background: bg, color, border: "none", borderRadius: 12, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 13 });
@@ -243,7 +244,7 @@ export default function LiquidacionesView() {
                 {danos.map((d, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <input style={{ ...inputStyle, flex: 2 }} placeholder="Concepto" value={d.concepto} onChange={(e) => setDanos(danos.map((x, j) => j === i ? { ...x, concepto: e.target.value } : x))} />
-                    <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Monto" value={d.monto || ""} onChange={(e) => setDanos(danos.map((x, j) => j === i ? { ...x, monto: Number(e.target.value) } : x))} />
+                    <MoneyInput style={{ flex: 1 }} value={d.monto ? String(d.monto) : ""} onChange={v => setDanos(danos.map((x, j) => j === i ? { ...x, monto: Number(v) || 0 } : x))} />
                     {danos.length > 1 && <button style={btn("#fef2f2", "#dc2626")} onClick={() => setDanos(danos.filter((_, j) => j !== i))}>✕</button>}
                   </div>
                 ))}
@@ -253,7 +254,7 @@ export default function LiquidacionesView() {
                 {deudas.map((d, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <input style={{ ...inputStyle, flex: 2 }} placeholder="Concepto" value={d.concepto} onChange={(e) => setDeudas(deudas.map((x, j) => j === i ? { ...x, concepto: e.target.value } : x))} />
-                    <input style={{ ...inputStyle, flex: 1 }} type="number" placeholder="Monto" value={d.monto || ""} onChange={(e) => setDeudas(deudas.map((x, j) => j === i ? { ...x, monto: Number(e.target.value) } : x))} />
+                    <MoneyInput style={{ flex: 1 }} value={d.monto ? String(d.monto) : ""} onChange={v => setDeudas(deudas.map((x, j) => j === i ? { ...x, monto: Number(v) || 0 } : x))} />
                     {deudas.length > 1 && <button style={btn("#fef2f2", "#dc2626")} onClick={() => setDeudas(deudas.filter((_, j) => j !== i))}>✕</button>}
                   </div>
                 ))}

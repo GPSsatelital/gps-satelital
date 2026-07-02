@@ -17,6 +17,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import MoneyInput from "../components/MoneyInput";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -834,12 +835,9 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           <div style={{ fontSize: 12, color: "#78716c", marginBottom: 10 }}>
             Mínimo ${INGRESO_MINIMO.toLocaleString("es-CO")} · Ideal ${INGRESO_IDEAL.toLocaleString("es-CO")} (55% de la base de $510.000)
           </div>
-          <input
-            type="number"
-            style={inputStyle}
-            value={data.ingreso_inicial ?? ""}
-            onChange={(e) => update({ ingreso_inicial: e.target.value === "" ? null : Number(e.target.value) })}
-            placeholder="Ej. 280500"
+          <MoneyInput
+            value={data.ingreso_inicial != null ? String(data.ingreso_inicial) : ""}
+            onChange={(v) => update({ ingreso_inicial: v === "" ? null : Number(v) })}
           />
           {data.ingreso_inicial != null && data.ingreso_inicial > 0 && (
             <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: data.ingreso_inicial < INGRESO_MINIMO ? "#991b1b" : data.ingreso_inicial >= INGRESO_IDEAL ? "#166534" : "#92400e" }}>

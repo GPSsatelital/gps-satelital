@@ -362,7 +362,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
               <div key={key}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>{label}</div>
-                <input value={(editForm[key] as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                <input value={(editForm[key] as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, [key]: key === "propietario" ? e.target.value : e.target.value.toUpperCase() }))}
                   style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
               </div>
             ))}
@@ -640,7 +640,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <h3 style={{ margin: 0 }}>Registrar nueva moto</h3>
 
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
-              <Field label="Placa"><input style={inputStyle} value={form.placa} onChange={(e) => setForm((p) => ({ ...p, placa: e.target.value }))} /></Field>
+              <Field label="Placa"><input style={inputStyle} value={form.placa} onChange={(e) => setForm((p) => ({ ...p, placa: e.target.value.toUpperCase() }))} /></Field>
               <Field label="Condición de ingreso">
                 <select style={inputStyle} value={form.condicion_ingreso} onChange={(e) => setForm((p) => ({ ...p, condicion_ingreso: e.target.value as CondicionIngreso }))}>
                   <option value="nueva">Nueva — compra directa</option>
@@ -655,12 +655,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <option value="USADAS">Usadas Club</option>
                 </select>
               </Field>
-              <Field label="Marca"><input style={inputStyle} value={form.marca} onChange={(e) => setForm((p) => ({ ...p, marca: e.target.value }))} /></Field>
-              <Field label="Modelo (año)"><input style={inputStyle} value={form.modelo} onChange={(e) => setForm((p) => ({ ...p, modelo: e.target.value }))} /></Field>
-              <Field label="Color"><input style={inputStyle} value={form.color} onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))} placeholder="Ej. Rojo, Negro mate" /></Field>
-              <Field label="Cilindraje"><input style={inputStyle} value={form.cilindraje} onChange={(e) => setForm((p) => ({ ...p, cilindraje: e.target.value }))} placeholder="Ej. 125cc" /></Field>
-              <Field label="N° Motor"><input style={inputStyle} value={form.numero_motor} onChange={(e) => setForm((p) => ({ ...p, numero_motor: e.target.value }))} /></Field>
-              <Field label="N° Chasis"><input style={inputStyle} value={form.numero_chasis} onChange={(e) => setForm((p) => ({ ...p, numero_chasis: e.target.value }))} /></Field>
+              <Field label="Marca"><input style={inputStyle} value={form.marca} onChange={(e) => setForm((p) => ({ ...p, marca: e.target.value.toUpperCase() }))} /></Field>
+              <Field label="Modelo (año)"><input style={inputStyle} value={form.modelo} onChange={(e) => setForm((p) => ({ ...p, modelo: e.target.value.toUpperCase() }))} /></Field>
+              <Field label="Color"><input style={inputStyle} value={form.color} onChange={(e) => setForm((p) => ({ ...p, color: e.target.value.toUpperCase() }))} placeholder="Ej. Rojo, Negro mate" /></Field>
+              <Field label="Cilindraje"><input style={inputStyle} value={form.cilindraje} onChange={(e) => setForm((p) => ({ ...p, cilindraje: e.target.value.toUpperCase() }))} placeholder="Ej. 125cc" /></Field>
+              <Field label="N° Motor"><input style={inputStyle} value={form.numero_motor} onChange={(e) => setForm((p) => ({ ...p, numero_motor: e.target.value.toUpperCase() }))} /></Field>
+              <Field label="N° Chasis"><input style={inputStyle} value={form.numero_chasis} onChange={(e) => setForm((p) => ({ ...p, numero_chasis: e.target.value.toUpperCase() }))} /></Field>
               <Field label="Propietario"><input style={inputStyle} value={form.propietario} onChange={(e) => setForm((p) => ({ ...p, propietario: e.target.value }))} placeholder="Nombre del propietario legal" /></Field>
               <Field label="Vencimiento SOAT"><input type="date" style={inputStyle} value={form.fecha_seguro} onChange={(e) => setForm((p) => ({ ...p, fecha_seguro: e.target.value }))} /></Field>
               <Field label="Vencimiento tecnomecánica"><input type="date" style={inputStyle} value={form.fecha_tecnomecanica} onChange={(e) => setForm((p) => ({ ...p, fecha_tecnomecanica: e.target.value }))} /></Field>

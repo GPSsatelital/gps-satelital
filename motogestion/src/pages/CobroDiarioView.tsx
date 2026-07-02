@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
+import MoneyInput from "../components/MoneyInput";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -364,11 +365,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           {/* Valor a cobrar */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Valor a cobrar</div>
-            <input
-              type="number"
+            <MoneyInput
               value={cobrarValor}
-              onChange={e => setCobrarValor(e.target.value)}
-              style={{ width: "100%", boxSizing: "border-box", padding: "14px", borderRadius: 14, border: "2px solid #e2e8f0", fontSize: 22, fontWeight: 900, textAlign: "center", outline: "none" }}
+              onChange={setCobrarValor}
+              style={{ padding: "14px", border: "2px solid #e2e8f0", fontSize: 22, fontWeight: 900, textAlign: "center" }}
               autoFocus
             />
           </div>

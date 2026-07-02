@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import MoneyInput from "./MoneyInput";
 
 type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada";
 
@@ -97,16 +98,7 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
           </select>
         </div>
 
-        <div>
-          <div style={labelStyle}>Valor ($)</div>
-          <input
-            type="number"
-            style={inputStyle}
-            value={valor}
-            onChange={e => setValor(e.target.value)}
-            placeholder="Ej. 150000"
-          />
-        </div>
+        <MoneyInput label="Valor" value={valor} onChange={setValor} />
 
         <div>
           <div style={labelStyle}>Descripción (opcional)</div>

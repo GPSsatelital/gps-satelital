@@ -3,6 +3,7 @@ import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
+import MoneyInput from "./MoneyInput";
 
 interface Props {
   contrato: Contrato;
@@ -131,10 +132,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <div style={labelStyle}>Valor por período ($)</div>
-            <input type="number" style={inputStyle} value={valorSemanal} onChange={e => setValorSemanal(e.target.value)} />
-          </div>
+          <MoneyInput label="Valor por período" value={valorSemanal} onChange={setValorSemanal} />
           {formaPago !== "Diario" && (
             <div>
               <div style={labelStyle}>Meses</div>
@@ -144,33 +142,15 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <div style={labelStyle}>Tarifa L-S ($/día)</div>
-            <input type="number" style={inputStyle} value={tarifaDiaria} onChange={e => setTarifaDiaria(e.target.value)} />
-          </div>
-          <div>
-            <div style={labelStyle}>Tarifa domingo ($/día)</div>
-            <input type="number" style={inputStyle} value={tarifaDomingo} onChange={e => setTarifaDomingo(e.target.value)} />
-          </div>
-          <div>
-            <div style={labelStyle}>Ahorro L-S ($/día)</div>
-            <input type="number" style={inputStyle} value={ahorroDiario} onChange={e => setAhorroDiario(e.target.value)} />
-          </div>
-          <div>
-            <div style={labelStyle}>Ahorro domingo ($/día)</div>
-            <input type="number" style={inputStyle} value={ahorroDomingo} onChange={e => setAhorroDomingo(e.target.value)} />
-          </div>
+          <MoneyInput label="Tarifa L-S / día" value={tarifaDiaria} onChange={setTarifaDiaria} />
+          <MoneyInput label="Tarifa domingo / día" value={tarifaDomingo} onChange={setTarifaDomingo} />
+          <MoneyInput label="Ahorro L-S / día" value={ahorroDiario} onChange={setAhorroDiario} />
+          <MoneyInput label="Ahorro domingo / día" value={ahorroDomingo} onChange={setAhorroDomingo} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <div style={labelStyle}>Ahorro inicial ($)</div>
-            <input type="number" style={inputStyle} value={ahorroInicial} onChange={e => setAhorroInicial(e.target.value)} />
-          </div>
-          <div>
-            <div style={labelStyle}>Ahorro acumulado ($)</div>
-            <input type="number" style={inputStyle} value={ahorroAcumulado} onChange={e => setAhorroAcumulado(e.target.value)} />
-          </div>
+          <MoneyInput label="Ahorro inicial" value={ahorroInicial} onChange={setAhorroInicial} />
+          <MoneyInput label="Ahorro acumulado" value={ahorroAcumulado} onChange={setAhorroAcumulado} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

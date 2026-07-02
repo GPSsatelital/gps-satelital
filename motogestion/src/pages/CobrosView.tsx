@@ -17,6 +17,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import MoneyInput from "../components/MoneyInput";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -1365,14 +1366,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Registrar pago</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ flex: "2 1 130px" }}>
-              <div style={labelStyle}>Valor recibido</div>
-              <input
-                type="number"
-                style={inputStyle}
-                value={valor}
-                onChange={e => { setValor(e.target.value); setFormExito(false); }}
-                placeholder="Ej. 27000"
-              />
+              <MoneyInput label="Valor recibido" value={valor} onChange={v => { setValor(v); setFormExito(false); }} />
             </div>
             <div style={{ flex: "3 1 160px" }}>
               <div style={labelStyle}>Método</div>
@@ -1504,14 +1498,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <input style={inputStyle} value={editDescripcion} onChange={e => setEditDescripcion(e.target.value)} />
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      <div>
-                        <div style={labelStyle}>Monto original ($)</div>
-                        <input type="number" style={inputStyle} value={editMonto} onChange={e => setEditMonto(e.target.value)} />
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Monto pendiente ($)</div>
-                        <input type="number" style={inputStyle} value={editMontoPendiente} onChange={e => setEditMontoPendiente(e.target.value)} />
-                      </div>
+                      <MoneyInput label="Monto original" value={editMonto} onChange={setEditMonto} />
+                      <MoneyInput label="Monto pendiente" value={editMontoPendiente} onChange={setEditMontoPendiente} />
                     </div>
                     <div style={{ fontSize: 12, color: "#94a3b8" }}>Si el pendiente llega a $0, la deuda queda marcada como pagada automáticamente.</div>
                     {editDeudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{editDeudaError}</div>}
@@ -1560,10 +1548,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={labelStyle}>Descripción</div>
                         <input style={inputStyle} value={deudaDescripcion} onChange={e => setDeudaDescripcion(e.target.value)} placeholder="Detalle del origen de la deuda..." />
                       </div>
-                      <div>
-                        <div style={labelStyle}>Monto ($)</div>
-                        <input type="number" style={inputStyle} value={deudaMonto} onChange={e => setDeudaMonto(e.target.value)} placeholder="Ej. 150000" />
-                      </div>
+                      <MoneyInput label="Monto" value={deudaMonto} onChange={setDeudaMonto} />
                       {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
                       {deudaExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Deuda registrada.</div>}
                       <button onClick={handleRegistrarDeuda} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar deuda"}</button>
@@ -1607,15 +1592,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <div style={{ fontSize: 13, color: "#64748b" }}>
                         Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
                       </div>
-                      <div>
-                        <div style={labelStyle}>Monto total a diferir ($)</div>
-                        <input type="number" style={inputStyle} value={convDeudaTotal} onChange={e => setConvDeudaTotal(e.target.value)} placeholder="Ej. 300000" />
-                      </div>
+                      <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <div>
-                          <div style={labelStyle}>Cuota por período ($)</div>
-                          <input type="number" style={inputStyle} value={convCuota} onChange={e => setConvCuota(e.target.value)} placeholder="Ej. 10000" />
-                        </div>
+                        <MoneyInput label="Cuota por período" value={convCuota} onChange={setConvCuota} />
                         <div>
                           <div style={labelStyle}>Número de cuotas</div>
                           <input type="number" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
@@ -2414,10 +2393,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         </div>
                       </div>
 
-                      <div>
-                        <div style={labelStyle}>Monto recuperado ($)</div>
-                        <input type="number" style={inputStyle} value={campoMonto} onChange={e => setCampoMonto(e.target.value)} placeholder={`Ej. ${debeTotal || 27000}`} />
-                      </div>
+                      <MoneyInput label="Monto recuperado" value={campoMonto} onChange={setCampoMonto} />
 
                       {/* GPS */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -2695,8 +2671,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             {/* Valor */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Valor recibido</label>
-              <input type="number" style={inputStyle} value={modalValor} onChange={e => setModalValor(e.target.value)} placeholder="Ej. 202000" />
+              <MoneyInput label="Valor recibido" value={modalValor} onChange={setModalValor} />
             </div>
 
             {/* Desglose de aplicación */}

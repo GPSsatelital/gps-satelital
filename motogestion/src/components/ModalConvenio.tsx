@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import MoneyInput from "./MoneyInput";
 
 interface Props {
   contratoId: string;
@@ -154,16 +155,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <div style={labelStyle}>Cuota adicional ($)</div>
-                <input
-                  type="number"
-                  style={inputStyle}
-                  value={cuota}
-                  onChange={e => setCuota(e.target.value)}
-                  placeholder="Ej. 10000"
-                />
-              </div>
+              <MoneyInput label="Cuota adicional" value={cuota} onChange={setCuota} placeholder="$ 10.000" />
               <div>
                 <div style={labelStyle}>Número de cuotas</div>
                 <input

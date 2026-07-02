@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
@@ -88,14 +88,15 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
           .sort((a, b) => b.fecha.localeCompare(a.fecha));
         const ultimo = pagosC[0];
-        const dias = ultimo
-          ? Math.floor((new Date(hoy + "T00:00:00").getTime() - new Date(ultimo.fecha + "T00:00:00").getTime()) / 86400000)
-          : 999;
+        const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10)) ?? 0;
         if (dias < 3) return [];
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);
         const tarifa  = c.tarifa_diaria ?? 27000;
+        const deudaReal = deudas
+          .filter(d => d.contrato_id === c.id && d.estado !== "pagada")
+          .reduce((acc, d) => acc + d.monto_pendiente, 0);
 
         const gestionesC = gestiones
           .filter(g => g.contrato_id === c.id)
@@ -113,7 +114,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           marca: moto?.marca ?? "",
           modelo: moto?.modelo ?? "",
           diasSinPago: dias,
-          deudaEstimada: Math.min(dias, 30) * tarifa,
+          deudaEstimada: deudaReal + Math.min(dias, 30) * tarifa,
           tarifa,
           ultimoPago: ultimo?.fecha ?? null,
           prioridad: (dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media") as Prioridad,

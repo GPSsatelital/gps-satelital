@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos, calcularAplicacion } from "../hooks/usePagos";
@@ -56,12 +56,12 @@ function calcDiasConPeriodo(
   tipoRuta: string,
   diaPago: string,
   hoy: string,
+  fechaEntrega: string | null = null,
 ): number {
   const conf = pagosC.filter(p => p.estado === "Confirmado");
   if (tipoRuta === "diario") {
     const ultimo = conf.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    if (!ultimo) return 999;
-    return Math.floor((new Date(hoy + "T00:00:00").getTime() - new Date(ultimo.fecha + "T00:00:00").getTime()) / 86400000);
+    return diasDesdeUltimoPago(ultimo?.fecha ?? null, fechaEntrega) ?? 999;
   }
   const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const targetDay = norm(diaPago) === "miercoles" ? 3 : 1;
@@ -170,7 +170,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const diaPago = c.dia_pago ?? "Lunes";
         const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
         const diaPagoNorm = norm(diaPago);
-        const dias = calcDiasConPeriodo(pagosC, tipoRuta, diaPago, hoy);
+        const dias = calcDiasConPeriodo(pagosC, tipoRuta, diaPago, hoy, c.fecha_entrega ?? null);
         const pagadosHoy = pagosC.filter(p => p.fecha === hoy && p.estado === "Confirmado");
         const pagadoHoy = pagadosHoy.reduce((s, p) => s + p.valor, 0);
         const pagaHoy = esContratoDiario
@@ -201,7 +201,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           valorPactado,
           valorPeriodo,
           diasSinPago: dias,
-          deudaEstimada: dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0,
+          // Incluye la deuda ya registrada (ej. saldo de apertura migrado), no solo el estimado
+          // por días sin pago — antes un migrado con deuda real mostraba $0 hasta su primer pago.
+          deudaEstimada: deudaReal + (dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0),
           deudaReal,
           cuotaConvenioFila: convActivo?.cuota_por_periodo ?? 0,
           convenioActivoId: convActivo?.id ?? null,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 
@@ -36,6 +36,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   const [ahorroInicial, setAhorroInicial] = useState(String(contrato.ahorro_inicial ?? 0));
   const [fechaEntrega, setFechaEntrega] = useState(contrato.fecha_entrega ?? "");
   const [ahorroAcumulado, setAhorroAcumulado] = useState(String(contrato.ahorro_acumulado ?? 0));
+  const [fechaFinContrato, setFechaFinContrato] = useState(
+    contrato.fecha_fin_contrato ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : "")
+  );
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +80,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           ahorro_inicial: Number(ahorroInicial) || 0,
           fecha_entrega: fechaEntrega || null,
           ahorro_acumulado: Number(ahorroAcumulado) || 0,
+          fecha_fin_contrato: esDiario ? null : (fechaFinContrato || null),
         },
         profile.id,
       );
@@ -169,10 +173,23 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           </div>
         </div>
 
-        <div>
-          <div style={labelStyle}>Fecha de entrega</div>
-          <input type="date" style={inputStyle} value={fechaEntrega} onChange={e => setFechaEntrega(e.target.value)} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <div style={labelStyle}>Fecha de entrega</div>
+            <input type="date" style={inputStyle} value={fechaEntrega} onChange={e => setFechaEntrega(e.target.value)} />
+          </div>
+          {formaPago !== "Diario" && (
+            <div>
+              <div style={labelStyle}>Fecha real fin de contrato</div>
+              <input type="date" style={inputStyle} value={fechaFinContrato} onChange={e => setFechaFinContrato(e.target.value)} />
+            </div>
+          )}
         </div>
+        {formaPago !== "Diario" && (
+          <div style={{ fontSize: 12, color: "#94a3b8" }}>
+            Se calcula sola al crear el contrato (entrega + plazo). Corrígela aquí solo si sabes que el valor real es distinto (ej. tiempo en taller ya transcurrido).
+          </div>
+        )}
 
         {error && (
           <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>

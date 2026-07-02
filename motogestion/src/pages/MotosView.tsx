@@ -3,6 +3,9 @@ import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIng
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useContratos } from "../hooks/useContratos";
+import { useClientes } from "../hooks/useClientes";
+import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -51,7 +54,20 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
   const { filtrarMotos } = useScope();
+  const { contratos } = useContratos();
+  const { clientes } = useClientes();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: import("../hooks/useContratos").Contrato; motoPlaca: string; clienteNombre: string; motivo: string; fechaEntrada: string; fechaSalida: string } | null>(null);
+
+  function abrirResolverTiempoSiAplica(moto: Moto, motivo: string, fechaEntrada: string | null | undefined) {
+    if (!esAdminOSuperior || !fechaEntrada) return;
+    const contratoActivo = contratos.find(c => c.moto_id === moto.id && c.estado === "Activo");
+    const fechaSalida = new Date().toISOString().slice(0, 10);
+    const dias = Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(fechaEntrada + "T00:00:00").getTime()) / 86400000);
+    if (!contratoActivo || dias <= 0) return;
+    const cliente = clientes.find(cl => cl.id === contratoActivo.cliente_id);
+    setTiempoFueraModal({ contrato: contratoActivo, motoPlaca: moto.placa, clienteNombre: cliente?.nombre ?? "", motivo, fechaEntrada, fechaSalida });
+  }
   const [subadmins, setSubadmins] = React.useState<{ id: string; nombre: string }[]>([]);
   React.useEffect(() => {
     if (!esAdminOSuperior) return;
@@ -249,6 +265,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   async function handleLiberarFiscalia() {
     if (!selectedMoto || !profile) return;
     setGuardando(true);
+    const fechaEntrada = selectedMoto.retencion_fecha;
     // 1. Registrar cambio de ubicación al lugar físico elegido
     await cambiarUbicacion(selectedMoto.id, "fiscalia" as UbicacionFisica, ubicacionSalidaFiscalia, "", "Salida de Fiscalía — ingresa a revisión de taller", profile.id);
     // 2. Marcar moto como En taller (Mantenimiento) y limpiar retención
@@ -256,6 +273,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     await liberarRetencion(selectedMoto.id);
     setGuardando(false);
     if (error) { setMsgDetalle(error); return; }
+    abrirResolverTiempoSiAplica(selectedMoto, "Fiscalía", fechaEntrada);
     setMsgDetalle("Moto liberada de Fiscalía. Pasa a taller para revisión antes de operar.");
     setOpenLiberarFiscalia(false);
   }
@@ -263,9 +281,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   async function handleLiberarRetencion() {
     if (!selectedMoto) return;
     setGuardando(true);
+    const fechaEntrada = selectedMoto.retencion_fecha;
+    const motivo = selectedMoto.estado === "Garantia" ? "Garantía" : "Tránsito";
     const { error } = await liberarRetencion(selectedMoto.id);
     setGuardando(false);
     if (error) { setMsgDetalle(error); return; }
+    abrirResolverTiempoSiAplica(selectedMoto, motivo, fechaEntrada);
     setMsgDetalle("Retención liberada. Moto disponible.");
   }
 
@@ -729,6 +750,18 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             </div>
           </div>
         </div>
+      )}
+
+      {tiempoFueraModal && (
+        <ModalResolverTiempoFueraServicio
+          contrato={tiempoFueraModal.contrato}
+          clienteNombre={tiempoFueraModal.clienteNombre}
+          motoPlaca={tiempoFueraModal.motoPlaca}
+          motivo={tiempoFueraModal.motivo}
+          fechaEntrada={tiempoFueraModal.fechaEntrada}
+          fechaSalida={tiempoFueraModal.fechaSalida}
+          onClose={() => setTiempoFueraModal(null)}
+        />
       )}
     </div>
   );

@@ -830,10 +830,14 @@ where fecha_entrega is not null
 
 ### Migraciones ya aplicadas en Supabase por el usuario
 - `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅ · `027_contratos_auditoria.sql` ✅
-- `028_fecha_fin_contrato.sql` ⚠️ **pendiente de aplicar** (ver SQL arriba)
+- `028_fecha_fin_contrato.sql` ✅ · `029_documentos_delete_policy.sql` ✅ — verificadas en Supabase (2 jul 2026): columna existe, backfill aplicado, política de borrado activa.
+
+### Completado (2 jul 2026, commit `44fca9f` en main) ✅
+- **Cancelar contrato mal gestionado**: botón "🗑️ Cancelar y eliminar" en el wizard — borra por completo (fila, fotos/firmas, libera moto) un intento "En proceso" nunca activado, en vez de dejarlo atascado como pasaba antes al solo cerrar el wizard. `eliminarContratoEnProceso()` en `useContratos.ts`.
+- **Motos en mayúsculas**: placa, marca, modelo, color, cilindraje, N° motor, N° chasis (crear y editar) — excepto Observaciones y Propietario.
+- **Dinero con formato en toda la app**: componente compartido `MoneyInput` (extraído del que ya existía en WizardContrato) aplicado en los 24 campos de dinero que quedaban con `<input type="number">` plano, repartidos en 8 archivos. `fmtMoney()` agregado a `shared.ts` para visualización (aunque ya era consistente en casi todo el código).
 
 ### Próximos pasos sugeridos 🔲
-- **Correr la migración 028** en Supabase (arriba) — sin esto, `fecha_fin_contrato` no persiste y todo sigue funcionando por el cálculo de respaldo, pero "tiempo rodado" no podrá guardar la extensión real.
 - Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
 - Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en `useUbicaciones.ts` (hallazgo #17), no se tocó por estar fuera del alcance de esa tarea.

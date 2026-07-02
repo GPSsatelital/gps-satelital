@@ -6,6 +6,7 @@ import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
+import CanvasFirma from "../components/CanvasFirma";
 
 type Props = {
   clientes: Cliente[];
@@ -65,62 +66,42 @@ function calcPrimerPago(fecha: string, dia: "Lunes" | "Miércoles", pagoDiaLS: n
   return { dias, fecha: proxima.toISOString().slice(0, 10), valor: total };
 }
 
-function CanvasFirma({ label, onChange }: { label: string; onChange: (data: string | null) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hasDrawn = useRef(false);
+const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega"];
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    hasDrawn.current = false;
-    let drawing = false;
-    const getPos = (e: MouseEvent | TouchEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const pt = "touches" in e ? e.touches[0] : e;
-      return { x: (pt.clientX - rect.left) * (canvas.width / rect.width), y: (pt.clientY - rect.top) * (canvas.height / rect.height) };
-    };
-    const onDown = (e: MouseEvent | TouchEvent) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-    const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!drawing) return;
-      const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasDrawn.current = true;
-      onChange(canvas.toDataURL("image/png")); e.preventDefault();
-    };
-    const onUp = () => { drawing = false; };
-    canvas.addEventListener("mousedown", onDown); canvas.addEventListener("mousemove", onMove); canvas.addEventListener("mouseup", onUp);
-    canvas.addEventListener("touchstart", onDown, { passive: false }); canvas.addEventListener("touchmove", onMove, { passive: false }); canvas.addEventListener("touchend", onUp);
-    return () => {
-      canvas.removeEventListener("mousedown", onDown); canvas.removeEventListener("mousemove", onMove); canvas.removeEventListener("mouseup", onUp);
-      canvas.removeEventListener("touchstart", onDown); canvas.removeEventListener("touchmove", onMove); canvas.removeEventListener("touchend", onUp);
-    };
-  }, [onChange]);
+type AnguloFoto = "lateral_derecho" | "lateral_izquierdo" | "delantera" | "trasera" | "arriba";
+const ANGULOS_FOTO: { key: AnguloFoto; label: string }[] = [
+  { key: "delantera", label: "Delantera" },
+  { key: "lateral_izquierdo", label: "Lateral izq." },
+  { key: "arriba", label: "Arriba" },
+  { key: "lateral_derecho", label: "Lateral der." },
+  { key: "trasera", label: "Trasera" },
+];
 
-  function clear() {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d"); if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    hasDrawn.current = false; onChange(null);
-  }
-
+// Diagrama chico de la moto vista desde arriba, con una flecha que marca desde
+// dónde tomar la foto — para que el funcionario no confunda un ángulo con otro.
+function IconoAngulo({ angulo }: { angulo: AnguloFoto }) {
+  const moto = (
+    <>
+      <rect x="18" y="16" width="24" height="8" rx="3" fill="#94a3b8" />
+      <circle cx="18" cy="20" r="6" fill="#334155" />
+      <circle cx="42" cy="20" r="6" fill="#334155" />
+    </>
+  );
+  const flecha = {
+    delantera: <polygon points="42,2 38,8 46,8" fill="#0284c7" />,
+    trasera: <polygon points="18,2 14,8 22,8" fill="#0284c7" />,
+    lateral_izquierdo: <polygon points="2,20 8,16 8,24" fill="#0284c7" />,
+    lateral_derecho: <polygon points="58,20 52,16 52,24" fill="#0284c7" />,
+    arriba: <polygon points="30,2 25,10 35,10" fill="#0284c7" />,
+  }[angulo];
   return (
-    <div>
-      <div style={labelStyle}>{label}</div>
-      <div style={{ borderRadius: 14, border: "2px dashed #cbd5e1", background: "#fafafa", overflow: "hidden", position: "relative" }}>
-        <canvas ref={canvasRef} width={640} height={180}
-          style={{ width: "100%", height: 180, display: "block", touchAction: "none", cursor: "crosshair" }} />
-        <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#cbd5e1", pointerEvents: "none", background: "white", padding: "2px 10px", borderRadius: 20, border: "1px solid #f1f5f9" }}>
-          Firme aquí con el dedo
-        </div>
-      </div>
-      <button onClick={clear} style={{ marginTop: 8, padding: "7px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 12, color: "#64748b" }}>
-        Borrar firma
-      </button>
-    </div>
+    <svg viewBox="0 0 60 40" width="34" height="24">
+      {moto}
+      {flecha}
+      {angulo === "arriba" && <circle cx="30" cy="20" r="12" fill="none" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="2,2" />}
+    </svg>
   );
 }
-
-const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega"];
 
 export default function WizardContrato({ clientes, motos, contratos, contratoInicial, stepInicial, onClose, onCompletado }: Props) {
   const { eliminarContratoEnProceso } = useContratos();
@@ -185,10 +166,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
   // Step 6 entrega
   const [kmInicial, setKmInicial] = useState("");
-  const [fotosEntrega, setFotosEntrega] = useState<File[]>([]);
+  const [fotosEntrega, setFotosEntrega] = useState<Partial<Record<AnguloFoto, File>>>({});
   const [checklist, setChecklist] = useState<boolean[]>(CHECKLIST.map(() => false));
-  const inputEntCamRef = useRef<HTMLInputElement>(null);
-  const inputEntGalRef = useRef<HTMLInputElement>(null);
 
   const clienteActual = clientes.find(c => c.id === (contratoData?.cliente_id ?? form.cliente_id));
   const motoActual = motos.find(m => m.id === motoId);
@@ -358,14 +337,17 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   // ── STEP 6: Entregar moto y activar ─────────────────────────────────────
   async function handleStep6() {
     if (!kmInicial) { setError("Ingresa el kilometraje inicial."); return; }
+    const faltantes = ANGULOS_FOTO.filter(a => !fotosEntrega[a.key]);
+    if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); return; }
     if (!motoId || !contratoId || !clienteActual) return;
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
-      const urls: string[] = [];
-      for (let i = 0; i < fotosEntrega.length; i++) {
-        const url = await subirArchivo(fotosEntrega[i], `entregas/${contratoId}/foto_${i}.${fotosEntrega[i].name.split(".").pop()}`);
-        if (url) urls.push(url);
+      const urls: Record<string, string> = {};
+      for (const { key } of ANGULOS_FOTO) {
+        const file = fotosEntrega[key]!;
+        const url = await subirArchivo(file, `entregas/${contratoId}/${key}.${file.name.split(".").pop()}`);
+        if (url) urls[key] = url;
       }
       await supabase.from("motos").update({ kilometraje_inicial: Number(kmInicial), fotos_entrega: urls }).eq("id", motoId);
       await supabase.from("contratos").update({ estado: "Activo", firma_responsable: true }).eq("id", contratoId);
@@ -589,7 +571,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {motosDisponibles.slice(0, 30).map(m => (
-                  <button key={m.id} onClick={() => handleStep2(m.id)} disabled={guardando} style={{
+                  <button key={m.id} onClick={() => {
+                    if (!confirm(`¿Confirmas la moto ${m.placa} (${m.marca} ${m.modelo}) para ${(clienteActual?.nombre ?? "").toUpperCase()}?`)) return;
+                    handleStep2(m.id);
+                  }} disabled={guardando} style={{
                     width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0",
                     background: "white", cursor: "pointer", textAlign: "left", opacity: guardando ? 0.6 : 1,
                   }}>
@@ -701,33 +686,45 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </div>
 
               <div>
-                <div style={labelStyle}>Fotos del estado de la moto</div>
-                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                  <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", borderRadius: 12, border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                    📷 Cámara
-                    <input ref={inputEntCamRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => [...p, f]); }} />
-                  </label>
-                  <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px", borderRadius: 12, border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-                    🖼 Galería
-                    <input ref={inputEntGalRef} type="file" accept="image/*" style={{ display: "none" }}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => [...p, f]); }} />
-                  </label>
-                </div>
-                {fotosEntrega.length > 0 && (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {fotosEntrega.map((f, i) => (
-                      <div key={i} style={{ position: "relative" }}>
-                        <img src={URL.createObjectURL(f)} alt={`foto ${i}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0" }} />
-                        <button onClick={() => setFotosEntrega(p => p.filter((_, j) => j !== i))} style={{
-                          position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                          background: "#ef4444", border: "none", color: "white", fontSize: 11, cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>✕</button>
+                <div style={labelStyle}>Fotos del estado de la moto (5 obligatorias)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+                  {ANGULOS_FOTO.map(({ key, label }) => {
+                    const file = fotosEntrega[key];
+                    return (
+                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${file ? "#bbf7d0" : "#e2e8f0"}`, background: file ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                        {file ? (
+                          <div style={{ position: "relative" }}>
+                            <img src={URL.createObjectURL(file)} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
+                            <button onClick={() => setFotosEntrega(p => { const n = { ...p }; delete n[key]; return n; })} style={{
+                              position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
+                              background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                            <IconoAngulo angulo={key} />
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                        {!file && (
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                              📷
+                              <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => ({ ...p, [key]: f })); }} />
+                            </label>
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                              🖼
+                              <input type="file" accept="image/*" style={{ display: "none" }}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => ({ ...p, [key]: f })); }} />
+                            </label>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
 
               <div>

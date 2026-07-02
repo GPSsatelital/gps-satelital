@@ -18,6 +18,7 @@ import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
+import CanvasFirma from "../components/CanvasFirma";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -228,6 +229,9 @@ function emptyForm(): NuevoCliente {
     ingreso_inicial: null,
     referido_por_cedula: "",
     referido_por_nombre: "",
+    autorizacion_datos_firma_url: null,
+    autorizacion_datos_huella_url: null,
+    autorizacion_datos_fecha: null,
   };
 }
 
@@ -642,8 +646,28 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
+    if (!form.autorizacion_datos_firma_url) {
+      setFormError("Falta la firma de autorización de tratamiento de datos.");
+      return;
+    }
+
     setGuardando(true);
     setFormError(null);
+
+    // La firma queda como dataURL mientras se dibuja — se sube a Storage recién al guardar,
+    // con la cédula ya definitiva como carpeta.
+    let firmaUrl = form.autorizacion_datos_firma_url;
+    if (firmaUrl.startsWith("data:")) {
+      const blob = await (await fetch(firmaUrl)).blob();
+      const archivo = new File([blob], "firma_autorizacion.png", { type: "image/png" });
+      const { url, error: errSubida } = await subirDocumento(archivo, form.cedula.trim() || "sin-cedula", "autorizacion_datos");
+      if (errSubida || !url) {
+        setGuardando(false);
+        setFormError(errSubida || "No se pudo subir la firma de autorización.");
+        return;
+      }
+      firmaUrl = url;
+    }
 
     const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante);
 
@@ -656,6 +680,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       whatsapp: form.mismo_whatsapp ? form.telefono.trim() : (form.whatsapp ?? "").trim(),
       referido_por_cedula: form.referido_por_cedula?.trim() || null,
       referido_por_nombre: form.referido_por_nombre?.trim() || null,
+      autorizacion_datos_firma_url: firmaUrl,
       estado,
     });
 
@@ -690,6 +715,9 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       ingreso_inicial: cliente.ingreso_inicial ?? null,
       referido_por_cedula: cliente.referido_por_cedula,
       referido_por_nombre: cliente.referido_por_nombre,
+      autorizacion_datos_firma_url: cliente.autorizacion_datos_firma_url,
+      autorizacion_datos_huella_url: cliente.autorizacion_datos_huella_url,
+      autorizacion_datos_fecha: cliente.autorizacion_datos_fecha,
     });
     setEditOpen(true);
   }
@@ -800,7 +828,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     { label: "🔴 En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, filter: "mora" },
   ];
 
-  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
+  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void, esNuevo: boolean = false) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
 
@@ -912,6 +940,26 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
           <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
         </div>
+
+        {esNuevo && (
+          <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid #f59e0b" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
+            <div style={{ fontSize: 12, color: "#78716c", marginBottom: 12, lineHeight: 1.5 }}>
+              De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
+              (incluida su huella dactilar) con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera. Firme para continuar.
+            </div>
+            <CanvasFirma
+              label="Firma del cliente"
+              onChange={(dataUrl) => update({
+                autorizacion_datos_firma_url: dataUrl,
+                autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
+              })}
+            />
+            <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#f1f5f9", fontSize: 12, color: "#64748b" }}>
+              🔒 Huella dactilar: pendiente de conectar el lector — se agregará en esta misma sección más adelante.
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1216,7 +1264,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Ingresar cliente nuevo</h3>
-            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })))}
+            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })), true)}
             {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>

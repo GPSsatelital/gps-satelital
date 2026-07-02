@@ -63,6 +63,9 @@ export type Cliente = {
   ingreso_inicial: number | null;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
+  autorizacion_datos_firma_url: string | null;
+  autorizacion_datos_huella_url: string | null;
+  autorizacion_datos_fecha: string | null;
   referidos_confirmados: number;
   premio_referidos_entregado: number;
   lista_negra: boolean;
@@ -91,6 +94,9 @@ export type NuevoCliente = {
   ingreso_inicial: number | null;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
+  autorizacion_datos_firma_url: string | null;
+  autorizacion_datos_huella_url: string | null;
+  autorizacion_datos_fecha: string | null;
 };
 
 export function documentosListos(doc: DocumentoFlags) {

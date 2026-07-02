@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
+import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import type { Contrato } from "../hooks/useContratos";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -71,6 +72,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
   const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
   const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato, reactivarContrato } = useContratos();
@@ -96,6 +98,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [wizardStep0, setWizardStep0] = useState<number | undefined>(undefined);
   const [accionError, setAccionError] = useState<string | null>(null);
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [modalDocumentosAbierto, setModalDocumentosAbierto] = useState(false);
 
   useEffect(() => { if (initialOpenForm && puedeCrear) setWizardOpen(true); }, [initialOpenForm, puedeCrear]);
 
@@ -283,14 +286,24 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           </div>
         )}
 
-        {puedeCrear && (
-          <div style={card}>
-            <button
-              onClick={() => setModalEditarAbierto(true)}
-              style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
-            >
-              ✏️ Editar contrato
-            </button>
+        {(puedeCrear || puedeDocumentos) && (
+          <div style={{ ...card, display: "grid", gap: 8 }}>
+            {puedeCrear && (
+              <button
+                onClick={() => setModalEditarAbierto(true)}
+                style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+              >
+                ✏️ Editar contrato
+              </button>
+            )}
+            {puedeDocumentos && (
+              <button
+                onClick={() => setModalDocumentosAbierto(true)}
+                style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+              >
+                📎 Documentos del contrato
+              </button>
+            )}
           </div>
         )}
 
@@ -305,6 +318,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             contrato={c}
             clienteNombre={clienteDetalle.nombre}
             onClose={() => setModalEditarAbierto(false)}
+          />
+        )}
+
+        {modalDocumentosAbierto && (
+          <ModalDocumentosContrato
+            contrato={c}
+            clienteNombre={clienteDetalle.nombre}
+            onClose={() => setModalDocumentosAbierto(false)}
           />
         )}
       </div>

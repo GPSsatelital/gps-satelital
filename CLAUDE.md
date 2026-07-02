@@ -859,15 +859,27 @@ where fecha_entrega is not null
   - **Decisión de arquitectura para cuando se construya (más adelante, proyecto aparte):** si se empaqueta con Capacitor, usar el modo "apunta a la web en vivo" (la app nativa carga la URL real de Vercel dentro de un WebView, no una copia local) — así todo cambio de React/TS se refleja al instante en la tablet igual que en la web, sin reconstruir/reinstalar la app cada vez. Solo el código nativo del puente de huella (Java/Kotlin) necesita reconstruirse cuando cambie, y eso es raro. La app ya depende de internet todo el tiempo (Supabase), así que este modo no le agrega ninguna limitación nueva.
   - **Decisión: no se empieza ahora.** Se prioriza dejar completo y probado el flujo de PC primero.
 
-**Plan de las 3 piezas a construir en PC (fase actual):**
-1. **Tratamiento de datos al registrar cliente nuevo** (ClientesView) — firma (canvas, lápiz digital) + huella (HID DigitalPersona) **al final del mismo formulario** de registro (no una pantalla aparte) — se registra todo junto para efectos legales. **Bloquea el registro** si no se completa (como los documentos obligatorios ya bloquean el estado "Listo para visita").
-2. **Huella en Contrato y Pagaré** (WizardContrato pasos 3 y 4) — se agrega junto a la firma canvas que ya existe. El Certificado (paso 5) sigue igual, es una foto de documento físico firmado en papel (no cambia).
-3. **Confirmación antes de asignar moto** (WizardContrato paso 2) — hoy un clic asigna la moto de una vez; se agrega un paso de confirmación ("¿confirmas placa X para este cliente?") para evitar el tipo de error que ya pasó con RMZ67H (cancelado sin querer).
-4. **Entrega con 5 fotos guiadas** (WizardContrato paso 6) — reemplazar la captura de fotos actual por 5 tomas específicas: lateral derecho, lateral izquierdo, parte trasera, parte delantera, parte de arriba. Diseño pedido: botones compactos (que no ocupen mucha pantalla) + una señal visual (flecha/diagrama) que indique cuál ángulo tomar, para que el funcionario no se equivoque.
+**Plan de las 4 piezas a construir en PC (fase actual):**
+1. **Tratamiento de datos al registrar cliente nuevo** (ClientesView) ✅ **construido (2 jul 2026, commit `483e4e6` en main)** — sección "Autorización de tratamiento de datos" al final del formulario de registro, con firma (`CanvasFirma`, ahora componente compartido en `src/components/`). Bloquea el registro (`handleGuardar`) si no hay firma. Huella queda como texto "🔒 pendiente de conectar el lector" — el campo `autorizacion_datos_huella_url` ya existe en la BD (migración 030) para cuando se conecte. **Falta correr la migración 030 en Supabase.**
+2. **Huella en Contrato y Pagaré** (WizardContrato pasos 3 y 4) — 🔲 pendiente, depende de tener el lector HID conectado y probado (el usuario dijo que aún no lo tiene listo). El Certificado (paso 5) sigue igual, es una foto de documento físico firmado en papel (no cambia).
+3. **Confirmación antes de asignar moto** (WizardContrato paso 2) ✅ **construido** — `confirm()` con placa + marca/modelo + nombre del cliente antes de llamar `handleStep2`.
+4. **Entrega con 5 fotos guiadas** (WizardContrato paso 6) ✅ **construido** — `fotos_entrega` pasó de array plano a objeto etiquetado por ángulo (`delantera`/`lateral_izquierdo`/`arriba`/`lateral_derecho`/`trasera`), cada slot con un ícono SVG chico (`IconoAngulo`) que marca con una flecha desde dónde tomar la foto. Bloquea "Activar contrato" si falta alguna de las 5. **No se pudo probar visualmente en el navegador** (requiere llegar al paso 6 completando 1-5 con datos válidos, y no había sesión de login disponible) — verificar en el primer uso real.
 
 **Nota de mapeo:** el filtro por grupo (COSTA/PRADERA/RASTREADOR/USADAS) que se agregó a Motos/Contratos/Clientes/Cartera **no aplica** al selector de moto del wizard — el grupo es una propiedad fija de la moto, no algo que ayude a filtrar cuando ya se sabe qué placa específica se va a asignar. Se evaluó y se descartó a propósito, no es un olvido.
 
+### Migración pendiente de aplicar en Supabase ⚠️
+```sql
+alter table public.clientes
+  add column if not exists autorizacion_datos_firma_url text,
+  add column if not exists autorizacion_datos_huella_url text,
+  add column if not exists autorizacion_datos_fecha timestamptz;
+```
+
 ### Próximos pasos sugeridos 🔲
+- **Correr la migración 030** en Supabase (arriba) — sin esto, el registro de clientes nuevos falla al guardar la firma de autorización.
+- **Probar en el navegador real** las 5 fotos guiadas del paso 6 y la confirmación de moto del paso 2 (no se pudo verificar en esta sesión por falta de credenciales de login).
+- Cuando el lector HID DigitalPersona esté conectado y con el cliente instalado: conectar la huella en tratamiento de datos (ClientesView) y en Contrato/Pagaré (WizardContrato pasos 3-4). Ver investigación completa arriba (hallazgo del 2 jul 2026).
+- Confirmar modelo exacto de la impresora POS y probar `window.print()` del recibo con papel térmico real.
 - Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
 - Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en `useUbicaciones.ts` (hallazgo #17), no se tocó por estar fuera del alcance de esa tarea.

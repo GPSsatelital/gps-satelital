@@ -648,6 +648,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | "Xd sin pagar" aparece aunque esté al día | Agregar condición `c.estadoCartera !== "al-dia"` antes de mostrar el texto |
 | RLS contratos bloqueando insert | Políticas usaban `current_role()` — corregir a `public.mi_rol()` con roles ADMIN, ADMIN_PRINCIPAL, SECRETARIA |
 | `useScope()` fuera del `SubadminScopeProvider` → app no abre (throw) | El provider debe envolver TODO el layout (header incluido), no solo el contenido. `CampanaAlertas` y `BusquedaGlobal` viven en el header → si usan `useScope`, deben estar dentro del provider. Verificar el árbol de render, no solo el archivo. |
+| Canvas de firma se corta a medio trazo | `useEffect` con `[onChange]` como dependencia se reengancha en cada trazo (el padre recrea `onChange` en cada `setState`), perdiendo el estado `drawing` del closure anterior. Enganchar listeners en `useEffect(..., [])` una sola vez y leer el callback desde un `ref` actualizado en cada render. |
 
 ---
 
@@ -872,6 +873,8 @@ where fecha_entrega is not null
 4. **Entrega con 5 fotos guiadas** (WizardContrato paso 6) ✅ **construido** — `fotos_entrega` pasó de array plano a objeto etiquetado por ángulo (`delantera`/`lateral_izquierdo`/`arriba`/`lateral_derecho`/`trasera`), cada slot con un ícono SVG chico (`IconoAngulo`) que marca con una flecha desde dónde tomar la foto. Bloquea "Activar contrato" si falta alguna de las 5. **No se pudo probar visualmente en el navegador** (requiere llegar al paso 6 completando 1-5 con datos válidos, y no había sesión de login disponible) — verificar en el primer uso real.
 
 **Nota de mapeo:** el filtro por grupo (COSTA/PRADERA/RASTREADOR/USADAS) que se agregó a Motos/Contratos/Clientes/Cartera **no aplica** al selector de moto del wizard — el grupo es una propiedad fija de la moto, no algo que ayude a filtrar cuando ya se sabe qué placa específica se va a asignar. Se evaluó y se descartó a propósito, no es un olvido.
+
+5. **Fix real reportado por el usuario (3 jul 2026, commit `f3757b5` en main): la firma se cortaba al escribir** — "escribo un poco y luego no me deja hasta que retiro el dedo y nuevamente pasa lo mismo". Causa: `CanvasFirma.tsx` enganchaba los listeners (`mousedown`/`mousemove`/`touchstart`/etc.) en un `useEffect` con `[onChange]` como dependencia. Cada trazo llama `onChange(dataUrl)` → el padre (ClientesView) hace `setState` → se crea una nueva función `onChange` en cada render → el efecto se vuelve a ejecutar (desengancha y reengancha listeners) **a mitad del trazo**, perdiendo la variable local `drawing` (capturada en el closure del efecto anterior). Mismo patrón de fondo que el bug de `DetallePanel`/`PanelDetalle` (ver ERRORES PASADOS), pero manifestado distinto: ahí perdía foco, aquí corta un trazo continuo. **Fix:** listeners enganchados una sola vez (`useEffect(..., [])`) + `onChange` leído desde un `ref` (`onChangeRef.current = onChange` en cada render, usado dentro de los handlers) en vez de la dependencia directa. ⚠️ No se pudo probar en navegador por falta de credenciales de login — pedir confirmación al usuario tras el deploy.
 
 ### Migración pendiente de aplicar en Supabase ⚠️
 ```sql

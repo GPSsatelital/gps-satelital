@@ -6,6 +6,12 @@ interface Props {
   contratoId: string;
   clienteNombre: string;
   onClose: () => void;
+  // Monto fijo que el convenio debe cubrir (ej. base inicial incompleta al crear el
+  // contrato) — si no viene, la meta se precarga con la deuda pendiente del contrato.
+  metaFija?: number;
+  motivoInicial?: string;
+  // Oculta cerrar/cancelar — obliga a guardar el convenio antes de continuar.
+  obligatorio?: boolean;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -25,10 +31,15 @@ const labelStyle: React.CSSProperties = {
   color: "#334155",
 };
 
-export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Props) {
-  const [motivo, setMotivo] = useState("");
-  const [cuota, setCuota] = useState("");
-  const [cuotas, setCuotas] = useState("");
+function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
+
+export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio }: Props) {
+  const [motivo, setMotivo] = useState(motivoInicial ?? "");
+  const [metaManual, setMetaManual] = useState("");
+  const [metaCargada, setMetaCargada] = useState(false);
+  const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
+  const [cuotasInput, setCuotasInput] = useState("");
+  const [cuotaInput, setCuotaInput] = useState("");
   const [primerPago, setPrimerPago] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,12 +60,34 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
     verificar();
   }, [contratoId]);
 
-  const totalCalculado = cuota && cuotas ? Number(cuota) * Number(cuotas) : 0;
+  // Si no hay meta fija (caso general, no el de base inicial), se precarga con la
+  // deuda pendiente ya registrada del contrato — el funcionario puede ajustarla.
+  useEffect(() => {
+    if (metaFija != null) return;
+    async function cargarDeuda() {
+      const { data } = await supabase
+        .from("deudas")
+        .select("monto_pendiente")
+        .eq("contrato_id", contratoId)
+        .neq("estado", "pagada");
+      const total = (data ?? []).reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0);
+      setMetaManual(String(total));
+      setMetaCargada(true);
+    }
+    cargarDeuda();
+  }, [contratoId, metaFija]);
+
+  const meta = metaFija ?? (Number(metaManual) || 0);
+  const cuotasCalc = modoFijar === "cuotas"
+    ? Number(cuotasInput) || 0
+    : (meta > 0 && Number(cuotaInput) > 0 ? Math.ceil(meta / Number(cuotaInput)) : 0);
+  const cuotaCalc = cuotasCalc > 0 ? Math.ceil(meta / cuotasCalc) : 0;
+  const totalCalculado = cuotaCalc * cuotasCalc;
 
   async function handleGuardar() {
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
-    if (!cuota || Number(cuota) <= 0) { setError("Ingresa una cuota adicional válida."); return; }
-    if (!cuotas || Number(cuotas) <= 0) { setError("Ingresa el número de cuotas."); return; }
+    if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
+    if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
     if (!primerPago) { setError("Selecciona la fecha del primer pago."); return; }
     if (totalConvenios !== null && totalConvenios >= 3) { setError("Este contrato ya tiene 3 convenios (máximo permitido)."); return; }
 
@@ -84,18 +117,13 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
 
     const { error: err } = await supabase.from("convenios").insert({
       contrato_id: contratoId,
-      motivo: motivo.trim(),
-      cuota_convenio: Number(cuota),
-      total_convenio: totalCalculado,
-      cuotas_totales: Number(cuotas),
-      cuotas_pagadas: 0,
-      fecha_inicio: primerPago,
-      estado: "activo",
       numero_convenio: count + 1,
-      deuda_total: totalCalculado,
-      cuota_por_periodo: Number(cuota),
-      numero_cuotas: Number(cuotas),
+      deuda_total: meta,
+      cuota_por_periodo: cuotaCalc,
+      numero_cuotas: cuotasCalc,
+      cuotas_pagadas: 0,
       fecha_limite: primerPago,
+      estado: "activo",
       concepto: motivo.trim(),
       aprobado_por: null,
     });
@@ -114,7 +142,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 300 }}
-      onClick={onClose}
+      onClick={obligatorio ? undefined : onClose}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -122,18 +150,22 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>🤝 Nuevo convenio</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>🤝 {obligatorio ? "Convenio obligatorio" : "Nuevo convenio"}</div>
             <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
+          {!obligatorio && (
+            <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
+          )}
         </div>
 
         <div style={{ padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 13, color: "#92400e", fontWeight: 600 }}>
-          ⚠️ El convenio se paga ENCIMA del pago normal. No reemplaza la cuota.
+          {obligatorio
+            ? "⚠️ Falta base inicial. Debes registrar el convenio para poder continuar."
+            : "⚠️ El convenio se paga ENCIMA del pago normal. No reemplaza la cuota."}
         </div>
 
-        {verificando ? (
-          <div style={{ color: "#64748b", fontSize: 14 }}>Verificando convenios existentes...</div>
+        {verificando || (metaFija == null && !metaCargada) ? (
+          <div style={{ color: "#64748b", fontSize: 14 }}>Cargando datos del contrato...</div>
         ) : totalConvenios !== null && totalConvenios >= 3 ? (
           <div style={{ padding: "14px 16px", borderRadius: 14, background: "#fee2e2", border: "1px solid #fecaca", fontSize: 14, color: "#991b1b", fontWeight: 700 }}>
             Este contrato ya tiene 3 convenios (máximo permitido). No se pueden crear más.
@@ -154,23 +186,60 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
               />
             </div>
 
+            <div>
+              <div style={labelStyle}>Meta a pagar (total del convenio)</div>
+              {metaFija != null ? (
+                <div style={{ ...inputStyle, background: "#f1f5f9", fontWeight: 800, color: "#0f172a" }}>
+                  $ {fmt(metaFija)}
+                </div>
+              ) : (
+                <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
+              )}
+            </div>
+
+            <div>
+              <div style={labelStyle}>Fijar por</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setModoFijar("cuotas")} style={{
+                  flex: 1, padding: "8px 12px", borderRadius: 10, border: `2px solid ${modoFijar === "cuotas" ? "#0284c7" : "#e2e8f0"}`,
+                  background: modoFijar === "cuotas" ? "#eff6ff" : "white", color: modoFijar === "cuotas" ? "#0284c7" : "#64748b",
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                }}>
+                  Número de cuotas
+                </button>
+                <button onClick={() => setModoFijar("cuota")} style={{
+                  flex: 1, padding: "8px 12px", borderRadius: 10, border: `2px solid ${modoFijar === "cuota" ? "#0284c7" : "#e2e8f0"}`,
+                  background: modoFijar === "cuota" ? "#eff6ff" : "white", color: modoFijar === "cuota" ? "#0284c7" : "#64748b",
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                }}>
+                  Valor de la cuota
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <MoneyInput label="Cuota adicional" value={cuota} onChange={setCuota} placeholder="$ 10.000" />
+              {modoFijar === "cuotas" ? (
+                <div>
+                  <div style={labelStyle}>Número de cuotas</div>
+                  <input type="number" min="1" style={inputStyle} value={cuotasInput} onChange={e => setCuotasInput(e.target.value)} placeholder="Ej. 4" />
+                </div>
+              ) : (
+                <MoneyInput label="Valor de la cuota" value={cuotaInput} onChange={setCuotaInput} placeholder="$ 100.000" />
+              )}
               <div>
-                <div style={labelStyle}>Número de cuotas</div>
-                <input
-                  type="number"
-                  style={inputStyle}
-                  value={cuotas}
-                  onChange={e => setCuotas(e.target.value)}
-                  placeholder="Ej. 4"
-                />
+                <div style={labelStyle}>{modoFijar === "cuotas" ? "Cuota (calculada)" : "N° de cuotas (calculado)"}</div>
+                <div style={{ ...inputStyle, background: "#f1f5f9", color: "#64748b", fontWeight: 700 }}>
+                  {modoFijar === "cuotas" ? (cuotaCalc > 0 ? `$ ${fmt(cuotaCalc)}` : "—") : (cuotasCalc > 0 ? cuotasCalc : "—")}
+                </div>
               </div>
             </div>
 
             {totalCalculado > 0 && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "#dbeafe", border: "1px solid #bfdbfe", fontSize: 14, fontWeight: 700, color: "#1d4ed8" }}>
-                Total a pagar: $ {Math.round(totalCalculado).toLocaleString("es-CO")}
+                Total del convenio: $ {fmt(totalCalculado)}
+                {meta > 0 && totalCalculado > meta && (
+                  <span style={{ fontWeight: 400, fontSize: 12 }}> (redondeado, meta $ {fmt(meta)})</span>
+                )}
               </div>
             )}
 
@@ -195,9 +264,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose }: Pr
             )}
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={onClose} style={{ background: "#f1f5f9", color: "#334155", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
-                Cancelar
-              </button>
+              {!obligatorio && (
+                <button onClick={onClose} style={{ background: "#f1f5f9", color: "#334155", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                  Cancelar
+                </button>
+              )}
               <button
                 onClick={handleGuardar}
                 disabled={guardando || exito}

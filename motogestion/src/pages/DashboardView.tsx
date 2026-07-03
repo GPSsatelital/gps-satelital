@@ -7,6 +7,7 @@ import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { esDiaDePago } from "../utils/cicloPago";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -145,17 +146,13 @@ export default function DashboardView({ onNavigate }: {
         return cliente?.estado === "En mora";
       }).length;
 
-    const diaSem = new Date().getDay();
-    const esLunes = diaSem === 1;
-    const esMiercoles = diaSem === 3;
+    const hoyDashboard = new Date();
     const paganHoy = contratos
       .filter(c => c.estado === "Activo")
       .filter(c => {
         const esDiario = (c.forma_pago ?? "").toLowerCase() === "diario";
         if (esDiario) return true;
-        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-        const dp = norm(c.dia_pago ?? "lunes");
-        return (dp === "lunes" && esLunes) || (dp === "miercoles" && esMiercoles);
+        return esDiaDePago(c, hoyDashboard);
       }).length;
 
     return {

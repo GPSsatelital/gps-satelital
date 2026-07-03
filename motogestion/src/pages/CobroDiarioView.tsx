@@ -8,6 +8,13 @@ import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  esDiaDePago,
+  inicioPeriodoActual,
+  proximoDiaPago,
+  calcularEstadoCartera as calcularEstadoCarteraCiclo,
+  formatDiaPago,
+} from "../utils/cicloPago";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
@@ -26,52 +33,28 @@ function fmtFechaCarta(iso: string) {
   return `${DIAS_LABEL[d.getDay()]} ${d.getDate()} ${MESES_LABEL[d.getMonth()]}`;
 }
 
-function calcPagadoHasta(
-  pagosC: Array<{ fecha: string; estado: string }>,
-  diaPago: string,
+// Contratos de tiempo definido (Semanal/Quincenal/Mensual) — usa el ciclo real del
+// contrato (cicloPago.ts) en vez de asumir siempre lunes/miércoles semanal.
+function calcEstadoPeriodico(
+  contrato: { forma_pago: string; dia_pago: string; dias_pago_mes?: number[] | null; fecha_entrega?: string | null; tarifa_diaria?: number; ahorro_diario?: number; tarifa_domingo?: number; ahorro_domingo?: number; valor_semanal?: number },
+  pagosC: Array<{ fecha: string; estado: string; valor: number }>,
   hoy: string,
-): { pagadoHasta: string | null; estadoLabel: "Al día" | "Pendiente" | "Mora" } {
+): { pagadoHasta: string | null; estadoLabel: "Al día" | "Pendiente" | "Mora"; dias: number } {
+  const hoyDate = new Date(hoy + "T00:00:00");
   const conf = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
-  if (!conf.length) return { pagadoHasta: null, estadoLabel: "Mora" };
-  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  const targetDay = norm(diaPago) === "miercoles" ? 3 : 1;
-  const d = new Date(hoy + "T00:00:00");
-  while (d.getDay() !== targetDay) d.setDate(d.getDate() - 1);
-  const inicioPeriodo = d.toISOString().slice(0, 10);
-  const pagoPeriodo = conf.find(p => p.fecha >= inicioPeriodo);
-  if (pagoPeriodo) {
-    const hasta = new Date(d); hasta.setDate(hasta.getDate() + 6);
-    return { pagadoHasta: hasta.toISOString().slice(0, 10), estadoLabel: "Al día" };
-  }
-  const anterior = new Date(d); anterior.setDate(anterior.getDate() - 7);
-  const pagoAnterior = conf.find(p => p.fecha >= anterior.toISOString().slice(0, 10));
-  if (pagoAnterior) {
-    const hasta = new Date(anterior); hasta.setDate(hasta.getDate() + 6);
-    return { pagadoHasta: hasta.toISOString().slice(0, 10), estadoLabel: "Pendiente" };
-  }
-  return { pagadoHasta: conf[0]?.fecha ?? null, estadoLabel: "Mora" };
-}
+  const inicioPeriodo = inicioPeriodoActual(contrato, hoyDate);
+  const inicioISO = inicioPeriodo.toISOString().slice(0, 10);
+  const estado = calcularEstadoCarteraCiclo(contrato, conf, hoyDate);
+  const estadoLabel = estado === "al-dia" ? "Al día" : estado === "gabela" ? "Pendiente" : "Mora";
+  const dias = estado === "al-dia" ? 0 : Math.max(Math.floor((hoyDate.getTime() - inicioPeriodo.getTime()) / 86400000), 0);
 
-function calcDiasConPeriodo(
-  pagosC: Array<{ fecha: string; estado: string }>,
-  tipoRuta: string,
-  diaPago: string,
-  hoy: string,
-  fechaEntrega: string | null = null,
-): number {
-  const conf = pagosC.filter(p => p.estado === "Confirmado");
-  if (tipoRuta === "diario") {
-    const ultimo = conf.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    return diasDesdeUltimoPago(ultimo?.fecha ?? null, fechaEntrega) ?? 999;
+  if (estado === "al-dia") {
+    const proximo = proximoDiaPago(contrato, inicioPeriodo);
+    proximo.setDate(proximo.getDate() - 1);
+    const pagoPeriodo = conf.find(p => p.fecha >= inicioISO);
+    return { pagadoHasta: pagoPeriodo ? proximo.toISOString().slice(0, 10) : null, estadoLabel, dias };
   }
-  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  const targetDay = norm(diaPago) === "miercoles" ? 3 : 1;
-  const d = new Date(hoy + "T00:00:00");
-  while (d.getDay() !== targetDay) d.setDate(d.getDate() - 1);
-  const inicioPeriodo = d.toISOString().slice(0, 10);
-  const pagoPeriodo = conf.find(p => p.fecha >= inicioPeriodo);
-  if (pagoPeriodo) return 0;
-  return Math.floor((new Date(hoy + "T00:00:00").getTime() - d.getTime()) / 86400000);
+  return { pagadoHasta: conf[0]?.fecha ?? null, estadoLabel, dias };
 }
 
 function getProtocoloStep(dias: number): { paso: number; label: string; color: string; bg: string } {
@@ -124,9 +107,6 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   }, []);
 
   const hoy = new Date().toISOString().slice(0, 10);
-  const diaSem = new Date(hoy + "T00:00:00").getDay();
-  const esLunes = diaSem === 1;
-  const esMiercoles = diaSem === 3;
 
   const [tab, setTab] = useState<Tab>("diario");
   const [busqueda, setBusqueda] = useState("");
@@ -168,21 +148,21 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const valorPeriodo = (c as { valor_periodo?: number }).valor_periodo ?? c.valor_semanal ?? valorPactado * 7;
         const esContratoDiario = (c.forma_pago ?? "").toLowerCase() === "diario";
         const tipoRuta = esContratoDiario ? "diario" : "semanal";
-        const diaPago = c.dia_pago ?? "Lunes";
-        const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-        const diaPagoNorm = norm(diaPago);
-        const dias = calcDiasConPeriodo(pagosC, tipoRuta, diaPago, hoy, c.fecha_entrega ?? null);
+        const diaPago = esContratoDiario ? "Diario" : formatDiaPago(c);
         const pagadosHoy = pagosC.filter(p => p.fecha === hoy && p.estado === "Confirmado");
         const pagadoHoy = pagadosHoy.reduce((s, p) => s + p.valor, 0);
-        const pagaHoy = esContratoDiario
-          ? true
-          : (diaPagoNorm === "lunes" && esLunes) || (diaPagoNorm === "miercoles" && esMiercoles);
-        const { pagadoHasta, estadoLabel } = esContratoDiario
-          ? {
-              pagadoHasta: pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha))[0]?.fecha ?? null,
-              estadoLabel: (dias === 0 ? "Al día" : dias === 1 ? "Pendiente" : "Mora") as "Al día" | "Pendiente" | "Mora",
-            }
-          : calcPagadoHasta(pagosC, diaPago, hoy);
+        const pagaHoy = esContratoDiario ? true : esDiaDePago(c, new Date(hoy + "T00:00:00"));
+        const { dias, pagadoHasta, estadoLabel } = esContratoDiario
+          ? (() => {
+              const confDiario = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
+              const d = diasDesdeUltimoPago(confDiario[0]?.fecha ?? null, c.fecha_entrega ?? null) ?? 999;
+              return {
+                dias: d,
+                pagadoHasta: confDiario[0]?.fecha ?? null,
+                estadoLabel: (d === 0 ? "Al día" : d === 1 ? "Pendiente" : "Mora") as "Al día" | "Pendiente" | "Mora",
+              };
+            })()
+          : calcEstadoPeriodico(c, pagosC, hoy);
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
         const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada").reduce((s, d) => s + d.monto_pendiente, 0);
         const convActivo = convenioActivoDelContrato(c.id);
@@ -216,7 +196,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           prioridad,
         };
       });
-  }, [contratos, clientes, motos, pagos, deudas, convenioActivoDelContrato, hoy, esLunes, esMiercoles]);
+  }, [contratos, clientes, motos, pagos, deudas, convenioActivoDelContrato, hoy]);
 
   // Tab data
   const filasHoy = useMemo(() => filas.filter(f => f.tipoRuta === "diario"), [filas]);
@@ -672,14 +652,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
               <div style={{ fontSize: 36 }}>📋</div>
               <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>
-                {esLunes || esMiercoles ? "Sin contratos periódicos para hoy" : "Hoy no es día de pago periódico"}
+                Sin contratos periódicos para hoy
               </div>
-              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Los pagos periódicos son solo lunes o miércoles</div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Cada contrato paga en el día pactado (semanal, quincenal o mensual)</div>
             </div>
           ) : (
             <div>
               <div style={{ marginBottom: 10, padding: "8px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0284c7", fontWeight: 600 }}>
-                ⚡ {esLunes ? "Lunes" : "Miércoles"} — día de pago periódico. {filasPeriodicaHoy.length} contratos.
+                ⚡ Hoy es día de pago para {filasPeriodicaHoy.length} contrato{filasPeriodicaHoy.length === 1 ? "" : "s"}.
               </div>
               <div style={{ display: "grid", gap: 10 }}>
                 {filtrar([...filasPeriodicaHoy.filter(f => !f.pagadoHoyBool), ...filasPeriodicaHoy.filter(f => f.pagadoHoyBool)]).map(f => (

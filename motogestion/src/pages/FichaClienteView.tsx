@@ -8,6 +8,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useVisitas } from "../hooks/useVisitas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
+import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFecha(s: string | null | undefined) {
@@ -413,7 +414,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                       <Badge bg={ec.bg} color={ec.color}>{c.estado}</Badge>
                       <Badge bg="#f1f5f9" color="#334155">{c.forma_pago}</Badge>
-                      {c.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {c.dia_pago}</Badge>}
+                      {c.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {formatDiaPago(c)}</Badge>}
                     </div>
                     {moto ? (
                       <button

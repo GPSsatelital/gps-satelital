@@ -7,6 +7,7 @@ import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { formatDiaPago } from "../utils/cicloPago";
 
 type GestionRow = { id: string; tipo: string; resultado: string | null; fecha: string; notas: string | null };
 
@@ -352,7 +353,7 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
                 </span>
               </div>
               <InfoFila label="Tarifa diaria" value={`$ ${fmt(contratoActivo.tarifa_diaria ?? 27000)}`} />
-              {contratoActivo.dia_pago && <InfoFila label="Día de pago" value={contratoActivo.dia_pago} />}
+              {contratoActivo.dia_pago && <InfoFila label="Día de pago" value={formatDiaPago(contratoActivo)} />}
               {contratoActivo.fecha_entrega && <InfoFila label="Fecha entrega" value={formatDate(contratoActivo.fecha_entrega)} />}
 
               {esDiario && (

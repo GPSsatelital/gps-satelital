@@ -5,6 +5,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useTaller } from "../hooks/useTaller";
 import { usePagos } from "../hooks/usePagos";
+import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFecha(s: string | null | undefined) {
@@ -349,7 +350,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                       <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <Badge bg="#dcfce7" color="#166534">{contratoActivo.estado}</Badge>
                         <Badge bg="#dbeafe" color="#1d4ed8">{contratoActivo.forma_pago}</Badge>
-                        {contratoActivo.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {contratoActivo.dia_pago}</Badge>}
+                        {contratoActivo.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {formatDiaPago(contratoActivo)}</Badge>}
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>

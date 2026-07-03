@@ -328,6 +328,7 @@ type DatosRecibo = {
   clienteTel: string;
   clienteWhatsapp: string;
   placa: string;
+  grupo: string;
   valor: number;
   metodo: string;
   estado: "Confirmado" | "Pendiente";
@@ -376,39 +377,58 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
         onClick={e => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 480, background: "white", borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "85dvh", overflowY: "auto" }}
       >
-        {/* Encabezado */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        {/* Encabezado (no se imprime) */}
+        <div className="recibo-no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>🧾 Recibo de pago</div>
           <button onClick={onCerrar} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}>✕</button>
         </div>
 
-        {/* Detalle */}
-        <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
-          {[
-            ["Folio",    datos.folio],
-            ["Fecha",    new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")],
-            ["Cliente",  datos.clienteNombre],
-            ["Placa",    datos.placa || "—"],
-            ["Monto",    `$${Math.round(datos.valor).toLocaleString("es-CO")}`],
-            ["Método",   datos.metodo],
-          ].map(([l, v]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 6 }}>
-              <span style={{ fontSize: 13, color: "#64748b" }}>{l}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: l === "Cliente" ? "uppercase" : "none" }}>{v}</span>
-            </div>
-          ))}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
-            <span style={{ fontSize: 13, color: "#64748b" }}>Estado</span>
-            <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-              background: datos.estado === "Confirmado" ? "#dcfce7" : "#fef3c7",
-              color: datos.estado === "Confirmado" ? "#166534" : "#92400e" }}>
-              {datos.estado === "Confirmado" ? "✅ Confirmado" : "⏳ Pendiente validación"}
-            </span>
+        {/* Ticket — esto es lo único que se imprime (ver #recibo-ticket / @media print más abajo) */}
+        <div id="recibo-ticket">
+          <div style={{ textAlign: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
+            {datos.grupo && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{datos.grupo}</div>}
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Comprobante de pago</div>
           </div>
+
+          <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
+            {[
+              ["Folio",    datos.folio],
+              ["Fecha",    new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")],
+              ["Cliente",  datos.clienteNombre],
+              ["Placa",    datos.placa || "—"],
+              ["Monto",    `$${Math.round(datos.valor).toLocaleString("es-CO")}`],
+              ["Método",   datos.metodo],
+            ].map(([l, v]) => (
+              <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 6 }}>
+                <span style={{ fontSize: 13, color: "#64748b" }}>{l}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: l === "Cliente" ? "uppercase" : "none" }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
+              <span style={{ fontSize: 13, color: "#64748b" }}>Estado</span>
+              <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                background: datos.estado === "Confirmado" ? "#dcfce7" : "#fef3c7",
+                color: datos.estado === "Confirmado" ? "#166534" : "#92400e" }}>
+                {datos.estado === "Confirmado" ? "✅ Confirmado" : "⏳ Pendiente validación"}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", fontSize: 11, color: "#94a3b8" }}>¡Gracias por su pago!</div>
         </div>
 
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            #recibo-ticket, #recibo-ticket * { visibility: visible; }
+            #recibo-ticket { position: absolute; top: 0; left: 0; width: 100%; }
+            .recibo-no-print, .recibo-no-print * { display: none !important; }
+          }
+        `}</style>
+
         {fase === "ver" && (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="recibo-no-print" style={{ display: "grid", gap: 10 }}>
             <button
               onClick={() => setFase("whatsapp")}
               style={{ ...primaryBtn, width: "100%", padding: "13px 16px", fontSize: 15 }}
@@ -419,13 +439,13 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
               onClick={() => window.print()}
               style={{ ...secondaryBtn, width: "100%", padding: "13px 16px", fontSize: 15 }}
             >
-              🖨️ Imprimir / Guardar PDF
+              🖨️ Imprimir recibo
             </button>
           </div>
         )}
 
         {fase === "whatsapp" && (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="recibo-no-print" style={{ display: "grid", gap: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 2 }}>¿A qué número enviar?</div>
 
             {telRegistrado && (
@@ -992,6 +1012,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         clienteTel: cliente?.telefono ?? "",
         clienteWhatsapp: cliente?.whatsapp ?? "",
         placa: moto?.placa ?? "",
+        grupo: moto?.grupo ?? "",
         valor: modalMonto,
         metodo: "Efectivo",
         estado: "Confirmado",
@@ -2134,6 +2155,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           clienteTel: cliente?.telefono ?? "",
                           clienteWhatsapp: cliente?.whatsapp ?? "",
                           placa: moto?.placa ?? "",
+                          grupo: moto?.grupo ?? "",
                           valor: p.valor,
                           metodo: p.metodo,
                           estado: "Confirmado",
@@ -2285,6 +2307,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           clienteTel: cliente?.telefono ?? "",
                           clienteWhatsapp: cliente?.whatsapp ?? "",
                           placa: moto?.placa ?? "",
+                          grupo: moto?.grupo ?? "",
                           valor: p.valor,
                           metodo: p.metodo,
                           estado: "Confirmado",

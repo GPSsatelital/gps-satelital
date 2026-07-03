@@ -19,6 +19,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
+import LectorHuella from "../components/LectorHuella";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -669,6 +670,20 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       firmaUrl = url;
     }
 
+    // La huella es opcional (el lector puede fallar o no estar en ese PC) — si se capturó, se sube.
+    let huellaUrl = form.autorizacion_datos_huella_url;
+    if (huellaUrl && huellaUrl.startsWith("data:")) {
+      const blob = await (await fetch(huellaUrl)).blob();
+      const archivo = new File([blob], "huella_autorizacion.png", { type: "image/png" });
+      const { url, error: errSubida } = await subirDocumento(archivo, form.cedula.trim() || "sin-cedula", "autorizacion_datos_huella");
+      if (errSubida || !url) {
+        setGuardando(false);
+        setFormError(errSubida || "No se pudo subir la huella capturada.");
+        return;
+      }
+      huellaUrl = url;
+    }
+
     const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante);
 
     const { error } = await crearCliente({
@@ -681,6 +696,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       referido_por_cedula: form.referido_por_cedula?.trim() || null,
       referido_por_nombre: form.referido_por_nombre?.trim() || null,
       autorizacion_datos_firma_url: firmaUrl,
+      autorizacion_datos_huella_url: huellaUrl,
       estado,
     });
 
@@ -955,8 +971,11 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
               })}
             />
-            <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#f1f5f9", fontSize: 12, color: "#64748b" }}>
-              🔒 Huella dactilar: pendiente de conectar el lector — se agregará en esta misma sección más adelante.
+            <div style={{ marginTop: 12 }}>
+              <LectorHuella
+                label="Huella dactilar del cliente"
+                onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
+              />
             </div>
           </div>
         )}

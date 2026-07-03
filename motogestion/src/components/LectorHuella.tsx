@@ -1,0 +1,167 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  FingerprintReader,
+  SampleFormat,
+  type SamplesAcquired,
+  type QualityReported,
+} from "@digitalpersona/devices";
+import { labelStyle } from "../styles/shared";
+
+interface Props {
+  label: string;
+  onChange: (dataUrl: string | null) => void;
+}
+
+type EstadoLector =
+  | "conectando"
+  | "sin-agente" // la app de HID no está instalada/corriendo en este PC
+  | "sin-lector" // agente ok pero no hay lector USB conectado
+  | "esperando" // listo, esperando el dedo
+  | "capturada";
+
+function base64UrlADataUrl(sample: unknown): string | null {
+  // Con SampleFormat.PngImage cada muestra llega como string base64url del PNG.
+  // Algunas versiones la envían como objeto { Data: "..." }.
+  let b64url: string | null = null;
+  if (typeof sample === "string") b64url = sample;
+  else if (sample && typeof sample === "object" && "Data" in sample) {
+    const d = (sample as { Data: unknown }).Data;
+    if (typeof d === "string") b64url = d;
+  }
+  if (!b64url) return null;
+  let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4 !== 0) b64 += "=";
+  return `data:image/png;base64,${b64}`;
+}
+
+export default function LectorHuella({ label, onChange }: Props) {
+  const [estado, setEstado] = useState<EstadoLector>("conectando");
+  const [huella, setHuella] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const readerRef = useRef<FingerprintReader | null>(null);
+  const capturadaRef = useRef(false);
+
+  useEffect(() => {
+    let activo = true;
+    const reader = new FingerprintReader();
+    readerRef.current = reader;
+
+    reader.on("DeviceConnected", () => {
+      if (!activo) return;
+      setEstado((e) => (e === "capturada" ? e : "esperando"));
+      setAviso(null);
+    });
+    reader.on("DeviceDisconnected", () => {
+      if (!activo) return;
+      if (!capturadaRef.current) setEstado("sin-lector");
+    });
+    reader.on("CommunicationFailed", () => {
+      if (!activo) return;
+      if (!capturadaRef.current) setEstado("sin-agente");
+    });
+    reader.on("QualityReported", (ev: QualityReported) => {
+      if (!activo) return;
+      if (ev.quality !== 0) setAviso("Lectura de baja calidad — ponga el dedo firme y centrado, e intente de nuevo.");
+      else setAviso(null);
+    });
+    reader.on("SamplesAcquired", (ev: SamplesAcquired) => {
+      if (!activo) return;
+      const dataUrl = base64UrlADataUrl(ev.samples?.[0]);
+      if (dataUrl) {
+        capturadaRef.current = true;
+        setHuella(dataUrl);
+        setEstado("capturada");
+        setAviso(null);
+        onChange(dataUrl);
+        reader.stopAcquisition().catch(() => {});
+      } else {
+        setAviso("No se pudo leer la huella — intente de nuevo.");
+      }
+    });
+    reader.on("ErrorOccurred", () => {
+      if (!activo) return;
+      setAviso("Error del lector — retire el dedo e intente de nuevo.");
+    });
+
+    reader
+      .enumerateDevices()
+      .then((devices) => {
+        if (!activo) return;
+        if (devices.length === 0) {
+          setEstado("sin-lector");
+          return;
+        }
+        setEstado("esperando");
+        return reader.startAcquisition(SampleFormat.PngImage);
+      })
+      .catch(() => {
+        if (activo) setEstado("sin-agente");
+      });
+
+    return () => {
+      activo = false;
+      reader.stopAcquisition().catch(() => {});
+      reader.off();
+      readerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function repetir() {
+    capturadaRef.current = false;
+    setHuella(null);
+    setAviso(null);
+    onChange(null);
+    setEstado("esperando");
+    readerRef.current?.startAcquisition(SampleFormat.PngImage).catch(() => setEstado("sin-agente"));
+  }
+
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      {estado === "capturada" && huella ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <img
+            src={huella}
+            alt="Huella capturada"
+            style={{ width: 90, height: 110, objectFit: "contain", background: "#fff", border: "2px solid #16a34a", borderRadius: 10 }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>✔ Huella capturada</div>
+            <button
+              type="button"
+              onClick={repetir}
+              style={{ marginTop: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, cursor: "pointer" }}
+            >
+              🔄 Repetir captura
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 600,
+            background:
+              estado === "esperando" ? "#dcfce7" : estado === "conectando" ? "#f1f5f9" : "#fee2e2",
+            color:
+              estado === "esperando" ? "#166534" : estado === "conectando" ? "#64748b" : "#991b1b",
+          }}
+        >
+          {estado === "conectando" && "Conectando con el lector de huellas..."}
+          {estado === "esperando" && "👆 Lector listo — ponga el dedo índice del cliente en el lector."}
+          {estado === "sin-lector" && "Lector de huellas no detectado — conecte el DigitalPersona 4500 por USB."}
+          {estado === "sin-agente" &&
+            "No se pudo conectar con el software del lector en este PC. Verifique que la app de HID DigitalPersona esté instalada y corriendo, y recargue la página."}
+        </div>
+      )}
+      {aviso && (
+        <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "#fef3c7", color: "#92400e", fontSize: 12 }}>
+          ⚠ {aviso}
+        </div>
+      )}
+    </div>
+  );
+}

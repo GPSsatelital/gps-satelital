@@ -860,8 +860,14 @@ where fecha_entrega is not null
   - **Decisión: no se empieza ahora.** Se prioriza dejar completo y probado el flujo de PC primero.
 
 **Plan de las 4 piezas a construir en PC (fase actual):**
-1. **Tratamiento de datos al registrar cliente nuevo** (ClientesView) ✅ **construido (2 jul 2026, commit `483e4e6` en main)** — sección "Autorización de tratamiento de datos" al final del formulario de registro, con firma (`CanvasFirma`, ahora componente compartido en `src/components/`). Bloquea el registro (`handleGuardar`) si no hay firma. Huella queda como texto "🔒 pendiente de conectar el lector" — el campo `autorizacion_datos_huella_url` ya existe en la BD (migración 030) para cuando se conecte. **Falta correr la migración 030 en Supabase.**
-2. **Huella en Contrato y Pagaré** (WizardContrato pasos 3 y 4) — 🔲 pendiente, depende de tener el lector HID conectado y probado (el usuario dijo que aún no lo tiene listo). El Certificado (paso 5) sigue igual, es una foto de documento físico firmado en papel (no cambia).
+1. **Tratamiento de datos al registrar cliente nuevo** (ClientesView) ✅ **construido (2 jul 2026, commit `483e4e6` en main)** — sección "Autorización de tratamiento de datos" al final del formulario de registro, con firma (`CanvasFirma`, ahora componente compartido en `src/components/`). Bloquea el registro (`handleGuardar`) si no hay firma. **Falta confirmar que la migración 030 se corrió en Supabase.**
+   - **Huella dactilar conectada (2 jul 2026)** ✅ — el usuario instaló el driver **Non-WBF** + la app cliente de HID en el PC de la oficina. Integración construida:
+     - `public/websdk/websdk.client.ui.js` — script oficial de HID (copiado del sample `hidglobal/digitalpersona-sample-angularjs`, MIT; el paquete npm NO lo trae). Se carga con `<script>` normal en `index.html` — **nunca importarlo como módulo**. Es el puente navegador ↔ app local de HID.
+     - `vite.config.ts` — alias `WebSdk` → `src/types/websdk-shim.ts` (shim vacío), porque `@digitalpersona/devices` hace `import 'WebSdk'` que Vite no puede resolver; el código real viene del script global. Typings ambient en `src/types/websdk.d.ts` (del mismo sample).
+     - `src/components/LectorHuella.tsx` — usa `FingerprintReader` de `@digitalpersona/devices` (npm, ya instalado) con `SampleFormat.PngImage` (la huella llega como PNG en base64url → se convierte a dataURL, manejando string u objeto `{Data}`). Estados: conectando / sin-agente (app HID no corre) / sin-lector (USB desconectado) / esperando dedo / capturada (preview + botón repetir). Avisos de calidad vía `QualityReported`.
+     - ClientesView: la huella es **opcional al guardar** (decisión: si el lector falla no se bloquea el registro — la firma sí sigue obligatoria); si se capturó se sube al bucket `documentos` (`{cedula}/autorizacion_datos_huella/huella_autorizacion.png`) → `clientes.autorizacion_datos_huella_url`.
+     - ⚠️ **Pendiente primera prueba con el lector físico real** — no se pudo probar sin el hardware; abrir "Nuevo cliente" en el PC con el lector conectado y reportar qué muestra la sección de huella.
+2. **Huella en Contrato y Pagaré** (WizardContrato pasos 3 y 4) — 🔲 pendiente. Reutilizar `LectorHuella` (ya existe); se conecta DESPUÉS de validar la primera captura real en ClientesView, para no duplicar un patrón sin probar. El Certificado (paso 5) sigue igual, es una foto de documento físico firmado en papel (no cambia).
 3. **Confirmación antes de asignar moto** (WizardContrato paso 2) ✅ **construido** — `confirm()` con placa + marca/modelo + nombre del cliente antes de llamar `handleStep2`.
 4. **Entrega con 5 fotos guiadas** (WizardContrato paso 6) ✅ **construido** — `fotos_entrega` pasó de array plano a objeto etiquetado por ángulo (`delantera`/`lateral_izquierdo`/`arriba`/`lateral_derecho`/`trasera`), cada slot con un ícono SVG chico (`IconoAngulo`) que marca con una flecha desde dónde tomar la foto. Bloquea "Activar contrato" si falta alguna de las 5. **No se pudo probar visualmente en el navegador** (requiere llegar al paso 6 completando 1-5 con datos válidos, y no había sesión de login disponible) — verificar en el primer uso real.
 
@@ -876,9 +882,9 @@ alter table public.clientes
 ```
 
 ### Próximos pasos sugeridos 🔲
-- **Correr la migración 030** en Supabase (arriba) — sin esto, el registro de clientes nuevos falla al guardar la firma de autorización.
+- **Correr/confirmar la migración 030** en Supabase (arriba) — sin esto, el registro de clientes nuevos falla al guardar la firma de autorización.
+- **Primera prueba real del lector de huellas** en ClientesView → Nuevo cliente (PC de la oficina con el DigitalPersona 4500 conectado). Según resultado, conectar la huella también en Contrato/Pagaré (WizardContrato pasos 3-4) reutilizando `LectorHuella`.
 - **Probar en el navegador real** las 5 fotos guiadas del paso 6 y la confirmación de moto del paso 2 (no se pudo verificar en esta sesión por falta de credenciales de login).
-- Cuando el lector HID DigitalPersona esté conectado y con el cliente instalado: conectar la huella en tratamiento de datos (ClientesView) y en Contrato/Pagaré (WizardContrato pasos 3-4). Ver investigación completa arriba (hallazgo del 2 jul 2026).
 - Confirmar modelo exacto de la impresora POS y probar `window.print()` del recibo con papel térmico real.
 - Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).

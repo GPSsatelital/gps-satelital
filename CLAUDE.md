@@ -649,6 +649,8 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | RLS contratos bloqueando insert | Políticas usaban `current_role()` — corregir a `public.mi_rol()` con roles ADMIN, ADMIN_PRINCIPAL, SECRETARIA |
 | `useScope()` fuera del `SubadminScopeProvider` → app no abre (throw) | El provider debe envolver TODO el layout (header incluido), no solo el contenido. `CampanaAlertas` y `BusquedaGlobal` viven en el header → si usan `useScope`, deben estar dentro del provider. Verificar el árbol de render, no solo el archivo. |
 | Canvas de firma se corta a medio trazo | `useEffect` con `[onChange]` como dependencia se reengancha en cada trazo (el padre recrea `onChange` en cada `setState`), perdiendo el estado `drawing` del closure anterior. Enganchar listeners en `useEffect(..., [])` una sola vez y leer el callback desde un `ref` actualizado en cada render. |
+| `ModalConvenio` insert fallaba silenciosamente | El insert usaba columnas inexistentes en `convenios` (`motivo`, `cuota_convenio`, `total_convenio`, `cuotas_totales`, `fecha_inicio`). Antes de insertar en cualquier tabla, verificar el schema real contra las migraciones — nunca inventar nombres de columnas. |
+| Quincenal/Mensual calculaban mora incorrectamente | Usaban la misma lógica que Semanal (día de semana) con `valor_semanal` — completamente incorrecto para contratos de 15/30 días. La solución fue `cicloPago.ts` con `dias_pago_mes` (fechas reales del mes) y período natural entre días de pago consecutivos. |
 
 ---
 
@@ -737,7 +739,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio.
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `39f4d39` (convenio obligatorio + recibo detallado).
 
 **Usuarios en producción:**
 | Email | Nombre | Rol |
@@ -747,7 +749,11 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | andres@hotmail.com | EMIRO | SUBADMIN |
 | angela@hotmail.com | ANGELA | SECRETARIA |
 
-**Estado de WizardContrato.tsx:** Paso 1 completamente corregido. Pasos 2-6 sin cambios.
+**Estado de WizardContrato.tsx:** Paso 1 completamente corregido (Quincenal/Mensual con `dias_pago_mes`, base inicial no editable, convenio obligatorio si base incompleta). Pasos 2-6 sin cambios de lógica (paso 2 tiene confirm() antes de asignar; paso 6 tiene 5 fotos guiadas).
+
+**Estado de cicloPago.ts:** `src/utils/cicloPago.ts` es la fuente única de verdad para cálculos de ciclo de pago. Antes de modificar lógica de mora/prorrateo/período en CUALQUIER vista, verificar primero si la función ya existe ahí.
+
+**Migración 030 pendiente de confirmar:** columnas `autorizacion_datos_*` en `clientes` — sin esto, registrar cliente nuevo falla al guardar la firma. El usuario no confirmó si la corrió.
 
 ### Lo hecho en sesiones anteriores ✅
 1. **SUBADMIN scope completo** — `motos.subadmin_id` (mig 021) + `visitas.asignada_a` (mig 022). Hook `useSubadminScope`/`useScope` + `SubadminScopeProvider` (envuelve TODO el layout, header incluido). Filtrado global en: Motos, Contratos, Cobros, Taller, Liquidaciones, Clientes, Dashboard, CampanaAlertas, BusquedaGlobal.
@@ -755,7 +761,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 3. **Cobro en campo completo** (mig 023 `pagos.ubicacion`) — GPS + foto opcional + recibo provisional WhatsApp + flujo 2 pasos (entregar → confirmar) + conciliación en Caja Diaria.
 4. **Cartera reorganizada: 11 pestañas → 4 secciones** (Hoy · Contratos · Dinero · Historial). Listas dentro de recuadros con scroll propio. KPIs navegan a Contratos con filtro.
 
-### Lo hecho en esta sesión ✅
+### Lo hecho en sesiones anteriores (cont.) ✅
 5. **Panel Hoy rediseñado** — mismo diseño que la sección Contratos:
    - Chips de filtro: `Todos · 🚚 Recolec. · 🔴 Mora · 🟡 Gabela · 🔵 Pagan hoy` (con flexWrap, sin scroll lateral)
    - Buscador por nombre/placa
@@ -811,19 +817,6 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
     - **Fix de paso:** `subirDocumentoAcuerdo()` apuntaba a un bucket `liquidaciones` que **nunca se creó** (ninguna migración lo registra en `storage.buckets` — la subida fallaba en silencio). Cambiado al bucket `documentos` ya existente y con RLS. `useLiquidaciones.ts` referencia el mismo bucket inexistente — **pendiente de revisar** (no se tocó, fuera del alcance de esta tarea).
     - **Para los 44 migrados:** no hay eventos de taller/retención pendientes en el sistema nuevo — nada que resolver retroactivamente. Si el usuario sabe que a algún cliente en particular sí le pasó algo antes de existir el sistema (ej. RMZ62H — SIMON CORREA CANTILLO tuvo una semana en taller por accidente según la columna OBSERVACIONES del Excel de migración), se corrige directo la `fecha_fin_contrato` de ese contrato por el Modal Editar Contrato.
 
-### Migración pendiente de aplicar en Supabase ⚠️
-```sql
-alter table public.contratos
-  add column if not exists fecha_fin_contrato date;
-
-update public.contratos
-set fecha_fin_contrato = (fecha_entrega + make_interval(days => meses * 30))::date
-where fecha_entrega is not null
-  and meses is not null
-  and forma_pago <> 'Diario'
-  and fecha_fin_contrato is null;
-```
-
 ### Plan acordado para completar la migración (fases)
 - **Fase 2 — completar datos por la app (sin más SQL masivo):** aprovechar el día de pago (miércoles) para completar documentos de cliente/acompañante (ClientesView), datos técnicos de motos (MotosView → ✏️ Editar datos), cifras de los contratos pendientes (Modal Editar contrato). **Gap conocido:** no existe forma de adjuntar documentos firmados (contrato/pagaré escaneado) a un contrato ya creado — el wizard solo los captura al crear. Pendiente construir "adjuntar documento" en el detalle.
 - **Fase 3 — cartera clara:** cada cliente = cuota período + deuda de apertura + convenio. Semanas sin rodar/cobrar → deuda `tarifa_atrasada` o `acuerdos_tiempo_rodado`.
@@ -832,6 +825,7 @@ where fecha_entrega is not null
 ### Migraciones ya aplicadas en Supabase por el usuario
 - `021_motos_subadmin.sql` ✅ · `022_visitas_asignacion.sql` ✅ · `023_pagos_ubicacion.sql` ✅ · `026_rls_hardening.sql` ✅ · `027_contratos_auditoria.sql` ✅
 - `028_fecha_fin_contrato.sql` ✅ · `029_documentos_delete_policy.sql` ✅ — verificadas en Supabase (2 jul 2026): columna existe, backfill aplicado, política de borrado activa.
+- `031_dias_pago_mes.sql` ✅ — columna `dias_pago_mes integer[]` en `contratos`, aplicada por el usuario (3 jul 2026).
 
 ### Completado (2 jul 2026, commit `44fca9f` en main) ✅
 - **Cancelar contrato mal gestionado**: botón "🗑️ Cancelar y eliminar" en el wizard — borra por completo (fila, fotos/firmas, libera moto) un intento "En proceso" nunca activado, en vez de dejarlo atascado como pasaba antes al solo cerrar el wizard. `eliminarContratoEnProceso()` en `useContratos.ts`.
@@ -893,14 +887,54 @@ alter table public.clientes
   add column if not exists autorizacion_datos_fecha timestamptz;
 ```
 
+### Lo hecho en esta sesión ✅
+18. **`src/utils/cicloPago.ts` — módulo único para ciclos de pago (3 jul 2026, commit `a7d65c3` en main):**
+    - Reemplazó 5+ implementaciones duplicadas dispersas en CobrosView, DashboardView, CobroDiarioView, y otros archivos de display (BusquedaGlobal, ClienteDetalleSheet, ContratosView, FichaClienteView, FichaMotoView, useDocumentos).
+    - **Semanal:** lógica sin cambios (día de semana Lunes/Miércoles). **Quincenal/Mensual:** usa `dias_pago_mes: number[]` (fechas reales del mes, ej. [15, 30]) con clamp de fin de mes para meses cortos.
+    - Funciones exportadas: `esDiaDePago`, `inicioPeriodoActual`, `proximoDiaPago`, `valorPeriodoReal` (usa `valor_semanal` × períodos reales, nunca `total/7`), `totalPagadoPeriodoActual`, `calcularEstadoCartera`, `calcularProrrateoInicial`, `estaEnProrrateo`, `formatDiaPago` (devuelve "Lunes"/"Miércoles" o "Días 15 y 30" o "Día 15").
+    - **Bug encontrado de paso:** `ModalConvenio.tsx` hacía insert en columnas inexistentes (`motivo`, `cuota_convenio`, `total_convenio`, `cuotas_totales`, `fecha_inicio`) — probablemente nunca guardaba nada en producción. Corregido con las columnas reales del schema.
+
+19. **Días de pago libres para Quincenal y Mensual** (commit `a7d65c3`):
+    - Nueva columna `contratos.dias_pago_mes integer[]` (mig 031, aplicada ✅ por el usuario).
+    - WizardContrato paso 1: Semanal conserva botones Lunes/Miércoles; Quincenal → 2 date pickers con presets (5&20, 10&25, 15&30); Mensual → 1 date picker con presets. Validación: Quincenal exige 2 fechas distintas, Mensual exige 1.
+    - Prorrateo funciona igual para los 3 tipos (itera día a día detectando domingos con `calcularProrrateoInicial` del módulo `cicloPago`).
+
+20. **Base inicial no editable en WizardContrato paso 1** (commit `a7d65c3`):
+    - Antes era un `<input>` editable. Ahora es una tarjeta de color con 2 líneas centradas: `$ X de $ Y` + `falta $Z` (amarillo si falta, verde si suficiente). El valor siempre viene de `clientes.ingreso_inicial` — el funcionario no puede modificarlo ahí.
+
+21. **ModalConvenio rediseñado — todos los convenios trabajan con meta** (commit `39f4d39` en main):
+    - Decisión del usuario: "la idea de los convenios sí es llegar a la meta de pagar lo que deba". El modal siempre apunta a un monto total.
+    - Si viene prop `metaFija` (ej. base inicial incompleta): no editable. Si no viene (caso general): se precarga con la deuda pendiente registrada del contrato, editable.
+    - Toggle "Fijar por N° de cuotas / Fijar por valor de cuota". El que no se fija se calcula solo con `Math.ceil(meta / otro)`. Total siempre ≥ meta (a lo sumo unos pesos arriba por redondeo).
+    - Props nuevas: `metaFija?: number`, `motivoInicial?: string`, `obligatorio?: boolean`.
+    - Fix de columnas: el insert ahora usa solo los campos reales del schema.
+
+22. **Convenio obligatorio cuando falta base inicial** (commit `39f4d39`):
+    - WizardContrato paso 1: tras el insert exitoso del contrato, si `ahorroEntregado < baseRequerida` → se muestra `<ModalConvenio obligatorio metaFija={baseRequerida - ahorroEntregado} motivoInicial="Base inicial incompleta...">` sin poder cerrarlo. Solo avanza al paso 2 (asignar moto) tras guardar el convenio.
+    - Con base suficiente: pasa directo al paso 2, igual que antes.
+
+23. **Recibo detallado con desglose de cuenta** (commit `39f4d39`):
+    - `DatosRecibo` ampliado: `debiaTotal`, `aplicadoTarifa`, `aplicadoDeuda`, `aplicadoConvenio`, `aplicadoSaldoFavor`, `pendienteDespues`, `convenioAbonado`, `convenioRestante`.
+    - Sección "Detalle de su cuenta" en `#recibo-ticket` (impreso) y en `buildMsg()` (WhatsApp): cuánto debía, qué cubrió el pago desglosado, cuánto queda, estado del convenio si aplica.
+
+### Migración pendiente de aplicar en Supabase ⚠️
+```sql
+alter table public.clientes
+  add column if not exists autorizacion_datos_firma_url text,
+  add column if not exists autorizacion_datos_huella_url text,
+  add column if not exists autorizacion_datos_fecha timestamptz;
+```
+*(mig 030 — requerida para que el registro de cliente nuevo guarde la firma de autorización)*
+
 ### Próximos pasos sugeridos 🔲
 - **Correr/confirmar la migración 030** en Supabase (arriba) — sin esto, el registro de clientes nuevos falla al guardar la firma de autorización.
 - **Primera prueba real del lector de huellas** en ClientesView → Nuevo cliente (PC de la oficina con el DigitalPersona 4500 conectado). Según resultado, conectar la huella también en Contrato/Pagaré (WizardContrato pasos 3-4) reutilizando `LectorHuella`.
-- **Probar en el navegador real** las 5 fotos guiadas del paso 6 y la confirmación de moto del paso 2 (no se pudo verificar en esta sesión por falta de credenciales de login).
+- **Probar en el navegador real** las 5 fotos guiadas del paso 6 y la confirmación de moto del paso 2 (no se pudo verificar por falta de credenciales de login).
 - **Probar recibo impreso con la impresora GA-E2001 real** — hacer un cobro de prueba en Cartera y confirmar alineación/ancho del ticket.
-- Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
+- **Probar convenio obligatorio en flujo real**: crear un contrato con base insuficiente y verificar que aparece el modal forzado, que el convenio guarda correctamente, y que avanza al paso 2.
+- Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
-- Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en `useUbicaciones.ts` (hallazgo #17), no se tocó por estar fuera del alcance de esa tarea.
+- Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en tiempo rodado (#17), no se tocó por estar fuera del alcance de esa tarea.
 - Estado de cuenta de apertura firmable (fase 4 — pendiente de evaluar).
 - Retomar auditoría móvil 375px en las pantallas restantes.
 - **Gestión de permisos por usuario (UsuariosView)** — lista de usuarios, toggle de permisos activos/inactivos por módulo, organizado por categoría, jerarquía por rol, base: `profiles.permisos` (jsonb).

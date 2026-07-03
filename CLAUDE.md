@@ -876,6 +876,15 @@ where fecha_entrega is not null
 
 5. **Fix real reportado por el usuario (3 jul 2026, commit `f3757b5` en main): la firma se cortaba al escribir** — "escribo un poco y luego no me deja hasta que retiro el dedo y nuevamente pasa lo mismo". Causa: `CanvasFirma.tsx` enganchaba los listeners (`mousedown`/`mousemove`/`touchstart`/etc.) en un `useEffect` con `[onChange]` como dependencia. Cada trazo llama `onChange(dataUrl)` → el padre (ClientesView) hace `setState` → se crea una nueva función `onChange` en cada render → el efecto se vuelve a ejecutar (desengancha y reengancha listeners) **a mitad del trazo**, perdiendo la variable local `drawing` (capturada en el closure del efecto anterior). Mismo patrón de fondo que el bug de `DetallePanel`/`PanelDetalle` (ver ERRORES PASADOS), pero manifestado distinto: ahí perdía foco, aquí corta un trazo continuo. **Fix:** listeners enganchados una sola vez (`useEffect(..., [])`) + `onChange` leído desde un `ref` (`onChangeRef.current = onChange` en cada render, usado dentro de los handlers) en vez de la dependencia directa. ⚠️ No se pudo probar en navegador por falta de credenciales de login — pedir confirmación al usuario tras el deploy.
 
+### Impresora POS térmica — recibo de pago imprimible ✅ (3 jul 2026, commit `5f8edb5` en main)
+- Impresora confirmada por el usuario: aparece en Windows como **"GA-E2001"** (driver ya instalado, se ve en Configuración → Impresoras). No se identificó el modelo exacto en catálogos públicos (no es "Digital POS DIG-E200I" con certeza) — no importa para el código: **el ancho de papel (58/80mm) lo define el driver/propiedades de la impresora en Windows, no el CSS de la web.**
+- `ReciboPanel` en `CobrosView.tsx` (único lugar del sistema con `DatosRecibo`/`ReciboPanel` — confirmado por grep, no hay que replicar en otro archivo): antes `window.print()` imprimía toda la pantalla (modal + fondo oscurecido) porque no había ninguna hoja `@media print`. Ahora:
+  - El contenido a imprimir vive en `#recibo-ticket` (encabezado + tabla de datos + estado); todo lo demás (header del modal, botones, sección WhatsApp) tiene la clase `recibo-no-print`.
+  - `@media print`: oculta todo (`visibility: hidden`) excepto `#recibo-ticket`, y esconde por completo (`display:none`) cualquier elemento `.recibo-no-print`.
+  - Encabezado impreso: **"CLUB DE MOTEROS"** + el grupo de la moto (COSTA/PRADERA/RASTREADOR/USADAS) debajo — se agregó el campo `grupo` a `DatosRecibo`, tomado de `moto.grupo` en los 3 sitios donde se arma el recibo (pago en efectivo, confirmar pago campo, recibo desde historial).
+  - Botón renombrado de "Imprimir / Guardar PDF" a "Imprimir recibo" (ya no ambiguo, ahora es literalmente eso).
+- ⚠️ **Pendiente primera prueba con la impresora física real** — no se pudo verificar en este entorno (sin login ni impresora conectada). El usuario debe hacer un cobro de prueba en Cartera, tocar "🖨️ Imprimir recibo" y confirmar que sale bien alineado al ancho del papel de la GA-E2001.
+
 ### Migración pendiente de aplicar en Supabase ⚠️
 ```sql
 alter table public.clientes
@@ -888,7 +897,7 @@ alter table public.clientes
 - **Correr/confirmar la migración 030** en Supabase (arriba) — sin esto, el registro de clientes nuevos falla al guardar la firma de autorización.
 - **Primera prueba real del lector de huellas** en ClientesView → Nuevo cliente (PC de la oficina con el DigitalPersona 4500 conectado). Según resultado, conectar la huella también en Contrato/Pagaré (WizardContrato pasos 3-4) reutilizando `LectorHuella`.
 - **Probar en el navegador real** las 5 fotos guiadas del paso 6 y la confirmación de moto del paso 2 (no se pudo verificar en esta sesión por falta de credenciales de login).
-- Confirmar modelo exacto de la impresora POS y probar `window.print()` del recibo con papel térmico real.
+- **Probar recibo impreso con la impresora GA-E2001 real** — hacer un cobro de prueba en Cartera y confirmar alineación/ancho del ticket.
 - Completar datos de motos técnicos y los 2 contratos Pradera pendientes cuando el usuario los tenga (RMZ69H, RMZ64H — ahora se puede por el Modal Editar contrato, sin SQL).
 - Migrar datos reales de COSTA y RASTREADOR (mismo proceso que Pradera).
 - Revisar `useLiquidaciones.ts` — mismo bucket `liquidaciones` inexistente que se corrigió en `useUbicaciones.ts` (hallazgo #17), no se tocó por estar fuera del alcance de esa tarea.

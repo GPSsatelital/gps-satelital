@@ -267,6 +267,15 @@ type DatosRecibo = {
   valor: number;
   metodo: string;
   estado: "Confirmado" | "Pendiente";
+  // Detalle de cuenta — para que el cliente sepa exactamente cuánto le falta.
+  debiaTotal: number;
+  aplicadoTarifa: number;
+  aplicadoDeuda: number;
+  aplicadoConvenio: number;
+  aplicadoSaldoFavor: number;
+  pendienteDespues: number;
+  convenioAbonado: number | null;
+  convenioRestante: number | null;
 };
 
 function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
@@ -282,6 +291,16 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
       datos.placa ? `Placa: ${datos.placa}` : "",
       `Monto: $${Math.round(datos.valor).toLocaleString("es-CO")}`,
       `Método: ${datos.metodo}`,
+      "",
+      "*Detalle de su cuenta:*",
+      `Debía en total: $${Math.round(datos.debiaTotal).toLocaleString("es-CO")}`,
+      datos.aplicadoTarifa > 0 ? `→ A la cuota: $${Math.round(datos.aplicadoTarifa).toLocaleString("es-CO")}` : "",
+      datos.aplicadoDeuda > 0 ? `→ A deuda: $${Math.round(datos.aplicadoDeuda).toLocaleString("es-CO")}` : "",
+      datos.aplicadoConvenio > 0 ? `→ A convenio: $${Math.round(datos.aplicadoConvenio).toLocaleString("es-CO")}` : "",
+      datos.aplicadoSaldoFavor > 0 ? `→ Saldo a favor: $${Math.round(datos.aplicadoSaldoFavor).toLocaleString("es-CO")}` : "",
+      `Le queda pendiente: $${Math.round(datos.pendienteDespues).toLocaleString("es-CO")}`,
+      datos.convenioAbonado != null ? `Abonó hoy al convenio: $${Math.round(datos.convenioAbonado).toLocaleString("es-CO")}` : "",
+      datos.convenioAbonado != null ? `Le falta del convenio: $${Math.round(datos.convenioRestante ?? 0).toLocaleString("es-CO")}` : "",
       "",
       datos.estado === "Confirmado"
         ? "✅ PAGO CONFIRMADO. ¡Gracias por su pago!"
@@ -348,6 +367,39 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
                 {datos.estado === "Confirmado" ? "✅ Confirmado" : "⏳ Pendiente validación"}
               </span>
             </div>
+          </div>
+
+          <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 2 }}>Detalle de su cuenta</div>
+            {[
+              ["Debía en total",       `$${Math.round(datos.debiaTotal).toLocaleString("es-CO")}`],
+              datos.aplicadoTarifa > 0 ? ["→ A la cuota", `$${Math.round(datos.aplicadoTarifa).toLocaleString("es-CO")}`] : null,
+              datos.aplicadoDeuda > 0 ? ["→ A deuda", `$${Math.round(datos.aplicadoDeuda).toLocaleString("es-CO")}`] : null,
+              datos.aplicadoConvenio > 0 ? ["→ A convenio", `$${Math.round(datos.aplicadoConvenio).toLocaleString("es-CO")}`] : null,
+              datos.aplicadoSaldoFavor > 0 ? ["→ Saldo a favor", `$${Math.round(datos.aplicadoSaldoFavor).toLocaleString("es-CO")}`] : null,
+              ["Le queda pendiente",  `$${Math.round(datos.pendienteDespues).toLocaleString("es-CO")}`],
+            ].filter(Boolean).map((fila) => {
+              const [l, v] = fila as [string, string];
+              return (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>{l}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{v}</span>
+                </div>
+              );
+            })}
+            {datos.convenioAbonado != null && (
+              <>
+                <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 4, paddingTop: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>Convenio</div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>Abonó hoy al convenio</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>${Math.round(datos.convenioAbonado).toLocaleString("es-CO")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>Le falta del convenio</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>${Math.round(datos.convenioRestante ?? 0).toLocaleString("es-CO")}</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{ textAlign: "center", fontSize: 11, color: "#94a3b8" }}>¡Gracias por su pago!</div>
@@ -658,6 +710,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     });
   }, [contratosActivos, pagos, deudas, convenios]);
 
+  // ── Helpers para el detalle del recibo ──────────────────────────────────────
+  function calcularPendienteContrato(c: typeof resumenContratos[number]): number {
+    const enProrrateo = estaEnProrrateo(c, c.sinPagosNunca ?? true);
+    const cuotaPact = c.forma_pago === "Diario"
+      ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
+      : enProrrateo ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
+    const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
+    return Math.max(cuotaPact - pagadoP, 0) + c.deudaContrato + c.cuotaConvenio;
+  }
+
+  function sumaAbonadoConvenio(convenioId: string): number {
+    return pagos
+      .filter(p => p.convenio_id === convenioId && p.estado === "Confirmado")
+      .reduce((acc, p) => acc + (p.aplicado_convenio ?? 0), 0);
+  }
+
   const enMora = resumenContratos.filter(r => r.estadoCartera === "mora");
   const enGabela = resumenContratos.filter(r => r.estadoCartera === "gabela");
   const alDia = resumenContratos.filter(r => r.estadoCartera === "al-dia");
@@ -951,6 +1019,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         valor: modalMonto,
         metodo: "Efectivo",
         estado: "Confirmado",
+        debiaTotal: modalCuotaPendiente + (modalContrato?.deudaContrato ?? 0) + (modalContrato?.cuotaConvenio ?? 0),
+        aplicadoTarifa: modalDesglose.tarifa,
+        aplicadoDeuda: modalDesglose.deuda,
+        aplicadoConvenio: modalDesglose.convenio,
+        aplicadoSaldoFavor: modalDesglose.saldo,
+        pendienteDespues: Math.max(modalCuotaPendiente + (modalContrato?.deudaContrato ?? 0) + (modalContrato?.cuotaConvenio ?? 0) - modalMonto, 0),
+        convenioAbonado: modalContrato?.convenioActivo ? modalDesglose.convenio : null,
+        convenioRestante: modalContrato?.convenioActivo
+          ? Math.max(modalContrato.convenioActivo.deuda_total - sumaAbonadoConvenio(modalContrato.convenioActivo.id) - modalDesglose.convenio, 0)
+          : null,
       });
     } else {
       // Transferencia = pendiente → solo aviso, el recibo saldrá al confirmar
@@ -2081,6 +2159,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         const contrato = contratos.find(c => c.id === p.contrato_id);
                         const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
                         const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
+                        const contratoResumen = resumenContratos.find(c => c.id === p.contrato_id);
+                        const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
+                        const convenioActivo = contratoResumen?.convenioActivo ?? null;
                         setReciboData({
                           folio: p.folio ?? "—",
                           fecha: p.fecha,
@@ -2092,6 +2173,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           valor: p.valor,
                           metodo: p.metodo,
                           estado: "Confirmado",
+                          debiaTotal: pendienteDespues + p.valor,
+                          aplicadoTarifa: p.aplicado_tarifa ?? 0,
+                          aplicadoDeuda: p.aplicado_deuda ?? 0,
+                          aplicadoConvenio: p.aplicado_convenio ?? 0,
+                          aplicadoSaldoFavor: p.aplicado_saldo_favor ?? 0,
+                          pendienteDespues,
+                          convenioAbonado: convenioActivo ? (p.aplicado_convenio ?? 0) : null,
+                          convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
                         });
                       }
                     }}
@@ -2233,18 +2322,31 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     )}
                     {p.estado === "Confirmado" && (
                       <button
-                        onClick={() => setReciboData({
-                          folio: p.folio ?? "—",
-                          fecha: p.fecha,
-                          clienteNombre: cliente?.nombre ?? "",
-                          clienteTel: cliente?.telefono ?? "",
-                          clienteWhatsapp: cliente?.whatsapp ?? "",
-                          placa: moto?.placa ?? "",
-                          grupo: moto?.grupo ?? "",
-                          valor: p.valor,
-                          metodo: p.metodo,
-                          estado: "Confirmado",
-                        })}
+                        onClick={() => {
+                          const contratoResumen = resumenContratos.find(c => c.id === p.contrato_id);
+                          const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
+                          const convenioActivo = contratoResumen?.convenioActivo ?? null;
+                          setReciboData({
+                            folio: p.folio ?? "—",
+                            fecha: p.fecha,
+                            clienteNombre: cliente?.nombre ?? "",
+                            clienteTel: cliente?.telefono ?? "",
+                            clienteWhatsapp: cliente?.whatsapp ?? "",
+                            placa: moto?.placa ?? "",
+                            grupo: moto?.grupo ?? "",
+                            valor: p.valor,
+                            metodo: p.metodo,
+                            estado: "Confirmado",
+                            debiaTotal: pendienteDespues + p.valor,
+                            aplicadoTarifa: p.aplicado_tarifa ?? 0,
+                            aplicadoDeuda: p.aplicado_deuda ?? 0,
+                            aplicadoConvenio: p.aplicado_convenio ?? 0,
+                            aplicadoSaldoFavor: p.aplicado_saldo_favor ?? 0,
+                            pendienteDespues,
+                            convenioAbonado: convenioActivo ? (p.aplicado_convenio ?? 0) : null,
+                            convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
+                          });
+                        }}
                         style={miniBtn("#dcfce7", "#166534")}
                       >
                         🧾 Recibo

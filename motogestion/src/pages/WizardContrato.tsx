@@ -7,6 +7,7 @@ import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
+import ModalConvenio from "../components/ModalConvenio";
 import { calcularProrrateoInicial, proximoDiaPago } from "../utils/cicloPago";
 
 type Props = {
@@ -112,6 +113,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  // Convenio obligatorio cuando la base inicial quedó incompleta al crear el contrato.
+  const [convenioPendiente, setConvenioPendiente] = useState<{ contratoId: string; falta: number } | null>(null);
 
   async function handleCancelarYEliminar() {
     if (!contratoId || !contratoData || eliminando) return;
@@ -276,7 +279,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       if (err) { setError(err.message); return; }
       setContratoId(data.id);
       setContratoData(data as Contrato);
-      setStep(2);
+      if (form.forma_pago !== "Diario" && !baseSuficiente) {
+        setConvenioPendiente({ contratoId: data.id, falta: baseRequerida - ahorroEntregado });
+      } else {
+        setStep(2);
+      }
     } finally {
       setGuardando(false);
     }
@@ -855,6 +862,17 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         </div>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      {convenioPendiente && (
+        <ModalConvenio
+          contratoId={convenioPendiente.contratoId}
+          clienteNombre={clienteActual?.nombre ?? ""}
+          metaFija={convenioPendiente.falta}
+          motivoInicial="Base inicial incompleta al crear el contrato"
+          obligatorio
+          onClose={() => { setConvenioPendiente(null); setStep(2); }}
+        />
+      )}
     </div>
   );
 }

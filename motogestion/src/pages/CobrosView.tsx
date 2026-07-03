@@ -18,6 +18,18 @@ import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
+import {
+  calcularEstadoCartera as calcularEstadoCarteraCiclo,
+  calcularProrrateoInicial,
+  estaEnProrrateo,
+  esDiaDePago,
+  inicioPeriodoActual,
+  proximoDiaPago,
+  formatDiaPago,
+  totalPagadoPeriodoActual,
+  valorPeriodoReal,
+  type ContratoCiclo,
+} from "../utils/cicloPago";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -150,18 +162,6 @@ function InfoBox({ label, value, highlight }: { label: string; value: string; hi
 }
 
 // ─── Day-of-week logic ────────────────────────────────────────────────────────
-const DIAS: Record<string, number> = {
-  Lunes: 1,
-  Martes: 2,
-  Miercoles: 3,
-  Miércoles: 3,
-  Jueves: 4,
-  Viernes: 5,
-  Sabado: 6,
-  Sábado: 6,
-  Domingo: 0,
-};
-
 const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
@@ -183,22 +183,19 @@ type EstadoCuenta = {
 };
 
 function calcEstadoCuenta(
-  formaPago: string,
-  diaPago: string,
+  contrato: ContratoCiclo,
   pagosConfirmados: Array<{ fecha: string }>,
-  fechaEntrega?: string | null,
 ): EstadoCuenta {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const hoyISO = hoy.toISOString().slice(0, 10);
+  const formaPago = contrato.forma_pago;
+  const fechaEntrega = contrato.fecha_entrega ?? null;
 
   const sorted = [...pagosConfirmados].sort((a, b) => b.fecha.localeCompare(a.fecha));
   const ultimoPago = sorted[0]?.fecha ?? null;
 
-  const esDiario = formaPago === "Diario";
-  const diasPeriodo = formaPago === "Quincenal" ? 15 : formaPago === "Mensual" ? 30 : 7;
-
-  if (esDiario) {
+  if (formaPago === "Diario") {
     if (!ultimoPago) {
       // Contrato diario nuevo sin pagos: al día hasta mañana
       return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyISO, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
@@ -213,21 +210,17 @@ function calcEstadoCuenta(
     return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyISO, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
   }
 
-  const targetDay = DIAS[diaPago] ?? 1;
-  const d = new Date(hoy);
-  while (d.getDay() !== targetDay) d.setDate(d.getDate() - 1);
+  const d = inicioPeriodoActual(contrato, hoy);
   const inicioPeriodo = d.toISOString().slice(0, 10);
-
-  const prox = new Date(d);
-  prox.setDate(prox.getDate() + diasPeriodo);
+  const prox = proximoDiaPago(contrato, d);
   const proximoPago = prox.toISOString().slice(0, 10);
 
   const pagoPeriodo = sorted.find(p => p.fecha >= inicioPeriodo);
   if (pagoPeriodo) {
-    const pagadoHasta = new Date(d);
-    pagadoHasta.setDate(pagadoHasta.getDate() + diasPeriodo - 1);
+    const pagadoHasta = new Date(prox);
+    pagadoHasta.setDate(pagadoHasta.getDate() - 1);
     return {
-      formaPago, diaPago, ultimoPago: pagoPeriodo.fecha,
+      formaPago, diaPago: formatDiaPago(contrato), ultimoPago: pagoPeriodo.fecha,
       pagadoHasta: pagadoHasta.toISOString().slice(0, 10),
       proximoPago, diasEstado: 0,
       etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
@@ -237,7 +230,7 @@ function calcEstadoCuenta(
   // Si el contrato fue entregado después del inicio del período → aún no vence el primer cobro
   if (fechaEntrega && fechaEntrega >= inicioPeriodo) {
     return {
-      formaPago, diaPago, ultimoPago: null, pagadoHasta: null,
+      formaPago, diaPago: formatDiaPago(contrato), ultimoPago: null, pagadoHasta: null,
       proximoPago, diasEstado: 0,
       etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
     };
@@ -248,76 +241,18 @@ function calcEstadoCuenta(
   const colorEtiqueta = diasDesde <= 1 ? "#92400e" : "#991b1b";
   const bgEtiqueta = diasDesde <= 1 ? "#fef3c7" : "#fee2e2";
   return {
-    formaPago, diaPago, ultimoPago,
+    formaPago, diaPago: formatDiaPago(contrato), ultimoPago,
     pagadoHasta: ultimoPago ? (() => {
       const u = new Date(ultimoPago + "T00:00:00");
-      u.setDate(u.getDate() + diasPeriodo - 1);
-      return u.toISOString().slice(0, 10);
+      const siguienteDesdeUltimo = proximoDiaPago(contrato, u);
+      siguienteDesdeUltimo.setDate(siguienteDesdeUltimo.getDate() - 1);
+      return siguienteDesdeUltimo.toISOString().slice(0, 10);
     })() : null,
     proximoPago: inicioPeriodo,
     diasEstado: diasDesde,
     etiqueta: etiqueta as EstadoCuenta["etiqueta"],
     colorEtiqueta, bgEtiqueta,
   };
-}
-
-// Un contrato está en prorrateo solo si fue entregado DESPUÉS del último día de pago
-// y aún no registra pagos. La sola ausencia de pagos no basta: un contrato migrado
-// (saldo de apertura, sin historial) fue entregado hace meses y debe cuota completa.
-function estaEnProrrateo(
-  c: { forma_pago: string; fecha_entrega?: string | null; dia_pago: string },
-  sinPagosNunca: boolean,
-): boolean {
-  if (c.forma_pago === "Diario" || !c.fecha_entrega || !sinPagosNunca) return false;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const target = DIAS[c.dia_pago] ?? 1;
-  const d = new Date(hoy);
-  while (d.getDay() !== target) d.setDate(d.getDate() - 1);
-  return c.fecha_entrega >= d.toISOString().slice(0, 10);
-}
-
-// Calcula el valor real del primer pago (prorrateo) para contratos nuevos
-function calcProrrateoInicial(contrato: { fecha_entrega: string | null; dia_pago: string; tarifa_diaria?: number; ahorro_diario?: number; tarifa_domingo?: number; ahorro_domingo?: number }): number {
-  if (!contrato.fecha_entrega) return 0;
-  const pagoDiaLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
-  const pagoDiaDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
-  const base = new Date(contrato.fecha_entrega + "T00:00:00");
-  const target = DIAS[contrato.dia_pago] ?? 1;
-  const dias = ((target - base.getDay() + 7) % 7) || 7;
-  let total = 0;
-  for (let i = 1; i <= dias; i++) {
-    const d = new Date(base); d.setDate(d.getDate() + i);
-    total += d.getDay() === 0 ? pagoDiaDom : pagoDiaLS;
-  }
-  return total;
-}
-
-function calcularEstadoCartera(
-  diaPago: string,
-  totalPagadoEstaSemana: number,
-  valorSemanal: number,
-  fechaEntrega: string | null,
-): EstadoCartera {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const hoyJS = hoy.getDay();
-  const diaPagoNum = DIAS[diaPago] ?? 1;
-
-  if (totalPagadoEstaSemana >= valorSemanal) return "al-dia";
-
-  const diasDesde = (hoyJS - diaPagoNum + 7) % 7;
-
-  // Si el contrato fue entregado después del inicio del período actual, aún no vence el primer cobro
-  if (fechaEntrega) {
-    const inicioPeriodo = new Date(hoy);
-    inicioPeriodo.setDate(hoy.getDate() - diasDesde);
-    if (fechaEntrega >= inicioPeriodo.toISOString().slice(0, 10)) return "al-dia";
-  }
-
-  if (diasDesde === 0) return "al-dia";
-  if (diasDesde === 1) return "gabela";
-  return "mora";
 }
 
 // ─── Panel de recibo ─────────────────────────────────────────────────────────
@@ -696,7 +631,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .filter(p => p.fecha === hoy.toISOString().slice(0, 10))
         .reduce((acc, p) => acc + p.valor, 0);
 
-      const estadoCartera = calcularEstadoCartera(contrato.dia_pago, pagadoEstaSemana, contrato.valor_semanal, contrato.fecha_entrega ?? null);
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy);
+      const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       const convenioActivo = convenioActivoDelContrato(contrato.id);
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
@@ -707,6 +643,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       return {
         ...contrato,
         pagadoEstaSemana,
+        pagadoEnPeriodoActual,
         recaudadoHoy,
         estadoCartera,
         deudaContrato,
@@ -727,8 +664,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
   const recaudadoSemanaTotal = resumenContratos.reduce((acc, r) => acc + r.pagadoEstaSemana, 0);
   // ── Pagan Hoy ─────────────────────────────────────────────────────────────
-  const hoyDia = new Date().getDay(); // 0=Sun, 1=Mon...
-
   const paganHoyDiario = useMemo(() =>
     resumenContratos.filter(c => c.forma_pago === "Diario"),
     [resumenContratos]);
@@ -736,8 +671,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const paganHoyPeriodico = useMemo(() =>
     resumenContratos.filter(c => {
       if (c.forma_pago === "Diario") return false;
-      return hoyDia === (DIAS[c.dia_pago] ?? 1);
-    }), [resumenContratos, hoyDia]);
+      return esDiaDePago(c, new Date());
+    }), [resumenContratos]);
 
   const totalPaganHoy = paganHoyDiario.length + paganHoyPeriodico.length;
 
@@ -903,13 +838,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? (contratoDetalle.forma_pago === "Diario"
         ? calcularCuotaDia(contratoDetalle.tarifa_diaria ?? 27000, esDomingo, contratoDetalle.tarifa_domingo)
         : enProrrateo
-          ? calcProrrateoInicial(contratoDetalle)
-          : contratoDetalle.valor_semanal)
+          ? calcularProrrateoInicial(contratoDetalle)
+          : valorPeriodoReal(contratoDetalle))
     : 27000;
 
   const pagadoEnPeriodo = contratoDetalle?.forma_pago === "Diario"
     ? (contratoDetalle?.recaudadoHoy ?? 0)
-    : (contratoDetalle?.pagadoEstaSemana ?? 0);
+    : (contratoDetalle?.pagadoEnPeriodoActual ?? 0);
   const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
   const desglose: AplicadoPago = contratoDetalle
@@ -938,12 +873,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? (modalContrato.forma_pago === "Diario"
         ? calcularCuotaDia(modalContrato.tarifa_diaria ?? 27000, esDomingo, modalContrato.tarifa_domingo)
         : modalEnProrrateo
-          ? calcProrrateoInicial(modalContrato)
-          : modalContrato.valor_semanal)
+          ? calcularProrrateoInicial(modalContrato)
+          : valorPeriodoReal(modalContrato))
     : 0;
   const modalPagadoPeriodo = modalContrato?.forma_pago === "Diario"
     ? (modalContrato?.recaudadoHoy ?? 0)
-    : (modalContrato?.pagadoEstaSemana ?? 0);
+    : (modalContrato?.pagadoEnPeriodoActual ?? 0);
   const modalCuotaPendiente = modalContrato ? Math.max(modalCuotaPactada - modalPagadoPeriodo, 0) : 0;
   const modalMonto = Number(modalValor) || 0;
   const modalDesglose: AplicadoPago = modalContrato
@@ -1194,9 +1129,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const cuotaPact = r.forma_pago === "Diario"
       ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
       : enProrrateoCampo
-        ? calcProrrateoInicial(r)
-        : r.valor_semanal;
-    const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0);
+        ? calcularProrrateoInicial(r)
+        : valorPeriodoReal(r);
+    const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0);
     const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
     const folio = generarFolio();
@@ -1254,10 +1189,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     }
 
     const ec = calcEstadoCuenta(
-      contratoDetalle.forma_pago ?? "semanal",
-      contratoDetalle.dia_pago ?? "Lunes",
+      contratoDetalle,
       pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
-      contratoDetalle.fecha_entrega ?? null,
     );
     const protocolo = calcProtocoloStep(contratoDetalle.diasSinPago);
     const totalPendiente = cuotaPendiente + contratoDetalle.deudaContrato + (contratoDetalle.convenioActivo?.cuota_por_periodo ?? 0);
@@ -1287,7 +1220,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 {clienteDetalle?.cedula && <span style={{ color: "#64748b" }}>CC {clienteDetalle.cedula}</span>}
               </div>
               <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {contratoDetalle.dia_pago}
+                Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
             </div>
@@ -1684,8 +1617,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           const cuotaPact = c.forma_pago === "Diario"
             ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-            : enProrrateoLista ? calcProrrateoInicial(c) : c.valor_semanal;
-          const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
+            : enProrrateoLista ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
+          const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
           // Incluye deuda pendiente y convenio — mismo criterio que Panel Hoy, para no mostrar
           // "Al día" a alguien que arrastra deuda de apertura u otra deuda registrada.
           const pendiente = Math.max(cuotaPact - pagadoP, 0) + c.deudaContrato + c.cuotaConvenio;
@@ -1712,7 +1645,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                   <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
                     {moto ? `🏍️ ${moto.placa} · ` : ""}
-                    {c.forma_pago === "Diario" ? "Diario" : `Paga ${c.dia_pago}`}
+                    {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
                     {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
                       <span style={{ color: "#991b1b", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
                     )}
@@ -2001,8 +1934,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const enProrrateoHoy = estaEnProrrateo(c, c.sinPagosNunca ?? true);
                   const cuotaP = c.forma_pago === "Diario"
                     ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-                    : enProrrateoHoy ? calcProrrateoInicial(c) : c.valor_semanal;
-                  const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEstaSemana ?? 0);
+                    : enProrrateoHoy ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
+                  const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
                   const debePagar = Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
 
                   return (
@@ -2031,7 +1964,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                             {moto && <span style={{ color: "#0284c7", fontWeight: 600 }}>🏍️ {moto.placa} · </span>}
                             {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
                               ? <span style={{ color: "#991b1b", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
-                              : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${c.dia_pago}`}</span>
+                              : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}</span>
                             }
                           </div>
                         </div>
@@ -2396,8 +2329,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const enProrrateoRef = !!r && estaEnProrrateo(r, r.sinPagosNunca ?? true);
                   const cuotaPact = r ? (r.forma_pago === "Diario"
                     ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
-                    : enProrrateoRef ? calcProrrateoInicial(r) : r.valor_semanal) : 0;
-                  const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEstaSemana ?? 0)) : 0;
+                    : enProrrateoRef ? calcularProrrateoInicial(r) : valorPeriodoReal(r)) : 0;
+                  const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0)) : 0;
                   const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
                   const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
                   return (

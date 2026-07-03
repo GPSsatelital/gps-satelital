@@ -7,6 +7,7 @@ import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
+import { calcularProrrateoInicial, proximoDiaPago } from "../utils/cicloPago";
 
 type Props = {
   clientes: Cliente[];
@@ -48,22 +49,21 @@ const CHECKLIST = [
 ];
 
 
-// Prorrateo: día entrega NO incluido, primer día de pago SÍ incluido.
-// Itera día a día detectando domingos para usar tarifa correcta.
-function calcPrimerPago(fecha: string, dia: "Lunes" | "Miércoles", pagoDiaLS: number, pagoDiaDom: number) {
+// Prorrateo del primer pago: día entrega NO incluido, primer día de pago SÍ incluido.
+// Usa el ciclo compartido (cicloPago.ts) — funciona igual para día de semana (Semanal)
+// y fechas de calendario (Quincenal/Mensual).
+function calcPrimerPago(
+  fecha: string,
+  contratoParcial: { forma_pago: FormaPago; dia_pago: string; dias_pago_mes: number[] },
+  pagoDiaLS: number,
+  pagoDiaDom: number,
+) {
+  const ctx = { ...contratoParcial, fecha_entrega: fecha, tarifa_diaria: pagoDiaLS, ahorro_diario: 0, tarifa_domingo: pagoDiaDom, ahorro_domingo: 0 };
+  const valor = calcularProrrateoInicial(ctx);
   const base = new Date(fecha + "T00:00:00");
-  const dow = base.getDay();
-  const target = dia === "Lunes" ? 1 : 3;
-  const dias = ((target - dow + 7) % 7) || 7;
-  let total = 0;
-  for (let i = 1; i <= dias; i++) {
-    const d = new Date(base);
-    d.setDate(d.getDate() + i);
-    total += d.getDay() === 0 ? pagoDiaDom : pagoDiaLS;
-  }
-  const proxima = new Date(base);
-  proxima.setDate(proxima.getDate() + dias);
-  return { dias, fecha: proxima.toISOString().slice(0, 10), valor: total };
+  const objetivo = proximoDiaPago(ctx, base);
+  const dias = Math.round((objetivo.getTime() - base.getTime()) / 86400000);
+  return { dias, fecha: objetivo.toISOString().slice(0, 10), valor };
 }
 
 const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega"];
@@ -143,6 +143,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     ahorro_ls: String(contratoInicial?.ahorro_diario ?? 4000),
     ahorro_dom: String(contratoInicial?.ahorro_domingo ?? 2000),
     dia_pago: contratoInicial?.dia_pago ?? "Lunes",
+    dias_pago_mes: contratoInicial?.dias_pago_mes ?? ([] as number[]),
     meses: String(contratoInicial?.meses ?? ""),
     ahorro_inicial: String(contratoInicial?.ahorro_inicial ?? ""),
     fecha_entrega: contratoInicial?.fecha_entrega ?? hoy,
@@ -205,8 +206,20 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
 
-  const primerLunes = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Lunes", pagoDiaLS, pagoDiaDom) : null;
-  const primerMiercoles = form.forma_pago !== "Diario" && valorSemanal > 0 ? calcPrimerPago(form.fecha_entrega, "Miércoles", pagoDiaLS, pagoDiaDom) : null;
+  const primerLunes = form.forma_pago === "Semanal" && valorSemanal > 0
+    ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Lunes", dias_pago_mes: [] }, pagoDiaLS, pagoDiaDom) : null;
+  const primerMiercoles = form.forma_pago === "Semanal" && valorSemanal > 0
+    ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Miércoles", dias_pago_mes: [] }, pagoDiaLS, pagoDiaDom) : null;
+
+  // Vista previa del primer pago para Quincenal/Mensual — según las fechas de calendario elegidas.
+  const diasCalendarioCompletos = form.forma_pago === "Quincenal"
+    ? form.dias_pago_mes.length === 2
+    : form.forma_pago === "Mensual"
+      ? form.dias_pago_mes.length === 1
+      : false;
+  const previewCalendario = diasCalendarioCompletos && valorSemanal > 0
+    ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Lunes", dias_pago_mes: form.dias_pago_mes }, pagoDiaLS, pagoDiaDom)
+    : null;
 
   async function subirArchivo(file: File, path: string): Promise<string | null> {
     const { error } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
@@ -228,11 +241,14 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!form.cliente_id) { setError("Selecciona un cliente."); return; }
     if (!form.tarifa_ls || !form.tarifa_dom) { setError("Ingresa la tarifa diaria y la tarifa del domingo."); return; }
     if (form.forma_pago !== "Diario" && !form.meses) { setError("Ingresa la duración en meses."); return; }
+    if (form.forma_pago === "Quincenal" && form.dias_pago_mes.length !== 2) { setError("Elige las 2 fechas del mes en que paga."); return; }
+    if (form.forma_pago === "Mensual" && form.dias_pago_mes.length !== 1) { setError("Elige la fecha del mes en que paga."); return; }
     const cliente = clientes.find(c => c.id === form.cliente_id);
     if (!cliente) { setError("Cliente no encontrado."); return; }
     if (cliente.estado !== "Aprobado") { setError("El cliente debe estar en estado 'Aprobado' para crear un contrato."); return; }
 
-    const diaPago = form.forma_pago === "Diario" ? "Diario" : form.dia_pago;
+    const diaPago = form.forma_pago === "Diario" ? "Diario" : form.forma_pago === "Semanal" ? form.dia_pago : form.forma_pago;
+    const diasPagoMes = form.forma_pago === "Quincenal" || form.forma_pago === "Mensual" ? form.dias_pago_mes : null;
 
     if (guardando) return;
     setGuardando(true); setError(null);
@@ -241,6 +257,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         cliente_id: form.cliente_id,
         forma_pago: form.forma_pago,
         dia_pago: diaPago,
+        dias_pago_mes: diasPagoMes,
         valor_semanal: form.forma_pago === "Diario" ? tarifaDiaria : valorSemanal,
         meses: form.forma_pago === "Diario" ? null : Number(form.meses),
         ahorro_inicial: ahorroEntregado,
@@ -427,7 +444,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     ...p,
                     cliente_id: e.target.value,
                     forma_pago: c?.ruta_contrato === "diario" ? "Diario" : p.forma_pago,
-                    ahorro_inicial: c?.ingreso_inicial ? String(c.ingreso_inicial) : p.ahorro_inicial,
+                    // Siempre refleja lo pagado al registrarse — el campo no es editable en el wizard.
+                    ahorro_inicial: c ? String(c.ingreso_inicial ?? 0) : "",
                   }));
                 }}>
                   <option value="">Seleccionar cliente aprobado</option>
@@ -489,27 +507,88 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     </div>
                   )}
 
-                  <div>
-                    <label style={labelStyle}>Día de pago</label>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      {(["Lunes", "Miércoles"] as const).map(dia => {
-                        const p = dia === "Lunes" ? primerLunes : primerMiercoles;
-                        const active = form.dia_pago === dia;
-                        return (
-                          <button key={dia} onClick={() => setForm(prev => ({ ...prev, dia_pago: dia }))} style={{
-                            flex: 1, padding: "10px 12px", borderRadius: 12, border: `2px solid ${active ? "#0284c7" : "#e2e8f0"}`,
-                            background: active ? "#eff6ff" : "white", cursor: "pointer", textAlign: "left",
-                          }}>
-                            <div style={{ fontWeight: 800, fontSize: 13, color: active ? "#0284c7" : "#334155" }}>{dia}</div>
-                            {p && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                              Primer pago: {new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}<br />
-                              <span style={{ fontWeight: 700, color: active ? "#0284c7" : "#334155" }}>$ {fmt(p.valor)}</span> ({p.dias} días)
-                            </div>}
-                          </button>
-                        );
-                      })}
+                  {form.forma_pago === "Semanal" && (
+                    <div>
+                      <label style={labelStyle}>Día de pago</label>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        {(["Lunes", "Miércoles"] as const).map(dia => {
+                          const p = dia === "Lunes" ? primerLunes : primerMiercoles;
+                          const active = form.dia_pago === dia;
+                          return (
+                            <button key={dia} onClick={() => setForm(prev => ({ ...prev, dia_pago: dia }))} style={{
+                              flex: 1, padding: "10px 12px", borderRadius: 12, border: `2px solid ${active ? "#0284c7" : "#e2e8f0"}`,
+                              background: active ? "#eff6ff" : "white", cursor: "pointer", textAlign: "left",
+                            }}>
+                              <div style={{ fontWeight: 800, fontSize: 13, color: active ? "#0284c7" : "#334155" }}>{dia}</div>
+                              {p && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                                Primer pago: {new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}<br />
+                                <span style={{ fontWeight: 700, color: active ? "#0284c7" : "#334155" }}>$ {fmt(p.valor)}</span> ({p.dias} días)
+                              </div>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {(form.forma_pago === "Quincenal" || form.forma_pago === "Mensual") && (
+                    <div>
+                      <label style={labelStyle}>
+                        {form.forma_pago === "Quincenal" ? "Fechas de pago del mes (2)" : "Fecha de pago del mes"}
+                      </label>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                        {(form.forma_pago === "Quincenal"
+                          ? [[5, 20], [10, 25], [15, 30]]
+                          : [[5], [10], [15], [20], [25], [30]]
+                        ).map(preset => {
+                          const active = form.dias_pago_mes.length === preset.length && preset.every(d => form.dias_pago_mes.includes(d));
+                          return (
+                            <button key={preset.join("-")} onClick={() => setForm(p => ({ ...p, dias_pago_mes: preset }))} style={{
+                              padding: "6px 12px", borderRadius: 10, border: `1px solid ${active ? "#0284c7" : "#e2e8f0"}`,
+                              background: active ? "#eff6ff" : "white", color: active ? "#0284c7" : "#64748b",
+                              fontWeight: 700, fontSize: 12, cursor: "pointer",
+                            }}>
+                              {preset.join(" y ")}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <input type="number" min="1" max="31" style={inputStyle}
+                            value={form.dias_pago_mes[0] ?? ""}
+                            placeholder="Día 1 (1-31)"
+                            onChange={e => {
+                              const v = Math.min(31, Math.max(1, Number(e.target.value) || 1));
+                              setForm(p => ({ ...p, dias_pago_mes: form.forma_pago === "Mensual" ? [v] : [v, p.dias_pago_mes[1] ?? v] }));
+                            }} />
+                        </div>
+                        {form.forma_pago === "Quincenal" && (
+                          <div style={{ flex: 1 }}>
+                            <input type="number" min="1" max="31" style={inputStyle}
+                              value={form.dias_pago_mes[1] ?? ""}
+                              placeholder="Día 2 (1-31)"
+                              onChange={e => {
+                                const v = Math.min(31, Math.max(1, Number(e.target.value) || 1));
+                                setForm(p => ({ ...p, dias_pago_mes: [p.dias_pago_mes[0] ?? v, v] }));
+                              }} />
+                          </div>
+                        )}
+                      </div>
+                      {form.forma_pago === "Quincenal" && form.dias_pago_mes.length === 2 && form.dias_pago_mes[0] === form.dias_pago_mes[1] && (
+                        <div style={{ fontSize: 12, color: "#991b1b", marginTop: 4 }}>Las 2 fechas deben ser distintas.</div>
+                      )}
+                      {previewCalendario && (
+                        <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "2px solid #0284c7", background: "#eff6ff" }}>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            Primer pago: {new Date(previewCalendario.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#0284c7" }}>$ {fmt(previewCalendario.valor)}</span>
+                          <span style={{ fontSize: 12, color: "#64748b" }}> ({previewCalendario.dias} días)</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label style={labelStyle}>Duración (meses)</label>
@@ -521,32 +600,24 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   </div>
 
                   <div>
-                    <MoneyInput label="Base inicial entregada" value={form.ahorro_inicial} onChange={v => setForm(p => ({ ...p, ahorro_inicial: v }))} placeholder="$ 0" />
-                    {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (() => {
-                      const clienteSeleccionado = clientes.find(c => c.id === form.cliente_id);
-                      const ingresoRegistro = clienteSeleccionado?.ingreso_inicial ?? 0;
-                      const falta = baseRequerida - ahorroEntregado;
-                      return (
-                        <div style={{
-                          marginTop: 8, padding: "10px 12px", borderRadius: 10,
-                          background: baseSuficiente ? "#dcfce7" : "#fef3c7",
-                          border: `1px solid ${baseSuficiente ? "#bbf7d0" : "#fde68a"}`,
-                          display: "flex", flexDirection: "column", gap: 4,
-                        }}>
-                          {ingresoRegistro > 0 && (
-                            <div style={{ fontSize: 11, color: "#64748b" }}>
-                              Pagó al registrarse: <strong>$ {fmt(ingresoRegistro)}</strong>
-                            </div>
-                          )}
-                          <div style={{ fontSize: 11, color: "#64748b" }}>
-                            Requerido ({form.forma_pago}): <strong>$ {fmt(baseRequerida)}</strong>
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: baseSuficiente ? "#166534" : "#92400e" }}>
-                            {baseSuficiente ? "✅ Base suficiente" : `⚠️ Falta: $ ${fmt(falta)}`}
-                          </div>
+                    <label style={labelStyle}>Base inicial entregada <span style={{ fontWeight: 400, fontSize: 11, color: "#94a3b8" }}>(del registro del cliente)</span></label>
+                    <div style={{
+                      padding: "6px 10px", borderRadius: 10, fontSize: 12, lineHeight: 1.4, textAlign: "center",
+                      background: form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "#dcfce7" : "#fef3c7") : "#f1f5f9",
+                      border: `1px solid ${form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "#bbf7d0" : "#fde68a") : "#e2e8f0"}`,
+                    }}>
+                      <div>
+                        <span style={{ fontWeight: 800, color: "#0f172a" }}>$ {fmt(ahorroEntregado)}</span>
+                        {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
+                          <span style={{ color: "#64748b" }}> de $ {fmt(baseRequerida)}</span>
+                        )}
+                      </div>
+                      {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
+                        <div style={{ fontWeight: 700, color: baseSuficiente ? "#166534" : "#92400e" }}>
+                          {baseSuficiente ? "✅ suficiente" : `falta $ ${fmt(baseRequerida - ahorroEntregado)}`}
                         </div>
-                      );
-                    })()}
+                      )}
+                    </div>
                   </div>
                 </>
               )}

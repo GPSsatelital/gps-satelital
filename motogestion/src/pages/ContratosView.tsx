@@ -8,6 +8,7 @@ import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import type { Contrato } from "../hooks/useContratos";
+import { formatDiaPago } from "../utils/cicloPago";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "#334155", fontSize: 14 };
@@ -204,7 +205,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             <InfoRow label="Valor por período" value={`$ ${fmt(c.valor_semanal)}`} />
             <InfoRow label="Tarifa diaria" value={`$ ${fmt(c.tarifa_diaria ?? 27000)}/día`} />
             {c.ahorro_diario && c.ahorro_diario > 0 && <InfoRow label="Ahorro diario" value={`$ ${fmt(c.ahorro_diario)}/día`} />}
-            {!esDiario && <InfoRow label="Día de pago" value={c.dia_pago} />}
+            {!esDiario && <InfoRow label="Día de pago" value={formatDiaPago(c)} />}
             {c.meses && <InfoRow label="Duración" value={`${c.meses} meses · ~${Math.round(c.meses * 4.33)} semanas`} />}
             {c.fecha_entrega && <InfoRow label="Fecha entrega" value={new Date(c.fecha_entrega + "T00:00:00").toLocaleDateString("es-CO")} />}
             {!esDiario && (c.fecha_fin_contrato ?? (c.fecha_entrega && c.meses ? calcularFechaFinContrato(c.fecha_entrega, c.meses) : null)) && (
@@ -427,7 +428,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
                       {moto ? `🏍️ ${moto.placa} · ` : "Sin moto · "}
-                      {esDiario ? "Diario" : `${c.forma_pago} · Paga ${c.dia_pago}`}
+                      {esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`}
                       {" · "}$ {fmt(c.valor_semanal)}
                     </div>
                   </div>

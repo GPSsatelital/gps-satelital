@@ -3,6 +3,7 @@ import type { ViewKey } from "../App";
 import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato } from "../hooks/useContratos";
+import { formatDiaPago } from "../utils/cicloPago";
 
 interface Props {
   onClose: () => void;
@@ -145,7 +146,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
             <InfoRow label="Placa"      value={previewContratoMoto?.placa ?? "—"} />
             <InfoRow label="Moto"       value={previewContratoMoto ? `${previewContratoMoto.marca} ${previewContratoMoto.modelo}` : "—"} />
             <InfoRow label="Tipo ruta"  value={previewContrato.tipo_ruta ?? "—"} />
-            <InfoRow label="Día de pago" value={(previewContrato as any).dia_pago ?? "—"} />
+            <InfoRow label="Día de pago" value={previewContrato ? formatDiaPago(previewContrato as any) : "—"} />
             {(previewContrato as any).valor_periodo && <InfoRow label="Valor período" value={`$${Number((previewContrato as any).valor_periodo).toLocaleString("es-CO")}`} />}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
               {previewContratoCli && (

@@ -1,6 +1,7 @@
 import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
+import { formatDiaPago } from "../utils/cicloPago";
 
 export type TipoDocumento = "contrato" | "certificado" | "pagare";
 
@@ -45,7 +46,7 @@ export function generarHTMLContrato(contrato: Contrato, cliente: Cliente, moto: 
         Modalidad: <strong>${contrato.forma_pago}</strong><br/>
         ${esDiario
           ? `Canon diario (L-S): <strong>$ ${fmt(contrato.tarifa_diaria ?? 27000)}</strong> · Domingo: <strong>$ ${fmt(contrato.tarifa_domingo ?? 14000)}</strong>`
-          : `Canon por período: <strong>$ ${fmt(contrato.valor_semanal)}</strong> · Día de pago: <strong>${contrato.dia_pago}</strong>`
+          : `Canon por período: <strong>$ ${fmt(contrato.valor_semanal)}</strong> · Día de pago: <strong>${formatDiaPago(contrato)}</strong>`
         }<br/>
         ${contrato.meses ? `Duración: <strong>${contrato.meses} meses</strong><br/>` : ""}
         Ahorro inicial entregado: <strong>$ ${fmt(contrato.ahorro_inicial)}</strong><br/>
@@ -95,7 +96,7 @@ export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): st
 
   const tarifaLS = fmt(contrato.tarifa_diaria ?? 27000);
   const tarifaDomingo = fmt(contrato.tarifa_domingo ?? 14000);
-  const diaPago = esDiario ? "Cada día (lunes a domingo)" : (contrato.dia_pago ?? "Lunes o miércoles");
+  const diaPago = esDiario ? "Cada día (lunes a domingo)" : formatDiaPago(contrato);
 
   const preguntasEspecificas = [
     {

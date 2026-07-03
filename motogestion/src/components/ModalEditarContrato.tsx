@@ -28,6 +28,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
 
   const [formaPago, setFormaPago] = useState<FormaPago>(contrato.forma_pago);
   const [diaPago, setDiaPago] = useState(contrato.dia_pago === "Diario" ? "Lunes" : contrato.dia_pago);
+  const [diasPagoMes, setDiasPagoMes] = useState<number[]>(contrato.dias_pago_mes ?? []);
   const [valorSemanal, setValorSemanal] = useState(String(contrato.valor_semanal ?? 0));
   const [tarifaDiaria, setTarifaDiaria] = useState(String(contrato.tarifa_diaria ?? 27000));
   const [tarifaDomingo, setTarifaDomingo] = useState(String(contrato.tarifa_domingo ?? 14000));
@@ -67,11 +68,15 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
     setGuardando(true);
     try {
       const esDiario = formaPago === "Diario";
+      const esCalendario = formaPago === "Quincenal" || formaPago === "Mensual";
+      if (formaPago === "Quincenal" && diasPagoMes.length !== 2) { setError("Elige las 2 fechas del mes en que paga."); return; }
+      if (formaPago === "Mensual" && diasPagoMes.length !== 1) { setError("Elige la fecha del mes en que paga."); return; }
       const { error: err } = await editarContrato(
         contrato,
         {
           forma_pago: formaPago,
-          dia_pago: esDiario ? "Diario" : diaPago,
+          dia_pago: esDiario ? "Diario" : esCalendario ? formaPago : diaPago,
+          dias_pago_mes: esCalendario ? diasPagoMes : null,
           valor_semanal: Number(valorSemanal) || 0,
           tarifa_diaria: Number(tarifaDiaria) || 0,
           tarifa_domingo: Number(tarifaDomingo) || 0,
@@ -120,13 +125,34 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
               {FORMAS.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
-          {formaPago !== "Diario" && (
+          {formaPago === "Semanal" && (
             <div>
               <div style={labelStyle}>Día de pago</div>
               <select style={inputStyle} value={diaPago} onChange={e => setDiaPago(e.target.value)}>
                 <option value="Lunes">Lunes</option>
                 <option value="Miércoles">Miércoles</option>
               </select>
+            </div>
+          )}
+          {(formaPago === "Quincenal" || formaPago === "Mensual") && (
+            <div>
+              <div style={labelStyle}>{formaPago === "Quincenal" ? "Fechas de pago (2)" : "Fecha de pago"}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="number" min="1" max="31" style={inputStyle} placeholder="Día 1"
+                  value={diasPagoMes[0] ?? ""}
+                  onChange={e => {
+                    const v = Math.min(31, Math.max(1, Number(e.target.value) || 1));
+                    setDiasPagoMes(formaPago === "Mensual" ? [v] : [v, diasPagoMes[1] ?? v]);
+                  }} />
+                {formaPago === "Quincenal" && (
+                  <input type="number" min="1" max="31" style={inputStyle} placeholder="Día 2"
+                    value={diasPagoMes[1] ?? ""}
+                    onChange={e => {
+                      const v = Math.min(31, Math.max(1, Number(e.target.value) || 1));
+                      setDiasPagoMes([diasPagoMes[0] ?? v, v]);
+                    }} />
+                )}
+              </div>
             </div>
           )}
         </div>

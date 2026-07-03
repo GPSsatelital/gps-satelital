@@ -16,6 +16,7 @@ export type Contrato = {
   cliente_id: string;
   moto_id: string | null;
   dia_pago: string;
+  dias_pago_mes?: number[] | null;
   forma_pago: FormaPago;
   valor_semanal: number;
   meses: number | null;
@@ -107,6 +108,7 @@ export function diasHastaProximoDiaPago(fechaBase: string): { diasHasta: number;
 export type NuevoContrato = {
   cliente_id: string;
   dia_pago: string;
+  dias_pago_mes?: number[] | null;
   forma_pago: FormaPago;
   valor_semanal: number;
   meses: number | null;
@@ -286,11 +288,12 @@ export function useContratos() {
     fecha_entrega: "Fecha entrega",
     ahorro_acumulado: "Ahorro acumulado",
     fecha_fin_contrato: "Fecha fin de contrato",
+    dias_pago_mes: "Días de pago (mes)",
   };
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "fecha_fin_contrato">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "fecha_fin_contrato">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(

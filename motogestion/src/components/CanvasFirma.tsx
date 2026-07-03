@@ -11,6 +11,8 @@ interface Props {
 export default function CanvasFirma({ label, onChange }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hasDrawn = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,7 +31,7 @@ export default function CanvasFirma({ label, onChange }: Props) {
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!drawing) return;
       const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasDrawn.current = true;
-      onChange(canvas.toDataURL("image/png")); e.preventDefault();
+      onChangeRef.current(canvas.toDataURL("image/png")); e.preventDefault();
     };
     const onUp = () => { drawing = false; };
     canvas.addEventListener("mousedown", onDown); canvas.addEventListener("mousemove", onMove); canvas.addEventListener("mouseup", onUp);
@@ -38,7 +40,7 @@ export default function CanvasFirma({ label, onChange }: Props) {
       canvas.removeEventListener("mousedown", onDown); canvas.removeEventListener("mousemove", onMove); canvas.removeEventListener("mouseup", onUp);
       canvas.removeEventListener("touchstart", onDown); canvas.removeEventListener("touchmove", onMove); canvas.removeEventListener("touchend", onUp);
     };
-  }, [onChange]);
+  }, []);
 
   function clear() {
     const canvas = canvasRef.current; if (!canvas) return;

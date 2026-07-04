@@ -838,7 +838,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     { label: "🔴 En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, filter: "mora" },
   ];
 
-  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void, esNuevo: boolean = false) {
+  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
 
@@ -1283,7 +1283,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Ingresar cliente nuevo</h3>
-            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })), true)}
+            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })))}
             {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>

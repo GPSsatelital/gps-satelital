@@ -5,6 +5,7 @@ interface Props {
   label: string;
   onChange: (data: string | null) => void;
   modal?: boolean;
+  valorInicial?: string | null;
 }
 
 // Componente del modal de firma — declarado fuera de CanvasFirma para que React lo trate
@@ -149,8 +150,8 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
   );
 }
 
-export default function CanvasFirma({ label, onChange, modal = false }: Props) {
-  const [firmaSaved, setFirmaSaved] = useState<string | null>(null);
+export default function CanvasFirma({ label, onChange, modal = false, valorInicial = null }: Props) {
+  const [firmaSaved, setFirmaSaved] = useState<string | null>(valorInicial);
   const [modalOpen, setModalOpen] = useState(false);
 
   // Refs para el modo inline (cuando modal=false)

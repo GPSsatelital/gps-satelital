@@ -951,30 +951,34 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
         </div>
 
-        {esNuevo && (
-          <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid #f59e0b" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
-            <div style={{ fontSize: 12, color: "#78716c", marginBottom: 12, lineHeight: 1.5 }}>
-              De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
-              con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
-              La firma y huella son opcionales — pueden completarse después.
-            </div>
-            <CanvasFirma
-              label="Firma del cliente"
-              modal
-              onChange={(dataUrl) => update({
-                autorizacion_datos_firma_url: dataUrl,
-                autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
-              })}
-            />
-            <div style={{ marginTop: 12 }}>
-              <LectorHuella
-                label="Huella dactilar del cliente (opcional)"
-                onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
-              />
-            </div>
+        <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid #f59e0b" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
+          <div style={{ fontSize: 12, color: "#78716c", marginBottom: 12, lineHeight: 1.5 }}>
+            De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
+            con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
+            La firma y huella son opcionales — pueden completarse después.
           </div>
-        )}
+          <CanvasFirma
+            label="Firma del cliente"
+            modal
+            valorInicial={form.autorizacion_datos_firma_url ?? null}
+            onChange={(dataUrl) => update({
+              autorizacion_datos_firma_url: dataUrl,
+              autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
+            })}
+          />
+          <div style={{ marginTop: 12 }}>
+            {form.autorizacion_datos_huella_url && !form.autorizacion_datos_huella_url.startsWith("data:") && (
+              <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                ✔ Huella ya registrada — capture de nuevo abajo solo si quiere reemplazarla
+              </div>
+            )}
+            <LectorHuella
+              label="Huella dactilar del cliente (opcional)"
+              onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
+            />
+          </div>
+        </div>
       </div>
     );
   }

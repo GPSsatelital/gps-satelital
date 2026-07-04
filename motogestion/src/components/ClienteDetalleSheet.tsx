@@ -8,6 +8,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { formatDiaPago } from "../utils/cicloPago";
+import { generarHTMLAutorizacionDatos } from "../hooks/useDocumentos";
 
 type GestionRow = { id: string; tipo: string; resultado: string | null; fecha: string; notas: string | null };
 
@@ -164,6 +165,15 @@ ${filasUltimos || "  Sin pagos registrados."}
   }
 }
 
+function imprimirAutorizacionDatos(cliente: Cliente) {
+  const html = generarHTMLAutorizacionDatos(cliente);
+  const ventana = window.open("", "_blank");
+  if (!ventana) return;
+  ventana.document.write(`<!DOCTYPE html><html><head><title>Autorización de tratamiento de datos</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+  ventana.document.close();
+  ventana.print();
+}
+
 export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
   const { clientes } = useClientes();
   const { contratos } = useContratos();
@@ -179,6 +189,7 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
   const [guardandoListaNegra, setGuardandoListaNegra] = useState(false);
   const [gestiones, setGestiones] = useState<GestionRow[]>([]);
   const { convenios } = useConvenios();
+  const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
   const cliente: Cliente | null = useMemo(
     () => clientes.find(c => c.id === clienteId) ?? null,
@@ -424,6 +435,48 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
             )}
           </div>
 
+          {/* Autorización de datos */}
+          {(cliente.autorizacion_datos_firma_url || cliente.autorizacion_datos_huella_url) && (
+            <>
+              <SeccionTitulo titulo="Autorización de datos" />
+              <div style={{ background: "#f8fafc", borderRadius: 14, padding: 14, border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  {cliente.autorizacion_datos_firma_url && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Firma</div>
+                      <img
+                        src={cliente.autorizacion_datos_firma_url}
+                        alt="Firma"
+                        onClick={() => setImagenAmpliada(cliente.autorizacion_datos_firma_url)}
+                        style={{ width: 100, height: 100, objectFit: "contain", background: "white", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                      />
+                    </div>
+                  )}
+                  {cliente.autorizacion_datos_huella_url && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Huella</div>
+                      <img
+                        src={cliente.autorizacion_datos_huella_url}
+                        alt="Huella"
+                        onClick={() => setImagenAmpliada(cliente.autorizacion_datos_huella_url)}
+                        style={{ width: 100, height: 100, objectFit: "contain", background: "white", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div
+                  onClick={() => imprimirAutorizacionDatos(cliente)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
+                    fontSize: 13, fontWeight: 700, color: "#0284c7",
+                  }}
+                >
+                  🖨️ Imprimir documento
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Visita domiciliaria */}
           {visitaCompletada && (
             <>
@@ -584,6 +637,23 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Lightbox para ampliar firma/huella */}
+      {imagenAmpliada && (
+        <div
+          onClick={() => setImagenAmpliada(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,0.85)",
+            zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+          }}
+        >
+          <img
+            src={imagenAmpliada}
+            alt="Ampliada"
+            style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, background: "white", objectFit: "contain" }}
+          />
+        </div>
+      )}
     </>
   );
 }

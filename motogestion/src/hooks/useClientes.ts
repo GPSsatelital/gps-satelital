@@ -66,6 +66,7 @@ export type Cliente = {
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
   autorizacion_datos_fecha: string | null;
+  foto_perfil_url: string | null;
   referidos_confirmados: number;
   premio_referidos_entregado: number;
   lista_negra: boolean;
@@ -97,6 +98,7 @@ export type NuevoCliente = {
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
   autorizacion_datos_fecha: string | null;
+  foto_perfil_url: string | null;
 };
 
 export function documentosListos(doc: DocumentoFlags) {

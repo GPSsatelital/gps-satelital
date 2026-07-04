@@ -20,6 +20,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
+import FotoPerfil from "../components/FotoPerfil";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -233,6 +234,7 @@ function emptyForm(): NuevoCliente {
     autorizacion_datos_firma_url: null,
     autorizacion_datos_huella_url: null,
     autorizacion_datos_fecha: null,
+    foto_perfil_url: null,
   };
 }
 
@@ -678,6 +680,20 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       huellaUrl = url;
     }
 
+    // La foto de perfil es opcional — si se capturó, se sube.
+    let fotoPerfilUrl = form.foto_perfil_url;
+    if (fotoPerfilUrl && fotoPerfilUrl.startsWith("data:")) {
+      const blob = await (await fetch(fotoPerfilUrl)).blob();
+      const archivo = new File([blob], "foto_perfil.jpg", { type: "image/jpeg" });
+      const { url, error: errSubida } = await subirDocumento(archivo, form.cedula.trim() || "sin-cedula", "foto_perfil");
+      if (errSubida || !url) {
+        setGuardando(false);
+        setFormError(errSubida || "No se pudo subir la foto de perfil.");
+        return;
+      }
+      fotoPerfilUrl = url;
+    }
+
     const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante);
 
     const { error } = await crearCliente({
@@ -691,6 +707,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       referido_por_nombre: form.referido_por_nombre?.trim() || null,
       autorizacion_datos_firma_url: firmaUrl,
       autorizacion_datos_huella_url: huellaUrl,
+      foto_perfil_url: fotoPerfilUrl,
       estado,
     });
 
@@ -728,6 +745,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       autorizacion_datos_firma_url: cliente.autorizacion_datos_firma_url,
       autorizacion_datos_huella_url: cliente.autorizacion_datos_huella_url,
       autorizacion_datos_fecha: cliente.autorizacion_datos_fecha,
+      foto_perfil_url: cliente.foto_perfil_url,
     });
     setEditOpen(true);
   }
@@ -748,10 +766,50 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
     setGuardando(true);
     try {
+      // Firma, huella y foto de perfil son opcionales — si se capturaron de nuevo (dataURL), se suben a Storage.
+      let firmaUrl = editForm.autorizacion_datos_firma_url;
+      if (firmaUrl && firmaUrl.startsWith("data:")) {
+        const blob = await (await fetch(firmaUrl)).blob();
+        const archivo = new File([blob], "firma_autorizacion.png", { type: "image/png" });
+        const { url, error: errSubida } = await subirDocumento(archivo, editForm.cedula.trim() || "sin-cedula", "autorizacion_datos");
+        if (errSubida || !url) {
+          setFormError(errSubida || "No se pudo subir la firma de autorización.");
+          return;
+        }
+        firmaUrl = url;
+      }
+
+      let huellaUrl = editForm.autorizacion_datos_huella_url;
+      if (huellaUrl && huellaUrl.startsWith("data:")) {
+        const blob = await (await fetch(huellaUrl)).blob();
+        const archivo = new File([blob], "huella_autorizacion.png", { type: "image/png" });
+        const { url, error: errSubida } = await subirDocumento(archivo, editForm.cedula.trim() || "sin-cedula", "autorizacion_datos_huella");
+        if (errSubida || !url) {
+          setFormError(errSubida || "No se pudo subir la huella capturada.");
+          return;
+        }
+        huellaUrl = url;
+      }
+
+      let fotoPerfilUrl = editForm.foto_perfil_url;
+      if (fotoPerfilUrl && fotoPerfilUrl.startsWith("data:")) {
+        const blob = await (await fetch(fotoPerfilUrl)).blob();
+        const archivo = new File([blob], "foto_perfil.jpg", { type: "image/jpeg" });
+        const { url, error: errSubida } = await subirDocumento(archivo, editForm.cedula.trim() || "sin-cedula", "foto_perfil");
+        if (errSubida || !url) {
+          setFormError(errSubida || "No se pudo subir la foto de perfil.");
+          return;
+        }
+        fotoPerfilUrl = url;
+      }
+
       const { error } = await actualizarCliente(editForm.id, {
         ...editForm,
         whatsapp: editForm.mismo_whatsapp ? editForm.telefono : editForm.whatsapp,
         estado: estadoFinal,
+        autorizacion_datos_firma_url: firmaUrl,
+        autorizacion_datos_huella_url: huellaUrl,
+        foto_perfil_url: fotoPerfilUrl,
       });
 
       if (error) {
@@ -841,6 +899,13 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
+
+        {/* Foto de perfil */}
+        <FotoPerfil
+          label="Foto de perfil"
+          valorInicial={data.foto_perfil_url}
+          onChange={(dataUrl) => update({ foto_perfil_url: dataUrl })}
+        />
 
         {/* Ruta del cliente */}
         <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7" }}>

@@ -285,8 +285,16 @@ export default function ClienteDetalleSheet({ clienteId, onClose }: Props) {
               background: "rgba(255,255,255,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 24, fontWeight: 800, color: "white",
-            }}>
-              {inicial}
+              overflow: "hidden",
+              cursor: cliente.foto_perfil_url ? "pointer" : "default",
+            }}
+              onClick={() => cliente.foto_perfil_url && setImagenAmpliada(cliente.foto_perfil_url)}
+            >
+              {cliente.foto_perfil_url ? (
+                <img src={cliente.foto_perfil_url} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                inicial
+              )}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               {waNumero && (

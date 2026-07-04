@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
-import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
+import { inputStyle, labelStyle, primaryBtn, secondaryBtn, fmtMoney } from "../styles/shared";
+import { valorPeriodoReal } from "../utils/cicloPago";
 import MoneyInput from "./MoneyInput";
 
 interface Props {
@@ -49,6 +50,15 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   const [auditoria, setAuditoria] = useState<AuditoriaFila[]>([]);
   const [cargandoAuditoria, setCargandoAuditoria] = useState(true);
 
+  const esCalendario = formaPago === "Quincenal" || formaPago === "Mensual";
+  const totalPeriodoPreview = useMemo(() => valorPeriodoReal({
+    forma_pago: formaPago,
+    dia_pago: diaPago,
+    valor_semanal: Number(valorSemanal) || 0,
+    tarifa_diaria: Number(tarifaDiaria) || 0,
+    ahorro_diario: Number(ahorroDiario) || 0,
+  }), [formaPago, diaPago, valorSemanal, tarifaDiaria, ahorroDiario]);
+
   useEffect(() => {
     let cancelado = false;
     (async () => {
@@ -68,7 +78,6 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
     setGuardando(true);
     try {
       const esDiario = formaPago === "Diario";
-      const esCalendario = formaPago === "Quincenal" || formaPago === "Mensual";
       if (formaPago === "Quincenal" && diasPagoMes.length !== 2) { setError("Elige las 2 fechas del mes en que paga."); return; }
       if (formaPago === "Mensual" && diasPagoMes.length !== 1) { setError("Elige la fecha del mes en que paga."); return; }
       const { error: err } = await editarContrato(
@@ -158,7 +167,18 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <MoneyInput label="Valor por período" value={valorSemanal} onChange={setValorSemanal} />
+          <div>
+            <MoneyInput
+              label={esCalendario ? "Valor semanal base" : "Valor por período"}
+              value={valorSemanal}
+              onChange={setValorSemanal}
+            />
+            {esCalendario && (
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                El sistema calcula el total del período automáticamente
+              </div>
+            )}
+          </div>
           {formaPago !== "Diario" && (
             <div>
               <div style={labelStyle}>Meses</div>
@@ -166,6 +186,12 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
             </div>
           )}
         </div>
+
+        {esCalendario && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13, color: "#0369a1", fontWeight: 700 }}>
+            Total {formaPago === "Quincenal" ? "quincenal" : "mensual"} calculado: {fmtMoney(totalPeriodoPreview)}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <MoneyInput label="Tarifa L-S / día" value={tarifaDiaria} onChange={setTarifaDiaria} />

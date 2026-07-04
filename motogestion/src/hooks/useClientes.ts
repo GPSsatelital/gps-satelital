@@ -21,7 +21,6 @@ export type DocumentoFlags = {
   cedula: DocumentoItem;
   licencia: DocumentoItem;
   recibo1: DocumentoItem;
-  recibo2: DocumentoItem;
   carta: DocumentoItem;
   antecedentes: DocumentoItem;
   hojaVida: DocumentoItem;
@@ -32,7 +31,6 @@ export function emptyDocs(): DocumentoFlags {
     cedula: { ok: false, file: null },
     licencia: { ok: false, file: null },
     recibo1: { ok: false, file: null },
-    recibo2: { ok: false, file: null },
     carta: { ok: false, file: null },
     antecedentes: { ok: false, file: null },
     hojaVida: { ok: false, file: null },
@@ -105,7 +103,6 @@ export function documentosListos(doc: DocumentoFlags) {
   return (
     doc.cedula.ok &&
     doc.recibo1.ok &&
-    doc.recibo2.ok &&
     doc.carta.ok &&
     doc.antecedentes.ok &&
     doc.hojaVida.ok

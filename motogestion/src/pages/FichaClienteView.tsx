@@ -73,8 +73,7 @@ type Tab = "resumen" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas
 const DOC_LABELS: Array<[keyof DocumentoFlags, string]> = [
   ["cedula",      "Cédula"],
   ["hojaVida",    "Hoja de vida"],
-  ["recibo1",     "Recibo público 1"],
-  ["recibo2",     "Recibo público 2"],
+  ["recibo1",     "Recibo público"],
   ["carta",       "Carta"],
   ["antecedentes","Antecedentes"],
   ["licencia",    "Licencia de conducir"],

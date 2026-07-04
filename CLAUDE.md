@@ -413,8 +413,8 @@ visitas filtradas por asignada_a === yo (NO por moto — el prospecto aún no ti
 - **Este `ingreso_inicial` se pre-carga en el wizard de contrato como `ahorro_inicial`**
 
 ### Paso 2 — Documentos obligatorios
-**Cliente:** hoja de vida, cédula, 2 recibos públicos, antecedentes, licencia (opcional)
-**Acompañante (mujer — obligatorio):** cédula, 2 recibos públicos, antecedentes
+**Cliente:** hoja de vida, cédula, recibo público, antecedentes, licencia (opcional)
+**Acompañante (mujer — obligatorio):** cédula, recibo público
 
 ### Paso 3 — Visita domiciliaria
 - Siempre obligatoria antes de la entrega

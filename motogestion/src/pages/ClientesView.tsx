@@ -61,8 +61,8 @@ function ClienteBadge({ estado }: { estado: ClienteEstado }) {
   );
 }
 
-// El acompañante solo aporta cédula y 2 recibos (sin hoja de vida, licencia ni antecedentes)
-const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1", "recibo2"];
+// El acompañante solo aporta cédula y recibo (sin hoja de vida, licencia ni antecedentes)
+const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1"];
 
 function documentosAcompananteListos(doc: DocumentoFlags) {
   return DOCS_ACOMPANANTE.every((k) => doc[k].ok);
@@ -73,8 +73,7 @@ function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<ke
   const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia"],
-    ["recibo1", "Recibo 1"],
-    ["recibo2", "Recibo 2"],
+    ["recibo1", "Recibo público"],
     ["carta", "Carta"],
     ["antecedentes", "Antecedentes"],
     ["hojaVida", "Hoja de vida"],
@@ -114,8 +113,7 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
   const todos: Array<[keyof DocumentoFlags, string]> = [
     ["cedula", "Cédula"],
     ["licencia", "Licencia (opcional)"],
-    ["recibo1", "Recibo 1"],
-    ["recibo2", "Recibo 2"],
+    ["recibo1", "Recibo público"],
     ["carta", "Carta"],
     ["antecedentes", "Antecedentes"],
     ["hojaVida", "Hoja de vida"],
@@ -179,14 +177,12 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
 function documentosFaltantes(cliente: Cliente) {
   const labels: Array<[keyof DocumentoFlags, string, "Cliente" | "Acompañante"]> = [
     ["cedula", "Cédula", "Cliente"],
-    ["recibo1", "Recibo 1", "Cliente"],
-    ["recibo2", "Recibo 2", "Cliente"],
+    ["recibo1", "Recibo público", "Cliente"],
     ["carta", "Carta", "Cliente"],
     ["antecedentes", "Antecedentes", "Cliente"],
     ["hojaVida", "Hoja de vida", "Cliente"],
     ["cedula", "Cédula", "Acompañante"],
-    ["recibo1", "Recibo 1", "Acompañante"],
-    ["recibo2", "Recibo 2", "Acompañante"],
+    ["recibo1", "Recibo público", "Acompañante"],
   ];
   return labels.filter(([key, , owner]) => {
     const doc = owner === "Cliente" ? cliente.documentos_cliente : cliente.documentos_acompanante;

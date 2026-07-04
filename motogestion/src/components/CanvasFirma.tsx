@@ -86,35 +86,37 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0f172a", zIndex: 9999, display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "18px 20px", background: "#1e293b", borderBottom: "1px solid #334155" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
-          Firma digital
+      {/* Header compacto para dejar el máximo de espacio al canvas */}
+      <div style={{ padding: "12px 16px", background: "#1e293b", borderBottom: "1px solid #334155", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Firma digital
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "white", marginTop: 1 }}>{label}</div>
         </div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{label}</div>
-        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-          Firme con el dedo o el lápiz digital en el recuadro blanco
-        </div>
+        <div style={{ fontSize: 11, color: "#64748b", flexShrink: 0 }}>Firme con el dedo</div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, minHeight: 0 }}>
-        <div style={{ background: "white", borderRadius: 16, overflow: "hidden", width: "100%", maxWidth: 600, position: "relative" }}>
+      {/* Canvas ocupa todo el espacio vertical disponible */}
+      <div style={{ flex: 1, padding: 12, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, background: "white", borderRadius: 14, overflow: "hidden", position: "relative", minHeight: 0 }}>
           <canvas
             ref={canvasRef}
-            width={640}
-            height={300}
-            style={{ width: "100%", display: "block", touchAction: "none", cursor: "crosshair" }}
+            width={480}
+            height={680}
+            style={{ width: "100%", height: "100%", display: "block", touchAction: "none", cursor: "crosshair" }}
           />
           <div style={{
             position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
-            fontSize: 11, color: "#cbd5e1", pointerEvents: "none", userSelect: "none",
-            background: "white", padding: "3px 10px", borderRadius: 20, border: "1px solid #f1f5f9",
+            fontSize: 11, color: "#e2e8f0", pointerEvents: "none", userSelect: "none",
+            background: "rgba(15,23,42,0.35)", padding: "3px 12px", borderRadius: 20,
           }}>
             Firme aquí
           </div>
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px", background: "#1e293b", borderTop: "1px solid #334155", display: "flex", gap: 10 }}>
+      <div style={{ padding: "12px 16px", background: "#1e293b", borderTop: "1px solid #334155", display: "flex", gap: 10 }}>
         <button
           type="button"
           onClick={onCerrar}

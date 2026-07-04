@@ -651,6 +651,8 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | Canvas de firma se corta a medio trazo | `useEffect` con `[onChange]` como dependencia se reengancha en cada trazo (el padre recrea `onChange` en cada `setState`), perdiendo el estado `drawing` del closure anterior. Enganchar listeners en `useEffect(..., [])` una sola vez y leer el callback desde un `ref` actualizado en cada render. |
 | `ModalConvenio` insert fallaba silenciosamente | El insert usaba columnas inexistentes en `convenios` (`motivo`, `cuota_convenio`, `total_convenio`, `cuotas_totales`, `fecha_inicio`). Antes de insertar en cualquier tabla, verificar el schema real contra las migraciones — nunca inventar nombres de columnas. |
 | Quincenal/Mensual calculaban mora incorrectamente | Usaban la misma lógica que Semanal (día de semana) con `valor_semanal` — completamente incorrecto para contratos de 15/30 días. La solución fue `cicloPago.ts` con `dias_pago_mes` (fechas reales del mes) y período natural entre días de pago consecutivos. |
+| Componente `ClienteDetalleSheet.tsx` — todo el trabajo hecho ahí era invisible para el usuario | Nunca se abría en ningún lugar de la app (el `useState` que lo activaba nunca se seteaba) — código muerto desde que se creó, semanas antes. Se construyeron 3 features completas ahí (foto de perfil, firma/huella, imprimir documento) antes de notar que la pantalla real era `FichaClienteView.tsx`. **Regla: antes de agregar UI a un componente de "detalle de cliente", verificar en el navegador con la pantalla real que abre el botón que el usuario usa ("Ver ficha completa"), no asumir por el nombre del archivo cuál es el correcto.** |
+| Documentos del acompañante comparados contra los 6 requisitos del cliente en FichaClienteView | El tab Documentos mostraba "✗ Hoja de vida", "✗ Carta", etc. en rojo para el acompañante aunque nunca se le exigieron — usaba `DOC_LABELS` completo para ambas secciones. Cada persona (cliente/acompañante) debe compararse contra SU PROPIA lista de documentos requeridos, no una lista compartida. |
 
 ---
 
@@ -739,7 +741,37 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `39f4d39` (convenio obligatorio + recibo detallado).
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `54ed0a6` (acompañante no repite recibo si vive en la misma dirección).
+
+### ⚠️ Migraciones SQL pendientes de confirmar en Supabase (sesión 4 jul 2026)
+```sql
+-- 1. Foto de perfil del cliente
+alter table public.clientes
+  add column if not exists foto_perfil_url text;
+
+-- 2. Acompañante vive en la misma dirección (no repite recibo)
+alter table public.clientes
+  add column if not exists mismo_domicilio_acompanante boolean default false;
+```
+Sin estas dos, guardar cliente con foto de perfil falla, y el selector "¿Vive en la misma dirección?" no persiste (vuelve a `false` siempre). La migración 030 (`autorizacion_datos_*`) del inicio de esta sesión sí fue confirmada por el usuario.
+
+### Sesión 4 jul 2026 — resumen de lo construido
+1. **Firma en modal de pantalla completa** (`CanvasFirma.tsx`, prop `modal`) — canvas vertical grande (480×680) con botones Atrás/Repetir/Aceptar, en vez del canvas horizontal chico inline. Usado en ClientesView (autorización de datos).
+2. **Firma y huella ahora opcionales** al registrar/editar cliente — no bloquean el guardado, se pueden completar después. Visibles tanto en registro como en edición (antes solo en registro), con pre-carga (`valorInicial`) si ya existían.
+3. **Bug real corregido:** `guardarEdicion()` en ClientesView nunca subía a Storage la firma/huella si se volvían a capturar al editar — guardaba el `data:` URL crudo en la BD. Ahora sube igual que al crear.
+4. **🐛 Bug de arquitectura encontrado y corregido:** `ClienteDetalleSheet.tsx` (panel deslizante) **nunca se abría en ningún lugar de la app** desde que se creó (22 jun) — código muerto desde el día 1. Todo el trabajo de foto/firma/huella/imprimir se había hecho ahí primero y era invisible para el usuario. Se **eliminó el archivo completo** y se trasladó todo a `FichaClienteView.tsx` (la pantalla real de "Ver ficha completa", con pestañas Resumen/Contrato/Pagos/Visitas/Documentos/Deudas/Convenios/Gestiones). **Lección: verificar SIEMPRE en el navegador con la pantalla real que el usuario usa, no asumir cuál es el componente correcto por el nombre.**
+5. **Foto de perfil del cliente** — nuevo componente `FotoPerfil.tsx`: botones 📷 Cámara / 🖼 Galería (con `capture="user"` para cámara frontal), recorte automático a cuadrado centrado vía `<canvas>`, vista previa antes de confirmar ("🔄 Elegir otra" / "✓ Usar esta foto"). Opcional. Se muestra en el círculo de la hero card de `FichaClienteView` (antes solo mostraba la inicial).
+6. **Documento imprimible de autorización de datos** — `generarHTMLAutorizacionDatos()` en `useDocumentos.ts`, botón "🖨️ Imprimir documento" en la sección "Autorización de datos" del tab Documentos de `FichaClienteView`. Lista de categorías de datos autorizados **dinámica** según lo que el cliente realmente tenga: nombre/cédula/dirección/teléfono siempre, + foto de perfil, cédula, recibo, hoja de vida, antecedentes, licencia, huella (cada uno solo si existe), + firma siempre.
+7. **Miniaturas de firma/huella con lightbox** en `FichaClienteView` (tab Documentos) — clic para ampliar en overlay de pantalla completa.
+8. **Un solo "Recibo público"** como requisito — se eliminó `recibo2` de `DocumentoFlags`, `emptyDocs()`, `documentosListos()`, `DOCS_ACOMPANANTE`, checklist/resumen (ClientesView) y `DOC_LABELS` (FichaClienteView). Etiqueta renombrada de "Recibo 1/2" a "Recibo público".
+9. **Acompañante no repite recibo si vive con el cliente** — nueva columna `mismo_domicilio_acompanante` (boolean). Selector Sí/No en el formulario. Si "Sí": el checklist del acompañante solo pide cédula (aviso visible "usa el mismo recibo público"). Propagado a `documentosAcompananteListos()`, `calcularEstado()`, `documentosFaltantes()` (afecta el estado "Inmovilización documentación incompleta") y el tab Documentos de FichaClienteView.
+10. **Corrección de documentación:** el CLAUDE.md decía que el acompañante requería antecedentes judiciales — el código nunca lo exigió (`DOCS_ACOMPANANTE` solo pedía cédula+recibo). Confirmado por el usuario: se quitó ese requisito en una sesión anterior y no había quedado registrado. Ya corregido en la sección "Proceso completo de un cliente nuevo".
+
+### Próximos pasos sugeridos 🔲
+- Confirmar las 2 migraciones pendientes arriba.
+- Probar en el navegador con login real: registrar/editar un cliente con foto de perfil, firma (modal vertical), huella, y verificar que "Ver ficha completa" → tab Documentos muestra todo correctamente + el botón de imprimir genera el documento bien.
+- Probar el selector "¿Vive en la misma dirección?" de punta a punta: marcar Sí, verificar que no pide recibo del acompañante y que el estado pasa a "Listo para visita" solo con cédula del acompañante.
+- Seguía pendiente de sesiones anteriores: primera prueba real del lector de huellas DigitalPersona en un segundo PC (diagnóstico de certificado TLS en curso, ver [[estado-huellero-digitalpersona]] en memoria), probar recibo impreso con la GA-E2001 real, probar convenio obligatorio en flujo real, completar datos de motos técnicos y contratos Pradera pendientes (RMZ69H, RMZ64H), migrar COSTA/RASTREADOR, revisar bucket `liquidaciones` inexistente en `useLiquidaciones.ts`, gestión de permisos por usuario (UsuariosView).
 
 **Usuarios en producción:**
 | Email | Nombre | Rol |

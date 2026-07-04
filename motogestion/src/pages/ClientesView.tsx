@@ -647,18 +647,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
-    if (!form.autorizacion_datos_firma_url) {
-      setFormError("Falta la firma de autorización de tratamiento de datos.");
-      return;
-    }
-
     setGuardando(true);
     setFormError(null);
 
-    // La firma queda como dataURL mientras se dibuja — se sube a Storage recién al guardar,
-    // con la cédula ya definitiva como carpeta.
+    // La firma es opcional — si se capturó se sube a Storage al guardar.
     let firmaUrl = form.autorizacion_datos_firma_url;
-    if (firmaUrl.startsWith("data:")) {
+    if (firmaUrl && firmaUrl.startsWith("data:")) {
       const blob = await (await fetch(firmaUrl)).blob();
       const archivo = new File([blob], "firma_autorizacion.png", { type: "image/png" });
       const { url, error: errSubida } = await subirDocumento(archivo, form.cedula.trim() || "sin-cedula", "autorizacion_datos");
@@ -962,10 +956,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
             <div style={{ fontSize: 12, color: "#78716c", marginBottom: 12, lineHeight: 1.5 }}>
               De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
-              (incluida su huella dactilar) con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera. Firme para continuar.
+              con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
+              La firma y huella son opcionales — pueden completarse después.
             </div>
             <CanvasFirma
               label="Firma del cliente"
+              modal
               onChange={(dataUrl) => update({
                 autorizacion_datos_firma_url: dataUrl,
                 autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
@@ -973,7 +969,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             />
             <div style={{ marginTop: 12 }}>
               <LectorHuella
-                label="Huella dactilar del cliente"
+                label="Huella dactilar del cliente (opcional)"
                 onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
               />
             </div>

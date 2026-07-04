@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
-import ClienteDetalleSheet from "../components/ClienteDetalleSheet";
 import ModalVisita from "../components/ModalVisita";
 import {
   useClientes,
@@ -566,7 +565,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     ? todosClientes.filter(c => clienteIdsPermitidos.has(c.id) || !!(clienteIdsConVisitaAsignada?.has(c.id)))
     : todosClientes;
 
-  const [clienteDetalleId, setClienteDetalleId] = useState<string | null>(null);
   const [clienteVisitaId, setClienteVisitaId] = useState<string | null>(null);
   const [clienteVisitaNombre, setClienteVisitaNombre] = useState("");
   const [open, setOpen] = useState(initialOpenForm);
@@ -1393,8 +1391,6 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           </div>
         </div>
       )}
-
-      <ClienteDetalleSheet clienteId={clienteDetalleId} onClose={() => setClienteDetalleId(null)} />
 
       {clienteVisitaId && (
         <ModalVisita

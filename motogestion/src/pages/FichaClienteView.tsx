@@ -9,6 +9,7 @@ import { useVisitas } from "../hooks/useVisitas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
+import { generarHTMLAutorizacionDatos } from "../hooks/useDocumentos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFecha(s: string | null | undefined) {
@@ -116,12 +117,22 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+function imprimirAutorizacionDatos(cliente: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
+  const html = generarHTMLAutorizacionDatos(cliente);
+  const ventana = window.open("", "_blank");
+  if (!ventana) return;
+  ventana.document.write(`<!DOCTYPE html><html><head><title>Autorización de tratamiento de datos</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+  ventana.document.close();
+  ventana.print();
+}
+
 export default function FichaClienteView({ clienteId, onNavigate }: {
   clienteId: string;
   onNavigate: (view: ViewKey, filter?: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("resumen");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 900);
@@ -223,7 +234,24 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
         <div style={{ height: 5, background: `linear-gradient(90deg, ${estadoC.border}, ${estadoC.border}88)` }} />
         <div style={{ padding: isMobile ? "18px 16px 20px" : "24px 28px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+              <div
+                onClick={() => cliente.foto_perfil_url && setImagenAmpliada(cliente.foto_perfil_url)}
+                style={{
+                  width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: "50%",
+                  background: "#e0f2fe", flexShrink: 0, overflow: "hidden",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: isMobile ? 22 : 26, fontWeight: 800, color: "#0284c7",
+                  cursor: cliente.foto_perfil_url ? "pointer" : "default",
+                }}
+              >
+                {cliente.foto_perfil_url ? (
+                  <img src={cliente.foto_perfil_url} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  cliente.nombre.trim()[0]?.toUpperCase() ?? "?"
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: "#0f172a", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
                 {cliente.nombre}
               </div>
@@ -239,6 +267,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 {cliente.telefono && <span>{cliente.telefono}</span>}
                 {cliente.whatsapp && !cliente.mismo_whatsapp && <span>WA: {cliente.whatsapp}</span>}
                 {cliente.direccion && <span>{cliente.direccion}</span>}
+              </div>
               </div>
             </div>
             {/* KPI mini cards */}
@@ -619,6 +648,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
 
       {/* ── Tab: Documentos ── */}
       {tab === "documentos" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
           {[
             { title: "Documentos del cliente", docs: cliente.documentos_cliente },
@@ -664,6 +694,43 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               </Card>
             );
           })}
+        </div>
+
+        {(cliente.autorizacion_datos_firma_url || cliente.autorizacion_datos_huella_url) && (
+          <Card>
+            <SectionTitle>Autorización de datos</SectionTitle>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+              {cliente.autorizacion_datos_firma_url && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Firma</div>
+                  <img
+                    src={cliente.autorizacion_datos_firma_url}
+                    alt="Firma"
+                    onClick={() => setImagenAmpliada(cliente.autorizacion_datos_firma_url)}
+                    style={{ width: 100, height: 100, objectFit: "contain", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                  />
+                </div>
+              )}
+              {cliente.autorizacion_datos_huella_url && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Huella</div>
+                  <img
+                    src={cliente.autorizacion_datos_huella_url}
+                    alt="Huella"
+                    onClick={() => setImagenAmpliada(cliente.autorizacion_datos_huella_url)}
+                    style={{ width: 100, height: 100, objectFit: "contain", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                  />
+                </div>
+              )}
+            </div>
+            <div
+              onClick={() => imprimirAutorizacionDatos(cliente)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
+            >
+              🖨️ Imprimir documento
+            </div>
+          </Card>
+        )}
         </div>
       )}
 
@@ -761,6 +828,23 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox para ampliar foto de perfil / firma / huella */}
+      {imagenAmpliada && (
+        <div
+          onClick={() => setImagenAmpliada(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,0.85)",
+            zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+          }}
+        >
+          <img
+            src={imagenAmpliada}
+            alt="Ampliada"
+            style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, background: "white", objectFit: "contain" }}
+          />
         </div>
       )}
     </div>

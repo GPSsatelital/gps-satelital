@@ -62,10 +62,16 @@ function ClienteBadge({ estado }: { estado: ClienteEstado }) {
 }
 
 // El acompañante solo aporta cédula y recibo (sin hoja de vida, licencia ni antecedentes)
+// Si vive en la misma dirección que el cliente, no se le pide recibo aparte (usa el mismo).
 const DOCS_ACOMPANANTE: Array<keyof DocumentoFlags> = ["cedula", "recibo1"];
+const DOCS_ACOMPANANTE_MISMO_DOMICILIO: Array<keyof DocumentoFlags> = ["cedula"];
 
-function documentosAcompananteListos(doc: DocumentoFlags) {
-  return DOCS_ACOMPANANTE.every((k) => doc[k].ok);
+function docsAcompanante(mismoDomicilio: boolean): Array<keyof DocumentoFlags> {
+  return mismoDomicilio ? DOCS_ACOMPANANTE_MISMO_DOMICILIO : DOCS_ACOMPANANTE;
+}
+
+function documentosAcompananteListos(doc: DocumentoFlags, mismoDomicilio: boolean) {
+  return docsAcompanante(mismoDomicilio).every((k) => doc[k].ok);
 }
 
 function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<keyof DocumentoFlags>; role?: string }) {
@@ -182,7 +188,7 @@ function documentosFaltantes(cliente: Cliente) {
     ["antecedentes", "Antecedentes", "Cliente"],
     ["hojaVida", "Hoja de vida", "Cliente"],
     ["cedula", "Cédula", "Acompañante"],
-    ["recibo1", "Recibo público", "Acompañante"],
+    ...(cliente.mismo_domicilio_acompanante ? [] : [["recibo1", "Recibo público", "Acompañante"] as [keyof DocumentoFlags, string, "Cliente" | "Acompañante"]]),
   ];
   return labels.filter(([key, , owner]) => {
     const doc = owner === "Cliente" ? cliente.documentos_cliente : cliente.documentos_acompanante;
@@ -202,8 +208,8 @@ function estadoVisual(cliente: Cliente): ClienteEstado {
   return cliente.estado;
 }
 
-function calcularEstado(docCliente: DocumentoFlags, docAcompanante: DocumentoFlags): ClienteEstado {
-  if (documentosListos(docCliente) && documentosAcompananteListos(docAcompanante)) return "Listo para visita";
+function calcularEstado(docCliente: DocumentoFlags, docAcompanante: DocumentoFlags, mismoDomicilioAcompanante: boolean): ClienteEstado {
+  if (documentosListos(docCliente) && documentosAcompananteListos(docAcompanante, mismoDomicilioAcompanante)) return "Listo para visita";
   return "En proceso";
 }
 
@@ -219,6 +225,7 @@ function emptyForm(): NuevoCliente {
     acompanante_nombre: "",
     acompanante_cedula: "",
     acompanante_telefono: "",
+    mismo_domicilio_acompanante: false,
     documentos_cliente: emptyDocs(),
     documentos_acompanante: emptyDocs(),
     estado: "En proceso",
@@ -414,7 +421,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#334155", marginBottom: 8 }}>Documentos del cliente <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(clic en 🔍 para ver)</span></div>
                   <DocsSummary doc={cliente.documentos_cliente} />
                   <div style={{ fontWeight: 700, fontSize: 13, color: "#334155", margin: "12px 0 8px" }}>Documentos del acompañante</div>
-                  <DocsSummary doc={cliente.documentos_acompanante} only={DOCS_ACOMPANANTE} />
+                  <DocsSummary doc={cliente.documentos_acompanante} only={docsAcompanante(cliente.mismo_domicilio_acompanante)} />
                   {cliente.excepcion_documental && (
                     <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
                       ⚠️ Excepción documental: {cliente.excepcion_motivo || "sin motivo"}{cliente.excepcion_plazo ? ` · plazo: ${cliente.excepcion_plazo}` : ""}
@@ -688,7 +695,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       fotoPerfilUrl = url;
     }
 
-    const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante);
+    const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante, form.mismo_domicilio_acompanante);
 
     const { error } = await crearCliente({
       ...form,
@@ -729,6 +736,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       acompanante_nombre: cliente.acompanante_nombre,
       acompanante_cedula: cliente.acompanante_cedula,
       acompanante_telefono: cliente.acompanante_telefono,
+      mismo_domicilio_acompanante: cliente.mismo_domicilio_acompanante,
       documentos_cliente: JSON.parse(JSON.stringify(cliente.documentos_cliente)),
       documentos_acompanante: JSON.parse(JSON.stringify(cliente.documentos_acompanante)),
       estado: cliente.estado,
@@ -756,7 +764,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     const estadosFijos: ClienteEstado[] = ["Aprobado", "Rechazado", "Activo", "En seguimiento", "En riesgo", "En mora", "Retirado", "Lista negra"];
     const estadoFinal = estadosFijos.includes(editForm.estado)
       ? editForm.estado
-      : calcularEstado(editForm.documentos_cliente, editForm.documentos_acompanante);
+      : calcularEstado(editForm.documentos_cliente, editForm.documentos_acompanante, editForm.mismo_domicilio_acompanante);
 
     setGuardando(true);
     try {
@@ -988,6 +996,13 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.acompanante_cedula ?? ""} onChange={(e) => update({ acompanante_cedula: e.target.value })} /></div>
             <div><div style={labelStyle}>Teléfono</div><input style={inputStyle} value={data.acompanante_telefono ?? ""} onChange={(e) => update({ acompanante_telefono: e.target.value })} /></div>
+            <div>
+              <div style={labelStyle}>¿Vive en la misma dirección que el cliente?</div>
+              <select style={inputStyle} value={data.mismo_domicilio_acompanante ? "si" : "no"} onChange={(e) => update({ mismo_domicilio_acompanante: e.target.value === "si" })}>
+                <option value="no">No</option>
+                <option value="si">Sí</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1007,7 +1022,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
         <div>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
-          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={DOCS_ACOMPANANTE} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
+          {data.mismo_domicilio_acompanante && (
+            <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+              ℹ️ Vive con el cliente — usa el mismo recibo público, no se pide uno aparte.
+            </div>
+          )}
+          <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={docsAcompanante(data.mismo_domicilio_acompanante)} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
         </div>
 
         <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid #f59e0b" }}>
@@ -1563,7 +1583,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       </div>
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Documentos acompañante</div>
-        <DocsSummary doc={selectedCliente.documentos_acompanante} only={DOCS_ACOMPANANTE} role={role} />
+        <DocsSummary doc={selectedCliente.documentos_acompanante} only={docsAcompanante(selectedCliente.mismo_domicilio_acompanante)} role={role} />
       </div>
 
       {documentosFaltantes(selectedCliente).length > 0 && (

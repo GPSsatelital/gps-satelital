@@ -70,6 +70,11 @@ const GESTION_COLORS: Record<string, { bg: string; color: string }> = {
 
 type Tab = "resumen" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
 
+const DOC_LABELS_ACOMPANANTE: Array<[keyof DocumentoFlags, string]> = [
+  ["cedula",  "Cédula"],
+  ["recibo1", "Recibo público"],
+];
+
 const DOC_LABELS: Array<[keyof DocumentoFlags, string]> = [
   ["cedula",      "Cédula"],
   ["hojaVida",    "Hoja de vida"],
@@ -650,11 +655,17 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
           {[
-            { title: "Documentos del cliente", docs: cliente.documentos_cliente },
-            { title: "Documentos del acompañante", docs: cliente.documentos_acompanante },
+            { title: "Documentos del cliente", docs: cliente.documentos_cliente, labels: DOC_LABELS },
+            {
+              title: "Documentos del acompañante",
+              docs: cliente.documentos_acompanante,
+              labels: cliente.mismo_domicilio_acompanante
+                ? DOC_LABELS_ACOMPANANTE.filter(([k]) => k !== "recibo1")
+                : DOC_LABELS_ACOMPANANTE,
+            },
           ].map(section => {
-            const total = DOC_LABELS.length;
-            const ok = DOC_LABELS.filter(([k]) => section.docs[k]?.ok).length;
+            const total = section.labels.length;
+            const ok = section.labels.filter(([k]) => section.docs[k]?.ok).length;
             return (
               <Card key={section.title}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -663,8 +674,13 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     {ok}/{total}
                   </span>
                 </div>
+                {section.title === "Documentos del acompañante" && cliente.mismo_domicilio_acompanante && (
+                  <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+                    ℹ️ Vive con el cliente — usa el mismo recibo público.
+                  </div>
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {DOC_LABELS.map(([key, label]) => {
+                  {section.labels.map(([key, label]) => {
                     const item = section.docs[key];
                     const isOk = item?.ok === true;
                     return (

@@ -51,6 +51,7 @@ export type Cliente = {
   acompanante_nombre: string | null;
   acompanante_cedula: string | null;
   acompanante_telefono: string | null;
+  mismo_domicilio_acompanante: boolean;
   documentos_cliente: DocumentoFlags;
   documentos_acompanante: DocumentoFlags;
   estado: ClienteEstado;
@@ -86,6 +87,7 @@ export type NuevoCliente = {
   acompanante_nombre: string | null;
   acompanante_cedula: string | null;
   acompanante_telefono: string | null;
+  mismo_domicilio_acompanante: boolean;
   documentos_cliente: DocumentoFlags;
   documentos_acompanante: DocumentoFlags;
   estado: ClienteEstado;

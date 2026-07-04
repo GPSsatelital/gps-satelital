@@ -219,3 +219,71 @@ export function generarHTMLPagare(contrato: Contrato, cliente: Cliente): string 
 export function getPreguntas() {
   return PREGUNTAS_CERTIFICADO;
 }
+
+export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
+  const fechaAutorizacion = cliente.autorizacion_datos_fecha
+    ? fmtFecha(cliente.autorizacion_datos_fecha.slice(0, 10))
+    : fmtFecha(new Date().toISOString().slice(0, 10));
+
+  const categorias = [
+    "Nombre completo",
+    "Número de cédula",
+    "Dirección de residencia",
+    "Número de teléfono",
+  ];
+  if (cliente.autorizacion_datos_huella_url) categorias.push("Huella dactilar");
+  categorias.push("Firma manuscrita digital");
+
+  return `
+    <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">GPS Satelital Cartagena</div>
+        <div style="font-size:14px;font-weight:700;margin-top:6px">AUTORIZACIÓN DE TRATAMIENTO DE DATOS PERSONALES</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Cartagena de Indias, ${fechaAutorizacion}</div>
+      </div>
+
+      <div style="margin-bottom:16px;line-height:1.7">
+        De acuerdo con la Ley 1581 de 2012 y el Decreto 1377 de 2013, yo, <strong>${cliente.nombre.toUpperCase()}</strong>,
+        identificado(a) con C.C. <strong>${cliente.cedula}</strong>, domiciliado(a) en ${cliente.direccion ?? "—"},
+        autorizo de manera libre, previa, expresa e informada a <strong>GPS Satelital Cartagena</strong> (arrendador: FREDY MORA
+        AVENDAÑO, C.C. 1.047.393.901) a recolectar, almacenar, usar y tratar mis datos personales, con la finalidad
+        de gestionar mi contrato de arrendamiento de vehículo, verificar mi identidad y gestionar el cobro de cartera.
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:20px">
+        <strong>Datos autorizados para tratamiento:</strong>
+        <ul style="margin:8px 0 0;padding-left:18px;line-height:1.8">
+          ${categorias.map(c => `<li>${c}</li>`).join("")}
+        </ul>
+      </div>
+
+      <div style="margin-bottom:24px;line-height:1.7;font-size:11px;color:#334155">
+        Entiendo que puedo conocer, actualizar, rectificar y solicitar la supresión de mis datos personales en
+        cualquier momento, de conformidad con la ley, dirigiéndome directamente a GPS Satelital Cartagena.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Firma registrada</div>
+          ${cliente.autorizacion_datos_firma_url
+            ? `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:white"><img src="${cliente.autorizacion_datos_firma_url}" style="width:100%;max-height:140px;object-fit:contain;display:block" /></div>`
+            : `<div style="border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:11px">Sin firma registrada</div>`
+          }
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Huella registrada</div>
+          ${cliente.autorizacion_datos_huella_url
+            ? `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:white;text-align:center"><img src="${cliente.autorizacion_datos_huella_url}" style="max-width:100px;max-height:120px;object-fit:contain;display:inline-block" /></div>`
+            : `<div style="border:1px dashed #cbd5e1;border-radius:8px;padding:20px;text-align:center;color:#94a3b8;font-size:11px">Sin huella registrada</div>`
+          }
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:32px">
+        <div style="display:inline-block;border-top:1px solid #0f172a;padding-top:8px;font-size:11px;min-width:220px">
+          ${cliente.nombre.toUpperCase()}<br/>C.C. ${cliente.cedula}<br/>Titular de los datos
+        </div>
+      </div>
+    </div>
+  `;
+}

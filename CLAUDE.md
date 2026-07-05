@@ -653,6 +653,8 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 | Quincenal/Mensual calculaban mora incorrectamente | Usaban la misma lógica que Semanal (día de semana) con `valor_semanal` — completamente incorrecto para contratos de 15/30 días. La solución fue `cicloPago.ts` con `dias_pago_mes` (fechas reales del mes) y período natural entre días de pago consecutivos. |
 | Componente `ClienteDetalleSheet.tsx` — todo el trabajo hecho ahí era invisible para el usuario | Nunca se abría en ningún lugar de la app (el `useState` que lo activaba nunca se seteaba) — código muerto desde que se creó, semanas antes. Se construyeron 3 features completas ahí (foto de perfil, firma/huella, imprimir documento) antes de notar que la pantalla real era `FichaClienteView.tsx`. **Regla: antes de agregar UI a un componente de "detalle de cliente", verificar en el navegador con la pantalla real que abre el botón que el usuario usa ("Ver ficha completa"), no asumir por el nombre del archivo cuál es el correcto.** |
 | Documentos del acompañante comparados contra los 6 requisitos del cliente en FichaClienteView | El tab Documentos mostraba "✗ Hoja de vida", "✗ Carta", etc. en rojo para el acompañante aunque nunca se le exigieron — usaba `DOC_LABELS` completo para ambas secciones. Cada persona (cliente/acompañante) debe compararse contra SU PROPIA lista de documentos requeridos, no una lista compartida. |
+| `valor_semanal` con el total del período metido directo (RMZ48H) | Para Quincenal/Mensual el campo SIEMPRE debe llevar el valor semanal BASE — el sistema calcula el total con `4×valor_semanal + 2×pagoDiaLS`. Si se mete el total mensual ahí, se vuelve a multiplicar y sale ~4x inflado ($3.420.000 en vez de $840.000). Fix: `ModalEditarContrato` ahora muestra una vista previa en vivo del total calculado para detectar el error antes de guardar. |
+| Trigger `enforce_profile_role_change()` desactualizado desde que existe ADMIN_PRINCIPAL | Solo bloqueaba cambios de `role` y solo exigía rol=`ADMIN` (nunca se actualizó al crear `ADMIN_PRINCIPAL`) — un ADMIN podía subirse a ADMIN_PRINCIPAL editando su fila directo contra la BD, sin pasar por la Edge Function. Tampoco protegía `permisos` (cualquiera podía auto-otorgarse acceso a cualquier módulo). Corregido en migración 031: ahora exige `ADMIN_PRINCIPAL` y cubre `role`+`permisos`+`grupo`. **Lección: cuando se agrega un rol nuevo a la jerarquía, hay que revisar TODOS los triggers/políticas RLS que comparan contra roles viejos, no solo el frontend.** |
 
 ---
 
@@ -741,7 +743,17 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `a1aeb31` (vista previa del total calculado en Editar Contrato).
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `63c7aa8` (gestión de usuarios exclusiva de ADMIN_PRINCIPAL + cierra huecos de seguridad).
+
+### 🔲 Pendiente — verificar despliegue de Usuarios/seguridad (5 jul 2026)
+Se construyó e implementó en esta sesión (código en `main`, y el usuario confirmó haber hecho los 3 pasos de despliegue en Supabase: redesplegar `manage-users` con el código nuevo pegado en el Dashboard, y correr la migración SQL del trigger). **Falta verificar que quedó funcionando** — checklist para la próxima sesión o para que el usuario confirme:
+1. SERGIO (ADMIN) ya no debe ver "Usuarios" en su menú.
+2. FREDY (ADMIN_PRINCIPAL) sí debe seguir viéndolo.
+3. Al editar un usuario, el campo "Correo electrónico" debe aparecer ya lleno con el correo real (confirma que la acción `list` nueva funciona).
+4. Cambiar el correo de un usuario y guardar no debe dar error.
+5. Resetear contraseña debe seguir funcionando igual que antes.
+6. Sin errores nuevos en Supabase → Edge Functions → `manage-users` → Logs.
+- **Sin confirmar:** si la función `create-user` (eliminada del código) todavía aparece desplegada en el Dashboard de Supabase — si aparece, hay que borrarla ahí manualmente (el código ya no existe en el repo).
 
 ### 🔲 Pendiente — 5 motos/contratos con tarifa placeholder (5 jul 2026)
 Al buscar más casos del bug de RMZ48H (valor mensual metido en el campo semanal) se encontró un problema distinto y menor: 5 contratos con `tarifa_diaria`/`tarifa_domingo` en valores no redondos (`$27.857`, `$13.929` — resultado de dividir `valor_semanal / 7`, justo el patrón "total/7" que el sistema tiene prohibido). El `valor_semanal` en sí está bien, así que el cobro semanal no se ve afectado — solo importaría si se usa la tarifa exacta de un día o se hace prorrateo para estos contratos.

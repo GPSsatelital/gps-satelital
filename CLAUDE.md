@@ -741,7 +741,16 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `54ed0a6` (acompañante no repite recibo si vive en la misma dirección).
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `a1aeb31` (vista previa del total calculado en Editar Contrato).
+
+### 🔲 Pendiente — 5 motos/contratos con tarifa placeholder (5 jul 2026)
+Al buscar más casos del bug de RMZ48H (valor mensual metido en el campo semanal) se encontró un problema distinto y menor: 5 contratos con `tarifa_diaria`/`tarifa_domingo` en valores no redondos (`$27.857`, `$13.929` — resultado de dividir `valor_semanal / 7`, justo el patrón "total/7" que el sistema tiene prohibido). El `valor_semanal` en sí está bien, así que el cobro semanal no se ve afectado — solo importaría si se usa la tarifa exacta de un día o se hace prorrateo para estos contratos.
+
+El usuario dio instrucciones sobre qué hacer con cada moto (no ejecutado aún, pendiente el paso a paso en la app):
+- **RMZ65H** (KEINER ANDRES GOMEZ TORREZ) — ya no tiene conductor. Recomendado: pasar por Taller para revisión antes de "Disponible" (no directo).
+- **RMZ64H** (DELCY JUDITH YEPES OCHOA) — guardada en Fiscalía. Cambiar `motos.estado` a "Fiscalía" desde MotosView — el contrato NO se cancela (Fiscalía congela tarifa, no cierra contrato).
+- **RMZ69H** (JESUS ALBERTO BAYONA), **XYZ48H** (JOSE MANUEL VILLANUEVA), **YAL57H** (CAMILO BERROCAL GARCIA) — a "Disponible". Recomendado: Cancelar/Finalizar el contrato del cliente desde Contratos (no cambiar `motos.estado` directo por SQL) para no dejar el contrato "Activo" huérfano mientras la moto queda libre para otro cliente.
+- Sin confirmar aún: si los contratos de estos 3 últimos clientes deben cerrarse formalmente o no — quedó pendiente la respuesta del usuario.
 
 ### ⚠️ Migraciones SQL pendientes de confirmar en Supabase (sesión 4 jul 2026)
 ```sql

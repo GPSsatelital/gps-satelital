@@ -10,7 +10,7 @@ const card: React.CSSProperties = { background: "white", borderRadius: 16, paddi
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
 
 type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
-type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null };
+type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null; email: string | null };
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "SECRETARIA", label: "Secretaria" },
@@ -38,7 +38,7 @@ function roleBadge(role: Role) {
 }
 
 // Llama a la Edge Function manage-users con el token del admin actual
-async function invocar(payload: Record<string, unknown>): Promise<{ error: string | null }> {
+async function invocar(payload: Record<string, unknown>): Promise<{ error: string | null; data?: Record<string, unknown> }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
   const { data, error } = await supabase.functions.invoke("manage-users", {
@@ -47,7 +47,7 @@ async function invocar(payload: Record<string, unknown>): Promise<{ error: strin
   });
   if (error) return { error: error.message || "Error de conexión" };
   if (data?.error) return { error: data.error };
-  return { error: null };
+  return { error: null, data };
 }
 
 // Selector de accesos a módulos, agrupado
@@ -110,13 +110,14 @@ export default function UsuariosView() {
   const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "SOCIO", "MECANICO"];
 
   async function cargarUsuarios() {
-    const { data, error } = await supabase.from("profiles").select("id, nombre, role, grupo, permisos");
-    if (error) setListError(error.message);
+    const { error, data } = await invocar({ action: "list" });
+    if (error) setListError(error);
     else {
-      const sorted = (data ?? []).sort((a, b) =>
+      const lista = (data?.usuarios as PerfilUsuario[]) ?? [];
+      const sorted = lista.sort((a, b) =>
         ROLE_ORDER.indexOf(a.role as Role) - ROLE_ORDER.indexOf(b.role as Role)
       );
-      setUsuarios(sorted as PerfilUsuario[]);
+      setUsuarios(sorted);
       setListError(null);
     }
     setLoading(false);
@@ -263,6 +264,7 @@ export default function UsuariosView() {
 // ── Modal: editar usuario + resetear contraseña ──────────────────────────────
 function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario; onClose: () => void; onGuardado: () => void }) {
   const [nombre, setNombre] = useState(usuario.nombre);
+  const [email, setEmail] = useState(usuario.email ?? "");
   const [role, setRole] = useState<Role>(usuario.role);
   const [grupo, setGrupo] = useState<GrupoSocio>((usuario.grupo as GrupoSocio) ?? "RASTREADOR");
   const [accesos, setAccesos] = useState<ViewKey[]>(
@@ -290,10 +292,11 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   async function guardar() {
     setError(null); setOk(null);
     if (!nombre.trim()) { setError("El nombre no puede quedar vacío."); return; }
+    if (!email.trim()) { setError("El correo no puede quedar vacío."); return; }
     setGuardando(true);
     const { error } = await invocar({
       action: "update",
-      id: usuario.id, nombre: nombre.trim(), role,
+      id: usuario.id, nombre: nombre.trim(), email: email.trim(), role,
       ...(isSocio ? { grupo } : {}),
       permisos: isSocio ? [] : accesos,
     });
@@ -330,6 +333,10 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
           <div>
             <div style={labelStyle}>Nombre completo</div>
             <input style={inputStyle} value={nombre} onChange={e => setNombre(e.target.value)} />
+          </div>
+          <div>
+            <div style={labelStyle}>Correo electrónico</div>
+            <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" />
           </div>
           <div>
             <div style={labelStyle}>Rol</div>

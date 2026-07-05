@@ -418,6 +418,9 @@ function Shell() {
   // ¿Puede el usuario abrir este módulo? Accesos a medida mandan; si no hay, default por rol.
   function puedeVer(view: ViewKey): boolean {
     if (MODULOS_SIEMPRE.includes(view)) return true;
+    // Usuarios & Roles: exclusivo de ADMIN_PRINCIPAL, sin excepción — ningún acceso a
+    // medida puede otorgarlo a otro rol (evita que alguien se autoconceda gestión de cuentas).
+    if (view === "usuarios") return roleActual === "ADMIN_PRINCIPAL";
     const p = profile?.permisos;
     // Lista a medida (incluso vacía) manda; sin lista (NULL) usa el default del rol.
     // SOCIO siempre va por su dashboard aparte, así que su lista vacía no afecta.

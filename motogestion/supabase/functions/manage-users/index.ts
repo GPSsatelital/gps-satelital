@@ -1,7 +1,8 @@
 // Edge Function: manage-users
-// Acciones de administración de cuentas, todas reservadas a ADMIN / ADMIN_PRINCIPAL:
+// Acciones de administración de cuentas, todas reservadas a ADMIN_PRINCIPAL:
+//   - list:           perfiles + correo real (correo vive en auth.users, no en profiles)
 //   - create:         crea la cuenta (auth + perfil) con rol, grupo y accesos
-//   - update:         cambia nombre, rol, grupo y accesos de un usuario existente
+//   - update:         cambia nombre, correo, rol, grupo y accesos de un usuario existente
 //   - reset_password: asigna una contraseña temporal nueva
 // Usa la "service role key", que solo vive en el servidor (nunca llega al navegador).
 
@@ -38,8 +39,8 @@ Deno.serve(async (req: Request) => {
     if (userError || !userData.user) return json({ error: "No autorizado" }, 401);
 
     const { data: caller } = await callerClient.from("profiles").select("role").eq("id", userData.user.id).single();
-    if (!caller || (caller.role !== "ADMIN" && caller.role !== "ADMIN_PRINCIPAL")) {
-      return json({ error: "Solo un administrador puede gestionar usuarios" }, 403);
+    if (!caller || caller.role !== "ADMIN_PRINCIPAL") {
+      return json({ error: "Solo el administrador principal puede gestionar usuarios" }, 403);
     }
 
     const body = await req.json();
@@ -48,6 +49,21 @@ Deno.serve(async (req: Request) => {
 
     // Normaliza la lista de accesos a un arreglo de strings (o null)
     const permisos = Array.isArray(body.permisos) ? body.permisos.filter((x: unknown) => typeof x === "string") : null;
+
+    // ── LIST ───────────────────────────────────────────────────────────────
+    if (action === "list") {
+      const { data: profiles, error: profilesError } = await adminClient
+        .from("profiles")
+        .select("id, nombre, role, grupo, permisos");
+      if (profilesError) return json({ error: profilesError.message }, 400);
+
+      const { data: authList, error: authError } = await adminClient.auth.admin.listUsers({ perPage: 200 });
+      if (authError) return json({ error: authError.message }, 400);
+
+      const emailPorId = new Map(authList.users.map(u => [u.id, u.email ?? null]));
+      const conCorreo = (profiles ?? []).map(p => ({ ...p, email: emailPorId.get(p.id) ?? null }));
+      return json({ ok: true, usuarios: conCorreo });
+    }
 
     // ── RESET PASSWORD ─────────────────────────────────────────────────────
     if (action === "reset_password") {
@@ -64,12 +80,18 @@ Deno.serve(async (req: Request) => {
     if (action === "update") {
       const id = body.id;
       const nombre = (body.nombre ?? "").trim();
+      const email = (body.email ?? "").trim();
       const role = body.role;
       const grupo = (body.grupo ?? "").trim();
       if (!id) return json({ error: "Falta el usuario" }, 400);
       if (!nombre || !role) return json({ error: "Faltan datos" }, 400);
       if (!ROLES_VALIDOS.includes(role)) return json({ error: "Rol inválido" }, 400);
       if (role === "SOCIO" && !GRUPOS_VALIDOS.includes(grupo)) return json({ error: "Un socio debe tener un grupo asignado" }, 400);
+
+      if (email) {
+        const { error: emailError } = await adminClient.auth.admin.updateUserById(id, { email, email_confirm: true });
+        if (emailError) return json({ error: emailError.message }, 400);
+      }
 
       const { error } = await adminClient.from("profiles").update({
         nombre,

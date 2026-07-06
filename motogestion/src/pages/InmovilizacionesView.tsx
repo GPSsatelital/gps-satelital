@@ -1,12 +1,20 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
+import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, calcularCuotaDia } from "../hooks/usePagos";
 import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  calcularEstadoCartera,
+  diasEnMora,
+  valorPeriodoReal,
+  totalPagadoPeriodoActual,
+  estaEnProrrateo,
+  calcularProrrateoInicial,
+} from "../utils/cicloPago";
 import ModalGestion from "../components/ModalGestion";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -29,14 +37,15 @@ type Fila = {
   placa: string;
   marca: string;
   modelo: string;
-  diasSinPago: number;
-  deudaEstimada: number;
+  diasMora: number;
+  deudaReal: number;
   tarifa: number;
   ultimoPago: string | null;
   prioridad: Prioridad;
   ultimaGestion: string | null;
   tipoUltimaGestion: string | null;
   recoleccionOrdenada: boolean;
+  pasosPrevios: { mensaje: boolean; llamada: boolean; sirena: boolean };
 };
 
 const PRIO: Record<Prioridad, { bg: string; color: string; border: string; label: string; icon: string }> = {
@@ -70,6 +79,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
+  const [gestionPasosPrevios, setGestionPasosPrevios] = useState<{ mensaje: boolean; llamada: boolean; sirena: boolean } | undefined>(undefined);
   const [busqueda, setBusqueda]       = useState("");
   const [filtro, setFiltro]           = useState<FiltroP>("todos");
   const [expandido, setExpandido]     = useState<string | null>(null);
@@ -81,28 +91,56 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   })();
 
   const filas: Fila[] = useMemo(() => {
+    const hoyDate = new Date();
+    const hoyISO = hoyDate.toISOString().slice(0, 10);
     return contratos
       .filter(c => c.estado === "Activo")
       .flatMap(c => {
         const pagosC = pagos
           .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
           .sort((a, b) => b.fecha.localeCompare(a.fecha));
-        const ultimo = pagosC[0];
-        const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10)) ?? 0;
-        if (dias < 3) return [];
+
+        // Mismo criterio de mora real que usa Cartera — solo entran los que de verdad
+        // están en mora, sin importar la modalidad (evita el falso positivo de contar
+        // "días sin pago" en bruto para semanal/quincenal/mensual).
+        if (calcularEstadoCartera(c, pagosC, hoyDate) !== "mora") return [];
+        const dias = diasEnMora(c, pagosC, hoyDate);
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);
         const tarifa  = c.tarifa_diaria ?? 27000;
-        const deudaReal = deudas
+        const ultimo = pagosC[0];
+
+        // Deuda REAL, sin estimaciones: deuda ya registrada + lo que falta de la cuota del
+        // período actual (número exacto), igual que Cartera. No se multiplica días×tarifa.
+        const deudaRegistrada = deudas
           .filter(d => d.contrato_id === c.id && d.estado !== "pagada")
           .reduce((acc, d) => acc + d.monto_pendiente, 0);
+        const enProrrateo = estaEnProrrateo(c, pagosC.length === 0);
+        const cuotaPactada = c.forma_pago === "Diario"
+          ? calcularCuotaDia(c.tarifa_diaria ?? 27000, hoyDate.getDay() === 0, c.tarifa_domingo)
+          : enProrrateo ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
+        const pagadoPeriodo = c.forma_pago === "Diario"
+          ? pagosC.filter(p => p.fecha === hoyISO).reduce((acc, p) => acc + p.valor, 0)
+          : totalPagadoPeriodoActual(c, pagosC, hoyDate);
+        const cuotaPendiente = Math.max(cuotaPactada - pagadoPeriodo, 0);
+        const deudaReal = deudaRegistrada + cuotaPendiente;
 
         const gestionesC = gestiones
           .filter(g => g.contrato_id === c.id)
           .sort((a, b) => b.fecha.localeCompare(a.fecha));
         const ultimaG = gestionesC[0] ?? null;
         const tieneRecoleccion = gestionesC.some(g => g.tipo === "recoleccion");
+
+        // Gestiones de ESTA mora (desde el último pago, o desde siempre si nunca pagó) —
+        // para no contar mensaje/llamada/sirena de un ciclo de mora anterior ya resuelto.
+        const desde = ultimo?.fecha ?? "0000-00-00";
+        const gestionesEstaModa = gestionesC.filter(g => g.fecha >= desde);
+        const pasosPrevios = {
+          mensaje: gestionesEstaModa.some(g => g.tipo === "whatsapp" || g.tipo === "mensaje_recordatorio"),
+          llamada: gestionesEstaModa.some(g => g.tipo === "llamada"),
+          sirena: gestionesEstaModa.some(g => g.tipo === "sirena"),
+        };
 
         return [{
           contratoId: c.id,
@@ -113,17 +151,18 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           placa: moto?.placa ?? "Sin placa",
           marca: moto?.marca ?? "",
           modelo: moto?.modelo ?? "",
-          diasSinPago: dias,
-          deudaEstimada: deudaReal + Math.min(dias, 30) * tarifa,
+          diasMora: dias,
+          deudaReal,
           tarifa,
           ultimoPago: ultimo?.fecha ?? null,
           prioridad: (dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media") as Prioridad,
           ultimaGestion: ultimaG?.fecha ?? null,
           tipoUltimaGestion: ultimaG?.tipo ?? null,
           recoleccionOrdenada: tieneRecoleccion,
+          pasosPrevios,
         }];
       })
-      .sort((a, b) => b.diasSinPago - a.diasSinPago);
+      .sort((a, b) => b.diasMora - a.diasMora);
   }, [contratos, clientes, motos, pagos, gestiones, hoy]);
 
   // Recovery count this week
@@ -138,7 +177,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     critica:     filas.filter(f => f.prioridad === "critica").length,
     alta:        filas.filter(f => f.prioridad === "alta").length,
     media:       filas.filter(f => f.prioridad === "media").length,
-    deudaTotal:  filas.reduce((a, f) => a + f.deudaEstimada, 0),
+    deudaTotal:  filas.reduce((a, f) => a + f.deudaReal, 0),
     recoleccion: filas.filter(f => f.recoleccionOrdenada).length,
   }), [filas]);
 
@@ -222,7 +261,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   function abrirWA(tel: string, nombre: string, dias: number) {
     if (!tel) return;
     const n = nombre.split(" ")[0];
-    const msg = `Hola ${n}, su moto lleva ${dias} días sin pago. Es urgente que se comunique con nosotros para evitar la recolección del vehículo. GPS Satelital ⚠️`;
+    const msg = `Hola ${n}, su moto lleva ${dias} días en mora. Es urgente que se comunique con nosotros para evitar la recolección del vehículo. GPS Satelital ⚠️`;
     const num = tel.replace(/\D/g, "");
     window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(msg)}`, "_blank");
   }
@@ -239,7 +278,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       <div style={{ marginBottom: 22 }}>
         <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Inmovilizaciones</h2>
         <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 14 }}>
-          Contratos con 3+ días sin pago — requieren acción inmediata
+          Contratos en mora real — requieren acción inmediata
         </p>
       </div>
 
@@ -261,7 +300,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
         </div>
         <div style={{ background: "#fff5f5", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda estimada total</div>
+          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
           <div style={{ fontSize: 22, fontWeight: 900, color: "#991b1b", lineHeight: 1.1, marginTop: 6 }}>${fmt(resumen.deudaTotal)}</div>
           <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
         </div>
@@ -361,13 +400,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
                       <div>
                         <div style={{ fontSize: 34, fontWeight: 900, color: s.color, lineHeight: 1 }}>
-                          {f.diasSinPago === 999 ? "∞" : f.diasSinPago}
+                          {f.diasMora}
                         </div>
-                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
+                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>${fmt(f.deudaEstimada)}</div>
-                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>deuda estimada</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>${fmt(f.deudaReal)}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>deuda real</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#334155" }}>${fmt(f.tarifa)}/día</div>
@@ -397,12 +436,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <div style={{ height: 5, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
                         <div style={{
                           height: "100%", borderRadius: 999,
-                          width: `${Math.min(100, (f.diasSinPago / 14) * 100)}%`,
+                          width: `${Math.min(100, (f.diasMora / 14) * 100)}%`,
                           background: f.prioridad === "critica" ? "#ef4444" : f.prioridad === "alta" ? "#f59e0b" : "#f97316",
                         }} />
                       </div>
                       <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, textAlign: "right" }}>
-                        {f.diasSinPago === 999 ? "Sin historial de pagos" : `${f.diasSinPago} / 14 días`}
+                        {`${f.diasMora} / 14 días en mora`}
                       </div>
                     </div>
                   </div>
@@ -418,7 +457,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           📞 Llamar
                         </button>
                         <button
-                          onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)}
+                          onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasMora)}
                           style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
                         >
                           💬 WA
@@ -426,7 +465,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       </>
                     )}
                     <button
-                      onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }}
+                      onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); setGestionPasosPrevios(f.pasosPrevios); }}
                       style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}
                     >
                       📋 Gestión
@@ -572,7 +611,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         <ModalGestion
           contratoId={gestionId}
           clienteNombre={gestionNombre}
-          onClose={() => setGestionId(null)}
+          pasosPrevios={gestionPasosPrevios}
+          onClose={() => { setGestionId(null); setGestionPasosPrevios(undefined); }}
         />
       )}
     </div>

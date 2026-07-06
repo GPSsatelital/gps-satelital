@@ -743,7 +743,40 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Árbol limpio. Último commit en main: `63c7aa8` (gestión de usuarios exclusiva de ADMIN_PRINCIPAL + cierra huecos de seguridad).
+**Estado del código (sesión en curso, aún sin commitear):** hay cambios locales sin subir en `InmovilizacionesView.tsx`, `ModalGestion.tsx` y `cicloPago.ts` (Fase 0 del plan de rediseño de contratos/liquidaciones/inmovilizaciones). `npx tsc --noEmit` pasa limpio. **Falta correr `npm run build` completo** (se bloqueó por un problema temporal de la plataforma, no del código) **y hacer commit + push + merge a main** antes de dar la Fase 0 por cerrada. Último commit en main: `63c7aa8` (gestión de usuarios exclusiva de ADMIN_PRINCIPAL + cierra huecos de seguridad).
+
+### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
+Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases, 34+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, etc.), no hay que volver a preguntar nada de eso.
+
+**Fase 0 (Inmovilizaciones) — código ya escrito, pendiente de build/verificar/commitear:**
+- `cicloPago.ts`: nueva función `diasEnMora()` — días reales desde que empezó la mora (no desde el último pago, que daba falsos positivos en Semanal/Quincenal/Mensual).
+- `InmovilizacionesView.tsx`: usa `calcularEstadoCartera()==='mora'` en vez de conteo de días en bruto; `deudaReal` = deuda registrada + cuota pendiente exacta (ya no días×tarifa inventado); etiquetas renombradas.
+- `ModalGestion.tsx`: nueva prop opcional `pasosPrevios` — oculta la opción "Recolección" hasta que existan mensaje+llamada+sirena registrados para esa mora, con aviso de qué falta.
+
+### ⚠️ DEPLOY DE FASE 0 PENDIENTE — el clasificador de seguridad de Bash estuvo caído toda la parte final de la sesión, así que NO se pudo correr build ni git. `tsc --noEmit` sí pasó. Al retomar, ejecutar en orden:
+```bash
+cd motogestion && npm run build   # confirmar que pasa
+# volver a la raíz del repo:
+git add motogestion/src/pages/InmovilizacionesView.tsx motogestion/src/components/ModalGestion.tsx motogestion/src/utils/cicloPago.ts CLAUDE.md
+git commit -m "feat: Inmovilizaciones usa mora real + deuda real + exige gestión antes de recolectar"
+git checkout main && git pull origin main && git merge claude/clever-turing-daklkq && git push origin main && git checkout claude/clever-turing-daklkq
+```
+Después probar en el navegador con datos reales: confirmar que un cliente semanal AL DÍA ya no aparece en Inmovilizaciones, y que la opción "Recolección" del ModalGestion no aparece hasta registrar mensaje+llamada+sirena.
+
+**Preferencia de comunicación del usuario (aplicar siempre, no solo en este tema):** explicar todo con ejemplos simples y concretos, como a alguien que no conoce el tema — confirmado explícitamente en esta sesión. Ver `feedback-explicaciones-simples` en memoria.
+
+### ✅ TEMA CONVENIOS — lógica definida con el usuario (5 jul 2026), implementación pendiente
+Detalle completo en `sunny-brewing-island.md` (TEMA 3). Resumen de las decisiones:
+- **2 bugs reales:** `abonarCuotaConvenio()` y `marcarIncumplido()` en `useConvenios.ts` existen pero NADIE las llama — el contador de cuotas nunca avanza y ningún convenio puede marcarse incumplido (mismo patrón de "código muerto" de Liquidaciones/ahorro).
+- Cuotas del convenio **avanzan automáticamente** al confirmar pagos (desde acumulado de `aplicado_convenio`).
+- El convenio **cuenta para la mora igual que la cuota normal** — hoy `calcularEstadoCartera()` solo mira la cuota del período y muestra "al día" aunque falte la del convenio.
+- **Pago parcial del convenio cuenta como abono** (resta de la deuda total) pero sigue EN MORA hasta completar.
+- **Incumplido automático** solo al vencerse las cuotas pactadas (no al recolectar). Para recuperar moto retenida: cuota normal + cuota del convenio + multa $20.000 (pagar todo el convenio es opcional).
+- **3er incumplido:** alerta 🔔 + marca "requiere liquidación", el admin la inicia (no automática).
+- Panel Hoy debe mostrar desglose "Cuota: $X + Convenio: $Y".
+- Nueva fase de implementación agregada al plan.
+
+**Próximo tema a definir con el usuario (pendiente, no empezado):** el flujo completo de cuándo/cómo se inmoviliza una moto (el paso a paso operativo de la inmovilización en sí, más allá de los criterios de cuándo aparece en la lista que ya se definieron en el TEMA 2).
 
 ### 🔲 Pendiente — verificar despliegue de Usuarios/seguridad (5 jul 2026)
 Se construyó e implementó en esta sesión (código en `main`, y el usuario confirmó haber hecho los 3 pasos de despliegue en Supabase: redesplegar `manage-users` con el código nuevo pegado en el Dashboard, y correr la migración SQL del trigger). **Falta verificar que quedó funcionando** — checklist para la próxima sesión o para que el usuario confirme:

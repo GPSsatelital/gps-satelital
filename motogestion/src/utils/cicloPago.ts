@@ -159,6 +159,24 @@ export function calcularEstadoCartera(
   return "mora";
 }
 
+// Días que el contrato lleva EN MORA (no "días sin pago"): cuántos días pasaron desde que
+// entró en mora, que es el día siguiente a la gabela. Secuencia: día de pago (0) → gabela (1)
+// → mora (2+). Devuelve 0 si el contrato no está en mora. Es la fuente única para el número
+// que muestra Inmovilizaciones, para no confundir "días sin pago" (que crece aunque el
+// cliente pague puntual) con "días de mora" real.
+export function diasEnMora(
+  contrato: ContratoCiclo,
+  pagosConfirmados: Array<{ fecha: string; valor: number }>,
+  hoy: Date,
+): number {
+  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy) !== "mora") return 0;
+  const hoyDia = new Date(hoy);
+  hoyDia.setHours(0, 0, 0, 0);
+  const inicio = inicioPeriodoActual(contrato, hoyDia);
+  const diasDesde = Math.floor((hoyDia.getTime() - inicio.getTime()) / 86400000);
+  return Math.max(diasDesde - 1, 0);
+}
+
 // Calcula el valor real del primer pago (prorrateo) para contratos nuevos — itera día a
 // día detectando domingos, apuntando al próximo día de pago (semanal o de calendario).
 export function calcularProrrateoInicial(contrato: ContratoCiclo): number {

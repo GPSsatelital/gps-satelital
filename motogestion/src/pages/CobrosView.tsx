@@ -750,6 +750,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return gestiones.some(g => g.contrato_id === contratoId && g.tipo === tipo && g.fecha === hoyISOPanel);
   }
 
+  // Antes de recolectar, el protocolo exige haber intentado (sin respuesta) mensaje, llamada
+  // y sirena — registrados durante la racha de mora actual (desde el último pago confirmado).
+  // El sistema asume "sin respuesta" porque el cliente sigue sin pagar. El apagado remoto NO
+  // es requisito. Ver plan Fase 0.
+  function pasosPreviosRecoleccion(contratoId: string): { completo: boolean; faltan: string[] } {
+    const ultimoPago = pagos
+      .filter(p => p.contrato_id === contratoId && p.estado === "Confirmado")
+      .map(p => p.fecha)
+      .sort((a, b) => b.localeCompare(a))[0] ?? "0000-00-00";
+    const gs = gestiones.filter(g => g.contrato_id === contratoId && g.fecha >= ultimoPago);
+    const tieneMensaje = gs.some(g => g.tipo === "mensaje_recordatorio" || g.tipo === "whatsapp");
+    const tieneLlamada = gs.some(g => g.tipo === "llamada");
+    const tieneSirena  = gs.some(g => g.tipo === "sirena");
+    const faltan: string[] = [];
+    if (!tieneMensaje) faltan.push("mensaje");
+    if (!tieneLlamada) faltan.push("llamada");
+    if (!tieneSirena)  faltan.push("sirena");
+    return { completo: faltan.length === 0, faltan };
+  }
+
   // Conciliación: cobros en campo que YO registré hoy (efectivo a entregar a caja)
   const misCobrosCampoHoy = useMemo(() => {
     if (!profile) return { total: 0, count: 0, pendienteEntregar: 0 };
@@ -817,6 +837,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
   async function tareaRecoleccion(c: typeof resumenContratos[number]) {
     if (!profile || recolectandoId) return;
+    const previos = pasosPreviosRecoleccion(c.id);
+    if (!previos.completo) {
+      alert(`Antes de recolectar debe intentar (sin respuesta del cliente): ${previos.faltan.join(", ")}. Registre esos pasos con los botones de esta misma tarjeta.`);
+      return;
+    }
     const confirmado = window.confirm("¿Confirmas que la moto fue recolectada físicamente? Esto suspenderá el contrato, marcará la moto como Recuperada y generará la multa de $20.000 por recolección/inmovilización.");
     if (!confirmado) return;
     setRecolectandoId(c.id);
@@ -1890,7 +1915,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         type TareasDef = readonly { tipo: TipoGestion; label: string; action: (c: typeof resumenContratos[number]) => void; bg: string; color: string }[];
         const GRUPOS_HOY: { key: FiltroHoy; emoji: string; titulo: string; color: string; bg: string; lista: typeof resumenContratos; tareas: TareasDef }[] = [
           { key: "recoleccion", emoji: "🚚", titulo: "Recolección", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
-            tareas: [{ tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] },
+            tareas: [
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" },
+            ] },
           { key: "mora", emoji: "🔴", titulo: "Mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
             tareas: [
               { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
@@ -2057,15 +2087,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {
                             const hecha = gestionHechaHoy(c.id, t.tipo);
-                            const bloqueado = t.tipo === "recoleccion" && recolectandoId === c.id;
+                            const previos = t.tipo === "recoleccion" ? pasosPreviosRecoleccion(c.id) : null;
+                            const bloqueadoProtocolo = !!previos && !previos.completo;
+                            const recolectando = t.tipo === "recoleccion" && recolectandoId === c.id;
+                            const bloqueado = recolectando || bloqueadoProtocolo;
                             return (
                               <button
                                 key={t.tipo}
                                 onClick={() => t.action(c)}
                                 disabled={bloqueado}
-                                style={{ ...(hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)), opacity: bloqueado ? 0.6 : 1 }}
+                                title={bloqueadoProtocolo ? `Falta intentar: ${previos!.faltan.join(", ")}` : undefined}
+                                style={{ ...(hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)), opacity: bloqueado ? 0.5 : 1 }}
                               >
-                                {bloqueado ? "Recolectando..." : hecha ? `✓ ${t.label}` : t.label}
+                                {recolectando ? "Recolectando..." : bloqueadoProtocolo ? "🔒 Recolección" : hecha ? `✓ ${t.label}` : t.label}
                               </button>
                             );
                           })}

@@ -744,14 +744,14 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `1cbf1ef` (Inmovilizaciones usa mora real, deuda real, y exige gestión antes de recolectar).
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `5aca096` (implementa rediseño completo — liquidación conectada, recolección con evidencia, convenios reales, Paz y Salvo). Vercel desplegado.
 
 ### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
 Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases + fase Convenios, 40+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, convenios, etc.), no hay que volver a preguntar nada de eso.
 
 **Fase 0 (Inmovilizaciones) — ✅ COMPLETA Y DESPLEGADA (commit `1cbf1ef`):** días de mora real, deuda real, exige gestión antes de recolectar.
 
-**TODO EL PLAN CODEADO — `tsc --noEmit` limpio, SIN COMMITEAR** (el clasificador de Bash estuvo intermitente y bloqueó build/git). Resumen de lo implementado en esta sesión (detalle fase por fase en `sunny-brewing-island.md`):
+**✅ TODO EL PLAN EN PRODUCCIÓN** (commit `5aca096`, build pasó, Vercel desplegado). Resumen de lo implementado (detalle fase por fase en `sunny-brewing-island.md`):
 - **Fase 1:** helper `estadoMotoTrasLiberar()` — la moto vuelve a "Asignada" si tiene contrato Activo (taller y retenciones).
 - **Fases 3+4 (Liquidación conectada):** `iniciarLiquidacion()` crea orden REAL de taller + trae deudas automáticas + vincula `taller_id`; `confirmarCierre()` decide por motivo (contrato Cancelado/Finalizado, moto En traspaso/Disponible, cliente Egresado/Retirado); nuevo `ModalIniciarLiquidacion` conectado en ContratosView (reemplaza Finalizar; Cancelar solo para "En proceso") e Inmovilizaciones (regla de 7 días con badge y bloqueo).
 - **Fase 5:** estado de moto `"En traspaso"` + `generarHTMLPazYSalvo()` + botón imprimir en LiquidacionesView.
@@ -760,9 +760,10 @@ Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.clau
 - **Fase Convenios:** cuota del convenio cuenta para la mora (`calcularEstadoCartera` con param opcional, pasado en CobrosView e Inmovilizaciones); `marcar_convenios_vencidos()` llamada al cargar; desglose "cuota + conv. + deuda" en la tarjeta del Panel Hoy; la alerta del 3er incumplido que ya existía ahora sí puede dispararse.
 - **Fases 7+8:** cliente "Egresado" + doc de Garantía corregida.
 
-### ⚠️ 2 PASOS PENDIENTES AL RETOMAR:
-1. **Correr en Supabase la migración `032_trigger_ahorro_convenio.sql`** (trigger de ahorro+convenio, función de vencidos, columnas taller_id y fecha_traspaso_completado).
-2. **Deploy:** `cd motogestion && npm run build` → si pasa: `git add -A && git commit` + merge a main (comandos exactos en el plan). Luego probar en navegador con login real: recolección desde Panel Hoy, iniciar liquidación, cierre por motivo, fotos en recepción.
+### ⚠️ PENDIENTES AL RETOMAR:
+1. **Correr en Supabase la migración `032_trigger_ahorro_convenio.sql`** (trigger de ahorro+convenio, función de vencidos, columnas taller_id y fecha_traspaso_completado). Sin ella, iniciar una liquidación o cerrar por cumplimiento FALLA (columnas inexistentes), y el ahorro/convenio no avanzan al pagar.
+2. **Probar en navegador con login real:** recolección desde Panel Hoy (modal con fotos), iniciar liquidación desde Contratos e Inmovilizaciones (regla 7 días), cierre por motivo (Egresado/En traspaso/Paz y Salvo), fotos en recepción, desglose de convenio en Hoy.
+3. **Limpieza futura:** `MotoDetalleSheet.tsx` es código muerto (3er caso del patrón — nadie lo importa); eliminarlo como se hizo con ClienteDetalleSheet.
 
 **Diferido a propósito (definir con el usuario antes de construir):** (a) bloque visual de reconciliación "Total debía/pagó" — necesita regla para FECHA_CORTE_MIGRACION de los 44 migrados; (b) flujo de graduación Diario→tiempo definido (variante b de cumplimiento); (c) alerta de campana a los 7 días de retención (el badge ya existe).
 

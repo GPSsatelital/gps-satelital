@@ -498,7 +498,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const { profile } = useAuth();
   const { filtrarContratos } = useScope();
 
-  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, pagosDelContrato } =
+  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
   const { contratos: todosContratos, loading: loadingContratos } = useContratos();
   const contratos = filtrarContratos(todosContratos);
@@ -625,6 +625,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       setDeudaEditandoId(null);
     } finally {
       setGuardandoEditDeuda(false);
+    }
+  }
+
+  // Eliminar pago (exclusivo ADMIN_PRINCIPAL) — corrige un pago mal ingresado por completo.
+  const [eliminandoPagoId, setEliminandoPagoId] = useState<string | null>(null);
+  async function handleEliminarPago(p: typeof pagos[number]) {
+    if (eliminandoPagoId) return;
+    if (!profile || !esAdminPrincipal) return;
+    if (!confirm(`¿Eliminar este pago de $${fmt(p.valor)} (${p.metodo}, ${formatDate(p.fecha)})? Esta acción no se puede deshacer.`)) return;
+    setEliminandoPagoId(p.id);
+    try {
+      await eliminarPago(p, profile.id);
+    } finally {
+      setEliminandoPagoId(null);
     }
   }
 
@@ -903,6 +917,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const esAdminPrincipal = profile?.role === "ADMIN_PRINCIPAL";
   const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
   const esSubadmin = profile?.role === "SUBADMIN";
   // Registrar pago normal: secretaria y admins (no subadmin). Cobro en campo: admins y subadmin (no secretaria pura).
@@ -2391,6 +2406,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         style={miniBtn("#dcfce7", "#166534")}
                       >
                         🧾 Recibo
+                      </button>
+                    )}
+                    {esAdminPrincipal && (
+                      <button
+                        onClick={() => handleEliminarPago(p)}
+                        disabled={eliminandoPagoId === p.id}
+                        style={{ ...miniBtn("#fee2e2", "#991b1b"), opacity: eliminandoPagoId === p.id ? 0.6 : 1 }}
+                      >
+                        {eliminandoPagoId === p.id ? "Eliminando..." : "🗑️ Eliminar"}
                       </button>
                     )}
                   </div>

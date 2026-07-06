@@ -250,6 +250,23 @@ export function usePagos() {
     return { error: error?.message ?? null };
   }
 
+  // Borrado real de un pago mal ingresado — exclusivo ADMIN_PRINCIPAL (validado también
+  // en la UI). Antes de borrar la fila, deja registro en contratos_auditoria (quién, cuándo,
+  // qué pago era) para no perder el rastro aunque la fila desaparezca de "pagos". El trigger
+  // de BD (aplicar_pago_confirmado) resta automáticamente el ahorro/convenio que ese pago
+  // ya le había sumado al contrato, si estaba Confirmado.
+  async function eliminarPago(pago: Pago, eliminadoPor: string) {
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: pago.contrato_id,
+      campo: "Pago eliminado",
+      valor_anterior: `$${pago.valor.toLocaleString("es-CO")} · ${pago.metodo} · ${pago.estado} · ${pago.fecha}`,
+      valor_nuevo: "(borrado)",
+      editado_por: eliminadoPor,
+    });
+    const { error } = await supabase.from("pagos").delete().eq("id", pago.id);
+    return { error: error?.message ?? null };
+  }
+
   function pagosDelContrato(contratoId: string) {
     return pagos.filter(p => p.contrato_id === contratoId);
   }
@@ -276,6 +293,7 @@ export function usePagos() {
     marcarEntregadoCaja,
     confirmarPago,
     rechazarPago,
+    eliminarPago,
     pagosDelContrato,
     pagosConfirmadosDelContrato,
     totalAhorroAcumulado,

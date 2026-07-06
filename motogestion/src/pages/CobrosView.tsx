@@ -18,6 +18,7 @@ import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
+import ModalRecoleccion from "../components/ModalRecoleccion";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularProrrateoInicial,
@@ -499,7 +500,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, pagosDelContrato } =
     usePagos();
-  const { contratos: todosContratos, loading: loadingContratos, suspenderContrato } = useContratos();
+  const { contratos: todosContratos, loading: loadingContratos } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -542,7 +543,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [formError, setFormError] = useState<string | null>(null);
   const [formExito, setFormExito] = useState(false);
   const [procesando, setProcesando] = useState(false);
-  const [recolectandoId, setRecolectandoId] = useState<string | null>(null);
+  const [recolectandoId] = useState<string | null>(null);
+  const [recoleccionModal, setRecoleccionModal] = useState<{
+    contratoId: string; clienteId: string; clienteNombre: string; motoId: string | null; placa: string;
+  } | null>(null);
 
   // Gestion form state
   const [tipoGestion, setTipoGestion] = useState<TipoGestion>("llamada");
@@ -683,11 +687,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .filter(p => p.fecha === hoy.toISOString().slice(0, 10))
         .reduce((acc, p) => acc + p.valor, 0);
 
-      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy);
-      const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
-
+      // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora.
       const convenioActivo = convenioActivoDelContrato(contrato.id);
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
+
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio);
+      const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       const saldoAFavor = confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
       const sinPagosNunca = confirmados.length === 0;
@@ -835,27 +840,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!profile) return;
     await registrarGestion(c.id, "sirena", "Sirena activada (3 seg, vehículo detenido)", profile.id);
   }
-  async function tareaRecoleccion(c: typeof resumenContratos[number]) {
+  // Abre el formulario combinado de recolección (recepción con fotos + suspender +
+  // multa, todo en un solo guardado) — reemplaza el confirm() sin evidencia de antes.
+  function tareaRecoleccion(c: typeof resumenContratos[number]) {
     if (!profile || recolectandoId) return;
     const previos = pasosPreviosRecoleccion(c.id);
     if (!previos.completo) {
       alert(`Antes de recolectar debe intentar (sin respuesta del cliente): ${previos.faltan.join(", ")}. Registre esos pasos con los botones de esta misma tarjeta.`);
       return;
     }
-    const confirmado = window.confirm("¿Confirmas que la moto fue recolectada físicamente? Esto suspenderá el contrato, marcará la moto como Recuperada y generará la multa de $20.000 por recolección/inmovilización.");
-    if (!confirmado) return;
-    setRecolectandoId(c.id);
-    try {
-      await registrarGestion(c.id, "recoleccion", "Orden de recolección física emitida — moto recolectada", profile.id);
-      const { error: errSuspender } = await suspenderContrato(c.id, c.moto_id ?? null);
-      if (errSuspender) { alert("Error al suspender el contrato: " + errSuspender); return; }
-      const { error: errDeuda } = await registrarDeuda(
-        c.id, "multa_recoleccion", "Multa por recolección/inmovilización", 20000, profile.id,
-      );
-      if (errDeuda) { alert("Error al registrar la multa: " + errDeuda); return; }
-    } finally {
-      setRecolectandoId(null);
-    }
+    const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const moto = motos.find(m => m.id === c.moto_id);
+    setRecoleccionModal({
+      contratoId: c.id,
+      clienteId: c.cliente_id,
+      clienteNombre: cliente?.nombre ?? "Sin nombre",
+      motoId: c.moto_id ?? null,
+      placa: moto?.placa ?? "Sin placa",
+    });
   }
 
   // ── Filtrar lista ─────────────────────────────────────────────────────────
@@ -2081,8 +2083,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
                       {/* Fila inferior: monto + botones de tarea */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}>
-                          {todasHechas ? "✓ Listo" : debePagar > 0 ? `Debe $${fmt(debePagar)}` : "Al día"}
+                        <span
+                          title={debePagar > 0 ? `Cuota: $${fmt(Math.max(cuotaP - pagP, 0))}${c.deudaContrato > 0 ? ` + Deuda: $${fmt(c.deudaContrato)}` : ""}${c.cuotaConvenio > 0 ? ` + Convenio: $${fmt(c.cuotaConvenio)}` : ""}` : undefined}
+                          style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}
+                        >
+                          {todasHechas ? "✓ Listo" : debePagar > 0
+                            ? `Debe $${fmt(debePagar)}${c.cuotaConvenio > 0 ? ` (cuota $${fmt(Math.max(cuotaP - pagP, 0))} + conv. $${fmt(c.cuotaConvenio)}${c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})` : ""}`
+                            : "Al día"}
                         </span>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {
@@ -2826,6 +2833,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
       {/* Panel de recibo */}
       {reciboData && <ReciboPanel datos={reciboData} onCerrar={() => setReciboData(null)} />}
+
+      {/* Formulario combinado de recolección por mora */}
+      {recoleccionModal && (
+        <ModalRecoleccion
+          contratoId={recoleccionModal.contratoId}
+          clienteId={recoleccionModal.clienteId}
+          clienteNombre={recoleccionModal.clienteNombre}
+          motoId={recoleccionModal.motoId}
+          placa={recoleccionModal.placa}
+          onClose={() => setRecoleccionModal(null)}
+        />
+      )}
     </div>
   );
 }

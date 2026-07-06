@@ -12,6 +12,7 @@ export type ClienteEstado =
   | "En riesgo"
   | "En mora"
   | "Retirado"
+  | "Egresado"
   | "Lista negra"
   | "Inmovilización documentación incompleta";
 

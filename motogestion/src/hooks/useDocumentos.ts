@@ -220,6 +220,58 @@ export function getPreguntas() {
   return PREGUNTAS_CERTIFICADO;
 }
 
+// Paz y Salvo — se genera cuando el cliente CUMPLE su contrato de tiempo definido:
+// constancia de que no debe nada y de que la moto pasa a ser suya (la transferencia
+// es automática, sin pago adicional — el ahorro acumulado durante el contrato fue
+// "comprando" la moto). El cambio de titularidad ante tránsito se tramita aparte.
+export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto: Moto | null): string {
+  const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
+  return `
+    <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">GPS Satelital Cartagena</div>
+        <div style="font-size:14px;font-weight:700;margin-top:6px">PAZ Y SALVO — CUMPLIMIENTO DE CONTRATO</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Cartagena de Indias, ${hoy}</div>
+      </div>
+
+      <div style="margin-bottom:16px;line-height:1.8">
+        <strong>GPS Satelital Cartagena</strong> (arrendador: FREDY MORA AVENDAÑO, C.C. 1.047.393.901) hace constar que
+        <strong>${cliente.nombre.toUpperCase()}</strong>, identificado(a) con C.C. <strong>${cliente.cedula}</strong>,
+        cumplió a cabalidad su contrato de arrendamiento con opción de adquisición
+        ${contrato.fecha_entrega ? `iniciado el ${fmtFecha(contrato.fecha_entrega)}` : ""}, y se encuentra
+        <strong>A PAZ Y SALVO</strong> por todo concepto con esta empresa.
+      </div>
+
+      ${moto ? `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:16px">
+        <strong>VEHÍCULO QUE SE TRANSFIERE:</strong><br/><br/>
+        Placa: <strong>${moto.placa}</strong> · ${moto.marca} ${moto.modelo}<br/>
+        Motor: ${moto.numero_motor ?? "—"} · Chasis: ${moto.numero_chasis ?? "—"}
+      </div>
+      ` : ""}
+
+      <div style="margin-bottom:16px;line-height:1.8">
+        En consecuencia, el vehículo descrito pasa a ser de propiedad del cliente sin pago adicional alguno,
+        quedando pendiente únicamente el trámite de cambio de titularidad ante el organismo de tránsito,
+        que las partes se comprometen a adelantar.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px">
+        <div style="text-align:center">
+          <div style="border-top:1px solid #0f172a;padding-top:8px;font-size:11px">
+            FREDY MORA AVENDAÑO<br/>C.C. 1.047.393.901<br/>Arrendador
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="border-top:1px solid #0f172a;padding-top:8px;font-size:11px">
+            ${cliente.nombre.toUpperCase()}<br/>C.C. ${cliente.cedula}<br/>Cliente
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   const fechaAutorizacion = cliente.autorizacion_datos_fecha
     ? fmtFecha(cliente.autorizacion_datos_fecha.slice(0, 10))

@@ -6,6 +6,7 @@ import { useMotos } from "../hooks/useMotos";
 import { usePagos, calcularCuotaDia } from "../hooks/usePagos";
 import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import {
   calcularEstadoCartera,
@@ -16,6 +17,7 @@ import {
   calcularProrrateoInicial,
 } from "../utils/cicloPago";
 import ModalGestion from "../components/ModalGestion";
+import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -68,12 +70,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { contratos, reactivarContrato, finalizarContrato } = useContratos();
+  const { contratos, reactivarContrato } = useContratos();
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { pagos }     = usePagos();
   const { gestiones } = useGestiones();
   const { deudas }    = useDeudas();
+  const { convenios } = useConvenios();
   const { profile }   = useAuth();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
@@ -102,9 +105,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
         // Mismo criterio de mora real que usa Cartera — solo entran los que de verdad
         // están en mora, sin importar la modalidad (evita el falso positivo de contar
-        // "días sin pago" en bruto para semanal/quincenal/mensual).
-        if (calcularEstadoCartera(c, pagosC, hoyDate) !== "mora") return [];
-        const dias = diasEnMora(c, pagosC, hoyDate);
+        // "días sin pago" en bruto para semanal/quincenal/mensual). La cuota del
+        // convenio activo cuenta como parte de lo exigido del período.
+        const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+        const cuotaConvenio = convenioAct?.cuota_por_periodo ?? 0;
+        if (calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio) !== "mora") return [];
+        const dias = diasEnMora(c, pagosC, hoyDate, cuotaConvenio);
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);
@@ -163,7 +169,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         }];
       })
       .sort((a, b) => b.diasMora - a.diasMora);
-  }, [contratos, clientes, motos, pagos, gestiones, hoy]);
+  }, [contratos, clientes, motos, pagos, gestiones, convenios, deudas, hoy]);
 
   // Recovery count this week
   const recuperadasSemana = useMemo(() => {
@@ -206,15 +212,27 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     modelo: string;
     deudasPendientes: { id: string; concepto: string; descripcion: string; monto_pendiente: number }[];
     totalPendiente: number;
+    diasRetenida: number;
+    listaParaLiquidar: boolean;
+    ahorroAcumulado: number;
   };
 
   const motosRetenidas: MotoRetenida[] = useMemo(() => {
+    const hoyMs = Date.now();
     return contratos
       .filter(c => c.estado === "Suspendido")
       .map(c => {
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto = motos.find(m => m.id === c.moto_id);
         const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada");
+        // Días retenida: desde la última gestión de recolección registrada.
+        // A los 7 días sin pago se habilita liquidar (decisión del ADMIN, no automática).
+        const recoleccionG = gestiones
+          .filter(g => g.contrato_id === c.id && g.tipo === "recoleccion")
+          .sort((a, b) => b.fecha.localeCompare(a.fecha))[0] ?? null;
+        const diasRetenida = recoleccionG
+          ? Math.floor((hoyMs - new Date(recoleccionG.fecha + "T00:00:00").getTime()) / 86400000)
+          : 0;
         return {
           contratoId: c.id,
           clienteId: c.cliente_id,
@@ -226,9 +244,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           modelo: moto?.modelo ?? "",
           deudasPendientes: deudasC.map(d => ({ id: d.id, concepto: d.concepto, descripcion: d.descripcion, monto_pendiente: d.monto_pendiente })),
           totalPendiente: deudasC.reduce((acc, d) => acc + d.monto_pendiente, 0),
+          diasRetenida,
+          listaParaLiquidar: diasRetenida >= 7,
+          ahorroAcumulado: c.ahorro_acumulado ?? 0,
         };
       });
-  }, [contratos, clientes, motos, deudas]);
+  }, [contratos, clientes, motos, deudas, gestiones]);
 
   async function handleDevolverMoto(m: MotoRetenida) {
     if (procesandoId) return;
@@ -246,17 +267,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     }
   }
 
-  async function handleReasignarMoto(m: MotoRetenida) {
-    if (procesandoId) return;
-    if (!window.confirm(`¿Confirmas finalizar el contrato de ${m.clienteNombre} y liberar la moto ${m.placa} para asignarla a otro cliente?`)) return;
-    setProcesandoId(m.contratoId);
-    try {
-      const { error } = await finalizarContrato(m.contratoId, m.motoId);
-      if (error) alert("Error al finalizar el contrato: " + error);
-    } finally {
-      setProcesandoId(null);
-    }
-  }
+  // Reasignar la moto ahora pasa por Liquidación (motivo incumplimiento): calcula el
+  // saldo real, trae deudas automáticas, revisión de taller obligatoria, documento
+  // firmado — ya no un simple finalizarContrato() sin dejar rastro de la cuenta.
+  const [liquidacionModal, setLiquidacionModal] = useState<MotoRetenida | null>(null);
 
   function abrirWA(tel: string, nombre: string, dias: number) {
     if (!tel) return;
@@ -571,6 +585,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <div style={{ fontSize: 13, fontWeight: 800, color: alDia ? "#166534" : "#991b1b", marginTop: 2 }}>
                         Total pendiente: ${fmt(m.totalPendiente)}
                       </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#f1f5f9", color: "#334155" }}>
+                          ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
+                        </span>
+                        {m.listaParaLiquidar && (
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>
+                            📄 Lista para liquidar (7+ días)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
@@ -592,11 +616,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     </button>
                     {esAdmin && (
                       <button
-                        onClick={() => handleReasignarMoto(m)}
-                        disabled={procesandoEsta}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: procesandoEsta ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e", opacity: procesandoEsta ? 0.6 : 1 }}
+                        onClick={() => setLiquidacionModal(m)}
+                        disabled={procesandoEsta || !m.listaParaLiquidar}
+                        title={!m.listaParaLiquidar ? `Se habilita a los 7 días retenida (lleva ${m.diasRetenida})` : ""}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (procesandoEsta || !m.listaParaLiquidar) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: m.listaParaLiquidar ? "#fef3c7" : "#f1f5f9", color: m.listaParaLiquidar ? "#92400e" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
-                        {procesandoEsta ? "Procesando..." : "↺ Reasignar a otro cliente"}
+                        {m.listaParaLiquidar ? "📄 Iniciar liquidación" : "🔒 Liquidar (a los 7d)"}
                       </button>
                     )}
                   </div>
@@ -613,6 +638,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           clienteNombre={gestionNombre}
           pasosPrevios={gestionPasosPrevios}
           onClose={() => { setGestionId(null); setGestionPasosPrevios(undefined); }}
+        />
+      )}
+
+      {liquidacionModal && (
+        <ModalIniciarLiquidacion
+          contratoId={liquidacionModal.contratoId}
+          clienteId={liquidacionModal.clienteId}
+          clienteNombre={liquidacionModal.clienteNombre}
+          motoId={liquidacionModal.motoId}
+          placa={liquidacionModal.placa}
+          ahorroAcumulado={liquidacionModal.ahorroAcumulado}
+          motivoInicial="incumplimiento"
+          onClose={() => setLiquidacionModal(null)}
         />
       )}
     </div>

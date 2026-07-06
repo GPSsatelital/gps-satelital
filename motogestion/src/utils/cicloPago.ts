@@ -120,20 +120,25 @@ export function totalPagadoPeriodoActual(
 // Estado de cartera (mora/gabela/al día) para contratos Semanal/Quincenal/Mensual.
 // Semanal reproduce EXACTAMENTE el criterio anterior para no alterar contratos ya existentes.
 // Quincenal/Mensual usan el período real de calendario.
+// cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
+// si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
+// convenio sin pagar quedaba invisible y el cliente aparecía "al día").
 export function calcularEstadoCartera(
   contrato: ContratoCiclo,
   pagosConfirmados: Array<{ fecha: string; valor: number }>,
   hoy: Date,
+  cuotaConvenio = 0,
 ): EstadoCartera {
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
   const fechaEntrega = contrato.fecha_entrega ?? null;
   const totalPagadoPeriodo = totalPagadoPeriodoActual(contrato, pagosConfirmados, hoyDia);
+  const exigidoPeriodo = valorPeriodoReal(contrato) + cuotaConvenio;
 
   if (esCalendario(contrato)) {
     const inicioPeriodo = inicioPeriodoActual(contrato, hoyDia);
     const inicioISO = inicioPeriodo.toISOString().slice(0, 10);
-    if (totalPagadoPeriodo >= valorPeriodoReal(contrato)) return "al-dia";
+    if (totalPagadoPeriodo >= exigidoPeriodo) return "al-dia";
     if (fechaEntrega && fechaEntrega >= inicioISO) return "al-dia";
     const diasDesde = Math.floor((hoyDia.getTime() - inicioPeriodo.getTime()) / 86400000);
     if (diasDesde <= 0) return "al-dia";
@@ -142,7 +147,7 @@ export function calcularEstadoCartera(
   }
 
   // Semanal/Diario — idéntico al criterio anterior (semana calendario lunes-domingo).
-  if (totalPagadoPeriodo >= valorPeriodoReal(contrato)) return "al-dia";
+  if (totalPagadoPeriodo >= exigidoPeriodo) return "al-dia";
 
   const dayOfWeek = hoyDia.getDay();
   const diaPagoNum = targetDiaSemana(contrato.dia_pago);
@@ -168,8 +173,9 @@ export function diasEnMora(
   contrato: ContratoCiclo,
   pagosConfirmados: Array<{ fecha: string; valor: number }>,
   hoy: Date,
+  cuotaConvenio = 0,
 ): number {
-  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy) !== "mora") return 0;
+  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio) !== "mora") return 0;
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
   const inicio = inicioPeriodoActual(contrato, hoyDia);

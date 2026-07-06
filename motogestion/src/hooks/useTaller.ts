@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { estadoMotoTrasLiberar } from "./useMotos";
 
 export type TallerEstado = "Pendiente" | "En diagnóstico" | "En reparación" | "Listo para salida" | "Finalizado";
 
@@ -79,7 +80,10 @@ export function useTaller() {
       .eq("id", id);
     if (errTaller) return { error: errTaller.message };
 
-    const { error: errMoto } = await supabase.from("motos").update({ estado: "Disponible" }).eq("id", motoId);
+    // La moto no siempre queda "Disponible" al salir del taller: si todavía tiene un
+    // contrato Activo, vuelve a "Asignada" (el cliente la sigue esperando).
+    const estadoMoto = await estadoMotoTrasLiberar(motoId);
+    const { error: errMoto } = await supabase.from("motos").update({ estado: estadoMoto }).eq("id", motoId);
     return { error: errMoto?.message ?? null };
   }
 

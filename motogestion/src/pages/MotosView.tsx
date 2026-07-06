@@ -17,6 +17,7 @@ function getStatusColors(status: MotoStatus) {
     case "Fiscalia":      return { bg: "#fef9c3", color: "#713f12", border: "#fde047" };
     case "Transito":      return { bg: "#ffedd5", color: "#9a3412", border: "#fdba74" };
     case "Garantia":      return { bg: "#f3e8ff", color: "#6b21a8", border: "#d8b4fe" };
+    case "En traspaso":   return { bg: "#ecfdf5", color: "#047857", border: "#6ee7b7" };
   }
 }
 
@@ -29,6 +30,7 @@ const ESTADO_LABEL: Record<MotoStatus, string> = {
   Fiscalia: "Fiscalía",
   Transito: "Tránsito",
   Garantia: "Garantía",
+  "En traspaso": "En traspaso",
 };
 
 function StatusBadge({ status }: { status: MotoStatus }) {
@@ -119,6 +121,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     nombre_entrega: "",
     observaciones: "",
   });
+  // Fotos del estado del vehículo al recibirlo (dataURLs; se suben a Storage al guardar)
+  const [fotosRec, setFotosRec] = useState<string[]>([]);
+  const [subiendoFotosRec, setSubiendoFotosRec] = useState(false);
 
   const [formUbic, setFormUbic] = useState({
     ubicacion_nueva: "bodega" as UbicacionFisica,
@@ -208,9 +213,27 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     setMsgDetalle("Moto actualizada correctamente.");
   }
 
+  // Sube las fotos capturadas (dataURLs) a Storage y devuelve sus URLs públicas.
+  async function subirFotosRecepcion(motoId: string): Promise<string[]> {
+    if (fotosRec.length === 0) return [];
+    const { supabase } = await import("../lib/supabase");
+    const urls: string[] = [];
+    for (let i = 0; i < fotosRec.length; i++) {
+      const blob = await (await fetch(fotosRec[i])).blob();
+      const path = `recepciones/${motoId}/${Date.now()}_${i}.jpg`;
+      const { error } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (!error) {
+        const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+        urls.push(data.publicUrl);
+      }
+    }
+    return urls;
+  }
+
   async function handleRegistrarRecepcion() {
     if (!selectedMoto || !profile) return;
     setGuardando(true);
+    const fotosUrls = await subirFotosRecepcion(selectedMoto.id);
     const { error } = await registrarRecepcion({
       moto_id: selectedMoto.id,
       motivo: formRec.motivo,
@@ -220,12 +243,14 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       ubicacion_destino: formRec.ubicacion_destino,
       quien_recibe: profile.id,
       nombre_entrega: formRec.nombre_entrega || undefined,
+      fotos: fotosUrls,
       observaciones: formRec.observaciones || undefined,
       ubicacion_anterior: (selectedMoto as any).ubicacion_fisica ?? undefined,
     });
     setGuardando(false);
     if (error) { setMsgDetalle(error); return; }
     setMsgDetalle("Recepción registrada.");
+    setFotosRec([]);
     setOpenRecepcion(false);
   }
 
@@ -633,9 +658,49 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               </Field>
               <Field label="Nombre de quien entrega"><input style={inputStyle} placeholder="Nombre del cliente o funcionario" value={formRec.nombre_entrega} onChange={(e) => setFormRec((p) => ({ ...p, nombre_entrega: e.target.value }))} /></Field>
               <Field label="Observaciones adicionales"><textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} value={formRec.observaciones} onChange={(e) => setFormRec((p) => ({ ...p, observaciones: e.target.value }))} /></Field>
+              <Field label="Fotos del estado del vehículo">
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: fotosRec.length > 0 ? 8 : 0 }}>
+                  {fotosRec.map((f, i) => (
+                    <div key={i} style={{ position: "relative" }}>
+                      <img src={f} alt={`Foto ${i + 1}`} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid #e2e8f0" }} />
+                      <button
+                        type="button"
+                        onClick={() => setFotosRec(prev => prev.filter((_, j) => j !== i))}
+                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#dc2626", color: "white", fontSize: 11, cursor: "pointer", lineHeight: 1 }}
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {([["📷 Cámara", true], ["🖼 Galería", false]] as [string, boolean][]).map(([label, conCamara]) => (
+                    <label key={label} style={{ cursor: "pointer" }}>
+                      <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, fontSize: 13, color: "#334155" }}>{label}</div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        {...(conCamara ? { capture: "environment" as const } : {})}
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setSubiendoFotosRec(true);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFotosRec(prev => [...prev, ev.target?.result as string]);
+                            setSubiendoFotosRec(false);
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                {subiendoFotosRec && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Cargando foto...</div>}
+              </Field>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setOpenRecepcion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenRecepcion(false); setFotosRec([]); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleRegistrarRecepcion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Registrar recepción"}</button>
             </div>
           </div>

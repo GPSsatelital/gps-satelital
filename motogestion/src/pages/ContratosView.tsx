@@ -7,6 +7,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
+import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
 
@@ -77,7 +78,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
-  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, finalizarContrato, reactivarContrato } = useContratos();
+  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, reactivarContrato } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -101,6 +102,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [accionError, setAccionError] = useState<string | null>(null);
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalDocumentosAbierto, setModalDocumentosAbierto] = useState(false);
+  const [modalLiquidacionAbierto, setModalLiquidacionAbierto] = useState(false);
 
   useEffect(() => { if (initialOpenForm && puedeCrear) setWizardOpen(true); }, [initialOpenForm, puedeCrear]);
 
@@ -259,22 +261,26 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 </button>
               )}
               {c.estado === "Activo" && (
-                <button onClick={() => suspenderContrato(c.id, c.moto_id)} style={{ background: "#ede9fe", color: "#6d28d9", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                <button onClick={() => {
+                  if (!confirm("¿Suspender este contrato? La moto quedará como Recuperada (retenida por la empresa).")) return;
+                  suspenderContrato(c.id, c.moto_id);
+                }} style={{ background: "#ede9fe", color: "#6d28d9", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
                   ⏸️ Suspender contrato
                 </button>
               )}
-              {c.estado === "Activo" && (
-                <button onClick={async () => {
-                  if (!confirm("¿Finalizar este contrato? La moto quedará disponible.")) return;
-                  const { error } = await finalizarContrato(c.id, c.moto_id);
-                  if (error) setAccionError(error);
-                }} style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                  🏁 Finalizar contrato
+              {(c.estado === "Activo" || c.estado === "Suspendido") && (
+                // Todo cierre REAL (con moto entregada, ahorro, posible deuda) pasa por
+                // Liquidación — calcula el saldo, trae deudas automáticas, deja documento
+                // firmado. Los botones rápidos de antes cerraban sin calcular nada.
+                <button onClick={() => setModalLiquidacionAbierto(true)} style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  📄 Iniciar liquidación
                 </button>
               )}
-              {c.estado !== "Cancelado" && (
+              {c.estado === "En proceso" && (
+                // Cancelación rápida solo para contratos que nunca se activaron
+                // (corrección de un error administrativo, sin nada que liquidar).
                 <button onClick={async () => {
-                  if (!confirm("¿Cancelar este contrato? La moto quedará Disponible para asignarse a otro cliente.")) return;
+                  if (!confirm("¿Cancelar este contrato En proceso? Solo para corregir un contrato creado por error.")) return;
                   const { error } = await cancelarContrato(c.id, c.moto_id);
                   if (error) setAccionError(error);
                 }} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
@@ -331,6 +337,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             contrato={c}
             clienteNombre={clienteDetalle.nombre}
             onClose={() => setModalDocumentosAbierto(false)}
+          />
+        )}
+
+        {modalLiquidacionAbierto && (
+          <ModalIniciarLiquidacion
+            contratoId={c.id}
+            clienteId={c.cliente_id}
+            clienteNombre={clienteDetalle.nombre}
+            motoId={c.moto_id}
+            placa={motoDetalle?.placa ?? "Sin placa"}
+            ahorroAcumulado={c.ahorro_acumulado ?? 0}
+            motivoInicial={c.estado === "Suspendido" ? "incumplimiento" : "cumplimiento"}
+            onClose={() => setModalLiquidacionAbierto(false)}
           />
         )}
       </div>

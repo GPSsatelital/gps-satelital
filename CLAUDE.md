@@ -591,9 +591,10 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 ### Principio rector
 **La moto nunca debe dejar de producir.**
 
-### Fiscalía/Tránsito
-- Congela la tarifa mientras dure — el tiempo retenido queda como deuda del cliente
-- Garantía: NO genera deuda (culpa del fabricante)
+### Fiscalía/Tránsito/Garantía — tiempo fuera de servicio
+- El tiempo que la moto está fuera de servicio (fiscalía, tránsito, garantía, taller) **por defecto se COBRA** al cliente — el tiempo retenido queda como deuda. Existe la opción de **rodar** ese tiempo (extender la fecha de fin del contrato) en vez de cobrarlo, decisión del ADMIN caso por caso, pero **la prioridad es siempre cobrar** (rodar alarga el contrato, la empresa deja de ganar ese período y genera gastos de gestión extra).
+- **Garantía se trata igual que Fiscalía/Tránsito** (corrección: antes decía "NO genera deuda por ser culpa del fabricante" — ya no aplica). El contrato es por tiempo transcurrido/pagos; sin importar de quién sea la culpa de la falla, el tiempo parado se cobra o se rueda como cualquier otro.
+- Mecanismo: `ModalResolverTiempoFueraServicio` (cobrar_ahora vs rodar_al_final) — ya existe.
 
 ### Lista negra
 - Automática si liquidación = saldo negativo
@@ -748,11 +749,22 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 ### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
 Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases + fase Convenios, 40+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, convenios, etc.), no hay que volver a preguntar nada de eso.
 
-**Fase 0 (Inmovilizaciones) — ✅ COMPLETA Y DESPLEGADA:**
-- `cicloPago.ts`: nueva función `diasEnMora()` — días reales desde que empezó la mora (no desde el último pago, que daba falsos positivos en Semanal/Quincenal/Mensual).
-- `InmovilizacionesView.tsx`: usa `calcularEstadoCartera()==='mora'` en vez de conteo de días en bruto; `deudaReal` = deuda registrada + cuota pendiente exacta (ya no días×tarifa inventado); etiquetas renombradas.
-- `ModalGestion.tsx` + `CobrosView.tsx` (Panel Hoy): ambos lugares con botón de Recolección ahora exigen mensaje+llamada+sirena registrados antes de habilitarlo.
-- **Pendiente real (no bloqueante):** probar en el navegador con datos reales de producción.
+**Fase 0 (Inmovilizaciones) — ✅ COMPLETA Y DESPLEGADA (commit `1cbf1ef`):** días de mora real, deuda real, exige gestión antes de recolectar.
+
+**TODO EL PLAN CODEADO — `tsc --noEmit` limpio, SIN COMMITEAR** (el clasificador de Bash estuvo intermitente y bloqueó build/git). Resumen de lo implementado en esta sesión (detalle fase por fase en `sunny-brewing-island.md`):
+- **Fase 1:** helper `estadoMotoTrasLiberar()` — la moto vuelve a "Asignada" si tiene contrato Activo (taller y retenciones).
+- **Fases 3+4 (Liquidación conectada):** `iniciarLiquidacion()` crea orden REAL de taller + trae deudas automáticas + vincula `taller_id`; `confirmarCierre()` decide por motivo (contrato Cancelado/Finalizado, moto En traspaso/Disponible, cliente Egresado/Retirado); nuevo `ModalIniciarLiquidacion` conectado en ContratosView (reemplaza Finalizar; Cancelar solo para "En proceso") e Inmovilizaciones (regla de 7 días con badge y bloqueo).
+- **Fase 5:** estado de moto `"En traspaso"` + `generarHTMLPazYSalvo()` + botón imprimir en LiquidacionesView.
+- **Fase 6:** fotos (cámara/galería) en el formulario "Registrar recepción" de MotosView.
+- **Fase Inmovilización:** nuevo `ModalRecoleccion` — un solo submit encadena recepción con fotos + suspender + multa + gestión; conectado en Panel Hoy (reemplaza el confirm()).
+- **Fase Convenios:** cuota del convenio cuenta para la mora (`calcularEstadoCartera` con param opcional, pasado en CobrosView e Inmovilizaciones); `marcar_convenios_vencidos()` llamada al cargar; desglose "cuota + conv. + deuda" en la tarjeta del Panel Hoy; la alerta del 3er incumplido que ya existía ahora sí puede dispararse.
+- **Fases 7+8:** cliente "Egresado" + doc de Garantía corregida.
+
+### ⚠️ 2 PASOS PENDIENTES AL RETOMAR:
+1. **Correr en Supabase la migración `032_trigger_ahorro_convenio.sql`** (trigger de ahorro+convenio, función de vencidos, columnas taller_id y fecha_traspaso_completado).
+2. **Deploy:** `cd motogestion && npm run build` → si pasa: `git add -A && git commit` + merge a main (comandos exactos en el plan). Luego probar en navegador con login real: recolección desde Panel Hoy, iniciar liquidación, cierre por motivo, fotos en recepción.
+
+**Diferido a propósito (definir con el usuario antes de construir):** (a) bloque visual de reconciliación "Total debía/pagó" — necesita regla para FECHA_CORTE_MIGRACION de los 44 migrados; (b) flujo de graduación Diario→tiempo definido (variante b de cumplimiento); (c) alerta de campana a los 7 días de retención (el badge ya existe).
 
 **Preferencia de comunicación del usuario (aplicar siempre, no solo en este tema):** explicar todo con ejemplos simples y concretos, como a alguien que no conoce el tema — confirmado explícitamente en esta sesión. Ver `feedback-explicaciones-simples` en memoria.
 

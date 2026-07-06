@@ -31,6 +31,11 @@ export function useConvenios() {
   }
 
   useEffect(() => {
+    // Marca automáticamente como "incumplido" los convenios cuya fecha límite ya pasó
+    // sin completar las cuotas (función de BD, migración 032) — antes ningún convenio
+    // podía quedar incumplido porque nada lo marcaba. Fire-and-forget: si falla
+    // (ej. migración aún no corrida) no bloquea la carga.
+    supabase.rpc("marcar_convenios_vencidos").then(() => fetchConvenios(), () => {});
     fetchConvenios();
     const channel = supabase.channel(`convenios-realtime-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "convenios" }, fetchConvenios)

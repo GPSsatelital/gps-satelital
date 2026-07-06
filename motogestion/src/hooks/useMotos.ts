@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia";
+// "En traspaso": el cliente cumplió su contrato y la moto pasa a ser suya — dejó la
+// flota para siempre. fecha_traspaso_completado marca cuándo terminó el trámite legal.
+export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia" | "En traspaso";
 export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS" | "OTRO";
 export type CondicionIngreso = "nueva" | "usada";
 
@@ -37,6 +39,21 @@ export type RetencionData = {
   numero_caso?: string;
   detalle?: string;
 };
+
+// Cuando una moto sale de un estado temporal (taller, fiscalía, tránsito, garantía),
+// NO siempre vuelve a "Disponible": si todavía tiene un contrato Activo esperándola,
+// vuelve a "Asignada" (el cliente la sigue esperando). Solo si no hay contrato activo
+// queda "Disponible" para asignarse a otro. Evita que una moto quede "Disponible"
+// mientras un contrato sigue Activo apuntándola (podría entregarse a dos clientes).
+export async function estadoMotoTrasLiberar(motoId: string): Promise<"Asignada" | "Disponible"> {
+  const { data } = await supabase
+    .from("contratos")
+    .select("id")
+    .eq("moto_id", motoId)
+    .eq("estado", "Activo")
+    .limit(1);
+  return (data && data.length > 0) ? "Asignada" : "Disponible";
+}
 
 export function useMotos() {
   const [motos, setMotos] = useState<Moto[]>([]);
@@ -89,8 +106,9 @@ export function useMotos() {
   }
 
   async function liberarRetencion(id: string) {
+    const estado = await estadoMotoTrasLiberar(id);
     const { error } = await supabase.from("motos").update({
-      estado: "Disponible",
+      estado,
       retencion_fecha: null,
       retencion_numero_caso: null,
       retencion_detalle: null,

@@ -25,6 +25,7 @@ export type Liquidacion = {
   nombre_responsable: string | null;
   cargo_responsable: string | null;
   documento_firmado_url: string | null;
+  taller_id: string | null;
   iniciada_por: string | null;
   cerrada_por: string | null;
   created_at: string;
@@ -68,21 +69,61 @@ export function useLiquidaciones() {
     ahorroAcumulado: number
   ) {
     const numero = await generarNumero();
+
+    // Deudas automáticas desde el sistema (solo las pendientes/sin pagar) +
+    // saldo restante del convenio activo — el encargado NO las reescribe a mano.
+    const { data: deudasPend } = await supabase
+      .from("deudas")
+      .select("concepto, descripcion, monto_pendiente")
+      .eq("contrato_id", contratoId)
+      .neq("estado", "pagada");
+    const detalleDeudas: DetalleDeuda[] = (deudasPend ?? []).map(d => ({
+      concepto: d.descripcion || d.concepto,
+      monto: d.monto_pendiente,
+    }));
+    const { data: convenioActivo } = await supabase
+      .from("convenios")
+      .select("deuda_total, cuota_por_periodo, cuotas_pagadas")
+      .eq("contrato_id", contratoId)
+      .eq("estado", "activo")
+      .limit(1);
+    if (convenioActivo && convenioActivo.length > 0) {
+      const cv = convenioActivo[0];
+      const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
+      if (restante > 0) detalleDeudas.push({ concepto: "Saldo pendiente de convenio", monto: restante });
+    }
+    const totalDeudas = detalleDeudas.reduce((acc, d) => acc + d.monto, 0);
+
+    // La revisión de taller es obligatoria en toda liquidación: se crea una orden
+    // REAL en el módulo de Taller (la ve el mecánico en su lista de siempre) y se
+    // vincula a la liquidación — ya no se escribe el estado inválido "En taller".
+    let tallerId: string | null = null;
+    if (motoId) {
+      const { data: orden } = await supabase.from("taller").insert({
+        moto_id: motoId,
+        estado_tecnico: "Pendiente",
+        detalle: `Revisión por liquidación ${numero} — evaluar estado y daños para calcular el saldo`,
+        costo: 0,
+        fecha_ingreso: new Date().toISOString().slice(0, 10),
+      }).select("id").single();
+      tallerId = orden?.id ?? null;
+      await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoId);
+    }
+
     const { error } = await supabase.from("liquidaciones").insert({
       numero,
       contrato_id: contratoId,
       cliente_id: clienteId,
       moto_id: motoId,
       motivo,
-      estado: "iniciada",
+      estado: motoId ? "en_taller" : "iniciada",
       ahorro_acumulado: ahorroAcumulado,
+      total_deudas: totalDeudas,
+      detalle_deudas: detalleDeudas,
+      taller_id: tallerId,
       iniciada_por: iniciadaPor,
     });
     if (error) return { error: error.message };
-
-    if (motoId) {
-      await supabase.from("motos").update({ estado: "En taller" }).eq("id", motoId);
-    }
 
     return { error: null };
   }
@@ -153,7 +194,33 @@ export function useLiquidaciones() {
     }).eq("id", liquidacionId);
     if (error) return { error: error.message };
 
-    await supabase.from("contratos").update({ estado: "Finalizado" }).eq("id", liq.contrato_id);
+    // El estado final del contrato depende del MOTIVO: incumplimiento = fin anormal
+    // (Cancelado); cumplimiento/retiro_voluntario = fin ordenado (Finalizado).
+    const estadoContrato = liq.motivo === "incumplimiento" ? "Cancelado" : "Finalizado";
+    await supabase.from("contratos").update({ estado: estadoContrato }).eq("id", liq.contrato_id);
+
+    // Destino de la moto según el motivo: en cumplimiento la moto pasa a ser del
+    // cliente ("En traspaso" hasta completar el cambio de titularidad ante tránsito);
+    // en los demás casos vuelve a la flota como Disponible.
+    if (liq.moto_id) {
+      const estadoMoto = liq.motivo === "cumplimiento" ? "En traspaso" : "Disponible";
+      await supabase.from("motos").update({ estado: estadoMoto }).eq("id", liq.moto_id);
+    }
+
+    // El cliente pasa a "Egresado" si cumplió su contrato (caso feliz — se lleva su moto),
+    // o "Retirado" en incumplimiento/retiro voluntario. No se toca si tiene otro contrato
+    // Activo (ej. graduación Diario→tiempo definido, donde continúa con el nuevo contrato).
+    const { data: otroActivo } = await supabase
+      .from("contratos")
+      .select("id")
+      .eq("cliente_id", liq.cliente_id)
+      .in("estado", ["Activo", "En proceso"])
+      .neq("id", liq.contrato_id)
+      .limit(1);
+    if (!otroActivo || otroActivo.length === 0) {
+      const estadoCliente = liq.motivo === "cumplimiento" ? "Egresado" : "Retirado";
+      await supabase.from("clientes").update({ estado: estadoCliente }).eq("id", liq.cliente_id);
+    }
 
     if (liq.saldo_final < 0) {
       await supabase.from("clientes").update({

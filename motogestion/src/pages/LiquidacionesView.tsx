@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useLiquidaciones, type Liquidacion, type DetalleDano, type DetalleDeuda, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, type Moto } from "../hooks/useMotos";
+import { useContratos } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 
 const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -72,6 +74,7 @@ export default function LiquidacionesView() {
   const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, confirmarCierre } = useLiquidaciones();
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
+  const { contratos } = useContratos();
   const motos = filtrarMotos(todasMotos);
 
   const [sel, setSel] = useState<Liquidacion | null>(null);
@@ -147,6 +150,21 @@ export default function LiquidacionesView() {
     setGuardando(false);
     if (error) setMsg(error);
     else { setMsg("Liquidación cerrada."); setSel(null); }
+  }
+
+  // Paz y Salvo — constancia de cumplimiento y transferencia de la moto al cliente.
+  function handlePazYSalvo() {
+    if (!sel) return;
+    const cliente = clienteDe(sel);
+    const contrato = contratos.find(ct => ct.id === sel.contrato_id);
+    if (!cliente || !contrato) { setMsg("No se encontró el cliente o el contrato."); return; }
+    const moto = motoDe(sel);
+    const html = generarHTMLPazYSalvo(contrato, cliente, (moto as Moto | null));
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head><title>Paz y Salvo</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+    w.document.close();
+    w.print();
   }
 
   if (!esAdmin) {
@@ -313,7 +331,9 @@ export default function LiquidacionesView() {
                   </div>
                 )}
                 <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
-                  Al confirmar: el contrato quedará <strong>Finalizado</strong>{sel.saldo_final < 0 ? " y el cliente será marcado en lista negra por saldo pendiente" : ""}.
+                  Al confirmar: el contrato quedará <strong>{sel.motivo === "incumplimiento" ? "Cancelado" : "Finalizado"}</strong>
+                  {sel.motivo === "cumplimiento" ? ", la moto pasará a En traspaso (propiedad del cliente) y el cliente quedará Egresado" : ""}
+                  {sel.saldo_final < 0 ? " y el cliente será marcado en lista negra por saldo pendiente" : ""}.
                 </div>
                 <button style={btn(sel.saldo_final < 0 ? "#dc2626" : "#16a34a")} onClick={handleCerrar} disabled={guardando}>
                   {guardando ? "Cerrando..." : "Confirmar y cerrar liquidación"}
@@ -327,6 +347,11 @@ export default function LiquidacionesView() {
                 {sel.documento_firmado_url && (
                   <div style={{ marginTop: 8 }}>
                     <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0284c7", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
+                  </div>
+                )}
+                {sel.motivo === "cumplimiento" && (
+                  <div style={{ marginTop: 10 }}>
+                    <button style={btn("#0284c7")} onClick={handlePazYSalvo}>🖨️ Imprimir Paz y Salvo</button>
                   </div>
                 )}
               </div>

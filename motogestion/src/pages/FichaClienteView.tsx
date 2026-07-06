@@ -33,6 +33,7 @@ const ESTADO_COLORS: Record<string, { bg: string; color: string; border: string 
   "En riesgo":        { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
   "En mora":          { bg: "#fee2e2", color: "#991b1b", border: "#dc2626" },
   Retirado:           { bg: "#ede9fe", color: "#6d28d9", border: "#8b5cf6" },
+  Egresado:           { bg: "#dcfce7", color: "#15803d", border: "#16a34a" },
   "Lista negra":      { bg: "#1f2937", color: "#f9fafb", border: "#111827" },
   "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d", border: "#991b1b" },
 };

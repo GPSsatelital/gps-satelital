@@ -50,6 +50,7 @@ function ClienteBadge({ estado }: { estado: ClienteEstado }) {
     "En riesgo": { bg: "#fef3c7", color: "#92400e" },
     "En mora": { bg: "#fee2e2", color: "#991b1b" },
     Retirado: { bg: "#ede9fe", color: "#6d28d9" },
+    Egresado: { bg: "#dcfce7", color: "#15803d" },
     "Lista negra": { bg: "#1f2937", color: "#f9fafb" },
     "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d" },
   };

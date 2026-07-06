@@ -7,6 +7,7 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import MoneyInput from "./MoneyInput";
+import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "./FotosAngulos";
 
 // Formulario combinado de recolección por mora: UN solo guardado encadena todo —
 // registra la recepción del vehículo (fotos, condición, km, destino), suspende el
@@ -42,16 +43,18 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
   const [kilometros, setKilometros] = useState("");
   const [destino, setDestino] = useState<UbicacionFisica>("bodega");
   const [observaciones, setObservaciones] = useState("");
-  const [fotos, setFotos] = useState<string[]>([]);
+  const [fotosAngulos, setFotosAngulos] = useState<Partial<Record<AnguloFoto, string>>>({});
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
   async function subirFotos(): Promise<string[]> {
     const urls: string[] = [];
-    for (let i = 0; i < fotos.length; i++) {
-      const blob = await (await fetch(fotos[i])).blob();
-      const path = `recepciones/${motoId ?? contratoId}/${Date.now()}_${i}.jpg`;
+    for (const { key } of ANGULOS_FOTO) {
+      const dataUrl = fotosAngulos[key];
+      if (!dataUrl) continue;
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `recepciones/${motoId ?? contratoId}/${key}_${Date.now()}.jpg`;
       const { error: up } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/jpeg", upsert: true });
       if (!up) {
         const { data } = supabase.storage.from("documentos").getPublicUrl(path);
@@ -64,6 +67,8 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
   async function handleGuardar() {
     if (guardando) return;
     if (!profile) { setError("Sesión no válida."); return; }
+    const faltantes = ANGULOS_FOTO.filter(a => !fotosAngulos[a.key]);
+    if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); return; }
     setError(null);
     setGuardando(true);
     try {
@@ -162,36 +167,58 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
         </div>
 
         <div>
-          <div style={labelStyle}>Fotos del estado de la moto</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: fotos.length > 0 ? 8 : 0 }}>
-            {fotos.map((f, i) => (
-              <div key={i} style={{ position: "relative" }}>
-                <img src={f} alt={`Foto ${i + 1}`} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid #e2e8f0" }} />
-                <button type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))}
-                  style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#dc2626", color: "white", fontSize: 11, cursor: "pointer", lineHeight: 1 }}>✕</button>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {([["📷 Cámara", true], ["🖼 Galería", false]] as [string, boolean][]).map(([label, conCamara]) => (
-              <label key={label} style={{ cursor: "pointer" }}>
-                <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, fontSize: 13, color: "#334155" }}>{label}</div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  {...(conCamara ? { capture: "environment" as const } : {})}
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => setFotos(prev => [...prev, ev.target?.result as string]);
-                    reader.readAsDataURL(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            ))}
+          <div style={labelStyle}>Fotos del estado de la moto (5 obligatorias)</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+            {ANGULOS_FOTO.map(({ key, label }) => {
+              const dataUrl = fotosAngulos[key];
+              return (
+                <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "#bbf7d0" : "#e2e8f0"}`, background: dataUrl ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                  {dataUrl ? (
+                    <div style={{ position: "relative" }}>
+                      <img src={dataUrl} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
+                      <button type="button" onClick={() => setFotosAngulos(p => { const n = { ...p }; delete n[key]; return n; })} style={{
+                        position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
+                        background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                      <IconoAngulo angulo={key} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                  {!dataUrl && (
+                    <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                        📷
+                        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFotosAngulos(p => ({ ...p, [key]: ev.target?.result as string }));
+                            reader.readAsDataURL(file);
+                            e.target.value = "";
+                          }} />
+                      </label>
+                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                        🖼
+                        <input type="file" accept="image/*" style={{ display: "none" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setFotosAngulos(p => ({ ...p, [key]: ev.target?.result as string }));
+                            reader.readAsDataURL(file);
+                            e.target.value = "";
+                          }} />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

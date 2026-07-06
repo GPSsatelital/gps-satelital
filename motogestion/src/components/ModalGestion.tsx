@@ -6,6 +6,10 @@ interface Props {
   contratoId: string;
   clienteNombre: string;
   onClose: () => void;
+  // Pasos ya intentados para este contrato — antes de recolectar se exige mensaje +
+  // llamada + sirena, sin importar el orden ni el tiempo entre ellos (a criterio del
+  // funcionario). El apagado remoto no es requisito.
+  pasosPrevios?: { mensaje: boolean; llamada: boolean; sirena: boolean };
 }
 
 const inputStyle: React.CSSProperties = {
@@ -46,11 +50,20 @@ const RESULTADOS: ResultadoGestion[] = [
   "No aplica",
 ];
 
-export default function ModalGestion({ contratoId, clienteNombre, onClose }: Props) {
+export default function ModalGestion({ contratoId, clienteNombre, onClose, pasosPrevios }: Props) {
   const { registrarGestion } = useGestiones();
   const { profile } = useAuth();
   const puedeDarPlazoExtra = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL" || profile?.role === "SUBADMIN";
-  const tiposDisponibles = puedeDarPlazoExtra ? TIPOS : TIPOS.filter(t => t.value !== "plazo_extra");
+  const faltaParaRecolectar = pasosPrevios
+    ? [
+        !pasosPrevios.mensaje && "mensaje",
+        !pasosPrevios.llamada && "llamada",
+        !pasosPrevios.sirena && "sirena",
+      ].filter((x): x is string => !!x)
+    : [];
+  const puedeRecolectar = !pasosPrevios || faltaParaRecolectar.length === 0;
+  const tiposDisponibles = (puedeDarPlazoExtra ? TIPOS : TIPOS.filter(t => t.value !== "plazo_extra"))
+    .filter(t => t.value !== "recoleccion" || puedeRecolectar);
 
   const [tipo, setTipo] = useState<TipoGestion>("llamada");
   const [resultado, setResultado] = useState<ResultadoGestion>("Contactado");
@@ -153,6 +166,11 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose }: Pro
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+          {pasosPrevios && !puedeRecolectar && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 600 }}>
+              🔧 Recolección aún no disponible — falta intentar: {faltaParaRecolectar.join(", ")}.
+            </div>
+          )}
         </div>
 
         {/* Días plazo — solo si plazo_extra */}

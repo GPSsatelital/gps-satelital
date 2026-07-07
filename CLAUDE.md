@@ -766,8 +766,8 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
     - **LECCIÓN/REGLA NUEVA:** toda migración queda en el repo Y se corre en Supabase — las dos siempre. La causa raíz de la cascada de errores era la desincronización repo↔BD.
 
 ### ⚠️ PENDIENTES INMEDIATOS al retomar
-1. **Confirmar que la mig 038 corrió** (Success) — si no, correrla.
-2. **Redesplegar Edge Function `manage-users`**: la pantalla Usuarios da "Edge Function returned a non-2xx" porque la versión desplegada es VIEJA (no conoce `action: "list"`). Pegar el contenido de `motogestion/supabase/functions/manage-users/index.ts` en Supabase → Edge Functions → manage-users → Deploy.
+1. ~~Confirmar mig 038~~ ✅ corrida (confirmado por el usuario).
+2. **Redesplegar Edge Function `manage-users`** (ÚNICO pendiente de infra): la pantalla Usuarios da "Edge Function returned a non-2xx" porque la versión desplegada es VIEJA (no conoce `action: "list"`). Pegar el contenido de `motogestion/supabase/functions/manage-users/index.ts` en Supabase → Edge Functions → manage-users → Deploy. (El usuario ya lo hizo antes por el Dashboard; si el Dashboard no deja editar código inline, usar la CLI `supabase functions deploy manage-users`.)
 3. **Probar tras 037/038:** que MECANICO siga usando taller, ANGELA registre pagos, editar una moto, y el flujo completo de recolección → la moto debe aparecer en Inmovilizaciones → "🔒 Motos retenidas" (nota: hay 3 recolecciones que quedaron a medias de la cadena de errores — contratos con gestión `recoleccion` pero aún Activos; rehacerlas desde el Panel Hoy).
 
 ### 🔲 PRÓXIMA TAREA ACORDADA: mensajes de WhatsApp editables desde Configuración
@@ -776,7 +776,13 @@ El usuario quiere cambiar los textos de los mensajes de WhatsApp (día de pago, 
 - `CobroDiarioView.tsx:227-229` (2 variantes: mora "lleva X días sin pago" y día de pago)
 - `InmovilizacionesView.tsx:279` (mora/amenaza de recolección "su moto lleva X días en mora")
 - `AlertasView.tsx:143` (contacto genérico)
-**Diseño propuesto (sin confirmar):** tabla `plantillas_mensajes` (o jsonb en una tabla de configuración) con 3-4 plantillas editables con placeholders (`{nombre}`, `{dias}`, `{placa}`, `{valor}`); sección nueva en ConfiguracionView (¿solo AP o también ADMIN? preguntar); los 4 puntos de envío leen la plantilla y reemplazan placeholders, con el texto actual como respaldo si no hay plantilla guardada. Definir con el usuario: quién edita, si gabela tiene mensaje propio (hoy no existe — se usa el mismo de día de pago), y si el mensaje de recibo por WhatsApp también se hace editable.
+- Recibo por WhatsApp: `buildMsg()` de `ReciboPanel` en CobrosView.
+**DISEÑO CERRADO (confirmado con el usuario 7 jul) — listo para construir:**
+- **5 mensajes editables:** (1) día de pago, (2) gabela [NUEVO — hoy no tiene texto propio, usa el de día de pago], (3) mora, (4) recolección, (5) recibo de pago.
+- **Quién edita:** ADMIN_PRINCIPAL y ADMIN.
+- **Comodines:** `{nombre}`, `{placa}`, `{dias}`, `{valor}` (se reemplazan al enviar). Texto actual como respaldo si se deja vacío.
+- Mensaje de recolección aprobado como base: "Hola {nombre}, su moto de placa {placa} presenta {dias} días de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. GPS Satelital ⚠️"
+- **Plan técnico:** tabla nueva `mensajes_whatsapp` (clave + texto) — migración chica, RLS lectura=todos autenticados / escritura=ADMIN/AP; sección "💬 Mensajes de WhatsApp" en ConfiguracionView (gate ADMIN/AP); helper `render(plantilla, datos)` que reemplaza comodines; conectar en los 5 puntos de envío con fallback al texto hardcodeado actual.
 
 ### Migraciones SQL de esta sesión — estado
 - `032_trigger_ahorro_convenio.sql` ✅ corrida por el usuario.
@@ -786,7 +792,7 @@ El usuario quiere cambiar los textos de los mensajes de WhatsApp (día de pago, 
 - `035_rls_recoleccion_subadmin.sql` ✅ corrida (SUBADMIN recolecta sus motos).
 - `036_contratos_estado_suspendido.sql` ✅ corrida (CHECK con 'Suspendido').
 - `037_rls_reconciliacion.sql` ✅ corrida (cierra gestiones_cobro/motos/taller/visitas + DELETE contratos).
-- `038_checks_y_guard.sql` ⚠️ **pendiente de confirmar** ('En traspaso' + USADAS + guard unificado).
+- `038_checks_y_guard.sql` ✅ corrida ('En traspaso' + USADAS + guard unificado a mi_rol()).
 
 ### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
 Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases + fase Convenios, 40+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, convenios, etc.), no hay que volver a preguntar nada de eso.

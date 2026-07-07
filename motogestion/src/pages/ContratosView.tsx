@@ -78,7 +78,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
-  const { contratos: todosContratos, loading, error, cancelarContrato, suspenderContrato, reactivarContrato } = useContratos();
+  const { contratos: todosContratos, loading, error, eliminarContratoEnProceso, suspenderContrato, reactivarContrato } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -277,14 +277,16 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 </button>
               )}
               {c.estado === "En proceso" && (
-                // Cancelación rápida solo para contratos que nunca se activaron
-                // (corrección de un error administrativo, sin nada que liquidar).
+                // Un contrato "En proceso" nunca se activó — es un intento abortado.
+                // Cancelarlo lo ELIMINA por completo (fila, fotos/firmas, libera la moto),
+                // no lo deja como "Cancelado" (ese estado se reserva para contratos que
+                // sí se activaron y se cerraron por liquidación).
                 <button onClick={async () => {
-                  if (!confirm("¿Cancelar este contrato En proceso? Solo para corregir un contrato creado por error.")) return;
-                  const { error } = await cancelarContrato(c.id, c.moto_id);
+                  if (!confirm("¿Eliminar este contrato En proceso? Se borra por completo (fotos/firmas y libera la moto). No se puede deshacer.")) return;
+                  const { error } = await eliminarContratoEnProceso(c);
                   if (error) setAccionError(error);
                 }} style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                  ❌ Cancelar contrato
+                  🗑️ Cancelar y eliminar
                 </button>
               )}
             </div>

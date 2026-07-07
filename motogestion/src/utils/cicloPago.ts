@@ -201,6 +201,54 @@ export function calcularProrrateoInicial(contrato: ContratoCiclo): number {
   return total;
 }
 
+// Ahorro EXACTO que compone la cuota del período actual — nunca el promedio semanal
+// aplicado a un período distinto. El promedio generaba descuadres de pesos: un primer
+// pago prorrateado de $109.000 (3 días L-S + 1 domingo) daba $14.030 de ahorro con la
+// regla de tres semanal, cuando el valor real día por día es $14.000 (3×$4.000 + $2.000).
+// - Prorrateo: se itera día a día (mismos días que calcularProrrateoInicial).
+// - Semanal: 6×ahorro_ls + ahorro_dom.
+// - Quincenal/Mensual: misma composición fija del negocio (2 sem + 1 día LS / 4 sem + 2 días LS).
+// - Diario: 0 — el diario se maneja aparte (su ahorro no sale de una cuota fija).
+export function ahorroPeriodoExacto(contrato: ContratoCiclo, enProrrateo: boolean): number {
+  if (contrato.forma_pago === "Diario") return 0;
+  const ahorroLS = contrato.ahorro_diario ?? 4000;
+  const ahorroDom = contrato.ahorro_domingo ?? 2000;
+
+  if (enProrrateo && contrato.fecha_entrega) {
+    const base = new Date(contrato.fecha_entrega + "T00:00:00");
+    const objetivo = proximoDiaPago(contrato, base);
+    const dias = Math.round((objetivo.getTime() - base.getTime()) / 86400000);
+    let total = 0;
+    for (let i = 1; i <= dias; i++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + i);
+      total += d.getDay() === 0 ? ahorroDom : ahorroLS;
+    }
+    return total;
+  }
+
+  const ahorroSemana = 6 * ahorroLS + ahorroDom;
+  if (contrato.forma_pago === "Quincenal") return 2 * ahorroSemana + ahorroLS;
+  if (contrato.forma_pago === "Mensual") return 4 * ahorroSemana + 2 * ahorroLS;
+  return ahorroSemana; // Semanal
+}
+
+// Porción de ahorro contenida en lo que un pago aplica a la cuota del período.
+// Usa el ahorro y la cuota EXACTOS del período que se está pagando: un pago completo
+// da el ahorro exacto ($14.000 en prorrateo, $26.000 en semana llena); un pago parcial
+// se reparte proporcional dentro de ese mismo período y al completarlo cierra exacto.
+export function calcularAhorroAplicado(
+  contrato: ContratoCiclo,
+  aplicadoTarifa: number,
+  enProrrateo: boolean,
+): number {
+  if (aplicadoTarifa <= 0 || contrato.forma_pago === "Diario") return 0;
+  const cuota = enProrrateo ? calcularProrrateoInicial(contrato) : valorPeriodoReal(contrato);
+  const ahorroCuota = ahorroPeriodoExacto(contrato, enProrrateo);
+  if (cuota <= 0 || ahorroCuota <= 0) return 0;
+  return Math.min(Math.round((aplicadoTarifa * ahorroCuota) / cuota), ahorroCuota);
+}
+
 // Un contrato está en prorrateo solo si fue entregado DESPUÉS del último día de pago
 // y aún no registra pagos.
 export function estaEnProrrateo(contrato: ContratoCiclo, sinPagosNunca: boolean): boolean {

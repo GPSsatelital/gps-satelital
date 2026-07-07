@@ -22,6 +22,7 @@ import ModalRecoleccion from "../components/ModalRecoleccion";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularProrrateoInicial,
+  calcularAhorroAplicado,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -958,13 +959,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
   const desglose: AplicadoPago = contratoDetalle
-    ? calcularAplicacion(
-        montoIngresado,
-        cuotaPendiente,
-        0,
-        contratoDetalle.deudaContrato,
-        contratoDetalle.cuotaConvenio,
-      )
+    ? (() => {
+        const a = calcularAplicacion(
+          montoIngresado,
+          cuotaPendiente,
+          0,
+          contratoDetalle.deudaContrato,
+          contratoDetalle.cuotaConvenio,
+        );
+        // Ahorro exacto del período (día por día en prorrateo) — no promedio semanal.
+        a.ahorro = calcularAhorroAplicado(contratoDetalle, a.tarifa, enProrrateo);
+        return a;
+      })()
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
   // ── Modal de pago: cálculos independientes ────────────────────────────────
@@ -992,7 +998,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const modalCuotaPendiente = modalContrato ? Math.max(modalCuotaPactada - modalPagadoPeriodo, 0) : 0;
   const modalMonto = Number(modalValor) || 0;
   const modalDesglose: AplicadoPago = modalContrato
-    ? calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, modalContrato.cuotaConvenio)
+    ? (() => {
+        const a = calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, modalContrato.cuotaConvenio);
+        a.ahorro = calcularAhorroAplicado(modalContrato, a.tarifa, modalEnProrrateo);
+        return a;
+      })()
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
   function cerrarModalPago() {
@@ -1112,6 +1122,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setProcesando(true);
     try {
       const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
+      aplicado.ahorro = calcularAhorroAplicado(contratoDetalle, aplicado.tarifa, enProrrateo);
       const { error } = await registrarPago(
         contratoSeleccionadoId, saldo, "Efectivo", aplicado,
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
@@ -1254,6 +1265,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0);
     const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
+    aplicado.ahorro = calcularAhorroAplicado(r, aplicado.tarifa, enProrrateoCampo);
     const folio = generarFolio();
 
     setProcesando(true);

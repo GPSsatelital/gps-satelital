@@ -36,9 +36,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   const [ahorroDiario, setAhorroDiario] = useState(String(contrato.ahorro_diario ?? 4000));
   const [ahorroDomingo, setAhorroDomingo] = useState(String(contrato.ahorro_domingo ?? 2000));
   const [meses, setMeses] = useState(String(contrato.meses ?? 24));
-  const [ahorroInicial, setAhorroInicial] = useState(String(contrato.ahorro_inicial ?? 0));
+  const [ahorroInicial, setAhorroInicial] = useState(String(Math.round(contrato.ahorro_inicial ?? 0)));
   const [fechaEntrega, setFechaEntrega] = useState(contrato.fecha_entrega ?? "");
-  const [ahorroAcumulado, setAhorroAcumulado] = useState(String(contrato.ahorro_acumulado ?? 0));
+  const [ahorroAcumulado, setAhorroAcumulado] = useState(String(Math.round(contrato.ahorro_acumulado ?? 0)));
   const [fechaFinContrato, setFechaFinContrato] = useState(
     contrato.fecha_fin_contrato ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : "")
   );

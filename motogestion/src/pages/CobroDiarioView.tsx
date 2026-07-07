@@ -13,6 +13,8 @@ import {
   inicioPeriodoActual,
   proximoDiaPago,
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
+  calcularAhorroAplicado,
+  estaEnProrrateo,
   formatDiaPago,
 } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
@@ -243,6 +245,12 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
     const aplicado = calcularAplicacion(valor, cuotaPactada, 0, f.deudaReal, f.cuotaConvenioFila);
+    // Ahorro exacto del período (no promedio) — mismo criterio que Cartera.
+    const contratoFila = contratos.find(c => c.id === f.contratoId);
+    if (contratoFila && f.tipoRuta !== "diario") {
+      const sinPagos = !pagos.some(p => p.contrato_id === f.contratoId && p.estado === "Confirmado");
+      aplicado.ahorro = calcularAhorroAplicado(contratoFila, aplicado.tarifa, estaEnProrrateo(contratoFila, sinPagos));
+    }
     const { error } = await registrarPago(f.contratoId, valor, cobrarMetodo, aplicado, {
       registradoPor: profile?.id,
       ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),

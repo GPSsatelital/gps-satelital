@@ -755,11 +755,38 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 **⚠️ Pendientes de la migración RASTREADOR (en la app, sin SQL):** registrar el pago de hoy de WILLIAM ($435.000); completar datos técnicos de las 28 motos ("POR DEFINIR"); agregar las 6 motos sueltas sin contrato (EYU81H, XYZ17H, XZI03H, XZI09H, XZI18H, XZP35H). **Migrar COSTA** después (mismo Excel, mismo proceso).
 
+### 📌 SESIÓN 7 JUL 2026 (parte 2) — recibos, recolección real y AUDITORÍA COMPLETA DE PERMISOS
+6. **Recibos térmicos 80mm** (commit `69bf43a`): nuevo `TicketTermico.tsx` (formato POS: negro puro, compacto, monoespaciado) + CSS global de impresión en `index.css` (`@page 80mm auto`, solo imprime `.ticket-termico`). El recibo de pago de Cartera ahora imprime bien en la GA-E2001 (antes: letras grises borrosas y tira larga). **Nuevo recibo de BASE INICIAL** (separado del de pago, decisión del usuario: no mezclar): sale automático al registrar cliente con `ingreso_inicial > 0` + botón reimprimir en FichaClienteView (tab Resumen). ⚠️ Falta probar con la impresora física.
+7. **Fix pantalla en blanco** (commit `70023e2`): clientes migrados por SQL traen `documentos_cliente = {}` → `doc[key].ok` crashaba React. Blindados 6 accesos (ClientesView, useClientes, useDocumentos).
+8. **Cancelar contrato "En proceso" ahora ELIMINA por completo** (commit `dbc6044`): regla confirmada por el usuario — "Cancelado" se reserva para contratos que sí se activaron y cerraron por liquidación. Los 12 Cancelado viejos se limpiaron por SQL (5 pruebas + 7 del lote viejo de migración PRADERA con tarifa total/7; se verificó placa por placa que ninguna moto tenía otro contrato antes de borrar).
+9. **Recolección del SUBADMIN funcionando de punta a punta** — cadena de 3 errores destapados uno a uno al probar en real: RLS `recepciones_vehiculo` (mig 035) → RLS update `contratos` (mig 035) → CHECK sin 'Suspendido' (mig 036). Todas corridas ✅.
+10. **AUDITORÍA COMPLETA DE POLÍTICAS/PERMISOS contra la BD real** (pg_policies + triggers + checks, el usuario pegó los volcados): hallazgos → **`gestiones_cobro` estaba ABIERTA a todos** (el drop de 026 usó el nombre `gestiones_all` pero la política real era `gestiones_cobro_all`); `motos`/`taller` abiertas; **faltaba DELETE en `contratos`/`contratos_auditoria`** (eliminarContratoEnProceso borraba 0 filas EN SILENCIO); `visitas` INSERT abierto; `motos_estado_check` sin **'En traspaso'** (el Paz y Salvo habría explotado); `motos_grupo_check` sin **USADAS** (mig 014 nunca aplicada); guard de roles usaba `current_role()` (duplicado exacto de `mi_rol()`, funcionaba — se unificó). Guard de clientes ✅, trigger de pagos ✅, `deudas_concepto_check` ✅.
+    - **Mig `037_rls_reconciliacion.sql`** ✅ corrida — cierra gestiones_cobro/motos/taller/visitas + DELETE de contratos (solo estado 'En proceso', garantizado por la BD) + renombra políticas engañosas. Matriz motos: INSERT=ADMIN/AP · UPDATE=+SECRETARIA · SUBADMIN sus motos · MECANICO (taller). Taller: staff+MECANICO, SUBADMIN lee sus motos.
+    - **Mig `038_checks_y_guard.sql`** ⚠️ **pendiente de confirmar Success** — agrega 'En traspaso' y USADAS/OTRO a los checks de motos + unifica guard de roles a `mi_rol()`.
+    - **LECCIÓN/REGLA NUEVA:** toda migración queda en el repo Y se corre en Supabase — las dos siempre. La causa raíz de la cascada de errores era la desincronización repo↔BD.
+
+### ⚠️ PENDIENTES INMEDIATOS al retomar
+1. **Confirmar que la mig 038 corrió** (Success) — si no, correrla.
+2. **Redesplegar Edge Function `manage-users`**: la pantalla Usuarios da "Edge Function returned a non-2xx" porque la versión desplegada es VIEJA (no conoce `action: "list"`). Pegar el contenido de `motogestion/supabase/functions/manage-users/index.ts` en Supabase → Edge Functions → manage-users → Deploy.
+3. **Probar tras 037/038:** que MECANICO siga usando taller, ANGELA registre pagos, editar una moto, y el flujo completo de recolección → la moto debe aparecer en Inmovilizaciones → "🔒 Motos retenidas" (nota: hay 3 recolecciones que quedaron a medias de la cadena de errores — contratos con gestión `recoleccion` pero aún Activos; rehacerlas desde el Panel Hoy).
+
+### 🔲 PRÓXIMA TAREA ACORDADA: mensajes de WhatsApp editables desde Configuración
+El usuario quiere cambiar los textos de los mensajes de WhatsApp (día de pago, gabela, mora) y una sección en Configuración para editarlos. **Inventario ya hecho — los mensajes viven hardcodeados en 4 lugares:**
+- `CobrosView.tsx:866` (tareaMensaje del Panel Hoy — "le recordamos su pago de hoy")
+- `CobroDiarioView.tsx:227-229` (2 variantes: mora "lleva X días sin pago" y día de pago)
+- `InmovilizacionesView.tsx:279` (mora/amenaza de recolección "su moto lleva X días en mora")
+- `AlertasView.tsx:143` (contacto genérico)
+**Diseño propuesto (sin confirmar):** tabla `plantillas_mensajes` (o jsonb en una tabla de configuración) con 3-4 plantillas editables con placeholders (`{nombre}`, `{dias}`, `{placa}`, `{valor}`); sección nueva en ConfiguracionView (¿solo AP o también ADMIN? preguntar); los 4 puntos de envío leen la plantilla y reemplazan placeholders, con el texto actual como respaldo si no hay plantilla guardada. Definir con el usuario: quién edita, si gabela tiene mensaje propio (hoy no existe — se usa el mismo de día de pago), y si el mensaje de recibo por WhatsApp también se hace editable.
+
 ### Migraciones SQL de esta sesión — estado
 - `032_trigger_ahorro_convenio.sql` ✅ corrida por el usuario.
 - `033_correccion_pagos.sql` ✅ corrida (backfill ahorro + eliminarPago).
 - `034_ahorro_exacto.sql` ✅ corrida (trigger respeta ahorro exacto de la app).
 - Script de datos `rastreador.sql` ✅ corrido (grupo RASTREADOR agregado).
+- `035_rls_recoleccion_subadmin.sql` ✅ corrida (SUBADMIN recolecta sus motos).
+- `036_contratos_estado_suspendido.sql` ✅ corrida (CHECK con 'Suspendido').
+- `037_rls_reconciliacion.sql` ✅ corrida (cierra gestiones_cobro/motos/taller/visitas + DELETE contratos).
+- `038_checks_y_guard.sql` ⚠️ **pendiente de confirmar** ('En traspaso' + USADAS + guard unificado).
 
 ### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
 Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases + fase Convenios, 40+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, convenios, etc.), no hay que volver a preguntar nada de eso.

@@ -73,13 +73,23 @@ export function calcularProrrateo(contrato: Contrato, dias: number, esLiquidacio
 
 // Fecha del corte de cuentas de la migración: los saldos anteriores viven como
 // deuda de apertura, así que ningún reloj de "días sin pago" puede arrancar antes.
-export const FECHA_CORTE_MIGRACION = "2026-07-01";
+// Se maneja POR GRUPO porque cada grupo se migró en un momento distinto (con sus
+// cuentas cuadradas hasta una fecha diferente): mover el corte de un grupo no debe
+// alterar el reloj de mora de otro que ya lleva días en uso.
+export const FECHA_CORTE_MIGRACION = "2026-07-01"; // default (grupos sin corte propio)
+const CORTE_POR_GRUPO: Record<string, string> = {
+  PRADERA: "2026-07-01",
+  RASTREADOR: "2026-07-06",
+};
+export function corteMigracionGrupo(grupo?: string | null): string {
+  return (grupo && CORTE_POR_GRUPO[grupo]) || FECHA_CORTE_MIGRACION;
+}
 
 // Días sin pago registrado. Sin pagos en el sistema: cuenta desde la entrega,
-// pero nunca antes del corte de migración.
-export function diasDesdeUltimoPago(ultimoPagoFecha: string | null, fechaEntrega: string | null): number | null {
+// pero nunca antes del corte de migración (del grupo, si se le pasa uno).
+export function diasDesdeUltimoPago(ultimoPagoFecha: string | null, fechaEntrega: string | null, corte: string = FECHA_CORTE_MIGRACION): number | null {
   const base = ultimoPagoFecha
-    ?? (fechaEntrega ? (fechaEntrega > FECHA_CORTE_MIGRACION ? fechaEntrega : FECHA_CORTE_MIGRACION) : null);
+    ?? (fechaEntrega ? (fechaEntrega > corte ? fechaEntrega : corte) : null);
   if (!base) return null;
   return Math.floor((Date.now() - new Date(base + "T00:00:00").getTime()) / 86400000);
 }

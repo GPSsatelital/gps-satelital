@@ -16,6 +16,7 @@ import {
   estaEnProrrateo,
   calcularProrrateoInicial,
 } from "../utils/cicloPago";
+import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 
@@ -88,14 +89,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [expandido, setExpandido]     = useState<string | null>(null);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
   const inicioSemana = (() => {
-    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+    const d = hoyDateFn(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
   })();
 
   const filas: Fila[] = useMemo(() => {
-    const hoyDate = new Date();
-    const hoyISO = hoyDate.toISOString().slice(0, 10);
+    const hoyDate = hoyDateFn();
+    const hoyISOStr = hoyISO();
     return contratos
       .filter(c => c.estado === "Activo")
       .flatMap(c => {
@@ -127,7 +128,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           ? calcularCuotaDia(c.tarifa_diaria ?? 27000, hoyDate.getDay() === 0, c.tarifa_domingo)
           : enProrrateo ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
         const pagadoPeriodo = c.forma_pago === "Diario"
-          ? pagosC.filter(p => p.fecha === hoyISO).reduce((acc, p) => acc + p.valor, 0)
+          ? pagosC.filter(p => p.fecha === hoyISOStr).reduce((acc, p) => acc + p.valor, 0)
           : totalPagadoPeriodoActual(c, pagosC, hoyDate);
         const cuotaPendiente = Math.max(cuotaPactada - pagadoPeriodo, 0);
         const deudaReal = deudaRegistrada + cuotaPendiente;

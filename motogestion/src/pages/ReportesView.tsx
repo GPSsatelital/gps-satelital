@@ -5,6 +5,7 @@ import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
+import { hoyISO, hoyDate } from "../utils/fecha";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -43,7 +44,7 @@ const ESTADO_MOTO_COLOR: Record<string, string> = {
 };
 
 function getRango(r: Rango): { desde: string; hasta: string } {
-  const hoy = new Date();
+  const hoy = hoyDate();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   if (r === "hoy")    { const s = iso(hoy); return { desde: s, hasta: s }; }
   if (r === "semana") {
@@ -136,7 +137,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { motos }     = useMotos();
   const { deudas }    = useDeudas();
 
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = hoyISO();
   const { desde, hasta } = getRango(rango);
 
   // ── Recaudado hoy ──────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // ── Recaudo diario últimos 14d ─────────────────────────────────────────────
   const recaudoDiario = useMemo(() => {
     return Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (13 - i));
+      const d = hoyDate(); d.setDate(d.getDate() - (13 - i));
       const fecha = d.toISOString().slice(0, 10);
       const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha === fecha).reduce((a, p) => a + p.valor, 0);
       const label = `${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]} ${d.getDate()}`;
@@ -169,7 +170,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // ── Recaudo últimas 4 semanas ──────────────────────────────────────────────
   const recaudoSemanal = useMemo(() => {
     return Array.from({ length: 4 }, (_, i) => {
-      const fin = new Date(); fin.setDate(fin.getDate() - i * 7);
+      const fin = hoyDate(); fin.setDate(fin.getDate() - i * 7);
       const ini = new Date(fin); ini.setDate(ini.getDate() - 6);
       const desde_ = ini.toISOString().slice(0, 10);
       const hasta_ = fin.toISOString().slice(0, 10);
@@ -276,7 +277,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── Alertas vencimiento ────────────────────────────────────────────────────
   const alertasVencimiento = useMemo(() => {
-    const en30 = new Date(); en30.setDate(en30.getDate() + 30);
+    const en30 = hoyDate(); en30.setDate(en30.getDate() + 30);
     const iso30 = en30.toISOString().slice(0, 10);
     return motos.filter(m => (m.fecha_seguro && m.fecha_seguro <= iso30) || (m.fecha_tecnomecanica && m.fecha_tecnomecanica <= iso30))
       .map(m => ({
@@ -300,7 +301,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // ── Comparativa mes anterior ───────────────────────────────────────────────
   const comparativaMes = useMemo(() => {
     if (rango !== "mes") return null;
-    const hoy = new Date();
+    const hoy = hoyDate();
     const i = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().slice(0, 10);
     const f = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
     const totalAnt = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= i && p.fecha <= f).reduce((a, p) => a + p.valor, 0);

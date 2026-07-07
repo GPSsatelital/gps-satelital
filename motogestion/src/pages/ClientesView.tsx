@@ -15,6 +15,7 @@ import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
+import { hoyISO } from "../utils/fecha";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
@@ -35,7 +36,7 @@ function formatDate(date: string | null) {
 }
 
 function getToday() {
-  return new Date().toISOString().slice(0, 10);
+  return hoyISO();
 }
 
 function ClienteBadge({ estado }: { estado: ClienteEstado }) {

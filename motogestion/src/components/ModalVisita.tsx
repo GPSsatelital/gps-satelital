@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useClientes } from "../hooks/useClientes";
 import { useVisitas } from "../hooks/useVisitas";
+import { hoyISO } from "../utils/fecha";
 
 interface Props {
   clienteId: string;
@@ -121,7 +122,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       resultado: recomendacion || null,
       entrevista,
       ubicacion: ubicacion ?? null,
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: hoyISO(),
       fotos: { clienteFuncionario: urlCliente, fachada: urlFachada },
       asignada_a: clienteActual?.visita_asignada_a ?? null,
     });

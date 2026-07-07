@@ -8,6 +8,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { esDiaDePago } from "../utils/cicloPago";
+import { hoyISO, hoyMasDias } from "../utils/fecha";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -96,17 +97,17 @@ export default function DashboardView({ onNavigate }: {
 
     const pagosPendientes = pagos.filter(p => p.estado === "Pendiente").length;
 
-    const hoyStr  = new Date().toISOString().slice(0, 10);
+    const hoyStr  = hoyISO();
     const recaudoHoy = pagos
       .filter(p => p.estado === "Confirmado" && p.fecha === hoyStr)
       .reduce((acc, p) => acc + p.valor, 0);
 
-    const hace7dias = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const hace7dias = hoyMasDias(-7);
     const recaudoSemana = pagos
       .filter(p => p.estado === "Confirmado" && p.fecha >= hace7dias)
       .reduce((acc, p) => acc + p.valor, 0);
 
-    const hace14dias = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const hace14dias = hoyMasDias(-14);
     const recaudoSemanaAnterior = pagos
       .filter(p => p.estado === "Confirmado" && p.fecha >= hace14dias && p.fecha < hace7dias)
       .reduce((acc, p) => acc + p.valor, 0);
@@ -177,9 +178,9 @@ export default function DashboardView({ onNavigate }: {
     const contratoIds = new Set(
       contratos.filter(c => c.moto_id && motoIds.has(c.moto_id)).map(c => c.id)
     );
-    const hoyStr = new Date().toISOString().slice(0, 10);
-    const hace7dias = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    const hace14dias = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const hoyStr = hoyISO();
+    const hace7dias = hoyMasDias(-7);
+    const hace14dias = hoyMasDias(-14);
 
     const hoy = pagos
       .filter(p => p.estado === "Confirmado" && p.fecha === hoyStr && contratoIds.has(p.contrato_id))
@@ -197,11 +198,8 @@ export default function DashboardView({ onNavigate }: {
   // ── Chart data (variable days) ────────────────────────────────────────────
   const chartData = useMemo(() => {
     const result: Array<{ fecha: string; total: number; esHoy: boolean }> = [];
-    const ahora = new Date();
     for (let i = chartDays - 1; i >= 0; i--) {
-      const d = new Date(ahora);
-      d.setDate(ahora.getDate() - i);
-      const fechaStr = d.toISOString().slice(0, 10);
+      const fechaStr = hoyMasDias(-i);
       const total = pagos
         .filter(p => p.estado === "Confirmado" && p.fecha === fechaStr)
         .reduce((acc, p) => acc + p.valor, 0);

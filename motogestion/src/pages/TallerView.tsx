@@ -5,6 +5,7 @@ import { useContratos, type Contrato } from "../hooks/useContratos";
 import { supabase } from "../lib/supabase";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useAuth } from "../contexts/AuthContext";
+import { hoyISO } from "../utils/fecha";
 import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import MoneyInput from "../components/MoneyInput";
@@ -249,7 +250,7 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
 }) {
   const [motoId, setMotoId] = useState("");
   const [estadoInicial, setEstadoInicial] = useState<TallerEstado>("Pendiente");
-  const [fechaIngreso, setFechaIngreso] = useState(new Date().toISOString().slice(0, 10));
+  const [fechaIngreso, setFechaIngreso] = useState(hoyISO());
   const [costoManoObra, setCostoManoObra] = useState("");
   const [detalle, setDetalle] = useState("");
   const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
@@ -560,7 +561,7 @@ export default function TallerView() {
 
   async function handleFinalizar() {
     if (!seleccionado) return;
-    const fechaSalida = new Date().toISOString().slice(0, 10);
+    const fechaSalida = hoyISO();
     await finalizarProceso(seleccionado.id, seleccionado.moto_id);
     // Solo ADMIN/AP deciden cobrar vs rodar (misma jerarquía que Editar contrato) — si otro
     // rol finaliza el taller, el tiempo queda pendiente de resolver manualmente después.

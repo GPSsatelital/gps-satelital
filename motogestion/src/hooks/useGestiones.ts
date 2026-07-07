@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { hoyISO } from "../utils/fecha";
 
 export type TipoGestion =
   | "mensaje_recordatorio"
@@ -55,7 +56,7 @@ export function useGestiones() {
       tipo,
       resultado,
       registrado_por: registradoPor,
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: hoyISO(),
       plazo_extra_dias: extras?.plazo_extra_dias ?? null,
       plazo_extra_motivo: extras?.plazo_extra_motivo ?? null,
       plazo_extra_fecha_limite: extras?.plazo_extra_fecha_limite ?? null,

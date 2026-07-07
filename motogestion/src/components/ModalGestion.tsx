@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
+import { hoyMasDias } from "../utils/fecha";
 
 interface Props {
   contratoId: string;
@@ -88,12 +89,10 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         setError("El motivo del plazo extra es obligatorio.");
         return;
       }
-      const limite = new Date();
-      limite.setDate(limite.getDate() + dias);
       extras = {
         plazo_extra_dias: dias,
         plazo_extra_motivo: motivoPlazo.trim(),
-        plazo_extra_fecha_limite: limite.toISOString().slice(0, 10),
+        plazo_extra_fecha_limite: hoyMasDias(dias),
       };
     }
     setError(null);

@@ -6,6 +6,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import { hoyISO } from "../utils/fecha";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -64,7 +65,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   function abrirResolverTiempoSiAplica(moto: Moto, motivo: string, fechaEntrada: string | null | undefined) {
     if (!esAdminOSuperior || !fechaEntrada) return;
     const contratoActivo = contratos.find(c => c.moto_id === moto.id && c.estado === "Activo");
-    const fechaSalida = new Date().toISOString().slice(0, 10);
+    const fechaSalida = hoyISO();
     const dias = Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(fechaEntrada + "T00:00:00").getTime()) / 86400000);
     if (!contratoActivo || dias <= 0) return;
     const cliente = clientes.find(cl => cl.id === contratoActivo.cliente_id);

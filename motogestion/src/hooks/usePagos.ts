@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { hoyISO } from "../utils/fecha";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
 export type MetodoPago = "Efectivo" | "Transferencia";
@@ -200,6 +201,9 @@ export function usePagos() {
       convenio_id: opts?.convenioId ?? null,
       folio: opts?.folio ?? null,
       ubicacion: opts?.ubicacion ?? null,
+      // Fecha explícita en hora de Colombia — sin esto la BD usaba current_date (UTC)
+      // y los pagos hechos de noche caían en el día siguiente.
+      fecha: hoyISO(),
     });
     return { error: error?.message ?? null };
   }

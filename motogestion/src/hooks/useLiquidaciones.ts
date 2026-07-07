@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { hoyISO } from "../utils/fecha";
 
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada";
@@ -104,7 +105,7 @@ export function useLiquidaciones() {
         estado_tecnico: "Pendiente",
         detalle: `Revisión por liquidación ${numero} — evaluar estado y daños para calcular el saldo`,
         costo: 0,
-        fecha_ingreso: new Date().toISOString().slice(0, 10),
+        fecha_ingreso: hoyISO(),
       }).select("id").single();
       tallerId = orden?.id ?? null;
       await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoId);

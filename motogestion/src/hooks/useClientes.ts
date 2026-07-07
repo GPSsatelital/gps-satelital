@@ -103,12 +103,13 @@ export type NuevoCliente = {
 };
 
 export function documentosListos(doc: DocumentoFlags) {
+  // doc puede venir incompleto ({}) en clientes migrados por SQL → clave faltante = no lista.
   return (
-    doc.cedula.ok &&
-    doc.recibo1.ok &&
-    doc.carta.ok &&
-    doc.antecedentes.ok &&
-    doc.hojaVida.ok
+    doc.cedula?.ok &&
+    doc.recibo1?.ok &&
+    doc.carta?.ok &&
+    doc.antecedentes?.ok &&
+    doc.hojaVida?.ok
   );
 }
 

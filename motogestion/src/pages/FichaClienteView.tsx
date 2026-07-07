@@ -10,6 +10,8 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
 import { generarHTMLAutorizacionDatos } from "../hooks/useDocumentos";
+import { useAuth } from "../contexts/AuthContext";
+import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function fmtFecha(s: string | null | undefined) {
@@ -138,6 +140,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [tab, setTab] = useState<Tab>("resumen");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
+  const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
+  const { profile } = useAuth();
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 900);
@@ -371,6 +375,17 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               <InfoRow label="Dirección" value={cliente.direccion || "—"} />
               <InfoRow label="Fuente de llegada" value={cliente.fuente_llegada || "—"} />
               <InfoRow label="Registrado" value={fmtFecha(cliente.created_at)} />
+              {(cliente.ingreso_inicial ?? 0) > 0 && (
+                <>
+                  <InfoRow label="Base inicial entregada" value={`$ ${fmt(cliente.ingreso_inicial ?? 0)}`} />
+                  <button
+                    onClick={() => setReciboBase(buildTicketBaseInicial(cliente.nombre, cliente.cedula, cliente.ingreso_inicial ?? 0, profile?.nombre ?? "", cliente.created_at.slice(0, 10)))}
+                    style={{ marginTop: 10, width: "100%", background: "#e0f2fe", color: "#0369a1", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    🖨️ Recibo de base inicial
+                  </button>
+                </>
+              )}
             </Card>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -863,6 +878,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           />
         </div>
       )}
+
+      {reciboBase && <ReciboBaseModal datos={reciboBase} onCerrar={() => setReciboBase(null)} />}
     </div>
   );
 }

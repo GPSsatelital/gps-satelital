@@ -109,3 +109,24 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* ── Impresión de recibos en térmica 80mm (ver components/TicketTermico.tsx) ── */
+.ticket-termico { display: none; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  .ticket-termico,
+  .ticket-termico * { visibility: visible !important; }
+  .ticket-termico {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80mm;
+    padding: 3mm 3mm 6mm;
+    box-sizing: border-box;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  @page { size: 80mm auto; margin: 0; }
+}

@@ -16,6 +16,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
+import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
@@ -601,6 +602,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
   const [form, setForm] = useState<NuevoCliente>(emptyForm());
   const [editForm, setEditForm] = useState<(NuevoCliente & { id: string }) | null>(null);
+  // Recibo de base inicial: se abre automático al registrar y también desde la ficha.
+  const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
 
   const filtered = useMemo(() => {
     let list = clientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
@@ -724,6 +727,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
+    // Recibo automático de la base inicial entregada (dinero que da para iniciar el proceso).
+    if (form.ingreso_inicial && form.ingreso_inicial > 0) {
+      setReciboBase(buildTicketBaseInicial(form.nombre.trim(), form.cedula.trim(), form.ingreso_inicial, profile?.nombre ?? ""));
+    }
     setForm(emptyForm());
     setOpen(false);
   }
@@ -1421,6 +1428,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           onGuardada={() => { setClienteVisitaId(null); }}
         />
       )}
+
+      {reciboBase && <ReciboBaseModal datos={reciboBase} onCerrar={() => setReciboBase(null)} />}
 
     </div>
   );

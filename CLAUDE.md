@@ -744,7 +744,22 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `5aca096` (implementa rediseño completo — liquidación conectada, recolección con evidencia, convenios reales, Paz y Salvo). Vercel desplegado.
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `ea600a5` (fecha de corte de migración por grupo). Vercel desplegado.
+
+### 📌 SESIÓN 7 JUL 2026 — resumen de lo hecho (todo en producción)
+1. **Ahorro exacto día por día** (commit `1bc56f2`, mig `034_ahorro_exacto.sql`): el ahorro se calculaba con el promedio semanal (26.000/202.000) → daba pesos torcidos en prorrateos ($14.030 en vez de $14.000). Nuevas funciones `ahorroPeriodoExacto()` y `calcularAhorroAplicado()` en `cicloPago.ts`; los 5 puntos de registro de pago guardan el ahorro exacto en `pagos.aplicado_ahorro`; el trigger respeta ese valor y solo usa el promedio como respaldo para pagos viejos. **El usuario ya corrigió por SQL** los 14 pagos viejos con el descuadre.
+2. **Fecha de hoy en hora de Colombia** (commit `aeac0fd`): `new Date().toISOString()` daba la fecha de mañana después de las 7pm (UTC vs UTC−5). Nuevo `src/utils/fecha.ts` (`hoyISO`, `fechaISO`, `hoyDate`, `hoyMasDias`) — fuente única con timeZone America/Bogota. Reemplazado en TODOS los inserts de fecha (pagos, gestiones, visitas, taller, liquidaciones) y cálculos de "hoy" para mora/cartera. **El usuario ya corrigió por SQL** los pagos que quedaron con fecha 7-jul → 6-jul.
+3. **Botón "🗑️ Eliminar pago"** (commit anterior de la sesión): exclusivo ADMIN_PRINCIPAL, en Cartera→Historial. `eliminarPago()` en usePagos deja rastro en `contratos_auditoria` antes de borrar. El trigger (mig 034) resta el ahorro/convenio al borrar un pago Confirmado.
+4. **Recolección con 5 fotos guiadas por ángulo** (commit `70d0f36`): `ModalRecoleccion` ahora usa el mismo componente `FotosAngulos.tsx` (extraído del wizard) — 5 fotos obligatorias (delantera/lateral izq/arriba/lateral der/trasera), igual que la entrega.
+5. **Migración grupo RASTREADOR** ✅ (script en `motogestion/migracion_datos/rastreador.sql`, gitignored): 28 clientes+contratos+motos + 18 deudas de apertura. Ver [[migracion-grupos-datos-reales]] en memoria. **Fecha de corte por grupo** (commit `ea600a5`): `corteMigracionGrupo(grupo)` — PRADERA 1-jul, RASTREADOR 6-jul. WILLIAM (XZI02H) es Quincenal días 5 y 20, $435.000, dejado atrasado a propósito.
+
+**⚠️ Pendientes de la migración RASTREADOR (en la app, sin SQL):** registrar el pago de hoy de WILLIAM ($435.000); completar datos técnicos de las 28 motos ("POR DEFINIR"); agregar las 6 motos sueltas sin contrato (EYU81H, XYZ17H, XZI03H, XZI09H, XZI18H, XZP35H). **Migrar COSTA** después (mismo Excel, mismo proceso).
+
+### Migraciones SQL de esta sesión — estado
+- `032_trigger_ahorro_convenio.sql` ✅ corrida por el usuario.
+- `033_correccion_pagos.sql` ✅ corrida (backfill ahorro + eliminarPago).
+- `034_ahorro_exacto.sql` ✅ corrida (trigger respeta ahorro exacto de la app).
+- Script de datos `rastreador.sql` ✅ corrido (grupo RASTREADOR agregado).
 
 ### 🔲 Rediseño en curso: ciclo de vida de contratos, motos, liquidaciones e inmovilizaciones
 Hay un plan grande y ya aprobado por el usuario guardado en `C:\Users\USER\.claude\plans\sunny-brewing-island.md` (9 fases + fase Convenios, 40+ decisiones de negocio confirmadas pregunta por pregunta). **Leer ese archivo completo antes de continuar** — tiene toda la lógica de negocio ya cerrada (Liquidación con 3 motivos, Paz y Salvo, regla de 7 días, ahorro acumulado con trigger, taller integrado, convenios, etc.), no hay que volver a preguntar nada de eso.

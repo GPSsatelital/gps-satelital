@@ -9,6 +9,7 @@ import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import ModalConvenio from "../components/ModalConvenio";
 import { calcularProrrateoInicial, proximoDiaPago } from "../utils/cicloPago";
+import { hoyISO } from "../utils/fecha";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 
 type Props = {
@@ -103,7 +104,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   }, []);
 
   // Step 1 form
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
   const [form, setForm] = useState({
     cliente_id: contratoInicial?.cliente_id ?? "",
     forma_pago: (contratoInicial?.forma_pago ?? "Semanal") as FormaPago,

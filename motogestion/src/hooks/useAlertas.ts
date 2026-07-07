@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { hoyISO, hoyDate } from "../utils/fecha";
 import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
@@ -58,8 +59,8 @@ export function useAlertas({
 }): Alerta[] {
   return useMemo(() => {
     const alertas: Alerta[] = [];
-    const hoy = new Date().toISOString().slice(0, 10);
-    const ahora = new Date();
+    const hoy = hoyISO();
+    const ahora = hoyDate();
 
     const iso5  = addDays(ahora,  5);
     const iso15 = addDays(ahora, 15);

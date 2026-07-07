@@ -6,6 +6,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { hoyISO } from "../utils/fecha";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -13,7 +14,7 @@ const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 export default function CajaView() {
-  const hoyDefault = new Date().toISOString().slice(0, 10);
+  const hoyDefault = hoyISO();
   const [fecha, setFecha] = useState(hoyDefault);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [cerrando, setCerrando] = useState(false);

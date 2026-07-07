@@ -2,6 +2,7 @@ import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
+import { hoyISO } from "../utils/fecha";
 
 export type TipoDocumento = "contrato" | "certificado" | "pagare";
 
@@ -14,7 +15,7 @@ function fmtFecha(iso: string) {
 }
 
 export function generarHTMLContrato(contrato: Contrato, cliente: Cliente, moto: Moto | null): string {
-  const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
+  const hoy = fmtFecha(hoyISO());
   const esDiario = contrato.forma_pago === "Diario" || contrato.tipo_ruta === "diario";
 
   return `
@@ -91,7 +92,7 @@ const PREGUNTAS_CERTIFICADO = [
 ];
 
 export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): string {
-  const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
+  const hoy = fmtFecha(hoyISO());
   const esDiario = contrato.forma_pago === "Diario" || contrato.tipo_ruta === "diario";
 
   const tarifaLS = fmt(contrato.tarifa_diaria ?? 27000);
@@ -168,7 +169,7 @@ export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): st
 }
 
 export function generarHTMLPagare(contrato: Contrato, cliente: Cliente): string {
-  const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
+  const hoy = fmtFecha(hoyISO());
   const valorBase = contrato.base_inicial ?? 510000;
   const cuotas = contrato.meses ?? 12;
 
@@ -225,7 +226,7 @@ export function getPreguntas() {
 // es automática, sin pago adicional — el ahorro acumulado durante el contrato fue
 // "comprando" la moto). El cambio de titularidad ante tránsito se tramita aparte.
 export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto: Moto | null): string {
-  const hoy = fmtFecha(new Date().toISOString().slice(0, 10));
+  const hoy = fmtFecha(hoyISO());
   return `
     <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
       <div style="text-align:center;margin-bottom:24px">
@@ -275,7 +276,7 @@ export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto:
 export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   const fechaAutorizacion = cliente.autorizacion_datos_fecha
     ? fmtFecha(cliente.autorizacion_datos_fecha.slice(0, 10))
-    : fmtFecha(new Date().toISOString().slice(0, 10));
+    : fmtFecha(hoyISO());
 
   const categorias = [
     "Nombre completo",

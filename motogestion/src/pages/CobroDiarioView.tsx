@@ -15,6 +15,7 @@ import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   formatDiaPago,
 } from "../utils/cicloPago";
+import { hoyISO } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
@@ -106,7 +107,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
 
   const [tab, setTab] = useState<Tab>("diario");
   const [busqueda, setBusqueda] = useState("");

@@ -5,6 +5,7 @@ import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import type { Pago } from "../hooks/usePagos";
+import { hoyISO, hoyDate } from "../utils/fecha";
 
 type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
@@ -29,7 +30,7 @@ function fmt(n: number) {
 const DIAS_ABREV = ["D", "L", "M", "X", "J", "V", "S"];
 
 function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
-  const hoy = new Date();
+  const hoy = hoyDate();
   const barras = Array.from({ length: dias }, (_, i) => {
     const d = new Date(hoy);
     d.setDate(hoy.getDate() - (dias - 1 - i));
@@ -103,9 +104,9 @@ export default function SocioDashboard() {
     return contratos.filter(c => c.estado === "Activo" && c.moto_id && idsMotosGrupo.has(c.moto_id));
   }, [contratos, motosGrupo]);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
   const inicioSemana = (() => {
-    const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+    const d = hoyDate(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
   })();
   const inicioMes = hoy.slice(0, 7) + "-01";
 

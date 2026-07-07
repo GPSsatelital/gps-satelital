@@ -4,6 +4,7 @@ import { usePagos, type Pago } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { hoyISO, hoyDate } from "../utils/fecha";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -18,7 +19,7 @@ export default function HistorialPagosView({ onNavigate }: {
 }) {
   const mesActual = isoMes(0);
   const [desde, setDesde] = useState(`${mesActual}-01`);
-  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+  const [hasta, setHasta] = useState(hoyISO());
   const [busqueda, setBusqueda] = useState("");
   const [metodo, setMetodo] = useState<"todos" | "Efectivo" | "Transferencia">("todos");
   const [estadoFiltro, setEstadoFiltro] = useState<"todos" | "Confirmado" | "Pendiente" | "Rechazado">("todos");
@@ -93,9 +94,9 @@ export default function HistorialPagosView({ onNavigate }: {
   }
 
   const quickRanges = [
-    { label: "Hoy", from: new Date().toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) },
-    { label: "Esta semana", from: (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })(), to: new Date().toISOString().slice(0, 10) },
-    { label: "Este mes", from: `${mesActual}-01`, to: new Date().toISOString().slice(0, 10) },
+    { label: "Hoy", from: hoyISO(), to: hoyISO() },
+    { label: "Esta semana", from: (() => { const d = hoyDate(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })(), to: hoyISO() },
+    { label: "Este mes", from: `${mesActual}-01`, to: hoyISO() },
   ];
 
   const PagoCard = ({ p }: { p: Pago }) => {

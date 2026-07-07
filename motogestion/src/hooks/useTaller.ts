@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { estadoMotoTrasLiberar } from "./useMotos";
+import { hoyISO } from "../utils/fecha";
 
 export type TallerEstado = "Pendiente" | "En diagnóstico" | "En reparación" | "Listo para salida" | "Finalizado";
 
@@ -76,7 +77,7 @@ export function useTaller() {
   async function finalizarProceso(id: string, motoId: string) {
     const { error: errTaller } = await supabase
       .from("taller")
-      .update({ estado_tecnico: "Finalizado", fecha_salida: new Date().toISOString().slice(0, 10) })
+      .update({ estado_tecnico: "Finalizado", fecha_salida: hoyISO() })
       .eq("id", id);
     if (errTaller) return { error: errTaller.message };
 

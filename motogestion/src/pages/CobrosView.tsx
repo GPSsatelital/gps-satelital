@@ -31,6 +31,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
+import { hoyISO, hoyDate } from "../utils/fecha";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -187,9 +188,8 @@ function calcEstadoCuenta(
   contrato: ContratoCiclo,
   pagosConfirmados: Array<{ fecha: string }>,
 ): EstadoCuenta {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const hoyISO = hoy.toISOString().slice(0, 10);
+  const hoy = hoyDate();
+  const hoyStr = hoyISO();
   const formaPago = contrato.forma_pago;
   const fechaEntrega = contrato.fecha_entrega ?? null;
 
@@ -199,7 +199,7 @@ function calcEstadoCuenta(
   if (formaPago === "Diario") {
     if (!ultimoPago) {
       // Contrato diario nuevo sin pagos: al día hasta mañana
-      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyISO, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
+      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyStr, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
     }
     const ultimo = new Date(ultimoPago + "T00:00:00");
     const diasDesde = Math.floor((hoy.getTime() - ultimo.getTime()) / 86400000);
@@ -208,7 +208,7 @@ function calcEstadoCuenta(
     const proximoPago = manana.toISOString().slice(0, 10);
     if (diasDesde === 0) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
     if (diasDesde === 1) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 1, etiqueta: "Gabela", colorEtiqueta: "#92400e", bgEtiqueta: "#fef3c7" };
-    return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyISO, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
+    return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyStr, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
   }
 
   const d = inicioPeriodoActual(contrato, hoy);
@@ -666,7 +666,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   // ── Resumen por contrato ──────────────────────────────────────────────────
   const resumenContratos = useMemo(() => {
-    const hoy = new Date();
+    const hoy = hoyDate();
     const inicioSemana = new Date(hoy);
     const dayOfWeek = hoy.getDay();
     const daysFromMon = (dayOfWeek + 6) % 7;
@@ -698,7 +698,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .reduce((acc, p) => acc + p.valor, 0);
 
       const recaudadoHoy = confirmados
-        .filter(p => p.fecha === hoy.toISOString().slice(0, 10))
+        .filter(p => p.fecha === hoyISO())
         .reduce((acc, p) => acc + p.valor, 0);
 
       // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora.
@@ -764,7 +764,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const totalPaganHoy = paganHoyDiario.length + paganHoyPeriodico.length;
 
   // ── Panel HOY: tareas del día agrupadas por urgencia (sin duplicar) ─────────
-  const hoyISOPanel = new Date().toISOString().slice(0, 10);
+  const hoyISOPanel = hoyISO();
   function gestionHechaHoy(contratoId: string, tipo: TipoGestion): boolean {
     return gestiones.some(g => g.contrato_id === contratoId && g.tipo === tipo && g.fecha === hoyISOPanel);
   }
@@ -798,7 +798,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return { total, count: mios.length, pendienteEntregar };
   }, [pagos, profile, hoyISOPanel]);
 
-  const hoyISOPlazo = new Date().toISOString().slice(0, 10);
+  const hoyISOPlazo = hoyISO();
   // Contratos con un "plazo extra" vigente (fecha_limite aún no vencida) — no deben ir a Recolección
   const contratosConPlazoVigente = useMemo(() => {
     const set = new Set<string>();
@@ -1052,7 +1052,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       setModalPago(false);
       setReciboData({
         folio,
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: hoyISO(),
         clienteNombre: cliente?.nombre ?? "",
         clienteTel: cliente?.telefono ?? "",
         clienteWhatsapp: cliente?.whatsapp ?? "",

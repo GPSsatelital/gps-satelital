@@ -19,6 +19,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import ModalRecoleccion from "../components/ModalRecoleccion";
+import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularProrrateoInicial,
@@ -280,6 +281,33 @@ type DatosRecibo = {
   convenioRestante: number | null;
 };
 
+// Traduce el recibo de pago (diseño de pantalla) al ticket térmico compacto para imprimir.
+function ticketPagoData(datos: DatosRecibo): TicketData {
+  const m = (n: number) => `$ ${Math.round(n).toLocaleString("es-CO")}`;
+  const lineas: TicketData["lineas"] = [{ label: "Debía en total", valor: m(datos.debiaTotal) }];
+  if (datos.aplicadoTarifa > 0) lineas.push({ label: "A la cuota", valor: m(datos.aplicadoTarifa) });
+  if (datos.aplicadoDeuda > 0) lineas.push({ label: "A deuda", valor: m(datos.aplicadoDeuda) });
+  if (datos.aplicadoConvenio > 0) lineas.push({ label: "A convenio", valor: m(datos.aplicadoConvenio) });
+  if (datos.aplicadoSaldoFavor > 0) lineas.push({ label: "Saldo a favor", valor: m(datos.aplicadoSaldoFavor) });
+  lineas.push({ label: "Le queda pendiente", valor: m(datos.pendienteDespues), fuerte: true });
+  if (datos.convenioAbonado != null) {
+    lineas.push({ label: "Abonó al convenio", valor: m(datos.convenioAbonado) });
+    lineas.push({ label: "Falta del convenio", valor: m(datos.convenioRestante ?? 0) });
+  }
+  return {
+    titulo: "COMPROBANTE DE PAGO",
+    grupo: datos.grupo,
+    folio: datos.folio,
+    fecha: datos.fecha,
+    cliente: datos.clienteNombre,
+    placa: datos.placa || undefined,
+    montoLabel: `MONTO PAGADO (${datos.metodo})`,
+    monto: datos.valor,
+    lineas,
+    nota: datos.estado === "Confirmado" ? "PAGO CONFIRMADO" : "Pendiente de validacion en caja",
+  };
+}
+
 function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
   const [fase, setFase] = useState<"ver" | "whatsapp">("ver");
   const [otroNum, setOtroNum] = useState("");
@@ -407,14 +435,8 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
           <div style={{ textAlign: "center", fontSize: 11, color: "#94a3b8" }}>¡Gracias por su pago!</div>
         </div>
 
-        <style>{`
-          @media print {
-            body * { visibility: hidden; }
-            #recibo-ticket, #recibo-ticket * { visibility: visible; }
-            #recibo-ticket { position: absolute; top: 0; left: 0; width: 100%; }
-            .recibo-no-print, .recibo-no-print * { display: none !important; }
-          }
-        `}</style>
+        {/* Ticket térmico — oculto en pantalla, es lo único que se imprime (80mm, negro) */}
+        <TicketTermico modo="print" datos={ticketPagoData(datos)} />
 
         {fase === "ver" && (
           <div className="recibo-no-print" style={{ display: "grid", gap: 10 }}>

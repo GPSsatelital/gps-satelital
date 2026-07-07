@@ -20,6 +20,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
+import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularProrrateoInicial,
@@ -311,10 +312,12 @@ function ticketPagoData(datos: DatosRecibo): TicketData {
 function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
   const [fase, setFase] = useState<"ver" | "whatsapp">("ver");
   const [otroNum, setOtroNum] = useState("");
+  const { render } = useMensajesWhatsapp();
 
   function buildMsg() {
-    const lineas = [
-      "🧾 *GPS SATELITAL — Comprobante de pago*",
+    // El desglose financiero es automático (comodín {detalle}); el envoltorio/saludo
+    // del recibo lo controla la plantilla editable en Configuración.
+    const detalle = "\n" + [
       `Folio: ${datos.folio}`,
       `Fecha: ${new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")}`,
       `Cliente: ${datos.clienteNombre}`,
@@ -336,7 +339,14 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
         ? "✅ PAGO CONFIRMADO. ¡Gracias por su pago!"
         : "⏳ Pago recibido, pendiente de validación en caja.",
     ].filter(Boolean).join("\n");
-    return encodeURIComponent(lineas);
+    const texto = render("recibo", {
+      nombre: datos.clienteNombre.toUpperCase(),
+      valor: `$${Math.round(datos.valor).toLocaleString("es-CO")}`,
+      folio: datos.folio,
+      fecha: new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO"),
+      detalle,
+    });
+    return encodeURIComponent(texto);
   }
 
   function limpiarNum(n: string) {
@@ -530,6 +540,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
+  const { render: renderMsg } = useMensajesWhatsapp();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
@@ -861,10 +872,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   async function tareaMensaje(c: typeof resumenContratos[number]) {
     if (!profile) return;
     const cliente = clientes.find(cl => cl.id === c.cliente_id);
+    const moto = motos.find(m => m.id === c.moto_id);
     const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
     const num = tel.startsWith("57") ? tel : `57${tel}`;
-    const msg = encodeURIComponent(`Hola ${(cliente?.nombre ?? "").toUpperCase()}, le recordamos su pago de hoy en GPS Satelital. Cualquier duda estamos atentos. ¡Gracias!`);
-    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
+    // El mensaje cambia según el estado: al día → recordatorio del día de pago,
+    // gabela → aviso de día de gracia, mora → aviso de mora. Plantilla editable en Config.
+    const clave = c.estadoCartera === "mora" ? "mora" : c.estadoCartera === "gabela" ? "gabela" : "dia_pago";
+    const texto = renderMsg(clave, {
+      nombre: (cliente?.nombre ?? "").toUpperCase(),
+      placa: moto?.placa ?? "",
+      dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago,
+      valor: `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`,
+    });
+    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, "_blank");
     await registrarGestion(c.id, "mensaje_recordatorio", "Mensaje de recordatorio enviado", profile.id);
   }
   async function tareaLlamar(c: typeof resumenContratos[number]) {

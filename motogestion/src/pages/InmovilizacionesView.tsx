@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { useContratos } from "../hooks/useContratos";
+import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos, calcularCuotaDia } from "../hooks/usePagos";
@@ -79,6 +80,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { deudas }    = useDeudas();
   const { convenios } = useConvenios();
   const { profile }   = useAuth();
+  const { render: renderMsg } = useMensajesWhatsapp();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
@@ -273,12 +275,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // firmado — ya no un simple finalizarContrato() sin dejar rastro de la cuenta.
   const [liquidacionModal, setLiquidacionModal] = useState<MotoRetenida | null>(null);
 
-  function abrirWA(tel: string, nombre: string, dias: number) {
+  function abrirWA(tel: string, nombre: string, dias: number, placa: string, valor: number) {
     if (!tel) return;
-    const n = nombre.split(" ")[0];
-    const msg = `Hola ${n}, su moto lleva ${dias} días en mora. Es urgente que se comunique con nosotros para evitar la recolección del vehículo. GPS Satelital ⚠️`;
+    // Inmovilizaciones = último aviso antes de recoger la moto. Plantilla editable en Config.
+    const texto = renderMsg("recoleccion", {
+      nombre,
+      placa,
+      dias,
+      valor: `$${Math.round(valor).toLocaleString("es-CO")}`,
+    });
     const num = tel.replace(/\D/g, "");
-    window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [
@@ -472,7 +479,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           📞 Llamar
                         </button>
                         <button
-                          onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasMora)}
+                          onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal)}
                           style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
                         >
                           💬 WA

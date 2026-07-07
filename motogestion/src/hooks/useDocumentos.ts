@@ -286,11 +286,12 @@ export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   ];
   if (cliente.foto_perfil_url) categorias.push("Fotografía de perfil (rostro)");
   const docs = cliente.documentos_cliente;
-  if (docs.cedula.ok) categorias.push("Documento de identificación (cédula)");
-  if (docs.recibo1.ok) categorias.push("Recibo de servicios públicos");
-  if (docs.hojaVida.ok) categorias.push("Hoja de vida");
-  if (docs.antecedentes.ok) categorias.push("Antecedentes judiciales");
-  if (docs.licencia.ok) categorias.push("Licencia de conducción");
+  // docs puede venir incompleto ({}) en clientes migrados por SQL → clave faltante = no cargado.
+  if (docs.cedula?.ok) categorias.push("Documento de identificación (cédula)");
+  if (docs.recibo1?.ok) categorias.push("Recibo de servicios públicos");
+  if (docs.hojaVida?.ok) categorias.push("Hoja de vida");
+  if (docs.antecedentes?.ok) categorias.push("Antecedentes judiciales");
+  if (docs.licencia?.ok) categorias.push("Licencia de conducción");
   if (cliente.autorizacion_datos_huella_url) categorias.push("Huella dactilar");
   categorias.push("Firma manuscrita digital");
 

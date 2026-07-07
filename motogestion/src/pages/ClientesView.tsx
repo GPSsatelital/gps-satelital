@@ -73,7 +73,7 @@ function docsAcompanante(mismoDomicilio: boolean): Array<keyof DocumentoFlags> {
 }
 
 function documentosAcompananteListos(doc: DocumentoFlags, mismoDomicilio: boolean) {
-  return docsAcompanante(mismoDomicilio).every((k) => doc[k].ok);
+  return docsAcompanante(mismoDomicilio).every((k) => doc[k]?.ok);
 }
 
 function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<keyof DocumentoFlags>; role?: string }) {
@@ -90,7 +90,9 @@ function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<ke
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {labels.map(([key, label]) => {
-        const item = doc[key];
+        // Los clientes migrados por SQL traen documentos_cliente = {} (sin las claves),
+        // así que doc[key] puede ser undefined — tratarlo como "no cargado" sin romper.
+        const item = doc[key] ?? { ok: false, file: null };
         const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "#dcfce7" : "#fee2e2", color: item.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
         if (item.ok && esUrl(item.file) && puedeVerArchivo) {
           return (
@@ -157,11 +159,11 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
             <div style={{ marginTop: 8, fontSize: 12, color: "#0284c7", fontWeight: 700 }}>Subiendo…</div>
           ) : errorKey?.key === key ? (
             <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 700 }}>⛔ {errorKey.msg}</div>
-          ) : doc[key].ok ? (
+          ) : doc[key]?.ok ? (
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>
-                {esUrl(doc[key].file) ? (
-                  <a href={doc[key].file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
+                {esUrl(doc[key]?.file ?? null) ? (
+                  <a href={doc[key]!.file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
                 ) : (
                   <span style={{ color: "#16a34a" }}>✔ Cargado</span>
                 )}
@@ -194,7 +196,8 @@ function documentosFaltantes(cliente: Cliente) {
   ];
   return labels.filter(([key, , owner]) => {
     const doc = owner === "Cliente" ? cliente.documentos_cliente : cliente.documentos_acompanante;
-    return !doc[key].ok;
+    // doc[key] puede faltar en clientes migrados (documentos = {}) → cuenta como faltante.
+    return !doc[key]?.ok;
   });
 }
 

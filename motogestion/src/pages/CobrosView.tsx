@@ -9,7 +9,7 @@ import {
   type PagoEstado,
   type AplicadoPago,
 } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
@@ -687,10 +687,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       // Sin pagos nunca pero con deuda pendiente (ej. saldo de apertura migrado) → el reloj de mora
       // arranca desde la entrega (topado al corte de migración), no desde el sentinel 999 (reservado
       // para contratos genuinamente nuevos sin deuda). Evita que Recolección los ignore para siempre.
+      const grupoMoto = motos.find(m => m.id === contrato.moto_id)?.grupo ?? null;
       const diasSinPago = ultimoPagoFecha
         ? Math.floor((Date.now() - new Date(ultimoPagoFecha + "T00:00:00").getTime()) / 86400000)
         : (contrato.fecha_entrega && deudaContrato > 0)
-          ? (diasDesdeUltimoPago(null, contrato.fecha_entrega) ?? 999)
+          ? (diasDesdeUltimoPago(null, contrato.fecha_entrega, corteMigracionGrupo(grupoMoto)) ?? 999)
           : 999;
       const ultimaGestion = gestiones.filter(g => g.contrato_id === contrato.id)[0] ?? null;
 

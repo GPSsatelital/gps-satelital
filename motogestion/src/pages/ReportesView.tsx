@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { usePagos } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
@@ -192,9 +192,10 @@ export default function ReportesView({ onNavigate }: Props) {
   const enMora = useMemo(() => contratosActivos.map(c => {
     const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
     const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10)) ?? 0;
+    const grupoMoto = motos.find(m => m.id === c.moto_id)?.grupo ?? null;
+    const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(grupoMoto)) ?? 0;
     return { contrato: c, diasSinPago: dias, ultimoPago: ultimo?.fecha ?? null };
-  }).filter(e => e.diasSinPago > 2), [contratosActivos, pagos]);
+  }).filter(e => e.diasSinPago > 2), [contratosActivos, pagos, motos]);
 
   // Deuda real por contrato (tabla deudas) — no estimada por días
   const deudaDelContrato = useMemo(() => {

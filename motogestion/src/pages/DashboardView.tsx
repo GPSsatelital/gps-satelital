@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, Fragment } from "react";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
-import { useContratos, diasDesdeUltimoPago } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
@@ -220,9 +220,11 @@ export default function DashboardView({ onNavigate }: {
         const ultimoPago = pagos
           .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
           .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+        const grupoMoto = motos.find(m => m.id === c.moto_id)?.grupo ?? null;
         const diasSinPago = diasDesdeUltimoPago(
           ultimoPago?.fecha ?? null,
           c.fecha_entrega ?? c.created_at.slice(0, 10),
+          corteMigracionGrupo(grupoMoto),
         ) ?? 0;
         return { contrato: c, diasSinPago };
       })

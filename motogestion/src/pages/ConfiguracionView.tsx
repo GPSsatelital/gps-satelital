@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import type { Role } from "../contexts/AuthContext";
 import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
+import { useMensajesWhatsapp, MENSAJES_META, type ClaveMensaje } from "../hooks/useMensajesWhatsapp";
 
 // ── Estilos compartidos ────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
@@ -546,6 +547,9 @@ export default function ConfiguracionView() {
         )}
       </div>
 
+      {/* ── Mensajes de WhatsApp (solo admins) ── */}
+      {esAdmin && <SeccionMensajesWhatsapp />}
+
       {/* ── Acerca de ── */}
       <div style={{ ...card, marginBottom: 0 }}>
         <div style={sectionTitle}>ℹ️ Acerca del sistema</div>
@@ -563,6 +567,74 @@ export default function ConfiguracionView() {
       {editando && (
         <ModalEditar usuario={editando} onClose={() => setEditando(null)} onGuardado={() => { setEditando(null); cargarUsuarios(); }} />
       )}
+    </div>
+  );
+}
+
+// ── Sección: mensajes de WhatsApp editables ────────────────────────────────────
+function SeccionMensajesWhatsapp() {
+  const { plantilla, guardar } = useMensajesWhatsapp();
+  const [borradores, setBorradores] = useState<Record<string, string>>({});
+  const [guardando, setGuardando] = useState<ClaveMensaje | null>(null);
+  const [guardado, setGuardado] = useState<ClaveMensaje | null>(null);
+
+  // El valor mostrado: el borrador si se editó, si no la plantilla actual.
+  function valor(clave: ClaveMensaje) {
+    return borradores[clave] ?? plantilla(clave);
+  }
+
+  async function handleGuardar(clave: ClaveMensaje) {
+    setGuardando(clave); setGuardado(null);
+    const { error } = await guardar(clave, valor(clave));
+    setGuardando(null);
+    if (!error) { setGuardado(clave); setTimeout(() => setGuardado(null), 2500); }
+    else alert("No se pudo guardar: " + error);
+  }
+
+  return (
+    <div style={card}>
+      <div style={sectionTitle}>💬 Mensajes de WhatsApp</div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+        Personaliza los textos que se envían por WhatsApp. Usa los comodines entre llaves — se reemplazan solos con los datos reales de cada cliente al enviar.
+      </div>
+      <div style={{ display: "grid", gap: 18 }}>
+        {MENSAJES_META.map(m => (
+          <div key={m.clave} style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{m.label}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, marginBottom: 8 }}>{m.descripcion}</div>
+            <textarea
+              value={valor(m.clave)}
+              onChange={e => setBorradores(prev => ({ ...prev, [m.clave]: e.target.value }))}
+              rows={m.clave === "recibo" ? 3 : 4}
+              style={{ ...inputStyle, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>Comodines:</span>
+              {m.comodines.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setBorradores(prev => ({ ...prev, [m.clave]: valor(m.clave) + " " + c }))}
+                  style={{ background: "#e0f2fe", color: "#0369a1", border: "none", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}
+                  title="Insertar comodín"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+              <button
+                onClick={() => handleGuardar(m.clave)}
+                disabled={guardando === m.clave}
+                style={{ background: "linear-gradient(90deg,#0284c7,#10b981)", color: "white", border: "none", borderRadius: 10, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: guardando === m.clave ? 0.6 : 1 }}
+              >
+                {guardando === m.clave ? "Guardando..." : "Guardar"}
+              </button>
+              {guardado === m.clave && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✅ Guardado</span>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

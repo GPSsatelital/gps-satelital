@@ -7,6 +7,7 @@ import { usePagos, calcularAplicacion } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
+import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useAuth } from "../contexts/AuthContext";
 import {
   esDiaDePago,
@@ -128,6 +129,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [msgCaja, setMsgCaja] = useState<string | null>(null);
 
   const { profile } = useAuth();
+  const { render: renderMsg } = useMensajesWhatsapp();
   const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
 
   const { contratos } = useContratos();
@@ -221,15 +223,19 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const fechaHoy = new Date(hoy + "T00:00:00");
   const fechaDisplay = `${DIAS_LABEL[fechaHoy.getDay()]} ${fechaHoy.getDate()} de ${MESES_FULL[fechaHoy.getMonth()]} ${fechaHoy.getFullYear()}`;
 
-  function abrirWA(tel: string, nombre: string, dias: number) {
-    if (!tel) return;
-    const n = nombre.split(" ")[0];
-    const msg = dias > 0
-      ? `Hola ${n}, lleva ${dias} días sin pago. Por favor comuníquese urgente con nosotros. GPS Satelital ⚠️`
-      : `Hola ${n}, recuerde que hoy es su día de pago. GPS Satelital 🏍️`;
-    const num = tel.replace(/\D/g, "");
+  function abrirWA(f: Fila) {
+    if (!f.clienteTel) return;
+    // El mensaje cambia según el estado (día de pago / gabela / mora). Plantillas editables en Config.
+    const clave = f.estadoLabel === "Mora" ? "mora" : f.estadoLabel === "Pendiente" ? "gabela" : "dia_pago";
+    const texto = renderMsg(clave, {
+      nombre: f.clienteNombre,
+      placa: f.placa ?? "",
+      dias: f.diasSinPago >= 999 ? 0 : f.diasSinPago,
+      valor: `$${Math.round(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo).toLocaleString("es-CO")}`,
+    });
+    const num = f.clienteTel.replace(/\D/g, "");
     const full = num.startsWith("57") ? num : `57${num}`;
-    window.open(`https://wa.me/${full}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
   }
 
   function abrirLlamada(tel: string) {
@@ -291,7 +297,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         {f.clienteTel && (
           <>
             <button onClick={() => abrirLlamada(f.clienteTel)} style={{ ...s, background: "#dbeafe", color: "#1d4ed8" }} title="Llamar">📞</button>
-            <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago > 0 ? f.diasSinPago : 0)} style={{ ...s, background: "#dcfce7", color: "#166534" }} title="WhatsApp">💬</button>
+            <button onClick={() => abrirWA(f)} style={{ ...s, background: "#dcfce7", color: "#166534" }} title="WhatsApp">💬</button>
           </>
         )}
         <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "#fef3c7", color: "#92400e" }} title="Registrar gestión">📋</button>
@@ -868,7 +874,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
                       <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#0f172a", color: "white" }}>💳</button>
                       {f.clienteTel && (
-                        <button onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasSinPago)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>💬</button>
+                        <button onClick={() => abrirWA(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>💬</button>
                       )}
                       <button disabled title="Requiere GPS" style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "not-allowed", fontSize: 13, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}>🚨</button>
                     </div>

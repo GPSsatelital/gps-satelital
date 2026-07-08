@@ -612,6 +612,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convExito, setConvExito] = useState(false);
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
   const [convIncluirSemana, setConvIncluirSemana] = useState(false);
+
+  // Fecha límite del convenio calculada sola: el día de pago de la última cuota pactada
+  // (avanza N períodos desde hoy respetando el día de pago). Editable — se recalcula si
+  // cambia el número de cuotas o el contrato; el funcionario puede ajustarla luego.
+  useEffect(() => {
+    if (!mostrarFormConvenio) return;
+    const n = Number(convCuotas);
+    const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
+    if (!n || n <= 0 || !contratoSel) return;
+    let d = hoyDate();
+    for (let i = 0; i < n; i++) d = proximoDiaPago(contratoSel, d);
+    setConvFechaLimite(fechaISO(d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convCuotas, mostrarFormConvenio, contratoSeleccionadoId]);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Edición inline de deuda existente
@@ -1734,7 +1748,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
               ) : (
                 <div>
-                  <button onClick={() => setMostrarFormConvenio(v => !v)} style={miniBtn("#eff6ff", "#1e40af")}>
+                  <button
+                    onClick={() => {
+                      const abrir = !mostrarFormConvenio;
+                      // Al abrir, precarga el monto con la deuda pendiente (lo normal — editable para descuentos/acuerdos parciales).
+                      if (abrir) setConvDeudaTotal(String(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0)));
+                      setMostrarFormConvenio(abrir);
+                    }}
+                    style={miniBtn("#eff6ff", "#1e40af")}
+                  >
                     {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
                   </button>
                   {mostrarFormConvenio && (

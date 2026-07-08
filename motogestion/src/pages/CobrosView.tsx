@@ -31,6 +31,7 @@ import {
   proximoDiaPago,
   formatDiaPago,
   totalPagadoPeriodoActual,
+  inicioVentanaPagosISO,
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
@@ -189,7 +190,7 @@ type EstadoCuenta = {
 
 function calcEstadoCuenta(
   contrato: ContratoCiclo,
-  pagosConfirmados: Array<{ fecha: string }>,
+  pagosConfirmados: Array<{ fecha: string; valor: number }>,
 ): EstadoCuenta {
   const hoy = hoyDate();
   const hoyStr = hoyISO();
@@ -219,8 +220,13 @@ function calcEstadoCuenta(
   const prox = proximoDiaPago(contrato, d);
   const proximoPago = prox.toISOString().slice(0, 10);
 
-  const pagoPeriodo = sorted.find(p => p.fecha >= inicioPeriodo);
-  if (pagoPeriodo) {
+  // Mismo criterio que calcularEstadoCartera (fuente única): período real del contrato
+  // + prepago de víspera, y comparando el MONTO contra la cuota — antes cualquier abono
+  // parcial (o un pago del período anterior hecho esta semana) marcaba "Al día".
+  const desdeISO = inicioVentanaPagosISO(contrato, hoy);
+  const pagadoPeriodo = sorted.filter(p => p.fecha >= desdeISO).reduce((acc, p) => acc + p.valor, 0);
+  const pagoPeriodo = sorted.find(p => p.fecha >= desdeISO);
+  if (pagoPeriodo && pagadoPeriodo >= valorPeriodoReal(contrato)) {
     const pagadoHasta = new Date(prox);
     pagadoHasta.setDate(pagadoHasta.getDate() - 1);
     return {

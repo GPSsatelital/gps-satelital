@@ -92,10 +92,22 @@ export function formatDiaPago(contrato: ContratoCiclo): string {
   return contrato.dia_pago;
 }
 
-// Total confirmado dentro del período de cobro actual — para Semanal/Diario reproduce
-// EXACTAMENTE el criterio anterior (semana calendario lunes-domingo, sin importar dia_pago)
-// para no alterar contratos ya existentes; para Quincenal/Mensual usa el período real
-// de calendario (desde la última fecha de pago pactada).
+// Fecha ISO desde la cual cuentan los pagos del período actual: el último día de
+// pago del contrato, menos 1 día de gracia para el prepago de víspera (el cliente
+// que paga el martes en la noche su cuota del miércoles).
+export function inicioVentanaPagosISO(contrato: ContratoCiclo, hoy: Date): string {
+  const desde = inicioPeriodoActual(contrato, hoy);
+  desde.setDate(desde.getDate() - 1);
+  return desde.toISOString().slice(0, 10);
+}
+
+// Total confirmado dentro del período de cobro actual — SIEMPRE el período real del
+// contrato (miércoles→miércoles, lunes→lunes, o las fechas del mes para
+// Quincenal/Mensual), aceptando también el prepago de la víspera.
+// ANTES el Semanal usaba la semana calendario lunes-domingo: un cliente con día de
+// pago miércoles que pagó puntual (o el viernes) aparecía EN MORA todos los lunes y
+// martes, porque su pago quedaba en la semana calendario anterior — 41 falsos
+// positivos el primer martes con datos reales en producción.
 export function totalPagadoPeriodoActual(
   contrato: ContratoCiclo,
   pagosConfirmados: Array<{ fecha: string; valor: number }>,
@@ -103,23 +115,13 @@ export function totalPagadoPeriodoActual(
 ): number {
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
-
-  if (esCalendario(contrato)) {
-    const inicioISO = inicioPeriodoActual(contrato, hoyDia).toISOString().slice(0, 10);
-    return pagosConfirmados.filter(p => p.fecha >= inicioISO).reduce((acc, p) => acc + p.valor, 0);
-  }
-
-  const dayOfWeek = hoyDia.getDay();
-  const daysFromMon = (dayOfWeek + 6) % 7;
-  const inicioSemana = new Date(hoyDia);
-  inicioSemana.setDate(hoyDia.getDate() - daysFromMon);
-  const inicioSemanaISO = inicioSemana.toISOString().slice(0, 10);
-  return pagosConfirmados.filter(p => p.fecha >= inicioSemanaISO).reduce((acc, p) => acc + p.valor, 0);
+  const desdeISO = inicioVentanaPagosISO(contrato, hoyDia);
+  return pagosConfirmados.filter(p => p.fecha >= desdeISO).reduce((acc, p) => acc + p.valor, 0);
 }
 
 // Estado de cartera (mora/gabela/al día) para contratos Semanal/Quincenal/Mensual.
-// Semanal reproduce EXACTAMENTE el criterio anterior para no alterar contratos ya existentes.
-// Quincenal/Mensual usan el período real de calendario.
+// TODOS usan el período real del contrato (ver totalPagadoPeriodoActual): Semanal por
+// día de la semana, Quincenal/Mensual por fechas del mes.
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").
@@ -146,7 +148,7 @@ export function calcularEstadoCartera(
     return "mora";
   }
 
-  // Semanal/Diario — idéntico al criterio anterior (semana calendario lunes-domingo).
+  // Semanal/Diario — período real por día de la semana del contrato.
   if (totalPagadoPeriodo >= exigidoPeriodo) return "al-dia";
 
   const dayOfWeek = hoyDia.getDay();

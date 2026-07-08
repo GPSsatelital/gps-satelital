@@ -16,6 +16,7 @@ import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularAhorroAplicado,
   estaEnProrrateo,
+  inicioVentanaPagosISO,
   formatDiaPago,
 } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
@@ -47,7 +48,8 @@ function calcEstadoPeriodico(
   const hoyDate = new Date(hoy + "T00:00:00");
   const conf = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
   const inicioPeriodo = inicioPeriodoActual(contrato, hoyDate);
-  const inicioISO = inicioPeriodo.toISOString().slice(0, 10);
+  // Misma ventana que calcularEstadoCartera (período real + prepago de víspera)
+  const inicioISO = inicioVentanaPagosISO(contrato, hoyDate);
   const estado = calcularEstadoCarteraCiclo(contrato, conf, hoyDate);
   const estadoLabel = estado === "al-dia" ? "Al día" : estado === "gabela" ? "Pendiente" : "Mora";
   const dias = estado === "al-dia" ? 0 : Math.max(Math.floor((hoyDate.getTime() - inicioPeriodo.getTime()) / 86400000), 0);

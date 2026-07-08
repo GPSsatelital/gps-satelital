@@ -614,25 +614,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convIncluirSemana, setConvIncluirSemana] = useState(false);
   // Se fija UNO (cuota o número de cuotas) y el otro se calcula solo.
   const [convModoFijar, setConvModoFijar] = useState<"cuotas" | "cuota">("cuotas");
-
-  // Fecha límite del convenio calculada sola: el día de pago de la última cuota pactada
-  // (avanza N períodos desde hoy respetando el día de pago). Editable — se recalcula si
-  // cambian las cuotas/cuota/monto o el contrato; el funcionario puede ajustarla luego.
-  useEffect(() => {
-    if (!mostrarFormConvenio) return;
-    const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
-    if (!contratoSel) return;
-    const total = (Number(convDeudaTotal) || 0)
-      + (convIncluirSemana && contratoSel.forma_pago !== "Diario" ? valorPeriodoReal(contratoSel) : 0);
-    const n = convModoFijar === "cuotas"
-      ? (Number(convCuotas) || 0)
-      : (total > 0 && Number(convCuota) > 0 ? Math.ceil(total / Number(convCuota)) : 0);
-    if (!n || n <= 0) return;
-    let d = hoyDate();
-    for (let i = 0; i < n; i++) d = proximoDiaPago(contratoSel, d);
-    setConvFechaLimite(fechaISO(d));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convCuotas, convCuota, convModoFijar, convDeudaTotal, convIncluirSemana, mostrarFormConvenio, contratoSeleccionadoId]);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Edición inline de deuda existente
@@ -982,19 +963,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const clienteDetalle = contratoDetalle ? clientes.find(cl => cl.id === contratoDetalle.cliente_id) : null;
   const motoDetalle = contratoDetalle ? motos.find(m => m.id === contratoDetalle.moto_id) : null;
 
-  // Cálculo del convenio: se fija cuota o número de cuotas y el otro se deduce; el sobrante
-  // queda en la última cuota (números enteros). Total incluye la cuota de la semana si se marca.
-  const convCuotaSemana = convIncluirSemana && contratoDetalle && contratoDetalle.forma_pago !== "Diario"
-    ? valorPeriodoReal(contratoDetalle) : 0;
-  const convTotal = (Number(convDeudaTotal) || 0) + convCuotaSemana;
-  const convCuotasCalc = convModoFijar === "cuotas"
-    ? (Number(convCuotas) || 0)
-    : (convTotal > 0 && Number(convCuota) > 0 ? Math.ceil(convTotal / Number(convCuota)) : 0);
-  const convCuotaCalc = convModoFijar === "cuota"
-    ? (Number(convCuota) || 0)
-    : (convCuotasCalc > 0 ? Math.ceil(convTotal / convCuotasCalc) : 0);
-  const convUltimaCuota = convCuotasCalc > 0 ? Math.max(convTotal - convCuotaCalc * (convCuotasCalc - 1), 0) : 0;
-
   const pagosContrato = contratoSeleccionadoId
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
@@ -1044,6 +1012,32 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? (contratoDetalle?.recaudadoHoy ?? 0)
     : (contratoDetalle?.pagadoEnPeriodoActual ?? 0);
   const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
+
+  // Cálculo del convenio: se fija cuota o número de cuotas y el otro se deduce; el sobrante
+  // queda en la última cuota (números enteros). Si se incluye "esta semana", se suma lo que
+  // FALTA del período (cuotaPendiente = cuota − pagado), no la cuota completa.
+  const convCuotaSemana = convIncluirSemana && contratoDetalle && contratoDetalle.forma_pago !== "Diario"
+    ? cuotaPendiente : 0;
+  const convTotal = (Number(convDeudaTotal) || 0) + convCuotaSemana;
+  const convCuotasCalc = convModoFijar === "cuotas"
+    ? (Number(convCuotas) || 0)
+    : (convTotal > 0 && Number(convCuota) > 0 ? Math.ceil(convTotal / Number(convCuota)) : 0);
+  const convCuotaCalc = convModoFijar === "cuota"
+    ? (Number(convCuota) || 0)
+    : (convCuotasCalc > 0 ? Math.ceil(convTotal / convCuotasCalc) : 0);
+  const convUltimaCuota = convCuotasCalc > 0 ? Math.max(convTotal - convCuotaCalc * (convCuotasCalc - 1), 0) : 0;
+
+  // Fecha límite automática: día de pago de la última cuota pactada (avanza N períodos desde
+  // hoy). Editable — se recalcula cuando cambia el número de cuotas resultante.
+  useEffect(() => {
+    if (!mostrarFormConvenio || convCuotasCalc <= 0) return;
+    const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
+    if (!contratoSel) return;
+    let d = hoyDate();
+    for (let i = 0; i < convCuotasCalc; i++) d = proximoDiaPago(contratoSel, d);
+    setConvFechaLimite(fechaISO(d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convCuotasCalc, mostrarFormConvenio, contratoSeleccionadoId]);
 
   const desglose: AplicadoPago = contratoDetalle
     ? (() => {
@@ -1784,14 +1778,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
                       </div>
                       <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
-                      {contratoDetalle && contratoDetalle.forma_pago !== "Diario" && (
+                      {contratoDetalle && contratoDetalle.forma_pago !== "Diario" && cuotaPendiente > 0 && (
                         <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, background: convIncluirSemana ? "#eff6ff" : "#f1f5f9", border: `1px solid ${convIncluirSemana ? "#bfdbfe" : "#e2e8f0"}`, cursor: "pointer" }}>
                           <input type="checkbox" checked={convIncluirSemana} onChange={e => setConvIncluirSemana(e.target.checked)} style={{ width: 18, height: 18, marginTop: 1, accentColor: "#0284c7", flexShrink: 0 }} />
                           <span style={{ fontSize: 12.5, color: "#334155", fontWeight: 600, minWidth: 0 }}>
-                            Incluir la cuota de esta semana (<strong>$ {fmt(valorPeriodoReal(contratoDetalle))}</strong>) dentro del convenio.
+                            Incluir lo que falta de esta semana (<strong>$ {fmt(cuotaPendiente)}</strong>) dentro del convenio.
                             <span style={{ display: "block", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
                               Esta semana no la paga aparte ni cuenta mora; arranca normal la próxima.
-                              {convIncluirSemana && <> Total a diferir: <strong>$ {fmt((Number(convDeudaTotal) || 0) + valorPeriodoReal(contratoDetalle))}</strong>.</>}
+                              {convIncluirSemana && <> Total a diferir: <strong>$ {fmt((Number(convDeudaTotal) || 0) + cuotaPendiente)}</strong>.</>}
                             </span>
                           </span>
                         </label>

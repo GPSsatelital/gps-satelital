@@ -524,6 +524,30 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     )}
                   </div>
                 )}
+
+                {/* Documentos del contrato (PDFs firmados) */}
+                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Documentos</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { url: c.contrato_pdf_url, label: "Contrato firmado" },
+                      { url: c.pagare_pdf_url, label: "Pagaré firmado" },
+                      { url: c.certificado_pdf_url, label: "Certificado de conocimiento" },
+                    ].map((d, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#334155", minWidth: 0 }}>{d.label}</span>
+                        {d.url ? (
+                          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                            <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "#e0f2fe" }}>👁 Ver</a>
+                            <a href={`${d.url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "#166534", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "#dcfce7" }}>⬇ Descargar</a>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>Falta</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </Card>
             );
           })}

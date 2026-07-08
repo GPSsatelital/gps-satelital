@@ -224,18 +224,32 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   // reutiliza de su registro (autorizacion_datos_huella_url); si no existe, la fresca
   // capturada aquí. La huella se convierte a dataURL para que html2canvas no la pierda.
   async function construirFirmas(firmaCliente: string, firmaAcomp: string): Promise<FirmasDoc> {
-    const huellaRegistro = clienteActual?.autorizacion_datos_huella_url
+    // Huellas: se reutilizan las capturadas en la oficina (registro/edición). Solo si
+    // faltan se usa la fresca capturada aquí como respaldo.
+    const huellaRegistroCli = clienteActual?.autorizacion_datos_huella_url
       ? await urlADataUrl(clienteActual.autorizacion_datos_huella_url)
+      : null;
+    const huellaRegistroAcomp = clienteActual?.acompanante_huella_url
+      ? await urlADataUrl(clienteActual.acompanante_huella_url)
       : null;
     const selloFecha = `Firmado digitalmente el ${new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" })}`;
     return {
       firmaCliente,
-      huellaCliente: huellaRegistro ?? huellaClienteFresh,
+      huellaCliente: huellaRegistroCli ?? huellaClienteFresh,
       firmaAcompanante: firmaAcomp,
-      huellaAcompanante,
+      huellaAcompanante: huellaRegistroAcomp ?? huellaAcompanante,
       folio: (contratoId ?? "").slice(0, 8).toUpperCase(),
       selloFecha,
     };
+  }
+
+  // Las dos huellas deben existir (registradas en oficina o capturadas aquí) antes de firmar.
+  function faltaHuella(): string | null {
+    if (!(clienteActual?.autorizacion_datos_huella_url || huellaClienteFresh))
+      return "Falta la huella del cliente. Captúrala en la oficina (ficha del cliente) antes de firmar.";
+    if (!(clienteActual?.acompanante_huella_url || huellaAcompanante))
+      return "Falta la huella del acompañante. Captúrala en la oficina (ficha del cliente) antes de firmar.";
+    return null;
   }
 
   // ── STEP 1: Guardar contrato ──────────────────────────────────────────────
@@ -311,6 +325,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!leido3) { setError("Confirma que has leído el documento."); return; }
     if (!firmaContrato) { setError("Dibuja la firma del cliente antes de continuar."); return; }
     if (!firmaContratoAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
+    { const fh = faltaHuella(); if (fh) { setError(fh); return; } }
     if (!contratoId || !contratoData || !clienteActual) return;
     if (guardando) return;
     setGuardando(true); setError(null);
@@ -336,6 +351,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!leido4) { setError("Confirma que has leído el documento."); return; }
     if (!firmaPagare) { setError("Dibuja la firma del cliente antes de continuar."); return; }
     if (!firmaPagareAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
+    { const fh = faltaHuella(); if (fh) { setError(fh); return; } }
     if (!contratoId || !contratoData || !clienteActual) return;
     if (guardando) return;
     setGuardando(true); setError(null);
@@ -704,7 +720,17 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 ) : (
                   <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
                 )}
-                <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
+                {clienteActual.acompanante_huella_url ? (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                    ✔ Se usará la huella registrada del acompañante
+                  </div>
+                ) : huellaAcompanante ? (
+                  <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
+                ) : (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 13, fontWeight: 600, color: "#991b1b" }}>
+                    ⚠ Falta la huella del acompañante — captúrala en la oficina (ficha del cliente → Editar) antes de firmar.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -725,17 +751,19 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" modal opcional={false} onChange={setFirmaPagareAcomp} />
               <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
-                {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) && huellaAcompanante ? (
+                {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) && (clienteActual.acompanante_huella_url || huellaAcompanante) ? (
                   <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
-                    ✔ Se usarán las huellas capturadas en el paso anterior
+                    ✔ Se usarán las huellas registradas (cliente y acompañante)
                   </div>
                 ) : (
                   <>
                     {!clienteActual.autorizacion_datos_huella_url && !huellaClienteFresh && (
                       <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
                     )}
-                    {!huellaAcompanante && (
-                      <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
+                    {!clienteActual.acompanante_huella_url && !huellaAcompanante && (
+                      <div style={{ padding: "8px 12px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 13, fontWeight: 600, color: "#991b1b" }}>
+                        ⚠ Falta la huella del acompañante — captúrala en la oficina (ficha del cliente → Editar) antes de firmar.
+                      </div>
                     )}
                   </>
                 )}

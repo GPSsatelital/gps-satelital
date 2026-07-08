@@ -10,6 +10,7 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
 import { generarHTMLAutorizacionDatos } from "../hooks/useDocumentos";
+import { htmlAPdfBlob } from "../utils/pdf";
 import { useAuth } from "../contexts/AuthContext";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 
@@ -141,6 +142,23 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
+  const [descargandoAut, setDescargandoAut] = useState(false);
+
+  async function descargarAutorizacionPDF(cli: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
+    if (descargandoAut) return;
+    setDescargandoAut(true);
+    try {
+      const blob = await htmlAPdfBlob(generarHTMLAutorizacionDatos(cli));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `autorizacion_datos_${cli.cedula || "cliente"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargandoAut(false);
+    }
+  }
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -778,11 +796,19 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 </div>
               )}
             </div>
-            <div
-              onClick={() => imprimirAutorizacionDatos(cliente)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
-            >
-              🖨️ Imprimir documento
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <div
+                onClick={() => imprimirAutorizacionDatos(cliente)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
+              >
+                🖨️ Imprimir documento
+              </div>
+              <div
+                onClick={() => !descargandoAut && descargarAutorizacionPDF(cliente)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: descargandoAut ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#166534", opacity: descargandoAut ? 0.6 : 1 }}
+              >
+                {descargandoAut ? "Generando PDF…" : "⬇ Descargar PDF"}
+              </div>
             </div>
           </Card>
         )}

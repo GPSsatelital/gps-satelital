@@ -65,6 +65,7 @@ export type Cliente = {
   referido_por_nombre: string | null;
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
+  acompanante_huella_url: string | null;
   autorizacion_datos_fecha: string | null;
   foto_perfil_url: string | null;
   referidos_confirmados: number;
@@ -98,6 +99,7 @@ export type NuevoCliente = {
   referido_por_nombre: string | null;
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
+  acompanante_huella_url: string | null;
   autorizacion_datos_fecha: string | null;
   foto_perfil_url: string | null;
 };

@@ -1416,7 +1416,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     // desde el último pago" > 0, que es > 0 aunque esté al día → salía "Paso 4 Recolección"
     // a clientes al día (ej. migrados que pagaron hace unos días).
     const protocolo = contratoDetalle.estadoCartera === "mora" ? calcProtocoloStep(contratoDetalle.diasSinPago) : null;
-    const totalPendiente = cuotaPendiente + contratoDetalle.deudaContrato + (contratoDetalle.convenioActivo?.cuota_por_periodo ?? 0);
+    // Con convenio: la deuda la paga el convenio → NO se suma completa (contaría doble).
+    // A pagar este período = cuota pendiente + cuota del convenio. Si está al día, 0.
+    // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
+    const cvActiva = contratoDetalle.convenioActivo;
+    const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0;
+    const saldoConvenio = contratoDetalle.deudaContrato; // lo que el convenio va bajando (referencia)
+    const totalPendiente = cvActiva
+      ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvActiva)
+      : cuotaPendiente + contratoDetalle.deudaContrato;
+    const proximoPagoConv = valorPeriodoReal(contratoDetalle) + cuotaConvActiva; // cuota + convenio próxima fecha
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1498,25 +1507,33 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
           </div>
 
-          {(contratoDetalle.deudaContrato > 0 || contratoDetalle.convenioActivo) && (
+          {cvActiva ? (
+            /* Contrato con convenio: se muestra "al día con convenio" + próximo pago (cuota+conv),
+               y el saldo del convenio como referencia — la deuda NO se suma como si fuera aparte. */
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 12px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>
+                  Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${formatDiaPago(contratoDetalle)}` : ""}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#1d4ed8", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
+              </div>
+              <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700, alignSelf: "flex-start" }}>
+                🤝 Convenio #{cvActiva.numero_convenio} · saldo $ {fmt(saldoConvenio)}
+              </span>
+            </div>
+          ) : contratoDetalle.deudaContrato > 0 ? (
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
-              {contratoDetalle.deudaContrato > 0 && (
-                <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
-                  + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
-                </span>
-              )}
-              {contratoDetalle.convenioActivo && (
-                <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
-                  + Conv. #{contratoDetalle.convenioActivo.numero_convenio}: $ {fmt(contratoDetalle.convenioActivo.cuota_por_periodo)}
-                </span>
-              )}
+              <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
+                + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
+              </span>
               {totalPendiente > cuotaPendiente && (
                 <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 900, fontSize: 14, color: "#991b1b", marginLeft: "auto" }}>
                   Total: $ {fmt(totalPendiente)}
                 </span>
               )}
             </div>
-          )}
+          ) : null}
 
           {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
             <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", borderRadius: 10, padding: "8px 12px" }}>
@@ -2233,7 +2250,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
                     : enProrrateoHoy ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
                   const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
-                  const debePagar = Math.max(cuotaP - pagP, 0) + c.deudaContrato + c.cuotaConvenio;
+                  const cuotaPendParte = Math.max(cuotaP - pagP, 0);
+                  // Con convenio la deuda la paga el convenio (no se suma completa). Si está al día, no debe nada.
+                  const debePagar = c.estadoCartera === "al-dia"
+                    ? 0
+                    : cuotaPendParte + (c.cuotaConvenio > 0 ? c.cuotaConvenio : c.deudaContrato);
 
                   return (
                     <div
@@ -2271,12 +2292,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       {/* Fila inferior: monto + botones de tarea */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span
-                          title={debePagar > 0 ? `Cuota: $${fmt(Math.max(cuotaP - pagP, 0))}${c.deudaContrato > 0 ? ` + Deuda: $${fmt(c.deudaContrato)}` : ""}${c.cuotaConvenio > 0 ? ` + Convenio: $${fmt(c.cuotaConvenio)}` : ""}` : undefined}
                           style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}
                         >
                           {todasHechas ? "✓ Listo" : debePagar > 0
-                            ? `Debe $${fmt(debePagar)}${c.cuotaConvenio > 0 ? ` (cuota $${fmt(Math.max(cuotaP - pagP, 0))} + conv. $${fmt(c.cuotaConvenio)}${c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})` : ""}`
-                            : "Al día"}
+                            ? `Debe $${fmt(debePagar)} (cuota $${fmt(cuotaPendParte)}${c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})`
+                            : c.cuotaConvenio > 0 ? "Al día · convenio" : "Al día"}
                         </span>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {

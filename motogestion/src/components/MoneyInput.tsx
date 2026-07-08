@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { inputStyle, labelStyle } from "../styles/shared";
 
 interface Props {
@@ -10,23 +10,44 @@ interface Props {
   autoFocus?: boolean;
 }
 
-// Input de dinero con separador de miles y signo $ mientras se escribe.
-// Guarda solo dígitos en el estado (value/onChange siguen siendo string numérico
-// puro) — el formato "$ 195.000" es únicamente visual.
+// Input de dinero con signo $ y separador de miles que se aplica MIENTRAS se escribe
+// (no solo al salir del campo). Guarda solo dígitos en el estado (value/onChange siguen
+// siendo string numérico puro) — el formato "$ 195.000" es únicamente visual.
+// Preserva la posición del cursor al reformatear para que no salte al final.
 export default function MoneyInput({ label, value, onChange, placeholder, style, autoFocus }: Props) {
-  const [focused, setFocused] = useState(false);
-  const num = Number(value) || 0;
-  const display = focused ? value : (num > 0 ? "$ " + num.toLocaleString("es-CO") : "");
+  const ref = useRef<HTMLInputElement>(null);
+  const display = value ? "$ " + Number(value).toLocaleString("es-CO") : "";
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const el = e.target;
+    const caret = el.selectionStart ?? el.value.length;
+    // Cuántos dígitos hay a la izquierda del cursor (para reubicarlo tras formatear).
+    const digitosIzq = el.value.slice(0, caret).replace(/\D/g, "").length;
+    const digitos = el.value.replace(/\D/g, "");
+    onChange(digitos);
+
+    // Tras el re-render, reubicar el cursor después de la misma cantidad de dígitos.
+    requestAnimationFrame(() => {
+      const nuevo = digitos ? "$ " + Number(digitos).toLocaleString("es-CO") : "";
+      let count = 0;
+      let pos = 0;
+      for (; pos < nuevo.length && count < digitosIzq; pos++) {
+        if (/\d/.test(nuevo[pos])) count++;
+      }
+      ref.current?.setSelectionRange(pos, pos);
+    });
+  }
+
   const input = (
     <input
+      ref={ref}
       style={{ ...inputStyle, ...style }}
       type="text"
       inputMode="numeric"
       value={display}
       autoFocus={autoFocus}
-      onFocus={e => { setFocused(true); e.target.select(); }}
-      onBlur={() => setFocused(false)}
-      onChange={e => onChange(e.target.value.replace(/\D/g, ""))}
+      onFocus={e => e.target.select()}
+      onChange={handleChange}
       placeholder={placeholder ?? "$ 0"}
     />
   );

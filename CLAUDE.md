@@ -744,7 +744,7 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `ea600a5` (fecha de corte de migración por grupo). Vercel desplegado.
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `6c55ffd` (fix falsos positivos de mora). Vercel desplegado.
 
 ### 📌 SESIÓN 7 JUL 2026 — resumen de lo hecho (todo en producción)
 1. **Ahorro exacto día por día** (commit `1bc56f2`, mig `034_ahorro_exacto.sql`): el ahorro se calculaba con el promedio semanal (26.000/202.000) → daba pesos torcidos en prorrateos ($14.030 en vez de $14.000). Nuevas funciones `ahorroPeriodoExacto()` y `calcularAhorroAplicado()` en `cicloPago.ts`; los 5 puntos de registro de pago guardan el ahorro exacto en `pagos.aplicado_ahorro`; el trigger respeta ese valor y solo usa el promedio como respaldo para pagos viejos. **El usuario ya corrigió por SQL** los 14 pagos viejos con el descuadre.
@@ -765,33 +765,30 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
     - **Mig `038_checks_y_guard.sql`** ⚠️ **pendiente de confirmar Success** — agrega 'En traspaso' y USADAS/OTRO a los checks de motos + unifica guard de roles a `mi_rol()`.
     - **LECCIÓN/REGLA NUEVA:** toda migración queda en el repo Y se corre en Supabase — las dos siempre. La causa raíz de la cascada de errores era la desincronización repo↔BD.
 
-### 🔴 FIX CRÍTICO DE CARTERA — CODEADO Y VERIFICADO, PENDIENTE DE DEPLOY (clasificador Bash caído al cierre)
+### ✅ FIX CRÍTICO DE CARTERA — DESPLEGADO (commit `6c55ffd` en main)
 **Bug (reportado por el usuario con JHON FERNEY BOLAÑO):** `totalPagadoPeriodoActual` usaba la semana calendario lunes-domingo para Semanal → todo cliente con día de pago MIÉRCOLES aparecía EN MORA los lunes y martes aunque hubiera pagado (41 falsos "en mora" el mar 7-jul; Jhon: al día real, pero badge Mora + "4d sin pagar" + Paso 4 Recolección). Además `calcEstadoCuenta` (panel detalle) marcaba "Al día" con CUALQUIER abono sin mirar el monto, y `useAlertas` tenía su PROPIA copia con días crudos (mismo falso positivo en la campana).
-**Fix aplicado (4 archivos, `tsc -b` limpio, 11 casos trazados a mano contra el código — todos correctos):**
+**Fix aplicado (4 archivos, `tsc -b` + `vite build` limpios, 11 casos ejecutados en runtime — todos correctos):**
 - `cicloPago.ts`: `totalPagadoPeriodoActual` ahora usa el período REAL del contrato (mié→mié, lun→lun, fechas del mes para Quincenal/Mensual) + nueva `inicioVentanaPagosISO()` que acepta el prepago de víspera (paga martes su cuota del miércoles).
 - `CobrosView.calcEstadoCuenta`: compara MONTO vs `valorPeriodoReal` con la misma ventana (la firma ahora exige `valor` en los pagos).
 - `CobroDiarioView.calcEstadoPeriodico`: ventana de "pagado hasta" alineada.
 - `useAlertas`: mora/gabela/crítica ahora usan `calcularEstadoCartera`/`diasEnMora` con cuota de convenio — "mora crítica" = >3 días de mora REAL.
-**AL RETOMAR (en orden):** (1) `node motogestion/test_cartera.mjs` — esperado: casos 1,2,3,6,9,11 = al-dia · 4 = gabela · 5 = mora/1d · 7 = mora/5d · 8 = mora · 10 = mora; (2) **borrar `test_cartera.mjs`**; (3) `npm run build`; (4) commit + merge a main; (5) verificar en producción que JHON FERNEY sale Al día y que "En mora" baja de 41 a los reales.
+**AL RETOMAR:** verificar en producción que JHON FERNEY sale Al día y que "En mora" bajó de 41 a los reales.
 
 ### ⚠️ PENDIENTES INMEDIATOS al retomar
 1. ~~Confirmar mig 038~~ ✅ corrida (confirmado por el usuario).
 2. **Redesplegar Edge Function `manage-users`** — ✅ HECHO por el usuario (pantalla Usuarios ya carga).
 3. **Probar tras 037/038:** que MECANICO siga usando taller, ANGELA registre pagos, editar una moto, y el flujo completo de recolección → la moto debe aparecer en Inmovilizaciones → "🔒 Motos retenidas" (nota: hay 3 recolecciones que quedaron a medias de la cadena de errores — contratos con gestión `recoleccion` pero aún Activos; rehacerlas desde el Panel Hoy).
 
-### 🔲 PRÓXIMA TAREA ACORDADA: mensajes de WhatsApp editables desde Configuración
-El usuario quiere cambiar los textos de los mensajes de WhatsApp (día de pago, gabela, mora) y una sección en Configuración para editarlos. **Inventario ya hecho — los mensajes viven hardcodeados en 4 lugares:**
-- `CobrosView.tsx:866` (tareaMensaje del Panel Hoy — "le recordamos su pago de hoy")
-- `CobroDiarioView.tsx:227-229` (2 variantes: mora "lleva X días sin pago" y día de pago)
-- `InmovilizacionesView.tsx:279` (mora/amenaza de recolección "su moto lleva X días en mora")
-- `AlertasView.tsx:143` (contacto genérico)
-- Recibo por WhatsApp: `buildMsg()` de `ReciboPanel` en CobrosView.
-**DISEÑO CERRADO (confirmado con el usuario 7 jul) — listo para construir:**
-- **5 mensajes editables:** (1) día de pago, (2) gabela [NUEVO — hoy no tiene texto propio, usa el de día de pago], (3) mora, (4) recolección, (5) recibo de pago.
-- **Quién edita:** ADMIN_PRINCIPAL y ADMIN.
-- **Comodines:** `{nombre}`, `{placa}`, `{dias}`, `{valor}` (se reemplazan al enviar). Texto actual como respaldo si se deja vacío.
-- Mensaje de recolección aprobado como base: "Hola {nombre}, su moto de placa {placa} presenta {dias} días de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. GPS Satelital ⚠️"
-- **Plan técnico:** tabla nueva `mensajes_whatsapp` (clave + texto) — migración chica, RLS lectura=todos autenticados / escritura=ADMIN/AP; sección "💬 Mensajes de WhatsApp" en ConfiguracionView (gate ADMIN/AP); helper `render(plantilla, datos)` que reemplaza comodines; conectar en los 5 puntos de envío con fallback al texto hardcodeado actual.
+### ✅ Mensajes de WhatsApp editables desde Configuración — COMPLETO Y DESPLEGADO
+5 mensajes editables (día de pago, gabela, mora, recolección, recibo de pago) con comodines `{nombre}` `{placa}` `{dias}` `{valor}`, editables solo por ADMIN/AP desde ConfiguracionView → "💬 Mensajes de WhatsApp". Tabla `mensajes_whatsapp` + hook `useMensajesWhatsapp`. Conectado en los 5 puntos de envío (Panel Hoy, Cobro Diario, Inmovilizaciones, recibo de Cartera).
+
+### 🔲 PRÓXIMO TEMA A DEFINIR (preguntado por el usuario, sin desarrollar aún)
+**¿Cómo se maneja cuando un cliente trae/entrega la moto por incapacidad u otro motivo temporal (no por mora)?** Es distinto del flujo de recolección por mora (que es forzado, por incumplimiento) — aquí el cliente ENTREGA voluntariamente porque no puede trabajar. Preguntas a resolver con el usuario antes de tocar código:
+- ¿Es lo mismo que "retiro_voluntario" ya definido en el plan de liquidaciones (`sunny-brewing-island.md`, TEMA 1 — moto se puede reasignar tras 7 días si no vuelve), o es un caso nuevo de "pausa temporal" distinto a liquidar?
+- ¿El contrato se SUSPENDE (como ya existe para mora) o hay un estado/flujo propio?
+- ¿Se le sigue cobrando el tiempo que la moto está guardada, o se "rueda" (ya existe `ModalResolverTiempoFueraServicio` para esto, pero fue pensado para taller/fiscalía — repasar si aplica igual)?
+- ¿Hay un plazo máximo antes de que se reasigne la moto a otro cliente?
+- Revisar si esto ya está cubierto por el "retiro_voluntario" del plan grande o si es un caso que nunca se definió.
 
 ### Migraciones SQL de esta sesión — estado
 - `032_trigger_ahorro_convenio.sql` ✅ corrida por el usuario.

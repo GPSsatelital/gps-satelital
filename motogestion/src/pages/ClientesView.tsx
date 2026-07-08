@@ -241,6 +241,7 @@ function emptyForm(): NuevoCliente {
     referido_por_nombre: "",
     autorizacion_datos_firma_url: null,
     autorizacion_datos_huella_url: null,
+    acompanante_huella_url: null,
     autorizacion_datos_fecha: null,
     foto_perfil_url: null,
   };
@@ -689,6 +690,20 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       huellaUrl = url;
     }
 
+    // Huella del acompañante (opcional al registrar; puede agregarse después editando).
+    let acompHuellaUrl = form.acompanante_huella_url;
+    if (acompHuellaUrl && acompHuellaUrl.startsWith("data:")) {
+      const blob = await (await fetch(acompHuellaUrl)).blob();
+      const archivo = new File([blob], "huella_acompanante.png", { type: "image/png" });
+      const { url, error: errSubida } = await subirDocumento(archivo, form.cedula.trim() || "sin-cedula", "acompanante_huella");
+      if (errSubida || !url) {
+        setGuardando(false);
+        setFormError(errSubida || "No se pudo subir la huella del acompañante.");
+        return;
+      }
+      acompHuellaUrl = url;
+    }
+
     // La foto de perfil es opcional — si se capturó, se sube.
     let fotoPerfilUrl = form.foto_perfil_url;
     if (fotoPerfilUrl && fotoPerfilUrl.startsWith("data:")) {
@@ -716,6 +731,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       referido_por_nombre: form.referido_por_nombre?.trim() || null,
       autorizacion_datos_firma_url: firmaUrl,
       autorizacion_datos_huella_url: huellaUrl,
+      acompanante_huella_url: acompHuellaUrl,
       foto_perfil_url: fotoPerfilUrl,
       estado,
     });
@@ -758,6 +774,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       referido_por_nombre: cliente.referido_por_nombre,
       autorizacion_datos_firma_url: cliente.autorizacion_datos_firma_url,
       autorizacion_datos_huella_url: cliente.autorizacion_datos_huella_url,
+      acompanante_huella_url: cliente.acompanante_huella_url,
       autorizacion_datos_fecha: cliente.autorizacion_datos_fecha,
       foto_perfil_url: cliente.foto_perfil_url,
     });
@@ -805,6 +822,18 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         huellaUrl = url;
       }
 
+      let acompHuellaUrl = editForm.acompanante_huella_url;
+      if (acompHuellaUrl && acompHuellaUrl.startsWith("data:")) {
+        const blob = await (await fetch(acompHuellaUrl)).blob();
+        const archivo = new File([blob], "huella_acompanante.png", { type: "image/png" });
+        const { url, error: errSubida } = await subirDocumento(archivo, editForm.cedula.trim() || "sin-cedula", "acompanante_huella");
+        if (errSubida || !url) {
+          setFormError(errSubida || "No se pudo subir la huella del acompañante.");
+          return;
+        }
+        acompHuellaUrl = url;
+      }
+
       let fotoPerfilUrl = editForm.foto_perfil_url;
       if (fotoPerfilUrl && fotoPerfilUrl.startsWith("data:")) {
         const blob = await (await fetch(fotoPerfilUrl)).blob();
@@ -823,6 +852,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         estado: estadoFinal,
         autorizacion_datos_firma_url: firmaUrl,
         autorizacion_datos_huella_url: huellaUrl,
+        acompanante_huella_url: acompHuellaUrl,
         foto_perfil_url: fotoPerfilUrl,
       });
 
@@ -1067,6 +1097,20 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             <LectorHuella
               label="Huella dactilar del cliente (opcional)"
               onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
+            />
+          </div>
+          <div style={{ marginTop: 12, borderTop: "1px dashed #e7d9c0", paddingTop: 12 }}>
+            <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 6 }}>
+              Huella del acompañante — captúrela aquí en la oficina (obligatoria antes de firmar el contrato).
+            </div>
+            {data.acompanante_huella_url && !data.acompanante_huella_url.startsWith("data:") && (
+              <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                ✔ Huella del acompañante ya registrada — capture de nuevo abajo solo si quiere reemplazarla
+              </div>
+            )}
+            <LectorHuella
+              label="Huella dactilar del acompañante"
+              onChange={(dataUrl) => update({ acompanante_huella_url: dataUrl })}
             />
           </div>
         </div>

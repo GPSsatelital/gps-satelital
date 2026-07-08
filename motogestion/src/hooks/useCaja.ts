@@ -41,7 +41,7 @@ export function useCaja() {
     efectivo: number;
     transferencias: number;
     total: number;
-    detalle: { placa: string; nombre: string; valor: number; metodo: string }[];
+    detalle: { placa: string; nombre: string; valor: number; metodo: string; grupo?: string }[];
     cerradoPor: string | null;
     notas?: string;
   }) {

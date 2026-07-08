@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePagos } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -12,6 +12,8 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const GRUPOS: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+const COLOR_GRUPO: Record<GrupoMoto, string> = { COSTA: "#0369a1", PRADERA: "#166534", RASTREADOR: "#92400e", USADAS: "#6d28d9", OTRO: "#334155" };
 
 export default function CajaView() {
   const hoyDefault = hoyISO();
@@ -21,6 +23,7 @@ export default function CajaView() {
   const [notas, setNotas] = useState("");
   const [msgCierre, setMsgCierre] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -52,16 +55,45 @@ export default function CajaView() {
     return { nombre: cl?.nombre ?? "—", placa: m?.placa ?? "—" };
   }
 
-  const resumen = useMemo(() => {
-    const conf = pagosDia.filter(p => p.estado === "Confirmado");
+  // Grupo de un pago: pago → contrato → moto → grupo (portafolio del que entra la plata).
+  function grupoDePago(contratoId: string): GrupoMoto | null {
+    const c = contratos.find(ct => ct.id === contratoId);
+    const m = c ? motos.find(mo => mo.id === c.moto_id) : null;
+    return (m?.grupo as GrupoMoto) ?? null;
+  }
+
+  // Vista filtrada por el chip de grupo (para los KPIs y las listas). El CIERRE siempre
+  // usa el día completo, sin importar el filtro (ver resumenDia más abajo).
+  const pagosDiaVista = useMemo(() =>
+    filtroGrupo === "todos" ? pagosDia : pagosDia.filter(p => grupoDePago(p.contrato_id) === filtroGrupo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pagosDia, filtroGrupo, contratos, motos]
+  );
+
+  function calcResumen(lista: typeof pagosDia) {
+    const conf = lista.filter(p => p.estado === "Confirmado");
     const efectivo = conf.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
     const transfer = conf.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
-    const pend = pagosDia.filter(p => p.estado === "Pendiente");
-    return { efectivo, transfer, total: efectivo + transfer, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0) };
-  }, [pagosDia]);
+    const pend = lista.filter(p => p.estado === "Pendiente");
+    return { efectivo, transfer, total: efectivo + transfer, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
+  }
 
-  const pagosEfectivo = useMemo(() => pagosDia.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo"), [pagosDia]);
-  const pagosTransfer = useMemo(() => pagosDia.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia"), [pagosDia]);
+  // resumen = lo que se muestra (filtrado por grupo). resumenDia = día completo (para cerrar).
+  const resumen = useMemo(() => calcResumen(pagosDiaVista), [pagosDiaVista]);
+  const resumenDia = useMemo(() => calcResumen(pagosDia), [pagosDia]);
+
+  // Desglose por cada grupo (siempre del día completo — es el cuadro nuevo por portafolio).
+  const resumenPorGrupo = useMemo(() => {
+    return GRUPOS.map(g => {
+      const lista = pagosDia.filter(p => grupoDePago(p.contrato_id) === g);
+      const r = calcResumen(lista);
+      return { grupo: g, ...r, count: r.confirmados };
+    }).filter(x => x.total > 0 || x.pendientes.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagosDia, contratos, motos]);
+
+  const pagosEfectivo = useMemo(() => pagosDiaVista.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo"), [pagosDiaVista]);
+  const pagosTransfer = useMemo(() => pagosDiaVista.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia"), [pagosDiaVista]);
 
   // Nombres de los funcionarios (para la conciliación de cobros en campo)
   const [nombresPorId, setNombresPorId] = useState<Record<string, string>>({});
@@ -75,7 +107,7 @@ export default function CajaView() {
 
   // Conciliación: efectivo cobrado en campo, agrupado por funcionario
   const conciliacionCampo = useMemo(() => {
-    const campo = pagosDia.filter(p => p.tipo_registro === "campo");
+    const campo = pagosDiaVista.filter(p => p.tipo_registro === "campo");
     const porPersona: Record<string, { nombre: string; total: number; count: number; pendienteEntregar: number; pendienteConfirmar: number }> = {};
     campo.forEach(p => {
       const id = p.registrado_por ?? "—";
@@ -86,7 +118,7 @@ export default function CajaView() {
       if (p.estado === "Pendiente") porPersona[id].pendienteConfirmar += p.valor;
     });
     return Object.values(porPersona).sort((a, b) => b.total - a.total);
-  }, [pagosDia, nombresPorId]);
+  }, [pagosDiaVista, nombresPorId]);
 
   const fechaObj = new Date(fecha + "T00:00:00");
   const fechaDisplay = `${DIAS[fechaObj.getDay()]} ${fechaObj.getDate()} de ${MESES[fechaObj.getMonth()]} ${fechaObj.getFullYear()}`;
@@ -101,17 +133,18 @@ export default function CajaView() {
     if (!esSecretaria) return;
     setCerrando(true);
     setMsgCierre(null);
+    // El cierre SIEMPRE es del día completo (todos los grupos), sin importar el filtro de vista.
     const detalle = pagosDia
       .filter(p => p.estado === "Confirmado")
       .map(p => {
         const { nombre, placa } = getInfo(p.contrato_id);
-        return { placa, nombre, valor: p.valor, metodo: p.metodo };
+        return { placa, nombre, valor: p.valor, metodo: p.metodo, grupo: grupoDePago(p.contrato_id) ?? "—" };
       });
     const { error } = await cerrarCaja({
       fecha,
-      efectivo: resumen.efectivo,
-      transferencias: resumen.transfer,
-      total: resumen.total,
+      efectivo: resumenDia.efectivo,
+      transferencias: resumenDia.transfer,
+      total: resumenDia.total,
       detalle,
       cerradoPor: profile?.id ?? null,
       notas: notas.trim() || undefined,
@@ -121,7 +154,7 @@ export default function CajaView() {
     if (error) {
       setMsgCierre(`Error: ${error}`);
     } else {
-      setMsgCierre(`Caja cerrada — Total: $${fmt(resumen.total)}`);
+      setMsgCierre(`Caja cerrada — Total: $${fmt(resumenDia.total)}`);
       setNotas("");
     }
   }
@@ -280,10 +313,10 @@ export default function CajaView() {
       )}
       <button
         onClick={() => setShowModal(true)}
-        disabled={resumen.total === 0}
-        style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "#e2e8f0" : "#166534", color: resumen.total === 0 ? "#94a3b8" : "white", fontSize: 14, fontWeight: 800, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
+        disabled={resumenDia.total === 0}
+        style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumenDia.total === 0 ? "#e2e8f0" : "#166534", color: resumenDia.total === 0 ? "#94a3b8" : "white", fontSize: 14, fontWeight: 800, cursor: resumenDia.total === 0 ? "not-allowed" : "pointer" }}
       >
-        Cerrar caja del día — ${fmt(resumen.total)}
+        Cerrar caja del día (todos los grupos) — ${fmt(resumenDia.total)}
       </button>
     </div>
   );
@@ -322,10 +355,63 @@ export default function CajaView() {
           <div style={{ flex: 1, minWidth: 120, background: "#0f172a", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>Total general</div>
             <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "white", marginTop: 4 }}>${fmt(resumen.total)}</div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{pagosDia.filter(p => p.estado === "Confirmado").length} confirmados</div>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{resumen.confirmados} confirmados{filtroGrupo !== "todos" ? ` · ${filtroGrupo}` : ""}</div>
           </div>
         </div>
       </div>
+
+      {/* Chips de filtro por grupo (portafolio) */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {(["todos", ...GRUPOS] as const).map(g => (
+          <button
+            key={g}
+            onClick={() => setFiltroGrupo(g)}
+            style={{
+              border: "none", borderRadius: 999, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              background: filtroGrupo === g ? (g === "todos" ? "#0f172a" : COLOR_GRUPO[g as GrupoMoto]) : "#f1f5f9",
+              color: filtroGrupo === g ? "white" : "#334155",
+            }}
+          >
+            {g === "todos" ? "Todos" : g}
+          </button>
+        ))}
+      </div>
+
+      {/* Resumen por grupo (portafolios) — solo en la vista "Todos" */}
+      {filtroGrupo === "todos" && resumenPorGrupo.length > 0 && (
+        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 16, padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: "#334155", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+            📊 Recaudo por grupo
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            {resumenPorGrupo.map(g => (
+              <button
+                key={g.grupo}
+                onClick={() => setFiltroGrupo(g.grupo)}
+                style={{ textAlign: "left", cursor: "pointer", border: `1px solid ${COLOR_GRUPO[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "#f8fafc" }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase", marginBottom: 6 }}>{g.grupo}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a" }}>${fmt(g.total)}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  Efectivo ${fmt(g.efectivo)} · Transf. ${fmt(g.transfer)}
+                  <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
+                </div>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Total general del día</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>${fmt(resumenDia.total)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Aviso cuando se está viendo un grupo filtrado */}
+      {filtroGrupo !== "todos" && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: `${COLOR_GRUPO[filtroGrupo]}14`, border: `1px solid ${COLOR_GRUPO[filtroGrupo]}33`, fontSize: 13, color: COLOR_GRUPO[filtroGrupo], fontWeight: 700 }}>
+          Viendo solo el grupo {filtroGrupo}. El cierre de caja incluye todos los grupos.
+        </div>
+      )}
 
       {/* Conciliación de cobros en campo por funcionario */}
       {seccionConciliacionCampo && (
@@ -381,16 +467,27 @@ export default function CajaView() {
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, background: "#dcfce7", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>Efectivo</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(resumen.efectivo)}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(resumenDia.efectivo)}</div>
               </div>
               <div style={{ flex: 1, background: "#dbeafe", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>Transferencias</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#1d4ed8" }}>${fmt(resumen.transfer)}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#1d4ed8" }}>${fmt(resumenDia.transfer)}</div>
               </div>
             </div>
+            {/* Desglose por grupo dentro del cierre (todos los grupos entran en un solo cierre) */}
+            {resumenPorGrupo.length > 0 && (
+              <div style={{ display: "grid", gap: 6, marginBottom: 16 }}>
+                {resumenPorGrupo.map(g => (
+                  <div key={g.grupo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "6px 10px", borderRadius: 8, background: "#f8fafc" }}>
+                    <span style={{ fontWeight: 700, color: COLOR_GRUPO[g.grupo] }}>{g.grupo}</span>
+                    <span style={{ fontWeight: 800, color: "#0f172a" }}>${fmt(g.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div style={{ background: "#0f172a", borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Total a cerrar</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "white" }}>${fmt(resumen.total)}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Total a cerrar (todos los grupos)</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "white" }}>${fmt(resumenDia.total)}</div>
             </div>
             <textarea
               value={notas}

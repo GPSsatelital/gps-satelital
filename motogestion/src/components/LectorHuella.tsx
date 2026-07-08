@@ -38,6 +38,7 @@ export default function LectorHuella({ label, onChange }: Props) {
   const [estado, setEstado] = useState<EstadoLector>("conectando");
   const [huella, setHuella] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [ultimaCalidad, setUltimaCalidad] = useState<number | null>(null); // 0 = buena; distinto de 0 = baja
   const readerRef = useRef<FingerprintReader | null>(null);
   const capturadaRef = useRef(false);
 
@@ -61,6 +62,7 @@ export default function LectorHuella({ label, onChange }: Props) {
     });
     reader.on("QualityReported", (ev: QualityReported) => {
       if (!activo) return;
+      setUltimaCalidad(ev.quality);
       if (ev.quality !== 0) setAviso("Lectura de baja calidad — ponga el dedo firme y centrado, e intente de nuevo.");
       else setAviso(null);
     });
@@ -111,23 +113,35 @@ export default function LectorHuella({ label, onChange }: Props) {
     capturadaRef.current = false;
     setHuella(null);
     setAviso(null);
+    setUltimaCalidad(null);
     onChange(null);
     setEstado("esperando");
     readerRef.current?.startAcquisition(SampleFormat.PngImage).catch(() => setEstado("sin-agente"));
   }
 
+  // La huella salió bien si la última calidad reportada fue 0 (buena) o si no hubo
+  // reporte de baja calidad. Distinto de 0 = baja → conviene repetir.
+  const calidadBaja = ultimaCalidad !== null && ultimaCalidad !== 0;
+
   return (
     <div>
       <label style={labelStyle}>{label}</label>
+      <div style={{ margin: "2px 0 8px", fontSize: 12, fontWeight: 700, color: "#0369a1" }}>
+        👉 Dedo a usar: <span style={{ textTransform: "uppercase" }}>índice derecho</span>
+      </div>
       {estado === "capturada" && huella ? (
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <img
             src={huella}
             alt="Huella capturada"
-            style={{ width: 90, height: 110, objectFit: "contain", background: "#fff", border: "2px solid #16a34a", borderRadius: 10 }}
+            style={{ width: 90, height: 110, objectFit: "contain", background: "#fff", border: `2px solid ${calidadBaja ? "#d97706" : "#16a34a"}`, borderRadius: 10 }}
           />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>✔ Huella capturada</div>
+            {calidadBaja ? (
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#92400e" }}>⚠ Huella capturada, pero de BAJA calidad — se recomienda repetir</div>
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>✔ Huella capturada con buena calidad</div>
+            )}
             <button
               type="button"
               onClick={repetir}
@@ -151,7 +165,7 @@ export default function LectorHuella({ label, onChange }: Props) {
           }}
         >
           {estado === "conectando" && "Conectando con el lector de huellas..."}
-          {estado === "esperando" && "👆 Lector listo — ponga el dedo índice del cliente en el lector."}
+          {estado === "esperando" && "👆 Lector listo — coloque el ÍNDICE DERECHO en el lector."}
           {estado === "sin-lector" && "Lector de huellas no detectado — conecte el DigitalPersona 4500 por USB."}
           {estado === "sin-agente" &&
             "No se pudo conectar con el software del lector en este PC. Verifique que la app de HID DigitalPersona esté instalada y corriendo, y recargue la página."}

@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
+import { useDeudas } from "../hooks/useDeudas";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import { hoyISO } from "../utils/fecha";
 
@@ -57,8 +58,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { profile } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
   const { filtrarMotos } = useScope();
-  const { contratos } = useContratos();
+  const { contratos, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
+  const { registrarDeuda } = useDeudas();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: import("../hooks/useContratos").Contrato; motoPlaca: string; clienteNombre: string; motivo: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
@@ -125,6 +127,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   // Fotos del estado del vehículo al recibirlo (dataURLs; se suben a Storage al guardar)
   const [fotosRec, setFotosRec] = useState<string[]>([]);
   const [subiendoFotosRec, setSubiendoFotosRec] = useState(false);
+  // Entrega voluntaria: ¿la trajo el cliente (sin costo) o hubo que ir a buscarla (+$20.000)?
+  const [recFueBuscada, setRecFueBuscada] = useState(false);
 
   const [formUbic, setFormUbic] = useState({
     ubicacion_nueva: "bodega" as UbicacionFisica,
@@ -248,10 +252,32 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       observaciones: formRec.observaciones || undefined,
       ubicacion_anterior: (selectedMoto as any).ubicacion_fisica ?? undefined,
     });
+    if (error) { setGuardando(false); setMsgDetalle(error); return; }
+
+    // Entrega voluntaria: el contrato se suspende y la moto queda guardada (reloj de 7 días).
+    // El costo de $20.000 SOLO aplica si hubo que ir a buscarla (movimiento de personal);
+    // si el cliente la trajo, no se cobra nada.
+    let msgFinal = "Recepción registrada.";
+    if (formRec.motivo === "entrega_voluntaria") {
+      const contratoActivo = contratos.find(c => c.moto_id === selectedMoto.id && c.estado === "Activo");
+      if (contratoActivo) {
+        const { error: errSusp } = await suspenderContrato(contratoActivo.id, selectedMoto.id);
+        if (errSusp) { setGuardando(false); setMsgDetalle("Recepción registrada, pero falló suspender el contrato: " + errSusp); return; }
+        if (recFueBuscada) {
+          await registrarDeuda(contratoActivo.id, "multa_recoleccion", "Costo por movimiento de personal (recolección)", 20000, profile.id);
+          msgFinal = "Entrega registrada, contrato suspendido y costo de $20.000 aplicado (se fue a buscar).";
+        } else {
+          msgFinal = "Entrega registrada y contrato suspendido — sin costo (la trajo el cliente).";
+        }
+      } else {
+        msgFinal = "Recepción registrada (esta moto no tenía contrato activo).";
+      }
+    }
+
     setGuardando(false);
-    if (error) { setMsgDetalle(error); return; }
-    setMsgDetalle("Recepción registrada.");
+    setMsgDetalle(msgFinal);
     setFotosRec([]);
+    setRecFueBuscada(false);
     setOpenRecepcion(false);
   }
 
@@ -436,7 +462,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
-            <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📋 Recepción</button>
+            <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); setRecFueBuscada(false); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📋 Recepción</button>
             {selectedMoto.estado === "Fiscalia"
               ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Salida Fiscalía</button>
               : ["Transito","Garantia"].includes(selectedMoto.estado)
@@ -643,6 +669,34 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <option value="otro">Otro motivo</option>
                 </select>
               </Field>
+
+              {/* Entrega voluntaria con contrato activo: suspende el contrato. El costo de
+                  $20.000 solo aplica si hubo que ir a buscarla (no si la trajo el cliente). */}
+              {formRec.motivo === "entrega_voluntaria" && contratos.some(c => c.moto_id === selectedMoto.id && c.estado === "Activo") && (
+                <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0369a1", marginBottom: 4 }}>
+                    Esto suspenderá el contrato de {clientes.find(cl => cl.id === contratos.find(c => c.moto_id === selectedMoto.id && c.estado === "Activo")?.cliente_id)?.nombre ?? "el cliente"}.
+                  </div>
+                  <div style={{ fontSize: 12, color: "#334155", marginBottom: 10 }}>¿Cómo llegó la moto?</div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {([[false, "🙋 La trajo el cliente", "Sin costo"], [true, "🚚 Se fue a buscar", "+ $20.000 por movimiento de personal"]] as [boolean, string, string][]).map(([val, label, sub]) => (
+                      <button
+                        key={String(val)}
+                        type="button"
+                        onClick={() => setRecFueBuscada(val)}
+                        style={{
+                          textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                          border: recFueBuscada === val ? "2px solid #0284c7" : "1px solid #cbd5e1",
+                          background: recFueBuscada === val ? "#e0f2fe" : "white",
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{label}</div>
+                        <div style={{ fontSize: 12, color: recFueBuscada === val ? "#0369a1" : "#64748b" }}>{sub}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Field label="Condición general">
                 <select style={inputStyle} value={formRec.condicion_general} onChange={(e) => setFormRec((p) => ({ ...p, condicion_general: e.target.value as CondicionVehiculo }))}>
                   <option value="buena">Buena</option>

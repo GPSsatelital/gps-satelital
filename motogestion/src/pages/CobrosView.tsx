@@ -1758,23 +1758,41 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div style={{ display: "grid", gap: 8 }}>
               {pagosContrato.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>
-              ) : pagosContrato.map(p => (
-                <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{formatDate(p.fecha)} · {p.metodo}</div>
+              ) : pagosContrato.map(p => {
+                // Desglose de a dónde se aplicó el pago. Cuota + Deuda + Convenio + Saldo a
+                // favor suman el valor total; el Ahorro es la parte de la cuota que es ahorro
+                // del cliente (va DENTRO de la cuota, no se suma aparte).
+                const partes: string[] = [];
+                if ((p.aplicado_tarifa ?? 0) > 0) partes.push(`Cuota $${fmt(p.aplicado_tarifa ?? 0)}`);
+                if ((p.aplicado_deuda ?? 0) > 0) partes.push(`Deuda $${fmt(p.aplicado_deuda ?? 0)}`);
+                if ((p.aplicado_convenio ?? 0) > 0) partes.push(`Convenio $${fmt(p.aplicado_convenio ?? 0)}`);
+                if ((p.aplicado_saldo_favor ?? 0) > 0) partes.push(`Saldo a favor $${fmt(p.aplicado_saldo_favor ?? 0)}`);
+                return (
+                <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{formatDate(p.fecha)} · {p.metodo}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <PagoBadge estado={p.estado} />
+                      {p.estado === "Pendiente" && esSecretaria && (
+                        <>
+                          <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
+                          <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <PagoBadge estado={p.estado} />
-                    {p.estado === "Pendiente" && esSecretaria && (
-                      <>
-                        <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
-                        <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
-                      </>
-                    )}
-                  </div>
+                  {p.estado !== "Rechazado" && (partes.length > 0 || (p.aplicado_ahorro ?? 0) > 0) && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: 11, color: "#0369a1", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                      <span style={{ color: "#94a3b8" }}>Se aplicó a:</span>
+                      {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "#e0f2fe", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "#94a3b8" }}>sin desglose (pago antiguo)</span>}
+                      {(p.aplicado_ahorro ?? 0) > 0 && <span style={{ color: "#94a3b8", fontWeight: 400 }}>(de la cuota, ${fmt(p.aplicado_ahorro ?? 0)} fue ahorro)</span>}
+                    </div>
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>

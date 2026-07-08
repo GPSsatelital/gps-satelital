@@ -1374,7 +1374,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       contratoDetalle,
       pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
     );
-    const protocolo = calcProtocoloStep(contratoDetalle.diasSinPago);
+    // El protocolo (mensaje→llamada→apagado→recolección) SOLO aplica si el cliente está
+    // de verdad en mora (mismo criterio que el Panel Hoy). Antes se mostraba con "días
+    // desde el último pago" > 0, que es > 0 aunque esté al día → salía "Paso 4 Recolección"
+    // a clientes al día (ej. migrados que pagaron hace unos días).
+    const protocolo = contratoDetalle.estadoCartera === "mora" ? calcProtocoloStep(contratoDetalle.diasSinPago) : null;
     const totalPendiente = cuotaPendiente + contratoDetalle.deudaContrato + (contratoDetalle.convenioActivo?.cuota_por_periodo ?? 0);
 
     return (
@@ -1425,7 +1429,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
               <span>Próximo: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
             </div>
-            {contratoDetalle.diasSinPago > 0 && !enProrrateo && (
+            {protocolo && (
               <span style={{ fontSize: 12, fontWeight: 700, color: protocolo.color, background: protocolo.bg, borderRadius: 8, padding: "3px 10px" }}>
                 Paso {protocolo.paso}: {protocolo.label}
               </span>

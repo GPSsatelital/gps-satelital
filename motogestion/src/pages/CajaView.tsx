@@ -24,6 +24,7 @@ export default function CajaView() {
   const [msgCierre, setMsgCierre] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
+  const [grupoACerrar, setGrupoACerrar] = useState<GrupoMoto | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -40,8 +41,6 @@ export default function CajaView() {
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { cerrarCaja, cajaDia } = useCaja();
-
-  const cajaCerradaHoy = cajaDia(fecha);
 
   const pagosDia = useMemo(() =>
     pagos.filter(p => p.fecha === fecha).sort((a, b) => b.created_at.localeCompare(a.created_at)),
@@ -78,9 +77,17 @@ export default function CajaView() {
     return { efectivo, transfer, total: efectivo + transfer, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
   }
 
-  // resumen = lo que se muestra (filtrado por grupo). resumenDia = día completo (para cerrar).
+  // resumen = lo que se muestra (filtrado por grupo). resumenDia = día completo (referencia).
   const resumen = useMemo(() => calcResumen(pagosDiaVista), [pagosDiaVista]);
   const resumenDia = useMemo(() => calcResumen(pagosDia), [pagosDia]);
+
+  function resumenDeGrupo(grupo: GrupoMoto) {
+    return calcResumen(pagosDia.filter(p => grupoDePago(p.contrato_id) === grupo));
+  }
+  // Cuántos grupos (con dinero) ya están cerrados hoy.
+  const gruposConDinero = resumenPorGrupoSafe();
+  function resumenPorGrupoSafe() { return GRUPOS.filter(g => pagosDia.some(p => grupoDePago(p.contrato_id) === g && p.estado === "Confirmado")); }
+  const gruposCerrados = gruposConDinero.filter(g => cajaDia(fecha, g));
 
   // Desglose por cada grupo (siempre del día completo — es el cuadro nuevo por portafolio).
   const resumenPorGrupo = useMemo(() => {
@@ -129,22 +136,31 @@ export default function CajaView() {
     setConfirmando(null);
   }
 
+  function abrirCierre(grupo: GrupoMoto) {
+    setGrupoACerrar(grupo);
+    setMsgCierre(null);
+    setShowModal(true);
+  }
+
   async function handleCerrarCaja() {
-    if (!esSecretaria) return;
+    if (!esSecretaria || !grupoACerrar) return;
+    const g = grupoACerrar;
     setCerrando(true);
     setMsgCierre(null);
-    // El cierre SIEMPRE es del día completo (todos los grupos), sin importar el filtro de vista.
+    // Cada grupo se cierra por aparte: solo los pagos de ese portafolio.
+    const r = resumenDeGrupo(g);
     const detalle = pagosDia
-      .filter(p => p.estado === "Confirmado")
+      .filter(p => p.estado === "Confirmado" && grupoDePago(p.contrato_id) === g)
       .map(p => {
         const { nombre, placa } = getInfo(p.contrato_id);
-        return { placa, nombre, valor: p.valor, metodo: p.metodo, grupo: grupoDePago(p.contrato_id) ?? "—" };
+        return { placa, nombre, valor: p.valor, metodo: p.metodo, grupo: g };
       });
     const { error } = await cerrarCaja({
       fecha,
-      efectivo: resumenDia.efectivo,
-      transferencias: resumenDia.transfer,
-      total: resumenDia.total,
+      grupo: g,
+      efectivo: r.efectivo,
+      transferencias: r.transfer,
+      total: r.total,
       detalle,
       cerradoPor: profile?.id ?? null,
       notas: notas.trim() || undefined,
@@ -154,8 +170,9 @@ export default function CajaView() {
     if (error) {
       setMsgCierre(`Error: ${error}`);
     } else {
-      setMsgCierre(`Caja cerrada — Total: $${fmt(resumenDia.total)}`);
+      setMsgCierre(`Caja de ${g} cerrada — $${fmt(r.total)}`);
       setNotas("");
+      setGrupoACerrar(null);
     }
   }
 
@@ -304,20 +321,41 @@ export default function CajaView() {
     </div>
   );
 
-  const botonCerrar = esSecretaria && !cajaCerradaHoy && (
+  // Cada grupo se cierra por aparte. En la vista "Todos" el cierre se hace desde la
+  // tarjeta de cada grupo; en una vista filtrada, este botón cierra ese grupo.
+  const grupoEnVista = filtroGrupo === "todos" ? null : filtroGrupo;
+  const cajaGrupoVista = grupoEnVista ? cajaDia(fecha, grupoEnVista) : null;
+  const botonCerrar = esSecretaria && (
     <div>
       {msgCierre && (
         <div style={{ marginBottom: 10, padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: msgCierre.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCierre.startsWith("Error") ? "#991b1b" : "#166534" }}>
           {msgCierre}
         </div>
       )}
-      <button
-        onClick={() => setShowModal(true)}
-        disabled={resumenDia.total === 0}
-        style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumenDia.total === 0 ? "#e2e8f0" : "#166534", color: resumenDia.total === 0 ? "#94a3b8" : "white", fontSize: 14, fontWeight: 800, cursor: resumenDia.total === 0 ? "not-allowed" : "pointer" }}
-      >
-        Cerrar caja del día (todos los grupos) — ${fmt(resumenDia.total)}
-      </button>
+      {grupoEnVista ? (
+        cajaGrupoVista ? (
+          <div style={{ padding: "14px 16px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534", textAlign: "center" }}>
+            ✓ Caja de {grupoEnVista} cerrada — ${fmt(cajaGrupoVista.total)}
+          </div>
+        ) : (
+          <button
+            onClick={() => abrirCierre(grupoEnVista)}
+            disabled={resumen.total === 0}
+            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "#e2e8f0" : COLOR_GRUPO[grupoEnVista], color: resumen.total === 0 ? "#94a3b8" : "white", fontSize: 14, fontWeight: 800, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
+          >
+            Cerrar caja de {grupoEnVista} — ${fmt(resumen.total)}
+          </button>
+        )
+      ) : (
+        <div style={{ padding: "12px 14px", borderRadius: 12, background: "#f1f5f9", fontSize: 12, color: "#475569", fontWeight: 600, textAlign: "center" }}>
+          Cada grupo se cierra por aparte desde su tarjeta de arriba.
+          {gruposConDinero.length > 0 && (
+            <div style={{ marginTop: 4, fontWeight: 800, color: "#0f172a" }}>
+              {gruposCerrados.length} de {gruposConDinero.length} grupos cerrados
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -331,9 +369,17 @@ export default function CajaView() {
               Caja del
             </div>
             <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#0f172a" }}>{fechaDisplay}</h2>
-            {cajaCerradaHoy && (
-              <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, background: "#dcfce7", border: "1px solid #86efac" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Caja cerrada</span>
+            {grupoEnVista ? (
+              cajaGrupoVista && (
+                <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, background: "#dcfce7", border: "1px solid #86efac" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Caja de {grupoEnVista} cerrada</span>
+                </div>
+              )
+            ) : gruposConDinero.length > 0 && (
+              <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, background: gruposCerrados.length === gruposConDinero.length ? "#dcfce7" : "#fef3c7", border: `1px solid ${gruposCerrados.length === gruposConDinero.length ? "#86efac" : "#fde68a"}` }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: gruposCerrados.length === gruposConDinero.length ? "#166534" : "#92400e" }}>
+                  {gruposCerrados.length} de {gruposConDinero.length} grupos cerrados
+                </span>
               </div>
             )}
           </div>
@@ -384,20 +430,35 @@ export default function CajaView() {
             📊 Recaudo por grupo
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            {resumenPorGrupo.map(g => (
-              <button
-                key={g.grupo}
-                onClick={() => setFiltroGrupo(g.grupo)}
-                style={{ textAlign: "left", cursor: "pointer", border: `1px solid ${COLOR_GRUPO[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "#f8fafc" }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase", marginBottom: 6 }}>{g.grupo}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a" }}>${fmt(g.total)}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                  Efectivo ${fmt(g.efectivo)} · Transf. ${fmt(g.transfer)}
-                  <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
+            {resumenPorGrupo.map(g => {
+              const cerrada = cajaDia(fecha, g.grupo);
+              return (
+                <div
+                  key={g.grupo}
+                  style={{ border: `1px solid ${COLOR_GRUPO[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "#f8fafc" }}
+                >
+                  <div onClick={() => setFiltroGrupo(g.grupo)} style={{ cursor: "pointer" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                      {cerrada && <span style={{ fontSize: 11, fontWeight: 800, color: "#166534", background: "#dcfce7", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>}
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a" }}>${fmt(g.total)}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                      Efectivo ${fmt(g.efectivo)} · Transf. ${fmt(g.transfer)}
+                      <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
+                    </div>
+                  </div>
+                  {esSecretaria && !cerrada && g.total > 0 && (
+                    <button
+                      onClick={() => abrirCierre(g.grupo)}
+                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: COLOR_GRUPO[g.grupo], color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+                    >
+                      Cerrar caja de {g.grupo}
+                    </button>
+                  )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Total general del día</span>
@@ -409,7 +470,7 @@ export default function CajaView() {
       {/* Aviso cuando se está viendo un grupo filtrado */}
       {filtroGrupo !== "todos" && (
         <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: `${COLOR_GRUPO[filtroGrupo]}14`, border: `1px solid ${COLOR_GRUPO[filtroGrupo]}33`, fontSize: 13, color: COLOR_GRUPO[filtroGrupo], fontWeight: 700 }}>
-          Viendo solo el grupo {filtroGrupo}. El cierre de caja incluye todos los grupos.
+          Viendo solo el grupo {filtroGrupo}. Cada grupo se cierra por aparte.
         </div>
       )}
 
@@ -444,11 +505,6 @@ export default function CajaView() {
           <div style={{ width: 300, flexShrink: 0, position: "sticky", top: 16, display: "flex", flexDirection: "column", gap: 14 }}>
             {resumenFooter}
             {botonCerrar}
-            {cajaCerradaHoy && (
-              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 700, color: "#166534", textAlign: "center" }}>
-                Caja cerrada — ${fmt(cajaCerradaHoy.total)}
-              </div>
-            )}
             {!esSecretaria && (
               <div style={{ padding: "12px 14px", borderRadius: 12, background: "#fef3c7", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
                 Solo la secretaria puede cerrar la caja.
@@ -458,37 +514,33 @@ export default function CajaView() {
         </div>
       )}
 
-      {/* Modal confirmación cierre */}
-      {showModal && (
+      {/* Modal confirmación cierre — por grupo */}
+      {showModal && grupoACerrar && (() => {
+        const rc = resumenDeGrupo(grupoACerrar);
+        return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "white", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%" }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Cerrar caja del día</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900, color: COLOR_GRUPO[grupoACerrar] }}>Cerrar caja de {grupoACerrar}</h3>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>{fechaDisplay}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, background: "#dcfce7", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", textTransform: "uppercase" }}>Efectivo</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(resumenDia.efectivo)}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(rc.efectivo)}</div>
               </div>
               <div style={{ flex: 1, background: "#dbeafe", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>Transferencias</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#1d4ed8" }}>${fmt(resumenDia.transfer)}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#1d4ed8" }}>${fmt(rc.transfer)}</div>
               </div>
             </div>
-            {/* Desglose por grupo dentro del cierre (todos los grupos entran en un solo cierre) */}
-            {resumenPorGrupo.length > 0 && (
-              <div style={{ display: "grid", gap: 6, marginBottom: 16 }}>
-                {resumenPorGrupo.map(g => (
-                  <div key={g.grupo} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "6px 10px", borderRadius: 8, background: "#f8fafc" }}>
-                    <span style={{ fontWeight: 700, color: COLOR_GRUPO[g.grupo] }}>{g.grupo}</span>
-                    <span style={{ fontWeight: 800, color: "#0f172a" }}>${fmt(g.total)}</span>
-                  </div>
-                ))}
+            <div style={{ background: COLOR_GRUPO[grupoACerrar], borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Total a cerrar — {grupoACerrar}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "white" }}>${fmt(rc.total)}</div>
+            </div>
+            {rc.pendientes.length > 0 && (
+              <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "#fffbeb", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
+                Ojo: {grupoACerrar} tiene {rc.pendientes.length} pago(s) pendiente(s) sin confirmar (${fmt(rc.totalPendiente)}) que no entran en este cierre.
               </div>
             )}
-            <div style={{ background: "#0f172a", borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Total a cerrar (todos los grupos)</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "white" }}>${fmt(resumenDia.total)}</div>
-            </div>
             <textarea
               value={notas}
               onChange={e => setNotas(e.target.value)}
@@ -507,7 +559,8 @@ export default function CajaView() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

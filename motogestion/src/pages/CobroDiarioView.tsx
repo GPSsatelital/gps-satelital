@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { usePagos, calcularAplicacion } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -29,6 +29,8 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 type Tab = "diario" | "periodico" | "gabela" | "pagaron" | "caja";
 
+const GRUPOS_CAJA: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+const COLOR_GRUPO_CAJA: Record<GrupoMoto, string> = { COSTA: "#0369a1", PRADERA: "#166534", RASTREADOR: "#92400e", USADAS: "#6d28d9", OTRO: "#334155" };
 const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -126,7 +128,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
   const [cobrarError, setCobrarError] = useState<string | null>(null);
-  const [cerrandoCaja, setCerrandoCaja] = useState(false);
+  const [cerrandoCaja, setCerrandoCaja] = useState<GrupoMoto | null>(null);
   const [notasCaja, setNotasCaja] = useState("");
   const [msgCaja, setMsgCaja] = useState<string | null>(null);
 
@@ -736,7 +738,43 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const efectivoHoy = pagosHoy.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
         const transHoy = pagosHoy.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
         const totalHoy = efectivoHoy + transHoy;
-        const cajaCerrada = cajaDia(hoy);
+
+        // Grupo de un pago: pago → contrato → moto → grupo (portafolio).
+        const grupoDePagoCaja = (contratoId: string): GrupoMoto | null => {
+          const c = contratos.find(x => x.id === contratoId);
+          const m = c ? motos.find(mo => mo.id === c.moto_id) : null;
+          return (m?.grupo as GrupoMoto) ?? null;
+        };
+        // Desglose del día por grupo (cada portafolio se cierra por aparte).
+        const porGrupoCaja = GRUPOS_CAJA.map(g => {
+          const lista = pagosHoy.filter(p => grupoDePagoCaja(p.contrato_id) === g);
+          const ef = lista.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
+          const tr = lista.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
+          return { grupo: g, efectivo: ef, transfer: tr, total: ef + tr, count: lista.length, lista, cerrada: cajaDia(hoy, g) };
+        }).filter(x => x.total > 0);
+        const cerrarGrupoCaja = async (g: typeof porGrupoCaja[0]) => {
+          setCerrandoCaja(g.grupo);
+          setMsgCaja(null);
+          const detalle = g.lista.map(p => {
+            const c = contratos.find(x => x.id === p.contrato_id);
+            const cl = clientes.find(x => x.id === c?.cliente_id);
+            const m = motos.find(x => x.id === c?.moto_id);
+            return { placa: m?.placa ?? "—", nombre: cl?.nombre ?? "—", valor: p.valor, metodo: p.metodo, grupo: g.grupo };
+          });
+          const { error } = await cerrarCaja({
+            fecha: hoy,
+            grupo: g.grupo,
+            efectivo: g.efectivo,
+            transferencias: g.transfer,
+            total: g.total,
+            detalle,
+            cerradoPor: profile?.id ?? null,
+            notas: notasCaja.trim() || undefined,
+          });
+          setCerrandoCaja(null);
+          if (error) setMsgCaja(`Error: ${error}`);
+          else { setMsgCaja(`Caja de ${g.grupo} cerrada — $${fmt(g.total)}`); setNotasCaja(""); }
+        };
 
         return (
           <div style={{ display: "grid", gap: 14 }}>
@@ -784,15 +822,18 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               })}
             </div>
 
-            {/* Cierre de caja */}
+            {/* Cierre de caja — cada grupo (portafolio) se cierra por aparte */}
             {!esSecretaria ? (
               <div style={{ padding: "12px 16px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>Solo la secretaria puede cerrar la caja.</div>
-            ) : cajaCerrada ? (
-              <div style={{ padding: "14px 18px", borderRadius: 14, background: "#dcfce7", border: "1px solid #86efac", fontSize: 14, fontWeight: 700, color: "#166534" }}>
-                ✅ Caja cerrada — ${fmt(cajaCerrada.total)}
+            ) : porGrupoCaja.length === 0 ? (
+              <div style={{ padding: "14px 18px", borderRadius: 14, background: "#f1f5f9", fontSize: 13, color: "#64748b", fontWeight: 600, textAlign: "center" }}>
+                Sin dinero para cerrar hoy.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Cierre por grupo
+                </div>
                 <textarea
                   value={notasCaja}
                   onChange={e => setNotasCaja(e.target.value)}
@@ -805,45 +846,35 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                     {msgCaja}
                   </div>
                 )}
-                <button
-                  disabled={cerrandoCaja || totalHoy === 0}
-                  onClick={async () => {
-                    setCerrandoCaja(true);
-                    setMsgCaja(null);
-                    const pagosHoyLocal = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado");
-                    const detalle = pagosHoyLocal.map(p => {
-                      const c = contratos.find(x => x.id === p.contrato_id);
-                      const cl = clientes.find(x => x.id === c?.cliente_id);
-                      const m = motos.find(x => x.id === c?.moto_id);
-                      return { placa: m?.placa ?? "—", nombre: cl?.nombre ?? "—", valor: p.valor, metodo: p.metodo };
-                    });
-                    const ef = pagosHoyLocal.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
-                    const tr = pagosHoyLocal.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
-                    const tot = ef + tr;
-                    const { error } = await cerrarCaja({
-                      fecha: hoy,
-                      efectivo: ef,
-                      transferencias: tr,
-                      total: tot,
-                      detalle,
-                      cerradoPor: profile?.id ?? null,
-                      notas: notasCaja.trim() || undefined,
-                    });
-                    setCerrandoCaja(false);
-                    if (error) setMsgCaja(`Error: ${error}`);
-                    else { setMsgCaja(`Caja cerrada — $${fmt(tot)}`); setNotasCaja(""); }
-                  }}
-                  style={{
-                    padding: "15px", borderRadius: 14, border: "none",
-                    cursor: cerrandoCaja || totalHoy === 0 ? "not-allowed" : "pointer",
-                    fontWeight: 800, fontSize: 15,
-                    background: totalHoy === 0 ? "#e2e8f0" : "#166534",
-                    color: totalHoy === 0 ? "#94a3b8" : "white",
-                    opacity: cerrandoCaja ? 0.7 : 1,
-                  }}
-                >
-                  {cerrandoCaja ? "Cerrando..." : `✅ Cerrar caja del día — $${fmt(totalHoy)}`}
-                </button>
+                {porGrupoCaja.map(g => (
+                  <div key={g.grupo} style={{ border: `1px solid ${COLOR_GRUPO_CAJA[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO_CAJA[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "#f8fafc" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO_CAJA[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                        <span style={{ fontSize: 12, color: "#64748b", marginLeft: 8 }}>Ef. ${fmt(g.efectivo)} · Tr. ${fmt(g.transfer)} · {g.count} pago{g.count !== 1 ? "s" : ""}</span>
+                      </div>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>${fmt(g.total)}</span>
+                    </div>
+                    {g.cerrada ? (
+                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "#dcfce7", border: "1px solid #86efac", fontSize: 12, fontWeight: 800, color: "#166534", textAlign: "center" }}>
+                        ✅ Cerrada — ${fmt(g.cerrada.total)}
+                      </div>
+                    ) : (
+                      <button
+                        disabled={cerrandoCaja !== null}
+                        onClick={() => cerrarGrupoCaja(g)}
+                        style={{
+                          width: "100%", padding: "11px", borderRadius: 10, border: "none",
+                          cursor: cerrandoCaja !== null ? "not-allowed" : "pointer",
+                          fontWeight: 800, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "white",
+                          opacity: cerrandoCaja === g.grupo ? 0.7 : 1,
+                        }}
+                      >
+                        {cerrandoCaja === g.grupo ? "Cerrando..." : `✅ Cerrar caja de ${g.grupo} — $${fmt(g.total)}`}
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

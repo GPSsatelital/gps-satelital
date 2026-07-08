@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 export type CajaDiaria = {
   id: string;
   fecha: string;
+  grupo: string;
   efectivo_total: number;
   transferencias_total: number;
   total: number;
@@ -38,6 +39,7 @@ export function useCaja() {
 
   async function cerrarCaja(params: {
     fecha: string;
+    grupo: string;
     efectivo: number;
     transferencias: number;
     total: number;
@@ -48,6 +50,7 @@ export function useCaja() {
     const { error } = await supabase.from("caja_diaria").upsert(
       {
         fecha: params.fecha,
+        grupo: params.grupo,
         efectivo_total: params.efectivo,
         transferencias_total: params.transferencias,
         total: params.total,
@@ -55,14 +58,15 @@ export function useCaja() {
         cerrado_por: params.cerradoPor,
         notas: params.notas ?? null,
       },
-      { onConflict: "fecha" }
+      { onConflict: "fecha,grupo" }
     );
     if (!error) cargarCajas();
     return { error: error?.message ?? null };
   }
 
-  function cajaDia(fecha: string): CajaDiaria | null {
-    return cajas.find(c => c.fecha === fecha) ?? null;
+  // Caja de un grupo específico en una fecha (cada portafolio se cierra por aparte).
+  function cajaDia(fecha: string, grupo: string): CajaDiaria | null {
+    return cajas.find(c => c.fecha === fecha && c.grupo === grupo) ?? null;
   }
 
   return { cajas, loading, cerrarCaja, cajaDia };

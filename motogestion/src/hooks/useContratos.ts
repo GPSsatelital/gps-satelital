@@ -33,6 +33,7 @@ export type Contrato = {
   base_inicial?: number;
   base_completada?: boolean;
   ahorro_acumulado?: number;
+  es_migrado?: boolean;
   contrato_pdf_url?: string | null;
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;

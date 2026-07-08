@@ -765,9 +765,18 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
     - **Mig `038_checks_y_guard.sql`** ⚠️ **pendiente de confirmar Success** — agrega 'En traspaso' y USADAS/OTRO a los checks de motos + unifica guard de roles a `mi_rol()`.
     - **LECCIÓN/REGLA NUEVA:** toda migración queda en el repo Y se corre en Supabase — las dos siempre. La causa raíz de la cascada de errores era la desincronización repo↔BD.
 
+### 🔴 FIX CRÍTICO DE CARTERA — CODEADO Y VERIFICADO, PENDIENTE DE DEPLOY (clasificador Bash caído al cierre)
+**Bug (reportado por el usuario con JHON FERNEY BOLAÑO):** `totalPagadoPeriodoActual` usaba la semana calendario lunes-domingo para Semanal → todo cliente con día de pago MIÉRCOLES aparecía EN MORA los lunes y martes aunque hubiera pagado (41 falsos "en mora" el mar 7-jul; Jhon: al día real, pero badge Mora + "4d sin pagar" + Paso 4 Recolección). Además `calcEstadoCuenta` (panel detalle) marcaba "Al día" con CUALQUIER abono sin mirar el monto, y `useAlertas` tenía su PROPIA copia con días crudos (mismo falso positivo en la campana).
+**Fix aplicado (4 archivos, `tsc -b` limpio, 11 casos trazados a mano contra el código — todos correctos):**
+- `cicloPago.ts`: `totalPagadoPeriodoActual` ahora usa el período REAL del contrato (mié→mié, lun→lun, fechas del mes para Quincenal/Mensual) + nueva `inicioVentanaPagosISO()` que acepta el prepago de víspera (paga martes su cuota del miércoles).
+- `CobrosView.calcEstadoCuenta`: compara MONTO vs `valorPeriodoReal` con la misma ventana (la firma ahora exige `valor` en los pagos).
+- `CobroDiarioView.calcEstadoPeriodico`: ventana de "pagado hasta" alineada.
+- `useAlertas`: mora/gabela/crítica ahora usan `calcularEstadoCartera`/`diasEnMora` con cuota de convenio — "mora crítica" = >3 días de mora REAL.
+**AL RETOMAR (en orden):** (1) `node motogestion/test_cartera.mjs` — esperado: casos 1,2,3,6,9,11 = al-dia · 4 = gabela · 5 = mora/1d · 7 = mora/5d · 8 = mora · 10 = mora; (2) **borrar `test_cartera.mjs`**; (3) `npm run build`; (4) commit + merge a main; (5) verificar en producción que JHON FERNEY sale Al día y que "En mora" baja de 41 a los reales.
+
 ### ⚠️ PENDIENTES INMEDIATOS al retomar
 1. ~~Confirmar mig 038~~ ✅ corrida (confirmado por el usuario).
-2. **Redesplegar Edge Function `manage-users`** (ÚNICO pendiente de infra): la pantalla Usuarios da "Edge Function returned a non-2xx" porque la versión desplegada es VIEJA (no conoce `action: "list"`). Pegar el contenido de `motogestion/supabase/functions/manage-users/index.ts` en Supabase → Edge Functions → manage-users → Deploy. (El usuario ya lo hizo antes por el Dashboard; si el Dashboard no deja editar código inline, usar la CLI `supabase functions deploy manage-users`.)
+2. **Redesplegar Edge Function `manage-users`** — ✅ HECHO por el usuario (pantalla Usuarios ya carga).
 3. **Probar tras 037/038:** que MECANICO siga usando taller, ANGELA registre pagos, editar una moto, y el flujo completo de recolección → la moto debe aparecer en Inmovilizaciones → "🔒 Motos retenidas" (nota: hay 3 recolecciones que quedaron a medias de la cadena de errores — contratos con gestión `recoleccion` pero aún Activos; rehacerlas desde el Panel Hoy).
 
 ### 🔲 PRÓXIMA TAREA ACORDADA: mensajes de WhatsApp editables desde Configuración

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { hoyISO, hoyDate } from "../utils/fecha";
+import { calcularEstadoCartera, diasEnMora } from "../utils/cicloPago";
 import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
@@ -70,40 +71,45 @@ export function useAlertas({
     const contratosActivos = contratos.filter(c => c.estado === "Activo");
 
     // ── 1. MORA CRÍTICA / MORA / GABELA ──────────────────────────────────────
+    // Usa la fuente única de cartera (calcularEstadoCartera/diasEnMora) — antes contaba
+    // días crudos desde el último pago, y un cliente de día miércoles al día generaba
+    // alerta de "mora" los lunes/martes (mismo falso positivo que tenía el Panel Hoy).
     for (const c of contratosActivos) {
       const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
-      const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-      const dias = ultimo
-        ? Math.floor((ahora.getTime() - new Date(ultimo.fecha + "T00:00:00").getTime()) / 86400000)
-        : 999;
+      const convenioActivo = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo");
+      const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
+      const estadoCartera = calcularEstadoCartera(c, pagosC, ahora, cuotaConvenio);
       const cliente = clientes.find(cl => cl.id === c.cliente_id);
       const moto = motos.find(m => m.id === c.moto_id);
       const nombre = cliente?.nombre ?? "Sin nombre";
       const placa = moto?.placa ?? "";
 
-      if (dias > 7) {
-        alertas.push({
-          id: `mora-critica-${c.id}`,
-          tipo: "mora_critica",
-          nivel: "critico",
-          titulo: `Mora crítica — ${nombre.toUpperCase()}`,
-          detalle: `${dias === 999 ? "Sin pagos registrados" : `${dias} días sin pago`}${placa ? ` · ${placa}` : ""} — requiere recolección`,
-          clienteId: c.cliente_id,
-          contratoId: c.id,
-          motoId: c.moto_id ?? undefined,
-        });
-      } else if (dias > 2) {
-        alertas.push({
-          id: `mora-${c.id}`,
-          tipo: "mora_critica",
-          nivel: "alerta",
-          titulo: `En mora — ${nombre.toUpperCase()}`,
-          detalle: `${dias} días sin pago${placa ? ` · ${placa}` : ""}`,
-          clienteId: c.cliente_id,
-          contratoId: c.id,
-          motoId: c.moto_id ?? undefined,
-        });
-      } else if (dias === 2) {
+      if (estadoCartera === "mora") {
+        const dias = diasEnMora(c, pagosC, ahora, cuotaConvenio);
+        if (dias > 3) {
+          alertas.push({
+            id: `mora-critica-${c.id}`,
+            tipo: "mora_critica",
+            nivel: "critico",
+            titulo: `Mora crítica — ${nombre.toUpperCase()}`,
+            detalle: `${dias} días de mora${placa ? ` · ${placa}` : ""} — requiere recolección`,
+            clienteId: c.cliente_id,
+            contratoId: c.id,
+            motoId: c.moto_id ?? undefined,
+          });
+        } else {
+          alertas.push({
+            id: `mora-${c.id}`,
+            tipo: "mora_critica",
+            nivel: "alerta",
+            titulo: `En mora — ${nombre.toUpperCase()}`,
+            detalle: `${dias} día${dias !== 1 ? "s" : ""} de mora${placa ? ` · ${placa}` : ""}`,
+            clienteId: c.cliente_id,
+            contratoId: c.id,
+            motoId: c.moto_id ?? undefined,
+          });
+        }
+      } else if (estadoCartera === "gabela") {
         alertas.push({
           id: `gabela-${c.id}`,
           tipo: "gabela",

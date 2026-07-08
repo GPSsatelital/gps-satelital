@@ -74,9 +74,14 @@ export default function ModalDocumentosContrato({ contrato: contratoInicial, cli
               </div>
 
               {url && (
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
-                  🔗 Ver documento actual
-                </a>
+                <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
+                    👁 Ver
+                  </a>
+                  <a href={`${url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                    ⬇ Descargar
+                  </a>
+                </div>
               )}
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

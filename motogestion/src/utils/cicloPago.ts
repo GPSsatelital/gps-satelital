@@ -13,6 +13,7 @@ export type ContratoCiclo = {
   tarifa_domingo?: number;
   ahorro_domingo?: number;
   valor_semanal?: number;
+  es_migrado?: boolean;
 };
 
 export type EstadoCartera = "al-dia" | "gabela" | "mora";
@@ -254,6 +255,10 @@ export function calcularAhorroAplicado(
 // Un contrato está en prorrateo solo si fue entregado DESPUÉS del último día de pago
 // y aún no registra pagos.
 export function estaEnProrrateo(contrato: ContratoCiclo, sinPagosNunca: boolean): boolean {
+  // Los contratos MIGRADOS nunca están en prorrateo: ya traían ciclos anteriores (su
+  // arqueo capturó su estado), no es su "primera semana". El prorrateo solo aplica a
+  // contratos genuinamente nuevos creados por el wizard.
+  if (contrato.es_migrado) return false;
   if (contrato.forma_pago === "Diario" || !contrato.fecha_entrega || !sinPagosNunca) return false;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);

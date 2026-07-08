@@ -4,9 +4,11 @@ import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
-import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado } from "../hooks/useDocumentos";
+import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado, type FirmasDoc } from "../hooks/useDocumentos";
+import { htmlAPdfBlob, urlADataUrl } from "../utils/pdf";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
+import LectorHuella from "../components/LectorHuella";
 import ModalConvenio from "../components/ModalConvenio";
 import { calcularProrrateoInicial, proximoDiaPago } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
@@ -129,6 +131,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const [firmaPagare, setFirmaPagare] = useState<string | null>(null);
   const [firmaPagareAcomp, setFirmaPagareAcomp] = useState<string | null>(null);
   const [leido4, setLeido4] = useState(false);
+  // Huellas (se comparten entre contrato y pagaré — misma persona, mismo dedo).
+  // Cliente: se reutiliza la del registro; solo si falta se captura fresca aquí.
+  // Acompañante: se captura en el momento de firmar.
+  const [huellaClienteFresh, setHuellaClienteFresh] = useState<string | null>(null);
+  const [huellaAcompanante, setHuellaAcompanante] = useState<string | null>(null);
 
   // Step 5 certificado
   const [fotoCert, setFotoCert] = useState<File | null>(null);
@@ -206,6 +213,31 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     return data.publicUrl;
   }
 
+  async function subirBlob(blob: Blob, path: string, contentType: string): Promise<string | null> {
+    const { error } = await supabase.storage.from("documentos").upload(path, blob, { contentType, upsert: true });
+    if (error) return null;
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  // Arma el objeto de firmas/huellas para incrustar en el PDF. La huella del cliente se
+  // reutiliza de su registro (autorizacion_datos_huella_url); si no existe, la fresca
+  // capturada aquí. La huella se convierte a dataURL para que html2canvas no la pierda.
+  async function construirFirmas(firmaCliente: string, firmaAcomp: string): Promise<FirmasDoc> {
+    const huellaRegistro = clienteActual?.autorizacion_datos_huella_url
+      ? await urlADataUrl(clienteActual.autorizacion_datos_huella_url)
+      : null;
+    const selloFecha = `Firmado digitalmente el ${new Date().toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" })}`;
+    return {
+      firmaCliente,
+      huellaCliente: huellaRegistro ?? huellaClienteFresh,
+      firmaAcompanante: firmaAcomp,
+      huellaAcompanante,
+      folio: (contratoId ?? "").slice(0, 8).toUpperCase(),
+      selloFecha,
+    };
+  }
+
   // ── STEP 1: Guardar contrato ──────────────────────────────────────────────
   async function handleStep1() {
     if (!form.cliente_id) { setError("Selecciona un cliente."); return; }
@@ -279,13 +311,20 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!leido3) { setError("Confirma que has leído el documento."); return; }
     if (!firmaContrato) { setError("Dibuja la firma del cliente antes de continuar."); return; }
     if (!firmaContratoAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
-    if (!contratoId) return;
+    if (!contratoId || !contratoData || !clienteActual) return;
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
-      const url = await subirFirmaCanvas(firmaContrato, `firmas/${contratoId}/contrato.png`);
+      // Se guarda la firma cruda (auditoría) y se genera el PDF congelado del contrato
+      // con firma + huella de ambos incrustadas.
+      await subirFirmaCanvas(firmaContrato, `firmas/${contratoId}/contrato.png`);
       await subirFirmaCanvas(firmaContratoAcomp, `firmas/${contratoId}/contrato_acompanante.png`);
+      const firmas = await construirFirmas(firmaContrato, firmaContratoAcomp);
+      const html = generarHTMLContrato(contratoData, clienteActual, motoActual ?? null, firmas);
+      const pdf = await htmlAPdfBlob(html);
+      const url = await subirBlob(pdf, `contratos/${contratoId}/contrato.pdf`, "application/pdf");
       if (url) await supabase.from("contratos").update({ contrato_pdf_url: url }).eq("id", contratoId);
+      else { setError("No se pudo generar el PDF del contrato. Intenta de nuevo."); return; }
       setStep(4);
     } finally {
       setGuardando(false);
@@ -297,13 +336,18 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!leido4) { setError("Confirma que has leído el documento."); return; }
     if (!firmaPagare) { setError("Dibuja la firma del cliente antes de continuar."); return; }
     if (!firmaPagareAcomp) { setError("Dibuja la firma del acompañante antes de continuar."); return; }
-    if (!contratoId) return;
+    if (!contratoId || !contratoData || !clienteActual) return;
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
-      const url = await subirFirmaCanvas(firmaPagare, `firmas/${contratoId}/pagare.png`);
+      await subirFirmaCanvas(firmaPagare, `firmas/${contratoId}/pagare.png`);
       await subirFirmaCanvas(firmaPagareAcomp, `firmas/${contratoId}/pagare_acompanante.png`);
+      const firmas = await construirFirmas(firmaPagare, firmaPagareAcomp);
+      const html = generarHTMLPagare(contratoData, clienteActual, firmas);
+      const pdf = await htmlAPdfBlob(html);
+      const url = await subirBlob(pdf, `contratos/${contratoId}/pagare.pdf`, "application/pdf");
       if (url) await supabase.from("contratos").update({ pagare_pdf_url: url }).eq("id", contratoId);
+      else { setError("No se pudo generar el PDF del pagaré. Intenta de nuevo."); return; }
       setStep(5);
     } finally {
       setGuardando(false);
@@ -651,6 +695,17 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </label>
               <CanvasFirma key="firma-contrato-cliente" label="Firma del cliente" onChange={setFirmaContrato} />
               <CanvasFirma key="firma-contrato-acomp" label="Firma del acompañante" onChange={setFirmaContratoAcomp} />
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
+                {clienteActual.autorizacion_datos_huella_url ? (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                    ✔ Se usará la huella registrada del cliente
+                  </div>
+                ) : (
+                  <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
+                )}
+                <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
+              </div>
             </div>
           )}
 
@@ -668,6 +723,23 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </label>
               <CanvasFirma key="firma-pagare-cliente" label="Firma del cliente" onChange={setFirmaPagare} />
               <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" onChange={setFirmaPagareAcomp} />
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
+                {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) && huellaAcompanante ? (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                    ✔ Se usarán las huellas capturadas en el paso anterior
+                  </div>
+                ) : (
+                  <>
+                    {!clienteActual.autorizacion_datos_huella_url && !huellaClienteFresh && (
+                      <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
+                    )}
+                    {!huellaAcompanante && (
+                      <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
 

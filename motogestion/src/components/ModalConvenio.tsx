@@ -12,6 +12,10 @@ interface Props {
   motivoInicial?: string;
   // Oculta cerrar/cancelar — obliga a guardar el convenio antes de continuar.
   obligatorio?: boolean;
+  // Cuota del período actual (para poder ofrecer meterla dentro del convenio como alivio).
+  cuotaPeriodo?: number;
+  // Fecha hasta la que quedaría cubierto el período si se incluye la cuota de esta semana.
+  finPeriodoISO?: string;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -33,8 +37,9 @@ const labelStyle: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio }: Props) {
+export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
+  const [incluirSemana, setIncluirSemana] = useState(false);
   const [metaManual, setMetaManual] = useState("");
   const [metaCargada, setMetaCargada] = useState(false);
   const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
@@ -77,7 +82,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     cargarDeuda();
   }, [contratoId, metaFija]);
 
-  const meta = metaFija ?? (Number(metaManual) || 0);
+  // Opción de meter la cuota del período actual dentro del convenio (alivio único).
+  const puedeIncluirSemana = metaFija == null && !!cuotaPeriodo && cuotaPeriodo > 0 && !!finPeriodoISO;
+  const cuotaSemana = incluirSemana && puedeIncluirSemana ? (cuotaPeriodo ?? 0) : 0;
+  const metaBase = metaFija ?? (Number(metaManual) || 0);
+  const meta = metaBase + cuotaSemana;
   const cuotasCalc = modoFijar === "cuotas"
     ? Number(cuotasInput) || 0
     : (meta > 0 && Number(cuotaInput) > 0 ? Math.ceil(meta / Number(cuotaInput)) : 0);
@@ -126,6 +135,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       estado: "activo",
       concepto: motivo.trim(),
       aprobado_por: null,
+      cubre_periodo_hasta: cuotaSemana > 0 ? (finPeriodoISO ?? null) : null,
     });
 
     setGuardando(false);
@@ -196,6 +206,18 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
               )}
             </div>
+
+            {puedeIncluirSemana && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 12, background: incluirSemana ? "#eff6ff" : "#f8fafc", border: `1px solid ${incluirSemana ? "#bfdbfe" : "#e2e8f0"}`, cursor: "pointer" }}>
+                <input type="checkbox" checked={incluirSemana} onChange={e => setIncluirSemana(e.target.checked)} style={{ width: 18, height: 18, marginTop: 1, accentColor: "#0284c7", flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: "#334155", fontWeight: 600 }}>
+                  Incluir la cuota de esta semana (<strong>$ {fmt(cuotaPeriodo ?? 0)}</strong>) dentro del convenio.
+                  <span style={{ display: "block", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
+                    Esta semana no la paga aparte ni cuenta mora; queda financiada en el convenio y arranca normal la próxima.
+                  </span>
+                </span>
+              </label>
+            )}
 
             <div>
               <div style={labelStyle}>Fijar por</div>

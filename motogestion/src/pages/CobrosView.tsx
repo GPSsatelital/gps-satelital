@@ -36,7 +36,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
-import { hoyISO, hoyDate } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -611,6 +611,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convError, setConvError] = useState<string | null>(null);
   const [convExito, setConvExito] = useState(false);
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
+  const [convIncluirSemana, setConvIncluirSemana] = useState(false);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Edición inline de deuda existente
@@ -746,8 +747,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora.
       const convenioActivo = convenioActivoDelContrato(contrato.id);
       const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
+      // Si el convenio absorbió la cuota de este período (alivio), ese período va "al día".
+      const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
 
-      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio);
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       const saldoAFavor = confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
@@ -1212,12 +1215,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setConvError(null);
     setProcesando(true);
     try {
+      // Si se incluye la cuota de esta semana: se suma al total a diferir y se marca
+      // hasta cuándo queda cubierto el período (para que esa semana no cuente mora).
+      const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
+      const cuotaSemana = convIncluirSemana && contratoSel ? valorPeriodoReal(contratoSel) : 0;
+      const cubrePeriodoHasta = convIncluirSemana && contratoSel
+        ? fechaISO(proximoDiaPago(contratoSel, hoyDate()))
+        : null;
       const { error } = await crearConvenio(
-        contratoSeleccionadoId, Number(convDeudaTotal), Number(convCuota),
-        Number(convCuotas), convFechaLimite, convConcepto, profile.id
+        contratoSeleccionadoId, Number(convDeudaTotal) + cuotaSemana, Number(convCuota),
+        Number(convCuotas), convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta
       );
       if (error) { setConvError(error); return; }
-      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto("");
+      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false);
       setConvExito(true); setMostrarFormConvenio(false);
       setTimeout(() => setConvExito(false), 3000);
     } finally {
@@ -1733,6 +1743,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
                       </div>
                       <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
+                      {contratoDetalle && contratoDetalle.forma_pago !== "Diario" && (
+                        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, background: convIncluirSemana ? "#eff6ff" : "#f1f5f9", border: `1px solid ${convIncluirSemana ? "#bfdbfe" : "#e2e8f0"}`, cursor: "pointer" }}>
+                          <input type="checkbox" checked={convIncluirSemana} onChange={e => setConvIncluirSemana(e.target.checked)} style={{ width: 18, height: 18, marginTop: 1, accentColor: "#0284c7", flexShrink: 0 }} />
+                          <span style={{ fontSize: 12.5, color: "#334155", fontWeight: 600, minWidth: 0 }}>
+                            Incluir la cuota de esta semana (<strong>$ {fmt(valorPeriodoReal(contratoDetalle))}</strong>) dentro del convenio.
+                            <span style={{ display: "block", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
+                              Esta semana no la paga aparte ni cuenta mora; arranca normal la próxima.
+                              {convIncluirSemana && <> Total a diferir: <strong>$ {fmt((Number(convDeudaTotal) || 0) + valorPeriodoReal(contratoDetalle))}</strong>.</>}
+                            </span>
+                          </span>
+                        </label>
+                      )}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                         <MoneyInput label="Cuota por período" value={convCuota} onChange={setConvCuota} />
                         <div>

@@ -112,8 +112,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         // convenio activo cuenta como parte de lo exigido del período.
         const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
         const cuotaConvenio = convenioAct?.cuota_por_periodo ?? 0;
-        if (calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio) !== "mora") return [];
-        const dias = diasEnMora(c, pagosC, hoyDate, cuotaConvenio);
+        const periodoCubierto = !!(convenioAct?.cubre_periodo_hasta && convenioAct.cubre_periodo_hasta >= hoyISOStr);
+        if (calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto) !== "mora") return [];
+        const dias = diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto);
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);

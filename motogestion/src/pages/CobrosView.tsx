@@ -8,6 +8,7 @@ import {
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
+  type Aplicado,
 } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -1762,11 +1763,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 // Desglose de a dónde se aplicó el pago. Cuota + Deuda + Convenio + Saldo a
                 // favor suman el valor total; el Ahorro es la parte de la cuota que es ahorro
                 // del cliente (va DENTRO de la cuota, no se suma aparte).
+                // Se leen las columnas nuevas; si están en 0 (pago viejo) se usa el jsonb
+                // legacy `aplicado` ({semana, deuda, convenio, saldo, ahorro}) como respaldo.
+                const leg = p.aplicado ?? ({} as Partial<Aplicado>);
+                const cuota = (p.aplicado_tarifa ?? 0) || (leg.semana ?? 0);
+                const deudaAp = (p.aplicado_deuda ?? 0) || (leg.deuda ?? 0);
+                const convAp = (p.aplicado_convenio ?? 0) || (leg.convenio ?? 0);
+                const saldoAp = (p.aplicado_saldo_favor ?? 0) || (leg.saldo ?? 0);
+                const ahorroAp = (p.aplicado_ahorro ?? 0) || (leg.ahorro ?? 0);
                 const partes: string[] = [];
-                if ((p.aplicado_tarifa ?? 0) > 0) partes.push(`Cuota $${fmt(p.aplicado_tarifa ?? 0)}`);
-                if ((p.aplicado_deuda ?? 0) > 0) partes.push(`Deuda $${fmt(p.aplicado_deuda ?? 0)}`);
-                if ((p.aplicado_convenio ?? 0) > 0) partes.push(`Convenio $${fmt(p.aplicado_convenio ?? 0)}`);
-                if ((p.aplicado_saldo_favor ?? 0) > 0) partes.push(`Saldo a favor $${fmt(p.aplicado_saldo_favor ?? 0)}`);
+                if (cuota > 0) partes.push(`Cuota $${fmt(cuota)}`);
+                if (deudaAp > 0) partes.push(`Deuda $${fmt(deudaAp)}`);
+                if (convAp > 0) partes.push(`Convenio $${fmt(convAp)}`);
+                if (saldoAp > 0) partes.push(`Saldo a favor $${fmt(saldoAp)}`);
                 return (
                 <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -1784,11 +1793,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       )}
                     </div>
                   </div>
-                  {p.estado !== "Rechazado" && (partes.length > 0 || (p.aplicado_ahorro ?? 0) > 0) && (
+                  {p.estado !== "Rechazado" && (partes.length > 0 || ahorroAp > 0) && (
                     <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: 11, color: "#0369a1", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
                       <span style={{ color: "#94a3b8" }}>Se aplicó a:</span>
                       {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "#e0f2fe", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "#94a3b8" }}>sin desglose (pago antiguo)</span>}
-                      {(p.aplicado_ahorro ?? 0) > 0 && <span style={{ color: "#94a3b8", fontWeight: 400 }}>(de la cuota, ${fmt(p.aplicado_ahorro ?? 0)} fue ahorro)</span>}
+                      {ahorroAp > 0 && <span style={{ color: "#94a3b8", fontWeight: 400 }}>(de la cuota, ${fmt(ahorroAp)} fue ahorro)</span>}
                     </div>
                   )}
                 </div>

@@ -1082,14 +1082,14 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           <CanvasFirma
             label="Firma del cliente"
             modal
-            valorInicial={form.autorizacion_datos_firma_url ?? null}
+            valorInicial={data.autorizacion_datos_firma_url ?? null}
             onChange={(dataUrl) => update({
               autorizacion_datos_firma_url: dataUrl,
               autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
             })}
           />
           <div style={{ marginTop: 12 }}>
-            {form.autorizacion_datos_huella_url && !form.autorizacion_datos_huella_url.startsWith("data:") && (
+            {data.autorizacion_datos_huella_url && !data.autorizacion_datos_huella_url.startsWith("data:") && (
               <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
                 ✔ Huella ya registrada — capture de nuevo abajo solo si quiere reemplazarla
               </div>

@@ -693,8 +693,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el contrato de arrendamiento</span>
               </label>
-              <CanvasFirma key="firma-contrato-cliente" label="Firma del cliente" onChange={setFirmaContrato} />
-              <CanvasFirma key="firma-contrato-acomp" label="Firma del acompañante" onChange={setFirmaContratoAcomp} />
+              <CanvasFirma key="firma-contrato-cliente" label="Firma del cliente" modal opcional={false} onChange={setFirmaContrato} />
+              <CanvasFirma key="firma-contrato-acomp" label="Firma del acompañante" modal opcional={false} onChange={setFirmaContratoAcomp} />
               <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
                 {clienteActual.autorizacion_datos_huella_url ? (
@@ -721,8 +721,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el pagaré y carta de instrucciones</span>
               </label>
-              <CanvasFirma key="firma-pagare-cliente" label="Firma del cliente" onChange={setFirmaPagare} />
-              <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" onChange={setFirmaPagareAcomp} />
+              <CanvasFirma key="firma-pagare-cliente" label="Firma del cliente" modal opcional={false} onChange={setFirmaPagare} />
+              <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" modal opcional={false} onChange={setFirmaPagareAcomp} />
               <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
                 {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) && huellaAcompanante ? (

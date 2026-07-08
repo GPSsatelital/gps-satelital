@@ -6,6 +6,7 @@ interface Props {
   onChange: (data: string | null) => void;
   modal?: boolean;
   valorInicial?: string | null;
+  opcional?: boolean; // muestra el aviso "(opcional)" en modo modal — false cuando es obligatoria (wizard)
 }
 
 // Componente del modal de firma — declarado fuera de CanvasFirma para que React lo trate
@@ -152,7 +153,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
   );
 }
 
-export default function CanvasFirma({ label, onChange, modal = false, valorInicial = null }: Props) {
+export default function CanvasFirma({ label, onChange, modal = false, valorInicial = null, opcional = true }: Props) {
   const [firmaSaved, setFirmaSaved] = useState<string | null>(valorInicial);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -203,7 +204,7 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
       <>
         <div style={{ ...labelStyle, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
           {label}
-          <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>(opcional — puede completarse después)</span>
+          {opcional && <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>(opcional — puede completarse después)</span>}
         </div>
         <div
           onClick={() => setModalOpen(true)}

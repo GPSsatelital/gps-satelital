@@ -436,6 +436,105 @@ export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto:
   `;
 }
 
+// ACUERDO DE PAGO (convenio) — calcado del documento real de Club Moteros de la Costa.
+// Tabla de deuda por concepto (de las deudas registradas del cliente) + compromiso de
+// pagar una cuota adicional a la tarifa hasta saldar. Firma + huella del cliente
+// (reutilizadas del registro — antes la huella se hacía a mano en papel).
+const LABEL_CONCEPTO_DEUDA: Record<string, string> = {
+  tarifa_atrasada: "Saldo tarifas atrasadas",
+  daño_vehiculo: "Restauración del vehículo",
+  multa_recoleccion: "Multa por inmovilización",
+  prestamo_repuesto: "Préstamo para compra de repuestos",
+  prestamo_eventualidad: "Préstamo por eventualidad",
+  fotomulta: "Fotomultas",
+  otro: "Otros conceptos",
+};
+
+export function generarHTMLAcuerdoPago(
+  cliente: Cliente,
+  moto: Moto | null,
+  deudas: Array<{ concepto: string; monto_pendiente: number }>,
+  convenio: { deuda_total: number; cuota_por_periodo: number; numero_cuotas: number },
+): string {
+  const hoy = fmtFecha(hoyISO());
+  // Agrupa las deudas pendientes por concepto.
+  const porConcepto = new Map<string, number>();
+  for (const d of deudas) {
+    porConcepto.set(d.concepto, (porConcepto.get(d.concepto) ?? 0) + (d.monto_pendiente ?? 0));
+  }
+  const sumDeudas = [...porConcepto.values()].reduce((a, v) => a + v, 0);
+  const filas: Array<{ label: string; valor: number }> = [];
+  for (const [concepto, valor] of porConcepto) {
+    if (valor > 0) filas.push({ label: LABEL_CONCEPTO_DEUDA[concepto] ?? concepto, valor });
+  }
+  // Si el convenio incluyó la cuota del período (queda financiada), la diferencia aparece
+  // como una fila más para que el total del documento coincida con el convenio.
+  const incluido = convenio.deuda_total - sumDeudas;
+  if (incluido > 0) filas.push({ label: "Cuota de período incluida en el acuerdo", valor: incluido });
+  const total = convenio.deuda_total;
+
+  return `
+    <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;line-height:1.55;padding:32px;max-width:700px;margin:auto">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Club Moteros de la Costa</div>
+      </div>
+      <div style="margin-bottom:14px">Cartagena, ${hoy}.</div>
+      <div style="text-align:center;font-size:15px;font-weight:800;margin:18px 0">ACUERDO DE PAGO</div>
+
+      <div style="margin-bottom:6px"><strong>PLACA MOTOCICLETA:</strong> ${moto?.placa ?? "—"}</div>
+      <div style="margin-bottom:6px"><strong>CONDUCTOR:</strong> ${cliente.nombre.toUpperCase()}</div>
+
+      <div style="font-weight:700;text-align:center;margin:16px 0 6px">DEUDA PENDIENTE</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px">
+        <thead>
+          <tr style="background:#dbeafe">
+            <th style="padding:8px 10px;border:1px solid #94a3b8;text-align:left">CONCEPTO</th>
+            <th style="padding:8px 10px;border:1px solid #94a3b8;text-align:right;width:30%">VALOR</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filas.map(f => `
+            <tr>
+              <td style="padding:7px 10px;border:1px solid #cbd5e1">${f.label}</td>
+              <td style="padding:7px 10px;border:1px solid #cbd5e1;text-align:right">$ ${fmt(f.valor)}</td>
+            </tr>`).join("")}
+          <tr style="background:#dbeafe;font-weight:800">
+            <td style="padding:8px 10px;border:1px solid #94a3b8">TOTAL</td>
+            <td style="padding:8px 10px;border:1px solid #94a3b8;text-align:right">$ ${fmt(total)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="text-align:justify;margin-bottom:14px">
+        Se realiza acuerdo de pago con el/la señor(a) <strong>${cliente.nombre.toUpperCase()}</strong> con
+        C.C. <strong>${cliente.cedula}</strong>, el cual se compromete a realizar un pago de
+        <strong>$ ${fmt(convenio.cuota_por_periodo)} adicionales a su tarifa</strong> (en ${convenio.numero_cuotas} cuotas)
+        hasta saldar la deuda pendiente.
+      </div>
+
+      <div style="text-align:justify;margin-bottom:14px">
+        Ante cualquier incumplimiento de este acuerdo, se procederá con la recolección del vehículo y la posible
+        terminación del contrato.
+      </div>
+
+      <div style="margin:20px 0 30px">Acepto cabalmente.</div>
+
+      <div style="display:flex;gap:24px;align-items:flex-end;margin-top:20px">
+        <div style="flex:1;text-align:center">
+          ${cajaFirma(cliente.autorizacion_datos_firma_url)}
+          <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:11px">
+            ${cliente.nombre.toUpperCase()}<br/>C.C. ${cliente.cedula} · Firma
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Huella</div>
+          ${cajaHuella(cliente.autorizacion_datos_huella_url)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   const fechaAutorizacion = cliente.autorizacion_datos_fecha
     ? fmtFecha(cliente.autorizacion_datos_fecha.slice(0, 10))

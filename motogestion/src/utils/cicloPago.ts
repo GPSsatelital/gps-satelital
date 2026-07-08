@@ -131,7 +131,12 @@ export function calcularEstadoCartera(
   pagosConfirmados: Array<{ fecha: string; valor: number }>,
   hoy: Date,
   cuotaConvenio = 0,
+  // periodoCubierto: al crear un convenio se puede meter la cuota de la semana actual DENTRO
+  // del convenio (alivio único). Mientras ese período esté cubierto, no cuenta como mora ni
+  // se cobra la cuota normal aparte — ya está financiada en el convenio.
+  periodoCubierto = false,
 ): EstadoCartera {
+  if (periodoCubierto) return "al-dia";
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
   const fechaEntrega = contrato.fecha_entrega ?? null;
@@ -177,8 +182,9 @@ export function diasEnMora(
   pagosConfirmados: Array<{ fecha: string; valor: number }>,
   hoy: Date,
   cuotaConvenio = 0,
+  periodoCubierto = false,
 ): number {
-  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio) !== "mora") return 0;
+  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto) !== "mora") return 0;
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
   const inicio = inicioPeriodoActual(contrato, hoyDia);

@@ -9,7 +9,7 @@ import { useVisitas } from "../hooks/useVisitas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
-import { generarHTMLAutorizacionDatos } from "../hooks/useDocumentos";
+import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { htmlAPdfBlob } from "../utils/pdf";
 import { useAuth } from "../contexts/AuthContext";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
@@ -143,6 +143,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
   const [descargandoAut, setDescargandoAut] = useState(false);
+  const [descargandoAcuerdo, setDescargandoAcuerdo] = useState<string | null>(null);
 
   async function descargarAutorizacionPDF(cli: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
     if (descargandoAut) return;
@@ -157,6 +158,27 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       URL.revokeObjectURL(url);
     } finally {
       setDescargandoAut(false);
+    }
+  }
+
+  async function descargarAcuerdoPDF(
+    cv: Parameters<typeof generarHTMLAcuerdoPago>[3] & { id: string },
+    cli: Parameters<typeof generarHTMLAcuerdoPago>[0],
+    moto: Parameters<typeof generarHTMLAcuerdoPago>[1],
+    deudasContrato: Parameters<typeof generarHTMLAcuerdoPago>[2],
+  ) {
+    if (descargandoAcuerdo) return;
+    setDescargandoAcuerdo(cv.id);
+    try {
+      const blob = await htmlAPdfBlob(generarHTMLAcuerdoPago(cli, moto, deudasContrato, cv));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `acuerdo_pago_${cli.cedula || "cliente"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargandoAcuerdo(null);
     }
   }
   const { profile } = useAuth();
@@ -874,6 +896,19 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   </div>
                   <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: ec.color, transition: "width 0.5s" }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                  <div
+                    onClick={() => {
+                      if (descargandoAcuerdo) return;
+                      const moto = motos.find(m => m.id === contratosCliente.find(c => c.id === cv.contrato_id)?.moto_id) ?? null;
+                      const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado !== "pagada");
+                      descargarAcuerdoPDF(cv, cliente, moto, deudasContrato);
+                    }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: descargandoAcuerdo ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#166534", opacity: descargandoAcuerdo === cv.id ? 0.6 : 1 }}
+                  >
+                    {descargandoAcuerdo === cv.id ? "Generando PDF…" : "⬇ Descargar acuerdo de pago (PDF)"}
                   </div>
                 </div>
               </Card>

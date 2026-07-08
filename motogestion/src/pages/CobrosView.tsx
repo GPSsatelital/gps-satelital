@@ -612,20 +612,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convExito, setConvExito] = useState(false);
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
   const [convIncluirSemana, setConvIncluirSemana] = useState(false);
+  // Se fija UNO (cuota o número de cuotas) y el otro se calcula solo.
+  const [convModoFijar, setConvModoFijar] = useState<"cuotas" | "cuota">("cuotas");
 
   // Fecha límite del convenio calculada sola: el día de pago de la última cuota pactada
   // (avanza N períodos desde hoy respetando el día de pago). Editable — se recalcula si
-  // cambia el número de cuotas o el contrato; el funcionario puede ajustarla luego.
+  // cambian las cuotas/cuota/monto o el contrato; el funcionario puede ajustarla luego.
   useEffect(() => {
     if (!mostrarFormConvenio) return;
-    const n = Number(convCuotas);
     const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
-    if (!n || n <= 0 || !contratoSel) return;
+    if (!contratoSel) return;
+    const total = (Number(convDeudaTotal) || 0)
+      + (convIncluirSemana && contratoSel.forma_pago !== "Diario" ? valorPeriodoReal(contratoSel) : 0);
+    const n = convModoFijar === "cuotas"
+      ? (Number(convCuotas) || 0)
+      : (total > 0 && Number(convCuota) > 0 ? Math.ceil(total / Number(convCuota)) : 0);
+    if (!n || n <= 0) return;
     let d = hoyDate();
     for (let i = 0; i < n; i++) d = proximoDiaPago(contratoSel, d);
     setConvFechaLimite(fechaISO(d));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convCuotas, mostrarFormConvenio, contratoSeleccionadoId]);
+  }, [convCuotas, convCuota, convModoFijar, convDeudaTotal, convIncluirSemana, mostrarFormConvenio, contratoSeleccionadoId]);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Edición inline de deuda existente
@@ -975,6 +982,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const clienteDetalle = contratoDetalle ? clientes.find(cl => cl.id === contratoDetalle.cliente_id) : null;
   const motoDetalle = contratoDetalle ? motos.find(m => m.id === contratoDetalle.moto_id) : null;
 
+  // Cálculo del convenio: se fija cuota o número de cuotas y el otro se deduce; el sobrante
+  // queda en la última cuota (números enteros). Total incluye la cuota de la semana si se marca.
+  const convCuotaSemana = convIncluirSemana && contratoDetalle && contratoDetalle.forma_pago !== "Diario"
+    ? valorPeriodoReal(contratoDetalle) : 0;
+  const convTotal = (Number(convDeudaTotal) || 0) + convCuotaSemana;
+  const convCuotasCalc = convModoFijar === "cuotas"
+    ? (Number(convCuotas) || 0)
+    : (convTotal > 0 && Number(convCuota) > 0 ? Math.ceil(convTotal / Number(convCuota)) : 0);
+  const convCuotaCalc = convModoFijar === "cuota"
+    ? (Number(convCuota) || 0)
+    : (convCuotasCalc > 0 ? Math.ceil(convTotal / convCuotasCalc) : 0);
+  const convUltimaCuota = convCuotasCalc > 0 ? Math.max(convTotal - convCuotaCalc * (convCuotasCalc - 1), 0) : 0;
+
   const pagosContrato = contratoSeleccionadoId
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
@@ -1223,25 +1243,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   async function handleCrearConvenio() {
     if (procesando) return;
     if (!contratoSeleccionadoId || !profile) return;
-    if (!convDeudaTotal || !convCuota || !convCuotas || !convFechaLimite || !convConcepto.trim()) {
-      setConvError("Completa todos los campos."); return;
+    if (!convDeudaTotal || convCuotaCalc <= 0 || convCuotasCalc <= 0 || !convFechaLimite || !convConcepto.trim()) {
+      setConvError("Completa el monto, la cuota o número de cuotas, la fecha y el concepto."); return;
     }
     setConvError(null);
     setProcesando(true);
     try {
-      // Si se incluye la cuota de esta semana: se suma al total a diferir y se marca
-      // hasta cuándo queda cubierto el período (para que esa semana no cuente mora).
+      // El total ya incluye la cuota de la semana si se marcó (convTotal). Si se incluyó,
+      // se marca hasta cuándo queda cubierto el período (para que esa semana no cuente mora).
       const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
-      const cuotaSemana = convIncluirSemana && contratoSel ? valorPeriodoReal(contratoSel) : 0;
       const cubrePeriodoHasta = convIncluirSemana && contratoSel
         ? fechaISO(proximoDiaPago(contratoSel, hoyDate()))
         : null;
       const { error } = await crearConvenio(
-        contratoSeleccionadoId, Number(convDeudaTotal) + cuotaSemana, Number(convCuota),
-        Number(convCuotas), convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta
+        contratoSeleccionadoId, convTotal, convCuotaCalc,
+        convCuotasCalc, convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta
       );
       if (error) { setConvError(error); return; }
-      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false);
+      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false); setConvModoFijar("cuotas");
       setConvExito(true); setMostrarFormConvenio(false);
       setTimeout(() => setConvExito(false), 3000);
     } finally {
@@ -1777,15 +1796,38 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           </span>
                         </label>
                       )}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <MoneyInput label="Cuota por período" value={convCuota} onChange={setConvCuota} />
-                        <div>
-                          <div style={labelStyle}>Número de cuotas</div>
-                          <input type="number" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
+                      <div>
+                        <div style={labelStyle}>Fijar por</div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button type="button" onClick={() => setConvModoFijar("cuotas")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuotas" ? "#0284c7" : "#e2e8f0"}`, background: convModoFijar === "cuotas" ? "#eff6ff" : "white", color: convModoFijar === "cuotas" ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>N° de cuotas</button>
+                          <button type="button" onClick={() => setConvModoFijar("cuota")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuota" ? "#0284c7" : "#e2e8f0"}`, background: convModoFijar === "cuota" ? "#eff6ff" : "white", color: convModoFijar === "cuota" ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Valor de la cuota</button>
                         </div>
                       </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        {convModoFijar === "cuotas" ? (
+                          <div>
+                            <div style={labelStyle}>Número de cuotas</div>
+                            <input type="number" min="1" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
+                          </div>
+                        ) : (
+                          <MoneyInput label="Valor de la cuota" value={convCuota} onChange={setConvCuota} placeholder="$ 100.000" />
+                        )}
+                        <div>
+                          <div style={labelStyle}>{convModoFijar === "cuotas" ? "Cuota (calculada)" : "N° de cuotas (calculado)"}</div>
+                          <div style={{ ...inputStyle, background: "#f1f5f9", color: "#334155", fontWeight: 700 }}>
+                            {convModoFijar === "cuotas" ? (convCuotaCalc > 0 ? `$ ${fmt(convCuotaCalc)}` : "—") : (convCuotasCalc > 0 ? convCuotasCalc : "—")}
+                          </div>
+                        </div>
+                      </div>
+                      {convCuotasCalc > 0 && convCuotaCalc > 0 && (
+                        <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dbeafe", border: "1px solid #bfdbfe", fontSize: 12.5, fontWeight: 700, color: "#1d4ed8" }}>
+                          {convCuotasCalc} cuota{convCuotasCalc > 1 ? "s" : ""} de $ {fmt(convCuotaCalc)}
+                          {convUltimaCuota !== convCuotaCalc && convCuotasCalc > 1 && <> · última: $ {fmt(convUltimaCuota)}</>}
+                          <span style={{ fontWeight: 400 }}> · Total: $ {fmt(convTotal)}</span>
+                        </div>
+                      )}
                       <div>
-                        <div style={labelStyle}>Fecha límite</div>
+                        <div style={labelStyle}>Fecha límite <span style={{ fontWeight: 400, color: "#94a3b8", fontSize: 12 }}>(automática — editable)</span></div>
                         <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
                       </div>
                       <div>

@@ -454,7 +454,7 @@ export function generarHTMLAcuerdoPago(
   cliente: Cliente,
   moto: Moto | null,
   deudas: Array<{ concepto: string; monto_pendiente: number }>,
-  convenio: { deuda_total: number; cuota_por_periodo: number; numero_cuotas: number },
+  convenio: { deuda_total: number; cuota_por_periodo: number; numero_cuotas: number; firma_url?: string | null },
 ): string {
   const hoy = fmtFecha(hoyISO());
   // Agrupa las deudas pendientes por concepto.
@@ -521,7 +521,7 @@ export function generarHTMLAcuerdoPago(
 
       <div style="display:flex;gap:24px;align-items:flex-end;margin-top:20px">
         <div style="flex:1;text-align:center">
-          ${cajaFirma(cliente.autorizacion_datos_firma_url)}
+          ${cajaFirma(convenio.firma_url ?? cliente.autorizacion_datos_firma_url)}
           <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:11px">
             ${cliente.nombre.toUpperCase()}<br/>C.C. ${cliente.cedula} · Firma
           </div>

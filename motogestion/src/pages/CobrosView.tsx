@@ -19,6 +19,9 @@ import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
+import CanvasFirma from "../components/CanvasFirma";
+import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
+import { supabase } from "../lib/supabase";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
@@ -614,6 +617,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convIncluirSemana, setConvIncluirSemana] = useState(false);
   // Se fija UNO (cuota o número de cuotas) y el otro se calcula solo.
   const [convModoFijar, setConvModoFijar] = useState<"cuotas" | "cuota">("cuotas");
+  const [convFirma, setConvFirma] = useState<string | null>(null); // firma del acuerdo (obligatoria)
+  const [verPreviewAcuerdo, setVerPreviewAcuerdo] = useState(false);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
 
   // Edición inline de deuda existente
@@ -1240,6 +1245,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!convDeudaTotal || convCuotaCalc <= 0 || convCuotasCalc <= 0 || !convFechaLimite || !convConcepto.trim()) {
       setConvError("Completa el monto, la cuota o número de cuotas, la fecha y el concepto."); return;
     }
+    if (!convFirma) { setConvError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
     setConvError(null);
     setProcesando(true);
     try {
@@ -1249,12 +1255,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       const cubrePeriodoHasta = convIncluirSemana && contratoSel
         ? fechaISO(proximoDiaPago(contratoSel, hoyDate()))
         : null;
+      // Sube la firma del acuerdo a Storage (bucket documentos).
+      const path = `convenios/${contratoSeleccionadoId}/acuerdo_${Date.now()}.png`;
+      const blob = await (await fetch(convFirma)).blob();
+      const { error: errSub } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/png", upsert: true });
+      if (errSub) { setConvError("No se pudo subir la firma: " + errSub.message); return; }
+      const firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
       const { error } = await crearConvenio(
         contratoSeleccionadoId, convTotal, convCuotaCalc,
-        convCuotasCalc, convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta
+        convCuotasCalc, convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta, firmaUrl
       );
       if (error) { setConvError(error); return; }
-      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false); setConvModoFijar("cuotas");
+      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false); setConvModoFijar("cuotas"); setConvFirma(null); setVerPreviewAcuerdo(false);
       setConvExito(true); setMostrarFormConvenio(false);
       setTimeout(() => setConvExito(false), 3000);
     } finally {
@@ -1845,9 +1857,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={labelStyle}>Concepto / Motivo</div>
                         <input style={inputStyle} value={convConcepto} onChange={e => setConvConcepto(e.target.value)} placeholder="Descripción del convenio..." />
                       </div>
+
+                      {/* Previsualización del acuerdo + firma obligatoria del cliente */}
+                      <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+                        <button type="button" onClick={() => setVerPreviewAcuerdo(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
+                          {verPreviewAcuerdo ? "Ocultar acuerdo" : "👁 Ver acuerdo de pago (para que el cliente lo lea)"}
+                        </button>
+                        {verPreviewAcuerdo && clienteDetalle && (
+                          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "white" }}
+                            dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }) }} />
+                        )}
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Firma del cliente (obligatoria para crear el convenio):</div>
+                        <CanvasFirma key="firma-acuerdo" label="Firma del cliente" modal opcional={false} onChange={setConvFirma} />
+                      </div>
+
                       {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
                       {convExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
-                      <button onClick={handleCrearConvenio} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
+                      <button onClick={handleCrearConvenio} disabled={procesando || !convFirma} style={{ ...primaryBtn, opacity: procesando || !convFirma ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
                     </div>
                   )}
                 </div>

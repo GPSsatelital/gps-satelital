@@ -19,6 +19,13 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hasDrawn = useRef(false);
 
+  // Marca "modo firma" mientras el modal está abierto: aquí SÍ se permiten los clics del
+  // lápiz (para tocar Aceptar/Repetir); fuera de aquí el filtro de lápiz los ignora.
+  useEffect(() => {
+    document.body.dataset.firmando = "1";
+    return () => { delete document.body.dataset.firmando; };
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;

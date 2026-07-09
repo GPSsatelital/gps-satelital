@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
 import { useSubadminScope } from "./hooks/useSubadminScope";
 import { MODULOS_SIEMPRE } from "./lib/modulos";
+import { instalarFiltroLapiz } from "./utils/filtroLapiz";
 import BusquedaGlobal from "./components/BusquedaGlobal";
 import { useClientes } from "./hooks/useClientes";
 import { useMotos } from "./hooks/useMotos";
@@ -697,5 +698,8 @@ function Shell() {
 }
 
 export default function App() {
+  // Filtro de lápiz: el lápiz de la tableta solo dibuja la firma; sus clics no activan
+  // botones (evita clics involuntarios). Solo aplica si la tableta se reporta como "pen".
+  useEffect(() => instalarFiltroLapiz(), []);
   return <AuthProvider><Shell /></AuthProvider>;
 }

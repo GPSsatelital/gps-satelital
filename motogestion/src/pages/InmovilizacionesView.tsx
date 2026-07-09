@@ -11,6 +11,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import {
   calcularEstadoCartera,
+  cuotaConvenioDelPeriodo,
   diasEnMora,
   valorPeriodoReal,
   totalPagadoPeriodoActual,
@@ -111,7 +112,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         // "días sin pago" en bruto para semanal/quincenal/mensual). La cuota del
         // convenio activo cuenta como parte de lo exigido del período.
         const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
-        const cuotaConvenio = convenioAct?.cuota_por_periodo ?? 0;
+        const cuotaConvenio = cuotaConvenioDelPeriodo(convenioAct, c, hoyDate);
         const periodoCubierto = !!(convenioAct?.cubre_periodo_hasta && convenioAct.cubre_periodo_hasta >= hoyISOStr);
         if (calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto) !== "mora") return [];
         const dias = diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto);

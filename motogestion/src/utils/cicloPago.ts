@@ -123,6 +123,23 @@ export function totalPagadoPeriodoActual(
 // Estado de cartera (mora/gabela/al día) para contratos Semanal/Quincenal/Mensual.
 // TODOS usan el período real del contrato (ver totalPagadoPeriodoActual): Semanal por
 // día de la semana, Quincenal/Mensual por fechas del mes.
+// Cuota del convenio que se EXIGE en el período actual. Un convenio empieza a exigirse
+// desde el período en que se creó en adelante — NO en un período ya vencido antes de
+// hacerlo (ej. si el miércoles no pagó y el convenio se hizo el jueves, esa semana solo
+// debe su cuota normal; el abono del convenio arranca el próximo día de pago).
+export function cuotaConvenioDelPeriodo(
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null } | null | undefined,
+  contrato: ContratoCiclo,
+  hoy: Date,
+): number {
+  const cuota = convenio?.cuota_por_periodo ?? 0;
+  if (!convenio || cuota <= 0) return 0;
+  const inicio = inicioPeriodoActual(contrato, hoy);
+  const inicioISO = inicio.toISOString().slice(0, 10);
+  const creadoISO = (convenio.created_at || "").slice(0, 10);
+  return creadoISO && creadoISO <= inicioISO ? cuota : 0;
+}
+
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").

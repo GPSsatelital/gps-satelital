@@ -104,10 +104,18 @@ export function useConvenios() {
     return { error: error?.message ?? null };
   }
 
+  // Elimina un convenio creado por error (solo debe llamarse para ADMIN/ADMIN_PRINCIPAL,
+  // se controla en la UI). Sirve para corregir errores humanos — luego se recrea bien.
+  async function eliminarConvenio(convenioId: string) {
+    const { error } = await supabase.from("convenios").delete().eq("id", convenioId);
+    if (!error) fetchConvenios();
+    return { error: error?.message ?? null };
+  }
+
   async function marcarIncumplido(convenioId: string) {
     const { error } = await supabase.from("convenios").update({ estado: "incumplido" }).eq("id", convenioId);
     return { error: error?.message ?? null };
   }
 
-  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido };
+  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio };
 }

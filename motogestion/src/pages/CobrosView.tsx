@@ -588,10 +588,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   // Payment form state
   const [valor, setValor] = useState("");
-  const [metodo, setMetodo] = useState<MetodoPago>("Efectivo");
+  // Punto 1 (registro dentro del contrato) = SOLO efectivo. Las transferencias se registran
+  // por la ventana flotante "Cobrar", que sí exige la foto del comprobante.
+  const [metodo] = useState<MetodoPago>("Efectivo");
   const [formError, setFormError] = useState<string | null>(null);
   const [formExito, setFormExito] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [confirmarPagoOpen, setConfirmarPagoOpen] = useState(false);
   const [recolectandoId] = useState<string | null>(null);
   const [recoleccionModal, setRecoleccionModal] = useState<{
     contratoId: string; clienteId: string; clienteNombre: string; motoId: string | null; placa: string;
@@ -1201,11 +1204,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  // Valida y abre la ventana flotante de confirmación (en vez de registrar directo).
+  function pedirConfirmacionPago() {
+    if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
+    if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
+    setFormError(null);
+    setConfirmarPagoOpen(true);
+  }
+
   async function handleRegistrarPago() {
     if (procesando) return;
     if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
     if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
-    if (!confirm(`¿Registrar este pago en efectivo de $${fmt(montoIngresado)}?`)) return;
     setFormError(null);
     setFormExito(false);
     setProcesando(true);
@@ -1219,6 +1229,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       );
       if (error) { setFormError(error); return; }
       setValor("");
+      setConfirmarPagoOpen(false);
       setFormExito(true);
       setTimeout(() => setFormExito(false), 3000);
     } finally {
@@ -1614,10 +1625,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
             <div style={{ flex: "3 1 160px" }}>
               <div style={labelStyle}>Método</div>
-              <select style={inputStyle} value={metodo} onChange={e => setMetodo(e.target.value as MetodoPago)}>
-                <option value="Efectivo">Efectivo (confirma automático)</option>
-                <option value="Transferencia">Transferencia (queda pendiente)</option>
-              </select>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534", fontWeight: 700 }}>
+                💵 Efectivo (confirma automático)
+              </div>
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Para transferencia usa el botón "💵 Cobrar" (pide la foto del comprobante).</div>
             </div>
           </div>
 
@@ -1656,10 +1667,45 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               ✅ Pago registrado.
             </div>
           )}
-          <button onClick={handleRegistrarPago} disabled={procesando} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px", opacity: procesando ? 0.6 : 1 }}>
-            {procesando ? "Registrando..." : "Registrar pago"}
+          <button onClick={pedirConfirmacionPago} disabled={procesando} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px", opacity: procesando ? 0.6 : 1 }}>
+            Registrar pago
           </button>
         </div>
+
+        {confirmarPagoOpen && contratoDetalle && (() => {
+          const cDup = contratos.find(c => c.id === contratoSeleccionadoId);
+          const cliDup = cDup ? clientes.find(c => c.id === cDup.cliente_id) : null;
+          const motDup = cDup ? motos.find(m => m.id === cDup.moto_id) : null;
+          const dup = pagosContrato.find(p => p.estado === "Confirmado" && Math.round(p.valor) === montoIngresado && p.fecha === hoyISO());
+          return (
+            <>
+              <div onClick={() => !procesando && setConfirmarPagoOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
+              <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "white", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.25)", boxSizing: "border-box" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Confirmar pago en efectivo</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, textTransform: "uppercase" }}>{cliDup?.nombre ?? ""} · {motDup?.placa ?? ""}</div>
+
+                <div style={{ textAlign: "center", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "14px 12px", marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>Vas a registrar</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "#166534" }}>$ {fmt(montoIngresado)}</div>
+                  <div style={{ fontSize: 12, color: "#166534" }}>en efectivo</div>
+                </div>
+
+                {dup && (
+                  <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: 12, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+                    ⚠️ Ya hay un pago de <strong>$ {fmt(montoIngresado)}</strong> registrado <strong>hoy</strong> para este cliente. ¿Seguro que quieres registrar otro igual?
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setConfirmarPagoOpen(false)} disabled={procesando} style={{ ...secondaryBtn, flex: 1 }}>Cancelar</button>
+                  <button onClick={handleRegistrarPago} disabled={procesando} style={{ ...primaryBtn, flex: 2, opacity: procesando ? 0.6 : 1 }}>
+                    {procesando ? "Registrando..." : "Confirmar y registrar"}
+                  </button>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Tabs secundarias */}
         <div style={card}>

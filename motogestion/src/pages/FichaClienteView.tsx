@@ -10,7 +10,6 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
-import { htmlAPdfBlob } from "../utils/pdf";
 import { useAuth } from "../contexts/AuthContext";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 
@@ -125,13 +124,29 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function imprimirAutorizacionDatos(cliente: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
-  const html = generarHTMLAutorizacionDatos(cliente);
+// Abre el documento en una pestaña y lanza Imprimir → el usuario elige "Guardar como PDF".
+// Es 100% confiable (render nativo del navegador) — no depende de html2canvas, que salía
+// en blanco. Se usa para documentos que se descargan a demanda (no se guardan en Storage).
+function imprimirDocumento(html: string, titulo: string) {
   const ventana = window.open("", "_blank");
   if (!ventana) return;
-  ventana.document.write(`<!DOCTYPE html><html><head><title>Autorización de tratamiento de datos</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+  ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
   ventana.document.close();
-  ventana.print();
+  ventana.focus();
+  setTimeout(() => ventana.print(), 300);
+}
+
+function imprimirAutorizacionDatos(cliente: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
+  imprimirDocumento(generarHTMLAutorizacionDatos(cliente), "Autorización de tratamiento de datos");
+}
+
+function imprimirAcuerdoPago(
+  cli: Parameters<typeof generarHTMLAcuerdoPago>[0],
+  moto: Parameters<typeof generarHTMLAcuerdoPago>[1],
+  deudas: Parameters<typeof generarHTMLAcuerdoPago>[2],
+  cv: Parameters<typeof generarHTMLAcuerdoPago>[3],
+) {
+  imprimirDocumento(generarHTMLAcuerdoPago(cli, moto, deudas, cv), "Acuerdo de pago");
 }
 
 export default function FichaClienteView({ clienteId, onNavigate }: {
@@ -142,45 +157,6 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
-  const [descargandoAut, setDescargandoAut] = useState(false);
-  const [descargandoAcuerdo, setDescargandoAcuerdo] = useState<string | null>(null);
-
-  async function descargarAutorizacionPDF(cli: Parameters<typeof generarHTMLAutorizacionDatos>[0]) {
-    if (descargandoAut) return;
-    setDescargandoAut(true);
-    try {
-      const blob = await htmlAPdfBlob(generarHTMLAutorizacionDatos(cli));
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `autorizacion_datos_${cli.cedula || "cliente"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setDescargandoAut(false);
-    }
-  }
-
-  async function descargarAcuerdoPDF(
-    cv: Parameters<typeof generarHTMLAcuerdoPago>[3] & { id: string },
-    cli: Parameters<typeof generarHTMLAcuerdoPago>[0],
-    moto: Parameters<typeof generarHTMLAcuerdoPago>[1],
-    deudasContrato: Parameters<typeof generarHTMLAcuerdoPago>[2],
-  ) {
-    if (descargandoAcuerdo) return;
-    setDescargandoAcuerdo(cv.id);
-    try {
-      const blob = await htmlAPdfBlob(generarHTMLAcuerdoPago(cli, moto, deudasContrato, cv));
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `acuerdo_pago_${cli.cedula || "cliente"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setDescargandoAcuerdo(null);
-    }
-  }
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -818,19 +794,11 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <div
-                onClick={() => imprimirAutorizacionDatos(cliente)}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
-              >
-                🖨️ Imprimir documento
-              </div>
-              <div
-                onClick={() => !descargandoAut && descargarAutorizacionPDF(cliente)}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: descargandoAut ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#166534", opacity: descargandoAut ? 0.6 : 1 }}
-              >
-                {descargandoAut ? "Generando PDF…" : "⬇ Descargar PDF"}
-              </div>
+            <div
+              onClick={() => imprimirAutorizacionDatos(cliente)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
+            >
+              🖨️ Imprimir / Guardar PDF
             </div>
           </Card>
         )}
@@ -901,14 +869,13 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
                   <div
                     onClick={() => {
-                      if (descargandoAcuerdo) return;
                       const moto = motos.find(m => m.id === contratosCliente.find(c => c.id === cv.contrato_id)?.moto_id) ?? null;
                       const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado !== "pagada");
-                      descargarAcuerdoPDF(cv, cliente, moto, deudasContrato);
+                      imprimirAcuerdoPago(cliente, moto, deudasContrato, cv);
                     }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: descargandoAcuerdo ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#166534", opacity: descargandoAcuerdo === cv.id ? 0.6 : 1 }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#166534" }}
                   >
-                    {descargandoAcuerdo === cv.id ? "Generando PDF…" : "⬇ Descargar acuerdo de pago (PDF)"}
+                    🖨️ Imprimir acuerdo de pago / Guardar PDF
                   </div>
                 </div>
               </Card>

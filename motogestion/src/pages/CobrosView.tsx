@@ -132,13 +132,17 @@ function PagoBadge({ estado }: { estado: PagoEstado }) {
 
 type EstadoCartera = "al-dia" | "gabela" | "mora";
 
+// Estilo/etiqueta por estado de cartera — fuente ÚNICA para el badge y la franja del detalle
+// (antes la franja usaba otra función que no contaba el convenio → decía "Gabela" mientras
+// el badge decía "Al día").
+const ESTADO_CARTERA_STYLE: Record<EstadoCartera, { bg: string; color: string; label: string }> = {
+  "al-dia": { bg: "#dcfce7", color: "#166534", label: "Al día" },
+  gabela: { bg: "#fef3c7", color: "#92400e", label: "Gabela" },
+  mora: { bg: "#fee2e2", color: "#991b1b", label: "Mora" },
+};
+
 function EstadoBadge({ estado }: { estado: EstadoCartera }) {
-  const map: Record<EstadoCartera, { bg: string; color: string; label: string }> = {
-    "al-dia": { bg: "#dcfce7", color: "#166534", label: "Al día" },
-    gabela: { bg: "#fef3c7", color: "#92400e", label: "Gabela" },
-    mora: { bg: "#fee2e2", color: "#991b1b", label: "Mora" },
-  };
-  const s = map[estado];
+  const s = ESTADO_CARTERA_STYLE[estado];
   return (
     <span
       style={{
@@ -1479,11 +1483,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         </div>
 
-        {/* Estado de cuenta */}
-        <div style={{ ...card, background: ec.bgEtiqueta, border: `1px solid ${ec.colorEtiqueta}44` }}>
+        {/* Estado de cuenta — la etiqueta/color usan estadoCartera (misma fuente que el badge),
+            no la función vieja, para que no diga "Gabela" mientras el badge dice "Al día". */}
+        <div style={{ ...card, background: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].bg, border: `1px solid ${ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color}44` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#334155", alignItems: "center" }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color: ec.colorEtiqueta }}>{ec.etiqueta}</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color }}>{ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].label}</span>
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
               <span>Próximo: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
             </div>

@@ -111,6 +111,7 @@ export default function LiquidacionesView() {
 
   async function handleRegistrarTaller() {
     if (!sel) return;
+    if (!confirm("¿Registrar la revisión de taller con estos daños y deudas? Se recalculará el saldo de la liquidación.")) return;
     setGuardando(true);
     const danosValidos = danos.filter((d) => d.concepto.trim());
     const deudasValidas = deudas.filter((d) => d.concepto.trim());
@@ -125,6 +126,7 @@ export default function LiquidacionesView() {
 
   async function handleGenerarDoc() {
     if (!sel || !nombreResp.trim()) { setMsg("Ingresa el nombre del responsable."); return; }
+    if (!confirm("¿Generar el documento de liquidación con estos datos?")) return;
     setGuardando(true);
     const { error } = await marcarDocumentoGenerado(sel.id, nombreResp, cargoResp);
     setGuardando(false);
@@ -136,6 +138,7 @@ export default function LiquidacionesView() {
 
   async function handleSubirFirmado(file: File) {
     if (!sel) return;
+    if (!confirm("¿Subir este documento firmado a la liquidación?")) return;
     setGuardando(true);
     const { error } = await subirDocumentoFirmado(sel.id, file);
     setGuardando(false);
@@ -145,6 +148,7 @@ export default function LiquidacionesView() {
 
   async function handleCerrar() {
     if (!sel || !profile) return;
+    if (!confirm("¿Cerrar definitivamente esta liquidación? Esta acción define el saldo final, el estado del contrato y de la moto, y no se puede deshacer.")) return;
     setGuardando(true);
     const { error } = await confirmarCierre(sel.id, profile.id);
     setGuardando(false);

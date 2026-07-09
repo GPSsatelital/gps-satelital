@@ -561,6 +561,7 @@ export default function TallerView() {
 
   async function handleFinalizar() {
     if (!seleccionado) return;
+    if (!confirm("¿Finalizar esta orden de taller? La moto saldrá del taller.")) return;
     const fechaSalida = hoyISO();
     await finalizarProceso(seleccionado.id, seleccionado.moto_id);
     // Solo ADMIN/AP deciden cobrar vs rodar (misma jerarquía que Editar contrato) — si otro

@@ -237,6 +237,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   async function handleRegistrarRecepcion() {
     if (!selectedMoto || !profile) return;
+    if (!confirm(`¿Registrar la recepción de la moto ${selectedMoto.placa}? Esto puede suspender el contrato activo.`)) return;
     setGuardando(true);
     const fotosUrls = await subirFotosRecepcion(selectedMoto.id);
     const { error } = await registrarRecepcion({
@@ -301,6 +302,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   async function handleRegistrarRetencion() {
     if (!selectedMoto) return;
     if (!formRetencion.fecha) { setMsgDetalle("Ingresa la fecha de retención."); return; }
+    if (!confirm(`¿Marcar la moto ${selectedMoto.placa} como ${ESTADO_LABEL[formRetencion.tipo]}?`)) return;
     setGuardando(true);
     const datos: RetencionData = {
       fecha: formRetencion.fecha,
@@ -316,6 +318,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   async function handleLiberarFiscalia() {
     if (!selectedMoto || !profile) return;
+    if (!confirm(`¿Liberar la moto ${selectedMoto.placa} de Fiscalía? Pasará a taller para revisión.`)) return;
     setGuardando(true);
     const fechaEntrada = selectedMoto.retencion_fecha;
     // 1. Registrar cambio de ubicación al lugar físico elegido
@@ -332,9 +335,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   async function handleLiberarRetencion() {
     if (!selectedMoto) return;
+    const motivoLbl = selectedMoto.estado === "Garantia" ? "Garantía" : "Tránsito";
+    if (!confirm(`¿Liberar la moto ${selectedMoto.placa} de ${motivoLbl}?`)) return;
     setGuardando(true);
     const fechaEntrada = selectedMoto.retencion_fecha;
-    const motivo = selectedMoto.estado === "Garantia" ? "Garantía" : "Tránsito";
+    const motivo = motivoLbl;
     const { error } = await liberarRetencion(selectedMoto.id);
     setGuardando(false);
     if (error) { setMsgDetalle(error); return; }

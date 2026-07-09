@@ -251,6 +251,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    if (!confirm(`¿Registrar este pago de $${fmt(valor)} (${cobrarMetodo}) para ${f.clienteNombre}?`)) return;
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
@@ -753,6 +754,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           return { grupo: g, efectivo: ef, transfer: tr, total: ef + tr, count: lista.length, lista, cerrada: cajaDia(hoy, g) };
         }).filter(x => x.total > 0);
         const cerrarGrupoCaja = async (g: typeof porGrupoCaja[0]) => {
+          if (!confirm(`¿Cerrar la caja de ${g.grupo} por $${fmt(g.total)}? No se podrá modificar después.`)) return;
           setCerrandoCaja(g.grupo);
           setMsgCaja(null);
           const detalle = g.lista.map(p => {

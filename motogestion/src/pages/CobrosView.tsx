@@ -1139,6 +1139,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
+    if (!confirm(`¿Registrar este pago de $${fmt(modalMonto)} (${modalMetodo})?`)) return;
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;
@@ -1204,6 +1205,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (procesando) return;
     if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
     if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
+    if (!confirm(`¿Registrar este pago en efectivo de $${fmt(montoIngresado)}?`)) return;
     setFormError(null);
     setFormExito(false);
     setProcesando(true);
@@ -1229,6 +1231,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!contratoSeleccionadoId || !contratoDetalle) return;
     const saldo = contratoDetalle.saldoAFavor ?? 0;
     if (saldo <= 0) return;
+    if (!confirm(`¿Aplicar el saldo a favor de $${fmt(saldo)} a este contrato?`)) return;
     setProcesando(true);
     try {
       const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
@@ -1250,6 +1253,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!contratoSeleccionadoId || !profile) return;
     if (!deudaMonto || Number(deudaMonto) <= 0) { setDeudaError("Ingresa un monto válido."); return; }
     if (!deudaDescripcion.trim()) { setDeudaError("Ingresa una descripción."); return; }
+    if (!confirm(`¿Registrar esta deuda de $${fmt(Number(deudaMonto))} (${deudaConcepto})?`)) return;
     setDeudaError(null);
     setProcesando(true);
     try {
@@ -1270,6 +1274,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       setConvError("Completa el monto, la cuota o número de cuotas, la fecha y el concepto."); return;
     }
     if (!convFirma) { setConvError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
+    if (!confirm(`¿Crear el convenio por $${fmt(Number(convDeudaTotal))} en ${convCuotasCalc} cuota(s) de $${fmt(convCuotaCalc)}?`)) return;
     setConvError(null);
     setProcesando(true);
     try {

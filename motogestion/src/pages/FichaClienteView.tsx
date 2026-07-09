@@ -169,7 +169,17 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const { contratos } = useContratos();
   const { pagos } = usePagos();
   const { deudas } = useDeudas();
-  const { convenios } = useConvenios();
+  const { convenios, eliminarConvenio } = useConvenios();
+  const puedeEliminarConvenio = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const [borrandoConvenio, setBorrandoConvenio] = useState<string | null>(null);
+  async function handleEliminarConvenio(id: string, num: number) {
+    if (borrandoConvenio) return;
+    if (!confirm(`¿Eliminar el convenio #${num}? Esto lo borra por completo (úsalo solo para corregir un convenio creado por error).`)) return;
+    setBorrandoConvenio(id);
+    const { error } = await eliminarConvenio(id);
+    setBorrandoConvenio(null);
+    if (error) alert("No se pudo eliminar: " + error);
+  }
   const { visitas } = useVisitas();
   const { gestiones } = useGestiones();
   const { motos } = useMotos();
@@ -866,7 +876,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: ec.color, transition: "width 0.5s" }} />
                   </div>
                 </div>
-                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
                   <div
                     onClick={() => {
                       const moto = motos.find(m => m.id === contratosCliente.find(c => c.id === cv.contrato_id)?.moto_id) ?? null;
@@ -877,6 +887,14 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   >
                     🖨️ Imprimir acuerdo de pago / Guardar PDF
                   </div>
+                  {puedeEliminarConvenio && (
+                    <div
+                      onClick={() => handleEliminarConvenio(cv.id, cv.numero_convenio)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: borrandoConvenio ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#991b1b", opacity: borrandoConvenio === cv.id ? 0.6 : 1 }}
+                    >
+                      {borrandoConvenio === cv.id ? "Eliminando…" : "🗑️ Eliminar (creado por error)"}
+                    </div>
+                  )}
                 </div>
               </Card>
             );

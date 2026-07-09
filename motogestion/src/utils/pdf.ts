@@ -8,11 +8,13 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
   // html2canvas necesita el contenido montado y REALMENTE renderizado. Un contenedor con
   // left:-10000px hacía que html2canvas capturara en blanco. Se monta en pantalla al frente
   // (top-left, sobre todo) solo el instante que dura la captura, y luego se quita.
+  // position:absolute (NO fixed — html2canvas captura en blanco los fixed) al inicio del
+  // documento; ancho A4 en px (794 @ 96dpi). Se ve un instante y se quita tras capturar.
   const cont = document.createElement("div");
-  cont.style.position = "fixed";
+  cont.style.position = "absolute";
   cont.style.left = "0";
   cont.style.top = "0";
-  cont.style.width = "800px";
+  cont.style.width = "794px";
   cont.style.background = "white";
   cont.style.zIndex = "2147483647";
   cont.innerHTML = html;
@@ -20,18 +22,22 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
 
   // Se define como variable (no literal en línea) para que TS no marque `pagebreak`
   // como propiedad extra — su type.d.ts no la lista aunque la librería sí la soporta.
+  // pagebreak SIN "avoid-all": ese modo empujaba todo a la página siguiente y dejaba la
+  // primera en blanco. Solo 'css' (respeta page-break-inside:avoid) + 'legacy'.
   const opt = {
     margin: [10, 8, 12, 8] as [number, number, number, number],
     image: { type: "jpeg" as const, quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0, windowWidth: 900 },
+    html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" },
     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+    pagebreak: { mode: ["css", "legacy"] },
   };
 
   try {
-    // Espera un par de frames para que el navegador maquete el contenido (imágenes de
-    // firma/huella incluidas) antes de capturar — si no, html2canvas puede salir en blanco.
-    await new Promise((r) => setTimeout(r, 120));
+    // Espera a que carguen las imágenes (firma/huella) + un par de frames antes de capturar
+    // — si no, html2canvas puede salir en blanco.
+    const imgs = Array.from(cont.querySelectorAll("img"));
+    await Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })));
+    await new Promise((r) => setTimeout(r, 150));
     const blob: Blob = await html2pdf().set(opt).from(cont).outputPdf("blob");
     return blob;
   } finally {

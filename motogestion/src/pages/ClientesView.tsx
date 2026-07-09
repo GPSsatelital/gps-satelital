@@ -1517,6 +1517,10 @@ function miniBtn2(bg: string, color: string): React.CSSProperties {
 function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente }: DetalleProps) {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const esPrincipal = role === "ADMIN_PRINCIPAL";
+  // Cliente ya operando con contrato: la salida es por Liquidación (cierra contrato + libera
+  // moto), no por cambiar el estado a mano — eso dejaría contrato/moto colgados. Por eso se
+  // ocultan Rechazar/Retirar/Eliminar en estos estados.
+  const conContrato = ["Activo", "En seguimiento", "En riesgo", "En mora"].includes(selectedCliente.estado);
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
   const [verAnteriores, setVerAnteriores] = useState(false);
   const [eliminando, setEliminando] = useState(false);
@@ -1713,11 +1717,15 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             {documentosFaltantes(selectedCliente).length > 0 && (
               <button onClick={onExcepcion} style={miniBtn2("#fef3c7", "#92400e")}>Permitir continuar por excepción</button>
             )}
-            <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={miniBtn2("#ffe4e6", "#be123c")}>Rechazar</button>
-            <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("#ede9fe", "#6d28d9")}>Retirar</button>
+            {!conContrato && (
+              <>
+                <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={miniBtn2("#ffe4e6", "#be123c")}>Rechazar</button>
+                <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("#ede9fe", "#6d28d9")}>Retirar</button>
+              </>
+            )}
           </>
         )}
-        {esPrincipal && onEliminar && (
+        {esPrincipal && onEliminar && !conContrato && (
           <button
             onClick={() => setEliminando(true)}
             style={miniBtn2("#fee2e2", "#991b1b")}

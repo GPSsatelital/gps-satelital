@@ -341,6 +341,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       if (url) await supabase.from("contratos").update({ contrato_pdf_url: url }).eq("id", contratoId);
       else { setError("No se pudo generar el PDF del contrato. Intenta de nuevo."); return; }
       setStep(4);
+    } catch (e) {
+      setError("Error al generar el PDF del contrato: " + ((e as Error)?.message ?? String(e)));
     } finally {
       setGuardando(false);
     }
@@ -365,6 +367,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       if (url) await supabase.from("contratos").update({ pagare_pdf_url: url }).eq("id", contratoId);
       else { setError("No se pudo generar el PDF del pagaré. Intenta de nuevo."); return; }
       setStep(5);
+    } catch (e) {
+      setError("Error al generar el PDF del pagaré: " + ((e as Error)?.message ?? String(e)));
     } finally {
       setGuardando(false);
     }
@@ -380,6 +384,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       const url = await subirArchivo(fotoCert, `certificados/${contratoId}/certificado.${fotoCert.name.split(".").pop()}`);
       await supabase.from("contratos").update({ certificado_pdf_url: url, firma_cliente: true }).eq("id", contratoId);
       setStep(6);
+    } catch (e) {
+      setError("Error al subir el certificado: " + ((e as Error)?.message ?? String(e)));
     } finally {
       setGuardando(false);
     }
@@ -405,6 +411,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoId);
       await supabase.from("clientes").update({ estado: "Activo" }).eq("id", clienteActual.id);
       onCompletado();
+    } catch (e) {
+      setError("Error al activar el contrato: " + ((e as Error)?.message ?? String(e)));
     } finally {
       setGuardando(false);
     }

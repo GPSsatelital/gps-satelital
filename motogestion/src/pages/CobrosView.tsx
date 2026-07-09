@@ -1442,6 +1442,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvActiva)
       : cuotaPendiente + contratoDetalle.deudaContrato;
     const proximoPagoConv = valorPeriodoReal(contratoDetalle) + cuotaConvActiva; // cuota + convenio próxima fecha
+    // Si el convenio cubrió la cuota de esta semana, ese período ya no se cobra → el próximo
+    // pago es cubre_periodo_hasta, que se guardó justamente como el día de pago SIGUIENTE
+    // al período cubierto (ej. convenio del mié 8 → cubre_periodo_hasta = mié 15).
+    const cubreHasta = cvActiva?.cubre_periodo_hasta ?? null;
+    const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : ec.proximoPago;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1490,7 +1495,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#334155", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color }}>{ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].label}</span>
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
-              <span>Próximo: <strong>{fmtFecha(ec.proximoPago)}</strong></span>
+              <span>Próximo: <strong>{fmtFecha(proximoPagoFecha)}</strong></span>
             </div>
             {protocolo && (
               <span style={{ fontSize: 12, fontWeight: 700, color: protocolo.color, background: protocolo.bg, borderRadius: 8, padding: "3px 10px" }}>

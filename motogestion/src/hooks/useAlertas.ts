@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { hoyISO, hoyDate } from "../utils/fecha";
-import { calcularEstadoCartera, diasEnMora } from "../utils/cicloPago";
+import { calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
@@ -77,7 +77,7 @@ export function useAlertas({
     for (const c of contratosActivos) {
       const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
       const convenioActivo = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo");
-      const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
+      const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, c, ahora);
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoy);
       const estadoCartera = calcularEstadoCartera(c, pagosC, ahora, cuotaConvenio, periodoCubierto);
       const cliente = clientes.find(cl => cl.id === c.cliente_id);

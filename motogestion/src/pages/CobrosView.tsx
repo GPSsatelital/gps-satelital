@@ -27,6 +27,7 @@ import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
+  cuotaConvenioDelPeriodo,
   calcularProrrateoInicial,
   calcularAhorroAplicado,
   estaEnProrrateo,
@@ -755,9 +756,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .filter(p => p.fecha === hoyISO())
         .reduce((acc, p) => acc + p.valor, 0);
 
-      // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora.
+      // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora,
+      // pero solo desde el período en que se creó (no en una semana ya vencida antes).
       const convenioActivo = convenioActivoDelContrato(contrato.id);
-      const cuotaConvenio = convenioActivo?.cuota_por_periodo ?? 0;
+      const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, contrato, hoy);
       // Si el convenio absorbió la cuota de este período (alivio), ese período va "al día".
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
 
@@ -1436,10 +1438,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     // A pagar este período = cuota pendiente + cuota del convenio. Si está al día, 0.
     // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
     const cvActiva = contratoDetalle.convenioActivo;
-    const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0;
+    const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0; // cuota completa del convenio (próximo pago)
+    // Lo que se EXIGE del convenio este período (0 si el convenio se creó después de vencer la semana).
+    const cuotaConvExigida = cuotaConvenioDelPeriodo(cvActiva, contratoDetalle, hoyDate());
     const saldoConvenio = contratoDetalle.deudaContrato; // lo que el convenio va bajando (referencia)
     const totalPendiente = cvActiva
-      ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvActiva)
+      ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvExigida)
       : cuotaPendiente + contratoDetalle.deudaContrato;
     const proximoPagoConv = valorPeriodoReal(contratoDetalle) + cuotaConvActiva; // cuota + convenio próxima fecha
     // Si el convenio cubrió la cuota de esta semana, ese período ya no se cobra → el próximo
@@ -2294,7 +2298,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   // Con convenio la deuda la paga el convenio (no se suma completa). Si está al día, no debe nada.
                   const debePagar = c.estadoCartera === "al-dia"
                     ? 0
-                    : cuotaPendParte + (c.cuotaConvenio > 0 ? c.cuotaConvenio : c.deudaContrato);
+                    : cuotaPendParte + (c.convenioActivo ? c.cuotaConvenio : c.deudaContrato);
 
                   return (
                     <div
@@ -2335,8 +2339,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}
                         >
                           {todasHechas ? "✓ Listo" : debePagar > 0
-                            ? `Debe $${fmt(debePagar)} (cuota $${fmt(cuotaPendParte)}${c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})`
-                            : c.cuotaConvenio > 0 ? "Al día · convenio" : "Al día"}
+                            ? `Debe $${fmt(debePagar)} (cuota $${fmt(cuotaPendParte)}${c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})`
+                            : c.convenioActivo ? "Al día · convenio" : "Al día"}
                         </span>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {

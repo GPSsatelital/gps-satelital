@@ -603,6 +603,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
   const [form, setForm] = useState<NuevoCliente>(emptyForm());
   const [editForm, setEditForm] = useState<(NuevoCliente & { id: string }) | null>(null);
+  // El lector DigitalPersona solo lee UNO a la vez — se muestra un solo LectorHuella por vez.
+  const [huellaActiva, setHuellaActiva] = useState<"cliente" | "acompanante">("cliente");
   // Recibo de base inicial: se abre automático al registrar y también desde la ficha.
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
 
@@ -1088,30 +1090,42 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               autorizacion_datos_fecha: dataUrl ? new Date().toISOString() : null,
             })}
           />
-          <div style={{ marginTop: 12 }}>
-            {data.autorizacion_datos_huella_url && !data.autorizacion_datos_huella_url.startsWith("data:") && (
-              <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
-                ✔ Huella ya registrada — capture de nuevo abajo solo si quiere reemplazarla
-              </div>
-            )}
-            <LectorHuella
-              label="Huella dactilar del cliente (opcional)"
-              onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })}
-            />
-          </div>
           <div style={{ marginTop: 12, borderTop: "1px dashed #e7d9c0", paddingTop: 12 }}>
-            <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 6 }}>
-              Huella del acompañante — captúrela aquí en la oficina (obligatoria antes de firmar el contrato).
+            <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 8 }}>
+              Huellas (índice derecho) — el lector solo lee una a la vez, elija de quién capturar:
             </div>
-            {data.acompanante_huella_url && !data.acompanante_huella_url.startsWith("data:") && (
-              <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
-                ✔ Huella del acompañante ya registrada — capture de nuevo abajo solo si quiere reemplazarla
-              </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {(["cliente", "acompanante"] as const).map(w => {
+                const yaTiene = w === "cliente"
+                  ? data.autorizacion_datos_huella_url
+                  : data.acompanante_huella_url;
+                return (
+                  <button key={w} type="button" onClick={() => setHuellaActiva(w)}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${huellaActiva === w ? "#0284c7" : "#e2e8f0"}`, background: huellaActiva === w ? "#eff6ff" : "white", color: huellaActiva === w ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    {w === "cliente" ? "Cliente" : "Acompañante"}{yaTiene && !yaTiene.startsWith("data:") ? " ✔" : ""}
+                  </button>
+                );
+              })}
+            </div>
+            {huellaActiva === "cliente" ? (
+              <>
+                {data.autorizacion_datos_huella_url && !data.autorizacion_datos_huella_url.startsWith("data:") && (
+                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                    ✔ Huella del cliente ya registrada — capture de nuevo solo si quiere reemplazarla
+                  </div>
+                )}
+                <LectorHuella key="huella-cliente" label="Huella dactilar del cliente" onChange={(dataUrl) => update({ autorizacion_datos_huella_url: dataUrl })} />
+              </>
+            ) : (
+              <>
+                {data.acompanante_huella_url && !data.acompanante_huella_url.startsWith("data:") && (
+                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                    ✔ Huella del acompañante ya registrada — capture de nuevo solo si quiere reemplazarla
+                  </div>
+                )}
+                <LectorHuella key="huella-acompanante" label="Huella dactilar del acompañante" onChange={(dataUrl) => update({ acompanante_huella_url: dataUrl })} />
+              </>
             )}
-            <LectorHuella
-              label="Huella dactilar del acompañante"
-              onChange={(dataUrl) => update({ acompanante_huella_url: dataUrl })}
-            />
           </div>
         </div>
       </div>

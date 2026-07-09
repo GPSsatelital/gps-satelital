@@ -33,15 +33,15 @@ const BLANK = `<span style="display:inline-block;border-bottom:1px solid #0f172a
 // Caja de firma manuscrita (imagen) o raya en blanco.
 function cajaFirma(url?: string | null): string {
   return url
-    ? `<img src="${url}" style="max-width:160px;max-height:60px;object-fit:contain;display:block;margin:0 auto" />`
-    : `<div style="height:52px"></div>`;
+    ? `<img src="${url}" style="max-width:280px;max-height:110px;object-fit:contain;display:block;margin:0 auto" />`
+    : `<div style="height:90px"></div>`;
 }
 
 // Caja de huella (imagen) o recuadro vacío.
 function cajaHuella(url?: string | null): string {
   return url
-    ? `<img src="${url}" style="width:56px;height:70px;object-fit:contain;display:block;margin:0 auto;border:1px solid #cbd5e1;border-radius:4px" />`
-    : `<div style="width:56px;height:70px;border:1px dashed #cbd5e1;border-radius:4px;margin:0 auto"></div>`;
+    ? `<img src="${url}" style="width:100px;height:125px;object-fit:contain;display:block;margin:0 auto;border:1px solid #cbd5e1;border-radius:4px" />`
+    : `<div style="width:100px;height:125px;border:1px dashed #cbd5e1;border-radius:4px;margin:0 auto"></div>`;
 }
 
 export function generarHTMLContrato(contrato: Contrato, cliente: Cliente, moto: Moto | null, firmas: FirmasDoc = {}): string {

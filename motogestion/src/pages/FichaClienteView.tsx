@@ -130,7 +130,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function imprimirDocumento(html: string, titulo: string) {
   const ventana = window.open("", "_blank");
   if (!ventana) return;
-  ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+  ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 300);

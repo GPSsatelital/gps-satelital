@@ -619,7 +619,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [convError, setConvError] = useState<string | null>(null);
   const [convExito, setConvExito] = useState(false);
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
-  const [convIncluirSemana, setConvIncluirSemana] = useState(false);
+  const [convFinanciarN, setConvFinanciarN] = useState(0); // cuántas cuotas de arriendo se financian al crear el convenio (0/1/2)
   // Se fija UNO (cuota o número de cuotas) y el otro se calcula solo.
   const [convModoFijar, setConvModoFijar] = useState<"cuotas" | "cuota">("cuotas");
   const [convFirma, setConvFirma] = useState<string | null>(null); // firma del acuerdo (obligatoria)
@@ -1024,12 +1024,30 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     : (contratoDetalle?.pagadoEnPeriodoActual ?? 0);
   const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
-  // Cálculo del convenio: se fija cuota o número de cuotas y el otro se deduce; el sobrante
-  // queda en la última cuota (números enteros). Si se incluye "esta semana", se suma lo que
-  // FALTA del período (cuotaPendiente = cuota − pagado), no la cuota completa.
-  const convCuotaSemana = convIncluirSemana && contratoDetalle && contratoDetalle.forma_pago !== "Diario"
-    ? cuotaPendiente : 0;
-  const convTotal = (Number(convDeudaTotal) || 0) + convCuotaSemana;
+  // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
+  // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
+  // La primera cuota financiada = lo que FALTA del período actual (cuotaPendiente); las
+  // demás = cuota completa (valorPeriodoReal). El día de reanudación (cubre_periodo_hasta)
+  // = el día de pago siguiente al último período financiado.
+  const convEsPeriodico = !!contratoDetalle && contratoDetalle.forma_pago !== "Diario";
+  const valorCuotaConv = contratoDetalle ? valorPeriodoReal(contratoDetalle) : 0;
+  // ¿Debe el período actual (no está al día)? → la primera cuota financiada es lo pendiente.
+  const convDebeActual = contratoDetalle ? contratoDetalle.estadoCartera !== "al-dia" : false;
+  const convPrimerCuotaFin = convDebeActual ? cuotaPendiente : valorCuotaConv;
+  const convMontoFinanciado = convEsPeriodico && convFinanciarN >= 1
+    ? convPrimerCuotaFin + (convFinanciarN - 1) * valorCuotaConv
+    : 0;
+  const convTotal = (Number(convDeudaTotal) || 0) + convMontoFinanciado;
+  // Fecha en que reanuda pagos normales (si se financian semanas).
+  const convCubreHasta = (() => {
+    if (!contratoDetalle || !convEsPeriodico || convFinanciarN < 1) return null;
+    const ancla = convDebeActual
+      ? inicioPeriodoActual(contratoDetalle, hoyDate())
+      : proximoDiaPago(contratoDetalle, hoyDate());
+    let d = ancla;
+    for (let i = 0; i < convFinanciarN; i++) d = proximoDiaPago(contratoDetalle, d);
+    return fechaISO(d);
+  })();
   const convCuotasCalc = convModoFijar === "cuotas"
     ? (Number(convCuotas) || 0)
     : (convTotal > 0 && Number(convCuota) > 0 ? Math.ceil(convTotal / Number(convCuota)) : 0);
@@ -1255,12 +1273,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setConvError(null);
     setProcesando(true);
     try {
-      // El total ya incluye la cuota de la semana si se marcó (convTotal). Si se incluyó,
-      // se marca hasta cuándo queda cubierto el período (para que esa semana no cuente mora).
-      const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
-      const cubrePeriodoHasta = convIncluirSemana && contratoSel
-        ? fechaISO(proximoDiaPago(contratoSel, hoyDate()))
-        : null;
+      // El total ya incluye las cuotas de arriendo financiadas (convTotal). convCubreHasta
+      // marca hasta cuándo el cliente paga $0 (esas semanas quedan financiadas, sin mora).
+      const cubrePeriodoHasta = convCubreHasta;
       // Sube la firma del acuerdo a Storage (bucket documentos).
       const path = `convenios/${contratoSeleccionadoId}/acuerdo_${Date.now()}.png`;
       const blob = await (await fetch(convFirma)).blob();
@@ -1272,7 +1287,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         convCuotasCalc, convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta, firmaUrl
       );
       if (error) { setConvError(error); return; }
-      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvIncluirSemana(false); setConvModoFijar("cuotas"); setConvFirma(null); setVerPreviewAcuerdo(false);
+      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvFinanciarN(0); setConvModoFijar("cuotas"); setConvFirma(null); setVerPreviewAcuerdo(false);
       setConvExito(true); setMostrarFormConvenio(false);
       setTimeout(() => setConvExito(false), 3000);
     } finally {
@@ -1825,17 +1840,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
                       </div>
                       <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
-                      {contratoDetalle && contratoDetalle.forma_pago !== "Diario" && cuotaPendiente > 0 && (
-                        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, background: convIncluirSemana ? "#eff6ff" : "#f1f5f9", border: `1px solid ${convIncluirSemana ? "#bfdbfe" : "#e2e8f0"}`, cursor: "pointer" }}>
-                          <input type="checkbox" checked={convIncluirSemana} onChange={e => setConvIncluirSemana(e.target.checked)} style={{ width: 18, height: 18, marginTop: 1, accentColor: "#0284c7", flexShrink: 0 }} />
-                          <span style={{ fontSize: 12.5, color: "#334155", fontWeight: 600, minWidth: 0 }}>
-                            Incluir lo que falta de esta semana (<strong>$ {fmt(cuotaPendiente)}</strong>) dentro del convenio.
-                            <span style={{ display: "block", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
-                              Esta semana no la paga aparte ni cuenta mora; arranca normal la próxima.
-                              {convIncluirSemana && <> Total a diferir: <strong>$ {fmt((Number(convDeudaTotal) || 0) + cuotaPendiente)}</strong>.</>}
-                            </span>
-                          </span>
-                        </label>
+                      {convEsPeriodico && (
+                        <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                            ¿Cuántas semanas de cuota le financias ahora? (se las metes al convenio, no las paga aparte)
+                          </div>
+                          <div style={{ display: "flex", gap: 8, marginBottom: convFinanciarN >= 1 ? 6 : 0 }}>
+                            {[0, 1, 2].map(n => (
+                              <button key={n} type="button" onClick={() => setConvFinanciarN(n)}
+                                style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convFinanciarN === n ? "#0284c7" : "#e2e8f0"}`, background: convFinanciarN === n ? "#eff6ff" : "white", color: convFinanciarN === n ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                          {convFinanciarN >= 1 && (
+                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                              Se financian <strong>{convFinanciarN}</strong> semana{convFinanciarN > 1 ? "s" : ""} = <strong>$ {fmt(convMontoFinanciado)}</strong> al convenio. El cliente paga $0 hasta el <strong>{convCubreHasta ? fmtFecha(convCubreHasta) : ""}</strong>. Total a diferir: <strong>$ {fmt(convTotal)}</strong>.
+                            </div>
+                          )}
+                        </div>
                       )}
                       <div>
                         <div style={labelStyle}>Fijar por</div>

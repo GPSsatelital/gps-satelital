@@ -133,7 +133,12 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       return;
     }
 
-    await actualizarCliente(clienteId, { estado: "Pendiente evaluación" } as never);
+    // El trigger de BD (mig 042) mueve el cliente a "Pendiente evaluación" de forma atómica
+    // al insertar la visita. Esta llamada queda como respaldo; si la RLS la bloquea (el subadmin
+    // que registra no es el asignado a la visita), no importa: el trigger ya lo hizo. Antes esto
+    // fallaba en silencio y dejaba clientes atascados en "Listo para visita".
+    const { error: updErr } = await actualizarCliente(clienteId, { estado: "Pendiente evaluación" } as never);
+    if (updErr) console.warn("El update de estado del frontend fue rechazado (el trigger de BD ya movió el cliente):", updErr);
 
     setGuardando(false);
     onGuardada();

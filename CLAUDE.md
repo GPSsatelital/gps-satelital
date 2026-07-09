@@ -744,7 +744,26 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
-**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Último commit en main: `c3430f4` (badge de protocolo solo en mora real). Vercel desplegado.
+**Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Vercel desplegado.
+
+### 📌 SESIÓN 9 JUL 2026 — bugs operativos varios (TODO EN PRODUCCIÓN)
+Sesión de arreglos disparados por uso real. Todo commiteado y merged a main.
+1. **Confirmaciones (`confirm()`) en acciones serias** — plata (registrar/confirmar pago, aplicar saldo, deuda, convenio, cerrar caja, cobrar en campo), liquidación (taller/doc/firmado/cerrar), motos (recepción/retención/liberar), taller (finalizar), clientes (aprobar visita/eliminar). El usuario eligió "solo los serios, popup normal". (El `confirm()` de registrar pago del punto 1 luego se reemplazó por un modal flotante, ver #5.)
+2. **Visita no movía el cliente a "Pendiente evaluación"** (mig `042_visita_mueve_cliente.sql` ✅ corrida): el frontend (ModalVisita) lo hacía en un 2º paso sin verificar el error; si un SUBADMIN registraba una visita NO asignada a él, la RLS de UPDATE de clientes lo rechazaba y el cliente quedaba atascado en "Listo para visita" sin aviso (JONATAN PINEDA, JOSE ANGEL SANCHEZ — destrabados por UPDATE manual). Ahora un trigger `after insert on visitas` (security definer) lo mueve atómicamente, sin importar quién registre. Causa raíz confirmada: `mis_clientes_subadmin()` solo incluye al prospecto si la visita está asignada a ESE subadmin.
+3. **Wizard pasos 3-6 fallaban mudos**: `try/finally` SIN `catch` → si la generación del PDF (html2pdf) reventaba, el botón dejaba de cargar pero no avanzaba ni avisaba. Ahora el error sale en pantalla. **El error real que vio el usuario fue `Failed to fetch dynamically imported module` = chunk viejo tras un deploy** (pestaña desactualizada) → se resuelve con `Ctrl+Shift+R`. Ver #pendiente auto-update.
+4. **Ocultar Rechazar/Retirar/Eliminar** en clientes con contrato (Activo/En mora/En riesgo/En seguimiento): antes se mostraban a cualquier admin sin mirar el estado y solo cambiaban el estado del cliente dejando contrato/moto colgados. La salida correcta es la Liquidación. Solo se ven en la etapa de ingreso.
+5. **Cartera punto 1 (registrar pago dentro del contrato) = SOLO efectivo** + **modal flotante de confirmación** + **aviso de duplicado**. Antes dejaba elegir Transferencia SIN pedir comprobante (hueco de control). Ahora efectivo fijo (transferencias por la ventana flotante "Cobrar" que sí pide foto); al dar Registrar pago sale un modal con cliente/monto y botones Cancelar/Confirmar; si ya hay un pago del mismo monto+cliente+día, avisa (no bloquea).
+
+**🔲 PENDIENTES INMEDIATOS al retomar (sesión 9 jul):**
+- **Aviso de duplicado en los OTROS 2 puntos de registro de pago** (mapeo integral): la ventana flotante "💵 Cobrar" (`handleRegistrarPagoModal`) y **Cobro Diario** (`handleCobrar`). Mismo criterio: mismo monto + mismo cliente + mismo día → advertir, no bloquear. Solo se hizo el punto 1.
+- **Borrar el pago duplicado real** que reportó el usuario (falta cliente+monto+fecha). Usar "🗑️ Eliminar pago" (ADMIN_PRINCIPAL, Cartera→Historial) que revierte lo aplicado.
+- **Auto-actualización en varios dispositivos** (pedido por el usuario): la app es PWA → activar service worker con auto-update (recarga sola o aviso "hay versión nueva"), o escuchar `vite:preloadError` y recargar 1 vez. Elimina el `Ctrl+Shift+R` manual tras cada deploy.
+- **Lector de huella — arreglo de robustez** (el usuario dio "dale" a medias, quedó sin construir): en `LectorHuella.tsx`, soltar bien la sesión anterior antes de `startAcquisition`, botón "🔄 Reintentar lectura" cuando está verde pero no captura, y mensaje claro. Confirmado: el problema NO es permisos/rol (código idéntico para todos); es el enlace con el agente HID local (una lectura activa a la vez). Falta decidir también si la huella es OPCIONAL en el wizard (hoy `faltaHuella()` la exige para pasar del paso 3-4).
+- **Plan APROBADO listo para construir: unificar Recepción + Retención** en MotosView en un solo botón "🏍️ Registrar novedad". Decisiones cerradas: reutilizar `ModalRecoleccion` (mora) y `ModalIniciarLiquidacion` (liquidación) — NO duplicar; "Retención por mora" solo si el contrato está en mora; liquidación sin bloqueo de 7 días (los 7 días son aviso, no ley); avisos de consecuencia por motivo; corregir texto viejo de Garantía ("no genera deuda"). Ver detalle en el historial de esta sesión.
+
+**🔲 PARQUEADOS (definir con el usuario antes de construir):**
+- **Fotos de daños de cantidad libre** en `ModalRecoleccion` (apartado junto a "Daños visibles", cámara/galería, tomar otra/quitar, opcional). El usuario lo dejó pendiente.
+- **Documento de tratamiento de datos del acompañante**: hoy NO existe (solo el del cliente). El usuario decidió que **con la huella basta** operativamente. Opción ofrecida (parqueada): agregar un bloque chico del acompañante (nombre+texto+huella) al documento para que la huella tenga contexto legal. Requiere capturar firma del acompañante (hoy solo se captura huella).
 
 ### 📌 SESIÓN 8 JUL 2026 — arreglos CRÍTICOS de cartera (dinero) — TODO EN PRODUCCIÓN + mig 040 corrida
 Todos disparados por revisar casos reales (JHON FERNEY, YERLIS). Es "la parte más importante del sistema" según el usuario. **4 bugs de plata corregidos:**

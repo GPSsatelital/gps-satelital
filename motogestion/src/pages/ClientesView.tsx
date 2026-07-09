@@ -904,6 +904,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   // "Aprobar visita" solo valida que la visita se hizo bien; el cliente queda en
   // "Pendiente evaluación" para la decisión final (Aprobar/Rechazar cliente).
   async function handleAprobarVisita(id: string, clienteId: string) {
+    if (!confirm("¿Aprobar esta visita? El cliente pasará a evaluación para poder crear su contrato.")) return;
     await resolverVisita(id, "Aprobado");
     await cambiarEstadoCliente(clienteId, "Pendiente evaluación");
   }
@@ -915,6 +916,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   }
 
   async function handleEliminarCliente(clienteId: string) {
+    if (!confirm("¿Eliminar este cliente por completo? Esta acción no se puede deshacer.")) return;
     const { data: contratos } = await supabase
       .from("contratos")
       .select("id")

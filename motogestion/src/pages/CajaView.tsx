@@ -131,6 +131,7 @@ export default function CajaView() {
   const fechaDisplay = `${DIAS[fechaObj.getDay()]} ${fechaObj.getDate()} de ${MESES[fechaObj.getMonth()]} ${fechaObj.getFullYear()}`;
 
   async function handleConfirmar(id: string) {
+    if (!confirm("¿Confirmar este pago? Quedará registrado como confirmado en la caja.")) return;
     setConfirmando(id);
     await confirmarPago(id);
     setConfirmando(null);

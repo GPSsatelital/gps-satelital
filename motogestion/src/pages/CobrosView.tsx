@@ -1533,13 +1533,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             /* Contrato con convenio: se muestra "al día con convenio" + próximo pago (cuota+conv),
                y el saldo del convenio como referencia — la deuda NO se suma como si fuera aparte. */
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 12px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>
-                  Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${formatDiaPago(contratoDetalle)}` : ""}
+              {/* El "próximo pago" solo cuando está al día. Si está en gabela/mora, lo que debe
+                  AHORA ya lo muestra el recuadro "Pendiente" — no se duplica con "próximo pago". */}
+              {contratoDetalle.estadoCartera === "al-dia" && (
+                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>
+                    Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${fmtFecha(proximoPagoFecha)}` : ""}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#1d4ed8", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#1d4ed8", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
-              </div>
+              )}
               <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700, alignSelf: "flex-start" }}>
                 🤝 Convenio #{cvActiva.numero_convenio} · saldo $ {fmt(saldoConvenio)}
               </span>

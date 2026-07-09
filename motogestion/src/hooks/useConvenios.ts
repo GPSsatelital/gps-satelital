@@ -16,6 +16,7 @@ export type Convenio = {
   concepto: string;
   aprobado_por: string | null;
   cubre_periodo_hasta: string | null; // si el convenio absorbió la cuota del período actual al crearse
+  firma_url: string | null; // firma del acuerdo de pago (opcional)
   created_at: string;
 };
 
@@ -52,7 +53,7 @@ export function useConvenios() {
     return convenios.filter(c => c.contrato_id === contratoId && c.estado !== "renovado").length;
   }
 
-  async function crearConvenio(contratoId: string, deudaTotal: number, cuotaPorPeriodo: number, numeroCuotas: number, fechaLimite: string, concepto: string, aprobadoPor: string, cubrePeriodoHasta: string | null = null) {
+  async function crearConvenio(contratoId: string, deudaTotal: number, cuotaPorPeriodo: number, numeroCuotas: number, fechaLimite: string, concepto: string, aprobadoPor: string, cubrePeriodoHasta: string | null = null, firmaUrl: string | null = null) {
     const convenioActivo = convenioActivoDelContrato(contratoId);
     if (convenioActivo) return { error: "Ya existe un convenio activo. Debe terminarse antes de crear uno nuevo." };
 
@@ -71,6 +72,7 @@ export function useConvenios() {
       concepto,
       aprobado_por: aprobadoPor,
       cubre_periodo_hasta: cubrePeriodoHasta,
+      firma_url: firmaUrl,
     });
     return { error: error?.message ?? null };
   }

@@ -556,6 +556,7 @@ export type DatosEstadoCuenta = {
   convenio?: { total: number; cuota: number; pagadas: number; numero: number; fechaLimite: string } | null;
   saldoFavor: number;
   pagosRecientes: Array<{ fecha: string; valor: number; metodo: string }>;
+  inicioContrato?: string | null; // fecha_entrega
   finContrato?: { fecha: string | null; modificada: boolean };
 };
 
@@ -573,6 +574,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
       <div style="font-weight:800;text-transform:uppercase">${cliente.nombre}</div>
       <div>CC ${cliente.cedula}${moto ? ` · ${moto.placa}` : ""}</div>
       ${sep}
+      ${d.inicioContrato ? linea("Inicio de contrato", fmtFecha(d.inicioContrato)) : ""}
       ${linea("Cuota por período", `$ ${fmt(d.cuotaPeriodo)}`)}
       ${linea("Día de pago", d.diaPagoLabel)}
       ${linea("Estado", d.estadoLabel)}
@@ -606,6 +608,7 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
     ...(moto ? [`Placa: ${moto.placa}`] : []),
     `Fecha: ${fmtFecha(hoyISO())}`,
     "",
+    ...(d.inicioContrato ? [`Inicio de contrato: ${fmtFecha(d.inicioContrato)}`] : []),
     `Cuota por período: $${fmt(d.cuotaPeriodo)} (paga ${d.diaPagoLabel})`,
     `Estado: ${d.estadoLabel}`,
     `*Debe hoy: $${fmt(d.debeHoy)}*`,

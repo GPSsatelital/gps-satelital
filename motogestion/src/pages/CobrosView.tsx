@@ -1521,6 +1521,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         convenio: cvActiva ? { total: cvActiva.deuda_total, cuota: cvActiva.cuota_por_periodo, pagadas: cvActiva.cuotas_pagadas, numero: cvActiva.numero_cuotas, fechaLimite: cvActiva.fecha_limite } : null,
         saldoFavor: c.saldoAFavor ?? 0,
         pagosRecientes: pagosContrato.slice(0, 5).filter(p => p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor, metodo: p.metodo })),
+        inicioContrato: c.fecha_entrega,
         finContrato: infoFinContrato(c),
       };
     }

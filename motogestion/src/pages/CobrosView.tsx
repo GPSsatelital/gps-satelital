@@ -1142,7 +1142,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
-    if (!confirm(`¿Registrar este pago de $${fmt(modalMonto)} (${modalMetodo})?`)) return;
+    const dupModal = pagos.some(p => p.contrato_id === modalContratoId && p.estado !== "Rechazado" && Math.round(p.valor) === modalMonto && p.fecha === hoyISO());
+    const msgConfModal = dupModal
+      ? `⚠️ Ya hay un pago de $${fmt(modalMonto)} registrado hoy para este cliente. ¿Seguro que quieres registrar OTRO igual?`
+      : `¿Registrar este pago de $${fmt(modalMonto)} (${modalMetodo})?`;
+    if (!confirm(msgConfModal)) return;
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;

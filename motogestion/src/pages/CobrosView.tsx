@@ -23,6 +23,7 @@ import CanvasFirma from "../components/CanvasFirma";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { supabase } from "../lib/supabase";
 import ModalRecoleccion from "../components/ModalRecoleccion";
+import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
@@ -595,6 +596,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [formExito, setFormExito] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [confirmarPagoOpen, setConfirmarPagoOpen] = useState(false);
+  const [confirmarModalOpen, setConfirmarModalOpen] = useState(false);
   const [recolectandoId] = useState<string | null>(null);
   const [recoleccionModal, setRecoleccionModal] = useState<{
     contratoId: string; clienteId: string; clienteNombre: string; motoId: string | null; placa: string;
@@ -1137,16 +1139,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return `${moto ? `${moto.placa} · ` : ""}${cliente?.nombre || "Sin cliente"}`;
   }
 
+  // Valida y abre la ventana flotante de confirmación (en vez de registrar directo).
+  function pedirConfirmacionModal() {
+    if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
+    if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
+    if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
+    setModalError(null);
+    setConfirmarModalOpen(true);
+  }
+
   async function handleRegistrarPagoModal() {
     if (modalSubiendo) return;
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
-    const dupModal = pagos.some(p => p.contrato_id === modalContratoId && p.estado !== "Rechazado" && Math.round(p.valor) === modalMonto && p.fecha === hoyISO());
-    const msgConfModal = dupModal
-      ? `⚠️ Ya hay un pago de $${fmt(modalMonto)} registrado hoy para este cliente. ¿Seguro que quieres registrar OTRO igual?`
-      : `¿Registrar este pago de $${fmt(modalMonto)} (${modalMetodo})?`;
-    if (!confirm(msgConfModal)) return;
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;
@@ -1168,6 +1174,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       },
     );
     if (error) { setModalError(error); return; }
+    setConfirmarModalOpen(false);
 
     const contrato = contratos.find(c => c.id === modalContratoId);
     const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
@@ -1680,34 +1687,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const cDup = contratos.find(c => c.id === contratoSeleccionadoId);
           const cliDup = cDup ? clientes.find(c => c.id === cDup.cliente_id) : null;
           const motDup = cDup ? motos.find(m => m.id === cDup.moto_id) : null;
-          const dup = pagosContrato.find(p => p.estado === "Confirmado" && Math.round(p.valor) === montoIngresado && p.fecha === hoyISO());
+          const dup = !!pagos.find(p => p.contrato_id === contratoSeleccionadoId && p.estado !== "Rechazado" && Math.round(p.valor) === montoIngresado && p.fecha === hoyISO());
           return (
-            <>
-              <div onClick={() => !procesando && setConfirmarPagoOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
-              <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "white", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.25)", boxSizing: "border-box" }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Confirmar pago en efectivo</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, textTransform: "uppercase" }}>{cliDup?.nombre ?? ""} · {motDup?.placa ?? ""}</div>
-
-                <div style={{ textAlign: "center", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "14px 12px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>Vas a registrar</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: "#166534" }}>$ {fmt(montoIngresado)}</div>
-                  <div style={{ fontSize: 12, color: "#166534" }}>en efectivo</div>
-                </div>
-
-                {dup && (
-                  <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: 12, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "#92400e", fontWeight: 600 }}>
-                    ⚠️ Ya hay un pago de <strong>$ {fmt(montoIngresado)}</strong> registrado <strong>hoy</strong> para este cliente. ¿Seguro que quieres registrar otro igual?
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setConfirmarPagoOpen(false)} disabled={procesando} style={{ ...secondaryBtn, flex: 1 }}>Cancelar</button>
-                  <button onClick={handleRegistrarPago} disabled={procesando} style={{ ...primaryBtn, flex: 2, opacity: procesando ? 0.6 : 1 }}>
-                    {procesando ? "Registrando..." : "Confirmar y registrar"}
-                  </button>
-                </div>
-              </div>
-            </>
+            <ModalConfirmarPago
+              monto={montoIngresado}
+              metodo="Efectivo"
+              clienteNombre={cliDup?.nombre ?? ""}
+              placa={motDup?.placa}
+              duplicado={dup}
+              procesando={procesando}
+              onCancelar={() => setConfirmarPagoOpen(false)}
+              onConfirmar={handleRegistrarPago}
+            />
           );
         })()}
 
@@ -3160,7 +3151,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleRegistrarPagoModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
+              <button onClick={pedirConfirmacionModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
                 {modalSubiendo ? "Subiendo..." : "Registrar pago"}
               </button>
               <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
@@ -3168,6 +3159,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         </div>
       )}
+
+      {confirmarModalOpen && (() => {
+        const cMod = contratos.find(c => c.id === modalContratoId);
+        const cliMod = cMod ? clientes.find(c => c.id === cMod.cliente_id) : null;
+        const motMod = cMod ? motos.find(m => m.id === cMod.moto_id) : null;
+        const dupMod = !!pagos.find(p => p.contrato_id === modalContratoId && p.estado !== "Rechazado" && Math.round(p.valor) === modalMonto && p.fecha === hoyISO());
+        return (
+          <ModalConfirmarPago
+            monto={modalMonto}
+            metodo={modalMetodo}
+            clienteNombre={cliMod?.nombre ?? ""}
+            placa={motMod?.placa}
+            duplicado={dupMod}
+            procesando={modalSubiendo}
+            onCancelar={() => setConfirmarModalOpen(false)}
+            onConfirmar={handleRegistrarPagoModal}
+          />
+        );
+      })()}
 
       {/* Panel de recibo */}
       {reciboData && <ReciboPanel datos={reciboData} onCerrar={() => setReciboData(null)} />}

@@ -23,6 +23,7 @@ import { hoyISO } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
+import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import MoneyInput from "../components/MoneyInput";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -127,6 +128,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrarMetodo, setCobrarMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
+  const [confirmarCobroOpen, setConfirmarCobroOpen] = useState(false);
   const [cobrarError, setCobrarError] = useState<string | null>(null);
   const [cerrandoCaja, setCerrandoCaja] = useState<GrupoMoto | null>(null);
   const [notasCaja, setNotasCaja] = useState("");
@@ -247,15 +249,19 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     window.open(`tel:+57${tel.replace(/\D/g, "")}`);
   }
 
+  // Valida y abre la ventana flotante de confirmación (en vez de cobrar directo).
+  function pedirConfirmacionCobro() {
+    const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
+    if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
+    if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    setCobrarError(null);
+    setConfirmarCobroOpen(true);
+  }
+
   async function handleCobrar(f: Fila) {
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
-    const dup = pagos.some(p => p.contrato_id === f.contratoId && p.estado !== "Rechazado" && Math.round(p.valor) === valor && p.fecha === hoy);
-    const msgConf = dup
-      ? `⚠️ Ya hay un pago de $${fmt(valor)} registrado hoy para ${f.clienteNombre}. ¿Seguro que quieres registrar OTRO igual?`
-      : `¿Registrar este pago de $${fmt(valor)} (${cobrarMetodo}) para ${f.clienteNombre}?`;
-    if (!confirm(msgConf)) return;
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
@@ -272,6 +278,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     });
     setCobrandoLoading(false);
     if (error) { setCobrarError(error); return; }
+    setConfirmarCobroOpen(false);
     setCobrandoId(null);
     setCobrarValor("");
     setCobrarNota("");
@@ -428,7 +435,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               Cancelar
             </button>
             <button
-              onClick={() => handleCobrar(f)}
+              onClick={pedirConfirmacionCobro}
               disabled={cobrandoLoading}
               style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: cobrandoLoading ? "#94a3b8" : "#0f172a", color: "white", cursor: cobrandoLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
             >
@@ -931,6 +938,24 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       )}
 
       {modalCobrar}
+      {confirmarCobroOpen && cobrandoId && (() => {
+        const f = filas.find(x => x.contratoId === cobrandoId);
+        if (!f) return null;
+        const valorC = parseInt(cobrarValor.replace(/\D/g, ""), 10) || 0;
+        const dupC = pagos.some(p => p.contrato_id === f.contratoId && p.estado !== "Rechazado" && Math.round(p.valor) === valorC && p.fecha === hoy);
+        return (
+          <ModalConfirmarPago
+            monto={valorC}
+            metodo={cobrarMetodo}
+            clienteNombre={f.clienteNombre}
+            placa={f.placa}
+            duplicado={dupC}
+            procesando={cobrandoLoading}
+            onCancelar={() => setConfirmarCobroOpen(false)}
+            onConfirmar={() => handleCobrar(f)}
+          />
+        );
+      })()}
       {gestionId && <ModalGestion contratoId={gestionId} clienteNombre={gestionNombre} onClose={() => setGestionId(null)} />}
       {deudaId && <ModalDeuda contratoId={deudaId} clienteNombre={filas.find(f => f.contratoId === deudaId)?.clienteNombre ?? ""} onClose={() => setDeudaId(null)} />}
       {convenioId && <ModalConvenio contratoId={convenioId} clienteNombre={filas.find(f => f.contratoId === convenioId)?.clienteNombre ?? ""} onClose={() => setConvenioId(null)} />}

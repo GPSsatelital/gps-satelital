@@ -597,6 +597,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [procesando, setProcesando] = useState(false);
   const [confirmarPagoOpen, setConfirmarPagoOpen] = useState(false);
   const [confirmarModalOpen, setConfirmarModalOpen] = useState(false);
+  const [confirmarCampoOpen, setConfirmarCampoOpen] = useState(false);
   const [recolectandoId] = useState<string | null>(null);
   const [recoleccionModal, setRecoleccionModal] = useState<{
     contratoId: string; clienteId: string; clienteNombre: string; motoId: string | null; placa: string;
@@ -1394,6 +1395,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (num.length >= 9) window.open(`https://wa.me/${num}?text=${encodeURIComponent(lineas)}`, "_blank");
   }
 
+  // Valida y abre la ventana flotante de confirmación (en vez de registrar directo).
+  function pedirConfirmacionCampo() {
+    if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
+    if (!profile) { setCampoError("Sesión no válida"); return; }
+    if (Number(campoMonto) <= 0) { setCampoError("Monto inválido"); return; }
+    setCampoError("");
+    setConfirmarCampoOpen(true);
+  }
+
   async function handleCampoSubmit() {
     if (procesando) return;
     if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
@@ -1426,6 +1436,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       }
       const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio, { ubicacion: campoUbicacion, comprobanteUrl });
       if (error) { setCampoError(error); return; }
+      setConfirmarCampoOpen(false);
       const nota = `Efectivo recuperado en campo (${folio}): $${fmt(monto)}.${campoNota.trim() ? ` ${campoNota}` : ""}${campoUbicacion ? ` [GPS ${campoUbicacion.lat.toFixed(5)},${campoUbicacion.lng.toFixed(5)}]` : ""}`;
       await registrarGestion(campoContratoId, "cobro_campo", nota, profile.id);
       enviarReciboCampo(r, monto, folio);
@@ -2864,7 +2875,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         </div>
                       )}
                       <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={handleCampoSubmit} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
+                        <button onClick={pedirConfirmacionCampo} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar cobro en campo"}</button>
                         <button onClick={() => { setCampoContratoId(null); setCampoBusqueda(""); }} style={secondaryBtn}>Cancelar</button>
                       </div>
                     </div>
@@ -3175,6 +3186,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             procesando={modalSubiendo}
             onCancelar={() => setConfirmarModalOpen(false)}
             onConfirmar={handleRegistrarPagoModal}
+          />
+        );
+      })()}
+
+      {confirmarCampoOpen && (() => {
+        const montoCampo = Number(campoMonto) || 0;
+        const cCampo = contratos.find(c => c.id === campoContratoId);
+        const cliCampo = cCampo ? clientes.find(c => c.id === cCampo.cliente_id) : null;
+        const motCampo = cCampo ? motos.find(m => m.id === cCampo.moto_id) : null;
+        const dupCampo = !!pagos.find(p => p.contrato_id === campoContratoId && p.estado !== "Rechazado" && Math.round(p.valor) === montoCampo && p.fecha === hoyISO());
+        return (
+          <ModalConfirmarPago
+            monto={montoCampo}
+            metodo="Efectivo"
+            clienteNombre={cliCampo?.nombre ?? ""}
+            placa={motCampo?.placa}
+            duplicado={dupCampo}
+            procesando={procesando}
+            onCancelar={() => setConfirmarCampoOpen(false)}
+            onConfirmar={handleCampoSubmit}
           />
         );
       })()}

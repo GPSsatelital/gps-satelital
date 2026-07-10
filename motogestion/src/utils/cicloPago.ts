@@ -260,19 +260,43 @@ export function ahorroPeriodoExacto(contrato: ContratoCiclo, enProrrateo: boolea
 }
 
 // Porción de ahorro contenida en lo que un pago aplica a la cuota del período.
-// Usa el ahorro y la cuota EXACTOS del período que se está pagando: un pago completo
-// da el ahorro exacto ($14.000 en prorrateo, $26.000 en semana llena); un pago parcial
-// se reparte proporcional dentro de ese mismo período y al completarlo cierra exacto.
+// REGLA (decidida 10-jul-2026): "primero la tarifa de la empresa, el ahorro de último".
+// Dentro del período, cada peso pagado a cuota cubre primero la parte de la empresa
+// (cuota − ahorro del período) y SOLO los últimos pesos son ahorro del cliente.
+// Así un abono parcial da $0 (o la cifra redonda que toque) — nunca proporciones
+// torcidas tipo $13.333 — y al completar el período el ahorro cierra EXACTO.
+// tarifaPagadaAntes = lo aplicado a cuota por pagos anteriores (no rechazados) de este
+// mismo período; sin abonos previos es 0.
 export function calcularAhorroAplicado(
   contrato: ContratoCiclo,
   aplicadoTarifa: number,
   enProrrateo: boolean,
+  tarifaPagadaAntes = 0,
 ): number {
   if (aplicadoTarifa <= 0 || contrato.forma_pago === "Diario") return 0;
   const cuota = enProrrateo ? calcularProrrateoInicial(contrato) : valorPeriodoReal(contrato);
   const ahorroCuota = ahorroPeriodoExacto(contrato, enProrrateo);
   if (cuota <= 0 || ahorroCuota <= 0) return 0;
-  return Math.min(Math.round((aplicadoTarifa * ahorroCuota) / cuota), ahorroCuota);
+  const tarifaEmpresa = cuota - ahorroCuota;
+  const ahorroAntes = Math.min(Math.max(tarifaPagadaAntes - tarifaEmpresa, 0), ahorroCuota);
+  const ahorroDespues = Math.min(Math.max(tarifaPagadaAntes + aplicadoTarifa - tarifaEmpresa, 0), ahorroCuota);
+  return ahorroDespues - ahorroAntes;
+}
+
+// Cuánto de la CUOTA del período actual ya está pagado por pagos anteriores (no
+// rechazados — los Pendientes cuentan para no dar dos veces el mismo tramo de ahorro).
+// Es el "tarifaPagadaAntes" que necesita calcularAhorroAplicado.
+export function tarifaPagadaPeriodoActual(
+  contrato: ContratoCiclo,
+  pagos: Array<{ fecha: string; estado: string; aplicado_tarifa?: number | null }>,
+  hoy: Date,
+): number {
+  const hoyDia = new Date(hoy);
+  hoyDia.setHours(0, 0, 0, 0);
+  const desdeISO = inicioVentanaPagosISO(contrato, hoyDia);
+  return pagos
+    .filter(p => p.estado !== "Rechazado" && p.fecha >= desdeISO)
+    .reduce((acc, p) => acc + (p.aplicado_tarifa ?? 0), 0);
 }
 
 // Un contrato está en prorrateo solo si fue entregado DESPUÉS del último día de pago

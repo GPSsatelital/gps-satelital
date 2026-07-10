@@ -32,6 +32,7 @@ import {
   cuotaConvenioDelPeriodo,
   calcularProrrateoInicial,
   calcularAhorroAplicado,
+  tarifaPagadaPeriodoActual,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -1084,8 +1085,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           contratoDetalle.deudaContrato,
           contratoDetalle.cuotaConvenio,
         );
-        // Ahorro exacto del período (día por día en prorrateo) — no promedio semanal.
-        a.ahorro = calcularAhorroAplicado(contratoDetalle, a.tarifa, enProrrateo);
+        // Ahorro con regla "tarifa primero, ahorro de último" — abonos parciales dan $0
+        // hasta cubrir la parte de la empresa; al completar el período cierra exacto.
+        a.ahorro = calcularAhorroAplicado(contratoDetalle, a.tarifa, enProrrateo,
+          tarifaPagadaPeriodoActual(contratoDetalle, pagos.filter(p => p.contrato_id === contratoDetalle.id), hoyDate()));
         return a;
       })()
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
@@ -1117,7 +1120,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const modalDesglose: AplicadoPago = modalContrato
     ? (() => {
         const a = calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, modalContrato.cuotaConvenio);
-        a.ahorro = calcularAhorroAplicado(modalContrato, a.tarifa, modalEnProrrateo);
+        a.ahorro = calcularAhorroAplicado(modalContrato, a.tarifa, modalEnProrrateo,
+          tarifaPagadaPeriodoActual(modalContrato, pagos.filter(p => p.contrato_id === modalContrato.id), hoyDate()));
         return a;
       })()
     : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
@@ -1259,7 +1263,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setProcesando(true);
     try {
       const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
-      aplicado.ahorro = calcularAhorroAplicado(contratoDetalle, aplicado.tarifa, enProrrateo);
+      aplicado.ahorro = calcularAhorroAplicado(contratoDetalle, aplicado.tarifa, enProrrateo,
+        tarifaPagadaPeriodoActual(contratoDetalle, pagos.filter(p => p.contrato_id === contratoDetalle.id), hoyDate()));
       const { error } = await registrarPago(
         contratoSeleccionadoId, saldo, "Efectivo", aplicado,
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
@@ -1423,7 +1428,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0);
     const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
-    aplicado.ahorro = calcularAhorroAplicado(r, aplicado.tarifa, enProrrateoCampo);
+    aplicado.ahorro = calcularAhorroAplicado(r, aplicado.tarifa, enProrrateoCampo,
+      tarifaPagadaPeriodoActual(r, pagos.filter(p => p.contrato_id === r.id), hoyDate()));
     const folio = generarFolio();
 
     setProcesando(true);

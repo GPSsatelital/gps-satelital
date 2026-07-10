@@ -15,6 +15,7 @@ import {
   proximoDiaPago,
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   calcularAhorroAplicado,
+  tarifaPagadaPeriodoActual,
   estaEnProrrateo,
   inicioVentanaPagosISO,
   formatDiaPago,
@@ -270,7 +271,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const contratoFila = contratos.find(c => c.id === f.contratoId);
     if (contratoFila && f.tipoRuta !== "diario") {
       const sinPagos = !pagos.some(p => p.contrato_id === f.contratoId && p.estado === "Confirmado");
-      aplicado.ahorro = calcularAhorroAplicado(contratoFila, aplicado.tarifa, estaEnProrrateo(contratoFila, sinPagos));
+      aplicado.ahorro = calcularAhorroAplicado(contratoFila, aplicado.tarifa, estaEnProrrateo(contratoFila, sinPagos),
+        tarifaPagadaPeriodoActual(contratoFila, pagos.filter(p => p.contrato_id === contratoFila.id), new Date(hoy + "T00:00:00")));
     }
     const { error } = await registrarPago(f.contratoId, valor, cobrarMetodo, aplicado, {
       registradoPor: profile?.id,

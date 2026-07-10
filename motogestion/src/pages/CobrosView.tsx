@@ -21,7 +21,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
-import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
+import { generarHTMLAcuerdoPago, generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
 import { supabase } from "../lib/supabase";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
@@ -1506,6 +1506,45 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const cubreHasta = cvActiva?.cubre_periodo_hasta ?? null;
     const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : ec.proximoPago;
 
+    // Estado de cuenta (imprimir/WhatsApp) — usa los MISMOS valores ya calculados arriba
+    // para esta pantalla (totalPendiente, deudas, convenio), nunca un cálculo aparte.
+    function armarDatosEstadoCuenta(): DatosEstadoCuenta {
+      const c = contratoDetalle!;
+      return {
+        cuotaPeriodo: valorPeriodoReal(c),
+        diaPagoLabel: formatDiaPago(c),
+        estadoLabel: ESTADO_CARTERA_STYLE[c.estadoCartera].label,
+        debeHoy: totalPendiente,
+        ahorroTotal: (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0),
+        apertura: empalmePendiente(c) ? { viejo: c.ahorro_apertura ?? 0, nuevo: c.ahorro_acumulado ?? 0 } : null,
+        deudas: deudasContrato.map(d => ({ concepto: d.concepto, pendiente: d.monto_pendiente })),
+        convenio: cvActiva ? { total: cvActiva.deuda_total, cuota: cvActiva.cuota_por_periodo, pagadas: cvActiva.cuotas_pagadas, numero: cvActiva.numero_cuotas, fechaLimite: cvActiva.fecha_limite } : null,
+        saldoFavor: c.saldoAFavor ?? 0,
+        pagosRecientes: pagosContrato.slice(0, 5).filter(p => p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor, metodo: p.metodo })),
+        finContrato: infoFinContrato(c),
+      };
+    }
+
+    function imprimirEstadoCuenta() {
+      if (!clienteDetalle) return;
+      const html = generarHTMLEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta());
+      const w = window.open("", "_blank", "width=420,height=640");
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><title>Estado de cuenta</title><style>*{print-color-adjust:exact;-webkit-print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    function enviarEstadoCuentaWhatsApp() {
+      if (!clienteDetalle) return;
+      const texto = armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta());
+      const num = (clienteDetalle.whatsapp || clienteDetalle.telefono || "").replace(/\D/g, "");
+      const full = num.length === 10 ? `57${num}` : num;
+      if (full.length >= 11) window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
+      else alert("El cliente no tiene un número de WhatsApp válido registrado.");
+    }
+
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {isMobile && (
@@ -1543,6 +1582,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </button>
               )}
             </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            <button onClick={imprimirEstadoCuenta} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📄 Estado de cuenta</button>
+            <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "#166534" }}>📱 Enviar por WhatsApp</button>
           </div>
         </div>
 

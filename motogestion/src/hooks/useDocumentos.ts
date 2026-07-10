@@ -541,6 +541,88 @@ export function generarHTMLAcuerdoPago(
   `;
 }
 
+// ─── Estado de cuenta del cliente (general — cualquier cliente, no solo migrados) ───
+// Los NÚMEROS los calcula la vista que llama (CobrosView/FichaCliente) con las mismas
+// funciones de cicloPago que usan el panel y el recibo — aquí solo se presentan, para
+// que el documento nunca diga una cifra distinta a la de la pantalla.
+export type DatosEstadoCuenta = {
+  cuotaPeriodo: number;          // valor del período (semana/quincena/mes o día)
+  diaPagoLabel: string;          // "Miércoles", "Días 5 y 20", etc.
+  estadoLabel: string;           // "Al día" | "Gabela" | "En mora" ...
+  debeHoy: number;               // total exigible hoy (cuota pendiente + deuda/convenio)
+  ahorroTotal: number;
+  apertura?: { viejo: number; nuevo: number } | null; // solo migrado con empalme abierto
+  deudas: Array<{ concepto: string; pendiente: number }>;
+  convenio?: { total: number; cuota: number; pagadas: number; numero: number; fechaLimite: string } | null;
+  saldoFavor: number;
+  pagosRecientes: Array<{ fecha: string; valor: number; metodo: string }>;
+  finContrato?: { fecha: string | null; modificada: boolean };
+};
+
+// Compacto a propósito: imprime bien en la térmica de 80mm (GA-E2001) y se ve limpio
+// también en hoja carta o en pantalla.
+export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta): string {
+  const linea = (l: string, v: string, fuerte = false) =>
+    `<div style="display:flex;justify-content:space-between;gap:8px;${fuerte ? "font-weight:800" : ""}"><span>${l}</span><span style="text-align:right">${v}</span></div>`;
+  const sep = `<div style="border-top:1px dashed #94a3b8;margin:8px 0"></div>`;
+  return `
+    <div style="font-family:'Courier New',monospace;font-size:12px;color:#000;max-width:280px;margin:0 auto;padding:8px">
+      <div style="text-align:center;font-weight:800">CLUB DE MOTEROS</div>
+      <div style="text-align:center;font-size:11px">ESTADO DE CUENTA · ${fmtFecha(hoyISO())}</div>
+      ${sep}
+      <div style="font-weight:800;text-transform:uppercase">${cliente.nombre}</div>
+      <div>CC ${cliente.cedula}${moto ? ` · ${moto.placa}` : ""}</div>
+      ${sep}
+      ${linea("Cuota por período", `$ ${fmt(d.cuotaPeriodo)}`)}
+      ${linea("Día de pago", d.diaPagoLabel)}
+      ${linea("Estado", d.estadoLabel)}
+      ${linea("DEBE HOY", `$ ${fmt(d.debeHoy)}`, true)}
+      ${sep}
+      ${linea("Ahorro total", `$ ${fmt(d.ahorroTotal)}`, true)}
+      ${d.apertura ? linea("· Traía (corte)", `$ ${fmt(d.apertura.viejo)}`) + linea("· Nuevo (sistema)", `$ ${fmt(d.apertura.nuevo)}`) : ""}
+      ${d.saldoFavor > 0 ? linea("Saldo a favor", `$ ${fmt(d.saldoFavor)}`) : ""}
+      ${d.deudas.length > 0 ? sep + `<div style="font-weight:800">DEUDAS PENDIENTES</div>` +
+        d.deudas.map(x => linea(LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto, `$ ${fmt(x.pendiente)}`)).join("") +
+        linea("Total deudas", `$ ${fmt(d.deudas.reduce((a, x) => a + x.pendiente, 0))}`, true) : ""}
+      ${d.convenio ? sep + `<div style="font-weight:800">ACUERDO DE PAGO</div>` +
+        linea("Total acuerdo", `$ ${fmt(d.convenio.total)}`) +
+        linea("Cuota", `$ ${fmt(d.convenio.cuota)}`) +
+        linea("Va en", `${d.convenio.pagadas}/${d.convenio.numero} cuotas`) +
+        linea("Fecha límite", fmtFecha(d.convenio.fechaLimite)) : ""}
+      ${d.pagosRecientes.length > 0 ? sep + `<div style="font-weight:800">ÚLTIMOS PAGOS</div>` +
+        d.pagosRecientes.map(p => linea(`${fmtFecha(p.fecha)} ${p.metodo === "Efectivo" ? "💵" : "🏦"}`, `$ ${fmt(p.valor)}`)).join("") : ""}
+      ${d.finContrato?.fecha ? sep + linea("Fin de contrato (aprox.)", fmtFecha(d.finContrato.fecha)) +
+        (d.finContrato.modificada ? `<div style="font-size:10px">* fecha ajustada durante el contrato</div>` : "") : ""}
+      ${sep}
+      <div style="text-align:center;font-size:10px">Documento informativo · GPS Satelital Cartagena</div>
+    </div>`;
+}
+
+// Versión texto plano del estado de cuenta, para enviar por WhatsApp.
+export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta): string {
+  const l: string[] = [
+    "📋 *ESTADO DE CUENTA — CLUB DE MOTEROS*",
+    `Cliente: ${cliente.nombre}`,
+    ...(moto ? [`Placa: ${moto.placa}`] : []),
+    `Fecha: ${fmtFecha(hoyISO())}`,
+    "",
+    `Cuota por período: $${fmt(d.cuotaPeriodo)} (paga ${d.diaPagoLabel})`,
+    `Estado: ${d.estadoLabel}`,
+    `*Debe hoy: $${fmt(d.debeHoy)}*`,
+    "",
+    `Ahorro total: $${fmt(d.ahorroTotal)}`,
+  ];
+  if (d.saldoFavor > 0) l.push(`Saldo a favor: $${fmt(d.saldoFavor)}`);
+  if (d.deudas.length > 0) {
+    l.push("", "*Deudas pendientes:*");
+    for (const x of d.deudas) l.push(`· ${LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto}: $${fmt(x.pendiente)}`);
+  }
+  if (d.convenio) l.push("", `Acuerdo de pago: $${fmt(d.convenio.total)} en cuotas de $${fmt(d.convenio.cuota)} (va ${d.convenio.pagadas}/${d.convenio.numero})`);
+  if (d.finContrato?.fecha) l.push("", `Fin de contrato (aprox.): ${fmtFecha(d.finContrato.fecha)}`);
+  l.push("", "GPS Satelital Cartagena");
+  return l.join("\n");
+}
+
 export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   const fechaAutorizacion = cliente.autorizacion_datos_fecha
     ? fmtFecha(cliente.autorizacion_datos_fecha.slice(0, 10))

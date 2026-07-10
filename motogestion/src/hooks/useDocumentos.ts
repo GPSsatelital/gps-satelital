@@ -455,6 +455,9 @@ export function generarHTMLAcuerdoPago(
   moto: Moto | null,
   deudas: Array<{ concepto: string; monto_pendiente: number }>,
   convenio: { deuda_total: number; cuota_por_periodo: number; numero_cuotas: number; firma_url?: string | null },
+  // Fecha de terminación del contrato (aproximada) para que el cliente sepa hasta cuándo
+  // va su contrato; si fue modificada alguna vez, el documento lo aclara.
+  finContrato?: { fecha: string | null; modificada: boolean },
 ): string {
   const hoy = fmtFecha(hoyISO());
   // Agrupa las deudas pendientes por concepto.
@@ -483,6 +486,9 @@ export function generarHTMLAcuerdoPago(
 
       <div style="margin-bottom:6px"><strong>PLACA MOTOCICLETA:</strong> ${moto?.placa ?? "—"}</div>
       <div style="margin-bottom:6px"><strong>CONDUCTOR:</strong> ${cliente.nombre.toUpperCase()}</div>
+      ${finContrato?.fecha ? `
+      <div style="margin-bottom:6px"><strong>FECHA DE TERMINACIÓN (APROXIMADA) DEL CONTRATO:</strong> ${fmtFecha(finContrato.fecha)}</div>
+      ${finContrato.modificada ? `<div style="margin-bottom:6px;font-size:11px;color:#334155"><em>Nota: la fecha de terminación fue ajustada durante la vigencia del contrato; la fecha aproximada vigente es la indicada arriba.</em></div>` : ""}` : ""}
 
       <div style="font-weight:700;text-align:center;margin:16px 0 6px">DEUDA PENDIENTE</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px">

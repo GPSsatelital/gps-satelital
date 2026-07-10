@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
 import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, infoFinContrato, ahorroTotal } from "../hooks/useContratos";
 import { usePagos } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -145,8 +145,9 @@ function imprimirAcuerdoPago(
   moto: Parameters<typeof generarHTMLAcuerdoPago>[1],
   deudas: Parameters<typeof generarHTMLAcuerdoPago>[2],
   cv: Parameters<typeof generarHTMLAcuerdoPago>[3],
+  finContrato?: Parameters<typeof generarHTMLAcuerdoPago>[4],
 ) {
-  imprimirDocumento(generarHTMLAcuerdoPago(cli, moto, deudas, cv), "Acuerdo de pago");
+  imprimirDocumento(generarHTMLAcuerdoPago(cli, moto, deudas, cv, finContrato), "Acuerdo de pago");
 }
 
 export default function FichaClienteView({ clienteId, onNavigate }: {
@@ -480,7 +481,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             };
             const ec = ESTADO_C[c.estado] ?? { bg: "#e2e8f0", color: "#334155" };
             const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
-            const ahorro = c.ahorro_acumulado ?? 0;
+            const ahorro = ahorroTotal(c);
             const isActive = c.estado === "Activo";
             return (
               <Card key={c.id} borderColor={ec.color}>
@@ -879,9 +880,10 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
                   <div
                     onClick={() => {
-                      const moto = motos.find(m => m.id === contratosCliente.find(c => c.id === cv.contrato_id)?.moto_id) ?? null;
+                      const contratoCv = contratosCliente.find(c => c.id === cv.contrato_id);
+                      const moto = motos.find(m => m.id === contratoCv?.moto_id) ?? null;
                       const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado !== "pagada");
-                      imprimirAcuerdoPago(cliente, moto, deudasContrato, cv);
+                      imprimirAcuerdoPago(cliente, moto, deudasContrato, cv, contratoCv ? infoFinContrato(contratoCv) : undefined);
                     }}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#166534" }}
                   >

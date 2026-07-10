@@ -41,6 +41,21 @@ export default function LectorHuella({ label, onChange }: Props) {
   const [ultimaCalidad, setUltimaCalidad] = useState<number | null>(null); // 0 = buena; distinto de 0 = baja
   const readerRef = useRef<FingerprintReader | null>(null);
   const capturadaRef = useRef(false);
+  const [reintentos, setReintentos] = useState(0); // fuerza re-crear la conexión completa
+
+  // Reinicia la conexión con el agente HID desde cero (destruye y recrea el reader).
+  // Es lo que destraba el lector cuando quedó "reservado" por una sesión anterior
+  // (otro formulario/usuario que no soltó la adquisición) — el síntoma es: recuadro
+  // verde "Lector listo" pero el dedo no captura nada.
+  function reiniciarConexion() {
+    setHuella(null);
+    setAviso(null);
+    setUltimaCalidad(null);
+    capturadaRef.current = false;
+    onChange(null);
+    setEstado("conectando");
+    setReintentos(n => n + 1);
+  }
 
   useEffect(() => {
     let activo = true;
@@ -87,12 +102,17 @@ export default function LectorHuella({ label, onChange }: Props) {
 
     reader
       .enumerateDevices()
-      .then((devices) => {
+      .then(async (devices) => {
         if (!activo) return;
         if (devices.length === 0) {
           setEstado("sin-lector");
           return;
         }
+        // Suelta cualquier adquisición que haya quedado colgada de una sesión anterior
+        // (el agente HID solo permite UNA lectura activa en todo el PC — si otro formulario
+        // no la soltó, el recuadro queda verde pero el dedo nunca captura).
+        await reader.stopAcquisition().catch(() => {});
+        if (!activo) return;
         setEstado("esperando");
         return reader.startAcquisition(SampleFormat.PngImage);
       })
@@ -106,17 +126,28 @@ export default function LectorHuella({ label, onChange }: Props) {
       reader.off();
       readerRef.current = null;
     };
+    // Se re-ejecuta completo al pulsar "Reintentar lectura" (reintentos++): destruye la
+    // conexión con el agente HID y la crea de cero — mismo efecto que recargar la página,
+    // sin perder el formulario.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reintentos]);
 
-  function repetir() {
+  async function repetir() {
     capturadaRef.current = false;
     setHuella(null);
     setAviso(null);
     setUltimaCalidad(null);
     onChange(null);
     setEstado("esperando");
-    readerRef.current?.startAcquisition(SampleFormat.PngImage).catch(() => setEstado("sin-agente"));
+    const r = readerRef.current;
+    if (!r) { reiniciarConexion(); return; }
+    try {
+      // Igual que al montar: soltar la adquisición anterior antes de arrancar la nueva.
+      await r.stopAcquisition().catch(() => {});
+      await r.startAcquisition(SampleFormat.PngImage);
+    } catch {
+      setEstado("sin-agente");
+    }
   }
 
   // La huella salió bien si la última calidad reportada fue 0 (buena) o si no hubo
@@ -152,24 +183,40 @@ export default function LectorHuella({ label, onChange }: Props) {
           </div>
         </div>
       ) : (
-        <div
-          style={{
-            padding: "10px 14px",
-            borderRadius: 10,
-            fontSize: 13,
-            fontWeight: 600,
-            background:
-              estado === "esperando" ? "#dcfce7" : estado === "conectando" ? "#f1f5f9" : "#fee2e2",
-            color:
-              estado === "esperando" ? "#166534" : estado === "conectando" ? "#64748b" : "#991b1b",
-          }}
-        >
-          {estado === "conectando" && "Conectando con el lector de huellas..."}
-          {estado === "esperando" && "👆 Lector listo — coloque el ÍNDICE DERECHO en el lector."}
-          {estado === "sin-lector" && "Lector de huellas no detectado — conecte el DigitalPersona 4500 por USB."}
-          {estado === "sin-agente" &&
-            "No se pudo conectar con el software del lector en este PC. Verifique que la app de HID DigitalPersona esté instalada y corriendo, y recargue la página."}
-        </div>
+        <>
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              background:
+                estado === "esperando" ? "#dcfce7" : estado === "conectando" ? "#f1f5f9" : "#fee2e2",
+              color:
+                estado === "esperando" ? "#166534" : estado === "conectando" ? "#64748b" : "#991b1b",
+            }}
+          >
+            {estado === "conectando" && "Conectando con el lector de huellas..."}
+            {estado === "esperando" && "👆 Lector listo — coloque el ÍNDICE DERECHO en el lector."}
+            {estado === "sin-lector" && "Lector de huellas no detectado — conecte el DigitalPersona 4500 por USB y toque Reintentar."}
+            {estado === "sin-agente" &&
+              "No se pudo conectar con el software del lector en este PC. Verifique que la app de HID DigitalPersona esté corriendo y toque Reintentar."}
+          </div>
+          {estado !== "conectando" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={reiniciarConexion}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#334155" }}
+              >
+                🔄 Reintentar lectura
+              </button>
+              {estado === "esperando" && (
+                <span style={{ fontSize: 11, color: "#64748b" }}>¿Puso el dedo y no lee? Toque Reintentar.</span>
+              )}
+            </div>
+          )}
+        </>
       )}
       {aviso && (
         <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "#fef3c7", color: "#92400e", fontSize: 12 }}>

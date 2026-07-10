@@ -34,6 +34,13 @@ export type Contrato = {
   base_completada?: boolean;
   ahorro_acumulado?: number;
   es_migrado?: boolean;
+  // Empalme de migrados (mig 043): el ahorro que traían de antes vive separado en
+  // ahorro_apertura (editable) hasta que se confirma la migración; ahí se consolida
+  // en ahorro_acumulado y empalme_cerrado queda true.
+  ahorro_apertura?: number;
+  empalme_cerrado?: boolean;
+  empalme_cerrado_por?: string | null;
+  empalme_cerrado_fecha?: string | null;
   contrato_pdf_url?: string | null;
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;
@@ -51,6 +58,15 @@ export function calcularFechaFinContrato(fechaEntrega: string, meses: number): s
 }
 
 export type TipoDocumentoContrato = "contrato_pdf_url" | "pagare_pdf_url" | "certificado_pdf_url";
+
+// Fecha de terminación para documentos (ej. acuerdo de pago): la fecha real guardada y
+// si fue MODIFICADA respecto a la original (entrega + meses×30). No consulta la auditoría:
+// la original siempre salió de esa fórmula, así que basta comparar.
+export function infoFinContrato(c: Pick<Contrato, "fecha_fin_contrato" | "fecha_entrega" | "meses">): { fecha: string | null; modificada: boolean } {
+  const fecha = c.fecha_fin_contrato ?? null;
+  if (!fecha || !c.fecha_entrega || !c.meses) return { fecha, modificada: false };
+  return { fecha, modificada: fecha !== calcularFechaFinContrato(c.fecha_entrega, c.meses) };
+}
 
 export function calcularEquivalenciasDiarias(contrato: Contrato): {
   cuotaDiaria: number;
@@ -84,6 +100,17 @@ const CORTE_POR_GRUPO: Record<string, string> = {
 };
 export function corteMigracionGrupo(grupo?: string | null): string {
   return (grupo && CORTE_POR_GRUPO[grupo]) || FECHA_CORTE_MIGRACION;
+}
+
+// ¿Este contrato migrado sigue pendiente de empalme? (badge ⚠️ y panel en Cartera)
+export function empalmePendiente(c: Pick<Contrato, "es_migrado" | "empalme_cerrado">): boolean {
+  return !!c.es_migrado && !c.empalme_cerrado;
+}
+
+// Total ahorrado que se muestra al cliente: lo viejo (apertura) + lo nuevo (sistema).
+// Tras cerrar el empalme, apertura queda en 0 y esto equivale a ahorro_acumulado.
+export function ahorroTotal(c: Pick<Contrato, "ahorro_acumulado" | "ahorro_apertura">): number {
+  return (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0);
 }
 
 // Días sin pago registrado. Sin pagos en el sistema: cuenta desde la entrega,
@@ -298,13 +325,14 @@ export function useContratos() {
     ahorro_inicial: "Ahorro inicial",
     fecha_entrega: "Fecha entrega",
     ahorro_acumulado: "Ahorro acumulado",
+    ahorro_apertura: "Ahorro de apertura (empalme)",
     fecha_fin_contrato: "Fecha fin de contrato",
     dias_pago_mes: "Días de pago (mes)",
   };
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "fecha_fin_contrato">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "fecha_fin_contrato">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(
@@ -363,6 +391,14 @@ export function useContratos() {
     return { url, error: null };
   }
 
+  // Confirma la migración de un contrato (cierre del empalme): la función de BD
+  // consolida apertura→acumulado, sella el contrato y deja rastro en la auditoría.
+  // Roles permitidos (validados en la BD): ADMIN, ADMIN_PRINCIPAL, SECRETARIA.
+  async function cerrarEmpalme(contratoId: string) {
+    const { error } = await supabase.rpc("cerrar_empalme", { p_contrato_id: contratoId });
+    return { error: error?.message ?? null };
+  }
+
   async function obtenerAuditoria(contratoId: string) {
     const { data, error } = await supabase
       .from("contratos_auditoria")
@@ -388,6 +424,7 @@ export function useContratos() {
     actualizarAhorro,
     editarContrato,
     adjuntarDocumentoContrato,
+    cerrarEmpalme,
     obtenerAuditoria,
     calcularEquivalenciasDiarias,
     calcularProrrateo,

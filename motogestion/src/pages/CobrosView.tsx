@@ -10,7 +10,8 @@ import {
   type AplicadoPago,
   type Aplicado,
 } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, empalmePendiente, infoFinContrato } from "../hooks/useContratos";
+import PanelEmpalme from "../components/PanelEmpalme";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
@@ -549,7 +550,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
-  const { contratos: todosContratos, loading: loadingContratos } = useContratos();
+  const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -1545,6 +1546,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         </div>
 
+        {/* Empalme de migrados: revisión de cifras viejas + confirmación (mig 043) */}
+        {empalmePendiente(contratoDetalle) && (
+          <PanelEmpalme
+            contrato={contratoDetalle}
+            cliente={clienteDetalle ?? null}
+            deudaApertura={contratoDetalle.deudaContrato}
+            puedeCerrar={esSecretaria || esAdmin}
+            onConfirmar={() => cerrarEmpalme(contratoDetalle.id)}
+          />
+        )}
+
         {/* Estado de cuenta — la etiqueta/color usan estadoCartera (misma fuente que el badge),
             no la función vieja, para que no diga "Gabela" mientras el badge dice "Al día". */}
         <div style={{ ...card, background: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].bg, border: `1px solid ${ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color}44` }}>
@@ -1963,7 +1975,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         </button>
                         {verPreviewAcuerdo && clienteDetalle && (
                           <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "white" }}
-                            dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }) }} />
+                            dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }, infoFinContrato(contratoDetalle)) }} />
                         )}
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Firma del cliente (obligatoria para crear el convenio):</div>
                         <CanvasFirma key="firma-acuerdo" label="Firma del cliente" modal opcional={false} onChange={setConvFirma} />
@@ -2086,6 +2098,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                   <EstadoBadge estado={c.estadoCartera} />
+                  {empalmePendiente(c) && (
+                    <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
+                  )}
+                  {/* Migrado ya confirmado que debe y no tiene acuerdo de pago → falta sentarlo a firmar convenio */}
+                  {!empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioActivo && (
+                    <span style={{ background: "#e0f2fe", color: "#0369a1", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>📝 Falta convenio</span>
+                  )}
                 </div>
               </div>
 
@@ -2410,7 +2429,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                             }
                           </div>
                         </div>
-                        <EstadoBadge estado={c.estadoCartera} />
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                          <EstadoBadge estado={c.estadoCartera} />
+                          {empalmePendiente(c) && (
+                            <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Fila inferior: monto + botones de tarea */}

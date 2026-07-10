@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
-import type { Contrato } from "./useContratos";
+import { ahorroTotal, type Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
 import type { Pago } from "./usePagos";
@@ -127,7 +127,7 @@ export function useAlertas({
     // ── 2. BASE COMPLETADA (contratos diarios) ────────────────────────────────
     for (const c of contratosActivos) {
       if ((c.tipo_ruta === "diario" || c.forma_pago === "Diario") && !c.base_completada) {
-        const ahorro = c.ahorro_acumulado ?? 0;
+        const ahorro = ahorroTotal(c);
         const meta = c.base_inicial ?? 510000;
         if (ahorro >= meta) {
           const cliente = clientes.find(cl => cl.id === c.cliente_id);

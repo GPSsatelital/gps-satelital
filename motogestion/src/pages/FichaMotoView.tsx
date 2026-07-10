@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
 import { useMotos } from "../hooks/useMotos";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useTaller } from "../hooks/useTaller";
 import { usePagos } from "../hooks/usePagos";
@@ -388,15 +388,15 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                   <div style={{ marginTop: 4 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 5 }}>
                       <span>Progreso ahorro base inicial</span>
-                      <strong style={{ color: (contratoActivo.ahorro_acumulado ?? 0) >= 510000 ? "#166534" : "#0f172a" }}>
-                        ${fmt(contratoActivo.ahorro_acumulado ?? 0)} / $510.000
+                      <strong style={{ color: ahorroTotal(contratoActivo) >= 510000 ? "#166534" : "#0f172a" }}>
+                        ${fmt(ahorroTotal(contratoActivo))} / $510.000
                       </strong>
                     </div>
                     <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
                       <div style={{
                         height: "100%", borderRadius: 999,
-                        width: `${Math.min(100, ((contratoActivo.ahorro_acumulado ?? 0) / 510000) * 100)}%`,
-                        background: (contratoActivo.ahorro_acumulado ?? 0) >= 510000 ? "#16a34a" : "#0284c7",
+                        width: `${Math.min(100, (ahorroTotal(contratoActivo) / 510000) * 100)}%`,
+                        background: ahorroTotal(contratoActivo) >= 510000 ? "#16a34a" : "#0284c7",
                         transition: "width 0.5s",
                       }} />
                     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useContratos, calcularFechaFinContrato, type ContratoEstado } from "../hooks/useContratos";
+import { useContratos, calcularFechaFinContrato, ahorroTotal, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
@@ -177,7 +177,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
 
     const c = contratoSeleccionado;
     const esDiario = c.forma_pago === "Diario";
-    const ahorro = c.ahorro_acumulado ?? 0;
+    const ahorro = ahorroTotal(c);
     const ahorroMeta = c.base_inicial ?? 510000;
     const pctAhorro = Math.min(100, Math.round((ahorro / ahorroMeta) * 100));
     const alertaBase = esDiario && !c.base_completada && ahorro >= ahorroMeta * 0.9;
@@ -301,6 +301,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
 
         {(puedeCrear || puedeDocumentos) && (
           <div style={{ ...card, display: "grid", gap: 8 }}>
+            {/* Migrados: entraron por SQL sin sus documentos físicos — recordatorio no
+                bloqueante hasta que se suban con el botón de abajo. Los del wizard nunca
+                lo muestran (sus PDF se generan al firmar). */}
+            {c.es_migrado && (!c.contrato_pdf_url || !c.pagare_pdf_url) && (
+              <div style={{ background: "#fef3c7", border: "1px solid #fde047", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e", fontWeight: 700 }}>
+                📎 Faltan documentos del contrato: {[!c.contrato_pdf_url && "contrato firmado", !c.pagare_pdf_url && "pagaré"].filter(Boolean).join(" y ")} — súbelos con el botón de abajo.
+              </div>
+            )}
             {puedeCrear && (
               <button
                 onClick={() => setModalEditarAbierto(true)}
@@ -349,7 +357,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             clienteNombre={clienteDetalle.nombre}
             motoId={c.moto_id}
             placa={motoDetalle?.placa ?? "Sin placa"}
-            ahorroAcumulado={c.ahorro_acumulado ?? 0}
+            ahorroAcumulado={ahorroTotal(c)}
             motivoInicial={c.estado === "Suspendido" ? "incumplimiento" : "cumplimiento"}
             onClose={() => setModalLiquidacionAbierto(false)}
           />
@@ -430,7 +438,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             const cliente = clientes.find(cl => cl.id === c.cliente_id);
             const moto = motos.find(m => m.id === c.moto_id);
             const esDiario = c.forma_pago === "Diario";
-            const ahorro = c.ahorro_acumulado ?? 0;
+            const ahorro = ahorroTotal(c);
             const ahorroMeta = c.base_inicial ?? 510000;
             const pctAhorro = Math.min(100, Math.round((ahorro / ahorroMeta) * 100));
             const alertaBase = esDiario && !c.base_completada && ahorro >= ahorroMeta * 0.9;

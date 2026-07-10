@@ -39,6 +39,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   const [ahorroInicial, setAhorroInicial] = useState(String(Math.round(contrato.ahorro_inicial ?? 0)));
   const [fechaEntrega, setFechaEntrega] = useState(contrato.fecha_entrega ?? "");
   const [ahorroAcumulado, setAhorroAcumulado] = useState(String(Math.round(contrato.ahorro_acumulado ?? 0)));
+  // Empalme abierto: el ahorro que traía de antes se cuadra aquí, separado del nuevo.
+  const empalmeAbierto = !!contrato.es_migrado && !contrato.empalme_cerrado;
+  const [ahorroApertura, setAhorroApertura] = useState(String(Math.round(contrato.ahorro_apertura ?? 0)));
   const [fechaFinContrato, setFechaFinContrato] = useState(
     contrato.fecha_fin_contrato ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : "")
   );
@@ -95,6 +98,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           ahorro_inicial: Number(ahorroInicial) || 0,
           fecha_entrega: fechaEntrega || null,
           ahorro_acumulado: Number(ahorroAcumulado) || 0,
+          ...(empalmeAbierto ? { ahorro_apertura: Number(ahorroApertura) || 0 } : {}),
           fecha_fin_contrato: esDiario ? null : (fechaFinContrato || null),
         },
         profile.id,
@@ -202,8 +206,17 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <MoneyInput label="Ahorro inicial" value={ahorroInicial} onChange={setAhorroInicial} />
-          <MoneyInput label="Ahorro acumulado" value={ahorroAcumulado} onChange={setAhorroAcumulado} />
+          <MoneyInput label={empalmeAbierto ? "Ahorro nuevo (en el sistema)" : "Ahorro acumulado"} value={ahorroAcumulado} onChange={setAhorroAcumulado} />
         </div>
+
+        {empalmeAbierto && (
+          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12, padding: 12 }}>
+            <MoneyInput label="Ahorro de apertura (lo que traía de antes — empalme)" value={ahorroApertura} onChange={setAhorroApertura} />
+            <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+              Editable solo mientras el empalme esté abierto. Al confirmar la migración se consolida con el ahorro nuevo y queda sellado.
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>

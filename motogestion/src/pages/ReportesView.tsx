@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { usePagos } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
@@ -296,7 +296,7 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [motos]);
 
   const diasBase = useMemo(() =>
-    contratos.filter(c => c.estado === "Activo" && c.tipo_ruta === "diario" && !c.base_completada && (c.ahorro_acumulado ?? 0) >= 450000),
+    contratos.filter(c => c.estado === "Activo" && c.tipo_ruta === "diario" && !c.base_completada && ahorroTotal(c) >= 450000),
     [contratos]);
 
   // ── Comparativa mes anterior ───────────────────────────────────────────────
@@ -612,7 +612,7 @@ export default function ReportesView({ onNavigate }: Props) {
               <div style={{ display: "grid", gap: 8 }}>
                 {diasBase.map(c => {
                   const cliente = clientes.find(cl => cl.id === c.cliente_id);
-                  const ahorro = c.ahorro_acumulado ?? 0;
+                  const ahorro = ahorroTotal(c);
                   const p = Math.min(100, Math.round((ahorro / 510000) * 100));
                   return (
                     <div key={c.id} style={{ padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fcd34d" }}>

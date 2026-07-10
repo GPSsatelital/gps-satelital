@@ -251,7 +251,11 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
-    if (!confirm(`¿Registrar este pago de $${fmt(valor)} (${cobrarMetodo}) para ${f.clienteNombre}?`)) return;
+    const dup = pagos.some(p => p.contrato_id === f.contratoId && p.estado !== "Rechazado" && Math.round(p.valor) === valor && p.fecha === hoy);
+    const msgConf = dup
+      ? `⚠️ Ya hay un pago de $${fmt(valor)} registrado hoy para ${f.clienteNombre}. ¿Seguro que quieres registrar OTRO igual?`
+      : `¿Registrar este pago de $${fmt(valor)} (${cobrarMetodo}) para ${f.clienteNombre}?`;
+    if (!confirm(msgConf)) return;
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;

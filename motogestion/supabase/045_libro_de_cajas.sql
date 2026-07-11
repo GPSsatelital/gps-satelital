@@ -1,9 +1,10 @@
 -- ===== 045: LIBRO DE CAJAS — motor de dinero v2 (especificación 11-jul-2026) =====
--- ⚠️ AÚN NO CORRER EN PRODUCCIÓN hasta completar F6 (inicialización de cajas).
--- El motor solo rige donde contratos.motor_v2 = true (interruptor por contrato):
---   · contratos existentes: false hasta que la F6 les inicialice sus cajas
---   · contratos nuevos del wizard (F3): nacen en true
--- Con motor_v2=false el trigger conserva EXACTAMENTE el comportamiento actual (mig 044).
+-- ⚠️ CORRER APENAS SE DESPLIEGUE LA F3 (el wizard ya escribe estos campos al crear
+-- contratos — sin esta migración, crear un contrato nuevo falla por columnas inexistentes).
+-- Es segura para los contratos EXISTENTES: motor_v2 default false → el trigger conserva
+-- EXACTAMENTE el comportamiento actual (mig 044) para ellos hasta la F6.
+--   · contratos existentes: motor_v2=false hasta que la F6 les inicialice sus cajas
+--   · contratos nuevos del wizard (F3): nacen en true y ya funcionan con el motor v2
 --
 -- Modelo (spec completa en CLAUDE.md → "🫀 LIBRO DE CAJAS"):
 --   · Contrato = N cajas (calendario real). Termina al llenar la caja N (por pagos).

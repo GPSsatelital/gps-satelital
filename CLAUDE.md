@@ -742,6 +742,22 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 ---
 
+## 🫀 ESPECIFICACIÓN "LIBRO DE CAJAS" — MOTOR DE DINERO v2 (APROBADA 11-JUL-2026, EN CONSTRUCCIÓN)
+**Definición cerrada con el usuario pregunta por pregunta — NO re-preguntar nada de esto. Reemplaza el modelo de "ventana del período actual" de cicloPago v1.**
+1. **Modelo:** cada contrato de tiempo definido = fila de CAJAS (períodos). Caja semanal $202.000 = $176.000 empresa + $26.000 ahorro. **Diario queda FUERA** (lógica actual). Deudas registradas y convenios siguen aparte.
+2. **N total de cajas:** se captura `meses`; N = **calendario real** (12m=52 sem, 21m=91, 24m=104; quincenas/meses por fechas reales). **El contrato termina al llenar la caja N (por pagos realizados, NO por tiempo transcurrido)**; `fecha_fin_contrato` queda informativa. Contador "va X de N" visible en detalle/estado de cuenta/documentos.
+3. **Nacimiento (nuevos):** Caja 0 = prorrateo (día a día, domingos aparte, se paga el primer día de pago). Caja 1 = semana adelantada: **nace PAGADA con la base**, registrada como **pago interno visible** en el historial (tipo especial, $176.000 cuota + $26.000 ahorro) **EXCLUIDO de caja diaria y recaudo**. De $510.000: $308.000 → ahorro_apertura + $202.000 → Caja 1. Base incompleta: tarifa-primero (primero los $176.000, luego ahorro). **Migrados:** cajas desde su fecha de corte, sin caja 0 ni adelantada.
+4. **FIFO:** todo peso de cuota llena la caja MÁS VIEJA incompleta. Orden: cajas → deuda → convenio. Cada caja entrega su ahorro AL LLENARSE, sin importar cuándo (dentro de la caja rige tarifa-primero: los últimos $26.000 son ahorro). **NADIE pierde ahorro como castigo** — el que no paga enfrenta mora→retención→liquidación. Reversas (rechazar/eliminar) des-llenan cajas en orden inverso.
+5. **Excedente:** saldo a favor por defecto; se aplica a cajas futuras SOLO por decisión manual (secretaria/cliente).
+6. **Mora:** cada caja se exige el día de pago que la INICIA ("paga hoy lo que consumes desde hoy") + 1 día de gabela. En mora = existe caja exigida sin llenar; pagar la actual con una vieja abierta NO saca de mora. Días de mora = desde la más vieja.
+7. **Rodar** (taller/fiscalía/decisión admin con doc firmado): el rango queda exonerado de EXIGENCIA pero las cajas NO se perdonan — se corren y se pagan al final (contrato por pagos, no por tiempo). Prioridad: cobrar; rodar es excepción.
+8. **Convenios:** semanas financiadas dentro del convenio ganan su ahorro **al cumplirse el convenio completo**; si incumple → retención/liquidación cobran lo pendiente (el ahorro no se borra por castigo, simplemente no existe hasta que la plata entre).
+9. **Salida (retiro/liquidación):** se cobra hasta el día en que entregó la moto (última caja prorrateada por días consumidos); lo prepagado NO consumido se DEVUELVE en la liquidación (entra al saldo final).
+10. **Cambios de tarifa/plan:** solo afectan cajas futuras — las selladas no se tocan (ACUMULADORES incrementales, no fórmula que reescribe historia). Campos nuevos en contratos: total_cajas, cajas_pagadas, caja_actual_pagado, prorrateo_total/pagado (diseño en construcción, mig 045).
+11. **MEJORA ESTRUCTURAL:** el reparto de pagos SE MUDA A LA BASE DE DATOS (RPC/trigger única fuente). El frontend solo dice "registra $X" — pestañas viejas no pueden volver a repartir mal (causa raíz de los bugs JORGE/ALEJANDRO/DEIMER del 10-11 jul).
+- **Ejemplo canónico (entendido y confirmado por el usuario):** entrega jueves 2 → Caja 0 prorrateo vie 3–mié 8 se paga el mié 8 · Caja 1 (mié 8–mar 14) cubierta por la adelantada · mié 15 paga la Caja 2 → "siempre tiene la semana que consume ya pagada".
+- **Orden de construcción:** F1 motor BD (mig 045 + RPC + trigger v2) → F2 cicloPago v2 (fechas puras: N calendario real, cajasExigidasHasta, prorrateo) → F3 wizard (308/adelantada/pago interno + N visible) → F4 pantallas de cobro llaman al RPC (quitar reparto local de los 5 puntos) → F5 mora/estado ledger en todas las vistas → F6 SQL inicialización de cajas para los contratos existentes → F7 liquidación (prorrateo de salida + devolución) y documentos. Probar cada fase antes de seguir.
+
 ## PARA RETOMAR EN LA PRÓXIMA SESIÓN
 
 **Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Vercel desplegado.

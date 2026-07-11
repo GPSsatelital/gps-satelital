@@ -442,6 +442,58 @@ export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
   return Math.max(Math.floor((dHoy.getTime() - fechaExigencia.getTime()) / 86400000), 0);
 }
 
+// AJUSTE DE SALIDA (liquidación, spec regla 9): se cobra hasta el día en que el cliente
+// entregó la moto — la caja en curso se prorratea día a día (domingos aparte) — y lo
+// prepagado NO consumido se le devuelve (entra al saldo final de la liquidación).
+// pagado = dinero real que entró al ledger desde el corte/inicio (las cajas previas del
+// arqueo NO cuentan: su plata vive en apertura/deudas).
+export function ajusteSalidaLedger(
+  contrato: ContratoCiclo,
+  fechaRetorno: Date,
+): { pagado: number; consumido: number; aFavor: number; porCobrar: number } {
+  const cero = { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+  if (!contrato.motor_v2 || contrato.forma_pago === "Diario" || !contrato.fecha_inicio_cajas) return cero;
+  const valor = valorPeriodoReal(contrato);
+  if (valor <= 0) return cero;
+  const previas = contrato.cajas_previas ?? 0;
+  const pagado = Math.max((contrato.cajas_pagadas ?? 0) - previas, 0) * valor
+    + (contrato.caja_actual_pagado ?? 0)
+    + (contrato.prorrateo_pagado ?? 0);
+
+  const inicio = new Date(contrato.fecha_inicio_cajas + "T00:00:00");
+  const ret = new Date(fechaAISO(fechaRetorno) + "T00:00:00");
+  let consumido = 0;
+  if (ret >= inicio) {
+    consumido += contrato.prorrateo_total ?? 0; // los días previos al inicio ya se consumieron
+    const pagoLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
+    const pagoDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
+    // Recorre las cajas por sus fechas de pago: período completo terminado antes del
+    // retorno → valor completo; la caja en curso → día a día hasta el día de entrega.
+    let inicioCaja = new Date(inicio);
+    for (let k = 0; k < 400; k++) {
+      const finCaja = proximoDiaPago(contrato, inicioCaja); // día que inicia la caja siguiente
+      if (finCaja <= ret) {
+        consumido += valor;
+        inicioCaja = finCaja;
+      } else {
+        let d = new Date(inicioCaja);
+        while (d <= ret) {
+          consumido += d.getDay() === 0 ? pagoDom : pagoLS;
+          d.setDate(d.getDate() + 1);
+        }
+        consumido = Math.min(consumido, (contrato.prorrateo_total ?? 0) + (k + 1) * valor);
+        break;
+      }
+    }
+  }
+  return {
+    pagado,
+    consumido,
+    aFavor: Math.max(pagado - consumido, 0),
+    porCobrar: Math.max(consumido - pagado, 0),
+  };
+}
+
 // Estado de cartera v2: en mora = existe una caja exigida sin llenar (o prorrateo vencido).
 // Gabela = el hueco nació hoy o ayer (día de pago + 1 de gracia). Pagar la caja de esta
 // semana con una vieja abierta NO saca de mora (FIFO estricto).

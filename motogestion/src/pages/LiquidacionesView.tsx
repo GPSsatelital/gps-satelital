@@ -6,6 +6,8 @@ import { useContratos } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import { ajusteSalidaLedger } from "../utils/cicloPago";
+import { hoyDate } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 
@@ -117,10 +119,19 @@ export default function LiquidacionesView() {
     const deudasValidas = deudas.filter((d) => d.concepto.trim());
     const totalDanos = danosValidos.reduce((s, d) => s + Number(d.monto), 0);
     const totalDeudas = deudasValidas.reduce((s, d) => s + Number(d.monto), 0);
+    // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día de entrega de la
+    // moto (caja en curso prorrateada) y lo prepagado NO consumido se devuelve — entra al
+    // saldo como deuda negativa (porCobrar suma, aFavor resta).
+    const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
+    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, hoyDate()) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+    const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
-    await calcularSaldo(sel.id, sel.ahorro_acumulado, totalDeudas, totalDanos);
+    await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos);
     setGuardando(false);
     if (error) setMsg(error);
+    else if (ajuste.aFavor > 0 || ajuste.porCobrar > 0) {
+      setMsg(`Revisión registrada. Ajuste de salida por cajas: ${ajuste.aFavor > 0 ? `$${ajuste.aFavor.toLocaleString("es-CO")} a favor del cliente (prepagado no consumido)` : ""}${ajuste.porCobrar > 0 ? `$${ajuste.porCobrar.toLocaleString("es-CO")} por cobrar (días consumidos sin pagar)` : ""} — ya incluido en el saldo.`);
+    }
     else setMsg("Revisión registrada correctamente.");
   }
 

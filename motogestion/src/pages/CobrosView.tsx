@@ -33,6 +33,7 @@ import {
   calcularProrrateoInicial,
   calcularAhorroAplicado,
   tarifaPagadaPeriodoActual,
+  ahorroPeriodoExacto,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -1523,6 +1524,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         debeHoy: totalPendiente,
         ahorroTotal: (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0),
         apertura: empalmePendiente(c) ? { viejo: c.ahorro_apertura ?? 0, nuevo: c.ahorro_acumulado ?? 0 } : null,
+        // Ciclos completos: se calcula desde los pagos confirmados (funciona igual antes
+        // y después de consolidar el empalme, cuando apertura y acumulado se funden).
+        ahorroCiclos: (() => {
+          const monto = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
+            .reduce((s, p) => s + (p.aplicado_ahorro ?? 0), 0);
+          const porCiclo = ahorroPeriodoExacto(c, false);
+          return monto > 0 && porCiclo > 0 ? { monto, ciclos: Math.floor(monto / porCiclo) } : null;
+        })(),
         deudas: deudasContrato.map(d => ({ concepto: d.concepto, pendiente: d.monto_pendiente })),
         convenio: cvActiva ? { total: cvActiva.deuda_total, cuota: cvActiva.cuota_por_periodo, pagadas: cvActiva.cuotas_pagadas, numero: cvActiva.numero_cuotas, fechaLimite: cvActiva.fecha_limite } : null,
         saldoFavor: c.saldoAFavor ?? 0,

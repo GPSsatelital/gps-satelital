@@ -552,6 +552,9 @@ export type DatosEstadoCuenta = {
   debeHoy: number;               // total exigible hoy (cuota pendiente + deuda/convenio)
   ahorroTotal: number;
   apertura?: { viejo: number; nuevo: number } | null; // solo migrado con empalme abierto
+  // Ahorro generado pagando (suma de aplicado_ahorro de pagos confirmados) y a cuántos
+  // ciclos COMPLETOS equivale — refuerza la regla: el ahorro se gana completando períodos.
+  ahorroCiclos?: { monto: number; ciclos: number } | null;
   deudas: Array<{ concepto: string; pendiente: number }>;
   convenio?: { total: number; cuota: number; pagadas: number; numero: number; fechaLimite: string } | null;
   saldoFavor: number;
@@ -582,6 +585,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
       ${sep}
       ${linea("Ahorro total", `$ ${fmt(d.ahorroTotal)}`, true)}
       ${d.apertura ? linea("· Traía (corte)", `$ ${fmt(d.apertura.viejo)}`) + linea("· Nuevo (sistema)", `$ ${fmt(d.apertura.nuevo)}`) : ""}
+      ${d.ahorroCiclos && d.ahorroCiclos.monto > 0 ? linea("· Ganado pagando", `$ ${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} compl.)`) : ""}
       ${d.saldoFavor > 0 ? linea("Saldo a favor", `$ ${fmt(d.saldoFavor)}`) : ""}
       ${d.deudas.length > 0 ? sep + `<div style="font-weight:800">DEUDAS PENDIENTES</div>` +
         d.deudas.map(x => linea(LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto, `$ ${fmt(x.pendiente)}`)).join("") +
@@ -615,6 +619,7 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
     "",
     `Ahorro total: $${fmt(d.ahorroTotal)}`,
   ];
+  if (d.ahorroCiclos && d.ahorroCiclos.monto > 0) l.push(`Ahorro ganado pagando: $${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} completos)`);
   if (d.saldoFavor > 0) l.push(`Saldo a favor: $${fmt(d.saldoFavor)}`);
   if (d.deudas.length > 0) {
     l.push("", "*Deudas pendientes:*");

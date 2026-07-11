@@ -182,6 +182,18 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     : 308000 + valorMensual;
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
+  // Ahorro con el que ARRANCA el contrato (regla 11-jul): de la base entregada, el período
+  // adelantado se reparte como cualquier período (tarifa empresa + ahorro) — la parte de la
+  // empresa NO es ahorro del cliente. Ej: $510.000 − $176.000 = $334.000 (= $308.000 + $26.000).
+  // Vive en ahorro_apertura (separado); ahorro_acumulado arranca en 0 y solo crece pagando.
+  // Diario NO usa apertura: todo lo entregado va a ahorro_acumulado como siempre, porque
+  // el trigger de base_completada (>= $510.000) mira esa columna.
+  const ahorroPeriodo = form.forma_pago === "Semanal" ? ahorroSemana
+    : form.forma_pago === "Quincenal" ? 2 * ahorroSemana + ahorroLS
+    : form.forma_pago === "Mensual" ? 4 * ahorroSemana + 2 * ahorroLS : 0;
+  const aperturaInicial = form.forma_pago === "Diario"
+    ? 0
+    : Math.max(ahorroEntregado - (valorPeriodo - ahorroPeriodo), 0);
 
   const primerLunes = form.forma_pago === "Semanal" && valorSemanal > 0
     ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Lunes", dias_pago_mes: [] }, pagoDiaLS, pagoDiaDom) : null;
@@ -286,7 +298,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         ahorro_domingo: ahorroDom,
         base_inicial: baseRequerida || 510000,
         estado: "En proceso",
-        ahorro_acumulado: ahorroEntregado,
+        // Tiempo definido: el ahorro con el que arranca vive SEPARADO en ahorro_apertura
+        // (entregado − tarifa empresa del período adelantado) y acumulado empieza en 0.
+        // Diario: sin apertura — todo a acumulado (el trigger de base mira esa columna).
+        ahorro_apertura: aperturaInicial,
+        ahorro_acumulado: form.forma_pago === "Diario" ? ahorroEntregado : 0,
         base_completada: false,
       }).select("*").single();
       if (err) { setError(err.message); return; }

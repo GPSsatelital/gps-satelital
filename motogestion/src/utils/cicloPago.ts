@@ -14,6 +14,15 @@ export type ContratoCiclo = {
   ahorro_domingo?: number;
   valor_semanal?: number;
   es_migrado?: boolean;
+  // Motor v2 — Libro de cajas (mig 045). Espejo de los acumuladores de la BD.
+  motor_v2?: boolean;
+  total_cajas?: number | null;
+  cajas_pagadas?: number;
+  caja_actual_pagado?: number;
+  prorrateo_total?: number;
+  prorrateo_pagado?: number;
+  prorrateo_ahorro?: number;
+  fecha_inicio_cajas?: string | null;
 };
 
 export type EstadoCartera = "al-dia" | "gabela" | "mora";
@@ -311,4 +320,120 @@ export function estaEnProrrateo(contrato: ContratoCiclo, sinPagosNunca: boolean)
   hoy.setHours(0, 0, 0, 0);
   const d = inicioPeriodoActual(contrato, hoy);
   return contrato.fecha_entrega >= d.toISOString().slice(0, 10);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MOTOR V2 — LIBRO DE CAJAS (spec 11-jul-2026, ver CLAUDE.md "🫀 LIBRO DE CAJAS")
+// Funciones PURAS espejo del motor de la BD (mig 045). El reparto real lo hace
+// la BD al confirmar; estas solo calculan fechas/estados para mostrar en pantalla.
+// Solo rigen donde contrato.motor_v2 === true. Diario queda fuera.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function fechaAISO(d: Date): string {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
+// N total de cajas del contrato — CALENDARIO REAL (no mes=30 días):
+// 12 meses = 52 semanas · 21 = 91 · 24 = 104. Quincenal = 2/mes · Mensual = 1/mes.
+export function totalCajasContrato(forma_pago: string, meses: number): number {
+  if (!meses || meses <= 0) return 0;
+  if (forma_pago === "Quincenal") return meses * 2;
+  if (forma_pago === "Mensual") return meses;
+  if (forma_pago === "Semanal") return Math.round((meses * 365) / 12 / 7);
+  return 0;
+}
+
+// Cajas EXIGIDAS a la fecha: la caja k se exige el día de pago que la INICIA
+// ("paga hoy lo que consumes desde hoy"). fecha_inicio_cajas ES el día que inicia
+// la caja 1. Espejo exacto de public.cajas_exigidas() de la mig 045.
+export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
+  const inicio = contrato.fecha_inicio_cajas;
+  if (!inicio) return 0;
+  const hoyISO = fechaAISO(hoy);
+  if (hoyISO < inicio) return 0;
+  let n = 0;
+  if (contrato.forma_pago === "Semanal") {
+    const dIni = new Date(inicio + "T00:00:00");
+    const dHoy = new Date(hoyISO + "T00:00:00");
+    n = Math.floor((dHoy.getTime() - dIni.getTime()) / (7 * 86400000)) + 1;
+  } else if (esCalendario(contrato)) {
+    const dias = diasPagoMes(contrato);
+    const dIni = new Date(inicio + "T00:00:00");
+    const cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+    const dHoy = new Date(hoyISO + "T00:00:00");
+    while (cursor <= dHoy) {
+      for (const dia of dias) {
+        const f = new Date(cursor.getFullYear(), cursor.getMonth(), clampDiaMes(cursor, dia));
+        if (f >= dIni && f <= dHoy) n++;
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  } else {
+    return 0; // Diario fuera del libro
+  }
+  if (contrato.total_cajas != null) n = Math.min(n, contrato.total_cajas);
+  return Math.max(n, 0);
+}
+
+// Hueco total exigible de CUOTAS a hoy (prorrateo pendiente + cajas exigidas sin llenar).
+// Es el "debe de cuotas" del ledger — las deudas registradas y el convenio van aparte.
+export function huecoCuotasHoy(contrato: ContratoCiclo, hoy: Date): number {
+  const valorCaja = valorPeriodoReal(contrato);
+  const prorPend = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  const exigidas = cajasExigidasHasta(contrato, hoy);
+  const pagadas = contrato.cajas_pagadas ?? 0;
+  const enCurso = contrato.caja_actual_pagado ?? 0;
+  const huecoCajas = Math.max((exigidas - pagadas) * valorCaja - enCurso, 0);
+  return prorPend + huecoCajas;
+}
+
+// Días desde que se exigió la caja MÁS VIEJA que sigue sin llenar (0 = hoy mismo).
+export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
+  const inicio = contrato.fecha_inicio_cajas;
+  if (!inicio) return 0;
+  const pagadas = contrato.cajas_pagadas ?? 0;
+  const exigidas = cajasExigidasHasta(contrato, hoy);
+  if (exigidas <= pagadas) {
+    // Sin hueco de cajas — ¿prorrateo vencido? El prorrateo se exige el día inicio.
+    const prorPend = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+    if (prorPend <= 0) return 0;
+    return Math.max(Math.floor((new Date(fechaAISO(hoy) + "T00:00:00").getTime() - new Date(inicio + "T00:00:00").getTime()) / 86400000), 0);
+  }
+  // Fecha de exigencia de la caja más vieja sin llenar (la pagadas+1, 1-based):
+  const k = pagadas + 1;
+  let fechaExigencia = new Date(inicio + "T00:00:00");
+  if (contrato.forma_pago === "Semanal") {
+    fechaExigencia.setDate(fechaExigencia.getDate() + (k - 1) * 7);
+  } else {
+    const dias = diasPagoMes(contrato).slice().sort((a, b) => a - b);
+    const dIni = new Date(inicio + "T00:00:00");
+    const cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+    let cont = 0;
+    let encontrada = false;
+    while (!encontrada) {
+      for (const dia of dias) {
+        const f = new Date(cursor.getFullYear(), cursor.getMonth(), clampDiaMes(cursor, dia));
+        if (f >= dIni) {
+          cont++;
+          if (cont === k) { fechaExigencia = f; encontrada = true; break; }
+        }
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+  const dHoy = new Date(fechaAISO(hoy) + "T00:00:00");
+  return Math.max(Math.floor((dHoy.getTime() - fechaExigencia.getTime()) / 86400000), 0);
+}
+
+// Estado de cartera v2: en mora = existe una caja exigida sin llenar (o prorrateo vencido).
+// Gabela = el hueco nació hoy o ayer (día de pago + 1 de gracia). Pagar la caja de esta
+// semana con una vieja abierta NO saca de mora (FIFO estricto).
+export function estadoCarteraV2(contrato: ContratoCiclo, hoy: Date): EstadoCartera {
+  const hueco = huecoCuotasHoy(contrato, hoy);
+  if (hueco <= 0) return "al-dia";
+  const dias = diasEnMoraV2(contrato, hoy);
+  if (dias <= 1) return "gabela"; // día de pago (0) y día de gabela (1)
+  return "mora";
 }

@@ -167,7 +167,7 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
         </div>
 
         <div>
-          <div style={labelStyle}>Fotos del estado de la moto (5 obligatorias)</div>
+          <div style={labelStyle}>Fotos del estado de la moto (6 obligatorias — la última con la persona que entrega)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
             {ANGULOS_FOTO.map(({ key, label }) => {
               const dataUrl = fotosAngulos[key];

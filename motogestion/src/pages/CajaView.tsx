@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
@@ -43,7 +43,8 @@ export default function CajaView() {
   const { cerrarCaja, cajaDia } = useCaja();
 
   const pagosDia = useMemo(() =>
-    pagos.filter(p => p.fecha === fecha).sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    // esPagoDeCaja: los pagos internos (adelanto de base) NO entran a la caja diaria.
+    pagos.filter(p => p.fecha === fecha && esPagoDeCaja(p)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [pagos, fecha]
   );
 

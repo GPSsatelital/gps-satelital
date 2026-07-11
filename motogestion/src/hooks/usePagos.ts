@@ -4,7 +4,15 @@ import { hoyISO } from "../utils/fecha";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
 export type MetodoPago = "Efectivo" | "Transferencia";
-export type TipoRegistroPago = "normal" | "campo" | "transferencia";
+// 'adelanto_base': la semana adelantada de la base inicial (LIBRO DE CAJAS, mig 045).
+// Pago INTERNO visible en el historial del contrato, pero EXCLUIDO de caja diaria y
+// recaudo — esa plata ya entró como base, sumarla otra vez inflaría la caja.
+export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_base";
+
+// ¿Este pago cuenta para caja diaria / recaudo del día? (los internos no)
+export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {
+  return p.tipo_registro !== "adelanto_base";
+}
 
 export type AplicadoPago = {
   tarifa: number;

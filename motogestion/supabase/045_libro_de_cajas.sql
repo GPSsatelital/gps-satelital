@@ -168,7 +168,10 @@ begin
 
       if v_sin_reparto and v_monto > 0 then
         -- 1) Caja 0: prorrateo (tarifa-primero: el tramo final es ahorro)
-        v_falta := greatest(v_contrato.prorrateo_total - v_contrato.prorrateo_pagado, 0);
+        -- El 'adelanto_base' NO paga prorrateo: va directo a la Caja 1 (la semana
+        -- adelantada de la base); el prorrateo lo paga el cliente el primer día de pago.
+        v_falta := case when v_row.tipo_registro = 'adelanto_base' then 0
+                        else greatest(v_contrato.prorrateo_total - v_contrato.prorrateo_pagado, 0) end;
         if v_falta > 0 then
           v_delta := least(v_monto, v_falta);
           v_antes := least(greatest(v_contrato.prorrateo_pagado - (v_contrato.prorrateo_total - v_contrato.prorrateo_ahorro), 0), v_contrato.prorrateo_ahorro);

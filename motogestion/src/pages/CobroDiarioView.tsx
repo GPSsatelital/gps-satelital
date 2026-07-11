@@ -3,7 +3,7 @@ import type { ViewKey } from "../App";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
-import { usePagos, calcularAplicacion } from "../hooks/usePagos";
+import { usePagos, calcularAplicacion, esPagoDeCaja } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
@@ -161,7 +161,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const esContratoDiario = (c.forma_pago ?? "").toLowerCase() === "diario";
         const tipoRuta = esContratoDiario ? "diario" : "semanal";
         const diaPago = esContratoDiario ? "Diario" : formatDiaPago(c);
-        const pagadosHoy = pagosC.filter(p => p.fecha === hoy && p.estado === "Confirmado");
+        const pagadosHoy = pagosC.filter(p => p.fecha === hoy && p.estado === "Confirmado" && esPagoDeCaja(p));
         const pagadoHoy = pagadosHoy.reduce((s, p) => s + p.valor, 0);
         const pagaHoy = esContratoDiario ? true : esDiaDePago(c, new Date(hoy + "T00:00:00"));
         const { dias, pagadoHasta, estadoLabel } = esContratoDiario
@@ -218,7 +218,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const filasPagaronHoy = useMemo(() => filas.filter(f => f.pagadoHoyBool), [filas]);
   const filasInmov = useMemo(() => filas.filter(f => f.diasSinPago >= 3).sort((a, b) => b.diasSinPago - a.diasSinPago), [filas]);
 
-  const kpiRecaudado = useMemo(() => pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), [pagos, hoy]);
+  const kpiRecaudado = useMemo(() => pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0), [pagos, hoy]);
   const kpiEsperadoDiario = useMemo(() => filasHoy.reduce((s, f) => s + f.valorPactado, 0), [filasHoy]);
   const kpiEsperadoPeriodico = useMemo(() => filasPeriodicaHoy.reduce((s, f) => s + f.valorPeriodo, 0), [filasPeriodicaHoy]);
   const kpiEsperado = kpiEsperadoDiario + kpiEsperadoPeriodico;
@@ -748,7 +748,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
 
       {/* ── Tab: Caja ── */}
       {tab === "caja" && (() => {
-        const pagosHoy = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado");
+        const pagosHoy = pagos.filter(p => p.fecha === hoy && p.estado === "Confirmado" && esPagoDeCaja(p));
         const efectivoHoy = pagosHoy.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
         const transHoy = pagosHoy.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
         const totalHoy = efectivoHoy + transHoy;

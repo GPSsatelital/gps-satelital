@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -142,12 +142,12 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── Recaudado hoy ──────────────────────────────────────────────────────────
   const recaudadoHoy = useMemo(() =>
-    pagos.filter(p => p.estado === "Confirmado" && p.fecha === hoyStr).reduce((a, p) => a + p.valor, 0),
+    pagos.filter(p => p.estado === "Confirmado" && p.fecha === hoyStr && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0),
     [pagos, hoyStr]);
 
   // ── Pagos en rango ─────────────────────────────────────────────────────────
   const pagosRango = useMemo(() =>
-    pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde && p.fecha <= hasta),
+    pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde && p.fecha <= hasta && esPagoDeCaja(p)),
     [pagos, desde, hasta]);
 
   const totalRecaudado    = pagosRango.reduce((a, p) => a + p.valor, 0);
@@ -160,7 +160,7 @@ export default function ReportesView({ onNavigate }: Props) {
     return Array.from({ length: 14 }, (_, i) => {
       const d = hoyDate(); d.setDate(d.getDate() - (13 - i));
       const fecha = d.toISOString().slice(0, 10);
-      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha === fecha).reduce((a, p) => a + p.valor, 0);
+      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha === fecha && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
       const label = `${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]} ${d.getDate()}`;
       return { fecha, total, label };
     });
@@ -174,7 +174,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const ini = new Date(fin); ini.setDate(ini.getDate() - 6);
       const desde_ = ini.toISOString().slice(0, 10);
       const hasta_ = fin.toISOString().slice(0, 10);
-      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde_ && p.fecha <= hasta_).reduce((a, p) => a + p.valor, 0);
+      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde_ && p.fecha <= hasta_ && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
       return { label: i === 0 ? "Esta sem" : `Sem -${i}`, total };
     }).reverse();
   }, [pagos]);
@@ -305,7 +305,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const hoy = hoyDate();
     const i = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().slice(0, 10);
     const f = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
-    const totalAnt = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= i && p.fecha <= f).reduce((a, p) => a + p.valor, 0);
+    const totalAnt = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= i && p.fecha <= f && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
     const delta = totalAnt > 0 ? ((totalRecaudado - totalAnt) / totalAnt) * 100 : null;
     return { totalAnt, delta };
   }, [rango, pagos, totalRecaudado]);

@@ -10,7 +10,7 @@ import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
 import ModalConvenio from "../components/ModalConvenio";
-import { calcularProrrateoInicial, proximoDiaPago } from "../utils/cicloPago";
+import { calcularProrrateoInicial, proximoDiaPago, totalCajasContrato } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 
@@ -182,18 +182,19 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     : 308000 + valorMensual;
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
-  // Ahorro con el que ARRANCA el contrato (regla 11-jul): de la base entregada, el período
-  // adelantado se reparte como cualquier período (tarifa empresa + ahorro) — la parte de la
-  // empresa NO es ahorro del cliente. Ej: $510.000 − $176.000 = $334.000 (= $308.000 + $26.000).
-  // Vive en ahorro_apertura (separado); ahorro_acumulado arranca en 0 y solo crece pagando.
-  // Diario NO usa apertura: todo lo entregado va a ahorro_acumulado como siempre, porque
-  // el trigger de base_completada (>= $510.000) mira esa columna.
+  // LIBRO DE CAJAS (spec 11-jul, ver CLAUDE.md): de la base entregada, el período adelantado
+  // COMPLETO ($202.000) va a la Caja 1 como pago interno 'adelanto_base' (el trigger de la BD
+  // le acredita sus $26.000 de ahorro al llenarla). Lo que queda ($308.000) es el ahorro de
+  // apertura. Si entregó menos que el período: todo va al adelanto (caja parcial), apertura 0.
+  // Diario NO usa apertura ni cajas: todo lo entregado va a ahorro_acumulado como siempre.
   const ahorroPeriodo = form.forma_pago === "Semanal" ? ahorroSemana
     : form.forma_pago === "Quincenal" ? 2 * ahorroSemana + ahorroLS
     : form.forma_pago === "Mensual" ? 4 * ahorroSemana + 2 * ahorroLS : 0;
+  void ahorroPeriodo; // (referencia del desglose; el ahorro de la adelantada lo acredita la BD)
+  const adelantoValor = form.forma_pago === "Diario" ? 0 : Math.min(ahorroEntregado, valorPeriodo);
   const aperturaInicial = form.forma_pago === "Diario"
     ? 0
-    : Math.max(ahorroEntregado - (valorPeriodo - ahorroPeriodo), 0);
+    : Math.max(ahorroEntregado - valorPeriodo, 0);
 
   const primerLunes = form.forma_pago === "Semanal" && valorSemanal > 0
     ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Lunes", dias_pago_mes: [] }, pagoDiaLS, pagoDiaDom) : null;
@@ -209,6 +210,24 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const previewCalendario = diasCalendarioCompletos && valorSemanal > 0
     ? calcPrimerPago(form.fecha_entrega, { forma_pago: form.forma_pago, dia_pago: "Lunes", dias_pago_mes: form.dias_pago_mes }, pagoDiaLS, pagoDiaDom)
     : null;
+
+  // Primer día de pago del contrato según lo elegido — ancla de la Caja 1 (fecha_inicio_cajas)
+  // y valor del prorrateo (Caja 0) para el motor v2.
+  const primerPagoSel = form.forma_pago === "Semanal"
+    ? (form.dia_pago === "Lunes" ? primerLunes : primerMiercoles)
+    : previewCalendario;
+  // Ahorro contenido en el prorrateo: día a día (domingos con su ahorro propio).
+  const prorrateoAhorroSel = (() => {
+    if (!primerPagoSel || form.forma_pago === "Diario") return 0;
+    const base = new Date(form.fecha_entrega + "T00:00:00");
+    let total = 0;
+    for (let i = 1; i <= primerPagoSel.dias; i++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + i);
+      total += d.getDay() === 0 ? ahorroDom : ahorroLS;
+    }
+    return total;
+  })();
 
   async function subirArchivo(file: File, path: string): Promise<string | null> {
     const { error } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
@@ -298,12 +317,19 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         ahorro_domingo: ahorroDom,
         base_inicial: baseRequerida || 510000,
         estado: "En proceso",
-        // Tiempo definido: el ahorro con el que arranca vive SEPARADO en ahorro_apertura
-        // (entregado − tarifa empresa del período adelantado) y acumulado empieza en 0.
-        // Diario: sin apertura — todo a acumulado (el trigger de base mira esa columna).
+        // LIBRO DE CAJAS: apertura = entregado − período adelantado (la adelantada entra
+        // como pago interno en el paso 6); acumulado arranca en 0 y solo crece pagando.
+        // Diario: sin cajas — todo a acumulado (el trigger de base mira esa columna).
         ahorro_apertura: aperturaInicial,
         ahorro_acumulado: form.forma_pago === "Diario" ? ahorroEntregado : 0,
         base_completada: false,
+        // Motor v2 (mig 045) — el reparto de pagos lo hace la BD:
+        motor_v2: form.forma_pago !== "Diario",
+        total_cajas: form.forma_pago === "Diario" ? null : totalCajasContrato(form.forma_pago, Number(form.meses) || 0),
+        fecha_inicio_cajas: form.forma_pago === "Diario" ? null : (primerPagoSel?.fecha ?? null),
+        prorrateo_total: form.forma_pago === "Diario" ? 0 : (primerPagoSel?.valor ?? 0),
+        prorrateo_pagado: 0,
+        prorrateo_ahorro: form.forma_pago === "Diario" ? 0 : prorrateoAhorroSel,
       }).select("*").single();
       if (err) { setError(err.message); return; }
       setContratoId(data.id);
@@ -426,6 +452,25 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       await supabase.from("contratos").update({ estado: "Activo", firma_responsable: true }).eq("id", contratoId);
       await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoId);
       await supabase.from("clientes").update({ estado: "Activo" }).eq("id", clienteActual.id);
+
+      // LIBRO DE CAJAS: la semana adelantada de la base entra como pago interno visible.
+      // El trigger de la BD la aplica a la Caja 1 y le acredita su ahorro al llenarla.
+      // EXCLUIDO de caja diaria/recaudo (tipo_registro='adelanto_base') — esa plata ya
+      // entró como base inicial, sumarla otra vez inflaría la caja.
+      if (contratoData?.forma_pago !== "Diario" && adelantoValor > 0) {
+        const { error: errAd } = await supabase.from("pagos").insert({
+          contrato_id: contratoId,
+          valor: adelantoValor,
+          metodo: "Efectivo",
+          estado: "Confirmado",
+          tipo_registro: "adelanto_base",
+          fecha: form.fecha_entrega,
+        });
+        if (errAd) {
+          setError("Contrato activado, pero falló el registro de la semana adelantada: " + errAd.message + ". Avísale al administrador.");
+          return;
+        }
+      }
       onCompletado();
     } catch (e) {
       setError("Error al activar el contrato: " + ((e as Error)?.message ?? String(e)));
@@ -652,9 +697,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     <label style={labelStyle}>Duración (meses)</label>
                     <input type="number" min="1" max="24" style={inputStyle} value={form.meses}
                       onChange={e => setForm(p => ({ ...p, meses: e.target.value }))} placeholder="Máx. 24 meses" />
-                    {form.meses && <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
-                      ≈ {Math.round(Number(form.meses) * 4.33)} semanas
-                    </div>}
+                    {form.meses && (
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#0369a1", marginTop: 3 }}>
+                        = {totalCajasContrato(form.forma_pago, Number(form.meses) || 0)} cuotas {form.forma_pago === "Semanal" ? "semanales" : form.forma_pago === "Quincenal" ? "quincenales" : "mensuales"} (calendario real)
+                      </div>
+                    )}
                   </div>
 
                   <div>

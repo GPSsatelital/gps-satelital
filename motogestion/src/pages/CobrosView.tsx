@@ -5,6 +5,7 @@ import {
   calcularAplicacion,
   calcularCuotaDia,
   generarFolio,
+  esPagoDeCaja,
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
@@ -762,7 +763,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         .reduce((acc, p) => acc + p.valor, 0);
 
       const recaudadoHoy = confirmados
-        .filter(p => p.fecha === hoyISO())
+        .filter(p => p.fecha === hoyISO() && esPagoDeCaja(p))
         .reduce((acc, p) => acc + p.valor, 0);
 
       // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora,

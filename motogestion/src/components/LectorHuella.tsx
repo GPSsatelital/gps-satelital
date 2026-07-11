@@ -19,6 +19,18 @@ type EstadoLector =
   | "esperando" // listo, esperando el dedo
   | "capturada";
 
+// Cola GLOBAL de órdenes al agente HID. El agente solo maneja UNA adquisición en todo
+// el PC, y cada instancia de LectorHuella le habla por su propia conexión: sin cola, al
+// cambiar Cliente↔Acompañante el "stop" del lector que se cierra puede llegar DESPUÉS
+// del "start" del que se abre y matar la lectura nueva → recuadro verde pero el dedo
+// no captura (bug real reportado al capturar la huella del acompañante en edición).
+let colaAgente: Promise<unknown> = Promise.resolve();
+function enColaAgente<T>(fn: () => Promise<T>): Promise<T> {
+  const p = colaAgente.then(fn, fn);
+  colaAgente = p.catch(() => {});
+  return p;
+}
+
 function base64UrlADataUrl(sample: unknown): string | null {
   // Con SampleFormat.PngImage cada muestra llega como string base64url del PNG.
   // Algunas versiones la envían como objeto { Data: "..." }.
@@ -100,29 +112,29 @@ export default function LectorHuella({ label, onChange }: Props) {
       setAviso("Error del lector — retire el dedo e intente de nuevo.");
     });
 
-    reader
-      .enumerateDevices()
-      .then(async (devices) => {
-        if (!activo) return;
-        if (devices.length === 0) {
-          setEstado("sin-lector");
-          return;
-        }
-        // Suelta cualquier adquisición que haya quedado colgada de una sesión anterior
-        // (el agente HID solo permite UNA lectura activa en todo el PC — si otro formulario
-        // no la soltó, el recuadro queda verde pero el dedo nunca captura).
-        await reader.stopAcquisition().catch(() => {});
-        if (!activo) return;
-        setEstado("esperando");
-        return reader.startAcquisition(SampleFormat.PngImage);
-      })
-      .catch(() => {
-        if (activo) setEstado("sin-agente");
-      });
+    // Todo el arranque pasa por la cola global: garantiza que el "stop" de un lector
+    // anterior ya se ejecutó antes de nuestro "start" (nunca se cruzan las órdenes).
+    enColaAgente(async () => {
+      const devices = await reader.enumerateDevices();
+      if (!activo) return;
+      if (devices.length === 0) {
+        setEstado("sin-lector");
+        return;
+      }
+      // Suelta cualquier adquisición que haya quedado colgada de una sesión anterior
+      // (el agente HID solo permite UNA lectura activa en todo el PC — si otro formulario
+      // no la soltó, el recuadro queda verde pero el dedo nunca captura).
+      await reader.stopAcquisition().catch(() => {});
+      if (!activo) return;
+      setEstado("esperando");
+      await reader.startAcquisition(SampleFormat.PngImage);
+    }).catch(() => {
+      if (activo) setEstado("sin-agente");
+    });
 
     return () => {
       activo = false;
-      reader.stopAcquisition().catch(() => {});
+      enColaAgente(() => reader.stopAcquisition().catch(() => {}));
       reader.off();
       readerRef.current = null;
     };
@@ -142,9 +154,11 @@ export default function LectorHuella({ label, onChange }: Props) {
     const r = readerRef.current;
     if (!r) { reiniciarConexion(); return; }
     try {
-      // Igual que al montar: soltar la adquisición anterior antes de arrancar la nueva.
-      await r.stopAcquisition().catch(() => {});
-      await r.startAcquisition(SampleFormat.PngImage);
+      // Igual que al montar: por la cola global, soltar la adquisición anterior y arrancar.
+      await enColaAgente(async () => {
+        await r.stopAcquisition().catch(() => {});
+        await r.startAcquisition(SampleFormat.PngImage);
+      });
     } catch {
       setEstado("sin-agente");
     }

@@ -4,7 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos, calcularCuotaDia, calcularAplicacion, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
+import { usePagos, calcularCuotaDia } from "../hooks/usePagos";
 import MoneyInput from "../components/MoneyInput";
 import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
@@ -19,10 +19,13 @@ import {
   estaEnProrrateo,
   calcularProrrateoInicial,
   huecoCuotasHoy,
+  calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import ModalConvenio from "../components/ModalConvenio";
+import ModalEntregaDevolucion from "../components/ModalEntregaDevolucion";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -75,7 +78,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { contratos, reactivarContrato } = useContratos();
+  const { contratos } = useContratos();
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { pagos, registrarPago } = usePagos();
@@ -92,7 +95,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [busqueda, setBusqueda]       = useState("");
   const [filtro, setFiltro]           = useState<FiltroP>("todos");
   const [expandido, setExpandido]     = useState<string | null>(null);
-  const [procesandoId, setProcesandoId] = useState<string | null>(null);
+  // El procesamiento real vive en cada modal (cobro/entrega); aquí solo se lee para deshabilitar.
+  const [procesandoId] = useState<string | null>(null);
+  // Retenidas primero: es el endpoint que a la práctica más se consulta (de ahí salen las
+  // inmovilizadas). "En mora" es la persecución previa a la recolección.
+  const [tab, setTab]                 = useState<"retenidas" | "en_mora">("retenidas");
 
   const hoy = hoyISO();
   const inicioSemana = (() => {
@@ -286,6 +293,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [cobroMonto, setCobroMonto] = useState("");
   const [cobroProc, setCobroProc] = useState(false);
   const [cobroErr, setCobroErr] = useState<string | null>(null);
+  const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
+  const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
+
+  // Puede entregarse la moto cuando: la MULTA (y deudas registradas) está paga Y las
+  // cuotas atrasadas están pagas O financiadas por un convenio activo. La multa es el
+  // mínimo obligatorio; lo atrasado puede quedar en convenio.
+  const puedeEntregar = (m: MotoRetenida) =>
+    m.totalPendiente <= 0 && (m.cuotasAtrasadas <= 0 || m.convenioId != null);
 
   async function handleCobrarRecuperar() {
     if (!cobroRec || cobroProc || !profile) return;
@@ -294,13 +309,20 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     if (!confirm(`¿Registrar pago en efectivo de $${fmt(monto)} de ${cobroRec.clienteNombre} para recuperar la moto ${cobroRec.placa}?`)) return;
     setCobroProc(true); setCobroErr(null);
     try {
-      // Motor v2: la BD reparte. Sin motor: aplicar a cuota del período y a la deuda.
-      const aplicado = cobroRec.motorV2
-        ? APLICADO_LO_REPARTE_LA_BD
-        : calcularAplicacion(monto, cobroRec.cuotasAtrasadas, 0, cobroRec.totalPendiente, 0);
+      // Regla de recuperación: la MULTA (y deudas registradas) se cubren PRIMERO — es el
+      // mínimo para llevarse la moto — luego las cuotas atrasadas; el excedente queda como
+      // saldo a favor. La BD respeta este reparto explícito (no vuelve a repartir con FIFO),
+      // así que funciona igual para motor v2 y v1. El ahorro se calcula tarifa-primero.
+      const c = contratos.find(x => x.id === cobroRec.contratoId);
+      let resto = monto;
+      const aDeuda = Math.min(resto, cobroRec.totalPendiente); resto -= aDeuda;
+      const aTarifa = Math.min(resto, cobroRec.cuotasAtrasadas); resto -= aTarifa;
+      const aSaldo = resto;
+      const aAhorro = c ? calcularAhorroAplicado(c, aTarifa, false, c.caja_actual_pagado ?? 0) : 0;
+      const aplicado = { tarifa: aTarifa, baseInicial: 0, deuda: aDeuda, convenio: 0, ahorro: aAhorro, saldo: aSaldo };
       const { error } = await registrarPago(
         cobroRec.contratoId, monto, "Efectivo", aplicado,
-        { registradoPor: profile.id, ...(cobroRec.convenioId ? { convenioId: cobroRec.convenioId } : {}) },
+        { registradoPor: profile.id },
       );
       if (error) { setCobroErr(error); return; }
       setCobroRec(null); setCobroMonto("");
@@ -309,20 +331,15 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     }
   }
 
-  async function handleDevolverMoto(m: MotoRetenida) {
+  // Al entregar la moto se abre el formulario de entrega (fotos + km + persona que recibe);
+  // ese formulario reactiva el contrato al guardar. Aquí solo validamos el mínimo.
+  function handleAbrirEntrega(m: MotoRetenida) {
     if (procesandoId) return;
-    if (m.totalRecuperar > 0) {
-      alert(`El cliente aún debe $${fmt(m.totalRecuperar)} (cuotas atrasadas + multa) para recuperar la moto. Regístrale el pago con el botón "💵 Cobrar".`);
+    if (!puedeEntregar(m)) {
+      alert(`Para entregar la moto ${m.placa}: primero se debe pagar la multa/deudas ($${fmt(m.totalPendiente)}) y las cuotas atrasadas o dejarlas en un convenio. Usa "💵 Cobrar" o "📝 Convenio".`);
       return;
     }
-    if (!window.confirm(`¿Confirmas devolver la moto ${m.placa} a ${m.clienteNombre}? El contrato vuelve a Activo.`)) return;
-    setProcesandoId(m.contratoId);
-    try {
-      const { error } = await reactivarContrato(m.contratoId, m.motoId);
-      if (error) alert("Error al reactivar el contrato: " + error);
-    } finally {
-      setProcesandoId(null);
-    }
+    setEntregaRec(m);
   }
 
   // Reasignar la moto ahora pasa por Liquidación (motivo incumplimiento): calcula el
@@ -355,23 +372,23 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       <div style={{ marginBottom: 22 }}>
         <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Inmovilizaciones</h2>
         <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 14 }}>
-          Contratos en mora real — requieren acción inmediata
+          Motos retenidas y contratos en mora real — gestión de recuperación
         </p>
       </div>
 
       {/* KPI header cards */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        <div style={{ background: "#fee2e2", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+        <div onClick={() => setTab("en_mora")} style={{ background: "#fee2e2", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Mora crítica (+3d)</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#991b1b", lineHeight: 1.1, marginTop: 6 }}>{resumen.total}</div>
           <div style={{ fontSize: 11, color: "#991b1b", fontWeight: 700, marginTop: 2 }}>{resumen.critica} críticos (+10d)</div>
         </div>
-        <div style={{ background: "#fef3c7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+        <div onClick={() => setTab("en_mora")} style={{ background: "#fef3c7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>En proceso recolección</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#92400e", lineHeight: 1.1, marginTop: 6 }}>{resumen.recoleccion}</div>
           <div style={{ fontSize: 11, color: "#92400e", fontWeight: 700, marginTop: 2 }}>orden activa</div>
         </div>
-        <div style={{ background: "#dcfce7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+        <div onClick={() => setTab("retenidas")} style={{ background: "#dcfce7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Recuperadas esta semana</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#166534", lineHeight: 1.1, marginTop: 6 }}>{recuperadasSemana}</div>
           <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
@@ -383,6 +400,34 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         </div>
       </div>
 
+      {/* Tab bar — Retenidas primero (endpoint más consultado) */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {([
+          { key: "retenidas", label: "🔒 Retenidas", count: motosRetenidas.length },
+          { key: "en_mora",   label: "🔴 En mora",   count: filas.length },
+        ] as const).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              flex: 1, padding: "12px 14px", borderRadius: 12, border: "none", cursor: "pointer",
+              fontSize: 14, fontWeight: 800,
+              background: tab === t.key ? "#0f172a" : "#f1f5f9",
+              color: tab === t.key ? "white" : "#64748b",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+          >
+            {t.label}
+            <span style={{
+              background: tab === t.key ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+              borderRadius: 999, fontSize: 12, fontWeight: 900, padding: "1px 8px",
+              color: tab === t.key ? "white" : "#64748b",
+            }}>{t.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab === "en_mora" && (<>
       {/* GPS notice */}
       <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", display: "flex", gap: 8, alignItems: "flex-start" }}>
         <span style={{ fontSize: 16 }}>📡</span>
@@ -611,6 +656,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         })}
       </div>
 
+      </>)}
+
+      {tab === "retenidas" && (<>
       {/* Motos retenidas — datos reales (contrato Suspendido + moto Recuperada) */}
       <div style={{ marginBottom: 12 }}>
         <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "#0f172a" }}>🔒 Motos retenidas</h3>
@@ -627,7 +675,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
           {motosRetenidas.map(m => {
-            const alDia = m.totalRecuperar <= 0;
+            const entregable = puedeEntregar(m);
+            const faltaMulta = m.totalPendiente > 0;
+            const puedeHacerConvenio = m.cuotasAtrasadas > 0 && m.convenioId == null;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: "#fff5f5", border: "2px solid #fecaca", borderRadius: 16, padding: "14px 16px" }}>
@@ -646,10 +696,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         </div>
                       ))}
                       {m.cuotasAtrasadas > 0 && (
-                        <div style={{ fontSize: 12, color: "#991b1b" }}>Cuotas atrasadas: <strong>${fmt(m.cuotasAtrasadas)}</strong></div>
+                        <div style={{ fontSize: 12, color: m.convenioId != null ? "#0369a1" : "#991b1b" }}>
+                          Cuotas atrasadas: <strong>${fmt(m.cuotasAtrasadas)}</strong>
+                          {m.convenioId != null && <span style={{ fontSize: 11, fontWeight: 700 }}> · 📝 en convenio</span>}
+                        </div>
                       )}
-                      <div style={{ fontSize: 13, fontWeight: 800, color: alDia ? "#166534" : "#991b1b", marginTop: 2 }}>
-                        {alDia ? "✓ Al día — puede recuperar" : `Para recuperar debe pagar: $${fmt(m.totalRecuperar)}`}
+                      <div style={{ fontSize: 13, fontWeight: 800, color: entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
+                        {entregable
+                          ? "✓ Listo para entregar"
+                          : faltaMulta
+                            ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
+                            : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                         <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#f1f5f9", color: "#334155" }}>
@@ -672,22 +729,32 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📞 Llamar
                       </button>
                     )}
-                    {!alDia && (
+                    {!entregable && (
                       <button
-                        onClick={() => { setCobroRec(m); setCobroMonto(String(m.totalRecuperar)); setCobroErr(null); }}
+                        onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
                         disabled={procesandoEsta}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#166534", color: "white" }}
                       >
                         💵 Cobrar
                       </button>
                     )}
+                    {puedeHacerConvenio && (
+                      <button
+                        onClick={() => setConvenioRec(m)}
+                        disabled={procesandoEsta}
+                        title="Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#0369a1", color: "white" }}
+                      >
+                        📝 Convenio
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleDevolverMoto(m)}
-                      disabled={!alDia || procesandoEsta}
-                      title={!alDia ? `Falta pagar $${fmt(m.totalRecuperar)} para poder devolver` : ""}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!alDia || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: alDia ? "#dcfce7" : "#f1f5f9", color: alDia ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
+                      onClick={() => handleAbrirEntrega(m)}
+                      disabled={!entregable || procesandoEsta}
+                      title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "#dcfce7" : "#f1f5f9", color: entregable ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
                     >
-                      {procesandoEsta ? "Procesando..." : "✓ Devolver moto"}
+                      {procesandoEsta ? "Procesando..." : "✓ Entregar moto"}
                     </button>
                     {esAdmin && (
                       <button
@@ -706,6 +773,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           })}
         </div>
       )}
+      </>)}
 
       {gestionId && (
         <ModalGestion
@@ -747,7 +815,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             </div>
 
             <MoneyInput label="Valor recibido (efectivo)" value={cobroMonto} onChange={setCobroMonto} />
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Si paga todo, el botón "Devolver moto" se habilita solo. Si abona parcial, la moto sigue guardada hasta completar.</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>El pago cubre primero la <strong>multa/deudas</strong> (mínimo para llevarse la moto) y luego las cuotas atrasadas. Pídele lo máximo que pueda dar; lo que quede de atrasado se puede dejar en un convenio (botón 📝 Convenio).</div>
 
             {cobroErr && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{cobroErr}</div>}
 
@@ -759,6 +827,29 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             </div>
           </div>
         </>
+      )}
+
+      {/* Convenio para financiar las cuotas atrasadas de una moto retenida */}
+      {convenioRec && (
+        <ModalConvenio
+          contratoId={convenioRec.contratoId}
+          clienteNombre={convenioRec.clienteNombre}
+          metaFija={convenioRec.cuotasAtrasadas}
+          motivoInicial="Convenio para recuperar moto retenida"
+          onClose={() => setConvenioRec(null)}
+        />
+      )}
+
+      {/* Formulario de entrega al devolver la moto retenida ya paga */}
+      {entregaRec && (
+        <ModalEntregaDevolucion
+          contratoId={entregaRec.contratoId}
+          clienteId={entregaRec.clienteId}
+          clienteNombre={entregaRec.clienteNombre}
+          motoId={entregaRec.motoId}
+          placa={entregaRec.placa}
+          onClose={() => setEntregaRec(null)}
+        />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   calcularCuotaDia,
   generarFolio,
   esPagoDeCaja,
+  APLICADO_LO_REPARTE_LA_BD,
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
@@ -35,6 +36,7 @@ import {
   calcularAhorroAplicado,
   tarifaPagadaPeriodoActual,
   ahorroPeriodoExacto,
+  huecoCuotasHoy,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -1032,7 +1034,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const pagadoEnPeriodo = contratoDetalle?.forma_pago === "Diario"
     ? (contratoDetalle?.recaudadoHoy ?? 0)
     : (contratoDetalle?.pagadoEnPeriodoActual ?? 0);
-  const cuotaPendiente = Math.max(cuotaPactada - pagadoEnPeriodo, 0);
+  const cuotaPendiente = contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario"
+    ? huecoCuotasHoy(contratoDetalle, hoyDate())
+    : Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
   // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
   // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
@@ -1117,7 +1121,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const modalPagadoPeriodo = modalContrato?.forma_pago === "Diario"
     ? (modalContrato?.recaudadoHoy ?? 0)
     : (modalContrato?.pagadoEnPeriodoActual ?? 0);
-  const modalCuotaPendiente = modalContrato ? Math.max(modalCuotaPactada - modalPagadoPeriodo, 0) : 0;
+  const modalCuotaPendiente = modalContrato
+    ? (modalContrato.motor_v2 && modalContrato.forma_pago !== "Diario"
+        ? huecoCuotasHoy(modalContrato, hoyDate())
+        : Math.max(modalCuotaPactada - modalPagadoPeriodo, 0))
+    : 0;
   const modalMonto = Number(modalValor) || 0;
   const modalDesglose: AplicadoPago = modalContrato
     ? (() => {
@@ -1174,7 +1182,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
     const folio = generarFolio();
     const { error } = await registrarPago(
-      modalContratoId, modalMonto, modalMetodo, modalDesglose,
+      // Motor v2: el reparto lo hace la BD al confirmar; el desglose local es solo preview.
+      modalContratoId, modalMonto, modalMetodo,
+      modalContrato?.motor_v2 && modalContrato.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : modalDesglose,
       {
         folio,
         comprobanteUrl,
@@ -1243,7 +1253,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         contratoSeleccionadoId,
         montoIngresado,
         metodo,
-        desglose,
+        // Motor v2: la BD reparte al confirmar; el desglose local es solo preview.
+        contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : desglose,
         contratoDetalle?.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
       );
       if (error) { setFormError(error); return; }
@@ -1268,7 +1279,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       aplicado.ahorro = calcularAhorroAplicado(contratoDetalle, aplicado.tarifa, enProrrateo,
         tarifaPagadaPeriodoActual(contratoDetalle, pagos.filter(p => p.contrato_id === contratoDetalle.id), hoyDate()));
       const { error } = await registrarPago(
-        contratoSeleccionadoId, saldo, "Efectivo", aplicado,
+        contratoSeleccionadoId, saldo, "Efectivo",
+        contratoDetalle.motor_v2 && contratoDetalle.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
       );
       if (error) { setFormError(error); return; }
@@ -1428,7 +1440,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ? calcularProrrateoInicial(r)
         : valorPeriodoReal(r);
     const pagadoP = r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0);
-    const cuotaPend = Math.max(cuotaPact - pagadoP, 0);
+    const cuotaPend = r.motor_v2 && r.forma_pago !== "Diario"
+      ? huecoCuotasHoy(r, hoyDate())
+      : Math.max(cuotaPact - pagadoP, 0);
     const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
     aplicado.ahorro = calcularAhorroAplicado(r, aplicado.tarifa, enProrrateoCampo,
       tarifaPagadaPeriodoActual(r, pagos.filter(p => p.contrato_id === r.id), hoyDate()));
@@ -1443,7 +1457,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         if (upErr) { setCampoError(`Error subiendo foto: ${upErr}`); return; }
         comprobanteUrl = url ?? undefined;
       }
-      const { error } = await registrarCobroCampo(campoContratoId, monto, aplicado, profile.id, folio, { ubicacion: campoUbicacion, comprobanteUrl });
+      const { error } = await registrarCobroCampo(
+        campoContratoId, monto,
+        r.motor_v2 && r.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
+        profile.id, folio, { ubicacion: campoUbicacion, comprobanteUrl },
+      );
       if (error) { setCampoError(error); return; }
       setConfirmarCampoOpen(false);
       const nota = `Efectivo recuperado en campo (${folio}): $${fmt(monto)}.${campoNota.trim() ? ` ${campoNota}` : ""}${campoUbicacion ? ` [GPS ${campoUbicacion.lat.toFixed(5)},${campoUbicacion.lng.toFixed(5)}]` : ""}`;
@@ -1539,6 +1557,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         pagosRecientes: pagosContrato.slice(0, 5).filter(p => p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor, metodo: p.metodo })),
         inicioContrato: c.fecha_entrega,
         finContrato: infoFinContrato(c),
+        cajas: c.motor_v2 && (c.total_cajas ?? 0) > 0 ? { pagadas: c.cajas_pagadas ?? 0, total: c.total_cajas! } : null,
       };
     }
 
@@ -1590,6 +1609,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
+              {contratoDetalle.motor_v2 && (contratoDetalle.total_cajas ?? 0) > 0 && (
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#0369a1", marginTop: 2 }}>
+                  📦 Va {contratoDetalle.cajas_pagadas ?? 0} de {contratoDetalle.total_cajas} cuotas pagadas
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
               <EstadoBadge estado={contratoDetalle.estadoCartera} />
@@ -2456,7 +2480,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
                     : enProrrateoHoy ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
                   const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
-                  const cuotaPendParte = Math.max(cuotaP - pagP, 0);
+                  const cuotaPendParte = c.motor_v2 && c.forma_pago !== "Diario"
+                    ? huecoCuotasHoy(c, hoyDate())
+                    : Math.max(cuotaP - pagP, 0);
                   // Con convenio la deuda la paga el convenio (no se suma completa). Si está al día, no debe nada.
                   const debePagar = c.estadoCartera === "al-dia"
                     ? 0
@@ -2901,7 +2927,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     ? calcularCuotaDia(r.tarifa_diaria ?? 27000, esDomingo, r.tarifa_domingo)
                     : enProrrateoRef ? calcularProrrateoInicial(r) : valorPeriodoReal(r)) : 0;
                   const pagadoP = r ? (r.forma_pago === "Diario" ? (r.recaudadoHoy ?? 0) : (r.pagadoEnPeriodoActual ?? 0)) : 0;
-                  const cuotaPend = r ? Math.max(cuotaPact - pagadoP, 0) : 0;
+                  const cuotaPend = r
+                    ? (r.motor_v2 && r.forma_pago !== "Diario" ? huecoCuotasHoy(r, hoyDate()) : Math.max(cuotaPact - pagadoP, 0))
+                    : 0;
                   const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
                   return (
                     <div style={{ display: "grid", gap: 12 }}>

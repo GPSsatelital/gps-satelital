@@ -561,6 +561,8 @@ export type DatosEstadoCuenta = {
   pagosRecientes: Array<{ fecha: string; valor: number; metodo: string }>;
   inicioContrato?: string | null; // fecha_entrega
   finContrato?: { fecha: string | null; modificada: boolean };
+  // Motor v2: avance del contrato por cuotas pagadas ("va X de N")
+  cajas?: { pagadas: number; total: number } | null;
 };
 
 // Compacto a propósito: imprime bien en la térmica de 80mm (GA-E2001) y se ve limpio
@@ -578,6 +580,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
       <div>CC ${cliente.cedula}${moto ? ` · ${moto.placa}` : ""}</div>
       ${sep}
       ${d.inicioContrato ? linea("Inicio de contrato", fmtFecha(d.inicioContrato)) : ""}
+      ${d.cajas ? linea("Avance del contrato", `${d.cajas.pagadas} de ${d.cajas.total} cuotas`, true) : ""}
       ${linea("Cuota por período", `$ ${fmt(d.cuotaPeriodo)}`)}
       ${linea("Día de pago", d.diaPagoLabel)}
       ${linea("Estado", d.estadoLabel)}
@@ -613,6 +616,7 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
     `Fecha: ${fmtFecha(hoyISO())}`,
     "",
     ...(d.inicioContrato ? [`Inicio de contrato: ${fmtFecha(d.inicioContrato)}`] : []),
+    ...(d.cajas ? [`Avance: ${d.cajas.pagadas} de ${d.cajas.total} cuotas pagadas`] : []),
     `Cuota por período: $${fmt(d.cuotaPeriodo)} (paga ${d.diaPagoLabel})`,
     `Estado: ${d.estadoLabel}`,
     `*Debe hoy: $${fmt(d.debeHoy)}*`,

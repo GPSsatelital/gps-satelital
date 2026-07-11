@@ -3,7 +3,7 @@ import type { ViewKey } from "../App";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
-import { usePagos, calcularAplicacion, esPagoDeCaja } from "../hooks/usePagos";
+import { usePagos, calcularAplicacion, esPagoDeCaja, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
@@ -274,10 +274,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       aplicado.ahorro = calcularAhorroAplicado(contratoFila, aplicado.tarifa, estaEnProrrateo(contratoFila, sinPagos),
         tarifaPagadaPeriodoActual(contratoFila, pagos.filter(p => p.contrato_id === contratoFila.id), new Date(hoy + "T00:00:00")));
     }
-    const { error } = await registrarPago(f.contratoId, valor, cobrarMetodo, aplicado, {
-      registradoPor: profile?.id,
-      ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
-    });
+    const { error } = await registrarPago(
+      f.contratoId, valor, cobrarMetodo,
+      // Motor v2: la BD reparte al confirmar; el desglose local es solo preview.
+      contratoFila?.motor_v2 && contratoFila.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
+      {
+        registradoPor: profile?.id,
+        ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
+      });
     setCobrandoLoading(false);
     if (error) { setCobrarError(error); return; }
     setConfirmarCobroOpen(false);

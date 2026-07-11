@@ -41,6 +41,15 @@ export type Contrato = {
   empalme_cerrado?: boolean;
   empalme_cerrado_por?: string | null;
   empalme_cerrado_fecha?: string | null;
+  // Motor v2 — LIBRO DE CAJAS (mig 045): acumuladores del ledger. El reparto lo hace la BD.
+  motor_v2?: boolean;
+  total_cajas?: number | null;
+  cajas_pagadas?: number;
+  caja_actual_pagado?: number;
+  prorrateo_total?: number;
+  prorrateo_pagado?: number;
+  prorrateo_ahorro?: number;
+  fecha_inicio_cajas?: string | null;
   contrato_pdf_url?: string | null;
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;

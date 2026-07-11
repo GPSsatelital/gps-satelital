@@ -162,6 +162,13 @@ export function calcularEstadoCartera(
   // se cobra la cuota normal aparte — ya está financiada en el convenio.
   periodoCubierto = false,
 ): EstadoCartera {
+  // MOTOR V2 (libro de cajas): el estado sale de los acumuladores del ledger —
+  // en mora si existe una caja exigida sin llenar (FIFO estricto). Esta rama cubre
+  // AUTOMÁTICAMENTE a todas las vistas que llaman esta función.
+  if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
+    if (periodoCubierto) return "al-dia";
+    return estadoCarteraV2(contrato, hoy);
+  }
   if (periodoCubierto) return "al-dia";
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
@@ -211,6 +218,10 @@ export function diasEnMora(
   periodoCubierto = false,
 ): number {
   if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto) !== "mora") return 0;
+  // MOTOR V2: días desde que se exigió la caja MÁS VIEJA sin llenar (FIFO), menos la gabela.
+  if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
+    return Math.max(diasEnMoraV2(contrato, hoy) - 1, 0);
+  }
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
   const inicio = inicioPeriodoActual(contrato, hoyDia);

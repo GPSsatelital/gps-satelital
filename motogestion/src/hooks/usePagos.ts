@@ -14,6 +14,14 @@ export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {
   return p.tipo_registro !== "adelanto_base";
 }
 
+// LIBRO DE CAJAS (motor v2): el reparto lo hace LA BASE DE DATOS al confirmar.
+// Los puntos de cobro envían este aplicado vacío y el trigger reparte (prorrateo →
+// cajas FIFO → deuda → convenio → saldo). Así una pestaña vieja jamás vuelve a
+// repartir mal — hay un solo cerebro. El desglose local queda solo como VISTA PREVIA.
+export const APLICADO_LO_REPARTE_LA_BD: AplicadoPago = {
+  tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0,
+};
+
 export type AplicadoPago = {
   tarifa: number;
   baseInicial: number; // cuota de base inicial pendiente (entre cuota pactada y deuda)

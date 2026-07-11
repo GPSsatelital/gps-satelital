@@ -46,6 +46,7 @@ export type Contrato = {
   total_cajas?: number | null;
   cajas_pagadas?: number;
   caja_actual_pagado?: number;
+  cajas_previas?: number;
   prorrateo_total?: number;
   prorrateo_pagado?: number;
   prorrateo_ahorro?: number;

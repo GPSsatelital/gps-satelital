@@ -19,6 +19,7 @@ export type ContratoCiclo = {
   total_cajas?: number | null;
   cajas_pagadas?: number;
   caja_actual_pagado?: number;
+  cajas_previas?: number; // cuotas pagadas ANTES del corte (migrados) + financiadas por convenio
   prorrateo_total?: number;
   prorrateo_pagado?: number;
   prorrateo_ahorro?: number;
@@ -360,10 +361,11 @@ export function totalCajasContrato(forma_pago: string, meses: number): number {
 // ("paga hoy lo que consumes desde hoy"). fecha_inicio_cajas ES el día que inicia
 // la caja 1. Espejo exacto de public.cajas_exigidas() de la mig 045.
 export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
+  const previas = contrato.cajas_previas ?? 0;
   const inicio = contrato.fecha_inicio_cajas;
-  if (!inicio) return 0;
+  if (!inicio) return Math.min(previas, contrato.total_cajas ?? previas);
   const hoyISO = fechaAISO(hoy);
-  if (hoyISO < inicio) return 0;
+  if (hoyISO < inicio) return Math.min(previas, contrato.total_cajas ?? previas);
   let n = 0;
   if (contrato.forma_pago === "Semanal") {
     const dIni = new Date(inicio + "T00:00:00");
@@ -384,6 +386,7 @@ export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
   } else {
     return 0; // Diario fuera del libro
   }
+  n += previas;
   if (contrato.total_cajas != null) n = Math.min(n, contrato.total_cajas);
   return Math.max(n, 0);
 }
@@ -412,8 +415,9 @@ export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
     if (prorPend <= 0) return 0;
     return Math.max(Math.floor((new Date(fechaAISO(hoy) + "T00:00:00").getTime() - new Date(inicio + "T00:00:00").getTime()) / 86400000), 0);
   }
-  // Fecha de exigencia de la caja más vieja sin llenar (la pagadas+1, 1-based):
-  const k = pagadas + 1;
+  // Fecha de exigencia de la caja más vieja sin llenar (la pagadas+1), relativa al
+  // inicio del ledger (las previas quedaron antes del inicio):
+  const k = Math.max(pagadas - (contrato.cajas_previas ?? 0) + 1, 1);
   let fechaExigencia = new Date(inicio + "T00:00:00");
   if (contrato.forma_pago === "Semanal") {
     fechaExigencia.setDate(fechaExigencia.getDate() + (k - 1) * 7);

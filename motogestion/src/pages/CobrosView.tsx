@@ -2057,7 +2057,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 const deudaAp = (p.aplicado_deuda ?? 0) || (leg.deuda ?? 0);
                 const convAp = (p.aplicado_convenio ?? 0) || (leg.convenio ?? 0);
                 const saldoAp = (p.aplicado_saldo_favor ?? 0) || (leg.saldo ?? 0);
-                const ahorroAp = (p.aplicado_ahorro ?? 0) || (leg.ahorro ?? 0);
+                // Ahorro: NO usar || — con la regla tarifa-primero, $0 es un valor real
+                // (abono parcial sin ahorro), no "sin registrar"; el || caía al jsonb
+                // legacy y mostraba la cifra proporcional vieja ($13.333) ya recalculada.
+                const ahorroAp = p.aplicado_ahorro ?? leg.ahorro ?? 0;
                 const partes: string[] = [];
                 if (cuota > 0) partes.push(`Cuota $${fmt(cuota)}`);
                 if (deudaAp > 0) partes.push(`Deuda $${fmt(deudaAp)}`);

@@ -1706,9 +1706,11 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         )}
         {esAdmin && (
           <>
+            {/* "Activar cliente" manual ELIMINADO (caso SERAFIN): ponía Activo a un cliente
+                sin contrato — estado mentiroso que además bloqueaba el wizard (exige Aprobado).
+                El ÚNICO camino a Activo es el wizard paso 6 (entrega de la moto). */}
             {selectedCliente.estado === "Aprobado" && (
               <>
-                <button onClick={() => onEstado(selectedCliente.id, "Activo")} style={miniBtn2("#dcfce7", "#166534")}>Activar cliente</button>
                 <button onClick={() => onEstado(selectedCliente.id, "En seguimiento")} style={miniBtn2("#e0f2fe", "#0369a1")}>En seguimiento</button>
                 <button onClick={() => onEstado(selectedCliente.id, "En riesgo")} style={miniBtn2("#fef3c7", "#92400e")}>Marcar en riesgo</button>
                 <button onClick={() => onEstado(selectedCliente.id, "En mora")} style={miniBtn2("#fee2e2", "#991b1b")}>En mora</button>

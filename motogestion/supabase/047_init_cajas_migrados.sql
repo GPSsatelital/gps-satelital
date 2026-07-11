@@ -41,6 +41,10 @@ begin
 end; $$;
 
 -- Vista previa de la inicialización (NO modifica nada)
+-- NOTA: la versión CORRIDA en Supabase (11-jul) usa una variable v_c public.contratos
+-- (select * into v_c ... where id = r.cid) porque caja_valor() exige la fila tipada —
+-- el record del join daba "cannot cast type record to contratos". Ver historial del chat;
+-- el cuerpo de abajo es la versión original de referencia.
 create or replace function public.preview_init_cajas()
 returns table(
   contrato_id uuid, nombre text, placa text, forma text, meses int, grupo text,

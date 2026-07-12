@@ -6,8 +6,13 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useDeudas } from "../hooks/useDeudas";
+import { usePagos } from "../hooks/usePagos";
+import { useConvenios } from "../hooks/useConvenios";
+import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
-import { hoyISO } from "../utils/fecha";
+import ModalRecoleccion from "../components/ModalRecoleccion";
+import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -61,6 +66,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { contratos, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
   const { registrarDeuda } = useDeudas();
+  const { pagos } = usePagos();
+  const { convenios } = useConvenios();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: import("../hooks/useContratos").Contrato; motoPlaca: string; clienteNombre: string; motivo: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
@@ -98,6 +105,10 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [openUbicacion, setOpenUbicacion] = useState(false);
   const [openRetencion, setOpenRetencion] = useState(false);
   const [openLiberarFiscalia, setOpenLiberarFiscalia] = useState(false);
+  // Router "Registrar novedad": una sola puerta que enruta al flujo correcto.
+  const [openNovedad, setOpenNovedad] = useState(false);
+  const [recoleccionMoto, setRecoleccionMoto] = useState<Moto | null>(null);
+  const [liquidacionMoto, setLiquidacionMoto] = useState<Moto | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
@@ -187,6 +198,26 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   }
 
   const selectedMoto: Moto | null = motos.find((m) => m.id === selectedId) ?? (isMobile ? null : filtered[0] ?? null);
+
+  // Contexto de la moto seleccionada para el router de novedades: ¿tiene contrato vivo?
+  // ¿está en mora? (para habilitar "Recolección por mora" solo cuando aplica).
+  const contratoMoto = useMemo(
+    () => selectedMoto ? contratos.find(c => c.moto_id === selectedMoto.id && (c.estado === "Activo" || c.estado === "Suspendido")) ?? null : null,
+    [selectedMoto, contratos],
+  );
+  const clienteMoto = useMemo(
+    () => contratoMoto ? clientes.find(cl => cl.id === contratoMoto.cliente_id) ?? null : null,
+    [contratoMoto, clientes],
+  );
+  const contratoMotoEnMora = useMemo(() => {
+    if (!contratoMoto || contratoMoto.estado !== "Activo") return false;
+    const hoyD = hoyDateFn();
+    const pagosC = pagos.filter(p => p.contrato_id === contratoMoto.id && p.estado === "Confirmado");
+    const conv = convenios.find(cv => cv.contrato_id === contratoMoto.id && cv.estado === "activo") ?? null;
+    const cuotaConv = cuotaConvenioDelPeriodo(conv, contratoMoto, hoyD);
+    const cubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
+    return calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto) === "mora";
+  }, [contratoMoto, pagos, convenios]);
 
   function abrirEdicion() {
     if (!selectedMoto) return;
@@ -467,13 +498,14 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
-            <button onClick={() => { setOpenRecepcion(true); setMsgDetalle(null); setRecFueBuscada(false); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📋 Recepción</button>
-            {selectedMoto.estado === "Fiscalia"
-              ? <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Salida Fiscalía</button>
-              : ["Transito","Garantia"].includes(selectedMoto.estado)
-                ? <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Liberar retención</button>
-                : <button onClick={() => { setOpenRetencion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#92400e" }}>🚨 Retención</button>
-            }
+            <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
+            {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida. */}
+            {selectedMoto.estado === "Fiscalia" && (
+              <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Salida Fiscalía</button>
+            )}
+            {["Transito","Garantia"].includes(selectedMoto.estado) && (
+              <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Liberar retención</button>
+            )}
           </div>
         )}
         {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
@@ -820,7 +852,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 <select style={inputStyle} value={formRetencion.tipo} onChange={e => setFormRetencion(p => ({ ...p, tipo: e.target.value as any }))}>
                   <option value="Fiscalia">Fiscalía — retenida por autoridad judicial</option>
                   <option value="Transito">Tránsito — retenida por autoridad de tránsito</option>
-                  <option value="Garantia">Garantía — defecto cubierto por empresa/fabricante</option>
+                  <option value="Garantia">Garantía — falla cubierta por garantía del vehículo</option>
                 </select>
               </Field>
               <Field label="Fecha de retención">
@@ -841,7 +873,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               )}
               {formRetencion.tipo === "Garantia" && (
                 <div style={{ padding: "8px 12px", background: "#f3e8ff", borderRadius: 10, fontSize: 13, color: "#6b21a8" }}>
-                  Garantía cubierta por la empresa o el fabricante del vehículo. No genera deuda para el cliente.
+                  El tiempo que la moto esté en garantía se le cobra al cliente (o se rueda al final), igual que Fiscalía/Tránsito — lo decide el admin al liberarla.
                 </div>
               )}
             </div>
@@ -894,6 +926,102 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           fechaEntrada={tiempoFueraModal.fechaEntrada}
           fechaSalida={tiempoFueraModal.fechaSalida}
           onClose={() => setTiempoFueraModal(null)}
+        />
+      )}
+
+      {/* ── Router "Registrar novedad": una sola puerta que enruta al flujo correcto ── */}
+      {openNovedad && selectedMoto && (() => {
+        const yaRetenida = ["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado);
+        const contratoActivo = contratoMoto?.estado === "Activo";
+        const opciones: { icono: string; titulo: string; desc: string; enabled: boolean; motivoOff?: string; onClick: () => void }[] = [
+          {
+            icono: "🚚", titulo: "Recolección por mora", enabled: !!contratoActivo && contratoMotoEnMora,
+            desc: "El cliente no pagó. Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.",
+            motivoOff: !contratoActivo ? "La moto no tiene un contrato activo" : "El contrato no está en mora",
+            onClick: () => { setRecoleccionMoto(selectedMoto); setOpenNovedad(false); },
+          },
+          {
+            icono: "🤝", titulo: "Entrega voluntaria del cliente", enabled: !!contratoActivo,
+            desc: "El cliente trae/entrega la moto por un tiempo. Suspende el contrato (costo solo si se fue a buscar).",
+            motivoOff: "La moto no tiene un contrato activo",
+            onClick: () => { setFormRec(f => ({ ...f, motivo: "entrega_voluntaria" })); setRecFueBuscada(false); setOpenRecepcion(true); setOpenNovedad(false); },
+          },
+          {
+            icono: "⚖️", titulo: "Retención legal (Fiscalía / Tránsito / Garantía)", enabled: !yaRetenida,
+            desc: "La moto queda retenida por un tercero. El tiempo parado se le cobra al cliente (o se rueda), igual para los 3.",
+            motivoOff: "La moto ya está retenida",
+            onClick: () => { setOpenRetencion(true); setOpenNovedad(false); },
+          },
+          {
+            icono: "📄", titulo: "Liquidar / cerrar contrato", enabled: !!contratoMoto,
+            desc: "Cierre definitivo: revisión de taller, saldo final y documento. Sin bloqueo de 7 días.",
+            motivoOff: "La moto no tiene un contrato para cerrar",
+            onClick: () => { setLiquidacionMoto(selectedMoto); setOpenNovedad(false); },
+          },
+          {
+            icono: "📋", titulo: "Solo recepción / registro", enabled: true,
+            desc: "Registrar el estado de la moto o moverla (sin contrato, o cambio de bodega/taller).",
+            onClick: () => { setFormRec(f => ({ ...f, motivo: "nuevo_registro" })); setRecFueBuscada(false); setOpenRecepcion(true); setOpenNovedad(false); },
+          },
+        ];
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenNovedad(false)}>
+            <div onClick={e => e.stopPropagation()} style={{ ...card, width: "min(480px, 96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto", display: "grid", gap: 10, boxSizing: "border-box" }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>🏍️ Registrar novedad</div>
+                <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase" }}>{selectedMoto.placa}{clienteMoto ? ` · ${clienteMoto.nombre}` : ""}</div>
+              </div>
+              <div style={{ fontSize: 13, color: "#334155" }}>¿Qué pasó con la moto? Elige la situación:</div>
+              {opciones.map((o, i) => (
+                <button
+                  key={i}
+                  onClick={o.enabled ? o.onClick : undefined}
+                  disabled={!o.enabled}
+                  title={o.enabled ? "" : o.motivoOff}
+                  style={{
+                    textAlign: "left", border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px",
+                    background: o.enabled ? "white" : "#f8fafc", cursor: o.enabled ? "pointer" : "not-allowed",
+                    opacity: o.enabled ? 1 : 0.55, display: "flex", gap: 12, alignItems: "flex-start",
+                  }}
+                >
+                  <span style={{ fontSize: 22, lineHeight: 1 }}>{o.icono}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{o.titulo}</span>
+                    <span style={{ display: "block", fontSize: 12, color: "#64748b", marginTop: 2 }}>{o.desc}</span>
+                    {!o.enabled && o.motivoOff && <span style={{ display: "block", fontSize: 11, color: "#92400e", marginTop: 3, fontWeight: 700 }}>No disponible: {o.motivoOff}</span>}
+                  </span>
+                </button>
+              ))}
+              <button onClick={() => setOpenNovedad(false)} style={{ ...secondaryBtn, marginTop: 2 }}>Cancelar</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Recolección por mora → flujo completo (suspende + multa + gestión + 6 fotos) */}
+      {recoleccionMoto && contratoMoto && clienteMoto && (
+        <ModalRecoleccion
+          contratoId={contratoMoto.id}
+          clienteId={clienteMoto.id}
+          clienteNombre={clienteMoto.nombre}
+          motoId={recoleccionMoto.id}
+          placa={recoleccionMoto.placa}
+          onClose={() => setRecoleccionMoto(null)}
+          onDone={() => setMsgDetalle("Recolección registrada — contrato suspendido y multa creada.")}
+        />
+      )}
+
+      {/* Liquidar / cerrar contrato */}
+      {liquidacionMoto && contratoMoto && clienteMoto && (
+        <ModalIniciarLiquidacion
+          contratoId={contratoMoto.id}
+          clienteId={clienteMoto.id}
+          clienteNombre={clienteMoto.nombre}
+          motoId={liquidacionMoto.id}
+          placa={liquidacionMoto.placa}
+          ahorroAcumulado={contratoMoto.ahorro_acumulado ?? 0}
+          onClose={() => setLiquidacionMoto(null)}
+          onDone={() => setMsgDetalle("Liquidación iniciada — revisa el módulo de Liquidaciones.")}
         />
       )}
     </div>

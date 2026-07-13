@@ -44,12 +44,27 @@ export const ACCION_KEYS = ACCIONES.map(a => a.key);
 // ADMIN_PRINCIPAL no se lista porque el bypass de puede() le da todo.
 // Alineado con las reglas del negocio (CLAUDE.md): ADMIN no registra efectivo ni
 // elimina pagos; SECRETARIA registra/confirma dinero; SUBADMIN gestiona sus motos.
+// Defaults = comportamiento ACTUAL del código (Opción 1 elegida por el usuario:
+// preservar acceso, el admin recorta por persona desde la UI). Auditado contra el
+// código real, no contra la regla escrita (que en algunos casos es más estricta):
+//   registrar_efectivo/aplicar_saldo_favor = puedePagoNormal (SECRETARIA + ADMIN)
+//   confirmar_transferencia/cerrar_caja     = esSecretaria (SECRETARIA)  [ADMIN NO]
+//   eliminar_pago                           = solo ADMIN_PRINCIPAL (bypass)
+//   crear/editar_contrato, editar_deuda     = puedeCrear (ADMIN)
+//   aprobar_visita/lista_negra/cambiar_grupo/config = esAdmin (ADMIN)
+//   recolectar_moto/iniciar_liquidacion     = ADMIN + SUBADMIN
+//   crear_convenio                          = staff de cobro (SECRETARIA + ADMIN)
 export const DEFAULT_ACCIONES: Record<Role, string[]> = {
   ADMIN_PRINCIPAL: ACCION_KEYS,
-  ADMIN: ACCION_KEYS.filter(k => k !== "registrar_efectivo" && k !== "eliminar_pago"),
+  ADMIN: [
+    "registrar_efectivo", "aplicar_saldo_favor",
+    "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
+    "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion",
+    "aprobar_visita", "lista_negra", "editar_configuracion",
+  ],
   SECRETARIA: [
-    "registrar_efectivo", "confirmar_transferencia", "cerrar_caja", "aplicar_saldo_favor",
-    "crear_contrato", "crear_convenio", "aprobar_visita",
+    "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",
+    "aplicar_saldo_favor", "crear_convenio",
   ],
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
   MECANICO: [],

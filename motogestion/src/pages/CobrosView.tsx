@@ -550,7 +550,7 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CobrosView({ initialOpenForm = false, onNavigate }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const { filtrarContratos } = useScope();
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
@@ -698,7 +698,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const [eliminandoPagoId, setEliminandoPagoId] = useState<string | null>(null);
   async function handleEliminarPago(p: typeof pagos[number]) {
     if (eliminandoPagoId) return;
-    if (!profile || !esAdminPrincipal) return;
+    if (!profile || !puedeEliminarPago) return;
     if (!confirm(`¿Eliminar este pago de $${fmt(p.valor)} (${p.metodo}, ${formatDate(p.fecha)})? Esta acción no se puede deshacer.`)) return;
     setEliminandoPagoId(p.id);
     try {
@@ -996,11 +996,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
-  const esAdminPrincipal = profile?.role === "ADMIN_PRINCIPAL";
   const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
   const esSubadmin = profile?.role === "SUBADMIN";
   // Registrar pago normal: secretaria y admins (no subadmin). Cobro en campo: admins y subadmin (no secretaria pura).
-  const puedePagoNormal = esSecretaria || esAdmin;
+  // Acciones de plata → permiso por persona (rol como techo). Defaults calzan con el
+  // comportamiento actual: registrar=SEC+ADMIN, confirmar/cerrar caja=SEC, eliminar=AP.
+  const puedePagoNormal = puede("registrar_efectivo");
+  const puedeConfirmarPago = puede("confirmar_transferencia");
+  const puedeEliminarPago = puede("eliminar_pago");
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
@@ -2109,7 +2112,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <PagoBadge estado={p.estado} />
-                      {p.estado === "Pendiente" && esSecretaria && (
+                      {p.estado === "Pendiente" && puedeConfirmarPago && (
                         <>
                           <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
                           <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
@@ -2636,7 +2639,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 )}
 
                 {/* Confirmar: abre recibo al confirmar — solo staff de oficina */}
-                {(!esCampo || p.entregado_caja) && esSecretaria && (
+                {(!esCampo || p.entregado_caja) && puedeConfirmarPago && (
                   <button
                     onClick={async () => {
                       const { error: errConf } = await confirmarPago(p.id);
@@ -2674,7 +2677,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     ✓ Confirmar recibido
                   </button>
                 )}
-                {esSecretaria && (
+                {puedeConfirmarPago && (
                   <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
                 )}
               </div>
@@ -2799,7 +2802,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <PagoBadge estado={p.estado} />
-                    {p.estado === "Pendiente" && esSecretaria && (
+                    {p.estado === "Pendiente" && puedeConfirmarPago && (
                       <>
                         <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
                         <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
@@ -2837,7 +2840,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         🧾 Recibo
                       </button>
                     )}
-                    {esAdminPrincipal && (
+                    {puedeEliminarPago && (
                       <button
                         onClick={() => handleEliminarPago(p)}
                         disabled={eliminandoPagoId === p.id}

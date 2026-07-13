@@ -15,27 +15,33 @@ import type { Role } from "../contexts/AuthContext";
 export type EstadoAccion = "permitir" | "bloquear";
 export type AccionesUsuario = Record<string, EstadoAccion>;
 
-export type AccionDef = { key: string; label: string; grupo: string; dbEnforced?: boolean };
+// `modulo` = ViewKey del módulo al que pertenece la acción (para anidarla bajo su
+// módulo en la UI de permisos). Los que caen en un módulo "siempre visible"
+// (configuracion) se muestran en un grupo aparte al final.
+export type AccionDef = { key: string; label: string; modulo: string; dbEnforced?: boolean };
 
 export const ACCIONES: AccionDef[] = [
-  // 💵 Dinero — reforzadas en la BD
-  { key: "registrar_efectivo",     label: "Registrar pago en efectivo",        grupo: "💵 Dinero", dbEnforced: true },
-  { key: "confirmar_transferencia", label: "Confirmar / rechazar transferencia", grupo: "💵 Dinero", dbEnforced: true },
-  { key: "eliminar_pago",          label: "Eliminar / anular un pago",          grupo: "💵 Dinero", dbEnforced: true },
-  { key: "cerrar_caja",            label: "Cerrar caja diaria",                 grupo: "💵 Dinero" },
-  { key: "aplicar_saldo_favor",    label: "Aplicar saldo a favor",              grupo: "💵 Dinero" },
-  // 📄 Contratos y cartera
-  { key: "crear_contrato",         label: "Crear contrato (wizard)",            grupo: "📄 Contratos" },
-  { key: "editar_contrato",        label: "Editar contrato",                    grupo: "📄 Contratos" },
-  { key: "editar_deuda",           label: "Editar / eliminar deudas",           grupo: "📄 Contratos" },
-  { key: "crear_convenio",         label: "Crear convenio",                     grupo: "📄 Contratos" },
-  // 🏍️ Motos y operación
-  { key: "recolectar_moto",        label: "Recolectar / retener moto",          grupo: "🏍️ Motos" },
-  { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       grupo: "🏍️ Motos" },
-  { key: "iniciar_liquidacion",    label: "Iniciar liquidación",                grupo: "🏍️ Motos" },
-  { key: "aprobar_visita",         label: "Aprobar / rechazar visita o cliente", grupo: "🏍️ Motos" },
-  { key: "lista_negra",            label: "Poner / quitar lista negra",         grupo: "🏍️ Motos" },
-  { key: "editar_configuracion",   label: "Editar configuración / mensajes",    grupo: "⚙️ Sistema" },
+  // Cartera & Cobros
+  { key: "registrar_efectivo",     label: "Registrar pago en efectivo",         modulo: "cobros", dbEnforced: true },
+  { key: "confirmar_transferencia", label: "Confirmar / rechazar transferencia", modulo: "cobros", dbEnforced: true },
+  { key: "eliminar_pago",          label: "Eliminar / anular un pago",          modulo: "cobros", dbEnforced: true },
+  { key: "aplicar_saldo_favor",    label: "Aplicar saldo a favor",              modulo: "cobros" },
+  { key: "editar_deuda",           label: "Editar / eliminar deudas",           modulo: "cobros" },
+  { key: "crear_convenio",         label: "Crear convenio",                     modulo: "cobros" },
+  // Caja
+  { key: "cerrar_caja",            label: "Cerrar caja diaria",                 modulo: "caja" },
+  // Contratos
+  { key: "crear_contrato",         label: "Crear contrato (wizard)",            modulo: "contratos" },
+  { key: "editar_contrato",        label: "Editar contrato",                    modulo: "contratos" },
+  { key: "iniciar_liquidacion",    label: "Iniciar liquidación",                modulo: "contratos" },
+  // Motos
+  { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
+  { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },
+  // Clientes
+  { key: "aprobar_visita",         label: "Aprobar / rechazar visita o cliente", modulo: "clientes" },
+  { key: "lista_negra",            label: "Poner / quitar lista negra",         modulo: "clientes" },
+  // Configuración (módulo siempre visible)
+  { key: "editar_configuracion",   label: "Editar configuración / mensajes",    modulo: "configuracion" },
 ];
 
 export const ACCION_KEYS = ACCIONES.map(a => a.key);

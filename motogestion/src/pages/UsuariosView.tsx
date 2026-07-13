@@ -262,57 +262,99 @@ export default function UsuariosView() {
   );
 }
 
-// Selector de ACCIONES por persona: 3 estados (Según rol / Permitir / Bloquear).
-// El estado "Según rol" = sin override (se borra la clave). Muestra si queda permitido.
-function SelectorAcciones({ role, overrides, onChange }: { role: Role; overrides: AccionesUsuario; onChange: (key: string, estado: EstadoAccion | null) => void }) {
-  const grupos = Array.from(new Set(ACCIONES.map(a => a.grupo)));
+// Árbol unificado de permisos: cada MÓDULO es una casilla (ver la pantalla) y debajo,
+// anidadas, sus ACCIONES sensibles como casillas simples (puede / no puede). Las acciones
+// arrancan según el rol; una excepción por persona se marca "editado". Módulos sin acciones
+// van compactos abajo como chips. Responsive (mobile-first).
+function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccion, onReset }: {
+  role: Role;
+  accesos: ViewKey[];
+  onToggleModulo: (k: ViewKey) => void;
+  overrides: AccionesUsuario;
+  onSetAccion: (key: string, activo: boolean) => void;
+  onReset: () => void;
+}) {
   const esAP = role === "ADMIN_PRINCIPAL";
+  const nPersonalizados = Object.keys(overrides).length;
+  const modConAcciones = MODULOS_ASIGNABLES.filter(m => ACCIONES.some(a => a.modulo === m.key));
+  const modSinAcciones = MODULOS_ASIGNABLES.filter(m => !ACCIONES.some(a => a.modulo === m.key));
+  const orphan = ACCIONES.filter(a => !MODULOS_ASIGNABLES.some(m => m.key === a.modulo));
+  const chk: React.CSSProperties = { width: 18, height: 18, accentColor: "#0284c7", cursor: "pointer", flexShrink: 0 };
+
+  function filaAccion(a: typeof ACCIONES[number], moduloOn: boolean) {
+    const activo = calcularPuede(role, overrides, a.key);
+    const editado = overrides[a.key] !== undefined;
+    const usable = !esAP && moduloOn;
+    return (
+      <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: usable ? "pointer" : "default", opacity: moduloOn ? 1 : 0.4, minWidth: 0 }}>
+        <input type="checkbox" checked={activo} disabled={!usable} onChange={() => onSetAccion(a.key, !activo)} style={chk} />
+        <span style={{ fontSize: 13, color: "#334155", minWidth: 0 }}>
+          {a.label}
+          {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ marginLeft: 5, fontSize: 10, color: "#0369a1" }}>🔒</span>}
+          {editado && <span title="Distinto a lo normal de su rol" style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "#b45309", background: "#fef3c7", borderRadius: 6, padding: "1px 5px" }}>editado</span>}
+        </span>
+      </label>
+    );
+  }
+
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      {esAP && (
-        <div style={{ fontSize: 12, color: "#6d28d9", background: "#ede9fe", borderRadius: 10, padding: "8px 10px", fontWeight: 600 }}>
-          El Administrador Principal siempre puede todo — no se le pueden recortar acciones.
+    <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+          {esAP ? "Puede todo (Administrador Principal)"
+            : nPersonalizados > 0 ? `${nPersonalizados} permiso${nPersonalizados !== 1 ? "s" : ""} personalizado${nPersonalizados !== 1 ? "s" : ""}`
+            : "Todo según su rol"}
+        </div>
+        {!esAP && nPersonalizados > 0 && (
+          <button type="button" onClick={onReset} style={{ fontSize: 12, fontWeight: 700, border: "1px solid #e2e8f0", background: "white", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#334155" }}>
+            ↺ Volver a lo normal del rol
+          </button>
+        )}
+      </div>
+
+      {modConAcciones.map(m => {
+        const on = accesos.includes(m.key);
+        return (
+          <div key={m.key} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px", background: on ? "white" : "#f8fafc", boxSizing: "border-box" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={on} onChange={() => onToggleModulo(m.key)} style={chk} />
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{m.icon} {m.label}</span>
+            </label>
+            <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid #f1f5f9", paddingLeft: 12 }}>
+              {ACCIONES.filter(a => a.modulo === m.key).map(a => filaAccion(a, on))}
+            </div>
+          </div>
+        );
+      })}
+
+      {orphan.length > 0 && (
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px", boxSizing: "border-box" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>⚙️ Configuración</div>
+          <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid #f1f5f9", paddingLeft: 12 }}>
+            {orphan.map(a => filaAccion(a, true))}
+          </div>
         </div>
       )}
-      {grupos.map(g => (
-        <div key={g}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 6 }}>{g}</div>
-          <div style={{ display: "grid", gap: 6 }}>
-            {ACCIONES.filter(a => a.grupo === g).map(a => {
-              const ov = overrides[a.key];
-              const permitidoAhora = calcularPuede(role, overrides, a.key);
-              const opciones: { v: EstadoAccion | null; label: string; on: string }[] = [
-                { v: null, label: "Según rol", on: "#334155" },
-                { v: "permitir", label: "Permitir", on: "#166534" },
-                { v: "bloquear", label: "Bloquear", on: "#991b1b" },
-              ];
+
+      {modSinAcciones.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", margin: "4px 0 6px" }}>Otros accesos (solo ver la pantalla)</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {modSinAcciones.map(m => {
+              const on = accesos.includes(m.key);
               return (
-                <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "space-between", border: "1px solid #f1f5f9", borderRadius: 10, padding: "6px 8px" }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{a.label}</span>
-                    {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ fontSize: 10, marginLeft: 6, color: "#0369a1", fontWeight: 700 }}>🔒 BD</span>}
-                    <span style={{ fontSize: 11, marginLeft: 8, color: permitidoAhora ? "#166534" : "#991b1b", fontWeight: 700 }}>
-                      {permitidoAhora ? "✓ puede" : "✕ no puede"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 3, opacity: esAP ? 0.5 : 1, pointerEvents: esAP ? "none" : "auto" }}>
-                    {opciones.map(o => {
-                      const activo = (ov ?? null) === o.v;
-                      return (
-                        <button key={String(o.v)} type="button" onClick={() => onChange(a.key, o.v)}
-                          style={{ padding: "4px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
-                            background: activo ? o.on : "#f1f5f9", color: activo ? "white" : "#64748b" }}>
-                          {o.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <button key={m.key} type="button" onClick={() => onToggleModulo(m.key)} style={{
+                  display: "flex", alignItems: "center", gap: 6, border: `1px solid ${on ? "#86efac" : "#e2e8f0"}`,
+                  background: on ? "#f0fdf4" : "#f8fafc", color: on ? "#166534" : "#94a3b8", borderRadius: 999,
+                  padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                }}>
+                  <span>{on ? "☑" : "☐"}</span>{m.icon} {m.label}
+                </button>
               );
             })}
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -346,6 +388,12 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       if (estado === null) delete n[key]; else n[key] = estado;
       return n;
     });
+  }
+  // Casilla simple: si el nuevo valor coincide con el default del rol → sin override
+  // (borra la clave, sigue al rol); si difiere → guarda la excepción permitir/bloquear.
+  function setAccionActivo(key: string, activo: boolean) {
+    const def = calcularPuede(role, {}, key);
+    cambiarAccion(key, activo === def ? null : (activo ? "permitir" : "bloquear"));
   }
 
   const isSocio = role === "SOCIO";
@@ -433,18 +481,19 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
               </select>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 16 }}>
-              <div>
-                <div style={labelStyle}>Accesos a módulos (qué pantallas ve)</div>
-                <SelectorAccesos accesos={accesos} onToggle={toggleAcceso} />
+            <div>
+              <div style={labelStyle}>Permisos</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                Marca qué pantallas ve y, debajo de cada una, qué acciones puede hacer. Las acciones arrancan según su rol; cámbialas solo para esta persona. Las de 🔒 se refuerzan en la base de datos.
               </div>
-              <div>
-                <div style={labelStyle}>Acciones sensibles (qué puede hacer)</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-                  Por defecto según su rol. Cámbialo a Permitir o Bloquear solo para esta persona. Las de 🔒 BD se refuerzan en la base de datos.
-                </div>
-                <SelectorAcciones role={role} overrides={accionesOv} onChange={cambiarAccion} />
-              </div>
+              <SelectorPermisos
+                role={role}
+                accesos={accesos}
+                onToggleModulo={toggleAcceso}
+                overrides={accionesOv}
+                onSetAccion={setAccionActivo}
+                onReset={() => setAccionesOv({})}
+              />
             </div>
           )}
 

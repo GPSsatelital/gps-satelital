@@ -74,7 +74,9 @@ export function useConvenios() {
       cubre_periodo_hasta: cubrePeriodoHasta,
       firma_url: firmaUrl,
     });
-    return { error: error?.message ?? null };
+    // 23505 = el candado único de la BD rechazó un 2º convenio activo (doble-clic/carrera).
+    if (error) return { error: error.code === "23505" ? "Ya existe un convenio activo para este contrato." : error.message };
+    return { error: null };
   }
 
   async function renovarConvenio(convenioId: string, contratoId: string, deudaTotal: number, cuotaPorPeriodo: number, numeroCuotas: number, fechaLimite: string, concepto: string, aprobadoPor: string) {

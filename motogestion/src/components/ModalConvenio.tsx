@@ -94,6 +94,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const totalCalculado = cuotaCalc * cuotasCalc;
 
   async function handleGuardar() {
+    if (guardando) return;
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
     if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
     if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
@@ -103,14 +104,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     setError(null);
     setGuardando(true);
 
-    const { data: existente } = await supabase
+    // ¿Ya hay un convenio activo? Sin .single() — reventaba con >1 fila (dejaba pasar el 3º).
+    const { data: activos } = await supabase
       .from("convenios")
       .select("id")
       .eq("contrato_id", contratoId)
       .eq("estado", "activo")
-      .single();
+      .limit(1);
 
-    if (existente) {
+    if (activos && activos.length > 0) {
       setError("Ya existe un convenio activo para este contrato.");
       setGuardando(false);
       return;
@@ -141,7 +143,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     setGuardando(false);
 
     if (err) {
-      setError(err.message);
+      // 23505 = el candado único de la BD rechazó un 2º convenio activo (doble-clic/carrera).
+      setError(err.code === "23505" ? "Ya existe un convenio activo para este contrato." : err.message);
       return;
     }
 

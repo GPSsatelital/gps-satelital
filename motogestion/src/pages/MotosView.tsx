@@ -12,6 +12,7 @@ import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPa
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 
 function getStatusColors(status: MotoStatus) {
@@ -136,8 +137,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     observaciones: "",
   });
   // Fotos del estado del vehículo al recibirlo (dataURLs; se suben a Storage al guardar)
-  const [fotosRec, setFotosRec] = useState<string[]>([]);
-  const [subiendoFotosRec, setSubiendoFotosRec] = useState(false);
+  // 6 fotos guiadas por ángulo (incl. la persona) — misma evidencia que la recolección,
+  // exigida en toda recepción/entrega para respaldo legal de a quién se recibió/entregó.
+  const [fotosRec, setFotosRec] = useState<Partial<Record<AnguloFoto, string>>>({});
   // Entrega voluntaria: ¿la trajo el cliente (sin costo) o hubo que ir a buscarla (+$20.000)?
   const [recFueBuscada, setRecFueBuscada] = useState(false);
 
@@ -251,12 +253,13 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   // Sube las fotos capturadas (dataURLs) a Storage y devuelve sus URLs públicas.
   async function subirFotosRecepcion(motoId: string): Promise<string[]> {
-    if (fotosRec.length === 0) return [];
     const { supabase } = await import("../lib/supabase");
     const urls: string[] = [];
-    for (let i = 0; i < fotosRec.length; i++) {
-      const blob = await (await fetch(fotosRec[i])).blob();
-      const path = `recepciones/${motoId}/${Date.now()}_${i}.jpg`;
+    for (const { key } of ANGULOS_FOTO) {
+      const dataUrl = fotosRec[key];
+      if (!dataUrl) continue;
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `recepciones/${motoId}/${key}_${Date.now()}.jpg`;
       const { error } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/jpeg", upsert: true });
       if (!error) {
         const { data } = supabase.storage.from("documentos").getPublicUrl(path);
@@ -268,6 +271,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   async function handleRegistrarRecepcion() {
     if (!selectedMoto || !profile) return;
+    const faltanFotos = ANGULOS_FOTO.filter(a => !fotosRec[a.key]);
+    if (faltanFotos.length > 0) { setMsgDetalle(`Falta la foto: ${faltanFotos.map(a => a.label).join(", ")}.`); return; }
     if (!confirm(`¿Registrar la recepción de la moto ${selectedMoto.placa}? Esto puede suspender el contrato activo.`)) return;
     setGuardando(true);
     const fotosUrls = await subirFotosRecepcion(selectedMoto.id);
@@ -308,7 +313,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
     setGuardando(false);
     setMsgDetalle(msgFinal);
-    setFotosRec([]);
+    setFotosRec({});
     setRecFueBuscada(false);
     setOpenRecepcion(false);
   }
@@ -750,49 +755,63 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               </Field>
               <Field label="Nombre de quien entrega"><input style={inputStyle} placeholder="Nombre del cliente o funcionario" value={formRec.nombre_entrega} onChange={(e) => setFormRec((p) => ({ ...p, nombre_entrega: e.target.value }))} /></Field>
               <Field label="Observaciones adicionales"><textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} value={formRec.observaciones} onChange={(e) => setFormRec((p) => ({ ...p, observaciones: e.target.value }))} /></Field>
-              <Field label="Fotos del estado del vehículo">
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: fotosRec.length > 0 ? 8 : 0 }}>
-                  {fotosRec.map((f, i) => (
-                    <div key={i} style={{ position: "relative" }}>
-                      <img src={f} alt={`Foto ${i + 1}`} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid #e2e8f0" }} />
-                      <button
-                        type="button"
-                        onClick={() => setFotosRec(prev => prev.filter((_, j) => j !== i))}
-                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#dc2626", color: "white", fontSize: 11, cursor: "pointer", lineHeight: 1 }}
-                      >✕</button>
-                    </div>
-                  ))}
+              <Field label="Fotos del estado del vehículo (6 obligatorias — la última con la persona)">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+                  {ANGULOS_FOTO.map(({ key, label }) => {
+                    const dataUrl = fotosRec[key];
+                    return (
+                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "#bbf7d0" : "#e2e8f0"}`, background: dataUrl ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                        {dataUrl ? (
+                          <div style={{ position: "relative" }}>
+                            <img src={dataUrl} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
+                            <button type="button" onClick={() => setFotosRec(p => { const n = { ...p }; delete n[key]; return n; })} style={{
+                              position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
+                              background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                            <IconoAngulo angulo={key} />
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                        {!dataUrl && (
+                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                              📷
+                              <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => setFotosRec(p => ({ ...p, [key]: ev.target?.result as string }));
+                                  reader.readAsDataURL(file);
+                                  e.target.value = "";
+                                }} />
+                            </label>
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                              🖼
+                              <input type="file" accept="image/*" style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = (ev) => setFotosRec(p => ({ ...p, [key]: ev.target?.result as string }));
+                                  reader.readAsDataURL(file);
+                                  e.target.value = "";
+                                }} />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {([["📷 Cámara", true], ["🖼 Galería", false]] as [string, boolean][]).map(([label, conCamara]) => (
-                    <label key={label} style={{ cursor: "pointer" }}>
-                      <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, fontSize: 13, color: "#334155" }}>{label}</div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        {...(conCamara ? { capture: "environment" as const } : {})}
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setSubiendoFotosRec(true);
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            setFotosRec(prev => [...prev, ev.target?.result as string]);
-                            setSubiendoFotosRec(false);
-                          };
-                          reader.readAsDataURL(file);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-                {subiendoFotosRec && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Cargando foto...</div>}
               </Field>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => { setOpenRecepcion(false); setFotosRec([]); }} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenRecepcion(false); setFotosRec({}); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleRegistrarRecepcion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Registrar recepción"}</button>
             </div>
           </div>
@@ -944,7 +963,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             icono: "🤝", titulo: "Entrega voluntaria del cliente", enabled: !!contratoActivo,
             desc: "El cliente trae/entrega la moto por un tiempo. Suspende el contrato (costo solo si se fue a buscar).",
             motivoOff: "La moto no tiene un contrato activo",
-            onClick: () => { setFormRec(f => ({ ...f, motivo: "entrega_voluntaria" })); setRecFueBuscada(false); setOpenRecepcion(true); setOpenNovedad(false); },
+            onClick: () => { setFormRec(f => ({ ...f, motivo: "entrega_voluntaria" })); setRecFueBuscada(false); setFotosRec({}); setOpenRecepcion(true); setOpenNovedad(false); },
           },
           {
             icono: "⚖️", titulo: "Retención legal (Fiscalía / Tránsito / Garantía)", enabled: !yaRetenida,
@@ -961,7 +980,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           {
             icono: "📋", titulo: "Solo recepción / registro", enabled: true,
             desc: "Registrar el estado de la moto o moverla (sin contrato, o cambio de bodega/taller).",
-            onClick: () => { setFormRec(f => ({ ...f, motivo: "nuevo_registro" })); setRecFueBuscada(false); setOpenRecepcion(true); setOpenNovedad(false); },
+            onClick: () => { setFormRec(f => ({ ...f, motivo: "nuevo_registro" })); setRecFueBuscada(false); setFotosRec({}); setOpenRecepcion(true); setOpenNovedad(false); },
           },
         ];
         return (

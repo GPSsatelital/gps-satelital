@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { Role } from "../contexts/AuthContext";
 import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
+import { ACCIONES, calcularPuede, type AccionesUsuario, type EstadoAccion } from "../lib/acciones";
 
 const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
@@ -261,6 +262,61 @@ export default function UsuariosView() {
   );
 }
 
+// Selector de ACCIONES por persona: 3 estados (Según rol / Permitir / Bloquear).
+// El estado "Según rol" = sin override (se borra la clave). Muestra si queda permitido.
+function SelectorAcciones({ role, overrides, onChange }: { role: Role; overrides: AccionesUsuario; onChange: (key: string, estado: EstadoAccion | null) => void }) {
+  const grupos = Array.from(new Set(ACCIONES.map(a => a.grupo)));
+  const esAP = role === "ADMIN_PRINCIPAL";
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {esAP && (
+        <div style={{ fontSize: 12, color: "#6d28d9", background: "#ede9fe", borderRadius: 10, padding: "8px 10px", fontWeight: 600 }}>
+          El Administrador Principal siempre puede todo — no se le pueden recortar acciones.
+        </div>
+      )}
+      {grupos.map(g => (
+        <div key={g}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 6 }}>{g}</div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {ACCIONES.filter(a => a.grupo === g).map(a => {
+              const ov = overrides[a.key];
+              const permitidoAhora = calcularPuede(role, overrides, a.key);
+              const opciones: { v: EstadoAccion | null; label: string; on: string }[] = [
+                { v: null, label: "Según rol", on: "#334155" },
+                { v: "permitir", label: "Permitir", on: "#166534" },
+                { v: "bloquear", label: "Bloquear", on: "#991b1b" },
+              ];
+              return (
+                <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "space-between", border: "1px solid #f1f5f9", borderRadius: 10, padding: "6px 8px" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{a.label}</span>
+                    {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ fontSize: 10, marginLeft: 6, color: "#0369a1", fontWeight: 700 }}>🔒 BD</span>}
+                    <span style={{ fontSize: 11, marginLeft: 8, color: permitidoAhora ? "#166534" : "#991b1b", fontWeight: 700 }}>
+                      {permitidoAhora ? "✓ puede" : "✕ no puede"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 3, opacity: esAP ? 0.5 : 1, pointerEvents: esAP ? "none" : "auto" }}>
+                    {opciones.map(o => {
+                      const activo = (ov ?? null) === o.v;
+                      return (
+                        <button key={String(o.v)} type="button" onClick={() => onChange(a.key, o.v)}
+                          style={{ padding: "4px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700,
+                            background: activo ? o.on : "#f1f5f9", color: activo ? "white" : "#64748b" }}>
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Modal: editar usuario + resetear contraseña ──────────────────────────────
 function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario; onClose: () => void; onGuardado: () => void }) {
   const [nombre, setNombre] = useState(usuario.nombre);
@@ -275,6 +331,22 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   const [ok, setOk] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [reseteando, setReseteando] = useState(false);
+  // Overrides de acciones por persona (mig 048/049). Se cargan directo de profiles
+  // (policy de ADMIN_PRINCIPAL) y se guardan directo, aparte de la Edge Function.
+  const [accionesOv, setAccionesOv] = useState<AccionesUsuario>({});
+  useEffect(() => {
+    let vivo = true;
+    supabase.from("profiles").select("acciones").eq("id", usuario.id).single()
+      .then(({ data }) => { if (vivo && data?.acciones) setAccionesOv(data.acciones as AccionesUsuario); });
+    return () => { vivo = false; };
+  }, [usuario.id]);
+  function cambiarAccion(key: string, estado: EstadoAccion | null) {
+    setAccionesOv(prev => {
+      const n = { ...prev };
+      if (estado === null) delete n[key]; else n[key] = estado;
+      return n;
+    });
+  }
 
   const isSocio = role === "SOCIO";
 
@@ -300,8 +372,13 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       ...(isSocio ? { grupo } : {}),
       permisos: isSocio ? [] : accesos,
     });
+    if (error) { setGuardando(false); setError(error); return; }
+    // Guardar los overrides de acciones directo (SOCIO no usa acciones).
+    if (!isSocio) {
+      const { error: errAcc } = await supabase.from("profiles").update({ acciones: accionesOv }).eq("id", usuario.id);
+      if (errAcc) { setGuardando(false); setError("Usuario guardado, pero falló guardar los permisos de acciones: " + errAcc.message); return; }
+    }
     setGuardando(false);
-    if (error) { setError(error); return; }
     onGuardado();
   }
 
@@ -356,9 +433,18 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
               </select>
             </div>
           ) : (
-            <div>
-              <div style={labelStyle}>Accesos a módulos</div>
-              <SelectorAccesos accesos={accesos} onToggle={toggleAcceso} />
+            <div style={{ display: "grid", gap: 16 }}>
+              <div>
+                <div style={labelStyle}>Accesos a módulos (qué pantallas ve)</div>
+                <SelectorAccesos accesos={accesos} onToggle={toggleAcceso} />
+              </div>
+              <div>
+                <div style={labelStyle}>Acciones sensibles (qué puede hacer)</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                  Por defecto según su rol. Cámbialo a Permitir o Bloquear solo para esta persona. Las de 🔒 BD se refuerzan en la base de datos.
+                </div>
+                <SelectorAcciones role={role} overrides={accionesOv} onChange={cambiarAccion} />
+              </div>
             </div>
           )}
 

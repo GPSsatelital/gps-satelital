@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { calcularPuede, type AccionesUsuario } from "../lib/acciones";
 
 export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO";
 export type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
@@ -11,6 +12,9 @@ export type Profile = {
   role: Role;
   grupo: GrupoSocio | null;
   permisos: string[] | null;
+  // Overrides de acciones por persona ({ registrar_efectivo: "bloquear", ... }).
+  // Ausente = usar el default del rol. Ver src/lib/acciones.ts.
+  acciones: AccionesUsuario | null;
 };
 
 type AuthState = {
@@ -19,6 +23,8 @@ type AuthState = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  // ¿El usuario actual puede hacer esta acción sensible? (rol como techo + override por persona)
+  puede: (accion: string) => boolean;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -29,8 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from("profiles").select("id, nombre, role, grupo, permisos").eq("id", userId).single();
+    // select("*") para tolerar que la columna `acciones` aún no exista (migración 048):
+    // si falta, queda undefined → puede() usa el default del rol (comportamiento actual).
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
     setProfile(data as Profile | null);
+  }
+
+  function puede(accion: string): boolean {
+    if (!profile) return false;
+    return calcularPuede(profile.role, profile.acciones, accion);
   }
 
   useEffect(() => {
@@ -62,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, signOut, puede }}>
       {children}
     </AuthContext.Provider>
   );

@@ -33,8 +33,9 @@ export default function CajaView() {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { profile } = useAuth();
-  const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
+  const { profile, puede } = useAuth();
+  // Permiso por persona (default = SECRETARIA, igual que antes "solo la secretaria cierra caja").
+  const puedeCerrarCaja = puede("cerrar_caja");
 
   const { pagos, confirmarPago } = usePagos();
   const { contratos } = useContratos();
@@ -145,7 +146,7 @@ export default function CajaView() {
   }
 
   async function handleCerrarCaja() {
-    if (!esSecretaria || !grupoACerrar) return;
+    if (!puedeCerrarCaja || !grupoACerrar) return;
     const g = grupoACerrar;
     setCerrando(true);
     setMsgCierre(null);
@@ -266,7 +267,7 @@ export default function CajaView() {
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {resumen.pendientes.map(p => <PagoCard key={p.id} p={p} showConfirm={esSecretaria} />)}
+        {resumen.pendientes.map(p => <PagoCard key={p.id} p={p} showConfirm={puedeCerrarCaja} />)}
       </div>
     </div>
   );
@@ -327,7 +328,7 @@ export default function CajaView() {
   // tarjeta de cada grupo; en una vista filtrada, este botón cierra ese grupo.
   const grupoEnVista = filtroGrupo === "todos" ? null : filtroGrupo;
   const cajaGrupoVista = grupoEnVista ? cajaDia(fecha, grupoEnVista) : null;
-  const botonCerrar = esSecretaria && (
+  const botonCerrar = puedeCerrarCaja && (
     <div>
       {msgCierre && (
         <div style={{ marginBottom: 10, padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: msgCierre.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCierre.startsWith("Error") ? "#991b1b" : "#166534" }}>
@@ -450,7 +451,7 @@ export default function CajaView() {
                       <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
                     </div>
                   </div>
-                  {esSecretaria && !cerrada && g.total > 0 && (
+                  {puedeCerrarCaja && !cerrada && g.total > 0 && (
                     <button
                       onClick={() => abrirCierre(g.grupo)}
                       style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: COLOR_GRUPO[g.grupo], color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
@@ -507,7 +508,7 @@ export default function CajaView() {
           <div style={{ width: 300, flexShrink: 0, position: "sticky", top: 16, display: "flex", flexDirection: "column", gap: 14 }}>
             {resumenFooter}
             {botonCerrar}
-            {!esSecretaria && (
+            {!puedeCerrarCaja && (
               <div style={{ padding: "12px 14px", borderRadius: 12, background: "#fef3c7", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
                 Solo la secretaria puede cerrar la caja.
               </div>

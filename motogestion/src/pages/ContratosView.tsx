@@ -72,9 +72,11 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function ContratosView({ initialFilter = "", initialOpenForm = false }: { initialFilter?: string; initialOpenForm?: boolean }) {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
-  const puedeCrear = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  // Permiso por persona (rol como techo). Defaults calzan con lo actual: crear/editar = ADMIN(+AP).
+  const puedeCrear = puede("crear_contrato");
+  const puedeEditar = puede("editar_contrato");
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
@@ -309,7 +311,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 📎 Faltan documentos del contrato: {[!c.contrato_pdf_url && "contrato firmado", !c.pagare_pdf_url && "pagaré"].filter(Boolean).join(" y ")} — súbelos con el botón de abajo.
               </div>
             )}
-            {puedeCrear && (
+            {puedeEditar && (
               <button
                 onClick={() => setModalEditarAbierto(true)}
                 style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}

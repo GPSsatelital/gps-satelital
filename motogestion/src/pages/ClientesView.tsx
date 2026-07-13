@@ -305,7 +305,9 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [procesando, setProcesando] = useState<string | null>(null);
 
-  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  // Aprobar/rechazar cliente = acción "aprobar_visita" (default ADMIN, igual que antes).
+  const { puede } = useAuth();
+  const esAdmin = puede("aprobar_visita");
 
   if (clientes.length === 0) {
     return (

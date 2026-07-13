@@ -77,6 +77,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   // Permiso por persona (rol como techo). Defaults calzan con lo actual: crear/editar = ADMIN(+AP).
   const puedeCrear = puede("crear_contrato");
   const puedeEditar = puede("editar_contrato");
+  const puedeLiquidar = puede("iniciar_liquidacion");
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
@@ -270,7 +271,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   ⏸️ Suspender contrato
                 </button>
               )}
-              {(c.estado === "Activo" || c.estado === "Suspendido") && (
+              {(c.estado === "Activo" || c.estado === "Suspendido") && puedeLiquidar && (
                 // Todo cierre REAL (con moto entregada, ahorro, posible deuda) pasa por
                 // Liquidación — calcula el saldo, trae deudas automáticas, deja documento
                 // firmado. Los botones rápidos de antes cerraban sin calcular nada.

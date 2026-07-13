@@ -1004,6 +1004,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const puedePagoNormal = puede("registrar_efectivo");
   const puedeConfirmarPago = puede("confirmar_transferencia");
   const puedeEliminarPago = puede("eliminar_pago");
+  const puedeEditarDeuda = puede("editar_deuda");
+  const puedeAplicarSaldo = puede("aplicar_saldo_favor");
+  const puedeCrearConvenio = puede("crear_convenio");
+  const puedeRecolectar = puede("recolectar_moto");
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
@@ -1723,7 +1727,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#0284c7", textTransform: "uppercase" }}>Saldo a favor</div>
                 <div style={{ fontSize: 16, fontWeight: 900, color: "#0284c7" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
               </div>
-              {esSecretaria && (
+              {puedeAplicarSaldo && (
                 <button onClick={handleAplicarSaldo} style={{ background: "#0284c7", color: "white", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   Aplicar
                 </button>
@@ -1914,14 +1918,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
-                      {esAdmin && (
+                      {puedeEditarDeuda && (
                         <button onClick={() => abrirEdicionDeuda(d)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15 }}>✏️</button>
                       )}
                     </div>
                   </div>
                 )
               ))}
-              {esAdmin && (
+              {puedeEditarDeuda && (
                 <div>
                   <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
                     {mostrarFormDeuda ? "Cancelar" : "+ Registrar deuda"}
@@ -1977,6 +1981,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </div>
               ) : deudasContrato.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
+              ) : !puedeCrearConvenio ? (
+                <div style={{ color: "#64748b", fontSize: 13 }}>No tienes permiso para crear convenios — pídele al encargado que lo cree.</div>
               ) : (
                 <div>
                   <button
@@ -2358,7 +2364,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
               { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
               { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
-              { tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" },
+              // Recolectar la moto = acción sensible (permiso por persona, default ADMIN+SUBADMIN)
+              ...(puedeRecolectar ? [{ tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] : []),
             ] },
           { key: "mora", emoji: "🔴", titulo: "Mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
             tareas: [

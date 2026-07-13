@@ -85,9 +85,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { gestiones } = useGestiones();
   const { deudas }    = useDeudas();
   const { convenios } = useConvenios();
-  const { profile }   = useAuth();
+  const { profile, puede } = useAuth();
   const { render: renderMsg } = useMensajesWhatsapp();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  // Liquidar a los 7 días sigue siendo decisión del ADMIN (regla local), pero además se le
+  // puede recortar por persona. El convenio de recuperación exige el permiso crear_convenio.
+  const puedeLiquidar = puede("iniciar_liquidacion");
+  const puedeCrearConvenio = puede("crear_convenio");
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
@@ -738,7 +742,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         💵 Cobrar
                       </button>
                     )}
-                    {puedeHacerConvenio && (
+                    {puedeHacerConvenio && puedeCrearConvenio && (
                       <button
                         onClick={() => setConvenioRec(m)}
                         disabled={procesandoEsta}
@@ -756,7 +760,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     >
                       {procesandoEsta ? "Procesando..." : "✓ Entregar moto"}
                     </button>
-                    {esAdmin && (
+                    {esAdmin && puedeLiquidar && (
                       <button
                         onClick={() => setLiquidacionModal(m)}
                         disabled={procesandoEsta || !m.listaParaLiquidar}

@@ -63,7 +63,7 @@ export const ACCION_KEYS = ACCIONES.map(a => a.key);
 export const DEFAULT_ACCIONES: Record<Role, string[]> = {
   ADMIN_PRINCIPAL: ACCION_KEYS,
   ADMIN: [
-    "registrar_efectivo", "aplicar_saldo_favor",
+    "registrar_efectivo",
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion",
     "aprobar_visita", "lista_negra", "editar_configuracion",

@@ -228,8 +228,9 @@ const ROLE_LABEL: Record<string, string> = {
 
 // ── Vista principal ────────────────────────────────────────────────────────────
 export default function ConfiguracionView() {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const puedeEditarConfig = puede("editar_configuracion"); // default ADMIN, igual que esAdmin
 
   // Mi cuenta
   const [editandoNombre, setEditandoNombre] = useState(false);
@@ -548,7 +549,7 @@ export default function ConfiguracionView() {
       </div>
 
       {/* ── Mensajes de WhatsApp (solo admins) ── */}
-      {esAdmin && <SeccionMensajesWhatsapp />}
+      {puedeEditarConfig && <SeccionMensajesWhatsapp />}
 
       {/* ── Acerca de ── */}
       <div style={{ ...card, marginBottom: 0 }}>

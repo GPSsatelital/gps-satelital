@@ -61,8 +61,12 @@ const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", b
 import type { ViewKey } from "../App";
 
 export default function MotosView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
+  // Acciones sensibles con permiso por persona (defaults: recolectar/liquidar=ADMIN+SUBADMIN, grupo=ADMIN)
+  const puedeRecolectar = puede("recolectar_moto");
+  const puedeLiquidar = puede("iniciar_liquidacion");
+  const puedeCambiarGrupo = puede("cambiar_grupo_moto");
   const { filtrarMotos } = useScope();
   const { contratos, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
@@ -469,8 +473,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
+              {/* Cambiar de grupo mueve la moto entre portafolios de socios — permiso aparte */}
               <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}>
+                disabled={!puedeCambiarGrupo}
+                title={!puedeCambiarGrupo ? "No tienes permiso para cambiar el grupo (mueve la moto entre portafolios de socios)" : ""}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, opacity: puedeCambiarGrupo ? 1 : 0.6, cursor: puedeCambiarGrupo ? "pointer" : "not-allowed" }}>
                 {(["COSTA","PRADERA","RASTREADOR","USADAS"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
@@ -954,9 +961,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         const contratoActivo = contratoMoto?.estado === "Activo";
         const opciones: { icono: string; titulo: string; desc: string; enabled: boolean; motivoOff?: string; onClick: () => void }[] = [
           {
-            icono: "🚚", titulo: "Recolección por mora", enabled: !!contratoActivo && contratoMotoEnMora,
+            icono: "🚚", titulo: "Recolección por mora", enabled: puedeRecolectar && !!contratoActivo && contratoMotoEnMora,
             desc: "El cliente no pagó. Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.",
-            motivoOff: !contratoActivo ? "La moto no tiene un contrato activo" : "El contrato no está en mora",
+            motivoOff: !puedeRecolectar ? "No tienes permiso para recolectar motos" : !contratoActivo ? "La moto no tiene un contrato activo" : "El contrato no está en mora",
             onClick: () => { setRecoleccionMoto(selectedMoto); setOpenNovedad(false); },
           },
           {
@@ -966,15 +973,15 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             onClick: () => { setFormRec(f => ({ ...f, motivo: "entrega_voluntaria" })); setRecFueBuscada(false); setFotosRec({}); setOpenRecepcion(true); setOpenNovedad(false); },
           },
           {
-            icono: "⚖️", titulo: "Retención legal (Fiscalía / Tránsito / Garantía)", enabled: !yaRetenida,
+            icono: "⚖️", titulo: "Retención legal (Fiscalía / Tránsito / Garantía)", enabled: puedeRecolectar && !yaRetenida,
             desc: "La moto queda retenida por un tercero. El tiempo parado se le cobra al cliente (o se rueda), igual para los 3.",
-            motivoOff: "La moto ya está retenida",
+            motivoOff: !puedeRecolectar ? "No tienes permiso para retener motos" : "La moto ya está retenida",
             onClick: () => { setOpenRetencion(true); setOpenNovedad(false); },
           },
           {
-            icono: "📄", titulo: "Liquidar / cerrar contrato", enabled: !!contratoMoto,
+            icono: "📄", titulo: "Liquidar / cerrar contrato", enabled: puedeLiquidar && !!contratoMoto,
             desc: "Cierre definitivo: revisión de taller, saldo final y documento. Sin bloqueo de 7 días.",
-            motivoOff: "La moto no tiene un contrato para cerrar",
+            motivoOff: !puedeLiquidar ? "No tienes permiso para iniciar liquidaciones" : "La moto no tiene un contrato para cerrar",
             onClick: () => { setLiquidacionMoto(selectedMoto); setOpenNovedad(false); },
           },
           {

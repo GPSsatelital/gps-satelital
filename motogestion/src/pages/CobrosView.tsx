@@ -1050,6 +1050,35 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const desg = contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario"
     ? desgloseExigible(contratoDetalle, hoyDate()) : null;
 
+  // "¿Qué cubre este pago?" en vivo: simula el reparto FIFO del monto que escribe el funcionario
+  // (prorrateo → cajas más viejas → deuda → convenio) para que sepa qué queda cubierto y qué falta.
+  const coberturaEnVivo = (() => {
+    const monto = Number(valor) || 0;
+    if (!desg || monto <= 0 || !contratoDetalle) return null;
+    let resto = monto;
+    const lineas: { txt: string; ok: boolean }[] = [];
+    if (desg.prorrateoPendiente > 0 && resto > 0) {
+      const a = Math.min(resto, desg.prorrateoPendiente); resto -= a;
+      lineas.push({ txt: a >= desg.prorrateoPendiente ? "Prorrateo inicial" : `Prorrateo (abona $${fmt(a)})`, ok: a >= desg.prorrateoPendiente });
+    }
+    for (const p of desg.periodos) {
+      if (resto <= 0) break;
+      const a = Math.min(resto, p.monto); resto -= a;
+      lineas.push({ txt: a >= p.monto ? `Cuota ${fmtFecha(p.fecha)}` : `Cuota ${fmtFecha(p.fecha)} (abona $${fmt(a)}, faltan $${fmt(p.monto - a)})`, ok: a >= p.monto });
+    }
+    if (resto > 0 && contratoDetalle.deudaContrato > 0) {
+      const a = Math.min(resto, contratoDetalle.deudaContrato); resto -= a;
+      lineas.push({ txt: a >= contratoDetalle.deudaContrato ? "Multa / deuda" : `Multa/deuda (abona $${fmt(a)})`, ok: a >= contratoDetalle.deudaContrato });
+    }
+    if (resto > 0 && contratoDetalle.cuotaConvenio > 0) {
+      const a = Math.min(resto, contratoDetalle.cuotaConvenio); resto -= a;
+      lineas.push({ txt: a >= contratoDetalle.cuotaConvenio ? "Cuota del convenio" : `Cuota convenio (abona $${fmt(a)})`, ok: a >= contratoDetalle.cuotaConvenio });
+    }
+    const totalDebe = cuotaPendiente + contratoDetalle.deudaContrato + contratoDetalle.cuotaConvenio;
+    const quedaDebiendo = Math.max(totalDebe - monto, 0);
+    return { lineas, quedaDebiendo, sobra: resto };
+  })();
+
   // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
   // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
   // La primera cuota financiada = lo que FALTA del período actual (cuotaPendiente); las
@@ -1815,7 +1844,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
           </div>
 
-          {montoIngresado > 0 && (
+          {/* Motor de cajas: "qué cubre este pago" POR FECHA (FIFO en vivo) */}
+          {coberturaEnVivo && (
+            <div style={{ background: "#eff6ff", borderRadius: 10, padding: "10px 12px", border: "1px solid #bfdbfe", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>Este pago cubre:</div>
+              {coberturaEnVivo.lineas.map((l, i) => (
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", color: l.ok ? "#166534" : "#92400e" }}>
+                  <span>{l.ok ? "✓" : "•"}</span><span>{l.txt}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: "1px solid #bfdbfe", marginTop: 4, paddingTop: 4, fontWeight: 800, color: coberturaEnVivo.quedaDebiendo > 0 ? "#991b1b" : "#166534" }}>
+                {coberturaEnVivo.quedaDebiendo > 0
+                  ? `Quedaría debiendo: $ ${fmt(coberturaEnVivo.quedaDebiendo)}`
+                  : coberturaEnVivo.sobra > 0
+                    ? `Queda al día · sobra $ ${fmt(coberturaEnVivo.sobra)} (saldo a favor)`
+                    : "Queda al día ✓"}
+              </div>
+            </div>
+          )}
+
+          {montoIngresado > 0 && !coberturaEnVivo && (
             <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
               <div style={{ fontWeight: 700, color: "#166534", marginBottom: 2 }}>Cómo se aplica:</div>
               {desglose.tarifa > 0 && (

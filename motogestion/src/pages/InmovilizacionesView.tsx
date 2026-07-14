@@ -104,6 +104,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // Retenidas primero: es el endpoint que a la práctica más se consulta (de ahí salen las
   // inmovilizadas). "En mora" es la persecución previa a la recolección.
   const [tab, setTab]                 = useState<"retenidas" | "en_mora">("retenidas");
+  const [filtroRet, setFiltroRet]     = useState<"todas" | "mora" | "temporal" | "taller">("todas");
 
   const hoy = hoyISO();
   const inicioSemana = (() => {
@@ -238,15 +239,25 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     listaParaLiquidar: boolean;
     ahorroAcumulado: number;
     esTemporal: boolean; // guardada por incapacidad/entrega voluntaria (NO moroso)
+    enTaller: boolean;   // físicamente en taller (moto Mantenimiento)
+    categoria: "mora" | "temporal" | "taller";
+    soloInfoTaller: boolean; // varada con contrato Activo → solo info, sin acciones de recuperación
   };
 
   const motosRetenidas: MotoRetenida[] = useMemo(() => {
     const hoyMs = Date.now();
     return contratos
-      .filter(c => c.estado === "Suspendido")
+      // Fuera de servicio: contratos Suspendidos (mora/temporal) + Activos cuya moto está
+      // en taller (varada). Así el panel es el "pool" de todo lo que no está produciendo.
+      .filter(c => {
+        if (c.estado === "Suspendido") return true;
+        if (c.estado === "Activo") return motos.find(m => m.id === c.moto_id)?.estado === "Mantenimiento";
+        return false;
+      })
       .map(c => {
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto = motos.find(m => m.id === c.moto_id);
+        const enTaller = moto?.estado === "Mantenimiento";
         const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada");
         // Días retenida: desde la última gestión de recolección registrada.
         // A los 7 días sin pago se habilita liquidar (decisión del ADMIN, no automática).
@@ -288,10 +299,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           listaParaLiquidar: diasRetenida >= 7,
           ahorroAcumulado: c.ahorro_acumulado ?? 0,
           esTemporal: c.motivo_suspension === "temporal",
+          enTaller,
+          categoria: (enTaller ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
+          soloInfoTaller: enTaller && c.estado === "Activo",
         };
       })
-      // Agrupa visualmente: primero las de mora/recolección, después las guardadas temporal.
-      .sort((a, b) => Number(a.esTemporal) - Number(b.esTemporal));
+      // Agrupa visualmente por categoría: mora → temporal → taller.
+      .sort((a, b) => ["mora", "temporal", "taller"].indexOf(a.categoria) - ["mora", "temporal", "taller"].indexOf(b.categoria));
   }, [contratos, clientes, motos, deudas, gestiones, pagos, convenios]);
 
   // Cobro para recuperar: registra el pago sobre el contrato suspendido (la BD reparte con
@@ -671,21 +685,40 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       <div style={{ marginBottom: 12 }}>
         <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "#0f172a" }}>🔒 Motos retenidas</h3>
         <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
-          Motos ya recolectadas, en poder de la empresa — esperando que el cliente salde su deuda para recuperarla.
+          Motos fuera de servicio, en poder de la empresa — por mora, entregadas temporal, o en taller.
         </p>
       </div>
 
-      {motosRetenidas.length === 0 ? (
+      {/* Filtros: mora / temporal / taller / todas */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {([
+          { key: "todas",    label: "Todas",         count: motosRetenidas.length },
+          { key: "mora",     label: "🔴 Mora",       count: motosRetenidas.filter(m => m.categoria === "mora").length },
+          { key: "temporal", label: "🅿️ Temporal",   count: motosRetenidas.filter(m => m.categoria === "temporal").length },
+          { key: "taller",   label: "🔧 Taller",     count: motosRetenidas.filter(m => m.categoria === "taller").length },
+        ] as const).map(f => (
+          <button key={f.key} onClick={() => setFiltroRet(f.key)} style={{
+            padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
+            background: filtroRet === f.key ? "#0f172a" : "#f1f5f9", color: filtroRet === f.key ? "white" : "#64748b",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            {f.label}
+            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "#e2e8f0", borderRadius: 999, fontSize: 10, fontWeight: 900, padding: "1px 6px", color: filtroRet === f.key ? "white" : "#64748b" }}>{f.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).length === 0 ? (
         <div style={{ background: "white", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 28 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
           <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>No hay motos retenidas</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
-          {motosRetenidas.map(m => {
+          {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
             const entregable = puedeEntregar(m);
             const faltaMulta = m.totalPendiente > 0;
-            const puedeHacerConvenio = m.cuotasAtrasadas > 0 && m.convenioId == null;
+            const puedeHacerConvenio = !m.soloInfoTaller && m.cuotasAtrasadas > 0 && m.convenioId == null;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "#f0f9ff" : "#fff5f5", border: `2px solid ${m.esTemporal ? "#bae6fd" : "#fecaca"}`, borderRadius: 16, padding: "14px 16px" }}>
@@ -703,25 +736,29 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           {d.concepto === "multa_recoleccion" ? "Multa por recolección/inmovilización" : d.descripcion}: <strong>${fmt(d.monto_pendiente)}</strong>
                         </div>
                       ))}
-                      {m.cuotasAtrasadas > 0 && (
+                      {!m.soloInfoTaller && m.cuotasAtrasadas > 0 && (
                         <div style={{ fontSize: 12, color: m.convenioId != null ? "#0369a1" : "#991b1b" }}>
                           Cuotas atrasadas: <strong>${fmt(m.cuotasAtrasadas)}</strong>
                           {m.convenioId != null && <span style={{ fontSize: 11, fontWeight: 700 }}> · 📝 en convenio</span>}
                         </div>
                       )}
-                      <div style={{ fontSize: 13, fontWeight: 800, color: m.esTemporal ? "#0369a1" : entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
-                        {m.esTemporal
-                          ? "🅿️ Guardada temporal — resolver el tiempo al reactivar"
-                          : entregable
-                            ? "✓ Listo para entregar"
-                            : faltaMulta
-                              ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
-                              : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
+                      <div style={{ fontSize: 13, fontWeight: 800, color: m.soloInfoTaller ? "#7c3aed" : m.esTemporal ? "#0369a1" : entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
+                        {m.soloInfoTaller
+                          ? "🔧 En taller (varada) — se resuelve el tiempo al salir"
+                          : m.esTemporal
+                            ? "🅿️ Guardada temporal — resolver el tiempo al reactivar"
+                            : entregable
+                              ? "✓ Listo para entregar"
+                              : faltaMulta
+                                ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
+                                : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                        {m.esTemporal
-                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#e0f2fe", color: "#0369a1" }}>🅿️ Guardada temporal (incapacidad)</span>
-                          : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>🔴 Por mora / recolección</span>}
+                        {m.categoria === "taller"
+                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#ede9fe", color: "#7c3aed" }}>🔧 En taller</span>
+                          : m.categoria === "temporal"
+                            ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#e0f2fe", color: "#0369a1" }}>🅿️ Guardada temporal (incapacidad)</span>
+                            : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>🔴 Por mora / recolección</span>}
                         <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#f1f5f9", color: "#334155" }}>
                           ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
                         </span>
@@ -742,7 +779,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📞 Llamar
                       </button>
                     )}
-                    {!entregable && (
+                    {!m.soloInfoTaller && !entregable && (
                       <button
                         onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
                         disabled={procesandoEsta}
@@ -761,14 +798,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📝 Convenio
                       </button>
                     )}
-                    <button
-                      onClick={() => handleAbrirEntrega(m)}
-                      disabled={!entregable || procesandoEsta}
-                      title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "#dcfce7" : "#f1f5f9", color: entregable ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
-                    >
-                      {procesandoEsta ? "Procesando..." : "✓ Entregar moto"}
-                    </button>
+                    {!m.soloInfoTaller && (
+                      <button
+                        onClick={() => handleAbrirEntrega(m)}
+                        disabled={!entregable || procesandoEsta}
+                        title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "#dcfce7" : "#f1f5f9", color: entregable ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
+                      >
+                        {procesandoEsta ? "Procesando..." : "✓ Entregar moto"}
+                      </button>
+                    )}
                     {esAdmin && puedeLiquidar && (
                       <button
                         onClick={() => setLiquidacionModal(m)}

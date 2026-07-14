@@ -403,6 +403,71 @@ export function huecoCuotasHoy(contrato: ContratoCiclo, hoy: Date): number {
   return prorPend + huecoCajas;
 }
 
+// Fecha de EXIGENCIA de la caja `numero` (> previas). Espejo de cajas_exigidas().
+function fechaCaja(contrato: ContratoCiclo, numero: number): string | null {
+  const previas = contrato.cajas_previas ?? 0;
+  const inicio = contrato.fecha_inicio_cajas;
+  if (!inicio || numero <= previas) return null;
+  const idx = numero - previas - 1; // 0-based desde fecha_inicio_cajas
+  if (contrato.forma_pago === "Semanal") {
+    const d = new Date(inicio + "T00:00:00");
+    d.setDate(d.getDate() + idx * 7);
+    return fechaAISO(d);
+  }
+  if (esCalendario(contrato)) {
+    const dias = [...diasPagoMes(contrato)].sort((a, b) => a - b);
+    const dIni = new Date(inicio + "T00:00:00");
+    const cursor = new Date(dIni.getFullYear(), dIni.getMonth(), 1);
+    let count = 0;
+    for (let guard = 0; guard < 400; guard++) {
+      for (const dia of dias) {
+        const f = new Date(cursor.getFullYear(), cursor.getMonth(), clampDiaMes(cursor, dia));
+        if (f >= dIni) {
+          if (count === idx) return fechaAISO(f);
+          count++;
+        }
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+  return null;
+}
+
+export type PeriodoExigible = { fecha: string; monto: number; diasVencida: number; parcial: boolean };
+export type DesgloseExigible = {
+  prorrateoPendiente: number;      // Caja 0 (prorrateo) sin pagar
+  periodos: PeriodoExigible[];     // cajas exigidas sin llenar, MÁS VIEJA primero (FIFO)
+  proximaFecha: string | null;     // próxima caja aún no exigida
+  proximoMonto: number;
+  totalCuotas: number;             // = huecoCuotasHoy (prorrateo + cajas)
+};
+
+// Desglose de lo EXIGIBLE hoy, caja por caja con su fecha — para que el funcionario vea
+// qué períodos debe y de qué fecha es cada uno (motor de cajas, tiempo definido).
+export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseExigible {
+  const valorCaja = valorPeriodoReal(contrato);
+  const pagadas = contrato.cajas_pagadas ?? 0;
+  const enCurso = contrato.caja_actual_pagado ?? 0;
+  const exigidas = cajasExigidasHasta(contrato, hoy);
+  const prorrateoPendiente = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  const hoyMs = new Date(fechaAISO(hoy) + "T00:00:00").getTime();
+  const periodos: PeriodoExigible[] = [];
+  for (let j = pagadas + 1; j <= exigidas; j++) {
+    const fecha = fechaCaja(contrato, j);
+    if (!fecha) continue;
+    const parcial = j === pagadas + 1 && enCurso > 0;
+    const monto = parcial ? Math.max(valorCaja - enCurso, 0) : valorCaja;
+    if (monto <= 0) continue;
+    const diasVencida = Math.floor((hoyMs - new Date(fecha + "T00:00:00").getTime()) / 86400000);
+    periodos.push({ fecha, monto, diasVencida, parcial });
+  }
+  const proxNum = Math.max(exigidas, pagadas) + 1;
+  const proximaFecha = (contrato.total_cajas == null || proxNum <= contrato.total_cajas) ? fechaCaja(contrato, proxNum) : null;
+  const proximoMonto = (proxNum === pagadas + 1 && enCurso > 0) ? Math.max(valorCaja - enCurso, 0) : valorCaja;
+  const totalCuotas = prorrateoPendiente + periodos.reduce((s, p) => s + p.monto, 0);
+  return { prorrateoPendiente, periodos, proximaFecha, proximoMonto, totalCuotas };
+}
+
 // Días desde que se exigió la caja MÁS VIEJA que sigue sin llenar (0 = hoy mismo).
 export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
   const inicio = contrato.fecha_inicio_cajas;

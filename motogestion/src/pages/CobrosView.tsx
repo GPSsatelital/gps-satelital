@@ -37,6 +37,7 @@ import {
   tarifaPagadaPeriodoActual,
   ahorroPeriodoExacto,
   huecoCuotasHoy,
+  desgloseExigible,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -1045,6 +1046,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? huecoCuotasHoy(contratoDetalle, hoyDate())
     : Math.max(cuotaPactada - pagadoEnPeriodo, 0);
 
+  // Desglose por fecha (motor de cajas): qué períodos debe, de qué fecha, y el próximo pago.
+  const desg = contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario"
+    ? desgloseExigible(contratoDetalle, hoyDate()) : null;
+
   // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
   // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
   // La primera cuota financiada = lo que FALTA del período actual (cuotaPendiente); las
@@ -1688,6 +1693,59 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
             </div>
           </div>
+
+          {/* Desglose por fecha (motor de cajas): qué períodos debe y de qué fecha — para que el
+              funcionario sepa de un vistazo qué cobrar, sobre todo si arrastra varias vencidas. */}
+          {desg && (desg.periodos.length > 0 || desg.prorrateoPendiente > 0) && (
+            <div style={{ marginTop: 12, background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #fecaca" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", textTransform: "uppercase" }}>Debe pagar ahora</span>
+                {desg.periodos.length >= 2 && (
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", borderRadius: 999, padding: "2px 8px" }}>🔴 {desg.periodos.length} cuotas vencidas</span>
+                )}
+              </div>
+              <div style={{ display: "grid", gap: 3 }}>
+                {desg.prorrateoPendiente > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                    <span>Prorrateo inicial</span><strong>$ {fmt(desg.prorrateoPendiente)}</strong>
+                  </div>
+                )}
+                {desg.periodos.map((p, i) => (
+                  <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155", fontWeight: i === 0 ? 700 : 400 }}>
+                    <span style={{ minWidth: 0 }}>
+                      Cuota {fmtFecha(p.fecha)}{p.parcial ? " (parcial)" : ""}
+                      <span style={{ color: p.diasVencida > 0 ? "#991b1b" : "#c2410c", fontWeight: 700 }}> · {p.diasVencida > 0 ? `${p.diasVencida}d vencida` : "vence hoy"}</span>
+                    </span>
+                    <strong style={{ flexShrink: 0 }}>$ {fmt(p.monto)}</strong>
+                  </div>
+                ))}
+                {contratoDetalle.deudaContrato > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                    <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
+                  </div>
+                )}
+                {contratoDetalle.cuotaConvenio > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                    <span>Cuota del convenio</span><strong>$ {fmt(contratoDetalle.cuotaConvenio)}</strong>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>TOTAL A COBRAR</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>$ {fmt(totalPendiente)}</span>
+              </div>
+              {desg.proximaFecha && (
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Después de esto, próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto)}</div>
+              )}
+            </div>
+          )}
+
+          {/* Al día: solo el próximo pago y su fecha */}
+          {desg && desg.periodos.length === 0 && desg.prorrateoPendiente === 0 && contratoDetalle.deudaContrato === 0 && contratoDetalle.cuotaConvenio === 0 && desg.proximaFecha && (
+            <div style={{ marginTop: 12, background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534" }}>
+              ✓ Al día · Próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto)}
+            </div>
+          )}
 
           {cvActiva ? (
             /* Contrato con convenio: se muestra "al día con convenio" + próximo pago (cuota+conv),

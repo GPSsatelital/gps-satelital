@@ -26,6 +26,8 @@ import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import ModalConvenio from "../components/ModalConvenio";
 import ModalEntregaDevolucion from "../components/ModalEntregaDevolucion";
+import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import { useUbicaciones } from "../hooks/useUbicaciones";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -85,6 +87,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { gestiones } = useGestiones();
   const { deudas }    = useDeudas();
   const { convenios } = useConvenios();
+  const { recepciones } = useUbicaciones();
   const { profile, puede } = useAuth();
   const { render: renderMsg } = useMensajesWhatsapp();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
@@ -317,12 +320,24 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [cobroErr, setCobroErr] = useState<string | null>(null);
   const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
+  // Tras reactivar una guardada TEMPORAL, se resuelve el tiempo guardado (cobrar/rodar).
+  const [resolverRec, setResolverRec] = useState<MotoRetenida | null>(null);
+
+  // Fecha en que se guardó la moto (última recepción del contrato) — para calcular los
+  // días guardados al resolver el tiempo de una temporal.
+  const fechaGuardado = (contratoId: string) => {
+    const rec = recepciones
+      .filter(r => r.contrato_id === contratoId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    return rec ? rec.created_at.slice(0, 10) : hoyISO();
+  };
 
   // Puede entregarse la moto cuando: la MULTA (y deudas registradas) está paga Y las
   // cuotas atrasadas están pagas O financiadas por un convenio activo. La multa es el
-  // mínimo obligatorio; lo atrasado puede quedar en convenio.
+  // mínimo obligatorio; lo atrasado puede quedar en convenio. Las TEMPORAL no son morosas:
+  // se pueden reactivar siempre (el tiempo guardado se resuelve aparte con cobrar/rodar).
   const puedeEntregar = (m: MotoRetenida) =>
-    m.totalPendiente <= 0 && (m.cuotasAtrasadas <= 0 || m.convenioId != null);
+    m.esTemporal || (m.totalPendiente <= 0 && (m.cuotasAtrasadas <= 0 || m.convenioId != null));
 
   async function handleCobrarRecuperar() {
     if (!cobroRec || cobroProc || !profile) return;
@@ -718,7 +733,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
             const entregable = puedeEntregar(m);
             const faltaMulta = m.totalPendiente > 0;
-            const puedeHacerConvenio = !m.soloInfoTaller && m.cuotasAtrasadas > 0 && m.convenioId == null;
+            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.cuotasAtrasadas > 0 && m.convenioId == null;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "#f0f9ff" : "#fff5f5", border: `2px solid ${m.esTemporal ? "#bae6fd" : "#fecaca"}`, borderRadius: 16, padding: "14px 16px" }}>
@@ -805,7 +820,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "#dcfce7" : "#f1f5f9", color: entregable ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
-                        {procesandoEsta ? "Procesando..." : "✓ Entregar moto"}
+                        {procesandoEsta ? "Procesando..." : m.esTemporal ? "✓ Reactivar / entregar" : "✓ Entregar moto"}
                       </button>
                     )}
                     {esAdmin && puedeLiquidar && (
@@ -901,8 +916,26 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motoId={entregaRec.motoId}
           placa={entregaRec.placa}
           onClose={() => setEntregaRec(null)}
+          onDone={() => { if (entregaRec.esTemporal && esAdmin) setResolverRec(entregaRec); }}
         />
       )}
+
+      {/* Al reactivar una TEMPORAL: resolver el tiempo guardado (cobrar / rodar con doc firmado) */}
+      {resolverRec && (() => {
+        const c = contratos.find(x => x.id === resolverRec.contratoId);
+        if (!c) return null;
+        return (
+          <ModalResolverTiempoFueraServicio
+            contrato={c}
+            clienteNombre={resolverRec.clienteNombre}
+            motoPlaca={resolverRec.placa}
+            motivo="Entrega temporal / incapacidad"
+            fechaEntrada={fechaGuardado(resolverRec.contratoId)}
+            fechaSalida={hoyISO()}
+            onClose={() => setResolverRec(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

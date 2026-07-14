@@ -7,7 +7,10 @@ export type MetodoPago = "Efectivo" | "Transferencia";
 // 'adelanto_base': la semana adelantada de la base inicial (LIBRO DE CAJAS, mig 045).
 // Pago INTERNO visible en el historial del contrato, pero EXCLUIDO de caja diaria y
 // recaudo — esa plata ya entró como base, sumarla otra vez inflaría la caja.
-export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_base";
+// 'alquiler_reemplazo': el $27.000/día por usar una moto prestada mientras la propia está
+// en taller (TEMA B). SÍ cuenta en caja diaria como ingreso, pero el trigger del motor de
+// cajas lo IGNORA (mig 053) — no es cuota, no toca el ledger del contrato.
+export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_base" | "alquiler_reemplazo";
 
 // ¿Este pago cuenta para caja diaria / recaudo del día? (los internos no)
 export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {

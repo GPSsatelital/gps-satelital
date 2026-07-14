@@ -4,7 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos, calcularCuotaDia } from "../hooks/usePagos";
+import { usePagos, calcularCuotaDia, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
 import MoneyInput from "../components/MoneyInput";
 import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
@@ -29,6 +29,7 @@ import ModalEntregaDevolucion from "../components/ModalEntregaDevolucion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import ModalPrestarReemplazo from "../components/ModalPrestarReemplazo";
 import { useUbicaciones } from "../hooks/useUbicaciones";
+import { usePrestamos } from "../hooks/usePrestamos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -89,6 +90,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { deudas }    = useDeudas();
   const { convenios } = useConvenios();
   const { recepciones } = useUbicaciones();
+  const { prestamos, devolverReemplazo } = usePrestamos();
   const { profile, puede } = useAuth();
   const { render: renderMsg } = useMensajesWhatsapp();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
@@ -325,6 +327,27 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [resolverRec, setResolverRec] = useState<MotoRetenida | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
+  const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
+
+  async function cobrarAlquiler(prestamoId: string, contratoId: string, monto: number) {
+    if (prestamoProc || !profile) return;
+    if (!confirm(`¿Cobrar el alquiler de reemplazo de $${fmt(monto)} (efectivo)?`)) return;
+    setPrestamoProc(prestamoId);
+    try {
+      // El trigger IGNORA alquiler_reemplazo (mig 053): no toca el ledger, solo entra a caja.
+      await registrarPago(contratoId, monto, "Efectivo", APLICADO_LO_REPARTE_LA_BD, { tipoRegistro: "alquiler_reemplazo", registradoPor: profile.id });
+    } finally { setPrestamoProc(null); }
+  }
+
+  async function handleDevolverPrestamo(prestamoId: string) {
+    if (prestamoProc) return;
+    if (!confirm("¿La moto propia ya salió del taller? Se devuelve la prestada al pool y el contrato vuelve a su placa original.")) return;
+    setPrestamoProc(prestamoId);
+    try {
+      const { error } = await devolverReemplazo(prestamoId);
+      if (error) alert("Error al devolver el préstamo: " + error);
+    } finally { setPrestamoProc(null); }
+  }
 
   // Fecha en que se guardó la moto (última recepción del contrato) — para calcular los
   // días guardados al resolver el tiempo de una temporal.
@@ -849,6 +872,43 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Préstamos activos: cobrar el alquiler diario y devolver cuando la moto salga de taller */}
+      {prestamos.filter(p => p.estado === "activo").length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 28 }}>
+          <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 900, color: "#0f172a" }}>🔄 Préstamos activos</h3>
+          <div style={{ display: "grid", gap: 8 }}>
+            {prestamos.filter(p => p.estado === "activo").map(p => {
+              const cont = contratos.find(c => c.id === p.contrato_id);
+              const cli = cont ? clientes.find(cl => cl.id === cont.cliente_id) : null;
+              const motoP = motos.find(m => m.id === p.moto_prestada_id);
+              const motoO = p.moto_original_id ? motos.find(m => m.id === p.moto_original_id) : null;
+              const proc = prestamoProc === p.id;
+              return (
+                <div key={p.id} style={{ background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 14, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{cli?.nombre ?? "—"}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                      Anda en <strong>{motoP?.placa ?? "?"}</strong> (prestada) · su moto <strong>{motoO?.placa ?? "?"}</strong> en taller · desde {p.fecha_inicio}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#7c3aed", fontWeight: 700, marginTop: 2 }}>Alquiler: ${fmt(p.tarifa_dia)}/día</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                    <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#166534", color: "white", opacity: proc ? 0.6 : 1 }}>
+                      💵 Cobrar alquiler
+                    </button>
+                    <button onClick={() => handleDevolverPrestamo(p.id)} disabled={proc}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", opacity: proc ? 0.6 : 1 }}>
+                      ✓ Devolver (salió de taller)
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       </>)}

@@ -38,6 +38,7 @@ export const ACCIONES: AccionDef[] = [
   { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
   { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },
   // Clientes
+  { key: "editar_cliente",         label: "Editar datos de clientes",           modulo: "clientes" },
   { key: "aprobar_visita",         label: "Aprobar / rechazar visita o cliente", modulo: "clientes" },
   { key: "lista_negra",            label: "Poner / quitar lista negra",         modulo: "clientes" },
   // Configuración (módulo siempre visible)
@@ -66,11 +67,11 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "registrar_efectivo",
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion",
-    "aprobar_visita", "lista_negra", "editar_configuracion",
+    "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
   ],
   SECRETARIA: [
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",
-    "aplicar_saldo_favor", "crear_convenio",
+    "aplicar_saldo_favor", "crear_convenio", "editar_cliente",
   ],
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
   MECANICO: [],

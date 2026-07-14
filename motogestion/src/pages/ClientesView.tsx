@@ -540,7 +540,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
 import type { ViewKey } from "../App";
 
 export default function ClientesView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -788,6 +788,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   async function guardarEdicion() {
     if (guardando) return;
     if (!editForm) return;
+    if (!puede("editar_cliente")) { setFormError("No tienes permiso para editar datos de clientes."); return; }
 
     if (!editForm.nombre.trim() || !editForm.cedula.trim() || !editForm.direccion.trim() || !editForm.telefono.trim()) {
       setFormError("Completa nombre, cédula, dirección y teléfono.");
@@ -1517,6 +1518,7 @@ function miniBtn2(bg: string, color: string): React.CSSProperties {
 }
 
 function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente }: DetalleProps) {
+  const { puede } = useAuth();
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const esPrincipal = role === "ADMIN_PRINCIPAL";
   // Cliente ya operando con contrato: la salida es por Liquidación (cierra contrato + libera
@@ -1689,7 +1691,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <ClienteBadge estado={estadoVisual(selectedCliente)} />
-        <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>
+        {puede("editar_cliente") && <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>}
         {selectedCliente.estado === "Listo para visita" && (
           <button onClick={onVisita} style={miniBtn2("#dbeafe", "#1d4ed8")}>Registrar visita</button>
         )}

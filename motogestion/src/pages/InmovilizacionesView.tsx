@@ -248,6 +248,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     enTaller: boolean;   // físicamente en taller (moto Mantenimiento)
     categoria: "mora" | "temporal" | "taller";
     soloInfoTaller: boolean; // varada con contrato Activo → solo info, sin acciones de recuperación
+    formaPago: string;   // Diario / Semanal / Quincenal / Mensual — define préstamo vs liquidar+reasignar
   };
 
   const motosRetenidas: MotoRetenida[] = useMemo(() => {
@@ -308,6 +309,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           enTaller,
           categoria: (enTaller ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
           soloInfoTaller: enTaller && c.estado === "Activo",
+          formaPago: c.forma_pago ?? "",
         };
       })
       // Agrupa visualmente por categoría: mora → temporal → taller.
@@ -323,8 +325,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [cobroErr, setCobroErr] = useState<string | null>(null);
   const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
-  // Tras reactivar una guardada TEMPORAL, se resuelve el tiempo guardado (cobrar/rodar).
-  const [resolverRec, setResolverRec] = useState<MotoRetenida | null>(null);
+  // Resolver tiempo (cobrar/rodar): reusado por TEMA A (reactivar temporal) y TEMA B (devolver préstamo).
+  const [resolverRec, setResolverRec] = useState<{ contratoId: string; placa: string; clienteNombre: string; fechaEntrada: string } | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
@@ -344,8 +346,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     if (!confirm("¿La moto propia ya salió del taller? Se devuelve la prestada al pool y el contrato vuelve a su placa original.")) return;
     setPrestamoProc(prestamoId);
     try {
+      const p = prestamos.find(x => x.id === prestamoId);
       const { error } = await devolverReemplazo(prestamoId);
-      if (error) alert("Error al devolver el préstamo: " + error);
+      if (error) { alert("Error al devolver el préstamo: " + error); return; }
+      // F4: resolver el tiempo que su moto estuvo en taller (cobrar / rodar con doc firmado).
+      // Como pagó alquiler mientras trabajaba en la prestada, lo normal es rodar; decide el admin.
+      if (esAdmin && p) {
+        const cont = contratos.find(c => c.id === p.contrato_id);
+        const cli = cont ? clientes.find(cl => cl.id === cont.cliente_id) : null;
+        const motoO = p.moto_original_id ? motos.find(m => m.id === p.moto_original_id) : null;
+        if (cont) setResolverRec({ contratoId: p.contrato_id, placa: motoO?.placa ?? "", clienteNombre: cli?.nombre ?? "", fechaEntrada: p.fecha_inicio });
+      }
     } finally { setPrestamoProc(null); }
   }
 
@@ -820,13 +831,20 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📞 Llamar
                       </button>
                     )}
-                    {m.soloInfoTaller && (
-                      <button
-                        onClick={() => setPrestarRec(m)}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#7c3aed", color: "white" }}
-                      >
-                        🔄 Prestar reemplazo
-                      </button>
+                    {m.soloInfoTaller && (m.formaPago === "Diario"
+                      ? <button
+                          onClick={() => setLiquidacionModal(m)}
+                          title="Diario varado: liquida este contrato y crea uno nuevo en otra moto trasladando el ahorro"
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#c2410c", color: "white" }}
+                        >
+                          🔁 Liquidar y reasignar
+                        </button>
+                      : <button
+                          onClick={() => setPrestarRec(m)}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#7c3aed", color: "white" }}
+                        >
+                          🔄 Prestar reemplazo
+                        </button>
                     )}
                     {!m.soloInfoTaller && !entregable && (
                       <button
@@ -987,7 +1005,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motoId={entregaRec.motoId}
           placa={entregaRec.placa}
           onClose={() => setEntregaRec(null)}
-          onDone={() => { if (entregaRec.esTemporal && esAdmin) setResolverRec(entregaRec); }}
+          onDone={() => { if (entregaRec.esTemporal && esAdmin) setResolverRec({ contratoId: entregaRec.contratoId, placa: entregaRec.placa, clienteNombre: entregaRec.clienteNombre, fechaEntrada: fechaGuardado(entregaRec.contratoId) }); }}
         />
       )}
 
@@ -1012,7 +1030,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             clienteNombre={resolverRec.clienteNombre}
             motoPlaca={resolverRec.placa}
             motivo="Entrega temporal / incapacidad"
-            fechaEntrada={fechaGuardado(resolverRec.contratoId)}
+            fechaEntrada={resolverRec.fechaEntrada}
             fechaSalida={hoyISO()}
             onClose={() => setResolverRec(null)}
           />

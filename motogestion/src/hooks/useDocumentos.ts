@@ -727,10 +727,14 @@ export function generarHTMLResumenEntrega(
        <div style="font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px">${l}</div>
        <div style="font-size:13px;font-weight:800;color:#0f172a;margin-top:2px">${v}</div>
      </div>`;
+  // object-fit:contain (no recorta) sobre un fondo neutro, en cuadro con proporción fija —
+  // se ve la foto completa y todas quedan del mismo tamaño, alineadas.
   const celdaFoto = (f: { label: string; url: string }) =>
-    `<div style="page-break-inside:avoid">
-       <img src="${f.url}" style="width:100%;height:130px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1" />
-       <div style="font-size:9px;color:#64748b;text-align:center;margin-top:3px;font-weight:700">${f.label}</div>
+    `<div style="page-break-inside:avoid;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#fff">
+       <div style="background:#f1f5f9;height:160px;display:flex;align-items:center;justify-content:center">
+         <img src="${f.url}" style="max-width:100%;max-height:160px;object-fit:contain;display:block" />
+       </div>
+       <div style="font-size:10px;color:#334155;text-align:center;padding:4px 2px;font-weight:700;border-top:1px solid #e2e8f0">${f.label}</div>
      </div>`;
   return `
     <div style="font-family:Arial,sans-serif;color:#0f172a;max-width:760px;margin:0 auto;padding:20px">

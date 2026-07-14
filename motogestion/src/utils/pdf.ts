@@ -4,42 +4,74 @@
 // La librería se importa de forma dinámica: es pesada y solo se necesita al firmar, así
 // no infla la carga inicial de la app.
 export async function htmlAPdfBlob(html: string): Promise<Blob> {
-  const { default: html2pdf } = await import("html2pdf.js");
-  // html2canvas necesita el contenido montado y REALMENTE renderizado. Un contenedor con
-  // left:-10000px hacía que html2canvas capturara en blanco. Se monta en pantalla al frente
-  // (top-left, sobre todo) solo el instante que dura la captura, y luego se quita.
-  // position:absolute (NO fixed — html2canvas captura en blanco los fixed) al inicio del
-  // documento; ancho A4 en px (794 @ 96dpi). Se ve un instante y se quita tras capturar.
+  // Se captura DIRECTO con html2canvas sobre el elemento montado en pantalla y se arma el PDF
+  // con jsPDF a mano. Antes se usaba html2pdf.js, que internamente RE-CLONA el contenido a un
+  // contenedor fuera de pantalla para procesarlo — y esa copia salía SIEMPRE en blanco (PDFs
+  // de 3 KB, una hoja A4 vacía). Capturando el elemento real evitamos ese clon.
+  const [{ default: html2canvas }, jspdfMod] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+  const JsPDF = jspdfMod.jsPDF;
+
+  // Montar el HTML en pantalla, realmente renderizado (html2canvas captura en blanco si el
+  // elemento no está visible o está en position:fixed). Ancho A4 @ 96dpi = 794px.
   const cont = document.createElement("div");
   cont.style.position = "absolute";
   cont.style.left = "0";
   cont.style.top = "0";
   cont.style.width = "794px";
-  cont.style.background = "white";
+  cont.style.background = "#ffffff";
   cont.style.zIndex = "2147483647";
   cont.innerHTML = html;
   document.body.appendChild(cont);
 
-  // Se define como variable (no literal en línea) para que TS no marque `pagebreak`
-  // como propiedad extra — su type.d.ts no la lista aunque la librería sí la soporta.
-  // pagebreak SIN "avoid-all": ese modo empujaba todo a la página siguiente y dejaba la
-  // primera en blanco. Solo 'css' (respeta page-break-inside:avoid) + 'legacy'.
-  const opt = {
-    margin: [10, 8, 12, 8] as [number, number, number, number],
-    image: { type: "jpeg" as const, quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-    pagebreak: { mode: ["css", "legacy"] },
-  };
-
   try {
-    // Espera a que carguen las imágenes (firma/huella) + un par de frames antes de capturar
-    // — si no, html2canvas puede salir en blanco.
+    // Esperar a que carguen las imágenes (firma/huella) + un frame antes de capturar.
     const imgs = Array.from(cont.querySelectorAll("img"));
     await Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })));
     await new Promise((r) => setTimeout(r, 150));
-    const blob: Blob = await html2pdf().set(opt).from(cont).outputPdf("blob");
-    return blob;
+
+    const canvas = await html2canvas(cont, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      windowWidth: 794,
+    });
+
+    const pdf = new JsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight();   // 297mm
+    const margin = 8;                                  // mm
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
+    const imgH = (canvas.height * usableW) / canvas.width; // alto total escalado al ancho útil
+
+    if (imgH <= usableH) {
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, usableW, imgH);
+    } else {
+      // Multipágina: recortar el canvas en franjas del alto de una página A4.
+      const pxPerMm = canvas.width / usableW;               // misma escala px/mm en vertical
+      const sliceHpx = Math.floor(usableH * pxPerMm);
+      let y = 0;
+      let primera = true;
+      while (y < canvas.height) {
+        const hpx = Math.min(sliceHpx, canvas.height - y);
+        const franja = document.createElement("canvas");
+        franja.width = canvas.width;
+        franja.height = hpx;
+        const ctx = franja.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, franja.width, franja.height);
+        ctx.drawImage(canvas, 0, y, canvas.width, hpx, 0, 0, canvas.width, hpx);
+        if (!primera) pdf.addPage();
+        pdf.addImage(franja.toDataURL("image/jpeg", 0.95), "JPEG", margin, margin, usableW, hpx / pxPerMm);
+        primera = false;
+        y += hpx;
+      }
+    }
+
+    return pdf.output("blob");
   } finally {
     document.body.removeChild(cont);
   }

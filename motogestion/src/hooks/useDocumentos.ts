@@ -1,7 +1,7 @@
 import type { Contrato } from "./useContratos";
 import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
-import { formatDiaPago } from "../utils/cicloPago";
+import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
 import { pesosALetras } from "../utils/numeroLetras";
 
@@ -706,6 +706,78 @@ export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
         <div style="display:inline-block;border-top:1px solid #0f172a;padding-top:8px;font-size:11px;min-width:220px">
           ${cliente.nombre.toUpperCase()}<br/>C.C. ${cliente.cedula}<br/>Titular de los datos
         </div>
+      </div>
+    </div>
+  `;
+}
+
+// Resumen de ENTREGA en una sola página: lo pactado en el contrato + las fotos de la entrega.
+// Para visualizar/descargar por contrato (sin links de documentos — solo info y fotos).
+export function generarHTMLResumenEntrega(
+  contrato: Contrato,
+  cliente: Cliente,
+  moto: Moto | null,
+  fotos: { label: string; url: string }[],
+): string {
+  const grupo = moto?.grupo ?? "";
+  const entrega = contrato.fecha_entrega ? fmtFecha(contrato.fecha_entrega) : "—";
+  const cuota = valorPeriodoReal(contrato as never);
+  const dato = (l: string, v: string) =>
+    `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px">
+       <div style="font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px">${l}</div>
+       <div style="font-size:13px;font-weight:800;color:#0f172a;margin-top:2px">${v}</div>
+     </div>`;
+  const celdaFoto = (f: { label: string; url: string }) =>
+    `<div style="page-break-inside:avoid">
+       <img src="${f.url}" style="width:100%;height:130px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1" />
+       <div style="font-size:9px;color:#64748b;text-align:center;margin-top:3px;font-weight:700">${f.label}</div>
+     </div>`;
+  return `
+    <div style="font-family:Arial,sans-serif;color:#0f172a;max-width:760px;margin:0 auto;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:18px;font-weight:900;letter-spacing:.5px">GPS SATELITAL CARTAGENA</div>
+          <div style="font-size:13px;font-weight:700;color:#334155;margin-top:2px">Resumen de entrega de motocicleta</div>
+        </div>
+        <div style="text-align:right">
+          ${grupo ? `<div style="font-size:11px;font-weight:800;color:#0284c7">${grupo}</div>` : ""}
+          <div style="font-size:11px;color:#64748b">${entrega}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:#f8fafc;border-radius:10px;padding:10px 12px">
+          <div style="font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase">Cliente</div>
+          <div style="font-size:15px;font-weight:800;text-transform:uppercase">${cliente.nombre}</div>
+          <div style="font-size:12px;color:#334155">C.C. ${cliente.cedula}</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:10px 12px">
+          <div style="font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase">Motocicleta</div>
+          <div style="font-size:15px;font-weight:800">${moto?.placa ?? "—"}</div>
+          <div style="font-size:12px;color:#334155">${[moto?.marca, moto?.modelo, moto?.color].filter(Boolean).join(" · ") || "—"}</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:6px">Lo que se pactó</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+        ${dato("Modalidad", contrato.forma_pago ?? "—")}
+        ${dato("Día(s) de pago", formatDiaPago(contrato as never))}
+        ${dato("Cuota del período", `$ ${fmt(cuota)}`)}
+        ${dato("Tarifa L-S", contrato.tarifa_diaria ? `$ ${fmt(contrato.tarifa_diaria)}` : "—")}
+        ${dato("Plazo", contrato.meses ? `${contrato.meses} meses` : "—")}
+        ${dato("Base inicial", contrato.base_inicial ? `$ ${fmt(contrato.base_inicial)}` : "—")}
+        ${dato("Ahorro inicial", contrato.ahorro_inicial ? `$ ${fmt(contrato.ahorro_inicial)}` : "—")}
+        ${dato("Km de entrega", moto?.kilometraje_inicial != null ? `${fmt(moto.kilometraje_inicial)} km` : "—")}
+      </div>
+
+      ${fotos.length > 0 ? `
+      <div style="font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:6px">Fotos de la entrega</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        ${fotos.map(celdaFoto).join("")}
+      </div>` : ""}
+
+      <div style="margin-top:18px;font-size:9px;color:#94a3b8;text-align:center">
+        GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901 · Documento informativo de entrega
       </div>
     </div>
   `;

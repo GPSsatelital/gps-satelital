@@ -8,6 +8,8 @@ import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
+import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
+import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -375,6 +377,11 @@ export default function ReportesView({ onNavigate }: Props) {
           docs, docsOk,
           urls: { contrato: c.contrato_pdf_url ?? null, pagare: c.pagare_pdf_url ?? null, certificado: c.certificado_pdf_url ?? null },
           estado: c.estado,
+          // Resumen de lo pactado (para el reporte general y el resumen por contrato)
+          formaPago: c.forma_pago ?? "—",
+          diaPago: formatDiaPago(c as never),
+          cuota: valorPeriodoReal(c as never),
+          meses: c.meses ?? null,
         };
       })
       .filter(e => grupoEnt === "Todos" || e.grupo === grupoEnt)
@@ -385,6 +392,24 @@ export default function ReportesView({ onNavigate }: Props) {
   const entregasIncompletas = entregas.length - entregasCompletas;
   const entregasConFotos    = entregas.filter(e => e.nFotos > 0).length;
 
+  // ── Resumen de UNA entrega (por contrato): lo pactado + fotos, en una página ──
+  function verResumenEntrega(e: typeof entregas[number]) {
+    const c = contratos.find(ct => ct.id === e.id);
+    const cliente = clientes.find(cl => cl.id === e.clienteId);
+    const moto = e.motoId ? motos.find(m => m.id === e.motoId) ?? null : null;
+    if (!c || !cliente) return;
+    const fotos = e.fotos.map(([ang, url]) => ({ label: ANG_LABEL[ang] ?? ang, url }));
+    const cuerpo = generarHTMLResumenEntrega(c, cliente, moto, fotos);
+    const win = window.open("", "_blank", "width=840,height=920");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Resumen de entrega — ${e.placa}</title>
+      <style>@media print{.no-print{display:none}} body{margin:0;background:#f1f5f9}</style></head><body>
+      <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:flex-end">
+        <button onclick="window.print()" style="padding:9px 18px;border:none;border-radius:8px;background:#0284c7;color:white;font-weight:700;cursor:pointer">🖨️ Descargar / Imprimir</button>
+      </div>${cuerpo}</body></html>`);
+    win.document.close();
+  }
+
   // ── Imprimir reporte de entregas (para enviar a los socios) ─────────────────
   function imprimirEntregas() {
     const win = window.open("", "_blank", "width=900,height=700");
@@ -394,16 +419,17 @@ export default function ReportesView({ onNavigate }: Props) {
     const si = "<span style='color:#166534;font-weight:700;'>✓</span>";
     const no = "<span style='color:#991b1b;font-weight:700;'>✗</span>";
     const filas = entregas.map(e => `<tr>
-      <td style="padding:8px 10px;">${new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO")}</td>
-      <td style="padding:8px 10px;font-weight:700;">${e.placa}</td>
-      <td style="padding:8px 10px;">${e.grupo}</td>
-      <td style="padding:8px 10px;text-transform:uppercase;">${e.cliente}</td>
-      <td style="padding:8px 10px;">${e.cedula}</td>
-      <td style="padding:8px 10px;text-align:center;">${e.docs.contrato ? si : no}</td>
-      <td style="padding:8px 10px;text-align:center;">${e.docs.pagare ? si : no}</td>
-      <td style="padding:8px 10px;text-align:center;">${e.docs.certificado ? si : no}</td>
-      <td style="padding:8px 10px;text-align:center;">${e.docs.firma ? si : no}</td>
-      <td style="padding:8px 10px;text-align:center;">${e.nFotos}</td>
+      <td style="padding:7px 8px;">${new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO")}</td>
+      <td style="padding:7px 8px;font-weight:700;">${e.placa}</td>
+      <td style="padding:7px 8px;">${e.grupo}</td>
+      <td style="padding:7px 8px;text-transform:uppercase;">${e.cliente}</td>
+      <td style="padding:7px 8px;">${e.cedula}</td>
+      <td style="padding:7px 8px;">${e.formaPago}</td>
+      <td style="padding:7px 8px;text-align:right;">$ ${fmt(e.cuota)}</td>
+      <td style="padding:7px 8px;">${e.diaPago}</td>
+      <td style="padding:7px 8px;text-align:center;">${e.meses ? e.meses + "m" : "—"}</td>
+      <td style="padding:7px 8px;text-align:center;">${e.docs.contrato && e.docs.pagare && e.docs.certificado && e.docs.firma ? si : no}</td>
+      <td style="padding:7px 8px;text-align:center;">${e.nFotos}</td>
     </tr>`).join("");
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;color:#475569;}tr:nth-child(even){background:#f8fafc;}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
       <h1>Reporte de entregas de motos</h1>
@@ -414,7 +440,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div class="kpi"><div class="kpi-val" style="color:#991b1b;">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
         <div class="kpi"><div class="kpi-val" style="color:#0284c7;">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
       </div>
-      ${entregas.length === 0 ? "<p style='color:#64748b;margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Contrato</th><th>Pagaré</th><th>Certificado</th><th>Firma</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
+      ${entregas.length === 0 ? "<p style='color:#64748b;margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
       <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();
@@ -995,12 +1021,11 @@ export default function ReportesView({ onNavigate }: Props) {
                   )}
 
                   {/* Acciones */}
-                  {onNavigate && (
-                    <div style={{ display: "flex", gap: 6, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-                      <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤 Cliente</button>
-                      {e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Moto</button>}
-                    </div>
-                  )}
+                  <div style={{ display: "flex", gap: 6, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                    <button onClick={() => verResumenEntrega(e)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f5f3ff", color: "#6d28d9" }}>📄 Resumen</button>
+                    {onNavigate && <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤 Cliente</button>}
+                    {onNavigate && e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Moto</button>}
+                  </div>
                 </div>
               ))}
             </div>

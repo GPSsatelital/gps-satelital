@@ -26,6 +26,9 @@ export type Moto = {
   color: string | null;
   observaciones: string | null;
   subadmin_id?: string | null;
+  // evidencia de entrega (wizard paso 6) — guardada en motos, no siempre tipada
+  kilometraje_inicial?: number | null;
+  fotos_entrega?: Record<string, string> | null;
   // campos de retención
   retencion_fecha?: string | null;
   retencion_numero_caso?: string | null;

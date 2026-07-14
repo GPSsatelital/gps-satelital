@@ -16,7 +16,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "mes" | "mes_anterior" | "anio";
-type Tab   = "resumen" | "cartera" | "flota" | "exportar";
+type Tab   = "resumen" | "cartera" | "flota" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",          label: "Hoy" },
@@ -30,9 +30,14 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "resumen",  label: "Resumen",  icon: "📊" },
   { key: "cartera",  label: "Cartera",  icon: "💳" },
   { key: "flota",    label: "Flota",    icon: "🏍️" },
+  { key: "entregas", label: "Entregas", icon: "🛵" },
   { key: "exportar", label: "Exportar", icon: "⬇️" },
 ];
 
+const ANG_LABEL: Record<string, string> = {
+  delantera: "Delantera", lateral_izquierdo: "Lateral izq.", arriba: "Arriba",
+  lateral_derecho: "Lateral der.", trasera: "Trasera", persona: "Persona + moto",
+};
 const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA", "USADAS"] as const;
 const GRUPO_COLORS: Record<string, string> = {
   RASTREADOR: "#0284c7", COSTA: "#10b981", PRADERA: "#f59e0b", USADAS: "#ea580c",
@@ -123,6 +128,8 @@ const KPI_ICONS: Record<string, string> = {
 export default function ReportesView({ onNavigate }: Props) {
   const [rango, setRango] = useState<Rango>("mes");
   const [tab, setTab]     = useState<Tab>("resumen");
+  const [grupoEnt, setGrupoEnt] = useState<string>("Todos");     // filtro de grupo en la pestaña Entregas
+  const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -309,6 +316,78 @@ export default function ReportesView({ onNavigate }: Props) {
     const delta = totalAnt > 0 ? ((totalRecaudado - totalAnt) / totalAnt) * 100 : null;
     return { totalAnt, delta };
   }, [rango, pagos, totalRecaudado]);
+
+  // ── Entregas de motos en el rango ──────────────────────────────────────────
+  // Reporte para socios: qué motos se entregaron, con qué documentos y evidencia.
+  const entregas = useMemo(() => {
+    return contratos
+      .filter(c => c.fecha_entrega && c.fecha_entrega >= desde && c.fecha_entrega <= hasta)
+      .map(c => {
+        const cliente = clientes.find(cl => cl.id === c.cliente_id);
+        const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : undefined;
+        const fotos = Object.entries(moto?.fotos_entrega ?? {}).filter(([, url]) => !!url) as [string, string][];
+        const docs = {
+          contrato: !!c.contrato_pdf_url,
+          pagare: !!c.pagare_pdf_url,
+          certificado: !!c.certificado_pdf_url,
+          firma: !!c.firma_cliente,
+        };
+        const docsOk = docs.contrato && docs.pagare && docs.certificado && docs.firma;
+        return {
+          id: c.id, clienteId: c.cliente_id, motoId: c.moto_id ?? null,
+          fecha: c.fecha_entrega as string,
+          cliente: cliente?.nombre ?? "—", cedula: cliente?.cedula ?? "—",
+          placa: moto?.placa ?? "—", grupo: (moto?.grupo ?? "—") as string,
+          km: moto?.kilometraje_inicial ?? null,
+          fotos, nFotos: fotos.length,
+          docs, docsOk,
+          urls: { contrato: c.contrato_pdf_url ?? null, pagare: c.pagare_pdf_url ?? null, certificado: c.certificado_pdf_url ?? null },
+          estado: c.estado,
+        };
+      })
+      .filter(e => grupoEnt === "Todos" || e.grupo === grupoEnt)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [contratos, clientes, motos, desde, hasta, grupoEnt]);
+
+  const entregasCompletas   = entregas.filter(e => e.docsOk).length;
+  const entregasIncompletas = entregas.length - entregasCompletas;
+  const entregasConFotos    = entregas.filter(e => e.nFotos > 0).length;
+
+  // ── Imprimir reporte de entregas (para enviar a los socios) ─────────────────
+  function imprimirEntregas() {
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
+    const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
+    const si = "<span style='color:#166534;font-weight:700;'>✓</span>";
+    const no = "<span style='color:#991b1b;font-weight:700;'>✗</span>";
+    const filas = entregas.map(e => `<tr>
+      <td style="padding:8px 10px;">${new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO")}</td>
+      <td style="padding:8px 10px;font-weight:700;">${e.placa}</td>
+      <td style="padding:8px 10px;">${e.grupo}</td>
+      <td style="padding:8px 10px;text-transform:uppercase;">${e.cliente}</td>
+      <td style="padding:8px 10px;">${e.cedula}</td>
+      <td style="padding:8px 10px;text-align:center;">${e.docs.contrato ? si : no}</td>
+      <td style="padding:8px 10px;text-align:center;">${e.docs.pagare ? si : no}</td>
+      <td style="padding:8px 10px;text-align:center;">${e.docs.certificado ? si : no}</td>
+      <td style="padding:8px 10px;text-align:center;">${e.docs.firma ? si : no}</td>
+      <td style="padding:8px 10px;text-align:center;">${e.nFotos}</td>
+    </tr>`).join("");
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;color:#475569;}tr:nth-child(even){background:#f8fafc;}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
+      <h1>Reporte de entregas de motos</h1>
+      <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Grupo: <strong>${grupoEnt}</strong> · Generado el ${fechaHoy}</p>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-val">${entregas.length}</div><div>Motos entregadas</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#166534;">${entregasCompletas}</div><div>Documentación completa</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#991b1b;">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#0284c7;">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
+      </div>
+      ${entregas.length === 0 ? "<p style='color:#64748b;margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Contrato</th><th>Pagaré</th><th>Certificado</th><th>Firma</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
+      <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
+      </body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  }
 
   // ── Imprimir PDF ───────────────────────────────────────────────────────────
   function imprimirReporte() {
@@ -757,6 +836,142 @@ export default function ReportesView({ onNavigate }: Props) {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── TAB ENTREGAS ── */}
+      {tab === "entregas" && (
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* Filtro por grupo */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["Todos", ...GRUPOS].map(g => {
+              const activo = grupoEnt === g;
+              const color = g === "Todos" ? "#0f172a" : GRUPO_COLORS[g];
+              return (
+                <button key={g} onClick={() => setGrupoEnt(g)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activo ? color : "#e2e8f0"}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: activo ? color : "white", color: activo ? "white" : "#64748b" }}>
+                  {g !== "Todos" && <span style={{ width: 8, height: 8, borderRadius: 999, background: activo ? "white" : color }} />}
+                  {g}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* KPIs de entregas */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+            <KPI label="Motos entregadas"   value={String(entregas.length)}       color="#0f172a" />
+            <KPI label="Documentación completa"   value={String(entregasCompletas)}   color="#166534" bg="#f0fdf4" />
+            <KPI label="Documentación incompleta" value={String(entregasIncompletas)} color="#991b1b" bg={entregasIncompletas > 0 ? "#fff5f5" : "white"} />
+            <KPI label="Con fotos de entrega"     value={String(entregasConFotos)}    color="#0284c7" />
+          </div>
+
+          {/* Botón imprimir/enviar */}
+          <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "#e2e8f0" : "#0284c7", color: entregas.length === 0 ? "#94a3b8" : "white", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            🖨️ Imprimir reporte para los socios
+          </button>
+
+          {/* Lista de entregas */}
+          {entregas.length === 0 ? (
+            <div style={{ ...card, textAlign: "center", color: "#64748b", padding: "32px 20px" }}>
+              No hay entregas de motos en este período{grupoEnt !== "Todos" ? ` para ${grupoEnt}` : ""}.
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>Cambia el rango de fechas arriba para ver otras.</div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
+              {entregas.map(e => (
+                <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${GRUPO_COLORS[e.grupo] ?? "#94a3b8"}` }}>
+                  {/* Encabezado */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 800, fontSize: 18 }}>{e.placa}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: GRUPO_COLORS[e.grupo] ?? "#64748b", background: "#f8fafc", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "#e2e8f0"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "#334155", marginTop: 4 }}>{e.cliente}</div>
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>C.C. {e.cedula}</div>
+                    </div>
+                    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: e.docsOk ? "#dcfce7" : "#fee2e2", color: e.docsOk ? "#166534" : "#991b1b" }}>
+                      {e.docsOk ? "✓ Completo" : "⚠ Incompleto"}
+                    </span>
+                  </div>
+
+                  {/* Fecha + km */}
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                    <span>📅 {new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                    {e.km != null && <span>⏱️ {fmt(e.km)} km</span>}
+                  </div>
+
+                  {/* Documentos */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: e.nFotos > 0 ? 12 : 0 }}>
+                    {[
+                      { key: "contrato", label: "📄 Contrato", ok: e.docs.contrato, url: e.urls.contrato },
+                      { key: "pagare", label: "📝 Pagaré", ok: e.docs.pagare, url: e.urls.pagare },
+                      { key: "certificado", label: "🪪 Certificado", ok: e.docs.certificado, url: e.urls.certificado },
+                      { key: "firma", label: "✍️ Firma", ok: e.docs.firma, url: null },
+                    ].map(d => (
+                      <button
+                        key={d.key}
+                        onClick={() => d.url && window.open(d.url, "_blank")}
+                        disabled={!d.url}
+                        title={d.ok ? (d.url ? "Abrir documento" : "Firmado") : "Falta"}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, padding: "7px 10px", borderRadius: 10, border: "1px solid " + (d.ok ? "#bbf7d0" : "#fecaca"), background: d.ok ? "#f0fdf4" : "#fff5f5", color: d.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, cursor: d.url ? "pointer" : "default", minWidth: 0 }}
+                      >
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
+                        <span style={{ flexShrink: 0 }}>{d.ok ? (d.url ? "↗" : "✓") : "✗"}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Fotos de entrega (miniaturas → lightbox) */}
+                  {e.nFotos > 0 && (
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                      {e.fotos.slice(0, 6).map(([ang, url]) => (
+                        <img
+                          key={ang}
+                          src={url}
+                          alt={ANG_LABEL[ang] ?? ang}
+                          title={ANG_LABEL[ang] ?? ang}
+                          onClick={() => setFotosVer({ placa: e.placa, cliente: e.cliente, fotos: e.fotos })}
+                          style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "pointer" }}
+                        />
+                      ))}
+                      <button onClick={() => setFotosVer({ placa: e.placa, cliente: e.cliente, fotos: e.fotos })} style={{ width: 48, height: 48, borderRadius: 8, border: "1px dashed #cbd5e1", background: "#f8fafc", color: "#64748b", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        Ver<br />{e.nFotos}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Acciones */}
+                  {onNavigate && (
+                    <div style={{ display: "flex", gap: 6, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
+                      <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤 Cliente</button>
+                      {e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Moto</button>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Lightbox de fotos de entrega */}
+      {fotosVer && (
+        <div onClick={() => setFotosVer(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.9)", zIndex: 1000, display: "flex", flexDirection: "column", padding: isMobile ? 12 : 32, overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, color: "white" }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{fotosVer.placa}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>{fotosVer.cliente}</div>
+            </div>
+            <button onClick={() => setFotosVer(null)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: "white", color: "#0f172a" }}>Cerrar ✕</button>
+          </div>
+          <div onClick={e => e.stopPropagation()} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            {fotosVer.fotos.map(([ang, url]) => (
+              <div key={ang} style={{ background: "white", borderRadius: 12, overflow: "hidden" }}>
+                <img src={url} alt={ANG_LABEL[ang] ?? ang} style={{ width: "100%", display: "block", maxHeight: 400, objectFit: "contain", background: "#000" }} />
+                <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 13, color: "#334155", textAlign: "center" }}>{ANG_LABEL[ang] ?? ang}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

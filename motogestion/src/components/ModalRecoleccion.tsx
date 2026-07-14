@@ -96,7 +96,7 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
       await registrarGestion(contratoId, "recoleccion", "Moto recolectada por mora — recepción registrada", profile.id);
 
       // 3. Contrato → Suspendido, moto → Recuperada
-      const { error: errSusp } = await suspenderContrato(contratoId, motoId);
+      const { error: errSusp } = await suspenderContrato(contratoId, motoId, "mora");
       if (errSusp) { setError("Error al suspender el contrato: " + errSusp); return; }
 
       // 3b. Si entra directo a taller, el estado físico manda sobre "Recuperada"

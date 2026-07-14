@@ -302,7 +302,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (formRec.motivo === "entrega_voluntaria") {
       const contratoActivo = contratos.find(c => c.moto_id === selectedMoto.id && c.estado === "Activo");
       if (contratoActivo) {
-        const { error: errSusp } = await suspenderContrato(contratoActivo.id, selectedMoto.id);
+        const { error: errSusp } = await suspenderContrato(contratoActivo.id, selectedMoto.id, "temporal");
         if (errSusp) { setGuardando(false); setMsgDetalle("Recepción registrada, pero falló suspender el contrato: " + errSusp); return; }
         if (recFueBuscada) {
           await registrarDeuda(contratoActivo.id, "multa_recoleccion", "Costo por movimiento de personal (recolección)", 20000, profile.id);

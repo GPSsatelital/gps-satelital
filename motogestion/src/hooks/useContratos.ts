@@ -41,6 +41,8 @@ export type Contrato = {
   empalme_cerrado?: boolean;
   empalme_cerrado_por?: string | null;
   empalme_cerrado_fecha?: string | null;
+  // Por qué está Suspendido: "mora" (recolección) | "temporal" (entrega voluntaria/incapacidad).
+  motivo_suspension?: "mora" | "temporal" | null;
   // Motor v2 — LIBRO DE CAJAS (mig 045): acumuladores del ledger. El reparto lo hace la BD.
   motor_v2?: boolean;
   total_cajas?: number | null;
@@ -278,8 +280,11 @@ export function useContratos() {
     return { error: error?.message ?? null };
   }
 
-  async function suspenderContrato(id: string, motoId: string | null) {
-    const { error: errContrato } = await supabase.from("contratos").update({ estado: "Suspendido" }).eq("id", id);
+  // motivo: "mora" (recolección por incumplimiento) | "temporal" (entrega voluntaria/incapacidad).
+  // Distingue en Inmovilizaciones a un moroso de alguien que solo guardó la moto. null = sin marcar
+  // (cae en el grupo "por mora/retención" por defecto).
+  async function suspenderContrato(id: string, motoId: string | null, motivo: "mora" | "temporal" | null = null) {
+    const { error: errContrato } = await supabase.from("contratos").update({ estado: "Suspendido", motivo_suspension: motivo }).eq("id", id);
     if (errContrato) return { error: errContrato.message };
 
     if (motoId) {

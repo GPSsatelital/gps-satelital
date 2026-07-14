@@ -237,6 +237,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     diasRetenida: number;
     listaParaLiquidar: boolean;
     ahorroAcumulado: number;
+    esTemporal: boolean; // guardada por incapacidad/entrega voluntaria (NO moroso)
   };
 
   const motosRetenidas: MotoRetenida[] = useMemo(() => {
@@ -286,8 +287,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           diasRetenida,
           listaParaLiquidar: diasRetenida >= 7,
           ahorroAcumulado: c.ahorro_acumulado ?? 0,
+          esTemporal: c.motivo_suspension === "temporal",
         };
-      });
+      })
+      // Agrupa visualmente: primero las de mora/recolección, después las guardadas temporal.
+      .sort((a, b) => Number(a.esTemporal) - Number(b.esTemporal));
   }, [contratos, clientes, motos, deudas, gestiones, pagos, convenios]);
 
   // Cobro para recuperar: registra el pago sobre el contrato suspendido (la BD reparte con
@@ -684,7 +688,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             const puedeHacerConvenio = m.cuotasAtrasadas > 0 && m.convenioId == null;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
-              <div key={m.contratoId} style={{ background: "#fff5f5", border: "2px solid #fecaca", borderRadius: 16, padding: "14px 16px" }}>
+              <div key={m.contratoId} style={{ background: m.esTemporal ? "#f0f9ff" : "#fff5f5", border: `2px solid ${m.esTemporal ? "#bae6fd" : "#fecaca"}`, borderRadius: 16, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "#0f172a" }}>
@@ -705,14 +709,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           {m.convenioId != null && <span style={{ fontSize: 11, fontWeight: 700 }}> · 📝 en convenio</span>}
                         </div>
                       )}
-                      <div style={{ fontSize: 13, fontWeight: 800, color: entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
-                        {entregable
-                          ? "✓ Listo para entregar"
-                          : faltaMulta
-                            ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
-                            : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
+                      <div style={{ fontSize: 13, fontWeight: 800, color: m.esTemporal ? "#0369a1" : entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
+                        {m.esTemporal
+                          ? "🅿️ Guardada temporal — resolver el tiempo al reactivar"
+                          : entregable
+                            ? "✓ Listo para entregar"
+                            : faltaMulta
+                              ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
+                              : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        {m.esTemporal
+                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#e0f2fe", color: "#0369a1" }}>🅿️ Guardada temporal (incapacidad)</span>
+                          : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>🔴 Por mora / recolección</span>}
                         <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#f1f5f9", color: "#334155" }}>
                           ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
                         </span>

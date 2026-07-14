@@ -5,6 +5,7 @@ import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useTaller } from "../hooks/useTaller";
 import { usePagos } from "../hooks/usePagos";
+import { usePrestamos } from "../hooks/usePrestamos";
 import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -126,6 +127,14 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   const { clientes } = useClientes();
   const { taller } = useTaller();
   const { pagos } = usePagos();
+  const { prestamos } = usePrestamos();
+
+  // Préstamos donde esta moto participó (prestada a alguien, o reemplazada por otra).
+  const prestamosMoto = useMemo(() =>
+    prestamos.filter(p => p.moto_prestada_id === motoId || p.moto_original_id === motoId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [prestamos, motoId]
+  );
 
   const moto = motos.find(m => m.id === motoId);
   const contratosMoto = useMemo(() =>
@@ -411,6 +420,28 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       {/* ── Tab: Historial ── */}
       {tab === "historial" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {prestamosMoto.length > 0 && (
+            <Card>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {prestamosMoto.map(p => {
+                  const comoPrestada = p.moto_prestada_id === motoId;
+                  const otra = comoPrestada ? p.moto_original_id : p.moto_prestada_id;
+                  const otraMoto = motos.find(m => m.id === otra);
+                  const cont = contratos.find(c => c.id === p.contrato_id);
+                  const cli = cont ? clientes.find(cl => cl.id === cont.cliente_id) : null;
+                  return (
+                    <div key={p.id} style={{ fontSize: 12, color: "#334155", borderLeft: "3px solid #c4b5fd", paddingLeft: 8 }}>
+                      {comoPrestada
+                        ? <>Prestada a <strong style={{ textTransform: "uppercase" }}>{cli?.nombre ?? "?"}</strong> (su moto {otraMoto?.placa ?? "?"} en taller)</>
+                        : <>Reemplazada por <strong>{otraMoto?.placa ?? "?"}</strong> mientras estuvo en taller</>}
+                      {" · "}{p.fecha_inicio}{p.fecha_fin ? ` → ${p.fecha_fin}` : " (activo)"} · alquiler ${p.tarifa_dia.toLocaleString("es-CO")}/día
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
           {historialContratos.length === 0 ? (
             <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin historial de contratos.</div></Card>
           ) : historialContratos.map(c => {

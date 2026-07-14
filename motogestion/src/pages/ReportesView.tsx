@@ -400,9 +400,11 @@ export default function ReportesView({ onNavigate }: Props) {
     if (!c || !cliente) return;
     const fotos = e.fotos.map(([ang, url]) => ({ label: ANG_LABEL[ang] ?? ang, url }));
     const cuerpo = generarHTMLResumenEntrega(c, cliente, moto, fotos);
+    // El navegador usa el <title> como nombre por defecto al "Guardar como PDF".
+    const nombreDoc = `Rep_entrega (${e.placa})(${e.cliente})`;
     const win = window.open("", "_blank", "width=840,height=920");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Resumen de entrega — ${e.placa}</title>
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${nombreDoc}</title>
       <style>@media print{.no-print{display:none}} body{margin:0;background:#f1f5f9}</style></head><body>
       <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:flex-end">
         <button onclick="window.print()" style="padding:9px 18px;border:none;border-radius:8px;background:#0284c7;color:white;font-weight:700;cursor:pointer">🖨️ Descargar / Imprimir</button>

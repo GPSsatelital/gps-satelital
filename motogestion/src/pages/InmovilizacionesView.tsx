@@ -27,6 +27,7 @@ import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import ModalConvenio from "../components/ModalConvenio";
 import ModalEntregaDevolucion from "../components/ModalEntregaDevolucion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import ModalPrestarReemplazo from "../components/ModalPrestarReemplazo";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -322,6 +323,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
   // Tras reactivar una guardada TEMPORAL, se resuelve el tiempo guardado (cobrar/rodar).
   const [resolverRec, setResolverRec] = useState<MotoRetenida | null>(null);
+  // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
+  const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
 
   // Fecha en que se guardó la moto (última recepción del contrato) — para calcular los
   // días guardados al resolver el tiempo de una temporal.
@@ -794,6 +797,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📞 Llamar
                       </button>
                     )}
+                    {m.soloInfoTaller && (
+                      <button
+                        onClick={() => setPrestarRec(m)}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#7c3aed", color: "white" }}
+                      >
+                        🔄 Prestar reemplazo
+                      </button>
+                    )}
                     {!m.soloInfoTaller && !entregable && (
                       <button
                         onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
@@ -917,6 +928,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           placa={entregaRec.placa}
           onClose={() => setEntregaRec(null)}
           onDone={() => { if (entregaRec.esTemporal && esAdmin) setResolverRec(entregaRec); }}
+        />
+      )}
+
+      {/* Prestar reemplazo a un cliente con moto varada */}
+      {prestarRec && (
+        <ModalPrestarReemplazo
+          contratoId={prestarRec.contratoId}
+          motoOriginalId={prestarRec.motoId}
+          clienteNombre={prestarRec.clienteNombre}
+          placaOriginal={prestarRec.placa}
+          onClose={() => setPrestarRec(null)}
         />
       )}
 

@@ -6,6 +6,8 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate } from "../utils/fecha";
+import { useAuth } from "../contexts/AuthContext";
+import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -130,6 +132,8 @@ export default function ReportesView({ onNavigate }: Props) {
   const [tab, setTab]     = useState<Tab>("resumen");
   const [grupoEnt, setGrupoEnt] = useState<string>("Todos");     // filtro de grupo en la pestaña Entregas
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
+  // Regeneración de documentos en blanco (bug histórico del PDF)
+  const [regen, setRegen] = useState<{ estado: "idle" | "buscando" | "regenerando" | "hecho"; total: number; hechos: number; msg: string }>({ estado: "idle", total: 0, hechos: 0, msg: "" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -138,11 +142,39 @@ export default function ReportesView({ onNavigate }: Props) {
     return () => window.removeEventListener("resize", h);
   }, []);
 
+  const { profile }   = useAuth();
+  const esAdmin       = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const { pagos }     = usePagos();
   const { contratos } = useContratos();
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { deudas }    = useDeudas();
+
+  // Busca contratos entregados con firmas guardadas pero PDF en blanco, y los regenera con sus
+  // firmas/huellas reales (nadie re-firma). On-demand — no corre solo al abrir la pestaña.
+  async function regenerarDocumentosEnBlanco() {
+    if (regen.estado === "buscando" || regen.estado === "regenerando") return;
+    setRegen({ estado: "buscando", total: 0, hechos: 0, msg: "Buscando documentos en blanco…" });
+    const entregados = contratos.filter(c => c.fecha_entrega);
+    const pendientes: typeof contratos = [];
+    for (const c of entregados) {
+      if (await necesitaRegenerar(c.id)) pendientes.push(c);
+    }
+    if (pendientes.length === 0) {
+      setRegen({ estado: "hecho", total: 0, hechos: 0, msg: "✅ No hay documentos en blanco para regenerar." });
+      return;
+    }
+    setRegen({ estado: "regenerando", total: pendientes.length, hechos: 0, msg: "" });
+    let ok = 0;
+    for (let i = 0; i < pendientes.length; i++) {
+      const c = pendientes[i];
+      const cliente = clientes.find(cl => cl.id === c.cliente_id);
+      const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) ?? null : null;
+      if (cliente) { try { if (await regenerarDocsContrato(c, cliente, moto)) ok++; } catch { /* sigue con el resto */ } }
+      setRegen(r => ({ ...r, hechos: i + 1 }));
+    }
+    setRegen({ estado: "hecho", total: pendientes.length, hechos: pendientes.length, msg: `✅ ${ok} de ${pendientes.length} documentos regenerados.` });
+  }
 
   const hoyStr = hoyISO();
   const { desde, hasta } = getRango(rango);
@@ -868,6 +900,28 @@ export default function ReportesView({ onNavigate }: Props) {
           <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "#e2e8f0" : "#0284c7", color: entregas.length === 0 ? "#94a3b8" : "white", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             🖨️ Imprimir reporte para los socios
           </button>
+
+          {/* Regenerar documentos en blanco (solo ADMIN/AP) — bug histórico del PDF */}
+          {esAdmin && (
+            <div style={{ ...card, padding: "14px 16px", border: "1px solid #fde68a", background: "#fffbeb" }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#92400e", marginBottom: 4 }}>🔄 Regenerar documentos en blanco</div>
+              <div style={{ fontSize: 12, color: "#78716c", marginBottom: 10 }}>
+                Vuelve a armar el contrato y pagaré de las entregas cuyo PDF salió en blanco, usando las firmas y huellas ya guardadas. Nadie tiene que volver a firmar. Úsalo una vez; los que no tengan firma guardada se omiten.
+              </div>
+              <button
+                onClick={regenerarDocumentosEnBlanco}
+                disabled={regen.estado === "buscando" || regen.estado === "regenerando"}
+                style={{ padding: "10px 16px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 13, background: "#d97706", color: "white", cursor: regen.estado === "buscando" || regen.estado === "regenerando" ? "default" : "pointer", opacity: regen.estado === "buscando" || regen.estado === "regenerando" ? 0.6 : 1 }}
+              >
+                {regen.estado === "buscando" ? "Buscando…"
+                  : regen.estado === "regenerando" ? `Regenerando ${regen.hechos} de ${regen.total}…`
+                  : "🔄 Buscar y regenerar"}
+              </button>
+              {regen.estado === "hecho" && regen.msg && (
+                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: "#166534" }}>{regen.msg}</div>
+              )}
+            </div>
+          )}
 
           {/* Lista de entregas */}
           {entregas.length === 0 ? (

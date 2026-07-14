@@ -762,6 +762,16 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 
 **Estado del código:** `claude/clever-turing-daklkq` y `main` sincronizados. `npm run build` pasa. Vercel desplegado.
 
+### 📌 SESIÓN 13 JUL 2026 (parte 2) — TEMA B préstamo de reemplazo COMPLETO F1-F6 (TODO EN PRODUCCIÓN)
+Detalle completo en memoria [[roadmap-pizarra-pendientes]]. Migraciones 052 y 053 corridas por el usuario ✅.
+- **F1** (mig 052): tabla `prestamos_reemplazo` + hook `usePrestamos` (prestarReemplazo swap contrato.moto_id→placa prestada / devolverReemplazo swap-back).
+- **F2**: `ModalPrestarReemplazo` (elige del pool Disponibles+Recuperadas con tipo/estado/aviso seguridad) + botón en varadas (soloInfoTaller).
+- **F3** (mig 053): alquiler $27k/día como pago `tipo_registro='alquiler_reemplazo'` — SIN tocar la función de 250 líneas: se recreó SOLO `trg_pago_confirmado` dividido en 2 (insert/update + delete) con `WHEN` que excluye el alquiler → no dispara el reparto pero cuenta en caja diaria. Panel "🔄 Préstamos activos" (cobrar alquiler + devolver).
+- **F4**: al devolver → `ModalResolverTiempoFueraServicio` (cobrar/rodar+doc) para el tiempo del que pidió; `resolverRec` generalizado (reusa TEMA A y B). Conflicto: la prestada vuelve al pool, dueño la recupera normal; prestadas excluidas del pool.
+- **F5** (pragmática): diario varado → "🔁 Liquidar y reasignar"; tiempo definido → "🔄 Prestar reemplazo". ⚠️ Traslado AUTO del ahorro depende del flujo de graduación DIFERIDO (hoy manual).
+- **F6**: ficha de moto → Historial muestra "🔄 Préstamos de reemplazo". Data completa registrada para reportes futuros (pantalla de Informes por construir).
+- **⚠️ Pendiente menor conocido:** la PAUSA del contrato durante el préstamo NO toca el motor (puede mostrar falsa mora los pocos días; se resuelve al devolver). Cambio de motor delicado, diferido. **Falta probar en navegador con login** todo el ciclo de préstamo.
+
 ### 📌 SESIÓN 13 JUL 2026 — pizarra pendientes: convenios candado + TEMA A entrega temporal (TODO EN PRODUCCIÓN)
 Roadmap clasificado de la pizarra del usuario en memoria [[roadmap-pizarra-pendientes]]. Migraciones 048/049/050/051 TODAS corridas por el usuario ✅ — no hay SQL pendiente.
 1. **✅ XZN22H convenios repetidos (commit `2044827`, mig 050):** causa raíz = 2 rutas crean convenios con chequeo lee-antes-de-insertar (carrera) + ModalConvenio usaba `.single()` (revienta con >1 fila). Fix 2 capas: **candado BD** (índice único parcial `un convenio activo por contrato`) + frontend (`if(guardando)return`, `.single()`→`.limit(1)`, traducir 23505). Datos: quedó $901.500/13, borrados 2 duplicados. XYZ47H ✅ ya resuelto por "cobrar para recuperar".

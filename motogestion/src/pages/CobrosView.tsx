@@ -803,7 +803,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }, [contratosActivos, pagos, deudas, convenios]);
 
   // ── Helpers para el detalle del recibo ──────────────────────────────────────
+  // Fuente ÚNICA de "cuánto debe AHORA" (lista, Panel Hoy, cobro en campo, recibos). Para
+  // motor de cajas usa el ledger real y respeta lo que el convenio ya financió
+  // (cubre_periodo_hasta) — la fórmula vieja por ventana marcaba "Debe $X" a clientes al día.
   function calcularPendienteContrato(c: typeof resumenContratos[number]): number {
+    if (c.motor_v2 && c.forma_pago !== "Diario") {
+      const d = desgloseExigible(c, hoyDate());
+      const cubre = c.convenioActivo?.cubre_periodo_hasta ?? null;
+      const cubierto = !!(cubre && cubre >= hoyISO());
+      const cuotas = (cubierto ? 0 : d.prorrateoPendiente)
+        + d.periodos.filter(p => !cubierto || p.fecha >= cubre!).reduce((s, p) => s + p.monto, 0);
+      return cuotas + c.deudaContrato + c.cuotaConvenio;
+    }
     const enProrrateo = estaEnProrrateo(c, c.sinPagosNunca ?? true);
     const cuotaPact = c.forma_pago === "Diario"
       ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
@@ -1819,7 +1830,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </div>
               )}
               <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700, alignSelf: "flex-start" }}>
-                🤝 Convenio #{cvActiva.numero_convenio} · saldo $ {fmt(saldoConvenio)}
+                🤝 Convenio #{cvActiva.numero_convenio} · saldo $ {fmt(saldoConvenio)} · creado {fmtFecha(cvActiva.created_at.slice(0, 10))}
               </span>
             </div>
           ) : contratoDetalle.deudaContrato > 0 ? (
@@ -2101,6 +2112,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a" }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
                   <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{convenioActual.concepto}</div>
+                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2, fontWeight: 600 }}>📅 Creado el {fmtFecha(convenioActual.created_at.slice(0, 10))}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                     <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
                     <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
@@ -2289,13 +2301,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
 
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
-          const cuotaPact = c.forma_pago === "Diario"
-            ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-            : enProrrateoLista ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
-          const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
-          // Incluye deuda pendiente y convenio — mismo criterio que Panel Hoy, para no mostrar
-          // "Al día" a alguien que arrastra deuda de apertura u otra deuda registrada.
-          const pendiente = Math.max(cuotaPact - pagadoP, 0) + c.deudaContrato + c.cuotaConvenio;
+          // Fuente única (ledger + convenio + deuda) — misma cifra que el detalle y Panel Hoy.
+          const pendiente = calcularPendienteContrato(c);
 
           return (
             <div

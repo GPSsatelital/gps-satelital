@@ -306,7 +306,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         dia_pago: diaPago,
         dias_pago_mes: diasPagoMes,
         valor_semanal: form.forma_pago === "Diario" ? tarifaDiaria : valorSemanal,
-        meses: form.forma_pago === "Diario" ? null : Number(form.meses),
+        meses: form.forma_pago === "Diario" ? 0 : Number(form.meses),  // Diario no tiene plazo; 0 = sin plazo (la columna es NOT NULL)
         ahorro_inicial: ahorroEntregado,
         fecha_entrega: form.fecha_entrega,
         fecha_fin_contrato: form.forma_pago === "Diario" ? null : calcularFechaFinContrato(form.fecha_entrega, Number(form.meses)),

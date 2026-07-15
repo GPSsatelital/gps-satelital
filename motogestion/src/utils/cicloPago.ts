@@ -589,6 +589,10 @@ export function estadoCarteraV2(contrato: ContratoCiclo, hoy: Date): EstadoCarte
   const hueco = huecoCuotasHoy(contrato, hoy);
   if (hueco <= 0) return "al-dia";
   const dias = diasEnMoraV2(contrato, hoy);
-  if (dias <= 1) return "gabela"; // día de pago (0) y día de gabela (1)
+  // Secuencia clásica: día de pago (0) = al día / "paga hoy" · día siguiente (1) = gabela ·
+  // después (2+) = mora. Antes el día 0 ya salía "gabela" — castigaba al cliente EL MISMO
+  // día que le toca pagar (ej. prorrateo que vence hoy → debe verse "paga hoy", no gabela).
+  if (dias === 0) return "al-dia";
+  if (dias === 1) return "gabela";
   return "mora";
 }

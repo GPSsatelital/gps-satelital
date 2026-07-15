@@ -745,8 +745,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       const confirmados = todosPagos.filter(p => p.estado === "Confirmado");
       const pendientes = todosPagos.filter(p => p.estado === "Pendiente");
 
+      // Solo deuda EXIGIBLE directa (pendiente). Las 'en_convenio' se pagan vía la cuota
+      // del convenio — sumarlas aquí las cobraría DOBLE (deuda + convenio a la vez).
       const deudaContrato = deudas
-        .filter(d => d.contrato_id === contrato.id && d.estado !== "pagada")
+        .filter(d => d.contrato_id === contrato.id && d.estado === "pendiente")
         .reduce((acc, d) => acc + d.monto_pendiente, 0);
 
       const ultimoPagoFecha = [...confirmados].sort((a,b) => b.fecha.localeCompare(a.fecha))[0]?.fecha ?? null;
@@ -991,8 +993,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
 
+  // Solo deuda EXIGIBLE (pendiente): lo 'en_convenio' se muestra en la pestaña Convenio
+  // (saldo del convenio) — aquí duplicaría el cobro en tab Deudas, estado de cuenta y meta.
   const deudasContrato = contratoSeleccionadoId
-    ? deudas.filter(d => d.contrato_id === contratoSeleccionadoId && d.estado !== "pagada")
+    ? deudas.filter(d => d.contrato_id === contratoSeleccionadoId && d.estado === "pendiente")
     : [];
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
@@ -1562,10 +1566,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0; // cuota completa del convenio (próximo pago)
     // Lo que se EXIGE del convenio este período (0 si el convenio se creó después de vencer la semana).
     const cuotaConvExigida = cuotaConvenioDelPeriodo(cvActiva, contratoDetalle, hoyDate());
-    const saldoConvenio = contratoDetalle.deudaContrato; // lo que el convenio va bajando (referencia)
-    const totalPendiente = cvActiva
+    // Saldo del convenio = lo firmado menos lo abonado (deudaContrato ya NO lo incluye:
+    // ahora solo cuenta deuda exigible 'pendiente'; lo del convenio vive en el convenio).
+    const saldoConvenio = cvActiva ? Math.max(cvActiva.deuda_total - sumaAbonadoConvenio(cvActiva.id), 0) : 0;
+    // deudaContrato (solo 'pendiente', ej. una multa nueva) SÍ se cobra directo, con o sin convenio.
+    const totalPendiente = (cvActiva
       ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvExigida)
-      : cuotaPendiente + contratoDetalle.deudaContrato;
+      : cuotaPendiente) + contratoDetalle.deudaContrato;
     const proximoPagoConv = valorPeriodoReal(contratoDetalle) + cuotaConvActiva; // cuota + convenio próxima fecha
     // Si el convenio cubrió la cuota de esta semana, ese período ya no se cobra → el próximo
     // pago es cubre_periodo_hasta, que se guardó justamente como el día de pago SIGUIENTE
@@ -1725,7 +1732,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
           {/* Desglose por fecha (motor de cajas): qué períodos debe y de qué fecha — para que el
               funcionario sepa de un vistazo qué cobrar, sobre todo si arrastra varias vencidas. */}
-          {desg && (desg.periodos.length > 0 || desg.prorrateoPendiente > 0) && (
+          {desg && (desg.periodos.length > 0 || desg.prorrateoPendiente > 0 || contratoDetalle.deudaContrato > 0 || contratoDetalle.cuotaConvenio > 0) && (
             <div style={{ marginTop: 12, background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #fecaca" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", textTransform: "uppercase" }}>Debe pagar ahora</span>
@@ -1764,7 +1771,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <span style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>$ {fmt(totalPendiente)}</span>
               </div>
               {desg.proximaFecha && (
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Después de esto, próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto)}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  Después de esto, próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
+                  {cuotaConvActiva > 0 && <span> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
+                </div>
               )}
             </div>
           )}
@@ -1772,7 +1782,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {/* Al día: solo el próximo pago y su fecha */}
           {desg && desg.periodos.length === 0 && desg.prorrateoPendiente === 0 && contratoDetalle.deudaContrato === 0 && contratoDetalle.cuotaConvenio === 0 && desg.proximaFecha && (
             <div style={{ marginTop: 12, background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534" }}>
-              ✓ Al día · Próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto)}
+              ✓ Al día · Próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
+              {cuotaConvActiva > 0 && <span style={{ fontSize: 12 }}> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
             </div>
           )}
 

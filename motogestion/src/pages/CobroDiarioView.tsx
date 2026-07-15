@@ -176,7 +176,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             })()
           : calcEstadoPeriodico(c, pagosC, hoy);
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
-        const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada").reduce((s, d) => s + d.monto_pendiente, 0);
+        // Solo deuda EXIGIBLE (pendiente) — las 'en_convenio' se cobran vía la cuota del convenio.
+        const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((s, d) => s + d.monto_pendiente, 0);
         const convActivo = convenioActivoDelContrato(c.id);
 
         return {

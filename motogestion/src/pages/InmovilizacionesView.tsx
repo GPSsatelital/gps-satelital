@@ -144,8 +144,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
         // Deuda REAL, sin estimaciones: deuda ya registrada + lo que falta de la cuota del
         // período actual (número exacto), igual que Cartera. No se multiplica días×tarifa.
+        // Solo deuda EXIGIBLE (pendiente) — las 'en_convenio' se cobran vía la cuota del convenio.
         const deudaRegistrada = deudas
-          .filter(d => d.contrato_id === c.id && d.estado !== "pagada")
+          .filter(d => d.contrato_id === c.id && d.estado === "pendiente")
           .reduce((acc, d) => acc + d.monto_pendiente, 0);
         const enProrrateo = estaEnProrrateo(c, pagosC.length === 0);
         const cuotaPactada = c.forma_pago === "Diario"
@@ -265,7 +266,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto = motos.find(m => m.id === c.moto_id);
         const enTaller = moto?.estado === "Mantenimiento";
-        const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado !== "pagada");
+        // Solo deuda EXIGIBLE (pendiente): la multa sí bloquea la entrega; lo 'en_convenio'
+        // ya quedó financiado y se paga con la cuota del convenio (no se exige doble).
+        const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente");
         // Días retenida: desde la última gestión de recolección registrada.
         // A los 7 días sin pago se habilita liquidar (decisión del ADMIN, no automática).
         const recoleccionG = gestiones

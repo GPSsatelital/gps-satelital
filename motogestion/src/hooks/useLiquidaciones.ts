@@ -73,11 +73,13 @@ export function useLiquidaciones() {
 
     // Deudas automáticas desde el sistema (solo las pendientes/sin pagar) +
     // saldo restante del convenio activo — el encargado NO las reescribe a mano.
+    // Solo deudas 'pendiente': las 'en_convenio' YA entran abajo como "Saldo pendiente de
+    // convenio" — incluirlas aquí también las cobraría DOBLE en la liquidación.
     const { data: deudasPend } = await supabase
       .from("deudas")
       .select("concepto, descripcion, monto_pendiente")
       .eq("contrato_id", contratoId)
-      .neq("estado", "pagada");
+      .eq("estado", "pendiente");
     const detalleDeudas: DetalleDeuda[] = (deudasPend ?? []).map(d => ({
       concepto: d.descripcion || d.concepto,
       monto: d.monto_pendiente,

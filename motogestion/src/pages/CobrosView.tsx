@@ -572,7 +572,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("hoy");
+  const [activeTab, setActiveTab] = useState<TabKey>("contratos");
   const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
   const [filtroGrupoContratos, setFiltroGrupoContratos] = useState<"todos" | GrupoMoto>("todos");
   const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
@@ -2396,8 +2396,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   ];
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
-    { key: "hoy", label: "📋 Hoy", count: totalTareasHoy },
-    { key: "contratos", label: "📁 Contratos", count: resumenContratos.length },
+    { key: "contratos", label: "🌎 Todos", count: resumenContratos.length },
+    { key: "hoy", label: "📋 Para hacer hoy", count: totalTareasHoy },
     { key: "dinero", label: isMobile ? "⏳ Confirmar" : "⏳ Por confirmar", count: pagosPendientes.length },
     { key: "historial", label: "🧾 Historial" },
   ];
@@ -2460,7 +2460,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", gap: isMobile ? 3 : 8, marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: 20, paddingBottom: 4 }}>
         {tabs.map(t => (
           <button
             key={t.key}
@@ -3159,7 +3159,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Chips de filtro */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12, paddingBottom: 2 }}>
               {FILTROS_CONTRATOS.map(f => (
                 <button
                   key={f.key}
@@ -3167,7 +3167,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   style={{
                     background: filtroContratos === f.key ? "#0284c7" : "#f1f5f9",
                     color: filtroContratos === f.key ? "white" : "#334155",
-                    border: "none", borderRadius: 999, padding: "7px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                    border: "none", borderRadius: 999, padding: "7px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
                   {f.label} <span style={{ opacity: 0.7 }}>({f.count})</span>

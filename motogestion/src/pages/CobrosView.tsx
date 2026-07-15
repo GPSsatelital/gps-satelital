@@ -539,7 +539,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
 }
 
 type TabKey = "hoy" | "contratos" | "dinero" | "historial";
-type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy";
+type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -821,6 +821,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const enMora = resumenContratos.filter(r => r.estadoCartera === "mora");
   const enGabela = resumenContratos.filter(r => r.estadoCartera === "gabela");
   const alDia = resumenContratos.filter(r => r.estadoCartera === "al-dia");
+  const conConvenio = resumenContratos.filter(r => r.convenioActivo);
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
   const recaudadoSemanaTotal = resumenContratos.reduce((acc, r) => acc + r.pagadoEstaSemana, 0);
   // ── Pagan Hoy ─────────────────────────────────────────────────────────────
@@ -963,6 +964,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     else if (filtroContratos === "mora") base = enMora;
     else if (filtroContratos === "al-dia") base = alDia;
     else if (filtroContratos === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
+    else if (filtroContratos === "convenio") base = conConvenio;
     else base = resumenContratos;
 
     if (filtroGrupoContratos !== "todos") {
@@ -979,7 +981,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         (moto?.placa ?? "").toLowerCase().includes(q)
       );
     });
-  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -1580,6 +1582,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     const cubreHasta = cvActiva?.cubre_periodo_hasta ?? null;
     const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : ec.proximoPago;
 
+    // "Debe pagar ahora" respetando la cobertura del convenio: si el convenio cubre hasta una
+    // fecha >= hoy, las cajas de ese período ya están financiadas y NO se exigen ahora. El total
+    // del bloque es SIEMPRE la suma exacta de las líneas que muestra (cajas exigibles + deuda
+    // pendiente + cuota de convenio ya vigente).
+    const convCubreAhora = !!(cubreHasta && cubreHasta >= hoyISO());
+    const periodosDebe = desg ? (convCubreAhora ? desg.periodos.filter(p => p.fecha >= cubreHasta!) : desg.periodos) : [];
+    const prorrateoDebe = desg ? (convCubreAhora ? 0 : desg.prorrateoPendiente) : 0;
+    // Con motor de cajas (desg) el total respeta la cobertura del convenio; sin desg (Diario/v1)
+    // se cae al cálculo de siempre para no alterar esos contratos.
+    const totalDebeAhora = desg
+      ? prorrateoDebe + periodosDebe.reduce((s, p) => s + p.monto, 0) + contratoDetalle.deudaContrato + cuotaConvExigida
+      : totalPendiente;
+
     // Estado de cuenta (imprimir/WhatsApp) — usa los MISMOS valores ya calculados arriba
     // para esta pantalla (totalPendiente, deudas, convenio), nunca un cálculo aparte.
     function armarDatosEstadoCuenta(): DatosEstadoCuenta {
@@ -1588,7 +1603,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         cuotaPeriodo: valorPeriodoReal(c),
         diaPagoLabel: formatDiaPago(c),
         estadoLabel: ESTADO_CARTERA_STYLE[c.estadoCartera].label,
-        debeHoy: totalPendiente,
+        debeHoy: totalDebeAhora,
         ahorroTotal: (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0),
         apertura: empalmePendiente(c) ? { viejo: c.ahorro_apertura ?? 0, nuevo: c.ahorro_acumulado ?? 0 } : null,
         // Ciclos completos: se calcula desde los pagos confirmados (funciona igual antes
@@ -1720,33 +1735,34 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
             {/* "Al día" solo si de verdad no debe nada — incluye deuda pendiente y convenio,
                 no solo la cuota de esta semana (mismo criterio que Panel Hoy y Cobro en campo). */}
-            <div style={{ background: enProrrateo ? "#eff6ff" : totalPendiente > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
+            <div style={{ background: enProrrateo ? "#eff6ff" : totalDebeAhora > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
                 {enProrrateo ? "Próx. pago" : "Pendiente"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : totalPendiente > 0 ? "#991b1b" : "#166534" }}>
-                {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalPendiente > 0 ? `$ ${fmt(totalPendiente)}` : "✓ Al día"}
+              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : totalDebeAhora > 0 ? "#991b1b" : "#166534" }}>
+                {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalDebeAhora > 0 ? `$ ${fmt(totalDebeAhora)}` : "✓ Al día"}
               </div>
             </div>
           </div>
 
           {/* Desglose por fecha (motor de cajas): qué períodos debe y de qué fecha — para que el
-              funcionario sepa de un vistazo qué cobrar, sobre todo si arrastra varias vencidas. */}
-          {desg && (desg.periodos.length > 0 || desg.prorrateoPendiente > 0 || contratoDetalle.deudaContrato > 0 || contratoDetalle.cuotaConvenio > 0) && (
+              funcionario sepa de un vistazo qué cobrar. Respeta lo que el convenio ya cubre y el
+              TOTAL es SIEMPRE la suma exacta de las líneas mostradas. */}
+          {desg && totalDebeAhora > 0 && (
             <div style={{ marginTop: 12, background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #fecaca" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", textTransform: "uppercase" }}>Debe pagar ahora</span>
-                {desg.periodos.length >= 2 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", borderRadius: 999, padding: "2px 8px" }}>🔴 {desg.periodos.length} cuotas vencidas</span>
+                {periodosDebe.length >= 2 && (
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", borderRadius: 999, padding: "2px 8px" }}>🔴 {periodosDebe.length} cuotas vencidas</span>
                 )}
               </div>
               <div style={{ display: "grid", gap: 3 }}>
-                {desg.prorrateoPendiente > 0 && (
+                {prorrateoDebe > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
-                    <span>Prorrateo inicial</span><strong>$ {fmt(desg.prorrateoPendiente)}</strong>
+                    <span>Prorrateo inicial</span><strong>$ {fmt(prorrateoDebe)}</strong>
                   </div>
                 )}
-                {desg.periodos.map((p, i) => (
+                {periodosDebe.map((p, i) => (
                   <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155", fontWeight: i === 0 ? 700 : 400 }}>
                     <span style={{ minWidth: 0 }}>
                       Cuota {fmtFecha(p.fecha)}{p.parcial ? " (parcial)" : ""}
@@ -1760,15 +1776,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
                   </div>
                 )}
-                {contratoDetalle.cuotaConvenio > 0 && (
+                {cuotaConvExigida > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
-                    <span>Cuota del convenio</span><strong>$ {fmt(contratoDetalle.cuotaConvenio)}</strong>
+                    <span>Cuota del convenio</span><strong>$ {fmt(cuotaConvExigida)}</strong>
                   </div>
                 )}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>TOTAL A COBRAR</span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>$ {fmt(totalPendiente)}</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>$ {fmt(totalDebeAhora)}</span>
               </div>
               {desg.proximaFecha && (
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
@@ -1779,10 +1795,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
           )}
 
-          {/* Al día: solo el próximo pago y su fecha */}
-          {desg && desg.periodos.length === 0 && desg.prorrateoPendiente === 0 && contratoDetalle.deudaContrato === 0 && contratoDetalle.cuotaConvenio === 0 && desg.proximaFecha && (
+          {/* Al día (nada exigible ahora): solo el próximo pago y su fecha */}
+          {desg && totalDebeAhora === 0 && (desg.proximaFecha || (cubreHasta && cubreHasta >= hoyISO())) && (
             <div style={{ marginTop: 12, background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534" }}>
-              ✓ Al día · Próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
+              ✓ Al día · Próximo pago: <strong>{fmtFecha(proximoPagoFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
               {cuotaConvActiva > 0 && <span style={{ fontSize: 12 }}> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
             </div>
           )}
@@ -2385,6 +2401,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     { key: "gabela", label: "🟡 Gabela", count: enGabela.length },
     { key: "al-dia", label: "🟢 Al día", count: alDia.length },
     { key: "pagan-hoy", label: "🔵 Pagan hoy", count: totalPaganHoy },
+    { key: "convenio", label: "🤝 Convenio", count: conConvenio.length },
   ];
 
   // On mobile with a selected contract → show only detail

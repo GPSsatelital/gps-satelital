@@ -1591,7 +1591,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     // pago es cubre_periodo_hasta, que se guardó justamente como el día de pago SIGUIENTE
     // al período cubierto (ej. convenio del mié 8 → cubre_periodo_hasta = mié 15).
     const cubreHasta = cvActiva?.cubre_periodo_hasta ?? null;
-    const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : ec.proximoPago;
+    const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : (desg?.proximaFecha ?? ec.proximoPago);
 
     // "Debe pagar ahora" respetando la cobertura del convenio: si el convenio cubre hasta una
     // fecha >= hoy, las cajas de ese período ya están financiadas y NO se exigen ahora. El total
@@ -2260,6 +2260,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{formatDate(p.fecha)} · {p.metodo}</div>
+                      {p.tipo_registro === "adelanto_base" && (
+                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 999, padding: "1px 8px" }}>
+                          🎫 Primera semana adelantada (base inicial)
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <PagoBadge estado={p.estado} />

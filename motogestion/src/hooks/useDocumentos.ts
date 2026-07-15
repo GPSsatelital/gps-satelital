@@ -769,8 +769,8 @@ export function generarHTMLResumenEntrega(
         ${dato("Cuota del período", `$ ${fmt(cuota)}`)}
         ${dato("Tarifa L-S", contrato.tarifa_diaria ? `$ ${fmt(contrato.tarifa_diaria)}` : "—")}
         ${dato("Plazo", contrato.meses ? `${contrato.meses} meses` : "—")}
-        ${dato("Base inicial", contrato.base_inicial ? `$ ${fmt(contrato.base_inicial)}` : "—")}
-        ${dato("Ahorro inicial", contrato.ahorro_inicial ? `$ ${fmt(contrato.ahorro_inicial)}` : "—")}
+        ${dato("Entregó al iniciar", contrato.base_inicial ? `$ ${fmt(contrato.base_inicial)}` : "—")}
+        ${dato("Base de ahorro", `$ ${fmt(Math.max((contrato.base_inicial ?? 0) - cuota, 0))}`)}
         ${dato("Km de entrega", moto?.kilometraje_inicial != null ? `${fmt(moto.kilometraje_inicial)} km` : "—")}
       </div>
 

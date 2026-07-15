@@ -391,11 +391,23 @@ export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
   return Math.max(n, 0);
 }
 
+// El prorrateo (Caja 0) se paga el PRIMER día de pago = fecha_inicio_cajas. ANTES de esa
+// fecha el cliente está en su período de prorrateo (usando la moto), NO es exigible todavía
+// → aparece al día, con próximo pago = fecha_inicio_cajas. En/después de esa fecha sí se
+// exige. (Sin esto, un contrato nuevo salía en "Gabela" y "debe $X" desde el día 1.)
+export function prorrateoExigibleHoy(contrato: ContratoCiclo, hoy: Date): number {
+  const pend = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  if (pend <= 0) return 0;
+  const inicio = contrato.fecha_inicio_cajas;
+  if (inicio && fechaAISO(hoy) < inicio) return 0;
+  return pend;
+}
+
 // Hueco total exigible de CUOTAS a hoy (prorrateo pendiente + cajas exigidas sin llenar).
 // Es el "debe de cuotas" del ledger — las deudas registradas y el convenio van aparte.
 export function huecoCuotasHoy(contrato: ContratoCiclo, hoy: Date): number {
   const valorCaja = valorPeriodoReal(contrato);
-  const prorPend = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  const prorPend = prorrateoExigibleHoy(contrato, hoy);
   const exigidas = cajasExigidasHasta(contrato, hoy);
   const pagadas = contrato.cajas_pagadas ?? 0;
   const enCurso = contrato.caja_actual_pagado ?? 0;
@@ -449,7 +461,9 @@ export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseEx
   const pagadas = contrato.cajas_pagadas ?? 0;
   const enCurso = contrato.caja_actual_pagado ?? 0;
   const exigidas = cajasExigidasHasta(contrato, hoy);
-  const prorrateoPendiente = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  const prorrateoPendiente = prorrateoExigibleHoy(contrato, hoy);       // 0 si aún no llega fecha_inicio_cajas
+  const prorrateoRestante = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
+  const prorrateoPorVenir = prorrateoRestante > 0 && prorrateoPendiente === 0; // pendiente pero aún no exigible
   const hoyMs = new Date(fechaAISO(hoy) + "T00:00:00").getTime();
   const periodos: PeriodoExigible[] = [];
   for (let j = pagadas + 1; j <= exigidas; j++) {
@@ -461,9 +475,18 @@ export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseEx
     const diasVencida = Math.floor((hoyMs - new Date(fecha + "T00:00:00").getTime()) / 86400000);
     periodos.push({ fecha, monto, diasVencida, parcial });
   }
-  const proxNum = Math.max(exigidas, pagadas) + 1;
-  const proximaFecha = (contrato.total_cajas == null || proxNum <= contrato.total_cajas) ? fechaCaja(contrato, proxNum) : null;
-  const proximoMonto = (proxNum === pagadas + 1 && enCurso > 0) ? Math.max(valorCaja - enCurso, 0) : valorCaja;
+  // Próximo pago: si el prorrateo aún no vence, LO PRÓXIMO es ese prorrateo (en fecha_inicio_cajas),
+  // no la caja siguiente — antes se saltaba el prorrateo y mostraba la caja 2.
+  let proximaFecha: string | null;
+  let proximoMonto: number;
+  if (prorrateoPorVenir && contrato.fecha_inicio_cajas) {
+    proximaFecha = contrato.fecha_inicio_cajas;
+    proximoMonto = prorrateoRestante;
+  } else {
+    const proxNum = Math.max(exigidas, pagadas) + 1;
+    proximaFecha = (contrato.total_cajas == null || proxNum <= contrato.total_cajas) ? fechaCaja(contrato, proxNum) : null;
+    proximoMonto = (proxNum === pagadas + 1 && enCurso > 0) ? Math.max(valorCaja - enCurso, 0) : valorCaja;
+  }
   const totalCuotas = prorrateoPendiente + periodos.reduce((s, p) => s + p.monto, 0);
   return { prorrateoPendiente, periodos, proximaFecha, proximoMonto, totalCuotas };
 }

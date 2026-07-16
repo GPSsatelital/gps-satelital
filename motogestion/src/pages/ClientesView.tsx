@@ -795,10 +795,14 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
-    const estadosFijos: ClienteEstado[] = ["Aprobado", "Rechazado", "Activo", "En seguimiento", "En riesgo", "En mora", "Retirado", "Lista negra"];
-    const estadoFinal = estadosFijos.includes(editForm.estado)
-      ? editForm.estado
-      : calcularEstado(editForm.documentos_cliente, editForm.documentos_acompanante, editForm.mismo_domicilio_acompanante);
+    // Solo la etapa documental se recalcula desde los documentos. Cualquier estado más avanzado
+    // (Pendiente evaluación, Aprobado, Activo, Egresado, etc.) se respeta tal cual: editar datos o
+    // documentos NUNCA retrocede el embudo. Antes una lista de "estados fijos" olvidaba "Pendiente
+    // evaluación" → editar un cliente con visita ya hecha lo devolvía a "Listo para visita".
+    const enEtapaDocumental = editForm.estado === "En proceso" || editForm.estado === "Listo para visita";
+    const estadoFinal = enEtapaDocumental
+      ? calcularEstado(editForm.documentos_cliente, editForm.documentos_acompanante, editForm.mismo_domicilio_acompanante)
+      : editForm.estado;
 
     setGuardando(true);
     try {

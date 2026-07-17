@@ -1525,6 +1525,9 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
   const { puede } = useAuth();
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const esPrincipal = role === "ADMIN_PRINCIPAL";
+  // Aprobar/repetir visita y la decisión final usan el permiso por persona (igual que
+  // PanelAprobacion), no el rol quemado — un override tipo LUMAR debe funcionar aquí también.
+  const puedeAprobarVisita = puede("aprobar_visita");
   // Cliente ya operando con contrato: la salida es por Liquidación (cierra contrato + libera
   // moto), no por cambiar el estado a mano — eso dejaría contrato/moto colgados. Por eso se
   // ocultan Rechazar/Retirar/Eliminar en estos estados.
@@ -1643,7 +1646,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     </a>
                   </div>
                 )}
-                {esAdmin && v.resultado === null && (
+                {puedeAprobarVisita && v.resultado === null && (
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <button onClick={() => onAprobarVisita(v.id, selectedCliente.id)} style={miniBtn2("#dcfce7", "#166534")}>✅ Aprobar visita</button>
                     <button onClick={() => onRepetirVisita(v.id, selectedCliente.id)} style={miniBtn2("#fef3c7", "#92400e")}>🔁 Repetir visita</button>
@@ -1765,7 +1768,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       )}
 
       {/* Decisión final — siempre al final del detalle */}
-      {esAdmin && selectedCliente.estado === "Pendiente evaluación" && (
+      {puedeAprobarVisita && selectedCliente.estado === "Pendiente evaluación" && (
         <DecisionFinal clienteId={selectedCliente.id} onEstado={onEstado} />
       )}
     </div>

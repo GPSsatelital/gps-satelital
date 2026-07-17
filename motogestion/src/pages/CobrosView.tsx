@@ -2106,8 +2106,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {detailTab === "convenios" && (
             <div style={{ display: "grid", gap: 10 }}>
               <div style={{ fontSize: 13, color: "#64748b" }}>{totalConvenios}/3 convenios usados.</div>
-              {!esAdmin ? (
-                <div style={{ color: "#64748b", fontSize: 14 }}>Solo administradores pueden gestionar convenios.</div>
+              {/* La puerta es el permiso por persona (crear_convenio), no el rol: cubre ADMIN/AP
+                  por default, SECRETARIA por default, y overrides tipo LUMAR (SUBADMIN). */}
+              {!puedeCrearConvenio ? (
+                <div style={{ color: "#64748b", fontSize: 14 }}>No tienes permiso para gestionar convenios — pídele al encargado.</div>
               ) : convenioActual ? (
                 <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a" }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
@@ -2126,8 +2128,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </div>
               ) : deudasContrato.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
-              ) : !puedeCrearConvenio ? (
-                <div style={{ color: "#64748b", fontSize: 13 }}>No tienes permiso para crear convenios — pídele al encargado que lo cree.</div>
               ) : (
                 <div>
                   <button

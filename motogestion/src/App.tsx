@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
 import { useSubadminScope } from "./hooks/useSubadminScope";
@@ -447,6 +447,19 @@ function Shell() {
     try { localStorage.setItem("mg_last_view", JSON.stringify(ctx)); } catch { /* ignore */ }
   }, [ctx]);
 
+  // Conservación general del scroll: un refresh por realtime (registrar un pago, asignar,
+  // etc.) re-renderiza el App y la vista se percibía "saltando" al inicio. Se guarda la
+  // posición del contenedor de contenido en cada scroll y se restaura tras cada re-render.
+  // Solo restaura la ÚLTIMA posición conocida (nunca inventa una), por eso abrir/cerrar un
+  // detalle no se rompe. navigate() la pone en 0 para empezar arriba al cambiar de módulo.
+  const contentScrollRef = useRef<HTMLElement | null>(null);
+  const contentScrollPos = useRef(0);
+  const onContentScroll = (e: React.UIEvent<HTMLElement>) => { contentScrollPos.current = e.currentTarget.scrollTop; };
+  useLayoutEffect(() => {
+    const el = contentScrollRef.current;
+    if (el && el.scrollTop !== contentScrollPos.current) el.scrollTop = contentScrollPos.current;
+  });
+
   // Al cargar el perfil, si la vista restaurada no es visible para este rol, vuelve al Panel
   // (evita quedar en una pantalla en blanco por una vista guardada que el rol no puede ver).
   useEffect(() => {
@@ -458,6 +471,7 @@ function Shell() {
   }, [profile]);
 
   function navigate(v: ViewKey, f = "") {
+    contentScrollPos.current = 0; // nuevo módulo → empezar arriba
     setNavStack(prev => [...prev, ctx]);
     setCtx({ view: v, filter: f });
     setMasOpen(false);
@@ -469,6 +483,7 @@ function Shell() {
   // Interceptar botón atrás del celular/navegador
   useEffect(() => {
     function handlePopState() {
+      contentScrollPos.current = 0; // volver atrás → empezar arriba
       setNavStack(prev => {
         if (prev.length === 0) {
           // No hay historial interno: volver al dashboard en vez de salir
@@ -602,7 +617,7 @@ function Shell() {
         </header>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", paddingBottom: 72 }}>
+        <div ref={el => { contentScrollRef.current = el; }} onScroll={onContentScroll} style={{ flex: 1, overflow: "auto", paddingBottom: 72 }}>
           {contentView}
         </div>
 
@@ -715,7 +730,7 @@ function Shell() {
           </div>
         </header>
 
-        <main style={{ flex: 1, overflow: "auto", padding: "16px 20px", maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        <main ref={el => { contentScrollRef.current = el; }} onScroll={onContentScroll} style={{ flex: 1, overflow: "auto", padding: "16px 20px", maxWidth: 1300, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
           {contentView}
         </main>
       </div>

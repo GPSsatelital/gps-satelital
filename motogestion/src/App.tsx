@@ -392,7 +392,19 @@ function Shell() {
   const { clientes: todosClientes } = useClientes();
   const { motos } = useMotos();
   const { contratos } = useContratos();
-  const [ctx, setCtx] = useState<NavContext>({ view: "dashboard", filter: "" });
+  // La vista activa se recuerda entre recargas (localStorage): recargar o recibir una
+  // versión nueva ya NO devuelve al Panel, se queda donde estabas. Se descarta el filtro
+  // "new" (no reabrir un formulario de creación solo). La validación por rol se hace abajo.
+  const [ctx, setCtx] = useState<NavContext>(() => {
+    try {
+      const saved = localStorage.getItem("mg_last_view");
+      if (saved) {
+        const p = JSON.parse(saved) as NavContext;
+        if (p && typeof p.view === "string") return { view: p.view, filter: p.filter === "new" ? "" : (p.filter ?? "") };
+      }
+    } catch { /* ignore */ }
+    return { view: "dashboard", filter: "" };
+  });
   const [_navStack, setNavStack] = useState<NavContext[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [masOpen, setMasOpen] = useState(false);
@@ -429,6 +441,21 @@ function Shell() {
     if (Array.isArray(p) && roleActual !== "SOCIO") return p.includes(view);
     return accesoPorRol(view);
   }
+
+  // Guarda la vista actual para restaurarla al recargar.
+  useEffect(() => {
+    try { localStorage.setItem("mg_last_view", JSON.stringify(ctx)); } catch { /* ignore */ }
+  }, [ctx]);
+
+  // Al cargar el perfil, si la vista restaurada no es visible para este rol, vuelve al Panel
+  // (evita quedar en una pantalla en blanco por una vista guardada que el rol no puede ver).
+  useEffect(() => {
+    if (!profile) return;
+    if (ctx.view !== "dashboard" && ctx.view !== "configuracion" && !puedeVer(ctx.view)) {
+      setCtx({ view: "dashboard", filter: "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   function navigate(v: ViewKey, f = "") {
     setNavStack(prev => [...prev, ctx]);

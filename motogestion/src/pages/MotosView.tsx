@@ -1,4 +1,15 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
+
+// Busca el ancestro scrolleable de un nodo (para preservar su posición tras un re-render).
+function getScrollParent(node: HTMLElement | null): HTMLElement | null {
+  let el = node?.parentElement ?? null;
+  while (el) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === "auto" || oy === "scroll") && el.scrollHeight > el.clientHeight) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -188,6 +199,18 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   // Nombre del sub-admin a cargo (solo ADMIN/AP puede leer estos nombres por RLS).
   const nombreSubadmin = (id: string | null | undefined) =>
     id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : null;
+
+  // Conservar el scroll al asignar un sub-admin: la asignación dispara un realtime que
+  // recarga la lista; sin esto, la vista se percibe saltando al inicio. Se guarda la
+  // posición del contenedor scrolleable antes de asignar y se restaura tras el refresh.
+  const listWrapRef = useRef<HTMLDivElement>(null);
+  const savedScroll = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (savedScroll.current == null) return;
+    const sp = getScrollParent(listWrapRef.current);
+    if (sp) sp.scrollTop = savedScroll.current;
+    savedScroll.current = null;
+  }, [motos]);
 
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
@@ -614,7 +637,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 12 }} />
             <ChipsGrupo />
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {filtered.map((moto) => {
                 const sc = getStatusColors(moto.estado);
                 return (
@@ -655,7 +678,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
             <ChipsGrupo />
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map((moto) => {
                 const sc = getStatusColors(moto.estado);
                 const sel = selectedId === moto.id;
@@ -1008,7 +1031,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {asignarMotoId && (() => {
         const motoAsig = motos.find(m => m.id === asignarMotoId);
         if (!motoAsig) return null;
-        const elegir = (subId: string | null) => { asignarSubadmin(motoAsig.id, subId); setAsignarMotoId(null); };
+        const elegir = (subId: string | null) => {
+          const sp = getScrollParent(listWrapRef.current);
+          savedScroll.current = sp ? sp.scrollTop : null;
+          asignarSubadmin(motoAsig.id, subId);
+          setAsignarMotoId(null);
+        };
         return (
           <div
             onClick={() => setAsignarMotoId(null)}

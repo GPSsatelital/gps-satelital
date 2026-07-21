@@ -104,6 +104,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
+  const [soloSinAsignar, setSoloSinAsignar] = useState(false);
+  // Moto sobre la que se abre la hoja rápida de asignación de sub-admin (solo ADMIN/AP).
+  const [asignarMotoId, setAsignarMotoId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(initialOpenForm);
   const [openRecepcion, setOpenRecepcion] = useState(false);
@@ -178,8 +181,13 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
     if (filtroGrupo !== "todos") list = list.filter(m => m.grupo === filtroGrupo);
+    if (soloSinAsignar) list = list.filter(m => !m.subadmin_id);
     return list;
-  }, [motos, query, filtroEstado, filtroGrupo, filtrarMotos]);
+  }, [motos, query, filtroEstado, filtroGrupo, soloSinAsignar, filtrarMotos]);
+
+  // Nombre del sub-admin a cargo (solo ADMIN/AP puede leer estos nombres por RLS).
+  const nombreSubadmin = (id: string | null | undefined) =>
+    id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : null;
 
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
@@ -199,6 +207,19 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             {g === "todos" ? "Todos" : g}
           </button>
         ))}
+        {esAdminOSuperior && (
+          <button
+            onClick={() => setSoloSinAsignar(v => !v)}
+            style={{
+              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 700,
+              background: soloSinAsignar ? "#b45309" : "#fef3c7",
+              color: soloSinAsignar ? "white" : "#92400e",
+            }}
+          >
+            👤 Sin asignar
+          </button>
+        )}
       </div>
     );
   }
@@ -602,6 +623,20 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{moto.placa}</div>
                       <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                      {esAdminOSuperior && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
+                          style={{
+                            marginTop: 6, padding: "3px 10px", borderRadius: 999, border: "none", cursor: "pointer",
+                            fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            background: moto.subadmin_id ? "#e0e7ff" : "#f1f5f9",
+                            color: moto.subadmin_id ? "#3730a3" : "#94a3b8",
+                            textTransform: moto.subadmin_id ? "uppercase" : "none",
+                          }}
+                        >
+                          👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
+                        </button>
+                      )}
                     </div>
                     <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
                       {ESTADO_LABEL[moto.estado]}
@@ -630,6 +665,20 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{moto.placa}</div>
                       <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                      {esAdminOSuperior && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
+                          style={{
+                            marginTop: 5, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
+                            fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            background: moto.subadmin_id ? "#e0e7ff" : "#f1f5f9",
+                            color: moto.subadmin_id ? "#3730a3" : "#94a3b8",
+                            textTransform: moto.subadmin_id ? "uppercase" : "none",
+                          }}
+                        >
+                          👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
+                        </button>
+                      )}
                     </div>
                     <span style={{ padding: "3px 8px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
                       {ESTADO_LABEL[moto.estado]}
@@ -954,6 +1003,48 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           onClose={() => setTiempoFueraModal(null)}
         />
       )}
+
+      {/* ── Hoja rápida: asignar sub-admin a una moto (un toque, solo ADMIN/AP) ── */}
+      {asignarMotoId && (() => {
+        const motoAsig = motos.find(m => m.id === asignarMotoId);
+        if (!motoAsig) return null;
+        const elegir = (subId: string | null) => { asignarSubadmin(motoAsig.id, subId); setAsignarMotoId(null); };
+        return (
+          <div
+            onClick={() => setAsignarMotoId(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}
+          >
+            <div onClick={e => e.stopPropagation()} style={{ background: "white", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>Asignar encargado</div>
+                <button onClick={() => setAsignarMotoId(null)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 15, color: "#334155" }}>✕</button>
+              </div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>Moto <b style={{ color: "#0f172a" }}>{motoAsig.placa}</b> · toca un sub-admin</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  onClick={() => elegir(null)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${!motoAsig.subadmin_id ? "#b45309" : "#e2e8f0"}`, background: !motoAsig.subadmin_id ? "#fffbeb" : "white", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#92400e", textAlign: "left" }}
+                >
+                  🚫 Sin asignar {!motoAsig.subadmin_id && <span style={{ marginLeft: "auto", fontSize: 12, color: "#b45309" }}>● actual</span>}
+                </button>
+                {subadmins.map(s => {
+                  const actual = motoAsig.subadmin_id === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => elegir(s.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${actual ? "#0284c7" : "#e2e8f0"}`, background: actual ? "#eff6ff" : "white", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#0f172a", textAlign: "left", textTransform: "uppercase" }}
+                    >
+                      👤 {s.nombre} {actual && <span style={{ marginLeft: "auto", fontSize: 12, color: "#0284c7", textTransform: "none" }}>● actual</span>}
+                    </button>
+                  );
+                })}
+                {subadmins.length === 0 && <div style={{ fontSize: 13, color: "#94a3b8", padding: 8 }}>No hay sub-admins registrados.</div>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Router "Registrar novedad": una sola puerta que enruta al flujo correcto ── */}
       {openNovedad && selectedMoto && (() => {

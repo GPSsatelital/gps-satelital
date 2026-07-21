@@ -25,23 +25,23 @@ export function generarDocumentoLiquidacion(
 <title>Liquidación ${liq.numero}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: var(--text); padding: 40px; }
   h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
-  .subtitulo { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 24px; }
+  .subtitulo { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 24px; }
   .seccion { margin-bottom: 20px; }
-  .seccion h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
+  .seccion h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 10px; }
   .fila { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .fila span:first-child { color: #64748b; }
+  .fila span:first-child { color: var(--muted); }
   .fila span:last-child { font-weight: 600; }
   .tabla { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  .tabla th, .tabla td { padding: 6px 10px; border: 1px solid #e2e8f0; text-align: left; font-size: 12px; }
-  .tabla th { background: #f8fafc; font-weight: 700; }
-  .total-row td { font-weight: 700; background: #f1f5f9; }
-  .saldo-positivo { color: #16a34a; font-size: 18px; font-weight: 800; }
-  .saldo-negativo { color: #dc2626; font-size: 18px; font-weight: 800; }
+  .tabla th, .tabla td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; font-size: 12px; }
+  .tabla th { background: var(--soft2); font-weight: 700; }
+  .total-row td { font-weight: 700; background: var(--soft); }
+  .saldo-positivo { color: var(--ok); font-size: 18px; font-weight: 800; }
+  .saldo-negativo { color: var(--bad); font-size: 18px; font-weight: 800; }
   .firmas { display: flex; gap: 40px; margin-top: 60px; }
-  .firma-box { flex: 1; border-top: 1px solid #334155; padding-top: 8px; text-align: center; font-size: 12px; }
-  .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: #64748b; }
+  .firma-box { flex: 1; border-top: 1px solid var(--muted2); padding-top: 8px; text-align: center; font-size: 12px; }
+  .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: var(--muted); }
   @media print { body { padding: 20px; } }
 </style>
 </head>
@@ -87,12 +87,12 @@ ${moto ? `<div class="seccion">
   <div class="firma-box">
     <p>${liq.nombre_responsable ?? "________________________"}</p>
     <p>${liq.cargo_responsable ?? "Responsable GPS Satelital"}</p>
-    <p style="margin-top:4px;color:#64748b">Por la empresa</p>
+    <p style="margin-top:4px;color:var(--muted)">Por la empresa</p>
   </div>
   <div class="firma-box">
     <p>________________________</p>
     <p>${cliente.nombre}</p>
-    <p style="margin-top:4px;color:#64748b">El cliente</p>
+    <p style="margin-top:4px;color:var(--muted)">El cliente</p>
   </div>
 </div>
 </body>

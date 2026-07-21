@@ -14,21 +14,21 @@ interface Props {
 }
 
 const ESTADO_COLOR: Record<string, { bg: string; color: string }> = {
-  Activo:        { bg: "#dcfce7", color: "#166534" },
-  "En proceso":  { bg: "#fef3c7", color: "#92400e" },
-  "En mora":     { bg: "#fee2e2", color: "#991b1b" },
-  "En riesgo":   { bg: "#ffedd5", color: "#9a3412" },
-  Aprobado:      { bg: "#dbeafe", color: "#1d4ed8" },
-  Disponible:    { bg: "#dcfce7", color: "#166534" },
-  Asignada:      { bg: "#dbeafe", color: "#1d4ed8" },
-  Mantenimiento: { bg: "#ffe4e6", color: "#be123c" },
-  Fiscalia:      { bg: "#fef9c3", color: "#713f12" },
-  Transito:      { bg: "#ffedd5", color: "#9a3412" },
+  Activo:        { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  "En proceso":  { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  "En mora":     { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  "En riesgo":   { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
+  Aprobado:      { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  Disponible:    { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  Asignada:      { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  Mantenimiento: { bg: "var(--bad-soft)", color: "var(--bad)" },
+  Fiscalia:      { bg: "var(--warn-soft)", color: "var(--warn-ink2)" },
+  Transito:      { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
   Garantia:      { bg: "#f3e8ff", color: "#6b21a8" },
 };
 
 function Badge({ label }: { label: string }) {
-  const s = ESTADO_COLOR[label] ?? { bg: "#f1f5f9", color: "#334155" };
+  const s = ESTADO_COLOR[label] ?? { bg: "var(--soft)", color: "var(--muted2)" };
   return (
     <span style={{ padding: "3px 10px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 12, fontWeight: 700 }}>
       {label}
@@ -38,9 +38,9 @@ function Badge({ label }: { label: string }) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "7px 0", borderBottom: "1px solid #f1f5f9" }}>
-      <span style={{ fontSize: 13, color: "#64748b" }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", textAlign: "right" }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--soft)" }}>
+      <span style={{ fontSize: 13, color: "var(--muted)" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textAlign: "right" }}>{value}</span>
     </div>
   );
 }
@@ -80,7 +80,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
   const previewContratoMoto = previewContrato ? motos.find(m => m.id === previewContrato.moto_id)       : null;
 
   function GroupLabel({ label }: { label: string }) {
-    return <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>;
+    return <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 800, color: "var(--faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>;
   }
 
   // Panel de detalle — se muestra en la derecha (desktop) o encima (móvil)
@@ -91,7 +91,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
       <div style={{ padding: "18px 18px 8px" }}>
         {previewCliente && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 19, color: "#0f172a", textTransform: "uppercase", marginBottom: 8 }}>{previewCliente.nombre}</div>
+            <div style={{ fontWeight: 900, fontSize: 19, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewCliente.nombre}</div>
             <div style={{ marginBottom: 14 }}><Badge label={previewCliente.estado} /></div>
             <InfoRow label="Cédula"      value={previewCliente.cedula} />
             <InfoRow label="Teléfono"    value={previewCliente.telefono ?? "—"} />
@@ -101,11 +101,11 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
             {previewCliente.acompanante_nombre && <InfoRow label="Acompañante" value={previewCliente.acompanante_nombre} />}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
               <button onClick={() => { onNavegar("ficha_cliente", previewCliente.id); onClose(); }}
-                style={{ padding: "12px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                style={{ padding: "12px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                 Ver ficha completa →
               </button>
               <button onClick={() => { onNavegar("cobros", previewCliente.id); onClose(); }}
-                style={{ padding: "12px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", color: "#334155", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                style={{ padding: "12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 💳 Ir a cartera
               </button>
             </div>
@@ -114,7 +114,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
 
         {previewMoto && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 22, color: "#0f172a", marginBottom: 8 }}>{previewMoto.placa}</div>
+            <div style={{ fontWeight: 900, fontSize: 22, color: "var(--text)", marginBottom: 8 }}>{previewMoto.placa}</div>
             <div style={{ marginBottom: 14 }}><Badge label={previewMoto.estado === "Mantenimiento" ? "En taller" : previewMoto.estado} /></div>
             <InfoRow label="Marca / Modelo" value={`${previewMoto.marca} ${previewMoto.modelo}`} />
             <InfoRow label="Grupo"          value={previewMoto.grupo} />
@@ -125,11 +125,11 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
             {previewMoto.fecha_tecnomecanica && <InfoRow label="Vence Tecno" value={new Date(previewMoto.fecha_tecnomecanica).toLocaleDateString("es-CO")} />}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
               <button onClick={() => { onNavegar("ficha_moto", previewMoto.id); onClose(); }}
-                style={{ padding: "12px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                style={{ padding: "12px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                 Ver ficha completa →
               </button>
               <button onClick={() => { onNavegar("motos", previewMoto.id); onClose(); }}
-                style={{ padding: "12px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", color: "#334155", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                style={{ padding: "12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 🏍️ Ir a Motos
               </button>
             </div>
@@ -138,7 +138,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
 
         {previewContrato && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 16, color: "#0f172a", textTransform: "uppercase", marginBottom: 8 }}>{previewContratoCli?.nombre ?? "Sin cliente"}</div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewContratoCli?.nombre ?? "Sin cliente"}</div>
             <div style={{ marginBottom: 14, display: "flex", gap: 6, flexWrap: "wrap" }}>
               <Badge label={previewContrato.estado} />
               {previewContrato.forma_pago && <Badge label={previewContrato.forma_pago} />}
@@ -151,12 +151,12 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
               {previewContratoCli && (
                 <button onClick={() => { onNavegar("ficha_cliente", previewContratoCli.id); onClose(); }}
-                  style={{ padding: "12px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                  style={{ padding: "12px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                   Ver ficha del cliente →
                 </button>
               )}
               <button onClick={() => { onNavegar("contratos", previewContrato.id); onClose(); }}
-                style={{ padding: "12px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", color: "#334155", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                style={{ padding: "12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 📄 Ver contrato
               </button>
             </div>
@@ -171,13 +171,13 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
     return (
       <>
         <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(15,23,42,0.7)" }} />
-        <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", width: "94vw", background: "white", borderRadius: 20, zIndex: 301, boxShadow: "0 24px 80px rgba(15,23,42,0.28)", overflow: "hidden", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
-            <button onClick={() => setPreview(null)} style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0 }}>
+        <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", width: "94vw", background: "var(--card)", borderRadius: 20, zIndex: 301, boxShadow: "0 24px 80px rgba(15,23,42,0.28)", overflow: "hidden", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--soft)", flexShrink: 0 }}>
+            <button onClick={() => setPreview(null)} style={{ border: "none", background: "none", color: "var(--accent)", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: 0 }}>
               ← Volver
             </button>
             <div style={{ flex: 1 }} />
-            <button onClick={onClose} style={{ border: "none", background: "#f1f5f9", color: "#334155", borderRadius: 8, padding: "4px 10px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Cerrar</button>
+            <button onClick={onClose} style={{ border: "none", background: "var(--soft)", color: "var(--muted2)", borderRadius: 8, padding: "4px 10px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Cerrar</button>
           </div>
           <div style={{ overflowY: "auto", flex: 1 }}>
             <DetailPanel />
@@ -190,38 +190,38 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(15,23,42,0.7)" }} />
-      <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", width: isMobile ? "94vw" : "min(700px, 96vw)", background: "white", borderRadius: 20, zIndex: 301, boxShadow: "0 24px 80px rgba(15,23,42,0.28)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
+      <div style={{ position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)", width: isMobile ? "94vw" : "min(700px, 96vw)", background: "var(--card)", borderRadius: 20, zIndex: 301, boxShadow: "0 24px 80px rgba(15,23,42,0.28)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 80px)" }}>
 
         {/* Barra de búsqueda */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
-          <span style={{ fontSize: 17, color: "#94a3b8" }}>🔍</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--soft)", flexShrink: 0 }}>
+          <span style={{ fontSize: 17, color: "var(--faint)" }}>🔍</span>
           <input
             ref={inputRef}
             value={query}
             onChange={e => { setQuery(e.target.value); setPreview(null); }}
             placeholder="Buscar cliente, cédula, placa..."
-            style={{ flex: 1, border: "none", outline: "none", fontSize: 16, color: "#0f172a", background: "transparent" }}
+            style={{ flex: 1, border: "none", outline: "none", fontSize: 16, color: "var(--text)", background: "transparent" }}
             onKeyDown={e => { if (e.key === "Escape") onClose(); }}
           />
           {query && (
             <button onClick={() => { setQuery(""); setPreview(null); inputRef.current?.focus(); }}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#94a3b8", padding: 4 }}>✕</button>
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--faint)", padding: 4 }}>✕</button>
           )}
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", cursor: "pointer", fontSize: 13, color: "#334155", padding: "5px 12px", borderRadius: 8, fontWeight: 600 }}>Cerrar</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", cursor: "pointer", fontSize: 13, color: "var(--muted2)", padding: "5px 12px", borderRadius: 8, fontWeight: 600 }}>Cerrar</button>
         </div>
 
         {/* Cuerpo */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
           {/* Lista */}
-          <div style={{ flex: preview && !isMobile ? "0 0 52%" : "1 1 auto", overflowY: "auto", borderRight: preview && !isMobile ? "1px solid #f1f5f9" : "none" }}>
+          <div style={{ flex: preview && !isMobile ? "0 0 52%" : "1 1 auto", overflowY: "auto", borderRight: preview && !isMobile ? "1px solid var(--soft)" : "none" }}>
             {q.length < 2 && (
-              <div style={{ padding: "28px 16px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+              <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
                 Escribe al menos 2 caracteres
               </div>
             )}
             {q.length >= 2 && !hayResultados && (
-              <div style={{ padding: "28px 16px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+              <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
                 Sin resultados para "<strong>{query}</strong>"
               </div>
             )}
@@ -231,14 +231,14 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
                 <GroupLabel label={`Clientes (${clientesFiltrados.length})`} />
                 {clientesFiltrados.map(c => (
                   <div key={c.id} onClick={() => setPreview({ tipo: "cliente", id: c.id })}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === c.id ? "#eff6ff" : "transparent", borderLeft: preview?.id === c.id ? "3px solid #0284c7" : "3px solid transparent" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === c.id ? "var(--accent-soft2)" : "transparent", borderLeft: preview?.id === c.id ? "3px solid var(--accent)" : "3px solid transparent" }}>
                     <span style={{ fontSize: 20 }}>👤</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nombre}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>C.C. {c.cedula}{c.telefono ? " · " + c.telefono : ""}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nombre}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>C.C. {c.cedula}{c.telefono ? " · " + c.telefono : ""}</div>
                     </div>
                     <Badge label={c.estado} />
-                    <span style={{ color: "#cbd5e1", fontSize: 18, marginLeft: 4 }}>›</span>
+                    <span style={{ color: "var(--line2)", fontSize: 18, marginLeft: 4 }}>›</span>
                   </div>
                 ))}
               </div>
@@ -249,14 +249,14 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
                 <GroupLabel label={`Motos (${motosFiltradas.length})`} />
                 {motosFiltradas.map(m => (
                   <div key={m.id} onClick={() => setPreview({ tipo: "moto", id: m.id })}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === m.id ? "#eff6ff" : "transparent", borderLeft: preview?.id === m.id ? "3px solid #0284c7" : "3px solid transparent" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === m.id ? "var(--accent-soft2)" : "transparent", borderLeft: preview?.id === m.id ? "3px solid var(--accent)" : "3px solid transparent" }}>
                     <span style={{ fontSize: 20 }}>🏍️</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.placa}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{m.marca} {m.modelo} · {m.grupo}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.placa}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{m.marca} {m.modelo} · {m.grupo}</div>
                     </div>
                     <Badge label={m.estado === "Mantenimiento" ? "En taller" : m.estado} />
-                    <span style={{ color: "#cbd5e1", fontSize: 18, marginLeft: 4 }}>›</span>
+                    <span style={{ color: "var(--line2)", fontSize: 18, marginLeft: 4 }}>›</span>
                   </div>
                 ))}
               </div>
@@ -270,14 +270,14 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
                   const cliente = clientes.find(cl => cl.id === c.cliente_id);
                   return (
                     <div key={c.id} onClick={() => setPreview({ tipo: "contrato", id: c.id })}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === c.id ? "#eff6ff" : "transparent", borderLeft: preview?.id === c.id ? "3px solid #0284c7" : "3px solid transparent" }}>
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: preview?.id === c.id ? "var(--accent-soft2)" : "transparent", borderLeft: preview?.id === c.id ? "3px solid var(--accent)" : "3px solid transparent" }}>
                       <span style={{ fontSize: 20 }}>📄</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente?.nombre ?? "Sin cliente"}</div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{moto?.placa ?? "—"} · {c.forma_pago ?? c.tipo_ruta}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente?.nombre ?? "Sin cliente"}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{moto?.placa ?? "—"} · {c.forma_pago ?? c.tipo_ruta}</div>
                       </div>
                       <Badge label={c.estado} />
-                      <span style={{ color: "#cbd5e1", fontSize: 18, marginLeft: 4 }}>›</span>
+                      <span style={{ color: "var(--line2)", fontSize: 18, marginLeft: 4 }}>›</span>
                     </div>
                   );
                 })}

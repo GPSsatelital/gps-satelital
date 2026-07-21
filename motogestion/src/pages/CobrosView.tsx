@@ -55,7 +55,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 14,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
@@ -64,18 +64,18 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
   fontSize: 14,
   fontWeight: 600,
-  color: "#334155",
+  color: "var(--muted2)",
 };
 const card: React.CSSProperties = {
-  background: "white",
+  background: "var(--card)",
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
   boxSizing: "border-box",
 };
 const primaryBtn: React.CSSProperties = {
-  background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-  color: "white",
+  background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+  color: "var(--card)",
   border: "none",
   borderRadius: 14,
   padding: "10px 16px",
@@ -84,8 +84,8 @@ const primaryBtn: React.CSSProperties = {
   fontSize: 14,
 };
 const secondaryBtn: React.CSSProperties = {
-  background: "#f1f5f9",
-  color: "#334155",
+  background: "var(--soft)",
+  color: "var(--muted2)",
   border: "none",
   borderRadius: 14,
   padding: "10px 16px",
@@ -118,9 +118,9 @@ function fmt(n: number) {
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function PagoBadge({ estado }: { estado: PagoEstado }) {
   const map: Record<PagoEstado, { bg: string; color: string }> = {
-    Confirmado: { bg: "#dcfce7", color: "#166534" },
-    Pendiente: { bg: "#fef3c7", color: "#92400e" },
-    Rechazado: { bg: "#fee2e2", color: "#991b1b" },
+    Confirmado: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+    Pendiente: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+    Rechazado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
   };
   const colors = map[estado];
   return (
@@ -145,9 +145,9 @@ type EstadoCartera = "al-dia" | "gabela" | "mora";
 // (antes la franja usaba otra función que no contaba el convenio → decía "Gabela" mientras
 // el badge decía "Al día").
 const ESTADO_CARTERA_STYLE: Record<EstadoCartera, { bg: string; color: string; label: string }> = {
-  "al-dia": { bg: "#dcfce7", color: "#166534", label: "Al día" },
-  gabela: { bg: "#fef3c7", color: "#92400e", label: "Gabela" },
-  mora: { bg: "#fee2e2", color: "#991b1b", label: "Mora" },
+  "al-dia": { bg: "var(--ok-soft)", color: "var(--ok-ink)", label: "Al día" },
+  gabela: { bg: "var(--warn-soft)", color: "var(--warn-ink)", label: "Gabela" },
+  mora: { bg: "var(--bad-soft)", color: "var(--bad-ink)", label: "Mora" },
 };
 
 function EstadoBadge({ estado }: { estado: EstadoCartera }) {
@@ -172,14 +172,14 @@ function InfoBox({ label, value, highlight }: { label: string; value: string; hi
   return (
     <div
       style={{
-        background: highlight ? "#eff6ff" : "#f8fafc",
+        background: highlight ? "var(--accent-soft2)" : "var(--soft2)",
         borderRadius: 12,
         padding: "10px 14px",
-        border: highlight ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
+        border: highlight ? "1px solid var(--accent-line)" : "1px solid var(--line)",
       }}
     >
-      <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-      <div style={{ marginTop: 4, fontSize: 15, fontWeight: 700, color: highlight ? "#1e40af" : "#0f172a" }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+      <div style={{ marginTop: 4, fontSize: 15, fontWeight: 700, color: highlight ? "var(--accent-ink)" : "var(--text)" }}>{value}</div>
     </div>
   );
 }
@@ -220,16 +220,16 @@ function calcEstadoCuenta(
   if (formaPago === "Diario") {
     if (!ultimoPago) {
       // Contrato diario nuevo sin pagos: al día hasta mañana
-      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyStr, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
+      return { formaPago, diaPago: "Diario", ultimoPago: null, pagadoHasta: null, proximoPago: hoyStr, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "var(--ok-ink)", bgEtiqueta: "var(--ok-soft)" };
     }
     const ultimo = new Date(ultimoPago + "T00:00:00");
     const diasDesde = Math.floor((hoy.getTime() - ultimo.getTime()) / 86400000);
     const pagadoHasta = ultimoPago;
     const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
     const proximoPago = manana.toISOString().slice(0, 10);
-    if (diasDesde === 0) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7" };
-    if (diasDesde === 1) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 1, etiqueta: "Gabela", colorEtiqueta: "#92400e", bgEtiqueta: "#fef3c7" };
-    return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyStr, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "#991b1b", bgEtiqueta: "#fee2e2" };
+    if (diasDesde === 0) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 0, etiqueta: "Al día", colorEtiqueta: "var(--ok-ink)", bgEtiqueta: "var(--ok-soft)" };
+    if (diasDesde === 1) return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago, diasEstado: 1, etiqueta: "Gabela", colorEtiqueta: "var(--warn-ink)", bgEtiqueta: "var(--warn-soft)" };
+    return { formaPago, diaPago: "Diario", ultimoPago, pagadoHasta, proximoPago: hoyStr, diasEstado: diasDesde, etiqueta: "Mora", colorEtiqueta: "var(--bad-ink)", bgEtiqueta: "var(--bad-soft)" };
   }
 
   const d = inicioPeriodoActual(contrato, hoy);
@@ -250,7 +250,7 @@ function calcEstadoCuenta(
       formaPago, diaPago: formatDiaPago(contrato), ultimoPago: pagoPeriodo.fecha,
       pagadoHasta: pagadoHasta.toISOString().slice(0, 10),
       proximoPago, diasEstado: 0,
-      etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
+      etiqueta: "Al día", colorEtiqueta: "var(--ok-ink)", bgEtiqueta: "var(--ok-soft)",
     };
   }
 
@@ -259,14 +259,14 @@ function calcEstadoCuenta(
     return {
       formaPago, diaPago: formatDiaPago(contrato), ultimoPago: null, pagadoHasta: null,
       proximoPago, diasEstado: 0,
-      etiqueta: "Al día", colorEtiqueta: "#166534", bgEtiqueta: "#dcfce7",
+      etiqueta: "Al día", colorEtiqueta: "var(--ok-ink)", bgEtiqueta: "var(--ok-soft)",
     };
   }
 
   const diasDesde = Math.floor((hoy.getTime() - d.getTime()) / 86400000);
   const etiqueta = diasDesde === 0 ? "Al día" : diasDesde === 1 ? "Gabela" : "Mora";
-  const colorEtiqueta = diasDesde <= 1 ? "#92400e" : "#991b1b";
-  const bgEtiqueta = diasDesde <= 1 ? "#fef3c7" : "#fee2e2";
+  const colorEtiqueta = diasDesde <= 1 ? "var(--warn-ink)" : "var(--bad-ink)";
+  const bgEtiqueta = diasDesde <= 1 ? "var(--warn-soft)" : "var(--bad-soft)";
   return {
     formaPago, diaPago: formatDiaPago(contrato), ultimoPago,
     pagadoHasta: ultimoPago ? (() => {
@@ -392,23 +392,23 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 480, background: "white", borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "85dvh", overflowY: "auto" }}
+        style={{ width: "100%", maxWidth: 480, background: "var(--card)", borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "85dvh", overflowY: "auto" }}
       >
         {/* Encabezado (no se imprime) */}
         <div className="recibo-no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>🧾 Recibo de pago</div>
-          <button onClick={onCerrar} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8" }}>✕</button>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>🧾 Recibo de pago</div>
+          <button onClick={onCerrar} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--faint)" }}>✕</button>
         </div>
 
         {/* Ticket — esto es lo único que se imprime (ver #recibo-ticket / @media print más abajo) */}
         <div id="recibo-ticket">
           <div style={{ textAlign: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
-            {datos.grupo && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{datos.grupo}</div>}
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Comprobante de pago</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
+            {datos.grupo && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{datos.grupo}</div>}
+            <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>Comprobante de pago</div>
           </div>
 
-          <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
+          <div style={{ background: "var(--soft2)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
             {[
               ["Folio",    datos.folio],
               ["Fecha",    new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")],
@@ -417,23 +417,23 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
               ["Monto",    `$${Math.round(datos.valor).toLocaleString("es-CO")}`],
               ["Método",   datos.metodo],
             ].map(([l, v]) => (
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: 6 }}>
-                <span style={{ fontSize: 13, color: "#64748b" }}>{l}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", textTransform: l === "Cliente" ? "uppercase" : "none" }}>{v}</span>
+              <div key={l} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--line)", paddingBottom: 6 }}>
+                <span style={{ fontSize: 13, color: "var(--muted)" }}>{l}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: l === "Cliente" ? "uppercase" : "none" }}>{v}</span>
               </div>
             ))}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 2 }}>
-              <span style={{ fontSize: 13, color: "#64748b" }}>Estado</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>Estado</span>
               <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                background: datos.estado === "Confirmado" ? "#dcfce7" : "#fef3c7",
-                color: datos.estado === "Confirmado" ? "#166534" : "#92400e" }}>
+                background: datos.estado === "Confirmado" ? "var(--ok-soft)" : "var(--warn-soft)",
+                color: datos.estado === "Confirmado" ? "var(--ok-ink)" : "var(--warn-ink)" }}>
                 {datos.estado === "Confirmado" ? "✅ Confirmado" : "⏳ Pendiente validación"}
               </span>
             </div>
           </div>
 
-          <div style={{ background: "#f8fafc", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 2 }}>Detalle de su cuenta</div>
+          <div style={{ background: "var(--soft2)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", marginBottom: 2 }}>Detalle de su cuenta</div>
             {[
               ["Debía en total",       `$${Math.round(datos.debiaTotal).toLocaleString("es-CO")}`],
               datos.aplicadoTarifa > 0 ? ["→ A la cuota", `$${Math.round(datos.aplicadoTarifa).toLocaleString("es-CO")}`] : null,
@@ -445,27 +445,27 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
               const [l, v] = fila as [string, string];
               return (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>{l}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{v}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{l}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{v}</span>
                 </div>
               );
             })}
             {datos.convenioAbonado != null && (
               <>
-                <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 4, paddingTop: 6, fontSize: 12, fontWeight: 800, color: "#334155" }}>Convenio</div>
+                <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>Convenio</div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>Abonó hoy al convenio</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>${Math.round(datos.convenioAbonado).toLocaleString("es-CO")}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Abonó hoy al convenio</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>${Math.round(datos.convenioAbonado).toLocaleString("es-CO")}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>Le falta del convenio</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>${Math.round(datos.convenioRestante ?? 0).toLocaleString("es-CO")}</span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Le falta del convenio</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>${Math.round(datos.convenioRestante ?? 0).toLocaleString("es-CO")}</span>
                 </div>
               </>
             )}
           </div>
 
-          <div style={{ textAlign: "center", fontSize: 11, color: "#94a3b8" }}>¡Gracias por su pago!</div>
+          <div style={{ textAlign: "center", fontSize: 11, color: "var(--faint)" }}>¡Gracias por su pago!</div>
         </div>
 
         {/* Ticket térmico — oculto en pantalla, es lo único que se imprime (80mm, negro) */}
@@ -490,20 +490,20 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
 
         {fase === "whatsapp" && (
           <div className="recibo-no-print" style={{ display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 2 }}>¿A qué número enviar?</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)", marginBottom: 2 }}>¿A qué número enviar?</div>
 
             {telRegistrado && (
               <button
                 onClick={() => abrirWA(telRegistrado)}
                 style={{ ...secondaryBtn, textAlign: "left", padding: "12px 16px" }}
               >
-                <div style={{ fontSize: 12, color: "#64748b" }}>Número registrado</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>📱 {telRegistrado}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>Número registrado</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>📱 {telRegistrado}</div>
               </button>
             )}
 
             <div>
-              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>Otro número</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Otro número</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   value={otroNum}
@@ -543,10 +543,10 @@ type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "c
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
-  if (dias <= 0) return { paso: 1, label: "Recordatorio", color: "#0284c7", bg: "#e0f2fe", accionRecomendada: "mensaje_recordatorio" };
-  if (dias === 1) return { paso: 2, label: "Llamada + Sirena", color: "#92400e", bg: "#fef3c7", accionRecomendada: "llamada" };
-  if (dias <= 3) return { paso: 3, label: "Apagado Remoto", color: "#991b1b", bg: "#fee2e2", accionRecomendada: "otro" };
-  return { paso: 4, label: "RECOLECCION FISICA", color: "#ffffff", bg: "#7f1d1d", accionRecomendada: "recoleccion" };
+  if (dias <= 0) return { paso: 1, label: "Recordatorio", color: "var(--accent)", bg: "var(--accent-soft)", accionRecomendada: "mensaje_recordatorio" };
+  if (dias === 1) return { paso: 2, label: "Llamada + Sirena", color: "var(--warn-ink)", bg: "var(--warn-soft)", accionRecomendada: "llamada" };
+  if (dias <= 3) return { paso: 3, label: "Apagado Remoto", color: "var(--bad-ink)", bg: "var(--bad-soft)", accionRecomendada: "otro" };
+  return { paso: 4, label: "RECOLECCION FISICA", color: "var(--card)", bg: "var(--bad-ink2)", accionRecomendada: "recoleccion" };
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -1550,14 +1550,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }, [pagos, filtroPagos]);
 
   if (loadingPagos || loadingContratos) {
-    return <div style={{ padding: 24, color: "#64748b" }}>Cargando cartera...</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando cartera...</div>;
   }
 
   // ── Panel de detalle del contrato ─────────────────────────────────────────
   function PanelDetalle() {
     if (!contratoDetalle) {
       return (
-        <div style={{ ...card, color: "#64748b", textAlign: "center", padding: 40 }}>
+        <div style={{ ...card, color: "var(--muted)", textAlign: "center", padding: 40 }}>
           Selecciona un contrato de la lista para ver el detalle y registrar pagos.
         </div>
       );
@@ -1667,24 +1667,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         <div style={card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "#0f172a", lineHeight: 1.2 }}>
+              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.2 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
                 {motoDetalle && (
-                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#0284c7", fontWeight: 700, fontSize: 13 }}>
+                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>
                     🏍️ {motoDetalle.placa}
                   </button>
                 )}
-                {clienteDetalle?.telefono && <span style={{ color: "#334155" }}>📞 {clienteDetalle.telefono}</span>}
-                {clienteDetalle?.cedula && <span style={{ color: "#64748b" }}>CC {clienteDetalle.cedula}</span>}
+                {clienteDetalle?.telefono && <span style={{ color: "var(--muted2)" }}>📞 {clienteDetalle.telefono}</span>}
+                {clienteDetalle?.cedula && <span style={{ color: "var(--muted)" }}>CC {clienteDetalle.cedula}</span>}
               </div>
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
               {contratoDetalle.motor_v2 && (contratoDetalle.total_cajas ?? 0) > 0 && (
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#0369a1", marginTop: 2 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2 }}>
                   📦 Va {contratoDetalle.cajas_pagadas ?? 0} de {contratoDetalle.total_cajas} cuotas pagadas
                 </div>
               )}
@@ -1692,7 +1692,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
               <EstadoBadge estado={contratoDetalle.estadoCartera} />
               {onNavigate && clienteDetalle && (
-                <button onClick={() => onNavigate("ficha_cliente", clienteDetalle.id)} style={{ background: "none", border: "none", color: "#0284c7", fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+                <button onClick={() => onNavigate("ficha_cliente", clienteDetalle.id)} style={{ background: "none", border: "none", color: "var(--accent)", fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
                   Ver ficha →
                 </button>
               )}
@@ -1700,7 +1700,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button onClick={imprimirEstadoCuenta} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📄 Estado de cuenta</button>
-            <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "#166534" }}>📱 Enviar por WhatsApp</button>
+            <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "var(--ok-ink)" }}>📱 Enviar por WhatsApp</button>
           </div>
         </div>
 
@@ -1719,7 +1719,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             no la función vieja, para que no diga "Gabela" mientras el badge dice "Al día". */}
         <div style={{ ...card, background: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].bg, border: `1px solid ${ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color}44` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#334155", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--muted2)", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color }}>{ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].label}</span>
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
               <span>Próximo: <strong>{fmtFecha(proximoPagoFecha)}</strong></span>
@@ -1733,24 +1733,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
           <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Cuota hoy" : "Cuota período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(cuotaPactada)}</div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Pagado hoy" : "Pagado período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>$ {fmt(pagadoEnPeriodo)}</div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>$ {fmt(pagadoEnPeriodo)}</div>
             </div>
             {/* "Al día" solo si de verdad no debe nada — incluye deuda pendiente y convenio,
                 no solo la cuota de esta semana (mismo criterio que Panel Hoy y Cobro en campo). */}
-            <div style={{ background: enProrrateo ? "#eff6ff" : totalDebeAhora > 0 ? "#fecaca" : "#bbf7d0", borderRadius: 10, padding: "8px 10px" }}>
-              <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>
+            <div style={{ background: enProrrateo ? "var(--accent-soft2)" : totalDebeAhora > 0 ? "var(--bad-line)" : "var(--ok-line)", borderRadius: 10, padding: "8px 10px" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {enProrrateo ? "Próx. pago" : "Pendiente"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "#0284c7" : totalDebeAhora > 0 ? "#991b1b" : "#166534" }}>
+              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                 {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalDebeAhora > 0 ? `$ ${fmt(totalDebeAhora)}` : "✓ Al día"}
               </div>
             </div>
@@ -1760,45 +1760,45 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               funcionario sepa de un vistazo qué cobrar. Respeta lo que el convenio ya cubre y el
               TOTAL es SIEMPRE la suma exacta de las líneas mostradas. */}
           {desg && totalDebeAhora > 0 && (
-            <div style={{ marginTop: 12, background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #fecaca" }}>
+            <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--bad-line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", textTransform: "uppercase" }}>Debe pagar ahora</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--bad-ink)", textTransform: "uppercase" }}>Debe pagar ahora</span>
                 {periodosDebe.length >= 2 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", borderRadius: 999, padding: "2px 8px" }}>🔴 {periodosDebe.length} cuotas vencidas</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 999, padding: "2px 8px" }}>🔴 {periodosDebe.length} cuotas vencidas</span>
                 )}
               </div>
               <div style={{ display: "grid", gap: 3 }}>
                 {prorrateoDebe > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
                     <span>Prorrateo inicial</span><strong>$ {fmt(prorrateoDebe)}</strong>
                   </div>
                 )}
                 {periodosDebe.map((p, i) => (
-                  <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155", fontWeight: i === 0 ? 700 : 400 }}>
+                  <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)", fontWeight: i === 0 ? 700 : 400 }}>
                     <span style={{ minWidth: 0 }}>
                       Cuota {fmtFecha(p.fecha)}{p.parcial ? " (parcial)" : ""}
-                      <span style={{ color: p.diasVencida > 0 ? "#991b1b" : "#c2410c", fontWeight: 700 }}> · {p.diasVencida > 0 ? `${p.diasVencida}d vencida` : "vence hoy"}</span>
+                      <span style={{ color: p.diasVencida > 0 ? "var(--bad-ink)" : "var(--orange)", fontWeight: 700 }}> · {p.diasVencida > 0 ? `${p.diasVencida}d vencida` : "vence hoy"}</span>
                     </span>
                     <strong style={{ flexShrink: 0 }}>$ {fmt(p.monto)}</strong>
                   </div>
                 ))}
                 {contratoDetalle.deudaContrato > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
                     <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
                   </div>
                 )}
                 {cuotaConvExigida > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#334155" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
                     <span>Cuota del convenio</span><strong>$ {fmt(cuotaConvExigida)}</strong>
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>TOTAL A COBRAR</span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "#991b1b" }}>$ {fmt(totalDebeAhora)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>TOTAL A COBRAR</span>
+                <span style={{ fontSize: 18, fontWeight: 900, color: "var(--bad-ink)" }}>$ {fmt(totalDebeAhora)}</span>
               </div>
               {desg.proximaFecha && (
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
                   Después de esto, próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
                   {cuotaConvActiva > 0 && <span> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
                 </div>
@@ -1808,7 +1808,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
           {/* Al día (nada exigible ahora): solo el próximo pago y su fecha */}
           {desg && totalDebeAhora === 0 && (desg.proximaFecha || (cubreHasta && cubreHasta >= hoyISO())) && (
-            <div style={{ marginTop: 12, background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534" }}>
+            <div style={{ marginTop: 12, background: "var(--ok-soft)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--ok-line)", fontSize: 13, color: "var(--ok-ink)" }}>
               ✓ Al día · Próximo pago: <strong>{fmtFecha(proximoPagoFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
               {cuotaConvActiva > 0 && <span style={{ fontSize: 12 }}> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
             </div>
@@ -1821,25 +1821,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {/* El "próximo pago" solo cuando está al día. Si está en gabela/mora, lo que debe
                   AHORA ya lo muestra el recuadro "Pendiente" — no se duplica con "próximo pago". */}
               {contratoDetalle.estadoCartera === "al-dia" && (
-                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "8px 12px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", textTransform: "uppercase" }}>
+                <div style={{ background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>
                     Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${fmtFecha(proximoPagoFecha)}` : ""}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#1d4ed8", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
                 </div>
               )}
-              <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 8, padding: "4px 10px", fontWeight: 700, alignSelf: "flex-start" }}>
+              <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 8, padding: "4px 10px", fontWeight: 700, alignSelf: "flex-start" }}>
                 🤝 Convenio #{cvActiva.numero_convenio} · saldo $ {fmt(saldoConvenio)} · creado {fmtFecha(cvActiva.created_at.slice(0, 10))}
               </span>
             </div>
           ) : contratoDetalle.deudaContrato > 0 ? (
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
-              <span style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
+              <span style={{ background: "var(--bad-soft)", color: "var(--bad-ink)", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
                 + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
               </span>
               {totalPendiente > cuotaPendiente && (
-                <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 900, fontSize: 14, color: "#991b1b", marginLeft: "auto" }}>
+                <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 900, fontSize: 14, color: "var(--bad-ink)", marginLeft: "auto" }}>
                   Total: $ {fmt(totalPendiente)}
                 </span>
               )}
@@ -1847,20 +1847,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           ) : null}
 
           {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
-            <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", borderRadius: 10, padding: "8px 12px" }}>
+            <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--accent-soft2)", borderRadius: 10, padding: "8px 12px" }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#0284c7", textTransform: "uppercase" }}>Saldo a favor</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "#0284c7" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase" }}>Saldo a favor</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
               </div>
               {puedeAplicarSaldo && (
-                <button onClick={handleAplicarSaldo} style={{ background: "#0284c7", color: "white", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                <button onClick={handleAplicarSaldo} style={{ background: "var(--accent)", color: "var(--card)", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                   Aplicar
                 </button>
               )}
             </div>
           )}
           {saldoExito && (
-            <div style={{ marginTop: 6, padding: "6px 10px", background: "#dcfce7", borderRadius: 8, color: "#166534", fontWeight: 700, fontSize: 12 }}>
+            <div style={{ marginTop: 6, padding: "6px 10px", background: "var(--ok-soft)", borderRadius: 8, color: "var(--ok-ink)", fontWeight: 700, fontSize: 12 }}>
               ✅ Saldo aplicado.
             </div>
           )}
@@ -1875,23 +1875,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
             <div style={{ flex: "3 1 160px" }}>
               <div style={labelStyle}>Método</div>
-              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, background: "#f0fdf4", borderColor: "#bbf7d0", color: "#166534", fontWeight: 700 }}>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, background: "var(--ok-soft)", borderColor: "var(--ok-line)", color: "var(--ok-ink)", fontWeight: 700 }}>
                 💵 Efectivo (confirma automático)
               </div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Para transferencia usa el botón "💵 Cobrar" (pide la foto del comprobante).</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Para transferencia usa el botón "💵 Cobrar" (pide la foto del comprobante).</div>
             </div>
           </div>
 
           {/* Motor de cajas: "qué cubre este pago" POR FECHA (FIFO en vivo) */}
           {coberturaEnVivo && (
-            <div style={{ background: "#eff6ff", borderRadius: 10, padding: "10px 12px", border: "1px solid #bfdbfe", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>Este pago cubre:</div>
+            <div style={{ background: "var(--accent-soft2)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--accent-line)", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: "var(--accent-ink)", marginBottom: 2 }}>Este pago cubre:</div>
               {coberturaEnVivo.lineas.map((l, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", color: l.ok ? "#166534" : "#92400e" }}>
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", color: l.ok ? "var(--ok-ink)" : "var(--warn-ink)" }}>
                   <span>{l.ok ? "✓" : "•"}</span><span>{l.txt}</span>
                 </div>
               ))}
-              <div style={{ borderTop: "1px solid #bfdbfe", marginTop: 4, paddingTop: 4, fontWeight: 800, color: coberturaEnVivo.quedaDebiendo > 0 ? "#991b1b" : "#166534" }}>
+              <div style={{ borderTop: "1px solid var(--accent-line)", marginTop: 4, paddingTop: 4, fontWeight: 800, color: coberturaEnVivo.quedaDebiendo > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                 {coberturaEnVivo.quedaDebiendo > 0
                   ? `Quedaría debiendo: $ ${fmt(coberturaEnVivo.quedaDebiendo)}`
                   : coberturaEnVivo.sobra > 0
@@ -1902,8 +1902,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           )}
 
           {montoIngresado > 0 && !coberturaEnVivo && (
-            <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "10px 12px", border: "1px solid #bbf7d0", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: "#166534", marginBottom: 2 }}>Cómo se aplica:</div>
+            <div style={{ background: "var(--ok-soft)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--ok-line)", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: "var(--ok-ink)", marginBottom: 2 }}>Cómo se aplica:</div>
               {desglose.tarifa > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span>Cuota</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
@@ -1920,19 +1920,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </div>
               )}
               {desglose.saldo > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "#0284c7", fontWeight: 700 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent)", fontWeight: 700 }}>
                   <span>Saldo a favor</span><span>$ {fmt(desglose.saldo)}</span>
                 </div>
               )}
-              <div style={{ borderTop: "1px solid #bbf7d0", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+              <div style={{ borderTop: "1px solid var(--ok-line)", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
                 <span>Total</span><span>$ {fmt(montoIngresado)}</span>
               </div>
             </div>
           )}
 
-          {formError && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{formError}</div>}
+          {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{formError}</div>}
           {formExito && (
-            <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13, marginTop: 8 }}>
+            <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13, marginTop: 8 }}>
               ✅ Pago registrado.
             </div>
           )}
@@ -1962,14 +1962,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
         {/* Tabs secundarias */}
         <div style={card}>
-          <div style={{ display: "flex", gap: 4, marginBottom: 14, borderBottom: "2px solid #f1f5f9", paddingBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 14, borderBottom: "2px solid var(--soft)", paddingBottom: 10, flexWrap: "wrap" }}>
             {(["gestiones", "deudas", "convenios", "historial"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setDetailTab(t)}
                 style={{
-                  background: detailTab === t ? "#0f172a" : "transparent",
-                  color: detailTab === t ? "white" : "#64748b",
+                  background: detailTab === t ? "var(--text)" : "transparent",
+                  color: detailTab === t ? "var(--card)" : "var(--muted)",
                   border: "none",
                   borderRadius: 8,
                   padding: "6px 12px",
@@ -1998,21 +1998,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </select>
                 <input style={{ ...inputStyle, flex: 2, minWidth: 160 }} value={resultadoGestion} onChange={e => setResultadoGestion(e.target.value)} placeholder="Resultado / nota..." />
               </div>
-              {gestionError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>}
-              {gestionExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Gestión registrada.</div>}
+              {gestionError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{gestionError}</div>}
+              {gestionExito && <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Gestión registrada.</div>}
               <button onClick={handleRegistrarGestion} disabled={procesando} style={{ ...secondaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar gestión"}</button>
               {gestionesContrato.length > 0 && (
                 <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
                   {gestionesContrato.map(g => (
-                    <div key={g.id} style={{ padding: "8px 12px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13 }}>
+                    <div key={g.id} style={{ padding: "8px 12px", background: "var(--soft2)", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}>
                       <span style={{ fontWeight: 700 }}>{g.tipo}</span>
-                      {g.resultado && <span style={{ color: "#64748b" }}> — {g.resultado}</span>}
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{formatDate(g.fecha)}</div>
+                      {g.resultado && <span style={{ color: "var(--muted)" }}> — {g.resultado}</span>}
+                      <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{formatDate(g.fecha)}</div>
                     </div>
                   ))}
                 </div>
               )}
-              {gestionesContrato.length === 0 && <div style={{ color: "#64748b", fontSize: 14 }}>Sin gestiones registradas.</div>}
+              {gestionesContrato.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin gestiones registradas.</div>}
             </div>
           )}
 
@@ -2020,10 +2020,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {detailTab === "deudas" && (
             <div style={{ display: "grid", gap: 10 }}>
               {deudasContrato.length === 0 ? (
-                <div style={{ color: "#64748b", fontSize: 14 }}>Sin deudas pendientes.</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin deudas pendientes.</div>
               ) : deudasContrato.map(d => (
                 deudaEditandoId === d.id ? (
-                  <div key={d.id} style={{ padding: 14, borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 10 }}>
+                  <div key={d.id} style={{ padding: 14, borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", display: "grid", gap: 10 }}>
                     <div>
                       <div style={labelStyle}>Concepto</div>
                       <select style={inputStyle} value={editConcepto} onChange={e => setEditConcepto(e.target.value as ConceptoDeuda)}>
@@ -2044,24 +2044,24 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <MoneyInput label="Monto original" value={editMonto} onChange={setEditMonto} />
                       <MoneyInput label="Monto pendiente" value={editMontoPendiente} onChange={setEditMontoPendiente} />
                     </div>
-                    <div style={{ fontSize: 12, color: "#94a3b8" }}>Si el pendiente llega a $0, la deuda queda marcada como pagada automáticamente.</div>
-                    {editDeudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{editDeudaError}</div>}
+                    <div style={{ fontSize: 12, color: "var(--faint)" }}>Si el pendiente llega a $0, la deuda queda marcada como pagada automáticamente.</div>
+                    {editDeudaError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{editDeudaError}</div>}
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => setDeudaEditandoId(null)} style={{ ...miniBtn("#f1f5f9", "#334155"), flex: 1 }}>Cancelar</button>
-                      <button onClick={() => handleEliminarDeuda(d.id)} disabled={guardandoEditDeuda} style={{ ...miniBtn("#fee2e2", "#991b1b"), flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>🗑️ Eliminar</button>
+                      <button onClick={() => setDeudaEditandoId(null)} style={{ ...miniBtn("var(--soft)", "var(--muted2)"), flex: 1 }}>Cancelar</button>
+                      <button onClick={() => handleEliminarDeuda(d.id)} disabled={guardandoEditDeuda} style={{ ...miniBtn("var(--bad-soft)", "var(--bad-ink)"), flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>🗑️ Eliminar</button>
                       <button onClick={() => guardarEdicionDeuda(d)} disabled={guardandoEditDeuda} style={{ ...primaryBtn, flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>
                         {guardandoEditDeuda ? "Guardando..." : "Guardar"}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid #fecaca", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div key={d.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#fff7f7", border: "1px solid var(--bad-line)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{d.concepto.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{d.descripcion}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{d.descripcion}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "#991b1b", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--bad-ink)", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
                       {puedeEditarDeuda && (
                         <button onClick={() => abrirEdicionDeuda(d)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15 }}>✏️</button>
                       )}
@@ -2071,11 +2071,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               ))}
               {puedeEditarDeuda && (
                 <div>
-                  <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
+                  <button onClick={() => setMostrarFormDeuda(v => !v)} style={miniBtn("var(--soft)", "var(--muted2)")}>
                     {mostrarFormDeuda ? "Cancelar" : "+ Registrar deuda"}
                   </button>
                   {mostrarFormDeuda && (
-                    <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                    <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
                       <div>
                         <div style={labelStyle}>Concepto</div>
                         <select style={inputStyle} value={deudaConcepto} onChange={e => setDeudaConcepto(e.target.value as ConceptoDeuda)}>
@@ -2092,8 +2092,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <input style={inputStyle} value={deudaDescripcion} onChange={e => setDeudaDescripcion(e.target.value)} placeholder="Detalle del origen de la deuda..." />
                       </div>
                       <MoneyInput label="Monto" value={deudaMonto} onChange={setDeudaMonto} />
-                      {deudaError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
-                      {deudaExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Deuda registrada.</div>}
+                      {deudaError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{deudaError}</div>}
+                      {deudaExito && <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Deuda registrada.</div>}
                       <button onClick={handleRegistrarDeuda} disabled={procesando} style={{ ...primaryBtn, opacity: procesando ? 0.6 : 1 }}>{procesando ? "Registrando..." : "Registrar deuda"}</button>
                     </div>
                   )}
@@ -2105,16 +2105,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {/* Tab Convenios */}
           {detailTab === "convenios" && (
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ fontSize: 13, color: "#64748b" }}>{totalConvenios}/3 convenios usados.</div>
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>{totalConvenios}/3 convenios usados.</div>
               {/* La puerta es el permiso por persona (crear_convenio), no el rol: cubre ADMIN/AP
                   por default, SECRETARIA por default, y overrides tipo LUMAR (SUBADMIN). */}
               {!puedeCrearConvenio ? (
-                <div style={{ color: "#64748b", fontSize: 14 }}>No tienes permiso para gestionar convenios — pídele al encargado.</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>No tienes permiso para gestionar convenios — pídele al encargado.</div>
               ) : convenioActual ? (
-                <div style={{ background: "#fffbeb", borderRadius: 12, padding: 14, border: "1px solid #fde68a" }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{convenioActual.concepto}</div>
-                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2, fontWeight: 600 }}>📅 Creado el {fmtFecha(convenioActual.created_at.slice(0, 10))}</div>
+                <div style={{ background: "var(--warn-soft2)", borderRadius: 12, padding: 14, border: "1px solid var(--warn-line)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--warn-ink)" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>{convenioActual.concepto}</div>
+                  <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 2, fontWeight: 600 }}>📅 Creado el {fmtFecha(convenioActual.created_at.slice(0, 10))}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                     <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
                     <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
@@ -2123,11 +2123,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                 </div>
               ) : totalConvenios >= 3 ? (
-                <div style={{ color: "#991b1b", fontSize: 14, fontWeight: 600 }}>
+                <div style={{ color: "var(--bad-ink)", fontSize: 14, fontWeight: 600 }}>
                   Máximo de 3 convenios. Si vuelve a incumplir, procede liquidación.
                 </div>
               ) : deudasContrato.length === 0 ? (
-                <div style={{ color: "#64748b", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
               ) : (
                 <div>
                   <button
@@ -2137,31 +2137,31 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       if (abrir) setConvDeudaTotal(String(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0)));
                       setMostrarFormConvenio(abrir);
                     }}
-                    style={miniBtn("#eff6ff", "#1e40af")}
+                    style={miniBtn("var(--accent-soft2)", "var(--accent-ink)")}
                   >
                     {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
                   </button>
                   {mostrarFormConvenio && (
-                    <div style={{ background: "#f8fafc", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
-                      <div style={{ fontSize: 13, color: "#64748b" }}>
-                        Deuda pendiente: <strong style={{ color: "#991b1b" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
+                    <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                        Deuda pendiente: <strong style={{ color: "var(--bad-ink)" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
                       </div>
                       <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
                       {convEsPeriodico && (
-                        <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+                        <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted2)", marginBottom: 6 }}>
                             ¿Cuántas semanas de cuota le financias ahora? (se las metes al convenio, no las paga aparte)
                           </div>
                           <div style={{ display: "flex", gap: 8, marginBottom: convFinanciarN >= 1 ? 6 : 0 }}>
                             {[0, 1, 2].map(n => (
                               <button key={n} type="button" onClick={() => setConvFinanciarN(n)}
-                                style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convFinanciarN === n ? "#0284c7" : "#e2e8f0"}`, background: convFinanciarN === n ? "#eff6ff" : "white", color: convFinanciarN === n ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                                style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convFinanciarN === n ? "var(--accent)" : "var(--line)"}`, background: convFinanciarN === n ? "var(--accent-soft2)" : "var(--card)", color: convFinanciarN === n ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                                 {n}
                               </button>
                             ))}
                           </div>
                           {convFinanciarN >= 1 && (
-                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                            <div style={{ fontSize: 12, color: "var(--muted)" }}>
                               Se financian <strong>{convFinanciarN}</strong> semana{convFinanciarN > 1 ? "s" : ""} = <strong>$ {fmt(convMontoFinanciado)}</strong> al convenio. El cliente paga $0 hasta el <strong>{convCubreHasta ? fmtFecha(convCubreHasta) : ""}</strong>. Total a diferir: <strong>$ {fmt(convTotal)}</strong>.
                             </div>
                           )}
@@ -2170,8 +2170,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <div>
                         <div style={labelStyle}>Fijar por</div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button type="button" onClick={() => setConvModoFijar("cuotas")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuotas" ? "#0284c7" : "#e2e8f0"}`, background: convModoFijar === "cuotas" ? "#eff6ff" : "white", color: convModoFijar === "cuotas" ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>N° de cuotas</button>
-                          <button type="button" onClick={() => setConvModoFijar("cuota")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuota" ? "#0284c7" : "#e2e8f0"}`, background: convModoFijar === "cuota" ? "#eff6ff" : "white", color: convModoFijar === "cuota" ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Valor de la cuota</button>
+                          <button type="button" onClick={() => setConvModoFijar("cuotas")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuotas" ? "var(--accent)" : "var(--line)"}`, background: convModoFijar === "cuotas" ? "var(--accent-soft2)" : "var(--card)", color: convModoFijar === "cuotas" ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>N° de cuotas</button>
+                          <button type="button" onClick={() => setConvModoFijar("cuota")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuota" ? "var(--accent)" : "var(--line)"}`, background: convModoFijar === "cuota" ? "var(--accent-soft2)" : "var(--card)", color: convModoFijar === "cuota" ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Valor de la cuota</button>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -2185,20 +2185,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         )}
                         <div>
                           <div style={labelStyle}>{convModoFijar === "cuotas" ? "Cuota (calculada)" : "N° de cuotas (calculado)"}</div>
-                          <div style={{ ...inputStyle, background: "#f1f5f9", color: "#334155", fontWeight: 700 }}>
+                          <div style={{ ...inputStyle, background: "var(--soft)", color: "var(--muted2)", fontWeight: 700 }}>
                             {convModoFijar === "cuotas" ? (convCuotaCalc > 0 ? `$ ${fmt(convCuotaCalc)}` : "—") : (convCuotasCalc > 0 ? convCuotasCalc : "—")}
                           </div>
                         </div>
                       </div>
                       {convCuotasCalc > 0 && convCuotaCalc > 0 && (
-                        <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dbeafe", border: "1px solid #bfdbfe", fontSize: 12.5, fontWeight: 700, color: "#1d4ed8" }}>
+                        <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft3)", border: "1px solid var(--accent-line)", fontSize: 12.5, fontWeight: 700, color: "var(--accent-ink)" }}>
                           {convCuotasCalc} cuota{convCuotasCalc > 1 ? "s" : ""} de $ {fmt(convCuotaCalc)}
                           {convUltimaCuota !== convCuotaCalc && convCuotasCalc > 1 && <> · última: $ {fmt(convUltimaCuota)}</>}
                           <span style={{ fontWeight: 400 }}> · Total: $ {fmt(convTotal)}</span>
                         </div>
                       )}
                       <div>
-                        <div style={labelStyle}>Fecha límite <span style={{ fontWeight: 400, color: "#94a3b8", fontSize: 12 }}>(automática — editable)</span></div>
+                        <div style={labelStyle}>Fecha límite <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 12 }}>(automática — editable)</span></div>
                         <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
                       </div>
                       <div>
@@ -2207,20 +2207,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       </div>
 
                       {/* Previsualización del acuerdo + firma obligatoria del cliente */}
-                      <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-                        <button type="button" onClick={() => setVerPreviewAcuerdo(v => !v)} style={miniBtn("#f1f5f9", "#334155")}>
+                      <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+                        <button type="button" onClick={() => setVerPreviewAcuerdo(v => !v)} style={miniBtn("var(--soft)", "var(--muted2)")}>
                           {verPreviewAcuerdo ? "Ocultar acuerdo" : "👁 Ver acuerdo de pago (para que el cliente lo lea)"}
                         </button>
                         {verPreviewAcuerdo && clienteDetalle && (
-                          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "white" }}
+                          <div style={{ border: "1px solid var(--line)", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "var(--card)" }}
                             dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }, infoFinContrato(contratoDetalle)) }} />
                         )}
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Firma del cliente (obligatoria para crear el convenio):</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)" }}>Firma del cliente (obligatoria para crear el convenio):</div>
                         <CanvasFirma key="firma-acuerdo" label="Firma del cliente" modal opcional={false} onChange={setConvFirma} />
                       </div>
 
-                      {convError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
-                      {convExito && <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
+                      {convError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
+                      {convExito && <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
                       <button onClick={handleCrearConvenio} disabled={procesando || !convFirma} style={{ ...primaryBtn, opacity: procesando || !convFirma ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
                     </div>
                   )}
@@ -2233,7 +2233,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {detailTab === "historial" && (
             <div style={{ display: "grid", gap: 8 }}>
               {pagosContrato.length === 0 ? (
-                <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin pagos registrados.</div>
               ) : pagosContrato.map(p => {
                 // Desglose de a dónde se aplicó el pago. Cuota + Deuda + Convenio + Saldo a
                 // favor suman el valor total; el Ahorro es la parte de la cuota que es ahorro
@@ -2255,13 +2255,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 if (convAp > 0) partes.push(`Convenio $${fmt(convAp)}`);
                 if (saldoAp > 0) partes.push(`Saldo a favor $${fmt(saldoAp)}`);
                 return (
-                <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{formatDate(p.fecha)} · {p.metodo}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDate(p.fecha)} · {p.metodo}</div>
                       {p.tipo_registro === "adelanto_base" && (
-                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 999, padding: "1px 8px" }}>
+                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "1px 8px" }}>
                           🎫 Primera semana adelantada (base inicial)
                         </span>
                       )}
@@ -2270,17 +2270,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <PagoBadge estado={p.estado} />
                       {p.estado === "Pendiente" && puedeConfirmarPago && (
                         <>
-                          <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
-                          <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
+                          <button onClick={() => confirmarPago(p.id)} style={miniBtn("var(--ok-soft)", "var(--ok-ink)")}>Confirmar</button>
+                          <button onClick={() => rechazarPago(p.id)} style={miniBtn("var(--bad-soft)", "var(--bad-ink)")}>Rechazar</button>
                         </>
                       )}
                     </div>
                   </div>
                   {p.estado !== "Rechazado" && (partes.length > 0 || ahorroAp > 0) && (
-                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: 11, color: "#0369a1", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
-                      <span style={{ color: "#94a3b8" }}>Se aplicó a:</span>
-                      {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "#e0f2fe", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "#94a3b8" }}>sin desglose (pago antiguo)</span>}
-                      {ahorroAp > 0 && <span style={{ color: "#94a3b8", fontWeight: 400 }}>(de la cuota, ${fmt(ahorroAp)} fue ahorro)</span>}
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line2)", fontSize: 11, color: "var(--accent-ink)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+                      <span style={{ color: "var(--faint)" }}>Se aplicó a:</span>
+                      {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "var(--accent-soft)", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "var(--faint)" }}>sin desglose (pago antiguo)</span>}
+                      {ahorroAp > 0 && <span style={{ color: "var(--faint)", fontWeight: 400 }}>(de la cuota, ${fmt(ahorroAp)} fue ahorro)</span>}
                     </div>
                   )}
                 </div>
@@ -2295,7 +2295,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // ── Lista de contratos para un tab ────────────────────────────────────────
   function ListaContratos({ lista }: { lista: typeof resumenContratos }) {
     if (lista.length === 0) {
-      return <div style={{ color: "#64748b", fontSize: 14, padding: "12px 0" }}>Sin contratos en esta categoría.</div>;
+      return <div style={{ color: "var(--muted)", fontSize: 14, padding: "12px 0" }}>Sin contratos en esta categoría.</div>;
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2315,8 +2315,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               style={{
                 padding: "12px 14px",
                 borderRadius: 14,
-                border: seleccionado ? "2px solid #0284c7" : `1px solid ${c.estadoCartera === "mora" ? "#fecaca" : "#e2e8f0"}`,
-                background: seleccionado ? "#eff6ff" : c.estadoCartera === "mora" ? "#fff5f5" : "#f8fafc",
+                border: seleccionado ? "2px solid var(--accent)" : `1px solid ${c.estadoCartera === "mora" ? "var(--bad-line)" : "var(--line)"}`,
+                background: seleccionado ? "var(--accent-soft2)" : c.estadoCartera === "mora" ? "var(--bad-soft)" : "var(--soft2)",
                 gap: 8,
               }}
             >
@@ -2329,22 +2329,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
                     {cliente?.nombre || "Sin cliente"}
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     {moto ? `🏍️ ${moto.placa} · ` : ""}
                     {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
                     {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
-                      <span style={{ color: "#991b1b", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
+                      <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
                     )}
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                   <EstadoBadge estado={c.estadoCartera} />
                   {empalmePendiente(c) && (
-                    <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
+                    <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
                   )}
                   {/* Migrado ya confirmado que debe y no tiene acuerdo de pago → falta sentarlo a firmar convenio */}
                   {!empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioActivo && (
-                    <span style={{ background: "#e0f2fe", color: "#0369a1", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>📝 Falta convenio</span>
+                    <span style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>📝 Falta convenio</span>
                   )}
                 </div>
               </div>
@@ -2353,11 +2353,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   {pendiente > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: enProrrateoLista ? "#0284c7" : "#991b1b", background: enProrrateoLista ? "#eff6ff" : "#fee2e2", borderRadius: 8, padding: "2px 8px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: enProrrateoLista ? "var(--accent)" : "var(--bad-ink)", background: enProrrateoLista ? "var(--accent-soft2)" : "var(--bad-soft)", borderRadius: 8, padding: "2px 8px" }}>
                       {enProrrateoLista ? `Próx. pago $${fmt(pendiente)}` : `Debe $${fmt(pendiente)}`}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 8, padding: "2px 8px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>
                       ✓ Al día
                     </span>
                   )}
@@ -2367,7 +2367,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     </span>
                   )}
                   {c.pendientesCount > 0 && (
-                    <span style={{ fontSize: 11, color: "#92400e" }}>{c.pendientesCount} pend.</span>
+                    <span style={{ fontSize: 11, color: "var(--warn-ink)" }}>{c.pendientesCount} pend.</span>
                   )}
                 </div>
                 <button
@@ -2378,7 +2378,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     setModalListaAbierta(false);
                     setModalPago(true);
                   }}
-                  style={{ ...miniBtn("#0284c7", "white"), padding: "5px 12px", fontSize: 12, flexShrink: 0 }}
+                  style={{ ...miniBtn("var(--accent)", "var(--card)"), padding: "5px 12px", fontSize: 12, flexShrink: 0 }}
                 >
                   💰 Pagar
                 </button>
@@ -2394,10 +2394,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // Cada KPI lleva a Contratos con el filtro puesto (o a Historial)
   function irAContratos(filtro: FiltroContratos) { setActiveTab("contratos"); setFiltroContratos(filtro); setContratoSeleccionadoId(null); }
   const kpis: { label: string; value: string | number; sub?: string; color: string; bg: string; onClick: () => void }[] = [
-    { label: "Pagan hoy", value: totalPaganHoy, color: "#0284c7", bg: "#eff6ff", onClick: () => irAContratos("pagan-hoy") },
-    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "#166534", bg: "#dcfce7", onClick: () => { setActiveTab("historial"); setContratoSeleccionadoId(null); } },
-    { label: "En gabela", value: enGabela.length, color: "#92400e", bg: "#fef3c7", onClick: () => irAContratos("gabela") },
-    { label: "En mora", value: enMora.length, color: "#991b1b", bg: "#fee2e2", onClick: () => irAContratos("mora") },
+    { label: "Pagan hoy", value: totalPaganHoy, color: "var(--accent)", bg: "var(--accent-soft2)", onClick: () => irAContratos("pagan-hoy") },
+    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "var(--ok-ink)", bg: "var(--ok-soft)", onClick: () => { setActiveTab("historial"); setContratoSeleccionadoId(null); } },
+    { label: "En gabela", value: enGabela.length, color: "var(--warn-ink)", bg: "var(--warn-soft)", onClick: () => irAContratos("gabela") },
+    { label: "En mora", value: enMora.length, color: "var(--bad-ink)", bg: "var(--bad-soft)", onClick: () => irAContratos("mora") },
   ];
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
@@ -2429,12 +2429,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     <div>
       {/* Header */}
       <h2 style={{ fontSize: 24, margin: 0, fontWeight: 800 }}>Cartera</h2>
-      <p style={{ marginTop: 6, color: "#64748b", margin: "6px 0 0" }}>
+      <p style={{ marginTop: 6, color: "var(--muted)", margin: "6px 0 0" }}>
         Control de cobros, deudas, convenios y gestiones de mora.
       </p>
 
       {errorPagos && (
-        <div style={{ marginTop: 12, color: "#991b1b", background: "#fee2e2", padding: "10px 14px", borderRadius: 12 }}>
+        <div style={{ marginTop: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "10px 14px", borderRadius: 12 }}>
           Error: {errorPagos}
         </div>
       )}
@@ -2446,7 +2446,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             key={k.label}
             onClick={k.onClick}
             style={{
-              background: "white",
+              background: "var(--card)",
               border: "2px solid transparent",
               borderRadius: 16,
               padding: "14px 16px",
@@ -2455,7 +2455,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               textAlign: "left",
             }}
           >
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: k.color }}>{k.value}</div>
             {k.sub && (
               <div style={{ fontSize: 11, color: k.color, opacity: 0.75, marginTop: 2 }}>{k.sub}</div>
@@ -2471,8 +2471,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             key={t.key}
             onClick={() => { setActiveTab(t.key); setContratoSeleccionadoId(null); }}
             style={{
-              background: activeTab === t.key ? "#0284c7" : "#f1f5f9",
-              color: activeTab === t.key ? "white" : "#334155",
+              background: activeTab === t.key ? "var(--accent)" : "var(--soft)",
+              color: activeTab === t.key ? "var(--card)" : "var(--muted2)",
               border: "none",
               borderRadius: 999,
               padding: isMobile ? "5px 6px" : "8px 16px",
@@ -2487,8 +2487,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {t.count !== undefined && (
               <span style={{
                 marginLeft: isMobile ? 3 : 6,
-                background: activeTab === t.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
-                color: activeTab === t.key ? "white" : "#64748b",
+                background: activeTab === t.key ? "rgba(255,255,255,0.3)" : "var(--line)",
+                color: activeTab === t.key ? "var(--card)" : "var(--muted)",
                 borderRadius: 999,
                 padding: isMobile ? "1px 4px" : "1px 7px",
                 fontSize: isMobile ? 9.5 : 11,
@@ -2505,36 +2505,36 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       {activeTab === "hoy" && (() => {
         type TareasDef = readonly { tipo: TipoGestion; label: string; action: (c: typeof resumenContratos[number]) => void; bg: string; color: string }[];
         const GRUPOS_HOY: { key: FiltroHoy; emoji: string; titulo: string; color: string; bg: string; lista: typeof resumenContratos; tareas: TareasDef }[] = [
-          { key: "recoleccion", emoji: "🚚", titulo: "Recolección", color: "#7f1d1d", bg: "#fee2e2", lista: panelHoy.recoleccion,
+          { key: "recoleccion", emoji: "🚚", titulo: "Recolección", color: "var(--bad-ink2)", bg: "var(--bad-soft)", lista: panelHoy.recoleccion,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "var(--accent-soft)", color: "var(--accent)" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "var(--warn-soft)", color: "var(--warn-ink)" },
               // Recolectar la moto = acción sensible (permiso por persona, default ADMIN+SUBADMIN)
-              ...(puedeRecolectar ? [{ tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "#fee2e2", color: "#991b1b" }] : []),
+              ...(puedeRecolectar ? [{ tipo: "recoleccion" as TipoGestion, label: "Recolección", action: tareaRecoleccion, bg: "var(--bad-soft)", color: "var(--bad-ink)" }] : []),
             ] },
-          { key: "mora", emoji: "🔴", titulo: "Mora", color: "#991b1b", bg: "#fee2e2", lista: panelHoy.mora,
+          { key: "mora", emoji: "🔴", titulo: "Mora", color: "var(--bad-ink)", bg: "var(--bad-soft)", lista: panelHoy.mora,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "var(--accent-soft)", color: "var(--accent)" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "var(--warn-soft)", color: "var(--warn-ink)" },
             ] },
-          { key: "gabela", emoji: "🟡", titulo: "Gabela", color: "#92400e", bg: "#fef3c7", lista: panelHoy.gabela,
+          { key: "gabela", emoji: "🟡", titulo: "Gabela", color: "var(--warn-ink)", bg: "var(--warn-soft)", lista: panelHoy.gabela,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
-              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "#fef3c7", color: "#92400e" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "var(--accent-soft)", color: "var(--accent)" },
+              { tipo: "sirena" as TipoGestion, label: "Sirena", action: tareaSirena, bg: "var(--warn-soft)", color: "var(--warn-ink)" },
             ] },
-          { key: "pagan-hoy", emoji: "🔵", titulo: "Pagan hoy", color: "#0284c7", bg: "#eff6ff", lista: panelHoy.paganHoy,
+          { key: "pagan-hoy", emoji: "🔵", titulo: "Pagan hoy", color: "var(--accent)", bg: "var(--accent-soft2)", lista: panelHoy.paganHoy,
             tareas: [
-              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "#dbeafe", color: "#1d4ed8" },
-              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "#e0f2fe", color: "#0284c7" },
+              { tipo: "mensaje_recordatorio" as TipoGestion, label: "Mensaje", action: tareaMensaje, bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              { tipo: "llamada" as TipoGestion, label: "Llamar", action: tareaLlamar, bg: "var(--accent-soft)", color: "var(--accent)" },
             ] },
         ];
 
         // Lista activa según filtro + búsqueda
         const grupoActivo = filtroHoy === "todos"
-          ? { tareas: GRUPOS_HOY[1].tareas as TareasDef, lista: [...panelHoy.recoleccion, ...panelHoy.mora, ...panelHoy.gabela, ...panelHoy.paganHoy], color: "#0f172a", bg: "#f1f5f9" }
+          ? { tareas: GRUPOS_HOY[1].tareas as TareasDef, lista: [...panelHoy.recoleccion, ...panelHoy.mora, ...panelHoy.gabela, ...panelHoy.paganHoy], color: "var(--text)", bg: "var(--soft)" }
           : GRUPOS_HOY.find(g => g.key === filtroHoy) ?? GRUPOS_HOY[1];
 
         const qHoy = busquedaHoy.toLowerCase();
@@ -2575,8 +2575,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   key={ch.key}
                   onClick={() => setFiltroHoy(ch.key)}
                   style={{
-                    background: filtroHoy === ch.key ? "#0284c7" : "#f1f5f9",
-                    color: filtroHoy === ch.key ? "white" : "#334155",
+                    background: filtroHoy === ch.key ? "var(--accent)" : "var(--soft)",
+                    color: filtroHoy === ch.key ? "var(--card)" : "var(--muted2)",
                     border: "none", borderRadius: 999, padding: "5px 10px",
                     fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
                   }}
@@ -2584,8 +2584,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   {ch.label}
                   <span style={{
                     marginLeft: 4,
-                    background: filtroHoy === ch.key ? "rgba(255,255,255,0.3)" : "#e2e8f0",
-                    color: filtroHoy === ch.key ? "white" : "#64748b",
+                    background: filtroHoy === ch.key ? "rgba(255,255,255,0.3)" : "var(--line)",
+                    color: filtroHoy === ch.key ? "var(--card)" : "var(--muted)",
                     borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
                   }}>{ch.count}</span>
                 </button>
@@ -2594,10 +2594,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             {/* Resumen campo */}
             {puedeCobroCampo && misCobrosCampoHoy.count > 0 && (
-              <div style={{ marginTop: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 14px" }}>
-                <div style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>💵 Recogiste hoy: ${fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
+              <div style={{ marginTop: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", borderRadius: 12, padding: "10px 14px" }}>
+                <div style={{ fontSize: 13, color: "var(--ok-ink)", fontWeight: 700 }}>💵 Recogiste hoy: ${fmt(misCobrosCampoHoy.total)} en {misCobrosCampoHoy.count} cobro(s)</div>
                 {misCobrosCampoHoy.pendienteEntregar > 0 && (
-                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 2 }}>Pendiente entregar a caja: <strong>${fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
+                  <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 2 }}>Pendiente entregar a caja: <strong>${fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
                 )}
               </div>
             )}
@@ -2608,27 +2608,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 value={busquedaHoy}
                 onChange={e => setBusquedaHoy(e.target.value)}
                 placeholder="Buscar cliente o placa..."
-                style={{ ...inputStyle, background: "white" }}
+                style={{ ...inputStyle, background: "var(--card)" }}
               />
             </div>
 
             {/* Lista en recuadro con scroll — igual que Contratos */}
             {totalTareasHoy === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 16px", color: "#94a3b8" }}>
+              <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--faint)" }}>
                 <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
-                <div style={{ fontWeight: 700, color: "#166534" }}>No tienes tareas pendientes hoy</div>
+                <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>No tienes tareas pendientes hoy</div>
               </div>
             ) : (
-              <div style={{ marginTop: 12, background: "white", borderRadius: 16, padding: 12, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 16, padding: 12, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
                 {listaOrdenada.length === 0 ? (
-                  <div style={{ color: "#64748b", fontSize: 14, padding: "12px 0" }}>Sin resultados.</div>
+                  <div style={{ color: "var(--muted)", fontSize: 14, padding: "12px 0" }}>Sin resultados.</div>
                 ) : listaOrdenada.map(c => {
                   const cliente = clientes.find(cl => cl.id === c.cliente_id);
                   const moto = motos.find(m => m.id === c.moto_id);
                   const grupoC = GRUPOS_HOY.find(g => g.lista.some(x => x.id === c.id));
                   const tareasDe = grupoC ? grupoC.tareas : [];
                   const todasHechas = tareasDe.length > 0 && tareasDe.every(t => gestionHechaHoy(c.id, t.tipo));
-                  const borderColor = grupoC ? grupoC.color : "#e2e8f0";
+                  const borderColor = grupoC ? grupoC.color : "var(--line)";
 
                   // Monto que debe pagar
                   const enProrrateoHoy = estaEnProrrateo(c, c.sinPagosNunca ?? true);
@@ -2650,9 +2650,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       style={{
                         padding: "12px 14px",
                         borderRadius: 14,
-                        border: todasHechas ? "1px solid #e2e8f0" : `1px solid ${borderColor}44`,
-                        borderLeft: `4px solid ${todasHechas ? "#cbd5e1" : borderColor}`,
-                        background: todasHechas ? "#f8fafc" : "white",
+                        border: todasHechas ? "1px solid var(--line)" : `1px solid ${borderColor}44`,
+                        borderLeft: `4px solid ${todasHechas ? "var(--line2)" : borderColor}`,
+                        background: todasHechas ? "var(--soft2)" : "var(--card)",
                         opacity: todasHechas ? 0.6 : 1,
                         display: "flex", flexDirection: "column", gap: 10,
                       }}
@@ -2663,13 +2663,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, cursor: "pointer" }}
                       >
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>
                             {cliente?.nombre ?? "Sin cliente"}
                           </div>
-                          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                            {moto && <span style={{ color: "#0284c7", fontWeight: 600 }}>🏍️ {moto.placa} · </span>}
+                          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                            {moto && <span style={{ color: "var(--accent)", fontWeight: 600 }}>🏍️ {moto.placa} · </span>}
                             {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
-                              ? <span style={{ color: "#991b1b", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
+                              ? <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
                               : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}</span>
                             }
                           </div>
@@ -2677,7 +2677,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                           <EstadoBadge estado={c.estadoCartera} />
                           {empalmePendiente(c) && (
-                            <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
+                            <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
                           )}
                         </div>
                       </div>
@@ -2685,7 +2685,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       {/* Fila inferior: monto + botones de tarea */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span
-                          style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "#991b1b" : "#166534", background: debePagar > 0 ? "#fee2e2" : "#dcfce7", borderRadius: 8, padding: "2px 8px" }}
+                          style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "var(--bad-ink)" : "var(--ok-ink)", background: debePagar > 0 ? "var(--bad-soft)" : "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}
                         >
                           {todasHechas ? "✓ Listo" : debePagar > 0
                             ? `Debe $${fmt(debePagar)} (cuota $${fmt(cuotaPendParte)}${c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})`
@@ -2704,14 +2704,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                                 onClick={() => t.action(c)}
                                 disabled={bloqueado}
                                 title={bloqueadoProtocolo ? `Falta intentar: ${previos!.faltan.join(", ")}` : undefined}
-                                style={{ ...(hecha ? miniBtn("#dcfce7", "#166534") : miniBtn(t.bg, t.color)), opacity: bloqueado ? 0.5 : 1 }}
+                                style={{ ...(hecha ? miniBtn("var(--ok-soft)", "var(--ok-ink)") : miniBtn(t.bg, t.color)), opacity: bloqueado ? 0.5 : 1 }}
                               >
                                 {recolectando ? "Recolectando..." : bloqueadoProtocolo ? "🔒 Recolección" : hecha ? `✓ ${t.label}` : t.label}
                               </button>
                             );
                           })}
                           {puedeCobroCampo && (
-                            <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("#f0fdf4", "#166534")}>💵 Cobrar</button>
+                            <button onClick={() => abrirCobroCampo(c.id)} style={miniBtn("var(--ok-soft)", "var(--ok-ink)")}>💵 Cobrar</button>
                           )}
                         </div>
                       </div>
@@ -2754,22 +2754,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
           const esCampo = p.tipo_registro === "campo";
           return (
-            <div key={p.id} style={{ border: "1px solid #fde68a", background: "#fffbeb", borderRadius: 14, padding: 14 }}>
+            <div key={p.id} style={{ border: "1px solid var(--warn-line)", background: "var(--warn-soft2)", borderRadius: 14, padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     {moto ? `🏍️ ${moto.placa} · ` : ""}{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft3)", color: "var(--accent-ink)", fontSize: 11, fontWeight: 700 }}>
                       {esCampo ? "💵 Cobro en campo" : "🏦 Transferencia"}
                     </span>
-                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", color: "#0f172a", fontSize: 11, fontWeight: 800 }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", color: "var(--text)", fontSize: 11, fontWeight: 800 }}>
                       $ {fmt(p.valor)}
                     </span>
                     {esCampo && (
-                      <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "#dcfce7" : "#fef3c7", color: p.entregado_caja ? "#166534" : "#92400e", fontSize: 11, fontWeight: 700 }}>
+                      <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "var(--ok-soft)" : "var(--warn-soft)", color: p.entregado_caja ? "var(--ok-ink)" : "var(--warn-ink)", fontSize: 11, fontWeight: 700 }}>
                         {p.entregado_caja ? "Entregado a secretaria" : "En poder del admin"}
                       </span>
                     )}
@@ -2780,7 +2780,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   <img
                     src={p.comprobante_url}
                     onClick={() => setFotoAmpliada(p.comprobante_url)}
-                    style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}
+                    style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid var(--line)" }}
                   />
                 )}
               </div>
@@ -2788,7 +2788,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {/* Acciones */}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                 {esCampo && !p.entregado_caja && puedeCobroCampo && (
-                  <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("#dbeafe", "#1d4ed8")}>📤 Entregué a secretaria</button>
+                  <button onClick={() => marcarEntregadoCaja(p.id)} style={miniBtn("var(--accent-soft3)", "var(--accent-ink)")}>📤 Entregué a secretaria</button>
                 )}
 
                 {/* Confirmar: abre recibo al confirmar — solo staff de oficina */}
@@ -2825,13 +2825,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         });
                       }
                     }}
-                    style={miniBtn("#16a34a", "#ffffff")}
+                    style={miniBtn("var(--ok)", "var(--card)")}
                   >
                     ✓ Confirmar recibido
                   </button>
                 )}
                 {puedeConfirmarPago && (
-                  <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>✕ Rechazar</button>
+                  <button onClick={() => rechazarPago(p.id)} style={miniBtn("var(--bad-soft)", "var(--bad-ink)")}>✕ Rechazar</button>
                 )}
               </div>
             </div>
@@ -2844,7 +2844,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {(esSecretaria || esAdmin) && (
               <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
                 <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>Comprobantes de transferencia esperando verificación.</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Comprobantes de transferencia esperando verificación.</div>
                 <input
                   style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
                   placeholder="Buscar cliente o placa..."
@@ -2852,7 +2852,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   onChange={e => setBusquedaTransferencias(e.target.value)}
                 />
                 {transferencias.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
+                  <div style={{ textAlign: "center", padding: "24px 16px", color: "var(--faint)" }}>
                     <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
                     Sin transferencias pendientes.
                   </div>
@@ -2866,7 +2866,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
               <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>💵 Efectivo de campo por confirmar</div>
-              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 10 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
+              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
               <input
                 style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
                 placeholder="Buscar cliente o placa..."
@@ -2883,8 +2883,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     key={f.key}
                     onClick={() => setFiltroCampoConfirmar(f.key)}
                     style={{
-                      background: filtroCampoConfirmar === f.key ? "#0284c7" : "#f1f5f9",
-                      color: filtroCampoConfirmar === f.key ? "white" : "#334155",
+                      background: filtroCampoConfirmar === f.key ? "var(--accent)" : "var(--soft)",
+                      color: filtroCampoConfirmar === f.key ? "var(--card)" : "var(--muted2)",
                       border: "none", borderRadius: 999, padding: "5px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
                     }}
                   >
@@ -2893,7 +2893,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 ))}
               </div>
               {efectivoCampo.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
+                <div style={{ textAlign: "center", padding: "24px 16px", color: "var(--faint)" }}>
                   <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
                   Sin cobros de campo pendientes.
                 </div>
@@ -2924,7 +2924,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <button
                   key={f}
                   onClick={() => setFiltroPagos(f)}
-                  style={{ ...miniBtn(filtroPagos === f ? "#0284c7" : "#f1f5f9", filtroPagos === f ? "white" : "#334155"), padding: "7px 14px" }}
+                  style={{ ...miniBtn(filtroPagos === f ? "var(--accent)" : "var(--soft)", filtroPagos === f ? "var(--card)" : "var(--muted2)"), padding: "7px 14px" }}
                 >
                   {f === "todos" ? "Todos" : f}
                 </button>
@@ -2932,21 +2932,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             </div>
           </div>
           <div style={{ display: "grid", gap: 10, maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
-            {pagosFiltrados.length === 0 && <div style={{ color: "#64748b", fontSize: 14 }}>Sin pagos registrados.</div>}
+            {pagosFiltrados.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin pagos registrados.</div>}
             {pagosFiltrados.map(p => {
               const contrato = contratos.find(c => c.id === p.contrato_id);
               const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
               const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
               return (
-                <div key={p.id} style={{ padding: "12px 14px", borderRadius: 14, background: p.estado === "Pendiente" ? "#fffbeb" : "#f8fafc", border: p.estado === "Pendiente" ? "1px solid #fde68a" : "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div key={p.id} style={{ padding: "12px 14px", borderRadius: 14, background: p.estado === "Pendiente" ? "var(--warn-soft2)" : "var(--soft2)", border: p.estado === "Pendiente" ? "1px solid var(--warn-line)" : "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
                       {moto ? `${moto.placa} · ` : ""}{cliente?.nombre || "Sin cliente"}
                     </div>
-                    <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
                       {formatDate(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}
                     </div>
-                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>
                       Cuota ${fmt(p.aplicado_tarifa ?? 0)}
                       {(p.aplicado_deuda ?? 0) > 0 && ` · Deuda $${fmt(p.aplicado_deuda ?? 0)}`}
                       {(p.aplicado_convenio ?? 0) > 0 && ` · Convenio $${fmt(p.aplicado_convenio ?? 0)}`}
@@ -2957,8 +2957,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <PagoBadge estado={p.estado} />
                     {p.estado === "Pendiente" && puedeConfirmarPago && (
                       <>
-                        <button onClick={() => confirmarPago(p.id)} style={miniBtn("#dcfce7", "#166534")}>Confirmar</button>
-                        <button onClick={() => rechazarPago(p.id)} style={miniBtn("#fee2e2", "#991b1b")}>Rechazar</button>
+                        <button onClick={() => confirmarPago(p.id)} style={miniBtn("var(--ok-soft)", "var(--ok-ink)")}>Confirmar</button>
+                        <button onClick={() => rechazarPago(p.id)} style={miniBtn("var(--bad-soft)", "var(--bad-ink)")}>Rechazar</button>
                       </>
                     )}
                     {p.estado === "Confirmado" && (
@@ -2988,7 +2988,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                             convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
                           });
                         }}
-                        style={miniBtn("#dcfce7", "#166534")}
+                        style={miniBtn("var(--ok-soft)", "var(--ok-ink)")}
                       >
                         🧾 Recibo
                       </button>
@@ -2997,7 +2997,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <button
                         onClick={() => handleEliminarPago(p)}
                         disabled={eliminandoPagoId === p.id}
-                        style={{ ...miniBtn("#fee2e2", "#991b1b"), opacity: eliminandoPagoId === p.id ? 0.6 : 1 }}
+                        style={{ ...miniBtn("var(--bad-soft)", "var(--bad-ink)"), opacity: eliminandoPagoId === p.id ? 0.6 : 1 }}
                       >
                         {eliminandoPagoId === p.id ? "Eliminando..." : "🗑️ Eliminar"}
                       </button>
@@ -3016,14 +3016,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}
           onClick={cerrarModalCampo}
         >
-          <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 120px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 120px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>💵 Cobro en campo</h3>
-              <button onClick={cerrarModalCampo} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text)" }}>💵 Cobro en campo</h3>
+              <button onClick={cerrarModalCampo} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--faint)" }}>✕</button>
             </div>
 
-            <div style={{ ...card, marginBottom: 14, background: "#fffbeb", border: "1px solid #fde68a", padding: "10px 14px" }}>
-              <div style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+            <div style={{ ...card, marginBottom: 14, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", padding: "10px 14px" }}>
+              <div style={{ fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
                 Recuperas efectivo en campo → queda pendiente → la secretaria lo confirma.
               </div>
             </div>
@@ -3037,7 +3037,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   autoFocus
                   onChange={e => setCampoBusqueda(e.target.value)}
                 />
-                <div style={{ marginBottom: 10, fontSize: 13, color: "#64748b" }}>Selecciona el contrato. Los de <strong>mora/gabela</strong> aparecen primero.</div>
+                <div style={{ marginBottom: 10, fontSize: 13, color: "var(--muted)" }}>Selecciona el contrato. Los de <strong>mora/gabela</strong> aparecen primero.</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "50vh", overflowY: "auto", paddingRight: 2 }}>
                   {(() => {
                     const orden = (e: EstadoCartera) => e === "mora" ? 0 : e === "gabela" ? 1 : 2;
@@ -3050,7 +3050,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         return (cliente?.nombre ?? "").toLowerCase().includes(q) || (moto?.placa ?? "").toLowerCase().includes(q);
                       })
                       .sort((a, b) => orden(a.estadoCartera) - orden(b.estadoCartera));
-                    if (lista.length === 0) return <div style={{ color: "#64748b", fontSize: 14, textAlign: "center", padding: "16px 0" }}>No tienes contratos asignados disponibles para cobrar.</div>;
+                    if (lista.length === 0) return <div style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", padding: "16px 0" }}>No tienes contratos asignados disponibles para cobrar.</div>;
                     return lista.map(r => {
                       const cliente = clientes.find(cl => cl.id === r.cliente_id);
                       const moto = motos.find(m => m.id === r.moto_id);
@@ -3058,11 +3058,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div
                           key={r.id}
                           onClick={() => abrirCobroCampo(r.id)}
-                          style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", border: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                          style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", border: "1px solid var(--line)", background: "var(--soft2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
                         >
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                            {moto && <div style={{ fontSize: 12, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                            {moto && <div style={{ fontSize: 12, color: "var(--accent)" }}>🏍️ {moto.placa}</div>}
                           </div>
                           <EstadoBadge estado={r.estadoCartera} />
                         </div>
@@ -3089,16 +3089,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
                   return (
                     <div style={{ display: "grid", gap: 12 }}>
-                      <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                      <div style={{ padding: "10px 14px", background: "var(--soft2)", borderRadius: 12, border: "1px solid var(--line)" }}>
                         <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                        {moto && <div style={{ fontSize: 13, color: "#0284c7" }}>🏍️ {moto.placa}</div>}
+                        {moto && <div style={{ fontSize: 13, color: "var(--accent)" }}>🏍️ {moto.placa}</div>}
                       </div>
 
                       {/* Referencia: cuánto debe pagar */}
-                      <div style={{ background: "#eff6ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "10px 14px" }}>
-                        <div style={{ fontSize: 11, color: "#0369a1", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#0284c7" }}>$ {fmt(debeTotal)}</div>
-                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                      <div style={{ background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 11, color: "var(--accent-ink)", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent)" }}>$ {fmt(debeTotal)}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                           Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
                         </div>
                       </div>
@@ -3107,11 +3107,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
                       {/* GPS */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, color: "#334155", fontWeight: 600 }}>📍 Ubicación:</span>
-                        {campoGpsEstado === "capturando" && <span style={{ fontSize: 13, color: "#92400e" }}>Capturando…</span>}
-                        {campoGpsEstado === "ok" && campoUbicacion && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✓ Capturada</span>}
-                        {campoGpsEstado === "error" && <span style={{ fontSize: 13, color: "#991b1b" }}>No disponible</span>}
-                        {campoGpsEstado === "idle" && <span style={{ fontSize: 13, color: "#64748b" }}>Sin capturar</span>}
+                        <span style={{ fontSize: 13, color: "var(--muted2)", fontWeight: 600 }}>📍 Ubicación:</span>
+                        {campoGpsEstado === "capturando" && <span style={{ fontSize: 13, color: "var(--warn-ink)" }}>Capturando…</span>}
+                        {campoGpsEstado === "ok" && campoUbicacion && <span style={{ fontSize: 13, color: "var(--ok-ink)", fontWeight: 700 }}>✓ Capturada</span>}
+                        {campoGpsEstado === "error" && <span style={{ fontSize: 13, color: "var(--bad-ink)" }}>No disponible</span>}
+                        {campoGpsEstado === "idle" && <span style={{ fontSize: 13, color: "var(--muted)" }}>Sin capturar</span>}
                         <button onClick={capturarGPSCampo} style={{ ...secondaryBtn, fontSize: 12, padding: "6px 10px" }}>{campoUbicacion ? "Recapturar" : "Capturar GPS"}</button>
                       </div>
 
@@ -3127,7 +3127,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                             🖼 Galería
                             <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setCampoFoto(e.target.files?.[0] ?? null)} />
                           </label>
-                          {campoFoto && <span style={{ fontSize: 12, color: "#166534", fontWeight: 700, alignSelf: "center" }}>✓ {campoFoto.name.slice(0, 20)}</span>}
+                          {campoFoto && <span style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700, alignSelf: "center" }}>✓ {campoFoto.name.slice(0, 20)}</span>}
                         </div>
                       </div>
 
@@ -3135,13 +3135,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={labelStyle}>Nota (opcional)</div>
                         <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 60 }} value={campoNota} onChange={e => setCampoNota(e.target.value)} placeholder="Observaciones del cobro en campo..." />
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
-                      <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#92400e" }}>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>Cobrado por: <strong>{profile?.nombre ?? "—"}</strong></div>
+                      <div style={{ background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "var(--warn-ink)" }}>
                         Al registrar: se manda <strong>recibo provisional</strong> al cliente por WhatsApp y queda <strong>pendiente</strong> hasta que entregues el efectivo a la secretaria y ella lo confirme en Caja.
                       </div>
-                      {campoError && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
+                      {campoError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{campoError}</div>}
                       {campoExito && (
-                        <div style={{ color: "#166534", background: "#dcfce7", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
+                        <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
                           ✓ Cobro en campo registrado (pendiente de entrega a caja)
                         </div>
                       )}
@@ -3170,8 +3170,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   key={f.key}
                   onClick={() => { setFiltroContratos(f.key); setContratoSeleccionadoId(null); }}
                   style={{
-                    background: filtroContratos === f.key ? "#0284c7" : "#f1f5f9",
-                    color: filtroContratos === f.key ? "white" : "#334155",
+                    background: filtroContratos === f.key ? "var(--accent)" : "var(--soft)",
+                    color: filtroContratos === f.key ? "var(--card)" : "var(--muted2)",
                     border: "none", borderRadius: 999, padding: "7px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
@@ -3187,8 +3187,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   style={{
                     padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
                     fontSize: 12, fontWeight: 700,
-                    background: filtroGrupoContratos === g ? "#0284c7" : "#f1f5f9",
-                    color: filtroGrupoContratos === g ? "white" : "#334155",
+                    background: filtroGrupoContratos === g ? "var(--accent)" : "var(--soft)",
+                    color: filtroGrupoContratos === g ? "var(--card)" : "var(--muted2)",
                   }}
                 >
                   {g === "todos" ? "Todos" : g}
@@ -3205,7 +3205,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {/* Lista dentro de recuadro con scroll propio */}
               <div style={{ maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
                 {listaFiltrada.length === 0
-                  ? <div style={{ textAlign: "center", padding: "28px 12px", color: "#94a3b8", fontSize: 14 }}>No hay contratos en este filtro.</div>
+                  ? <div style={{ textAlign: "center", padding: "28px 12px", color: "var(--faint)", fontSize: 14 }}>No hay contratos en este filtro.</div>
                   : <ListaContratos lista={listaFiltrada} />}
               </div>
             </div>
@@ -3228,7 +3228,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {puedePagoNormal && (
                 <button
                   onClick={() => { setFabOpen(false); setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
                   💰 Registrar pago
                 </button>
@@ -3236,7 +3236,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               {puedeCobroCampo && (
                 <button
                   onClick={() => { setFabOpen(false); abrirModalCampoBusqueda(); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, background: "white", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
                   💵 Cobro en campo
                 </button>
@@ -3253,7 +3253,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               setFabOpen(v => !v);
             }}
             aria-label="Acciones rápidas"
-            style={{ width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", fontSize: 30, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(2,132,199,0.4)", display: "flex", alignItems: "center", justifyContent: "center", transform: fabOpen ? "rotate(45deg)" : "none", transition: "transform 0.15s" }}
+            style={{ width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", fontSize: 30, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(2,132,199,0.4)", display: "flex", alignItems: "center", justifyContent: "center", transform: fabOpen ? "rotate(45deg)" : "none", transition: "transform 0.15s" }}
           >
             +
           </button>
@@ -3266,15 +3266,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}
           onClick={cerrarModalPago}
         >
-          <div style={{ background: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Registrar pago</h3>
-              <button onClick={cerrarModalPago} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>✕</button>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Registrar pago</h3>
+              <button onClick={cerrarModalPago} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--faint)" }}>✕</button>
             </div>
 
             {/* Buscador-selector unificado (combobox) */}
             <div style={{ marginBottom: 14, position: "relative" }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Cliente / contrato</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>Cliente / contrato</label>
               <div style={{ position: "relative" }}>
                 <input
                   style={{ ...inputStyle, paddingRight: modalContratoId ? 34 : 12 }}
@@ -3287,7 +3287,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 {modalContratoId && (
                   <button
                     onClick={() => { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(true); }}
-                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#94a3b8" }}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--faint)" }}
                     title="Limpiar selección"
                   >✕</button>
                 )}
@@ -3295,17 +3295,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
               {/* Lista de resultados */}
               {modalListaAbierta && !modalContratoId && (
-                <div style={{ position: "absolute", left: 0, right: 0, top: "100%", marginTop: 4, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", maxHeight: 240, overflowY: "auto", zIndex: 10 }}>
+                <div style={{ position: "absolute", left: 0, right: 0, top: "100%", marginTop: 4, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", maxHeight: 240, overflowY: "auto", zIndex: 10 }}>
                   {modalResultados.length === 0 ? (
-                    <div style={{ padding: "12px 14px", fontSize: 13, color: "#94a3b8" }}>Sin coincidencias.</div>
+                    <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--faint)" }}>Sin coincidencias.</div>
                   ) : (
                     modalResultados.slice(0, 30).map(c => (
                       <button
                         key={c.id}
                         onClick={() => { setModalContratoId(c.id); setModalBusqueda(etiquetaContrato(c)); setModalListaAbierta(false); setModalError(null); setModalExito(false); }}
-                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: "1px solid #f1f5f9", background: "white", cursor: "pointer", fontSize: 13, color: "#0f172a" }}
-                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc"}
-                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "white"}
+                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: "1px solid var(--soft)", background: "var(--card)", cursor: "pointer", fontSize: 13, color: "var(--text)" }}
+                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "var(--soft2)"}
+                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "var(--card)"}
                       >
                         <span style={{ fontWeight: 600, textTransform: "uppercase" }}>{etiquetaContrato(c)}</span>
                         <EstadoBadge estado={c.estadoCartera as EstadoCartera} />
@@ -3318,14 +3318,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             {/* Detalle del contrato seleccionado — dentro del modal */}
             {modalContrato && (
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 14 }}>
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14, marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", textTransform: "uppercase" }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>
                     {modalCliente?.nombre || "Sin cliente"}
                   </div>
                   <EstadoBadge estado={modalContrato.estadoCartera as EstadoCartera} />
                 </div>
-                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
                   {modalMoto ? `🏍️ ${modalMoto.placa} · ` : ""}
                   {modalContrato.forma_pago === "Diario" ? "Contrato diario" : "Pago semanal"}
                   {modalContrato.diasSinPago < 999 ? ` · ${modalContrato.diasSinPago} días sin pago` : ""}
@@ -3333,17 +3333,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
                 {/* Cuotas */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <div style={{ flex: 1, background: "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Cuota período</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>$ {fmt(modalCuotaPactada)}</div>
+                  <div style={{ flex: 1, background: "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Cuota período</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>$ {fmt(modalCuotaPactada)}</div>
                   </div>
-                  <div style={{ flex: 1, background: "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Pagado</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#166534" }}>$ {fmt(modalPagadoPeriodo)}</div>
+                  <div style={{ flex: 1, background: "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Pagado</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ok-ink)" }}>$ {fmt(modalPagadoPeriodo)}</div>
                   </div>
-                  <div style={{ flex: 1, background: modalCuotaPendiente > 0 ? "#fef2f2" : "#f8fafc", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Pendiente</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: modalCuotaPendiente > 0 ? "#991b1b" : "#0f172a" }}>$ {fmt(modalCuotaPendiente)}</div>
+                  <div style={{ flex: 1, background: modalCuotaPendiente > 0 ? "var(--bad-soft)" : "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Pendiente</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: modalCuotaPendiente > 0 ? "var(--bad-ink)" : "var(--text)" }}>$ {fmt(modalCuotaPendiente)}</div>
                   </div>
                 </div>
 
@@ -3351,25 +3351,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 {(modalContrato.deudaContrato > 0 || modalContrato.cuotaConvenio > 0) && (
                   <div style={{ display: "flex", gap: 8, marginBottom: 12, fontSize: 12 }}>
                     {modalContrato.deudaContrato > 0 && (
-                      <div style={{ flex: 1, background: "#fff7ed", borderRadius: 8, padding: "6px 10px", color: "#c2410c", fontWeight: 700 }}>Deuda: $ {fmt(modalContrato.deudaContrato)}</div>
+                      <div style={{ flex: 1, background: "var(--orange-soft)", borderRadius: 8, padding: "6px 10px", color: "var(--orange)", fontWeight: 700 }}>Deuda: $ {fmt(modalContrato.deudaContrato)}</div>
                     )}
                     {modalContrato.cuotaConvenio > 0 && (
-                      <div style={{ flex: 1, background: "#eff6ff", borderRadius: 8, padding: "6px 10px", color: "#0369a1", fontWeight: 700 }}>Convenio: $ {fmt(modalContrato.cuotaConvenio)}/período</div>
+                      <div style={{ flex: 1, background: "var(--accent-soft2)", borderRadius: 8, padding: "6px 10px", color: "var(--accent-ink)", fontWeight: 700 }}>Convenio: $ {fmt(modalContrato.cuotaConvenio)}/período</div>
                     )}
                   </div>
                 )}
 
                 {/* Historial */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", marginBottom: 6 }}>Últimos pagos</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase", marginBottom: 6 }}>Últimos pagos</div>
                 {modalPagos.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>Sin pagos registrados.</div>
+                  <div style={{ fontSize: 12, color: "var(--faint)" }}>Sin pagos registrados.</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 130, overflowY: "auto" }}>
                     {modalPagos.map(p => (
-                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", borderRadius: 8, padding: "6px 10px" }}>
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--soft2)", borderRadius: 8, padding: "6px 10px" }}>
                         <div>
                           <span style={{ fontWeight: 700, fontSize: 13 }}>$ {fmt(p.valor)}</span>
-                          <span style={{ fontSize: 11, color: "#64748b" }}> · {formatDate(p.fecha)} · {p.metodo}</span>
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}> · {formatDate(p.fecha)} · {p.metodo}</span>
                         </div>
                         <PagoBadge estado={p.estado} />
                       </div>
@@ -3386,7 +3386,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             {/* Desglose de aplicación */}
             {modalContrato && modalMonto > 0 && (
-              <div style={{ background: "#f0f9ff", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#0369a1" }}>
+              <div style={{ background: "var(--accent-soft4)", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "var(--accent-ink)" }}>
                 Se aplicará:
                 {modalDesglose.tarifa > 0 && <> tarifa $ {fmt(modalDesglose.tarifa)}</>}
                 {modalDesglose.deuda > 0 && <> · deuda $ {fmt(modalDesglose.deuda)}</>}
@@ -3398,7 +3398,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
             {/* Método */}
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Método de pago</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>Método de pago</label>
               <select style={inputStyle} value={modalMetodo} onChange={e => setModalMetodo(e.target.value as MetodoPago)}>
                 <option value="Efectivo">Efectivo (confirma automático)</option>
                 <option value="Transferencia">Transferencia (queda pendiente)</option>
@@ -3408,27 +3408,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {/* Foto del comprobante — obligatoria en transferencia */}
             {modalMetodo === "Transferencia" && (
               <div style={{ marginBottom: 18 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "#334155", display: "block", marginBottom: 6 }}>Foto del comprobante *</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>Foto del comprobante *</label>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
                     📷 Cámara
                     <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} />
                   </label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
                     🖼 Galería
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setModalComprobante(e.target.files?.[0] ?? null)} />
                   </label>
                 </div>
-                {modalComprobante && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✓ {modalComprobante.name}</div>}
-                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>La transferencia quedará pendiente hasta que la secretaria confirme que entró a la cuenta.</div>
+                {modalComprobante && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✓ {modalComprobante.name}</div>}
+                <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>La transferencia quedará pendiente hasta que la secretaria confirme que entró a la cuenta.</div>
               </div>
             )}
 
-            {modalError && <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12 }}>{modalError}</div>}
+            {modalError && <div style={{ color: "var(--bad-ink)", fontSize: 13, marginBottom: 12 }}>{modalError}</div>}
             {modalExito && (
-              <div style={{ padding: "12px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>⏳ Transferencia registrada</div>
-                <div style={{ fontSize: 12, color: "#92400e", marginTop: 4 }}>El recibo se generará cuando la secretaria confirme que el dinero entró a la cuenta.</div>
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)" }}>⏳ Transferencia registrada</div>
+                <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 4 }}>El recibo se generará cuando la secretaria confirme que el dinero entró a la cuenta.</div>
               </div>
             )}
 

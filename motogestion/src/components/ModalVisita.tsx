@@ -15,7 +15,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: 10,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
@@ -25,16 +25,16 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 5,
   fontSize: 13,
   fontWeight: 600,
-  color: "#334155",
+  color: "var(--muted2)",
 };
 
 const sectionTitle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 800,
-  color: "#0f172a",
+  color: "var(--text)",
   marginBottom: 12,
   paddingBottom: 6,
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: "1px solid var(--line)",
 };
 
 export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuardada }: Props) {
@@ -164,7 +164,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
         style={{
           width: "100%",
           maxWidth: 540,
-          background: "white",
+          background: "var(--card)",
           borderRadius: 20,
           padding: 24,
           maxHeight: "92vh",
@@ -174,10 +174,10 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, color: "#0f172a" }}>Registrar visita domiciliaria</h3>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase", fontWeight: 600 }}>{clienteNombre}</div>
+            <h3 style={{ margin: 0, fontSize: 18, color: "var(--text)" }}>Registrar visita domiciliaria</h3>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase", fontWeight: 600 }}>{clienteNombre}</div>
           </div>
-          <button onClick={onClose} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16, color: "#334155" }}>✕</button>
+          <button onClick={onClose} style={{ border: "none", background: "var(--soft)", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 16, color: "var(--muted2)" }}>✕</button>
         </div>
 
         <div style={{ display: "grid", gap: 20 }}>
@@ -191,7 +191,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                 <div style={labelStyle}>¿El cliente vive allí?</div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {(["Sí", "No", "No encontrado"] as const).map((op) => (
-                    <label key={op} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: `2px solid ${viveAlli === op ? "#0284c7" : "#e2e8f0"}`, background: viveAlli === op ? "#e0f2fe" : "white", fontSize: 13, fontWeight: 600, color: viveAlli === op ? "#0284c7" : "#334155" }}>
+                    <label key={op} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: `2px solid ${viveAlli === op ? "var(--accent)" : "var(--line)"}`, background: viveAlli === op ? "var(--accent-soft)" : "var(--card)", fontSize: 13, fontWeight: 600, color: viveAlli === op ? "var(--accent)" : "var(--muted2)" }}>
                       <input
                         type="radio"
                         name="viveAlli"
@@ -245,7 +245,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
               </div>
 
               <div>
-                <div style={labelStyle}>Observaciones del visitador <span style={{ color: "#991b1b" }}>*</span></div>
+                <div style={labelStyle}>Observaciones del visitador <span style={{ color: "var(--bad-ink)" }}>*</span></div>
                 <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} placeholder="Describe lo que observaste en la visita..." value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
               </div>
 
@@ -268,30 +268,30 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
               <div>
                 <div style={labelStyle}>Foto cliente + funcionario</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
                     📷 Cámara
                     <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
                   </label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#f1f5f9", color: "#334155", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "var(--soft)", color: "var(--muted2)", fontWeight: 700, fontSize: 13 }}>
                     🖼 Galería
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setFotoCliente(e.target.files?.[0] ?? null)} />
                   </label>
                 </div>
-                {fotoCliente && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoCliente.name}</div>}
+                {fotoCliente && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✔ {fotoCliente.name}</div>}
               </div>
               <div>
                 <div style={labelStyle}>Foto fachada</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
                     📷 Cámara
                     <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
                   </label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "#f1f5f9", color: "#334155", fontWeight: 700, fontSize: 13 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, background: "var(--soft)", color: "var(--muted2)", fontWeight: 700, fontSize: 13 }}>
                     🖼 Galería
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setFotoFachada(e.target.files?.[0] ?? null)} />
                   </label>
                 </div>
-                {fotoFachada && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>✔ {fotoFachada.name}</div>}
+                {fotoFachada && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✔ {fotoFachada.name}</div>}
               </div>
             </div>
           </div>
@@ -304,39 +304,39 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                 type="button"
                 onClick={capturarUbicacion}
                 disabled={capturandoGPS}
-                style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: capturandoGPS ? "not-allowed" : "pointer", background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13, opacity: capturandoGPS ? 0.7 : 1 }}
+                style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: capturandoGPS ? "not-allowed" : "pointer", background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, opacity: capturandoGPS ? 0.7 : 1 }}
               >
                 {capturandoGPS ? "Capturando..." : "📍 Capturar ubicación"}
               </button>
               {ubicacion ? (
-                <div style={{ fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                <div style={{ fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
                   ✔ {ubicacion.lat.toFixed(5)}, {ubicacion.lng.toFixed(5)}
                   {" · "}
-                  <a href={`https://maps.google.com/?q=${ubicacion.lat},${ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>
+                  <a href={`https://maps.google.com/?q=${ubicacion.lat},${ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
                     Ver en mapa →
                   </a>
                 </div>
               ) : (
-                <span style={{ fontSize: 13, color: "#94a3b8" }}>No capturada</span>
+                <span style={{ fontSize: 13, color: "var(--faint)" }}>No capturada</span>
               )}
             </div>
           </div>
         </div>
 
         {error && (
-          <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 10, background: "#fee2e2", color: "#991b1b", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 10, background: "var(--bad-soft)", color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>
             {error}
           </div>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ background: "white", border: "1px solid #cbd5e1", borderRadius: 12, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+          <button onClick={onClose} style={{ background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
             Cancelar
           </button>
           <button
             onClick={handleGuardar}
             disabled={guardando}
-            style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, cursor: guardando ? "not-allowed" : "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
+            style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 12, padding: "10px 18px", fontWeight: 700, cursor: guardando ? "not-allowed" : "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
           >
             {subiendoFoto ? "Subiendo fotos..." : guardando ? "Guardando..." : "Guardar visita"}
           </button>

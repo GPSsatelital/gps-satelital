@@ -20,14 +20,14 @@ export default function Login() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ width: "100%", maxWidth: 420, background: "white", borderRadius: 16, padding: 28, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
-        <div style={{ display: "inline-block", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", padding: "6px 14px", fontWeight: 700, fontSize: 14 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ width: "100%", maxWidth: 420, background: "var(--card)", borderRadius: 16, padding: 28, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+        <div style={{ display: "inline-block", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-ink)", padding: "6px 14px", fontWeight: 700, fontSize: 14 }}>
           MotoGestión
         </div>
 
         <h1 style={{ fontSize: 24, margin: "16px 0 4px" }}>Iniciar sesión</h1>
-        <p style={{ marginTop: 0, marginBottom: 4, color: "#64748b", fontSize: 13 }}>
+        <p style={{ marginTop: 0, marginBottom: 4, color: "var(--muted)", fontSize: 13 }}>
           Las cuentas las crea un administrador desde el panel de Usuarios.
         </p>
 
@@ -51,14 +51,14 @@ export default function Login() {
             minLength={6}
           />
 
-          {error && <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{error}</div>}
+          {error && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{error}</div>}
 
           <button
             type="submit"
             disabled={loading}
             style={{
-              background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-              color: "white",
+              background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+              color: "var(--card)",
               border: "none",
               borderRadius: 14,
               padding: "12px 16px",
@@ -79,7 +79,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 12,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",

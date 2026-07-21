@@ -24,11 +24,11 @@ import LectorHuella from "../components/LectorHuella";
 import FotoPerfil from "../components/FotoPerfil";
 
 
-const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
-const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
-const secondaryBtn: React.CSSProperties = { background: "white", border: "1px solid #cbd5e1", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "#334155" };
+const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line2)", outline: "none", fontSize: 14, boxSizing: "border-box" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
+const secondaryBtn: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)" };
 
 
 function formatDate(date: string | null) {
@@ -42,19 +42,19 @@ function getToday() {
 
 function ClienteBadge({ estado }: { estado: ClienteEstado }) {
   const map: Record<ClienteEstado, { bg: string; color: string }> = {
-    "En proceso": { bg: "#e2e8f0", color: "#334155" },
-    "Listo para visita": { bg: "#dbeafe", color: "#1d4ed8" },
-    "Pendiente evaluación": { bg: "#fef3c7", color: "#92400e" },
-    Aprobado: { bg: "#dcfce7", color: "#166534" },
-    Rechazado: { bg: "#fee2e2", color: "#991b1b" },
-    Activo: { bg: "#dcfce7", color: "#166534" },
-    "En seguimiento": { bg: "#e0f2fe", color: "#0369a1" },
-    "En riesgo": { bg: "#fef3c7", color: "#92400e" },
-    "En mora": { bg: "#fee2e2", color: "#991b1b" },
-    Retirado: { bg: "#ede9fe", color: "#6d28d9" },
-    Egresado: { bg: "#dcfce7", color: "#15803d" },
-    "Lista negra": { bg: "#1f2937", color: "#f9fafb" },
-    "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d" },
+    "En proceso": { bg: "var(--line)", color: "var(--muted2)" },
+    "Listo para visita": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+    "Pendiente evaluación": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+    Aprobado: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+    Rechazado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+    Activo: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+    "En seguimiento": { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+    "En riesgo": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+    "En mora": { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+    Retirado: { bg: "var(--indigo-soft)", color: "var(--violet)" },
+    Egresado: { bg: "var(--ok-soft)", color: "var(--ok)" },
+    "Lista negra": { bg: "var(--text)", color: "var(--soft2)" },
+    "Inmovilización documentación incompleta": { bg: "var(--bad-soft)", color: "var(--bad-ink2)" },
   };
   const colors = map[estado];
   return (
@@ -94,7 +94,7 @@ function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<ke
         // Los clientes migrados por SQL traen documentos_cliente = {} (sin las claves),
         // así que doc[key] puede ser undefined — tratarlo como "no cargado" sin romper.
         const item = doc[key] ?? { ok: false, file: null };
-        const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "#dcfce7" : "#fee2e2", color: item.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
+        const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "var(--ok-soft)" : "var(--bad-soft)", color: item.ok ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
         if (item.ok && esUrl(item.file) && puedeVerArchivo) {
           return (
             <a key={key} href={item.file!} target="_blank" rel="noreferrer" style={estilo} title="Ver documento">
@@ -144,40 +144,40 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {labels.map(([key, label]) => (
-        <div key={key} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 8 }}>{label}</div>
+        <div key={key} style={{ padding: 12, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted2)", marginBottom: 8 }}>{label}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
               📷 Cámara
               <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => setDocumento(key, e.target.files?.[0])} />
             </label>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
               🖼 Galería
               <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: "none" }} onChange={(e) => setDocumento(key, e.target.files?.[0])} />
             </label>
           </div>
           {subiendo === key ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#0284c7", fontWeight: 700 }}>Subiendo…</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>Subiendo…</div>
           ) : errorKey?.key === key ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 700 }}>⛔ {errorKey.msg}</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--bad-ink)", fontWeight: 700 }}>⛔ {errorKey.msg}</div>
           ) : doc[key]?.ok ? (
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>
                 {esUrl(doc[key]?.file ?? null) ? (
-                  <a href={doc[key]!.file!} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>✔ Ver documento cargado</a>
+                  <a href={doc[key]!.file!} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>✔ Ver documento cargado</a>
                 ) : (
-                  <span style={{ color: "#16a34a" }}>✔ Cargado</span>
+                  <span style={{ color: "var(--ok)" }}>✔ Cargado</span>
                 )}
               </div>
               <button
                 onClick={() => onChange({ ...doc, [key]: { ok: false, file: null } })}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#991b1b", padding: 0 }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "var(--bad-ink)", padding: 0 }}
               >
                 🗑️ Quitar / volver a intentar
               </button>
             </div>
           ) : (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b" }}>Documento pendiente</div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--bad-ink)" }}>Documento pendiente</div>
           )}
         </div>
       ))}
@@ -266,17 +266,17 @@ function calcularPremioReferidos(confirmados: number) {
 function calcularSemaforo(cliente: Cliente, visitas: Visita[]) {
   const visita = visitas.filter((v) => v.cliente_id === cliente.id).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
 
-  if (!visita) return { icono: "🔴", texto: "Sin visita", color: "#991b1b", bg: "#fee2e2" };
+  if (!visita) return { icono: "🔴", texto: "Sin visita", color: "var(--bad-ink)", bg: "var(--bad-soft)" };
 
   const viveAlli = visita.entrevista.viveAlli === "Sí";
   const tieneGps = !!visita.ubicacion;
   const tieneFoto = !!visita.fotos.clienteFuncionario || !!visita.fotos.fachada;
 
-  if (!viveAlli || (!tieneGps && !tieneFoto)) return { icono: "🔴", texto: "Riesgo alto", color: "#991b1b", bg: "#fee2e2" };
+  if (!viveAlli || (!tieneGps && !tieneFoto)) return { icono: "🔴", texto: "Riesgo alto", color: "var(--bad-ink)", bg: "var(--bad-soft)" };
 
   const score = [viveAlli, tieneGps, tieneFoto].filter(Boolean).length;
-  if (score === 3) return { icono: "🟢", texto: "Riesgo bajo", color: "#166534", bg: "#dcfce7" };
-  return { icono: "🟡", texto: "Revisar", color: "#92400e", bg: "#fef3c7" };
+  if (score === 3) return { icono: "🟢", texto: "Riesgo bajo", color: "var(--ok-ink)", bg: "var(--ok-soft)" };
+  return { icono: "🟡", texto: "Revisar", color: "var(--warn-ink)", bg: "var(--warn-soft)" };
 }
 
 const FILTROS_CLIENTE = [
@@ -311,10 +311,10 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
 
   if (clientes.length === 0) {
     return (
-      <div style={{ marginTop: 20, padding: "32px 24px", background: "white", borderRadius: 16, textAlign: "center", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+      <div style={{ marginTop: 20, padding: "32px 24px", background: "var(--card)", borderRadius: 16, textAlign: "center", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
         <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
-        <div style={{ fontWeight: 700, color: "#166534" }}>No hay clientes pendientes de evaluación</div>
-        <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Todos los clientes han sido evaluados.</div>
+        <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>No hay clientes pendientes de evaluación</div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Todos los clientes han sido evaluados.</div>
       </div>
     );
   }
@@ -329,7 +329,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
         const esteRechazando = rechazando === cliente.id;
 
         return (
-          <div key={cliente.id} style={{ background: "white", borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)", overflow: "hidden", borderLeft: `4px solid ${semaforo.color}` }}>
+          <div key={cliente.id} style={{ background: "var(--card)", borderRadius: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)", overflow: "hidden", borderLeft: `4px solid ${semaforo.color}` }}>
 
             {/* Header de la tarjeta */}
             <button onClick={() => setExpandido(abierto ? null : cliente.id)} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "16px 20px", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -338,8 +338,8 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                   {semaforo.icono}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     C.C. {cliente.cedula} · {semaforo.texto}
                     {visita ? ` · Visita: ${new Date(visita.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin visita registrada"}
                   </div>
@@ -347,13 +347,13 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                 <span style={{ padding: "4px 10px", borderRadius: 999, background: semaforo.bg, color: semaforo.color, fontSize: 11, fontWeight: 700 }}>{semaforo.texto}</span>
-                <span style={{ color: "#94a3b8", fontSize: 18 }}>{abierto ? "▲" : "▼"}</span>
+                <span style={{ color: "var(--faint)", fontSize: 18 }}>{abierto ? "▲" : "▼"}</span>
               </div>
             </button>
 
             {/* Detalle expandido */}
             {abierto && (
-              <div style={{ padding: "0 20px 20px", borderTop: "1px solid #f1f5f9" }}>
+              <div style={{ padding: "0 20px 20px", borderTop: "1px solid var(--soft)" }}>
 
                 {/* Datos básicos del cliente */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 16 }}>
@@ -365,9 +365,9 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                     { label: "Acompañante", value: cliente.acompanante_nombre || "—" },
                     { label: "C.C. acompañante", value: cliente.acompanante_cedula || "—" },
                   ].map(({ label, value }) => (
-                    <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginTop: 3 }}>{value || "—"}</div>
+                    <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 3 }}>{value || "—"}</div>
                     </div>
                   ))}
                 </div>
@@ -375,7 +375,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                 {/* Entrevista de visita */}
                 {visita ? (
                   <div style={{ marginTop: 16 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#334155", marginBottom: 10 }}>Resultado de la visita domiciliaria</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--muted2)", marginBottom: 10 }}>Resultado de la visita domiciliaria</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
                       {[
                         { label: "¿Vive allí?", value: visita.entrevista.viveAlli, alerta: visita.entrevista.viveAlli !== "Sí" },
@@ -387,9 +387,9 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                         { label: "Observaciones", value: visita.entrevista.observaciones || "—" },
                         { label: "Recomendación del visitador", value: visita.entrevista.recomendacion, alerta: visita.entrevista.recomendacion === "Rechazado" },
                       ].map(({ label, value, alerta }) => (
-                        <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: alerta ? "#fff5f5" : "#f0f9ff", border: `1px solid ${alerta ? "#fecaca" : "#bae6fd"}` }}>
-                          <div style={{ fontSize: 11, color: alerta ? "#991b1b" : "#0369a1", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: alerta ? "#991b1b" : "#0f172a", marginTop: 3 }}>{value || "—"}</div>
+                        <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: alerta ? "var(--bad-soft)" : "var(--accent-soft4)", border: `1px solid ${alerta ? "var(--bad-line)" : "var(--accent-line)"}` }}>
+                          <div style={{ fontSize: 11, color: alerta ? "var(--bad-ink)" : "var(--accent-ink)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: alerta ? "var(--bad-ink)" : "var(--text)", marginTop: 3 }}>{value || "—"}</div>
                         </div>
                       ))}
                     </div>
@@ -399,12 +399,12 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {visita.fotos.clienteFuncionario && (
                           <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer">
-                            <img src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                            <img src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
                         {visita.fotos.fachada && (
                           <a href={visita.fotos.fachada} target="_blank" rel="noreferrer">
-                            <img src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                            <img src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
                       </div>
@@ -412,27 +412,27 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
 
                     {/* GPS */}
                     {visita.ubicacion && (
-                      <div style={{ marginTop: 10, fontSize: 12, color: "#166534", fontWeight: 600 }}>
+                      <div style={{ marginTop: 10, fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>
                         📍 Ubicación registrada: {visita.ubicacion.lat.toFixed(5)}, {visita.ubicacion.lng.toFixed(5)}
                         {" · "}
-                        <a href={`https://maps.google.com/?q=${visita.ubicacion.lat},${visita.ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "#0284c7" }}>Ver en mapa</a>
+                        <a href={`https://maps.google.com/?q=${visita.ubicacion.lat},${visita.ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Ver en mapa</a>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 12, background: "#fff5f5", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 600 }}>
+                  <div style={{ marginTop: 14, padding: "12px 16px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, color: "var(--bad-ink)", fontWeight: 600 }}>
                     ⚠️ Sin visita domiciliaria registrada — no se puede aprobar sin visita
                   </div>
                 )}
 
                 {/* Documentos cargados — clic para verlos */}
                 <div style={{ marginTop: 16 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#334155", marginBottom: 8 }}>Documentos del cliente <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(clic en 🔍 para ver)</span></div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--muted2)", marginBottom: 8 }}>Documentos del cliente <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(clic en 🔍 para ver)</span></div>
                   <DocsSummary doc={cliente.documentos_cliente} />
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#334155", margin: "12px 0 8px" }}>Documentos del acompañante</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--muted2)", margin: "12px 0 8px" }}>Documentos del acompañante</div>
                   <DocsSummary doc={cliente.documentos_acompanante} only={docsAcompanante(cliente.mismo_domicilio_acompanante)} />
                   {cliente.excepcion_documental && (
-                    <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+                    <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)" }}>
                       ⚠️ Excepción documental: {cliente.excepcion_motivo || "sin motivo"}{cliente.excepcion_plazo ? ` · plazo: ${cliente.excepcion_plazo}` : ""}
                     </div>
                   )}
@@ -441,11 +441,11 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                 {/* Asignación de visita a sub-admin */}
                 {esAdmin && visita && onAsignarVisita && subadmins && subadmins.length > 0 && (
                   <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>Asignar visita a sub-admin</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 4 }}>Asignar visita a sub-admin</div>
                     <select
                       value={visita.asignada_a ?? ""}
                       onChange={e => onAsignarVisita(visita.id, e.target.value || null)}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 13 }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line2)", fontSize: 13 }}
                     >
                       <option value="">— Sin asignar —</option>
                       {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
@@ -466,7 +466,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                             setProcesando(null);
                             setExpandido(null);
                           }}
-                          style={{ background: "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
+                          style={{ background: "linear-gradient(90deg,var(--ok-ink),var(--ok2))", color: "var(--card)", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
                         >
                           {procesando === cliente.id ? "Procesando..." : "✅ Aprobar cliente"}
                         </button>
@@ -478,25 +478,25 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                             setProcesando(null);
                             setExpandido(null);
                           }}
-                          style={{ background: "#fef3c7", color: "#92400e", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
+                          style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.6 : 1 }}
                         >
                           🔁 Repetir visita
                         </button>
                         <button
                           onClick={() => setRechazando(cliente.id)}
-                          style={{ background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+                          style={{ background: "var(--bad-soft)", color: "var(--bad-ink)", border: "none", borderRadius: 12, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
                         >
                           ❌ Rechazar definitivo
                         </button>
                       </div>
                     ) : (
-                      <div style={{ background: "#fff5f5", border: "1px solid #fecaca", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "#991b1b", marginBottom: 8 }}>Motivo del rechazo (obligatorio)</div>
+                      <div style={{ background: "var(--bad-soft)", border: "1px solid var(--bad-line)", borderRadius: 12, padding: 14 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--bad-ink)", marginBottom: 8 }}>Motivo del rechazo (obligatorio)</div>
                         <textarea
                           value={motivoRechazo}
                           onChange={e => setMotivoRechazo(e.target.value)}
                           placeholder="Describe el motivo del rechazo..."
-                          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #fecaca", fontSize: 13, minHeight: 70, boxSizing: "border-box", resize: "vertical" }}
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--bad-line)", fontSize: 13, minHeight: 70, boxSizing: "border-box", resize: "vertical" }}
                         />
                         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                           <button
@@ -510,11 +510,11 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                               setMotivoRechazo("");
                               setExpandido(null);
                             }}
-                            style={{ background: "#991b1b", color: "white", border: "none", borderRadius: 10, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: !motivoRechazo.trim() ? "not-allowed" : "pointer", opacity: !motivoRechazo.trim() ? 0.5 : 1 }}
+                            style={{ background: "var(--bad-ink)", color: "var(--card)", border: "none", borderRadius: 10, padding: "9px 18px", fontWeight: 700, fontSize: 13, cursor: !motivoRechazo.trim() ? "not-allowed" : "pointer", opacity: !motivoRechazo.trim() ? 0.5 : 1 }}
                           >
                             Confirmar rechazo
                           </button>
-                          <button onClick={() => { setRechazando(null); setMotivoRechazo(""); }} style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                          <button onClick={() => { setRechazando(null); setMotivoRechazo(""); }} style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                             Cancelar
                           </button>
                         </div>
@@ -524,7 +524,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                 )}
 
                 {!esAdmin && (
-                  <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#f8fafc", fontSize: 13, color: "#64748b" }}>
+                  <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "var(--soft2)", fontSize: 13, color: "var(--muted)" }}>
                     Solo ADMIN o ADMIN_PRINCIPAL puede aprobar o rechazar clientes.
                   </div>
                 )}
@@ -629,8 +629,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             style={{
               padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
               fontSize: 12, fontWeight: 700,
-              background: filtroGrupo === g ? "#0284c7" : "#f1f5f9",
-              color: filtroGrupo === g ? "white" : "#334155",
+              background: filtroGrupo === g ? "var(--accent)" : "var(--soft)",
+              color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
             }}
           >
             {g === "todos" ? "Todos" : g}
@@ -939,7 +939,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     setSelectedId(null);
   }
 
-  if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando clientes...</div>;
+  if (loading) return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando clientes...</div>;
 
   const CHIPS_CLIENTES = [
     { label: "Todos", count: clientes.length, filter: "" },
@@ -963,12 +963,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         />
 
         {/* Ruta del cliente */}
-        <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 12 }}>Ruta del cliente</div>
+        <div style={{ padding: 16, borderRadius: 16, background: "var(--accent-soft4)", border: "2px solid var(--accent)" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--accent)", marginBottom: 12 }}>Ruta del cliente</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {([
-              { value: "diario", label: "Diario", desc: "Ahorrando base inicial ($510.000)", badge: { bg: "#dbeafe", color: "#1d4ed8" } },
-              { value: "tiempo_definido", label: "Tiempo definido", desc: "Ya tiene la base, pago semanal/quincenal/mensual", badge: { bg: "#dcfce7", color: "#166534" } },
+              { value: "diario", label: "Diario", desc: "Ahorrando base inicial ($510.000)", badge: { bg: "var(--accent-soft3)", color: "var(--accent-ink)" } },
+              { value: "tiempo_definido", label: "Tiempo definido", desc: "Ya tiene la base, pago semanal/quincenal/mensual", badge: { bg: "var(--ok-soft)", color: "var(--ok-ink)" } },
             ] as { value: RutaContrato; label: string; desc: string; badge: { bg: string; color: string } }[]).map((op) => (
               <button
                 key={op.value}
@@ -976,8 +976,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 onClick={() => update({ ruta_contrato: op.value })}
                 style={{
                   flex: "1 1 220px", padding: 18, borderRadius: 16, cursor: "pointer", textAlign: "left",
-                  border: data.ruta_contrato === op.value ? `2px solid ${op.badge.color}` : "2px solid #e2e8f0",
-                  background: data.ruta_contrato === op.value ? op.badge.bg : "white",
+                  border: data.ruta_contrato === op.value ? `2px solid ${op.badge.color}` : "2px solid var(--line)",
+                  background: data.ruta_contrato === op.value ? op.badge.bg : "var(--card)",
                   transition: "all 0.15s",
                 }}
               >
@@ -989,16 +989,16 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     <span style={{ fontSize: 16, color: op.badge.color }}>✔</span>
                   )}
                 </div>
-                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.4 }}>{op.desc}</div>
+                <div style={{ fontSize: 13, color: "var(--muted3)", lineHeight: 1.4 }}>{op.desc}</div>
               </button>
             ))}
           </div>
         </div>
 
         {/* Ingreso inicial */}
-        <div style={{ padding: 16, borderRadius: 16, background: "#fffbeb", border: "2px solid #fbbf24" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 6 }}>Ingreso inicial</div>
-          <div style={{ fontSize: 12, color: "#78716c", marginBottom: 10 }}>
+        <div style={{ padding: 16, borderRadius: 16, background: "var(--warn-soft2)", border: "2px solid #fbbf24" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--warn-ink)", marginBottom: 6 }}>Ingreso inicial</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
             Mínimo ${INGRESO_MINIMO.toLocaleString("es-CO")} · Ideal ${INGRESO_IDEAL.toLocaleString("es-CO")} (55% de la base de $510.000)
           </div>
           <MoneyInput
@@ -1006,7 +1006,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             onChange={(v) => update({ ingreso_inicial: v === "" ? null : Number(v) })}
           />
           {data.ingreso_inicial != null && data.ingreso_inicial > 0 && (
-            <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: data.ingreso_inicial < INGRESO_MINIMO ? "#991b1b" : data.ingreso_inicial >= INGRESO_IDEAL ? "#166534" : "#92400e" }}>
+            <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: data.ingreso_inicial < INGRESO_MINIMO ? "var(--bad-ink)" : data.ingreso_inicial >= INGRESO_IDEAL ? "var(--ok-ink)" : "var(--warn-ink)" }}>
               {data.ingreso_inicial < INGRESO_MINIMO
                 ? `⛔ Por debajo del mínimo ($${INGRESO_MINIMO.toLocaleString("es-CO")})`
                 : data.ingreso_inicial >= INGRESO_IDEAL
@@ -1017,7 +1017,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Datos personales</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Datos personales</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.nombre} onChange={(e) => update({ nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
@@ -1027,7 +1027,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Contacto</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Contacto</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Teléfono principal</div><input style={inputStyle} value={data.telefono} onChange={(e) => update({ telefono: e.target.value })} /></div>
             <div>
@@ -1044,7 +1044,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(debe ser mujer — obligatorio)</span></div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(debe ser mujer — obligatorio)</span></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.acompanante_cedula ?? ""} onChange={(e) => update({ acompanante_cedula: e.target.value })} /></div>
@@ -1059,8 +1059,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           </div>
         </div>
 
-        <div style={{ padding: 14, borderRadius: 16, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#166534", marginBottom: 10 }}>Referido por (opcional)</div>
+        <div style={{ padding: 14, borderRadius: 16, background: "var(--ok-soft)", border: "1px solid var(--ok-line)" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--ok-ink)", marginBottom: 10 }}>Referido por (opcional)</div>
           <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
@@ -1069,23 +1069,23 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos cliente</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Documentos cliente</div>
           <DocsChecklist doc={data.documentos_cliente} onChange={(next) => update({ documentos_cliente: next })} carpeta={data.cedula || "sin-cedula"} subir={subirDocumento} />
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "#64748b" }}>(sin hoja de vida ni licencia)</span></div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(sin hoja de vida ni licencia)</span></div>
           {data.mismo_domicilio_acompanante && (
-            <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+            <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent-ink)", fontWeight: 600 }}>
               ℹ️ Vive con el cliente — usa el mismo recibo público, no se pide uno aparte.
             </div>
           )}
           <DocsChecklist doc={data.documentos_acompanante} onChange={(next) => update({ documentos_acompanante: next })} only={docsAcompanante(data.mismo_domicilio_acompanante)} carpeta={`${data.cedula || "sin-cedula"}-acomp`} subir={subirDocumento} />
         </div>
 
-        <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid #f59e0b" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
-          <div style={{ fontSize: 12, color: "#78716c", marginBottom: 12, lineHeight: 1.5 }}>
+        <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid var(--warn2)" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--warn-ink)", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12, lineHeight: 1.5 }}>
             De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
             con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
             La firma y huella son opcionales — pueden completarse después.
@@ -1100,7 +1100,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             })}
           />
           <div style={{ marginTop: 12, borderTop: "1px dashed #e7d9c0", paddingTop: 12 }}>
-            <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--warn-ink)", fontWeight: 700, marginBottom: 8 }}>
               Huellas (índice derecho) — el lector solo lee una a la vez, elija de quién capturar:
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -1110,7 +1110,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   : data.acompanante_huella_url;
                 return (
                   <button key={w} type="button" onClick={() => setHuellaActiva(w)}
-                    style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${huellaActiva === w ? "#0284c7" : "#e2e8f0"}`, background: huellaActiva === w ? "#eff6ff" : "white", color: huellaActiva === w ? "#0284c7" : "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${huellaActiva === w ? "var(--accent)" : "var(--line)"}`, background: huellaActiva === w ? "var(--accent-soft2)" : "var(--card)", color: huellaActiva === w ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                     {w === "cliente" ? "Cliente" : "Acompañante"}{yaTiene && !yaTiene.startsWith("data:") ? " ✔" : ""}
                   </button>
                 );
@@ -1119,7 +1119,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             {huellaActiva === "cliente" ? (
               <>
                 {data.autorizacion_datos_huella_url && !data.autorizacion_datos_huella_url.startsWith("data:") && (
-                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
                     ✔ Huella del cliente ya registrada — capture de nuevo solo si quiere reemplazarla
                   </div>
                 )}
@@ -1128,7 +1128,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             ) : (
               <>
                 {data.acompanante_huella_url && !data.acompanante_huella_url.startsWith("data:") && (
-                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 8, padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
                     ✔ Huella del acompañante ya registrada — capture de nuevo solo si quiere reemplazarla
                   </div>
                 )}
@@ -1145,10 +1145,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     <div>
       {/* Header compacto */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
-        <h2 style={{ fontSize: 20, margin: 0, color: "#0f172a" }}>Clientes</h2>
+        <h2 style={{ fontSize: 20, margin: 0, color: "var(--text)" }}>Clientes</h2>
       </div>
 
-      {error && <div style={{ marginBottom: 10, color: "#991b1b", fontSize: 13 }}>Error: {error}</div>}
+      {error && <div style={{ marginBottom: 10, color: "var(--bad-ink)", fontSize: 13 }}>Error: {error}</div>}
 
       {/* Chips de filtro */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
@@ -1159,15 +1159,15 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             style={{
               border: "none", borderRadius: 999, padding: "5px 12px",
               fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-              background: filtroEstado === chip.filter ? "#0284c7" : "#f1f5f9",
-              color: filtroEstado === chip.filter ? "white" : "#334155",
+              background: filtroEstado === chip.filter ? "var(--accent)" : "var(--soft)",
+              color: filtroEstado === chip.filter ? "var(--card)" : "var(--muted2)",
             }}
           >
             {chip.label}
             <span style={{
               marginLeft: 4,
-              background: filtroEstado === chip.filter ? "rgba(255,255,255,0.3)" : "#e2e8f0",
-              color: filtroEstado === chip.filter ? "white" : "#64748b",
+              background: filtroEstado === chip.filter ? "rgba(255,255,255,0.3)" : "var(--line)",
+              color: filtroEstado === chip.filter ? "var(--card)" : "var(--muted)",
               borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
             }}>{chip.count}</span>
           </button>
@@ -1202,18 +1202,18 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             <div>
               <button
                 onClick={() => setSelectedId(null)}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--accent)", fontWeight: 700, fontSize: 14, cursor: "pointer", marginBottom: 14, padding: 0 }}
               >
                 ← Volver
               </button>
               <div style={{ ...card }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "#0f172a", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
+                  <span style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
                   <ClienteBadge estado={estadoVisual(selectedCliente)} />
                   <span style={{
                     display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                    background: selectedCliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
-                    color: selectedCliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                    background: selectedCliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
+                    color: selectedCliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                   }}>
                     {selectedCliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
                   </span>
@@ -1221,7 +1221,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 {onNavigate && (
                   <button
                     onClick={() => onNavigate("ficha_cliente", selectedCliente.id)}
-                    style={{ marginBottom: 14, background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                    style={{ marginBottom: 14, background: "var(--accent-soft2)", color: "var(--accent)", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                   >
                     Ver ficha completa →
                   </button>
@@ -1251,34 +1251,34 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               {filtered.length === 0 && clientes.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 24px" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
-                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
+                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
                 </div>
               )}
-              {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+              {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>}
               <div style={{ display: "grid", gap: 8, maxHeight: "62vh", overflowY: "auto" }}>
                 {filtered.map((cliente) => (
                   <button
                     key={cliente.id}
                     onClick={() => setSelectedId(cliente.id)}
-                    style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "#f8fafc", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
+                    style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "var(--soft2)", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{cliente.cedula} · {cliente.telefono}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cliente.cedula} · {cliente.telefono}</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
                         <span style={{
                           display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                          background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
-                          color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                          background: cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
+                          color: cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                         }}>{cliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}</span>
                         <ClienteBadge estado={estadoVisual(cliente)} />
                         {(cliente.referidos_confirmados ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#166534" }}>👥 {cliente.referidos_confirmados} referidos</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)" }}>👥 {cliente.referidos_confirmados} referidos</span>
                         )}
                       </div>
                     </div>
-                    <span style={{ color: "#94a3b8", fontSize: 22, flexShrink: 0 }}>›</span>
+                    <span style={{ color: "var(--faint)", fontSize: 22, flexShrink: 0 }}>›</span>
                   </button>
                 ))}
               </div>
@@ -1300,8 +1300,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     style={{
                       padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer",
                       fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500,
-                      background: filtroEstado === f.filter ? "#0284c7" : "#f1f5f9",
-                      color: filtroEstado === f.filter ? "white" : "#64748b",
+                      background: filtroEstado === f.filter ? "var(--accent)" : "var(--soft)",
+                      color: filtroEstado === f.filter ? "var(--card)" : "var(--muted)",
                       whiteSpace: "nowrap",
                     }}
                   >{f.label}</button>
@@ -1312,12 +1312,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 {filtered.length === 0 && clientes.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 24px" }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Sin clientes registrados</div>
-                    <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Registra el primer cliente</div>
-                    <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>Registra el primer cliente</div>
+                    <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
                   </div>
                 )}
-                {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay clientes en este filtro.</div>}
+                {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>}
                 {filtered.map((cliente) => {
                   const activo = selectedId === cliente.id || (!selectedId && filtered[0]?.id === cliente.id);
                   return (
@@ -1327,19 +1327,19 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                       style={{
                         width: "100%", minWidth: 0, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 10,
                         padding: "10px 12px", borderRadius: 10, border: "none",
-                        background: activo ? "#eff6ff" : "#f8fafc",
+                        background: activo ? "var(--accent-soft2)" : "var(--soft2)",
                         cursor: "pointer", textAlign: "left",
-                        outline: activo ? "2px solid #0284c7" : "none",
+                        outline: activo ? "2px solid var(--accent)" : "none",
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{cliente.cedula} · {cliente.telefono}</div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{cliente.cedula} · {cliente.telefono}</div>
                         <div style={{ marginTop: 4, display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
                           <span style={{
                             display: "inline-block", padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                            background: cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
-                            color: cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                            background: cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
+                            color: cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                           }}>{cliente.ruta_contrato === "diario" ? "Diario" : "T. definido"}</span>
                           <ClienteBadge estado={estadoVisual(cliente)} />
                         </div>
@@ -1348,7 +1348,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                         {cliente.estado === "Listo para visita" && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setClienteVisitaId(cliente.id); setClienteVisitaNombre(cliente.nombre); }}
-                            style={{ background: "#dbeafe", color: "#1d4ed8", border: "none", borderRadius: 999, padding: "4px 9px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                            style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 999, padding: "4px 9px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
                           >
                             🏠 Visita
                           </button>
@@ -1366,13 +1366,13 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 <>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "#0f172a" }}>{selectedCliente.nombre}</div>
+                      <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "var(--text)" }}>{selectedCliente.nombre}</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                         <ClienteBadge estado={estadoVisual(selectedCliente)} />
                         <span style={{
                           display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                          background: selectedCliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7",
-                          color: selectedCliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534",
+                          background: selectedCliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
+                          color: selectedCliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                         }}>
                           {selectedCliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}
                         </span>
@@ -1382,7 +1382,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   {onNavigate && (
                     <button
                       onClick={() => onNavigate("ficha_cliente", selectedCliente.id)}
-                      style={{ marginBottom: 14, background: "#eff6ff", color: "#0284c7", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                      style={{ marginBottom: 14, background: "var(--accent-soft2)", color: "var(--accent)", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                     >
                       Ver ficha completa →
                     </button>
@@ -1403,7 +1403,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   />
                 </>
               ) : (
-                <div style={{ color: "#64748b", fontSize: 14, padding: "20px 0" }}>Selecciona un cliente para ver su detalle.</div>
+                <div style={{ color: "var(--muted)", fontSize: 14, padding: "20px 0" }}>Selecciona un cliente para ver su detalle.</div>
               )}
             </div>
           </div>
@@ -1420,8 +1420,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #0284c7 0%, #10b981 100%)",
-          color: "white",
+          background: "linear-gradient(135deg, var(--accent) 0%, var(--ok2) 100%)",
+          color: "var(--card)",
           border: "none",
           fontSize: 28,
           fontWeight: 700,
@@ -1439,10 +1439,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "var(--card)", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Ingresar cliente nuevo</h3>
             {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })))}
-            {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
+            {formError && <div style={{ marginTop: 12, color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleGuardar} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Guardar cliente"}</button>
@@ -1453,10 +1453,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {editOpen && editForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }} onClick={() => setEditOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "var(--card)", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Actualizar cliente</h3>
             {renderClienteForm(editForm, (patch) => setEditForm((p) => (p ? { ...p, ...patch } : p)))}
-            {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
+            {formError && <div style={{ marginTop: 12, color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => { setEditOpen(false); setFormError(null); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={guardarEdicion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Guardar cambios"}</button>
@@ -1467,7 +1467,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {excepcionOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 70 }} onClick={() => setExcepcionOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, background: "white", borderRadius: 16, padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, background: "var(--card)", borderRadius: 16, padding: 24 }}>
             <h3 style={{ margin: 0 }}>Permitir continuar por excepción</h3>
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
               <div>
@@ -1541,7 +1541,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
     <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
 
       {selectedCliente.lista_negra && (
-        <div style={{ padding: 14, borderRadius: 16, background: "#1f2937", color: "#f9fafb", fontWeight: 700, fontSize: 14 }}>
+        <div style={{ padding: 14, borderRadius: 16, background: "var(--text)", color: "var(--soft2)", fontWeight: 700, fontSize: 14 }}>
           ⛔ LISTA NEGRA{selectedCliente.lista_negra_reversible ? " (reversible)" : " (irreversible)"}
           {selectedCliente.motivo_lista_negra && <div style={{ marginTop: 6, fontSize: 13, fontWeight: 400, color: "#d1d5db" }}>{selectedCliente.motivo_lista_negra}</div>}
         </div>
@@ -1558,27 +1558,27 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       </div>
 
       {(selectedCliente.referido_por_nombre || selectedCliente.referido_por_cedula) && (
-        <div style={{ background: "#f0fdf4", borderRadius: 16, padding: 14, border: "1px solid #bbf7d0" }}>
-          <div style={{ fontSize: 12, color: "#166534", fontWeight: 700, marginBottom: 4 }}>REFERIDO POR</div>
+        <div style={{ background: "var(--ok-soft)", borderRadius: 16, padding: 14, border: "1px solid var(--ok-line)" }}>
+          <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700, marginBottom: 4 }}>REFERIDO POR</div>
           <div style={{ fontSize: 14 }}>{selectedCliente.referido_por_nombre || "Sin nombre"} — {selectedCliente.referido_por_cedula || "Sin cédula"}</div>
         </div>
       )}
 
       {/* Contador de referidos con premios */}
       {(selectedCliente.referidos_confirmados ?? 0) > 0 || alcanzados.length > 0 ? (
-        <div style={{ background: "#fefce8", borderRadius: 16, padding: 14, border: "1px solid #fde047" }}>
-          <div style={{ fontSize: 12, color: "#92400e", fontWeight: 700, marginBottom: 8 }}>REFERIDOS CONFIRMADOS: {selectedCliente.referidos_confirmados ?? 0}</div>
+        <div style={{ background: "var(--warn-soft2)", borderRadius: 16, padding: 14, border: "1px solid var(--warn-line)" }}>
+          <div style={{ fontSize: 12, color: "var(--warn-ink)", fontWeight: 700, marginBottom: 8 }}>REFERIDOS CONFIRMADOS: {selectedCliente.referidos_confirmados ?? 0}</div>
           {alcanzados.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               {alcanzados.map((p) => (
-                <div key={p.hito} style={{ fontSize: 13, color: "#166534" }}>
+                <div key={p.hito} style={{ fontSize: 13, color: "var(--ok-ink)" }}>
                   ✔ {p.hito} referidos — {p.premio} {(selectedCliente.premio_referidos_entregado ?? 0) >= p.hito ? "(entregado)" : "⚠ pendiente de entrega"}
                 </div>
               ))}
             </div>
           )}
           {siguiente && (
-            <div style={{ fontSize: 13, color: "#64748b" }}>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
               Siguiente premio: {siguiente.premio} con {siguiente.hito} referidos ({siguiente.hito - (selectedCliente.referidos_confirmados ?? 0)} pendientes)
             </div>
           )}
@@ -1588,21 +1588,21 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Historial de visitas</div>
         {visitas.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 14 }}>Sin visitas registradas.</div>
+          <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin visitas registradas.</div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {visitasVisibles.map((v) => (
-              <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: 13 }}>
+              <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)", display: "grid", gap: 6, fontSize: 13 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</span>
                   {v.resultado === "Repetir" && (
-                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 11, fontWeight: 700 }}>🔁 Repetir visita ordenada</span>
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 11, fontWeight: 700 }}>🔁 Repetir visita ordenada</span>
                   )}
                   {v.resultado === "Aprobado" && (
-                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 11, fontWeight: 700 }}>✔ Visita aprobada</span>
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 11, fontWeight: 700 }}>✔ Visita aprobada</span>
                   )}
                   {v.resultado === null && (
-                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "#e2e8f0", color: "#475569", fontSize: 11, fontWeight: 700 }}>Pendiente de revisar</span>
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--line)", color: "var(--muted3)", fontSize: 11, fontWeight: 700 }}>Pendiente de revisar</span>
                   )}
                 </div>
                 <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"} {v.entrevista.tiempoResidencia ? `· ${v.entrevista.tiempoResidencia}` : ""}</div>
@@ -1617,19 +1617,19 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     {v.fotos.clienteFuncionario && (
                       esUrl(v.fotos.clienteFuncionario) ? (
                         <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Funcionario + visitados">
-                          <img src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          <img src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (
-                        <div style={{ fontSize: 12, color: "#64748b" }}>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>
                       )
                     )}
                     {v.fotos.fachada && (
                       esUrl(v.fotos.fachada) ? (
                         <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada">
-                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (
-                        <div style={{ fontSize: 12, color: "#64748b" }}>📎 Fachada: {v.fotos.fachada}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>📎 Fachada: {v.fotos.fachada}</div>
                       )
                     )}
                   </div>
@@ -1640,7 +1640,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                       href={`https://www.google.com/maps?q=${v.ubicacion.lat},${v.ubicacion.lng}`}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 12, textDecoration: "none" }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 12, textDecoration: "none" }}
                     >
                       📍 Ver ubicación en mapa · {v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}
                     </a>
@@ -1648,8 +1648,8 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                 )}
                 {puedeAprobarVisita && v.resultado === null && (
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                    <button onClick={() => onAprobarVisita(v.id, selectedCliente.id)} style={miniBtn2("#dcfce7", "#166534")}>✅ Aprobar visita</button>
-                    <button onClick={() => onRepetirVisita(v.id, selectedCliente.id)} style={miniBtn2("#fef3c7", "#92400e")}>🔁 Repetir visita</button>
+                    <button onClick={() => onAprobarVisita(v.id, selectedCliente.id)} style={miniBtn2("var(--ok-soft)", "var(--ok-ink)")}>✅ Aprobar visita</button>
+                    <button onClick={() => onRepetirVisita(v.id, selectedCliente.id)} style={miniBtn2("var(--warn-soft)", "var(--warn-ink)")}>🔁 Repetir visita</button>
                   </div>
                 )}
               </div>
@@ -1657,7 +1657,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             {visitas.length > 1 && (
               <button
                 onClick={() => setVerAnteriores((x) => !x)}
-                style={{ background: "none", border: "none", color: "#64748b", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left", padding: "4px 2px" }}
+                style={{ background: "none", border: "none", color: "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "left", padding: "4px 2px" }}
               >
                 {verAnteriores ? "▾ Ocultar visitas anteriores" : `▸ Visitas anteriores (${visitas.length - 1})`}
               </button>
@@ -1676,7 +1676,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       </div>
 
       {documentosFaltantes(selectedCliente).length > 0 && (
-        <div style={{ padding: 14, borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412" }}>
+        <div style={{ padding: 14, borderRadius: 16, background: "var(--orange-soft)", border: "1px solid var(--orange-soft)", color: "var(--orange-ink)" }}>
           <div style={{ fontWeight: 900 }}>Documentos obligatorios pendientes</div>
           <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
             {documentosFaltantes(selectedCliente).map(([key, label, owner]) => (
@@ -1684,12 +1684,12 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             ))}
           </div>
           {selectedCliente.excepcion_documental && (
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #fed7aa" }}>
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--orange-soft)" }}>
               <div><b>Excepción activa:</b> Sí</div>
               <div><b>Motivo:</b> {selectedCliente.excepcion_motivo}</div>
               <div><b>Plazo máximo:</b> {selectedCliente.excepcion_plazo ? formatDate(selectedCliente.excepcion_plazo) : "Sin plazo"}</div>
               {plazoVencido(selectedCliente) && (
-                <div style={{ marginTop: 6, fontWeight: 900, color: "#991b1b" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
+                <div style={{ marginTop: 6, fontWeight: 900, color: "var(--bad-ink)" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
               )}
             </div>
           )}
@@ -1698,17 +1698,17 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <ClienteBadge estado={estadoVisual(selectedCliente)} />
-        {puede("editar_cliente") && <button onClick={onEdit} style={miniBtn2("#e0f2fe", "#0369a1")}>Actualizar datos / documentos</button>}
+        {puede("editar_cliente") && <button onClick={onEdit} style={miniBtn2("var(--accent-soft)", "var(--accent-ink)")}>Actualizar datos / documentos</button>}
         {selectedCliente.estado === "Listo para visita" && (
-          <button onClick={onVisita} style={miniBtn2("#dbeafe", "#1d4ed8")}>Registrar visita</button>
+          <button onClick={onVisita} style={miniBtn2("var(--accent-soft3)", "var(--accent-ink)")}>Registrar visita</button>
         )}
         {esAdmin && selectedCliente.estado === "Listo para visita" && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Asignar a:</span>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Asignar a:</span>
             <select
               value={selectedCliente.visita_asignada_a ?? ""}
               onChange={e => onAsignarVisitaCliente(selectedCliente.id, e.target.value || null)}
-              style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 12 }}
+              style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid var(--line2)", fontSize: 12 }}
             >
               <option value="">— Sin asignar —</option>
               {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
@@ -1722,18 +1722,18 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                 El ÚNICO camino a Activo es el wizard paso 6 (entrega de la moto). */}
             {selectedCliente.estado === "Aprobado" && (
               <>
-                <button onClick={() => onEstado(selectedCliente.id, "En seguimiento")} style={miniBtn2("#e0f2fe", "#0369a1")}>En seguimiento</button>
-                <button onClick={() => onEstado(selectedCliente.id, "En riesgo")} style={miniBtn2("#fef3c7", "#92400e")}>Marcar en riesgo</button>
-                <button onClick={() => onEstado(selectedCliente.id, "En mora")} style={miniBtn2("#fee2e2", "#991b1b")}>En mora</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En seguimiento")} style={miniBtn2("var(--accent-soft)", "var(--accent-ink)")}>En seguimiento</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En riesgo")} style={miniBtn2("var(--warn-soft)", "var(--warn-ink)")}>Marcar en riesgo</button>
+                <button onClick={() => onEstado(selectedCliente.id, "En mora")} style={miniBtn2("var(--bad-soft)", "var(--bad-ink)")}>En mora</button>
               </>
             )}
             {documentosFaltantes(selectedCliente).length > 0 && (
-              <button onClick={onExcepcion} style={miniBtn2("#fef3c7", "#92400e")}>Permitir continuar por excepción</button>
+              <button onClick={onExcepcion} style={miniBtn2("var(--warn-soft)", "var(--warn-ink)")}>Permitir continuar por excepción</button>
             )}
             {!conContrato && (
               <>
-                <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={miniBtn2("#ffe4e6", "#be123c")}>Rechazar</button>
-                <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("#ede9fe", "#6d28d9")}>Retirar</button>
+                <button onClick={() => onEstado(selectedCliente.id, "Rechazado")} style={miniBtn2("var(--bad-soft)", "var(--bad)")}>Rechazar</button>
+                <button onClick={() => onEstado(selectedCliente.id, "Retirado")} style={miniBtn2("var(--indigo-soft)", "var(--violet)")}>Retirar</button>
               </>
             )}
           </>
@@ -1741,7 +1741,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         {esPrincipal && onEliminar && !conContrato && (
           <button
             onClick={() => setEliminando(true)}
-            style={miniBtn2("#fee2e2", "#991b1b")}
+            style={miniBtn2("var(--bad-soft)", "var(--bad-ink)")}
           >
             🗑 Eliminar cliente
           </button>
@@ -1753,15 +1753,15 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
           <div onClick={() => setEliminando(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 90 }} />
           <div style={{
             position: "fixed", zIndex: 91, top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            width: "min(420px, calc(100vw - 32px))", background: "white", borderRadius: 18,
+            width: "min(420px, calc(100vw - 32px))", background: "var(--card)", borderRadius: 18,
             padding: 22, boxShadow: "0 30px 80px rgba(15,23,42,0.35)",
           }}>
             <div style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>🗑</div>
-            <div style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", textAlign: "center", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
-            <div style={{ fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 18 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "var(--text)", textAlign: "center", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", marginBottom: 18 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setEliminando(false)} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#334155" }}>Cancelar</button>
-              <button onClick={() => { setEliminando(false); onEliminar?.(); }} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "none", background: "#991b1b", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Sí, eliminar</button>
+              <button onClick={() => setEliminando(false)} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
+              <button onClick={() => { setEliminando(false); onEliminar?.(); }} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "none", background: "var(--bad-ink)", color: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>Sí, eliminar</button>
             </div>
           </div>
         </>
@@ -1794,27 +1794,27 @@ function DecisionFinal({ clienteId, onEstado }: { clienteId: string; onEstado: (
   }
 
   return (
-    <div style={{ padding: 16, borderRadius: 16, background: "#f0f9ff", border: "2px solid #0284c7", marginTop: 4 }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: "#0284c7", marginBottom: 4 }}>Decisión final del cliente</div>
-      <div style={{ fontSize: 12, color: "#475569", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
+    <div style={{ padding: 16, borderRadius: 16, background: "var(--accent-soft4)", border: "2px solid var(--accent)", marginTop: 4 }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--accent)", marginBottom: 4 }}>Decisión final del cliente</div>
+      <div style={{ fontSize: 12, color: "var(--muted3)", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
           onClick={() => decidir("Aprobado")}
           disabled={!!procesando}
-          style={{ flex: 1, padding: "12px 20px", background: procesando ? "#94a3b8" : "linear-gradient(90deg,#166534,#10b981)", color: "white", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+          style={{ flex: 1, padding: "12px 20px", background: procesando ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok2))", color: "var(--card)", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
         >
           {procesando === "Aprobado" ? "Aprobando..." : "✅ Aprobar cliente"}
         </button>
         <button
           onClick={() => decidir("Rechazado")}
           disabled={!!procesando}
-          style={{ flex: 1, padding: "12px 20px", background: "#fee2e2", color: "#991b1b", border: "2px solid #fca5a5", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+          style={{ flex: 1, padding: "12px 20px", background: "var(--bad-soft)", color: "var(--bad-ink)", border: "2px solid var(--bad-line)", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
         >
           {procesando === "Rechazado" ? "Rechazando..." : "❌ Rechazar cliente"}
         </button>
       </div>
       {errorMsg && (
-        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: "#fee2e2", color: "#991b1b", fontWeight: 700, fontSize: 13 }}>
+        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: "var(--bad-soft)", color: "var(--bad-ink)", fontWeight: 700, fontSize: 13 }}>
           ⚠️ Error: {errorMsg}
         </div>
       )}
@@ -1824,9 +1824,9 @@ function DecisionFinal({ clienteId, onEstado }: { clienteId: string; onEstado: (
 
 function InfoBox({ label, value, full }: { label: string; value: string; full?: boolean }) {
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 10, padding: "5px 10px", gridColumn: full ? "1 / -1" : undefined }}>
-      <div style={{ fontSize: 9, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, fontWeight: 700 }}>{label}</div>
-      <div style={{ marginTop: 1, fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{value}</div>
+    <div style={{ background: "var(--soft2)", borderRadius: 10, padding: "5px 10px", gridColumn: full ? "1 / -1" : undefined }}>
+      <div style={{ fontSize: 9, color: "var(--faint)", textTransform: "uppercase", letterSpacing: 0.3, fontWeight: 700 }}>{label}</div>
+      <div style={{ marginTop: 1, fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{value}</div>
     </div>
   );
 }

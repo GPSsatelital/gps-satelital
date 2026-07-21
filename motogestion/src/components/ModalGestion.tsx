@@ -17,7 +17,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 14,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
@@ -27,7 +27,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
   fontSize: 14,
   fontWeight: 600,
-  color: "#334155",
+  color: "var(--muted2)",
 };
 
 type ResultadoGestion = "Contactado" | "No contestó" | "Promesa de pago" | "Sin acuerdo" | "Ejecutado" | "No aplica";
@@ -125,7 +125,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         top: "50%", left: "50%",
         transform: "translate(-50%, -50%)",
         width: "min(480px, 96vw)",
-        background: "white",
+        background: "var(--card)",
         borderRadius: 20,
         padding: 28,
         zIndex: 401,
@@ -136,17 +136,17 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>📋 Registrar gestión</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📋 Registrar gestión</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>
               {clienteNombre}
             </div>
           </div>
           <button
             onClick={onClose}
             style={{
-              background: "#f1f5f9", border: "none", borderRadius: 999,
+              background: "var(--soft)", border: "none", borderRadius: 999,
               width: 34, height: 34, cursor: "pointer", fontSize: 16,
-              color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
             ✕
@@ -166,7 +166,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
             ))}
           </select>
           {pasosPrevios && !puedeRecolectar && (
-            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 600 }}>
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12, fontWeight: 600 }}>
               🔧 Recolección aún no disponible — falta intentar: {faltaParaRecolectar.join(", ")}.
             </div>
           )}
@@ -225,11 +225,11 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         </div>
 
         {error && (
-          <div style={{ color: "#991b1b", fontSize: 13, fontWeight: 600 }}>{error}</div>
+          <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{error}</div>
         )}
         {exito && (
           <div style={{
-            color: "#166534", background: "#dcfce7",
+            color: "var(--ok-ink)", background: "var(--ok-soft)",
             padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14,
           }}>
             ✅ Gestión registrada correctamente.
@@ -241,7 +241,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
             onClick={onClose}
             style={{
               flex: 1, padding: "12px", borderRadius: 14, border: "none",
-              background: "#f1f5f9", color: "#334155", fontWeight: 600,
+              background: "var(--soft)", color: "var(--muted2)", fontWeight: 600,
               cursor: "pointer", fontSize: 14,
             }}
           >
@@ -252,8 +252,8 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
             disabled={saving}
             style={{
               flex: 2, padding: "12px", borderRadius: 14, border: "none",
-              background: saving ? "#94a3b8" : "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-              color: "white", fontWeight: 700, cursor: saving ? "default" : "pointer", fontSize: 14,
+              background: saving ? "var(--faint)" : "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+              color: "var(--card)", fontWeight: 700, cursor: saving ? "default" : "pointer", fontSize: 14,
             }}
           >
             {saving ? "Registrando..." : "Registrar gestión"}

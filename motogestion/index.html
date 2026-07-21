@@ -17,6 +17,19 @@
     <meta name="description" content="Gestión integral de flota — GPS Satelital Cartagena" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>MotoGestión</title>
+    <!-- Tema día/noche: se aplica ANTES de cargar React para que no parpadee.
+         La elección vive en Configuración → Apariencia (localStorage mg_theme). -->
+    <script>
+      (function () {
+        try {
+          var v = localStorage.getItem("mg_theme");
+          var t = (v === "light" || v === "dark")
+            ? v
+            : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

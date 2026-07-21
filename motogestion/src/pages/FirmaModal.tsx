@@ -52,7 +52,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.strokeStyle = "#0f172a";
+    ctx.strokeStyle = "var(--text)";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -219,7 +219,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
         style={{
           width: "100%",
           maxWidth: 700,
-          background: "white",
+          background: "var(--card)",
           borderRadius: isMobile ? 0 : 22,
           display: "flex",
           flexDirection: "column",
@@ -230,20 +230,20 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
         }}
       >
         {/* Header */}
-        <div style={{ padding: "18px 20px 14px", background: "#0f172a", borderRadius: isMobile ? 0 : "22px 22px 0 0" }}>
+        <div style={{ padding: "18px 20px 14px", background: "var(--ink)", borderRadius: isMobile ? 0 : "22px 22px 0 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
                 Firma digital · Documento {docIndex + 1} de {PASOS.length}
               </div>
-              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "white" }}>
+              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--card)" }}>
                 {cliente.nombre.toUpperCase()}
               </div>
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{pasoActual.titulo}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{pasoActual.titulo}</div>
             </div>
             <button onClick={onClose} style={{
               background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32,
-              borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "white",
+              borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "var(--card)",
               display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
             }}>×</button>
           </div>
@@ -256,16 +256,16 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 800,
-                  background: i < docIndex ? "#22c55e" : i === docIndex ? "#0284c7" : "rgba(255,255,255,0.1)",
-                  color: "white",
+                  background: i < docIndex ? "var(--ok)" : i === docIndex ? "var(--accent)" : "rgba(255,255,255,0.1)",
+                  color: "var(--card)",
                 }}>
                   {i < docIndex ? "✓" : i + 1}
                 </div>
-                <div style={{ fontSize: 10, fontWeight: i === docIndex ? 700 : 400, color: i === docIndex ? "white" : "#64748b", lineHeight: 1.3 }}>
+                <div style={{ fontSize: 10, fontWeight: i === docIndex ? 700 : 400, color: i === docIndex ? "var(--card)" : "var(--muted)", lineHeight: 1.3 }}>
                   {p.titulo}
                 </div>
                 {i < PASOS.length - 1 && (
-                  <div style={{ flex: 1, height: 1, background: i < docIndex ? "#22c55e" : "rgba(255,255,255,0.1)", minWidth: 8 }} />
+                  <div style={{ flex: 1, height: 1, background: i < docIndex ? "var(--ok)" : "rgba(255,255,255,0.1)", minWidth: 8 }} />
                 )}
               </div>
             ))}
@@ -278,7 +278,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 flex: 1, textAlign: "center", padding: "5px 8px",
                 borderRadius: 8, fontSize: 10, fontWeight: 700,
                 background: subStep === s ? "rgba(2,132,199,0.35)" : subStepLabels.indexOf(subStep) > i ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.05)",
-                color: subStep === s ? "#7dd3fc" : subStepLabels.indexOf(subStep) > i ? "#86efac" : "#475569",
+                color: subStep === s ? "var(--accent-hi)" : subStepLabels.indexOf(subStep) > i ? "var(--ok-line)" : "var(--muted3)",
                 border: subStep === s ? "1px solid rgba(2,132,199,0.5)" : "1px solid transparent",
               }}>
                 {subStepLabels.indexOf(subStep) > i ? "✓ " : ""}{subStepNames[i]}
@@ -295,30 +295,30 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
             <div style={{ padding: 0, display: "flex", flexDirection: "column", flex: 1 }}>
 
               {/* Resumen del contrato */}
-              <div style={{ padding: "16px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div style={{ padding: "16px 20px", background: "var(--soft2)", borderBottom: "1px solid var(--line)" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Resumen del contrato
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ flex: "1 1 140px", background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Cliente</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginTop: 2, textTransform: "uppercase" }}>{cliente.nombre}</div>
+                  <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
+                    <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Cliente</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{cliente.nombre}</div>
                   </div>
                   {moto && (
-                    <div style={{ flex: "1 1 120px", background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #e2e8f0" }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Moto</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginTop: 2 }}>{moto.placa}</div>
-                      <div style={{ fontSize: 11, color: "#64748b" }}>{moto.marca} {moto.modelo}</div>
+                    <div style={{ flex: "1 1 120px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Moto</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2 }}>{moto.placa}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{moto.marca} {moto.modelo}</div>
                     </div>
                   )}
-                  <div style={{ flex: "1 1 120px", background: "white", borderRadius: 10, padding: "10px 12px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Tipo</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", marginTop: 2, textTransform: "uppercase" }}>{contrato.tipo_ruta}</div>
+                  <div style={{ flex: "1 1 120px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
+                    <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Tipo</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{contrato.tipo_ruta}</div>
                   </div>
                   {contrato.valor_semanal != null && (
-                    <div style={{ flex: "1 1 120px", background: "#eff6ff", borderRadius: 10, padding: "10px 12px", border: "1px solid #0284c7" }}>
-                      <div style={{ fontSize: 10, color: "#0369a1", textTransform: "uppercase", fontWeight: 700 }}>Valor semana</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#0284c7", marginTop: 2 }}>{fmt(contrato.valor_semanal)}</div>
+                    <div style={{ flex: "1 1 120px", background: "var(--accent-soft2)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--accent)" }}>
+                      <div style={{ fontSize: 10, color: "var(--accent-ink)", textTransform: "uppercase", fontWeight: 700 }}>Valor semana</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--accent)", marginTop: 2 }}>{fmt(contrato.valor_semanal)}</div>
                     </div>
                   )}
                 </div>
@@ -326,40 +326,40 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
 
               {/* Contrato HTML */}
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
-                <div style={{ fontSize: 11, lineHeight: 1.7, color: "#334155" }} dangerouslySetInnerHTML={{ __html: getHTML() }} />
+                <div style={{ fontSize: 11, lineHeight: 1.7, color: "var(--muted2)" }} dangerouslySetInnerHTML={{ __html: getHTML() }} />
               </div>
 
               {/* Checkbox + botón */}
-              <div style={{ padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ padding: "16px 20px", borderTop: "1px solid var(--line)", background: "var(--soft2)" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 14 }}>
                   <input
                     type="checkbox"
                     checked={leido}
                     onChange={e => setLeido(e.target.checked)}
-                    style={{ width: 20, height: 20, cursor: "pointer", accentColor: "#0284c7" }}
+                    style={{ width: 20, height: 20, cursor: "pointer", accentColor: "var(--accent)" }}
                   />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>
                     He leído y entiendo el contenido de este documento
                   </span>
                 </label>
 
                 {error && (
-                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "#fee2e2", borderRadius: 10, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "var(--bad-soft)", borderRadius: 10, fontSize: 12, color: "var(--bad-ink)", fontWeight: 600 }}>
                     {error}
                   </div>
                 )}
 
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={handleImprimir} style={{
-                    padding: "11px 16px", borderRadius: 12, border: "1px solid #e2e8f0",
-                    background: "white", fontWeight: 700, cursor: "pointer", fontSize: 12, color: "#334155",
+                    padding: "11px 16px", borderRadius: 12, border: "1px solid var(--line)",
+                    background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 12, color: "var(--muted2)",
                   }}>
                     Imprimir
                   </button>
                   <button onClick={goToFirma} style={{
                     flex: 1, padding: "12px", borderRadius: 12, border: "none",
-                    background: leido ? "linear-gradient(90deg, #0284c7, #0369a1)" : "#94a3b8",
-                    color: "white", fontWeight: 800, fontSize: 14, cursor: leido ? "pointer" : "not-allowed",
+                    background: leido ? "linear-gradient(90deg, var(--accent), var(--accent-ink))" : "var(--faint)",
+                    color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: leido ? "pointer" : "not-allowed",
                     transition: "background 0.2s",
                   }}>
                     Proceder a firmar →
@@ -375,17 +375,17 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
               <div style={{ padding: "20px 20px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
 
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Captura de firma</div>
-                  <div style={{ fontSize: 13, color: "#64748b" }}>Firma con el dedo o el ratón en el recuadro de abajo</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Captura de firma</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>Firma con el dedo o el ratón en el recuadro de abajo</div>
                 </div>
 
                 {/* Canvas */}
                 <div style={{ position: "relative" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>
                     Firma del cliente — {pasoActual.titulo}
                   </div>
                   <div style={{
-                    borderRadius: 16, border: "2px dashed #cbd5e1", background: "#fafafa",
+                    borderRadius: 16, border: "2px dashed var(--line2)", background: "var(--soft2)",
                     overflow: "hidden", position: "relative",
                   }}>
                     <canvas
@@ -396,16 +396,16 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                     />
                     <div style={{
                       position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
-                      fontSize: 11, color: "#cbd5e1", pointerEvents: "none", userSelect: "none",
-                      background: "white", padding: "3px 10px", borderRadius: 20, border: "1px solid #f1f5f9",
+                      fontSize: 11, color: "var(--line2)", pointerEvents: "none", userSelect: "none",
+                      background: "var(--card)", padding: "3px 10px", borderRadius: 20, border: "1px solid var(--soft)",
                     }}>
                       Firme aquí con el dedo
                     </div>
                   </div>
                   <button onClick={clearCanvas} style={{
                     marginTop: 10, padding: "8px 16px", borderRadius: 10,
-                    border: "1px solid #e2e8f0", background: "white",
-                    fontWeight: 700, cursor: "pointer", fontSize: 12, color: "#64748b",
+                    border: "1px solid var(--line)", background: "var(--card)",
+                    fontWeight: 700, cursor: "pointer", fontSize: 12, color: "var(--muted)",
                   }}>
                     Borrar firma
                   </button>
@@ -414,14 +414,14 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 {/* Foto cédula — solo en primer documento */}
                 {docIndex === 0 && (
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Foto de cédula (opcional)</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Foto de cédula (opcional)</div>
                     <label style={{ display: "inline-block", cursor: "pointer" }}>
                       <div style={{
                         padding: "10px 18px", borderRadius: 12,
-                        border: `2px solid ${cedulaFoto ? "#22c55e" : "#cbd5e1"}`,
-                        background: cedulaFoto ? "#f0fdf4" : "#f8fafc",
+                        border: `2px solid ${cedulaFoto ? "var(--ok)" : "var(--line2)"}`,
+                        background: cedulaFoto ? "var(--ok-soft)" : "var(--soft2)",
                         fontSize: 13, fontWeight: 700,
-                        color: cedulaFoto ? "#166534" : "#334155",
+                        color: cedulaFoto ? "var(--ok-ink)" : "var(--muted2)",
                         display: "flex", alignItems: "center", gap: 8,
                       }}>
                         <span style={{ fontSize: 18 }}>{cedulaFoto ? "✅" : "📷"}</span>
@@ -442,7 +442,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                       />
                     </label>
                     {cedulaFoto && (
-                      <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", maxWidth: 200, border: "1px solid #e2e8f0" }}>
+                      <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", maxWidth: 200, border: "1px solid var(--line)" }}>
                         <img src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
                       </div>
                     )}
@@ -450,21 +450,21 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 )}
               </div>
 
-              <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ padding: "14px 20px", borderTop: "1px solid var(--line)", background: "var(--soft2)" }}>
                 {error && (
-                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "#fee2e2", borderRadius: 10, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "var(--bad-soft)", borderRadius: 10, fontSize: 12, color: "var(--bad-ink)", fontWeight: 600 }}>
                     {error}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => { setSubStep("documento"); setError(null); }} style={{
-                    padding: "12px 18px", borderRadius: 12, border: "1px solid #e2e8f0",
-                    background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b",
+                    padding: "12px 18px", borderRadius: 12, border: "1px solid var(--line)",
+                    background: "var(--card)", fontWeight: 700, cursor: "pointer", color: "var(--muted)",
                   }}>← Atrás</button>
                   <button onClick={goToConfirmacion} style={{
                     flex: 1, padding: "12px", borderRadius: 12, border: "none",
-                    background: "linear-gradient(90deg, #0284c7, #0369a1)",
-                    color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer",
+                    background: "linear-gradient(90deg, var(--accent), var(--accent-ink))",
+                    color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: "pointer",
                   }}>
                     Ver confirmación →
                   </button>
@@ -478,19 +478,19 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
             <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
               <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Confirmar y guardar</div>
-                  <div style={{ fontSize: 13, color: "#64748b" }}>Verifica la firma antes de guardar. Si algo no está bien, puedes volver a firmar.</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Confirmar y guardar</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>Verifica la firma antes de guardar. Si algo no está bien, puedes volver a firmar.</div>
                 </div>
 
                 {/* Vista previa firma */}
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Firma capturada</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Firma capturada</div>
                   {firmas[pasoActual.key] ? (
-                    <div style={{ borderRadius: 14, border: "2px solid #e2e8f0", overflow: "hidden", background: "#fafafa", maxWidth: 400 }}>
+                    <div style={{ borderRadius: 14, border: "2px solid var(--line)", overflow: "hidden", background: "var(--soft2)", maxWidth: 400 }}>
                       <img src={firmas[pasoActual.key]!} alt="Firma" style={{ width: "100%", display: "block" }} />
                     </div>
                   ) : (
-                    <div style={{ padding: "20px", borderRadius: 14, border: "2px dashed #f1f5f9", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+                    <div style={{ padding: "20px", borderRadius: 14, border: "2px dashed var(--soft)", textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
                       Sin firma
                     </div>
                   )}
@@ -499,8 +499,8 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 {/* Foto cédula preview */}
                 {docIndex === 0 && cedulaFoto && (
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Foto de cédula</div>
-                    <div style={{ borderRadius: 14, overflow: "hidden", maxWidth: 200, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Foto de cédula</div>
+                    <div style={{ borderRadius: 14, overflow: "hidden", maxWidth: 200, border: "1px solid var(--line)" }}>
                       <img src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
                     </div>
                   </div>
@@ -508,7 +508,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
 
                 {/* Documentos firmados */}
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Estado de documentos</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Estado de documentos</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {PASOS.map((p, i) => {
                       const signed = !!firmas[p.key];
@@ -517,15 +517,15 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                         <div key={p.key} style={{
                           display: "flex", alignItems: "center", gap: 10,
                           padding: "9px 14px", borderRadius: 10,
-                          background: signed ? "#f0fdf4" : current ? "#eff6ff" : "#f8fafc",
-                          border: `1px solid ${signed ? "#bbf7d0" : current ? "#bfdbfe" : "#e2e8f0"}`,
+                          background: signed ? "var(--ok-soft)" : current ? "var(--accent-soft2)" : "var(--soft2)",
+                          border: `1px solid ${signed ? "var(--ok-line)" : current ? "var(--accent-line)" : "var(--line)"}`,
                         }}>
                           <span style={{ fontSize: 16 }}>{signed ? "✅" : current ? "✍️" : "⬜"}</span>
-                          <span style={{ fontSize: 13, fontWeight: signed || current ? 700 : 400, color: signed ? "#166534" : current ? "#0369a1" : "#94a3b8" }}>
+                          <span style={{ fontSize: 13, fontWeight: signed || current ? 700 : 400, color: signed ? "var(--ok-ink)" : current ? "var(--accent-ink)" : "var(--faint)" }}>
                             {p.titulo}
                           </span>
                           {current && !signed && (
-                            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "#0284c7", background: "#eff6ff", padding: "2px 8px", borderRadius: 20, border: "1px solid #bfdbfe" }}>
+                            <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft2)", padding: "2px 8px", borderRadius: 20, border: "1px solid var(--accent-line)" }}>
                               ACTUAL
                             </span>
                           )}
@@ -536,16 +536,16 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 </div>
               </div>
 
-              <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ padding: "14px 20px", borderTop: "1px solid var(--line)", background: "var(--soft2)" }}>
                 {error && (
-                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "#fee2e2", borderRadius: 10, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 10, padding: "8px 12px", background: "var(--bad-soft)", borderRadius: 10, fontSize: 12, color: "var(--bad-ink)", fontWeight: 600 }}>
                     {error}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button onClick={volverAFirmar} style={{
-                    padding: "12px 16px", borderRadius: 12, border: "1px solid #e2e8f0",
-                    background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b", fontSize: 13,
+                    padding: "12px 16px", borderRadius: 12, border: "1px solid var(--line)",
+                    background: "var(--card)", fontWeight: 700, cursor: "pointer", color: "var(--muted)", fontSize: 13,
                   }}>
                     Volver a firmar
                   </button>
@@ -553,8 +553,8 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   {!isLastDoc ? (
                     <button onClick={siguienteDocumento} style={{
                       flex: 1, padding: "12px", borderRadius: 12, border: "none",
-                      background: "linear-gradient(90deg, #0284c7, #0369a1)",
-                      color: "white", fontWeight: 800, fontSize: 14, cursor: "pointer",
+                      background: "linear-gradient(90deg, var(--accent), var(--accent-ink))",
+                      color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: "pointer",
                     }}>
                       Siguiente documento →
                     </button>
@@ -564,14 +564,14 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                       disabled={guardando || !allSigned}
                       style={{
                         flex: 1, padding: "12px", borderRadius: 12, border: "none",
-                        background: guardando || !allSigned ? "#94a3b8" : "linear-gradient(90deg, #166534, #15803d)",
-                        color: "white", fontWeight: 800, fontSize: 14,
+                        background: guardando || !allSigned ? "var(--faint)" : "linear-gradient(90deg, var(--ok-ink), var(--ok))",
+                        color: "var(--card)", fontWeight: 800, fontSize: 14,
                         cursor: guardando || !allSigned ? "not-allowed" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       }}>
                       {guardando ? (
                         <>
-                          <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
+                          <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "var(--card)", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
                           Guardando...
                         </>
                       ) : (

@@ -16,17 +16,17 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 14px",
   borderRadius: 10,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
-  background: "white",
+  background: "var(--card)",
 };
-const labelStyle: React.CSSProperties = { marginBottom: 4, fontSize: 13, fontWeight: 600, color: "#334155", display: "block" };
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 20, boxShadow: "0 2px 12px rgba(15,23,42,0.08)" };
+const labelStyle: React.CSSProperties = { marginBottom: 4, fontSize: 13, fontWeight: 600, color: "var(--muted2)", display: "block" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 20, boxShadow: "0 2px 12px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = {
-  background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-  color: "white",
+  background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+  color: "var(--card)",
   border: "none",
   borderRadius: 10,
   padding: "10px 18px",
@@ -35,8 +35,8 @@ const primaryBtn: React.CSSProperties = {
   fontSize: 14,
 };
 const dangerBtn: React.CSSProperties = {
-  background: "#fee2e2",
-  color: "#991b1b",
+  background: "var(--bad-soft)",
+  color: "var(--bad-ink)",
   border: "none",
   borderRadius: 10,
   padding: "8px 14px",
@@ -45,8 +45,8 @@ const dangerBtn: React.CSSProperties = {
   fontSize: 13,
 };
 const ghostBtn: React.CSSProperties = {
-  background: "#e2e8f0",
-  color: "#334155",
+  background: "var(--line)",
+  color: "var(--muted2)",
   border: "none",
   borderRadius: 10,
   padding: "8px 14px",
@@ -60,11 +60,11 @@ const ghostBtn: React.CSSProperties = {
 const ESTADOS: TallerEstado[] = ["Pendiente", "En diagnóstico", "En reparación", "Listo para salida", "Finalizado"];
 
 const ESTADO_COLORS: Record<TallerEstado, { bg: string; color: string }> = {
-  Pendiente: { bg: "#fef3c7", color: "#92400e" },
-  "En diagnóstico": { bg: "#dbeafe", color: "#1d4ed8" },
-  "En reparación": { bg: "#fee2e2", color: "#991b1b" },
-  "Listo para salida": { bg: "#dcfce7", color: "#166534" },
-  Finalizado: { bg: "#e2e8f0", color: "#334155" },
+  Pendiente: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  "En diagnóstico": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  "En reparación": { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  "Listo para salida": { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  Finalizado: { bg: "var(--line)", color: "var(--muted2)" },
 };
 
 function formatDate(date: string | null) {
@@ -96,9 +96,9 @@ function TallerBadge({ estado }: { estado: TallerEstado }) {
 
 function KpiCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
-    <div style={{ ...card, borderLeft: `4px solid ${accent ?? "#0284c7"}` }}>
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: "#0f172a" }}>{value}</div>
+    <div style={{ ...card, borderLeft: `4px solid ${accent ?? "var(--accent)"}` }}>
+      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text)" }}>{value}</div>
     </div>
   );
 }
@@ -123,28 +123,28 @@ function OrdenCard({
       style={{
         padding: "14px 16px",
         borderRadius: 14,
-        background: selected ? "#e0f2fe" : "#f8fafc",
-        border: `1.5px solid ${selected ? "#0284c7" : "#e2e8f0"}`,
+        background: selected ? "var(--accent-soft)" : "var(--soft2)",
+        border: `1.5px solid ${selected ? "var(--accent)" : "var(--line)"}`,
         cursor: "pointer",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{motoLabel}</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>{motoLabel}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
             Ingreso: {formatDate(item.fecha_ingreso)} · {dias} día{dias !== 1 ? "s" : ""}
           </div>
-          <div style={{ fontSize: 13, color: "#334155", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
+          <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
             {item.detalle}
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <TallerBadge estado={item.estado_tecnico} />
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{formatCOP(item.costo)}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{formatCOP(item.costo)}</div>
         </div>
       </div>
       {item.repuestos && (
-        <div style={{ marginTop: 8, fontSize: 12, color: "#64748b" }}>
+        <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
           Repuestos: {item.repuestos}
         </div>
       )}
@@ -160,10 +160,10 @@ function Modal({ onClose, title, children }: { onClose: () => void; title: strin
       style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 520, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+      <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 520, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 20, color: "#0f172a" }}>{title}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#64748b", lineHeight: 1 }}>x</button>
+          <h3 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>{title}</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--muted)", lineHeight: 1 }}>x</button>
         </div>
         {children}
       </div>
@@ -191,7 +191,7 @@ function RepuestosEditor({ items, onChange }: { items: RepuestoItem[]; onChange:
     <div>
       <label style={labelStyle}>Repuestos utilizados</label>
       {items.length === 0 && (
-        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Sin repuestos agregados.</div>
+        <div style={{ fontSize: 12, color: "var(--faint)", marginBottom: 6 }}>Sin repuestos agregados.</div>
       )}
       {items.map((item, i) => (
         <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
@@ -215,20 +215,20 @@ function RepuestosEditor({ items, onChange }: { items: RepuestoItem[]; onChange:
             onChange={v => actualizar(i, "costo", Number(v) || 0)}
             placeholder="$ costo u."
           />
-          <button onClick={() => eliminar(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "0 2px", flexShrink: 0 }}>✕</button>
+          <button onClick={() => eliminar(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--faint)", fontSize: 18, padding: "0 2px", flexShrink: 0 }}>✕</button>
         </div>
       ))}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-        <button onClick={agregar} type="button" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", background: "none", border: "1px dashed #93c5fd", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}>
+        <button onClick={agregar} type="button" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "none", border: "1px dashed var(--accent-line)", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}>
           + Agregar repuesto
         </button>
         {items.length > 0 && (
-          <span style={{ fontSize: 12, color: "#64748b" }}>
-            Total repuestos: <strong style={{ color: "#0f172a" }}>${items.reduce((s, r) => s + r.costo * r.cantidad, 0).toLocaleString("es-CO")}</strong>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            Total repuestos: <strong style={{ color: "var(--text)" }}>${items.reduce((s, r) => s + r.costo * r.cantidad, 0).toLocaleString("es-CO")}</strong>
           </span>
         )}
       </div>
-      {totalRepuestos > 0 && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>El costo de repuestos se suma al costo total de la orden.</div>}
+      {totalRepuestos > 0 && <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>El costo de repuestos se suma al costo total de la orden.</div>}
     </div>
   );
 }
@@ -309,15 +309,15 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
         <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
         <MoneyInput label="Mano de obra" value={costoManoObra} onChange={setCostoManoObra} />
         {costoTotal > 0 && (
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
-            <span style={{ color: "#64748b" }}>Repuestos: <strong>${costoRepuestos.toLocaleString("es-CO")}</strong></span>
-            <span style={{ color: "#64748b", margin: "0 10px" }}>+</span>
-            <span style={{ color: "#64748b" }}>Mano de obra: <strong>${(Number(costoManoObra) || 0).toLocaleString("es-CO")}</strong></span>
-            <span style={{ color: "#64748b", margin: "0 10px" }}>=</span>
-            <span style={{ color: "#0284c7", fontWeight: 800 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13 }}>
+            <span style={{ color: "var(--muted)" }}>Repuestos: <strong>${costoRepuestos.toLocaleString("es-CO")}</strong></span>
+            <span style={{ color: "var(--muted)", margin: "0 10px" }}>+</span>
+            <span style={{ color: "var(--muted)" }}>Mano de obra: <strong>${(Number(costoManoObra) || 0).toLocaleString("es-CO")}</strong></span>
+            <span style={{ color: "var(--muted)", margin: "0 10px" }}>=</span>
+            <span style={{ color: "var(--accent)", fontWeight: 800 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
           </div>
         )}
-        {formError && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{formError}</div>}
+        {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{formError}</div>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
           <button onClick={onClose} style={ghostBtn}>Cancelar</button>
           <button onClick={handleSubmit} style={primaryBtn} disabled={saving}>{saving ? "Guardando..." : "Registrar ingreso"}</button>
@@ -357,9 +357,9 @@ function ActualizarModal({
 
   return (
     <Modal onClose={onClose} title="Actualizar orden">
-      <div style={{ marginBottom: 16, padding: "10px 14px", background: "#f8fafc", borderRadius: 10, fontSize: 14 }}>
+      <div style={{ marginBottom: 16, padding: "10px 14px", background: "var(--soft2)", borderRadius: 10, fontSize: 14 }}>
         <strong>{motoLabel}</strong>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           Ingresó: {formatDate(item.fecha_ingreso)} · Costo acumulado: {formatCOP(item.costo)}
         </div>
       </div>
@@ -373,9 +373,9 @@ function ActualizarModal({
         <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
         <MoneyInput label="Mano de obra adicional" value={manoObraExtra} onChange={setManoObraExtra} />
         {costoExtra > 0 && (
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
-            Nuevo total acumulado: <strong style={{ color: "#0284c7" }}>{formatCOP(item.costo + costoExtra)}</strong>
-            <span style={{ color: "#94a3b8", marginLeft: 8 }}>(+{formatCOP(costoExtra)})</span>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13 }}>
+            Nuevo total acumulado: <strong style={{ color: "var(--accent)" }}>{formatCOP(item.costo + costoExtra)}</strong>
+            <span style={{ color: "var(--faint)", marginLeft: 8 }}>(+{formatCOP(costoExtra)})</span>
           </div>
         )}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -392,8 +392,8 @@ function ActualizarModal({
 function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div>
-      <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: accent ? 800 : 500, color: accent ? "#0284c7" : "#0f172a" }}>{value}</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: accent ? 800 : 500, color: accent ? "var(--accent)" : "var(--text)" }}>{value}</div>
     </div>
   );
 }
@@ -431,15 +431,15 @@ function DetallePanel({
       {finalizado && <Row label="Fecha salida" value={formatDate(item.fecha_salida)} />}
       <Row label="Costo acumulado" value={formatCOP(item.costo)} accent />
       <div>
-        <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Detalle técnico</div>
-        <div style={{ fontSize: 14, color: "#0f172a", background: "#f8fafc", borderRadius: 10, padding: "10px 14px" }}>{item.detalle}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Detalle técnico</div>
+        <div style={{ fontSize: 14, color: "var(--text)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px" }}>{item.detalle}</div>
       </div>
       {item.repuestos && (
         <div>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Repuestos</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Repuestos</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {item.repuestos.split(",").map((r, i) => (
-              <span key={i} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 999, padding: "3px 10px", fontSize: 12, color: "#334155" }}>
+              <span key={i} style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "3px 10px", fontSize: 12, color: "var(--muted2)" }}>
                 {r.trim()}
               </span>
             ))}
@@ -450,7 +450,7 @@ function DetallePanel({
       {!finalizado && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button onClick={onCambiarEstado} style={ghostBtn}>Cambiar estado</button>
-          <button onClick={onActualizar} style={{ ...ghostBtn, background: "#dbeafe", color: "#1d4ed8" }}>+ Repuesto / costo</button>
+          <button onClick={onActualizar} style={{ ...ghostBtn, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}>+ Repuesto / costo</button>
           <button onClick={onFinalizar} style={{ ...primaryBtn, fontSize: 13 }}>Finalizar y pasar a disponible</button>
         </div>
       )}
@@ -468,15 +468,15 @@ function imprimirOrden(item: TallerItem, motoLabel: string) {
 <meta charset="UTF-8">
 <title>Orden de Taller - ${motoLabel}</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 32px; color: #0f172a; }
+  body { font-family: Arial, sans-serif; padding: 32px; color: var(--text); }
   h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+  .sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .field { margin-bottom: 16px; }
-  .label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+  .label { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
   .value { font-size: 14px; font-weight: 500; }
-  .detalle { background: #f8fafc; border-radius: 8px; padding: 12px; font-size: 14px; margin-top: 4px; }
-  .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 12px; color: #94a3b8; }
+  .detalle { background: var(--soft2); border-radius: 8px; padding: 12px; font-size: 14px; margin-top: 4px; }
+  .footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 12px; color: var(--faint); }
 </style>
 </head>
 <body>
@@ -584,32 +584,32 @@ export default function TallerView() {
     setSeleccionId(null);
   }
 
-  if (loading) return <div style={{ padding: 32, color: "#64748b", fontSize: 15 }}>Cargando taller...</div>;
+  if (loading) return <div style={{ padding: 32, color: "var(--muted)", fontSize: 15 }}>Cargando taller...</div>;
 
   return (
     <div style={{ display: "grid", gap: 24 }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 24, margin: 0, color: "#0f172a" }}>Taller y Mantenimiento</h2>
-          <p style={{ marginTop: 4, color: "#64748b", fontSize: 14, margin: "4px 0 0" }}>Control técnico de la flota.</p>
+          <h2 style={{ fontSize: 24, margin: 0, color: "var(--text)" }}>Taller y Mantenimiento</h2>
+          <p style={{ marginTop: 4, color: "var(--muted)", fontSize: 14, margin: "4px 0 0" }}>Control técnico de la flota.</p>
         </div>
         <button onClick={() => setShowNueva(true)} style={primaryBtn}>+ Nueva orden de taller</button>
       </div>
 
-      {error && <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: 10, fontSize: 13 }}>Error: {error}</div>}
+      {error && <div style={{ background: "var(--bad-soft)", color: "var(--bad-ink)", padding: "10px 14px", borderRadius: 10, fontSize: 13 }}>Error: {error}</div>}
 
       {/* KPIs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-        <div style={{ flex: "1 1 140px" }}><KpiCard label="En proceso" value={activas.length} accent="#0284c7" /></div>
-        <div style={{ flex: "1 1 140px" }}><KpiCard label="En diagnóstico" value={enDiagnostico} accent="#1d4ed8" /></div>
-        <div style={{ flex: "1 1 140px" }}><KpiCard label="En reparación" value={enReparacion} accent="#991b1b" /></div>
-        <div style={{ flex: "1 1 140px" }}><KpiCard label="Listo para salida" value={listoSalida} accent="#166534" /></div>
-        <div style={{ flex: "1 1 180px" }}><KpiCard label="Costo total (este mes)" value={formatCOP(costoMes)} accent="#10b981" /></div>
+        <div style={{ flex: "1 1 140px" }}><KpiCard label="En proceso" value={activas.length} accent="var(--accent)" /></div>
+        <div style={{ flex: "1 1 140px" }}><KpiCard label="En diagnóstico" value={enDiagnostico} accent="var(--accent-ink)" /></div>
+        <div style={{ flex: "1 1 140px" }}><KpiCard label="En reparación" value={enReparacion} accent="var(--bad-ink)" /></div>
+        <div style={{ flex: "1 1 140px" }}><KpiCard label="Listo para salida" value={listoSalida} accent="var(--ok-ink)" /></div>
+        <div style={{ flex: "1 1 180px" }}><KpiCard label="Costo total (este mes)" value={formatCOP(costoMes)} accent="var(--ok2)" /></div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "2px solid #e2e8f0" }}>
+      <div style={{ display: "flex", gap: 4, borderBottom: "2px solid var(--line)" }}>
         {(["activas", "historial"] as const).map((t) => (
           <button
             key={t}
@@ -617,11 +617,11 @@ export default function TallerView() {
             style={{
               background: "none",
               border: "none",
-              borderBottom: tab === t ? "2px solid #0284c7" : "2px solid transparent",
+              borderBottom: tab === t ? "2px solid var(--accent)" : "2px solid transparent",
               marginBottom: -2,
               padding: "8px 16px",
               fontWeight: tab === t ? 700 : 500,
-              color: tab === t ? "#0284c7" : "#64748b",
+              color: tab === t ? "var(--accent)" : "var(--muted)",
               cursor: "pointer",
               fontSize: 14,
             }}
@@ -637,7 +637,7 @@ export default function TallerView() {
           {/* Lista */}
           <div style={{ flex: "1 1 320px", display: "grid", gap: 10 }}>
             {activas.length === 0 ? (
-              <div style={{ ...card, color: "#64748b", fontSize: 14, textAlign: "center", padding: 32 }}>
+              <div style={{ ...card, color: "var(--muted)", fontSize: 14, textAlign: "center", padding: 32 }}>
                 No hay órdenes activas.
                 <br />
                 <button onClick={() => setShowNueva(true)} style={{ ...primaryBtn, marginTop: 14, fontSize: 13 }}>Registrar primera orden</button>
@@ -658,7 +658,7 @@ export default function TallerView() {
           {/* Panel detalle */}
           {seleccionado && seleccionado.estado_tecnico !== "Finalizado" && (
             <div style={{ flex: "0 1 340px", ...card, minWidth: 280 }}>
-              <h3 style={{ margin: "0 0 16px", fontSize: 17, color: "#0f172a" }}>Detalle de la orden</h3>
+              <h3 style={{ margin: "0 0 16px", fontSize: 17, color: "var(--text)" }}>Detalle de la orden</h3>
               <DetallePanel
                 item={seleccionado}
                 motoLabel={getMotoLabel(seleccionado.moto_id)}
@@ -673,7 +673,7 @@ export default function TallerView() {
       ) : (
         /* Historial */
         <div style={card}>
-          <div style={{ fontSize: 14, color: "#64748b", marginBottom: 16 }}>
+          <div style={{ fontSize: 14, color: "var(--muted)", marginBottom: 16 }}>
             {historial.length === 0
               ? "No hay órdenes finalizadas aún."
               : `${historial.length} orden${historial.length !== 1 ? "es" : ""} finalizada${historial.length !== 1 ? "s" : ""}`}
@@ -682,22 +682,22 @@ export default function TallerView() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc" }}>
+                  <tr style={{ background: "var(--soft2)" }}>
                     {["Moto", "Detalle", "Repuestos", "Costo", "Ingreso", "Salida", "Días", ""].map((h) => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "#334155", borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--muted2)", borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {historial.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#0f172a" }}>{getMotoLabel(item.moto_id)}</td>
-                      <td style={{ padding: "10px 12px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#334155" }}>{item.detalle}</td>
-                      <td style={{ padding: "10px 12px", color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.repuestos || "-"}</td>
-                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "#0284c7" }}>{formatCOP(item.costo)}</td>
-                      <td style={{ padding: "10px 12px", color: "#64748b" }}>{formatDate(item.fecha_ingreso)}</td>
-                      <td style={{ padding: "10px 12px", color: "#64748b" }}>{formatDate(item.fecha_salida)}</td>
-                      <td style={{ padding: "10px 12px", color: "#64748b" }}>{diasEnTaller(item.fecha_ingreso, item.fecha_salida)}</td>
+                    <tr key={item.id} style={{ borderBottom: "1px solid var(--soft)" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text)" }}>{getMotoLabel(item.moto_id)}</td>
+                      <td style={{ padding: "10px 12px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted2)" }}>{item.detalle}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--muted)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.repuestos || "-"}</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--accent)" }}>{formatCOP(item.costo)}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--muted)" }}>{formatDate(item.fecha_ingreso)}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--muted)" }}>{formatDate(item.fecha_salida)}</td>
+                      <td style={{ padding: "10px 12px", color: "var(--muted)" }}>{diasEnTaller(item.fecha_ingreso, item.fecha_salida)}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <button
                           onClick={() => imprimirOrden(item, getMotoLabel(item.moto_id))}
@@ -749,7 +749,7 @@ export default function TallerView() {
                   style={{
                     padding: "12px 16px",
                     borderRadius: 10,
-                    border: isActual ? "2px solid #0284c7" : "2px solid transparent",
+                    border: isActual ? "2px solid var(--accent)" : "2px solid transparent",
                     background: bg,
                     color,
                     fontWeight: 700,

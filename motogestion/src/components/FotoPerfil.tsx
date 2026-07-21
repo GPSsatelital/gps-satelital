@@ -68,20 +68,20 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
           <img
             src={previa}
             alt="Vista previa"
-            style={{ width: 140, height: 140, borderRadius: "50%", objectFit: "cover", border: "3px solid #0284c7" }}
+            style={{ width: 140, height: 140, borderRadius: "50%", objectFit: "cover", border: "3px solid var(--accent)" }}
           />
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               onClick={repetir}
-              style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "#64748b" }}
+              style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid var(--line2)", background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "var(--muted)" }}
             >
               🔄 Elegir otra
             </button>
             <button
               type="button"
               onClick={confirmar}
-              style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "#0284c7", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
+              style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}
             >
               ✓ Usar esta foto
             </button>
@@ -95,23 +95,23 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
     <div>
       <div style={{ ...labelStyle, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
         {label}
-        <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>(opcional)</span>
+        <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(opcional)</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <div style={{
           width: 100, height: 100, borderRadius: "50%", overflow: "hidden",
-          background: "#f1f5f9", border: "2px dashed #cbd5e1",
+          background: "var(--soft)", border: "2px dashed var(--line2)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {foto ? (
             <img src={foto} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
-            <span style={{ fontSize: 32, color: "#cbd5e1" }}>👤</span>
+            <span style={{ fontSize: 32, color: "var(--line2)" }}>👤</span>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           <label style={{ cursor: "pointer" }}>
-            <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "#334155" }}>
+            <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--line2)", background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "var(--muted2)" }}>
               📷 Cámara
             </div>
             <input
@@ -124,7 +124,7 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
             />
           </label>
           <label style={{ cursor: "pointer" }}>
-            <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "#334155" }}>
+            <div style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--line2)", background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "var(--muted2)" }}>
               🖼 Galería
             </div>
             <input
@@ -139,7 +139,7 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
             <button
               type="button"
               onClick={quitar}
-              style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid #fca5a5", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "#dc2626" }}
+              style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--bad-line)", background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 13, color: "var(--bad)" }}
             >
               Quitar
             </button>

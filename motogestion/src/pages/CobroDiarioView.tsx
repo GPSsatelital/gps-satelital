@@ -32,7 +32,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 type Tab = "diario" | "periodico" | "gabela" | "pagaron" | "caja";
 
 const GRUPOS_CAJA: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
-const COLOR_GRUPO_CAJA: Record<GrupoMoto, string> = { COSTA: "#0369a1", PRADERA: "#166534", RASTREADOR: "#92400e", USADAS: "#6d28d9", OTRO: "#334155" };
+const COLOR_GRUPO_CAJA: Record<GrupoMoto, string> = { COSTA: "var(--accent-ink)", PRADERA: "var(--ok-ink)", RASTREADOR: "var(--warn-ink)", USADAS: "var(--violet)", OTRO: "var(--muted2)" };
 const DIAS_LABEL = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -68,11 +68,11 @@ function calcEstadoPeriodico(
 }
 
 function getProtocoloStep(dias: number): { paso: number; label: string; color: string; bg: string } {
-  if (dias === 0) return { paso: 0, label: "Al día", color: "#166534", bg: "#dcfce7" };
-  if (dias === 1) return { paso: 1, label: "Gabela — mensaje + llamada", color: "#92400e", bg: "#fef3c7" };
-  if (dias === 2) return { paso: 2, label: "Apagado remoto (detenido)", color: "#c2410c", bg: "#fff7ed" };
-  if (dias <= 4)  return { paso: 3, label: "En mora — inmovilizar", color: "#991b1b", bg: "#fee2e2" };
-  return { paso: 4, label: "Recolección urgente", color: "#7f1d1d", bg: "#fca5a5" };
+  if (dias === 0) return { paso: 0, label: "Al día", color: "var(--ok-ink)", bg: "var(--ok-soft)" };
+  if (dias === 1) return { paso: 1, label: "Gabela — mensaje + llamada", color: "var(--warn-ink)", bg: "var(--warn-soft)" };
+  if (dias === 2) return { paso: 2, label: "Apagado remoto (detenido)", color: "var(--orange)", bg: "var(--orange-soft)" };
+  if (dias <= 4)  return { paso: 3, label: "En mora — inmovilizar", color: "var(--bad-ink)", bg: "var(--bad-soft)" };
+  return { paso: 4, label: "Recolección urgente", color: "var(--bad-ink2)", bg: "var(--bad-line)" };
 }
 
 type Fila = {
@@ -103,9 +103,9 @@ type Fila = {
 };
 
 const PRIORIDAD: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  critica: { bg: "#fff5f5", color: "#991b1b", border: "#fecaca", label: "Crítica" },
-  alta:    { bg: "#fefce8", color: "#92400e", border: "#fde68a", label: "Alta" },
-  media:   { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa", label: "Media" },
+  critica: { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad-line)", label: "Crítica" },
+  alta:    { bg: "var(--warn-soft2)", color: "var(--warn-ink)", border: "var(--warn-line)", label: "Alta" },
+  media:   { bg: "var(--orange-soft)", color: "var(--orange)", border: "var(--orange-soft)", label: "Media" },
 };
 
 export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
@@ -315,21 +315,21 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     return (
       <div style={{ display: "flex", flexDirection: vertical ? "column" : "row", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
         {!f.pagadoHoyBool && (
-          <button onClick={() => abrirCobrar(f)} style={{ ...s, background: "#0f172a", color: "white" }} title="Registrar pago">💳</button>
+          <button onClick={() => abrirCobrar(f)} style={{ ...s, background: "var(--ink)", color: "var(--card)" }} title="Registrar pago">💳</button>
         )}
         {f.clienteTel && (
           <>
-            <button onClick={() => abrirLlamada(f.clienteTel)} style={{ ...s, background: "#dbeafe", color: "#1d4ed8" }} title="Llamar">📞</button>
-            <button onClick={() => abrirWA(f)} style={{ ...s, background: "#dcfce7", color: "#166534" }} title="WhatsApp">💬</button>
+            <button onClick={() => abrirLlamada(f.clienteTel)} style={{ ...s, background: "var(--accent-soft3)", color: "var(--accent-ink)" }} title="Llamar">📞</button>
+            <button onClick={() => abrirWA(f)} style={{ ...s, background: "var(--ok-soft)", color: "var(--ok-ink)" }} title="WhatsApp">💬</button>
           </>
         )}
-        <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "#fef3c7", color: "#92400e" }} title="Registrar gestión">📋</button>
-        <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "#fee2e2", color: "#991b1b" }} title="Ver deuda">⚠️</button>
+        <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "var(--warn-soft)", color: "var(--warn-ink)" }} title="Registrar gestión">📋</button>
+        <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "var(--bad-soft)", color: "var(--bad-ink)" }} title="Ver deuda">⚠️</button>
         {onNavigate && (
-          <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ ...s, background: "#eff6ff", color: "#0284c7" }} title="Ver ficha cliente">👤</button>
+          <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ ...s, background: "var(--accent-soft2)", color: "var(--accent)" }} title="Ver ficha cliente">👤</button>
         )}
         {onNavigate && f.motoId && (
-          <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ ...s, background: "#f0fdf4", color: "#166534" }} title="Ver ficha moto">🏍️</button>
+          <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ ...s, background: "var(--ok-soft)", color: "var(--ok-ink)" }} title="Ver ficha moto">🏍️</button>
         )}
       </div>
     );
@@ -344,34 +344,34 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
         onClick={e => { if (e.target === e.currentTarget) setCobrandoId(null); }}
       >
-        <div style={{ background: "white", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
+        <div style={{ background: "var(--card)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 17, textTransform: "uppercase", color: "#0f172a" }}>{f.clienteNombre}</div>
+              <div style={{ fontWeight: 900, fontSize: 17, textTransform: "uppercase", color: "var(--text)" }}>{f.clienteNombre}</div>
               <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
                 {f.placa !== "—" && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", background: "#eff6ff", padding: "2px 10px", borderRadius: 999 }}>🏍️ {f.placa}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft2)", padding: "2px 10px", borderRadius: 999 }}>🏍️ {f.placa}</span>
                 )}
-                <span style={{ fontSize: 12, color: "#64748b" }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
                   {f.tipoRuta === "diario" ? "Contrato diario" : `Contrato ${f.tipoRuta}`}
                 </span>
               </div>
             </div>
-            <button onClick={() => setCobrandoId(null)} style={{ background: "#f1f5f9", border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+            <button onClick={() => setCobrandoId(null)} style={{ background: "var(--soft)", border: "none", borderRadius: 99, width: 32, height: 32, cursor: "pointer", fontSize: 16, color: "var(--muted)" }}>✕</button>
           </div>
 
           {/* Valor esperado */}
-          <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Valor esperado</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>
+          <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Valor esperado</span>
+            <span style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>
               ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
             </span>
           </div>
 
           {/* Alerta mora */}
           {f.diasSinPago > 0 && (
-            <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 10, background: "#fee2e2", border: "1px solid #fecaca", fontSize: 13, color: "#991b1b", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, color: "var(--bad-ink)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
               ⚠️
               <div>
                 <div>{f.diasSinPago} días sin pago</div>
@@ -382,18 +382,18 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
 
           {/* Valor a cobrar */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Valor a cobrar</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 6 }}>Valor a cobrar</div>
             <MoneyInput
               value={cobrarValor}
               onChange={setCobrarValor}
-              style={{ padding: "14px", border: "2px solid #e2e8f0", fontSize: 22, fontWeight: 900, textAlign: "center" }}
+              style={{ padding: "14px", border: "2px solid var(--line)", fontSize: 22, fontWeight: 900, textAlign: "center" }}
               autoFocus
             />
           </div>
 
           {/* Método */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Método de pago</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Método de pago</div>
             <div style={{ display: "flex", gap: 8 }}>
               {(["Efectivo", "Transferencia"] as const).map(m => (
                 <button
@@ -402,11 +402,11 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   disabled={m === "Efectivo" && !esSecretaria}
                   style={{
                     flex: 1, padding: "12px 0", borderRadius: 12, border: "2px solid",
-                    borderColor: cobrarMetodo === m ? (m === "Efectivo" ? "#16a34a" : "#2563eb") : "#e2e8f0",
+                    borderColor: cobrarMetodo === m ? (m === "Efectivo" ? "var(--ok)" : "#2563eb") : "var(--line)",
                     cursor: m === "Efectivo" && !esSecretaria ? "not-allowed" : "pointer",
                     fontWeight: 700, fontSize: 13,
-                    background: cobrarMetodo === m ? (m === "Efectivo" ? "#dcfce7" : "#dbeafe") : "white",
-                    color: cobrarMetodo === m ? (m === "Efectivo" ? "#166534" : "#1d4ed8") : "#94a3b8",
+                    background: cobrarMetodo === m ? (m === "Efectivo" ? "var(--ok-soft)" : "var(--accent-soft3)") : "var(--card)",
+                    color: cobrarMetodo === m ? (m === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)") : "var(--faint)",
                     opacity: m === "Efectivo" && !esSecretaria ? 0.4 : 1,
                     transition: "all 0.15s",
                   }}
@@ -415,36 +415,36 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                 </button>
               ))}
             </div>
-            {!esSecretaria && <div style={{ fontSize: 11, color: "#92400e", marginTop: 5, textAlign: "center" }}>Solo la secretaria registra efectivo</div>}
+            {!esSecretaria && <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 5, textAlign: "center" }}>Solo la secretaria registra efectivo</div>}
           </div>
 
           {/* Nota */}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 }}>Nota (opcional)</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 6 }}>Nota (opcional)</div>
             <input
               type="text"
               value={cobrarNota}
               onChange={e => setCobrarNota(e.target.value)}
               placeholder="Observación..."
-              style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
+              style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid var(--line)", fontSize: 13 }}
             />
           </div>
 
           {cobrarError && (
-            <div style={{ color: "#991b1b", fontSize: 13, marginBottom: 12, padding: "8px 12px", background: "#fee2e2", borderRadius: 8 }}>{cobrarError}</div>
+            <div style={{ color: "var(--bad-ink)", fontSize: 13, marginBottom: 12, padding: "8px 12px", background: "var(--bad-soft)", borderRadius: 8 }}>{cobrarError}</div>
           )}
 
           <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={() => setCobrandoId(null)}
-              style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#64748b" }}
+              style={{ flex: 1, padding: 14, borderRadius: 14, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted)" }}
             >
               Cancelar
             </button>
             <button
               onClick={pedirConfirmacionCobro}
               disabled={cobrandoLoading}
-              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: cobrandoLoading ? "#94a3b8" : "#0f172a", color: "white", cursor: cobrandoLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
+              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: cobrandoLoading ? "var(--faint)" : "var(--text)", color: "var(--card)", cursor: cobrandoLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
             >
               {cobrandoLoading ? "Registrando..." : "✅ Confirmar pago"}
             </button>
@@ -457,11 +457,11 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   // ── Tarjeta cliente ──────────────────────────────────────────────────────────
   function TarjetaCliente({ f, showDiasPago = false }: { f: Fila; showDiasPago?: boolean }) {
     const prot = getProtocoloStep(f.diasSinPago);
-    const borderColor = f.pagadoHoyBool ? "#22c55e" : f.diasSinPago > 0 ? prot.color : "#e2e8f0";
+    const borderColor = f.pagadoHoyBool ? "var(--ok)" : f.diasSinPago > 0 ? prot.color : "var(--line)";
 
     return (
       <div style={{
-        background: "white", borderRadius: 18, padding: isMobile ? "14px" : "16px 20px",
+        background: "var(--card)", borderRadius: 18, padding: isMobile ? "14px" : "16px 20px",
         boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
         borderLeft: `4px solid ${borderColor}`,
         transition: "box-shadow 0.15s",
@@ -472,65 +472,65 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             {/* Nombre + placa */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
               {onNavigate && f.motoId
-                ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</button>
-                : <span style={{ fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{f.placa}</span>
+                ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{f.placa}</button>
+                : <span style={{ fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{f.placa}</span>
               }
-              <span style={{ fontSize: 12, color: "#cbd5e1" }}>·</span>
+              <span style={{ fontSize: 12, color: "var(--line2)" }}>·</span>
               {onNavigate
-                ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                : <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</span>
+                ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{f.clienteNombre}</button>
+                : <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{f.clienteNombre}</span>
               }
               {/* Estado badge */}
               {f.pagadoHoyBool ? (
-                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>✅ Pagado</span>
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>✅ Pagado</span>
               ) : f.diasSinPago > 0 ? (
                 <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: prot.bg, color: prot.color }}>
                   {f.diasSinPago}d · {prot.label}
                 </span>
               ) : (
-                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>⏳ Pendiente</span>
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>⏳ Pendiente</span>
               )}
             </div>
 
             {/* Marca + dia pago */}
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--faint)", marginBottom: 8 }}>
               {f.marca && <span>{f.marca}</span>}
-              {showDiasPago && <span style={{ marginLeft: f.marca ? 8 : 0, color: "#0284c7", fontWeight: 600 }}>· Pago: {f.diaPago}</span>}
+              {showDiasPago && <span style={{ marginLeft: f.marca ? 8 : 0, color: "var(--accent)", fontWeight: 600 }}>· Pago: {f.diaPago}</span>}
             </div>
 
             {/* Montos */}
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>
                   ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
-                  <span style={{ fontSize: 11, fontWeight: 400, color: "#94a3b8", marginLeft: 3 }}>
+                  <span style={{ fontSize: 11, fontWeight: 400, color: "var(--faint)", marginLeft: 3 }}>
                     /{f.tipoRuta === "diario" ? "día" : "sem"}
                   </span>
                 </div>
                 {f.tipoRuta === "diario" && (
-                  <div style={{ fontSize: 11, color: "#64748b" }}>
-                    <span style={{ color: "#166534", fontWeight: 700 }}>${fmt(f.tarifaDiaria)}</span> tarifa
-                    <span style={{ color: "#64748b" }}> + </span>
-                    <span style={{ color: "#0284c7", fontWeight: 700 }}>${fmt(f.ahorroDiario)}</span> ahorro
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                    <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>${fmt(f.tarifaDiaria)}</span> tarifa
+                    <span style={{ color: "var(--muted)" }}> + </span>
+                    <span style={{ color: "var(--accent)", fontWeight: 700 }}>${fmt(f.ahorroDiario)}</span> ahorro
                   </div>
                 )}
               </div>
               {f.pagadoHoyBool && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "#166534" }}>${fmt(f.pagadoHoy)}</div>
-                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>pagado hoy</div>
+                <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 14 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ok-ink)" }}>${fmt(f.pagadoHoy)}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>pagado hoy</div>
                 </div>
               )}
               {f.pagadoHasta && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{fmtFechaCarta(f.pagadoHasta)}</div>
-                  <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>pagado hasta</div>
+                <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>{fmtFechaCarta(f.pagadoHasta)}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>pagado hasta</div>
                 </div>
               )}
               {f.diasSinPago > 0 && f.deudaEstimada > 0 && (
-                <div style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b" }}>${fmt(f.deudaEstimada)}</div>
-                  <div style={{ fontSize: 10, color: "#991b1b", fontWeight: 700, textTransform: "uppercase" }}>deuda est.</div>
+                <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--bad-ink)" }}>${fmt(f.deudaEstimada)}</div>
+                  <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, textTransform: "uppercase" }}>deuda est.</div>
                 </div>
               )}
             </div>
@@ -545,10 +545,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
 
   // ── Tabs config ─────────────────────────────────────────────────────────────
   const tabsDef: { key: Tab; label: string; count: number; color?: string; bg?: string }[] = [
-    { key: "diario",   label: "Diario",    count: filasHoy.length,          color: "#0284c7", bg: "#eff6ff" },
-    { key: "periodico",label: "Periódico", count: filasPeriodicaHoy.length,  color: "#7c3aed", bg: "#f5f3ff" },
-    { key: "gabela",   label: "Gabela",    count: filasGabela.length,        color: "#92400e", bg: "#fef3c7" },
-    { key: "pagaron",  label: "Ya pagaron",count: totalPagaronHoy,           color: "#166534", bg: "#dcfce7" },
+    { key: "diario",   label: "Diario",    count: filasHoy.length,          color: "var(--accent)", bg: "var(--accent-soft2)" },
+    { key: "periodico",label: "Periódico", count: filasPeriodicaHoy.length,  color: "var(--violet)", bg: "#f5f3ff" },
+    { key: "gabela",   label: "Gabela",    count: filasGabela.length,        color: "var(--warn-ink)", bg: "var(--warn-soft)" },
+    { key: "pagaron",  label: "Ya pagaron",count: totalPagaronHoy,           color: "var(--ok-ink)", bg: "var(--ok-soft)" },
     { key: "caja",     label: "Caja",      count: -1 },
   ];
 
@@ -557,23 +557,23 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
 
       {/* ── Hero ── */}
       <div style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+        background: "linear-gradient(135deg, var(--text) 0%, var(--accent-ink2) 100%)",
         borderRadius: 20, padding: isMobile ? "20px 18px" : "24px 28px",
         marginBottom: 18, position: "relative", overflow: "hidden",
       }}>
         <div style={{ position: "absolute", right: -30, top: -30, width: 160, height: 160, borderRadius: "50%", background: "rgba(2,132,199,0.15)", pointerEvents: "none" }} />
-        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4, textTransform: "capitalize" }}>
+        <div style={{ fontSize: 12, color: "var(--faint)", marginBottom: 4, textTransform: "capitalize" }}>
           Cobro del {fechaDisplay}
         </div>
 
         <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Total recaudado hoy</div>
-            <div style={{ fontSize: isMobile ? 34 : 44, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>${fmt(kpiRecaudado)}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Total recaudado hoy</div>
+            <div style={{ fontSize: isMobile ? 34 : 44, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em" }}>${fmt(kpiRecaudado)}</div>
           </div>
           <div style={{ paddingBottom: 4 }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>Meta estimada</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#38bdf8" }}>${fmt(kpiEsperado)}</div>
+            <div style={{ fontSize: 11, color: "var(--faint)", marginBottom: 2 }}>Meta estimada</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent-hi)" }}>${fmt(kpiEsperado)}</div>
           </div>
         </div>
 
@@ -581,14 +581,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         {kpiEsperado > 0 && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11 }}>
-              <span style={{ color: "#94a3b8" }}>{totalPagaronHoy} de {totalEsperadosHoy} clientes pagaron</span>
-              <span style={{ color: progressPct >= 100 ? "#34d399" : "#38bdf8", fontWeight: 700 }}>{progressPct}%</span>
+              <span style={{ color: "var(--faint)" }}>{totalPagaronHoy} de {totalEsperadosHoy} clientes pagaron</span>
+              <span style={{ color: progressPct >= 100 ? "var(--ok2)" : "var(--accent-hi)", fontWeight: 700 }}>{progressPct}%</span>
             </div>
             <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.15)", overflow: "hidden" }}>
               <div style={{
                 height: "100%", borderRadius: 999,
                 width: `${progressPct}%`,
-                background: progressPct >= 100 ? "#22c55e" : progressPct >= 60 ? "#38bdf8" : "#f59e0b",
+                background: progressPct >= 100 ? "var(--ok)" : progressPct >= 60 ? "var(--accent-hi)" : "var(--warn2)",
                 transition: "width 0.6s ease",
               }} />
             </div>
@@ -599,10 +599,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── KPI cards ── */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: isMobile ? "nowrap" : "wrap", overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0 }}>
         {[
-          { label: "Recaudado", value: `$${fmt(kpiRecaudado)}`, sub: `${totalPagaronHoy} pagos`, color: "#166534", bg: "#dcfce7" },
-          { label: "Esperado", value: `$${fmt(kpiEsperado)}`, sub: `${totalEsperadosHoy - totalPagaronHoy} pendientes`, color: "#1d4ed8", bg: "#dbeafe" },
-          { label: "En mora", value: `$${fmt(kpiMora)}`, sub: `${filasMora.length} contratos`, color: "#991b1b", bg: "#fee2e2" },
-          { label: "En gabela", value: `${filasGabela.length}`, sub: "día de gracia", color: "#92400e", bg: "#fef3c7" },
+          { label: "Recaudado", value: `$${fmt(kpiRecaudado)}`, sub: `${totalPagaronHoy} pagos`, color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+          { label: "Esperado", value: `$${fmt(kpiEsperado)}`, sub: `${totalEsperadosHoy - totalPagaronHoy} pendientes`, color: "var(--accent-ink)", bg: "var(--accent-soft3)" },
+          { label: "En mora", value: `$${fmt(kpiMora)}`, sub: `${filasMora.length} contratos`, color: "var(--bad-ink)", bg: "var(--bad-soft)" },
+          { label: "En gabela", value: `${filasGabela.length}`, sub: "día de gracia", color: "var(--warn-ink)", bg: "var(--warn-soft)" },
         ].map(kpi => (
           <div key={kpi.label} style={{ flex: isMobile ? "0 0 auto" : 1, minWidth: isMobile ? 130 : 110, background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>
@@ -613,7 +613,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       </div>
 
       {/* ── Tabs ── */}
-      <div style={{ display: "flex", gap: 3, marginBottom: 14, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: 14, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)", overflowX: "auto" }}>
         {tabsDef.map(t => {
           const isActive = tab === t.key;
           return (
@@ -624,8 +624,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                 flex: "0 0 auto", padding: isMobile ? "7px 10px" : "8px 14px",
                 borderRadius: 10, border: "none", cursor: "pointer",
                 fontSize: isMobile ? 11 : 12, fontWeight: 700,
-                background: isActive ? (t.bg ?? "#0f172a") : "transparent",
-                color: isActive ? (t.color ?? "white") : "#64748b",
+                background: isActive ? (t.bg ?? "var(--text)") : "transparent",
+                color: isActive ? (t.color ?? "var(--card)") : "var(--muted)",
                 whiteSpace: "nowrap",
                 transition: "all 0.15s",
                 position: "relative" as const,
@@ -633,7 +633,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             >
               {t.key === "caja" ? "🏦 Caja" : `${t.label}${t.count >= 0 ? ` (${t.count})` : ""}`}
               {t.count > 0 && t.key === "gabela" && !isActive && (
-                <span style={{ position: "absolute", top: 4, right: 4, width: 7, height: 7, borderRadius: "50%", background: "#f59e0b" }} />
+                <span style={{ position: "absolute", top: 4, right: 4, width: 7, height: 7, borderRadius: "50%", background: "var(--warn2)" }} />
               )}
             </button>
           );
@@ -643,12 +643,12 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── Buscador ── */}
       {tab !== "caja" && (
         <div style={{ position: "relative", marginBottom: 14 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#94a3b8" }}>🔍</span>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--faint)" }}>🔍</span>
           <input
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar cliente o placa..."
-            style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px 10px 36px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13, background: "white" }}
+            style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px 10px 36px", borderRadius: 12, border: "1px solid var(--line)", fontSize: 13, background: "var(--card)" }}
           />
         </div>
       )}
@@ -657,14 +657,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {tab === "diario" && (
         <div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            <span style={{ padding: "4px 12px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontSize: 12, fontWeight: 700 }}>
+            <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 12, fontWeight: 700 }}>
               ✅ {filasHoy.filter(f => f.pagadoHoyBool).length} pagaron
             </span>
-            <span style={{ padding: "4px 12px", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontSize: 12, fontWeight: 700 }}>
+            <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12, fontWeight: 700 }}>
               ⏳ {filasHoy.filter(f => !f.pagadoHoyBool).length} pendientes
             </span>
             {filasHoy.filter(f => f.diasSinPago > 0).length > 0 && (
-              <span style={{ padding: "4px 12px", borderRadius: 999, background: "#fee2e2", color: "#991b1b", fontSize: 12, fontWeight: 700 }}>
+              <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--bad-soft)", color: "var(--bad-ink)", fontSize: 12, fontWeight: 700 }}>
                 🔴 {filasHoy.filter(f => f.diasSinPago > 0).length} con mora acumulada
               </span>
             )}
@@ -674,9 +674,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               <TarjetaCliente key={f.contratoId} f={f} />
             ))}
             {filtrar(filasHoy).length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+              <div style={{ textAlign: "center", padding: "48px 24px", background: "var(--card)", borderRadius: 18 }}>
                 <div style={{ fontSize: 36 }}>📅</div>
-                <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>Sin contratos diarios activos</div>
+                <div style={{ fontWeight: 700, marginTop: 10, color: "var(--muted2)" }}>Sin contratos diarios activos</div>
               </div>
             )}
           </div>
@@ -687,16 +687,16 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {tab === "periodico" && (
         <div>
           {filasPeriodicaHoy.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "var(--card)", borderRadius: 18 }}>
               <div style={{ fontSize: 36 }}>📋</div>
-              <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "var(--muted2)" }}>
                 Sin contratos periódicos para hoy
               </div>
-              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Cada contrato paga en el día pactado (semanal, quincenal o mensual)</div>
+              <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 6 }}>Cada contrato paga en el día pactado (semanal, quincenal o mensual)</div>
             </div>
           ) : (
             <div>
-              <div style={{ marginBottom: 10, padding: "8px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0284c7", fontWeight: 600 }}>
+              <div style={{ marginBottom: 10, padding: "8px 14px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
                 ⚡ Hoy es día de pago para {filasPeriodicaHoy.length} contrato{filasPeriodicaHoy.length === 1 ? "" : "s"}.
               </div>
               <div style={{ display: "grid", gap: 10 }}>
@@ -712,13 +712,13 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── Tab: Gabela ── */}
       {tab === "gabela" && (
         <div>
-          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e" }}>
+          <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)" }}>
             <strong>Día de gabela:</strong> Se envía mensaje + llamada. Sirena solo con vehículo detenido en GPS. No aplicar apagado remoto aún.
           </div>
           {filasGabela.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "var(--card)", borderRadius: 18 }}>
               <div style={{ fontSize: 36 }}>✅</div>
-              <div style={{ fontWeight: 700, marginTop: 10, color: "#166534" }}>Sin clientes en gabela hoy</div>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "var(--ok-ink)" }}>Sin clientes en gabela hoy</div>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -733,13 +733,13 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── Tab: Ya pagaron ── */}
       {tab === "pagaron" && (
         <div>
-          <div style={{ marginBottom: 12, fontSize: 13, color: "#64748b" }}>
+          <div style={{ marginBottom: 12, fontSize: 13, color: "var(--muted)" }}>
             {totalPagaronHoy} pagos confirmados hoy · ${fmt(kpiRecaudado)} total
           </div>
           {filasPagaronHoy.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 24px", background: "white", borderRadius: 18 }}>
+            <div style={{ textAlign: "center", padding: "48px 24px", background: "var(--card)", borderRadius: 18 }}>
               <div style={{ fontSize: 36 }}>💳</div>
-              <div style={{ fontWeight: 700, marginTop: 10, color: "#334155" }}>Aún no hay pagos registrados hoy</div>
+              <div style={{ fontWeight: 700, marginTop: 10, color: "var(--muted2)" }}>Aún no hay pagos registrados hoy</div>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -801,9 +801,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             {/* Resumen */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
-                { label: "💵 Efectivo", value: efectivoHoy, color: "#166534", bg: "#dcfce7" },
-                { label: "🏦 Transferencias", value: transHoy, color: "#1d4ed8", bg: "#dbeafe" },
-                { label: "Total del día", value: totalHoy, color: "white", bg: "#0f172a" },
+                { label: "💵 Efectivo", value: efectivoHoy, color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+                { label: "🏦 Transferencias", value: transHoy, color: "var(--accent-ink)", bg: "var(--accent-soft3)" },
+                { label: "Total del día", value: totalHoy, color: "var(--card)", bg: "var(--text)" },
               ].map(c => (
                 <div key={c.label} style={{ flex: 1, minWidth: 140, background: c.bg, borderRadius: 14, padding: "14px 16px" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: c.color, textTransform: "uppercase", opacity: c.label === "Total del día" ? 0.7 : 1 }}>{c.label}</div>
@@ -813,28 +813,28 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             </div>
 
             {/* Lista pagos */}
-            <div style={{ background: "white", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-              <div style={{ padding: "13px 18px", borderBottom: "1px solid #f1f5f9", fontWeight: 800, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+              <div style={{ padding: "13px 18px", borderBottom: "1px solid var(--soft)", fontWeight: 800, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Pagos recibidos hoy</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>{pagosHoy.length} registros</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>{pagosHoy.length} registros</span>
               </div>
               {pagosHoy.length === 0 && (
-                <div style={{ padding: "32px 16px", textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Sin pagos registrados hoy</div>
+                <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--faint)", fontSize: 14 }}>Sin pagos registrados hoy</div>
               )}
               {pagosHoy.map((p, i) => {
                 const c = contratos.find(x => x.id === p.contrato_id);
                 const cl = clientes.find(x => x.id === c?.cliente_id);
                 const m = motos.find(x => x.id === c?.moto_id);
                 return (
-                  <div key={p.id ?? i} style={{ padding: "11px 18px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div key={p.id ?? i} style={{ padding: "11px 18px", borderBottom: "1px solid var(--soft2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{m?.placa ?? "—"} · {cl?.nombre ?? "—"}</div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{p.metodo}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{p.metodo}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontWeight: 900, fontSize: 15, color: p.metodo === "Efectivo" ? "#166534" : "#1d4ed8" }}>${fmt(p.valor)}</div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color: p.metodo === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)" }}>${fmt(p.valor)}</div>
                       {onNavigate && cl && (
-                        <button onClick={() => onNavigate("ficha_cliente", cl.id)} style={{ padding: "3px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>Ver ficha</button>
+                        <button onClick={() => onNavigate("ficha_cliente", cl.id)} style={{ padding: "3px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>Ver ficha</button>
                       )}
                     </div>
                   </div>
@@ -844,14 +844,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
 
             {/* Cierre de caja — cada grupo (portafolio) se cierra por aparte */}
             {!esSecretaria ? (
-              <div style={{ padding: "12px 16px", background: "#fef3c7", borderRadius: 12, fontSize: 12, color: "#92400e" }}>Solo la secretaria puede cerrar la caja.</div>
+              <div style={{ padding: "12px 16px", background: "var(--warn-soft)", borderRadius: 12, fontSize: 12, color: "var(--warn-ink)" }}>Solo la secretaria puede cerrar la caja.</div>
             ) : porGrupoCaja.length === 0 ? (
-              <div style={{ padding: "14px 18px", borderRadius: 14, background: "#f1f5f9", fontSize: 13, color: "#64748b", fontWeight: 600, textAlign: "center" }}>
+              <div style={{ padding: "14px 18px", borderRadius: 14, background: "var(--soft)", fontSize: 13, color: "var(--muted)", fontWeight: 600, textAlign: "center" }}>
                 Sin dinero para cerrar hoy.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Cierre por grupo
                 </div>
                 <textarea
@@ -859,24 +859,24 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   onChange={e => setNotasCaja(e.target.value)}
                   placeholder="Notas del cierre (opcional)..."
                   rows={2}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 12, border: "1px solid var(--line)", fontSize: 13, resize: "vertical" }}
                 />
                 {msgCaja && (
-                  <div style={{ padding: "8px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700, background: msgCaja.startsWith("Error") ? "#fee2e2" : "#dcfce7", color: msgCaja.startsWith("Error") ? "#991b1b" : "#166534" }}>
+                  <div style={{ padding: "8px 12px", borderRadius: 10, fontSize: 12, fontWeight: 700, background: msgCaja.startsWith("Error") ? "var(--bad-soft)" : "var(--ok-soft)", color: msgCaja.startsWith("Error") ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                     {msgCaja}
                   </div>
                 )}
                 {porGrupoCaja.map(g => (
-                  <div key={g.grupo} style={{ border: `1px solid ${COLOR_GRUPO_CAJA[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO_CAJA[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "#f8fafc" }}>
+                  <div key={g.grupo} style={{ border: `1px solid ${COLOR_GRUPO_CAJA[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO_CAJA[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
                         <span style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO_CAJA[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
-                        <span style={{ fontSize: 12, color: "#64748b", marginLeft: 8 }}>Ef. ${fmt(g.efectivo)} · Tr. ${fmt(g.transfer)} · {g.count} pago{g.count !== 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 8 }}>Ef. ${fmt(g.efectivo)} · Tr. ${fmt(g.transfer)} · {g.count} pago{g.count !== 1 ? "s" : ""}</span>
                       </div>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>${fmt(g.total)}</span>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>${fmt(g.total)}</span>
                     </div>
                     {g.cerrada ? (
-                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "#dcfce7", border: "1px solid #86efac", fontSize: 12, fontWeight: 800, color: "#166534", textAlign: "center" }}>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 12, fontWeight: 800, color: "var(--ok-ink)", textAlign: "center" }}>
                         ✅ Cerrada — ${fmt(g.cerrada.total)}
                       </div>
                     ) : (
@@ -886,7 +886,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                         style={{
                           width: "100%", padding: "11px", borderRadius: 10, border: "none",
                           cursor: cerrandoCaja !== null ? "not-allowed" : "pointer",
-                          fontWeight: 800, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "white",
+                          fontWeight: 800, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "var(--card)",
                           opacity: cerrandoCaja === g.grupo ? 0.7 : 1,
                         }}
                       >
@@ -904,7 +904,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── Sección mora / inmovilizar (siempre visible bajo cualquier tab si hay) ── */}
       {tab !== "caja" && filasInmov.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#991b1b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--bad-ink)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             🚨 Requieren inmovilización ({filasInmov.length})
           </div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -915,8 +915,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 800, fontSize: 13, color: "#0284c7" }}>{f.placa}</span>
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>·</span>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: "var(--accent)" }}>{f.placa}</span>
+                        <span style={{ fontSize: 12, color: "var(--faint)" }}>·</span>
                         <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{f.clienteNombre}</span>
                         <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.border, color: s.color }}>{s.label} · {f.diasSinPago}d</span>
                       </div>
@@ -925,18 +925,18 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                      <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#0f172a", color: "white" }}>💳</button>
+                      <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--ink)", color: "var(--card)" }}>💳</button>
                       {f.clienteTel && (
-                        <button onClick={() => abrirWA(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>💬</button>
+                        <button onClick={() => abrirWA(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>💬</button>
                       )}
-                      <button disabled title="Requiere GPS" style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "not-allowed", fontSize: 13, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}>🚨</button>
+                      <button disabled title="Requiere GPS" style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "not-allowed", fontSize: 13, fontWeight: 700, background: "var(--soft)", color: "var(--faint)", opacity: 0.5 }}>🚨</button>
                     </div>
                   </div>
                 </div>
               );
             })}
             {filasInmov.length > 5 && (
-              <div style={{ textAlign: "center", fontSize: 12, color: "#64748b", padding: "8px 0" }}>
+              <div style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", padding: "8px 0" }}>
                 +{filasInmov.length - 5} más en inmovilización
               </div>
             )}

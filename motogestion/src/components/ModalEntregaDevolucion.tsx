@@ -97,20 +97,20 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "min(520px, 96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto",
-        background: "white", borderRadius: 20, padding: 24, zIndex: 401,
+        background: "var(--card)", borderRadius: 20, padding: 24, zIndex: 401,
         boxShadow: "0 20px 60px rgba(15,23,42,0.22)", display: "grid", gap: 14, boxSizing: "border-box",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>✓ Entregar moto al cliente</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>✓ Entregar moto al cliente</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>
               {placa} · {clienteNombre}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, width: 34, height: 34, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, width: 34, height: 34, cursor: "pointer", fontSize: 16, color: "var(--muted)" }}>✕</button>
         </div>
 
-        <div style={{ padding: "10px 14px", borderRadius: 12, background: "#dcfce7", fontSize: 12, color: "#166534", fontWeight: 600 }}>
+        <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--ok-soft)", fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>
           Al guardar: se archiva la evidencia de cómo y a quién se devolvió la moto, y el contrato vuelve a Activo.
         </div>
 
@@ -134,13 +134,13 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
             {ANGULOS_FOTO.map(({ key, label }) => {
               const dataUrl = fotosAngulos[key];
               return (
-                <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "#bbf7d0" : "#e2e8f0"}`, background: dataUrl ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "var(--ok-line)" : "var(--line)"}`, background: dataUrl ? "var(--ok-soft)" : "var(--soft2)", padding: 8, textAlign: "center" }}>
                   {dataUrl ? (
                     <div style={{ position: "relative" }}>
                       <img src={dataUrl} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
                       <button type="button" onClick={() => setFotosAngulos(p => { const n = { ...p }; delete n[key]; return n; })} style={{
                         position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
-                        background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                        background: "var(--bad)", border: "none", color: "var(--card)", fontSize: 10, cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>✕</button>
                     </div>
@@ -149,10 +149,10 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
                       <IconoAngulo angulo={key} />
                     </div>
                   )}
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 4, marginBottom: 6 }}>{label}</div>
                   {!dataUrl && (
                     <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent)" }} title="Cámara">
                         📷
                         <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                           onChange={(e) => {
@@ -164,7 +164,7 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
                             e.target.value = "";
                           }} />
                       </label>
-                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                      <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent-soft)" }} title="Galería">
                         🖼
                         <input type="file" accept="image/*" style={{ display: "none" }}
                           onChange={(e) => {
@@ -189,9 +189,9 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
           <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 50 }} value={observaciones} onChange={e => setObservaciones(e.target.value)} />
         </div>
 
-        {error && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>}
         {exito && (
-          <div style={{ color: "#166534", background: "#dcfce7", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14 }}>
+          <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14 }}>
             ✅ Moto entregada — contrato reactivado.
           </div>
         )}

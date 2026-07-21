@@ -110,6 +110,134 @@ code {
   background: var(--code-bg);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   TOKENS DEL REDISEÑO (F1) — día = paleta actual intacta · noche = navy
+   Los estilos inline referencian estas variables: var(--card), var(--text)…
+   El atributo data-theme lo pone index.html (antes de React) y lib/theme.ts.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root, :root[data-theme="light"] {
+  --bg: #f1f5f9;            /* fondo de página */
+  --card: #ffffff;          /* superficies/tarjetas (y texto sobre color) */
+  --soft: #f1f5f9;          /* rellenos suaves: chips, botones secundarios */
+  --soft2: #f8fafc;         /* relleno aún más tenue */
+  --ink: #0f172a;           /* superficies oscuras fijas (sidebar) — igual en ambos modos */
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted2: #334155;
+  --muted3: #475569;
+  --faint: #94a3b8;
+  --line: #e2e8f0;
+  --line2: #cbd5e1;
+  --accent: #0284c7;
+  --accent-hi: #38bdf8;
+  --accent-ink: #0369a1;
+  --accent-ink2: #0c4a6e;
+  --accent-soft: #e0f2fe;
+  --accent-soft2: #eff6ff;
+  --accent-soft3: #dbeafe;
+  --accent-soft4: #f0f9ff;
+  --accent-line: #bae6fd;
+  --ok: #16a34a;
+  --ok2: #10b981;
+  --ok-ink: #166534;
+  --ok-soft: #dcfce7;
+  --ok-line: #bbf7d0;
+  --bad: #dc2626;
+  --bad2: #b91c1c;
+  --bad-ink: #991b1b;
+  --bad-ink2: #7f1d1d;
+  --bad-soft: #fee2e2;
+  --bad-line: #fecaca;
+  --warn: #d97706;
+  --warn2: #f59e0b;
+  --warn-strong: #b45309;
+  --warn-ink: #92400e;
+  --warn-ink2: #78350f;
+  --warn-soft: #fef3c7;
+  --warn-soft2: #fffbeb;
+  --warn-line: #fde68a;
+  --indigo-soft: #e0e7ff;
+  --indigo-ink: #3730a3;
+  --violet: #7c3aed;
+  --orange: #f97316;
+  --orange-ink: #9a3412;
+  --orange-soft: #ffedd5;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --card: #121c30;
+  --soft: #1b2740;
+  --soft2: #16223a;
+  --ink: #0f172a;
+  --text: #e6edf7;
+  --muted: #8ca0bc;
+  --muted2: #a9bad1;
+  --muted3: #93a7c4;
+  --faint: #64789a;
+  --line: #22304a;
+  --line2: #2c3b58;
+  --accent: #38bdf8;
+  --accent-hi: #7dd3fc;
+  --accent-ink: #8ad4fc;
+  --accent-ink2: #b5e2fd;
+  --accent-soft: #12293c;
+  --accent-soft2: #102337;
+  --accent-soft3: #14304a;
+  --accent-soft4: #0f2033;
+  --accent-line: #1e3a5c;
+  --ok: #4ade80;
+  --ok2: #34d399;
+  --ok-ink: #a7f3c5;
+  --ok-soft: #10291b;
+  --ok-line: #1c3a28;
+  --bad: #f87171;
+  --bad2: #fda4a4;
+  --bad-ink: #fecaca;
+  --bad-ink2: #fecaca;
+  --bad-soft: #331616;
+  --bad-line: #4a2020;
+  --warn: #fbbf24;
+  --warn2: #fbbf24;
+  --warn-strong: #f59e0b;
+  --warn-ink: #fde68a;
+  --warn-ink2: #fde68a;
+  --warn-soft: #2e2410;
+  --warn-soft2: #241d0c;
+  --warn-line: #4a3a12;
+  --indigo-soft: #232b52;
+  --indigo-ink: #c7d2fe;
+  --violet: #a78bfa;
+  --orange: #fb923c;
+  --orange-ink: #fed7aa;
+  --orange-soft: #331f10;
+  color-scheme: dark;
+}
+
+/* Inputs siempre legibles (bug de "letras invisibles" en modo oscuro del celular) */
+input, textarea, select {
+  color: var(--text);
+}
+
+/* Al imprimir, TODO vuelve a los colores de día (papel = blanco, tinta = negra),
+   sin importar el modo elegido en pantalla. */
+@media print {
+  :root, :root[data-theme="dark"] {
+    --bg: #ffffff; --card: #ffffff; --soft: #f1f5f9; --soft2: #f8fafc; --ink: #0f172a;
+    --text: #0f172a; --muted: #64748b; --muted2: #334155; --muted3: #475569; --faint: #94a3b8;
+    --line: #e2e8f0; --line2: #cbd5e1;
+    --accent: #0284c7; --accent-hi: #38bdf8; --accent-ink: #0369a1; --accent-ink2: #0c4a6e;
+    --accent-soft: #e0f2fe; --accent-soft2: #eff6ff; --accent-soft3: #dbeafe; --accent-soft4: #f0f9ff; --accent-line: #bae6fd;
+    --ok: #16a34a; --ok2: #10b981; --ok-ink: #166534; --ok-soft: #dcfce7; --ok-line: #bbf7d0;
+    --bad: #dc2626; --bad2: #b91c1c; --bad-ink: #991b1b; --bad-ink2: #7f1d1d; --bad-soft: #fee2e2; --bad-line: #fecaca;
+    --warn: #d97706; --warn2: #f59e0b; --warn-strong: #b45309; --warn-ink: #92400e; --warn-ink2: #78350f;
+    --warn-soft: #fef3c7; --warn-soft2: #fffbeb; --warn-line: #fde68a;
+    --indigo-soft: #e0e7ff; --indigo-ink: #3730a3; --violet: #7c3aed;
+    --orange: #f97316; --orange-ink: #9a3412; --orange-soft: #ffedd5;
+    color-scheme: light;
+  }
+}
+
 /* ── Impresión de recibos en térmica 80mm (ver components/TicketTermico.tsx) ── */
 .ticket-termico { display: none; }
 

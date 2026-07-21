@@ -31,7 +31,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.strokeStyle = "#0f172a";
+    ctx.strokeStyle = "var(--text)";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -93,21 +93,21 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#0f172a", zIndex: 9999, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, background: "var(--ink)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
       {/* Header compacto para dejar el máximo de espacio al canvas */}
-      <div style={{ padding: "12px 16px", background: "#1e293b", borderBottom: "1px solid #334155", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ padding: "12px 16px", background: "var(--text)", borderBottom: "1px solid var(--muted2)", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Firma digital
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "white", marginTop: 1 }}>{label}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--card)", marginTop: 1 }}>{label}</div>
         </div>
-        <div style={{ fontSize: 11, color: "#64748b", flexShrink: 0 }}>Firme con el dedo</div>
+        <div style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Firme con el dedo</div>
       </div>
 
       {/* Canvas ocupa todo el espacio vertical disponible */}
       <div style={{ flex: 1, padding: 12, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, background: "white", borderRadius: 14, overflow: "hidden", position: "relative", minHeight: 0 }}>
+        <div style={{ flex: 1, background: "var(--card)", borderRadius: 14, overflow: "hidden", position: "relative", minHeight: 0 }}>
           <canvas
             ref={canvasRef}
             width={480}
@@ -116,7 +116,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
           />
           <div style={{
             position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
-            fontSize: 11, color: "#e2e8f0", pointerEvents: "none", userSelect: "none",
+            fontSize: 11, color: "var(--line)", pointerEvents: "none", userSelect: "none",
             background: "rgba(15,23,42,0.35)", padding: "3px 12px", borderRadius: 20,
           }}>
             Firme aquí
@@ -124,13 +124,13 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
         </div>
       </div>
 
-      <div style={{ padding: "12px 16px", background: "#1e293b", borderTop: "1px solid #334155", display: "flex", gap: 10 }}>
+      <div style={{ padding: "12px 16px", background: "var(--text)", borderTop: "1px solid var(--muted2)", display: "flex", gap: 10 }}>
         <button
           type="button"
           onClick={onCerrar}
           style={{
-            padding: "13px 18px", borderRadius: 12, border: "1px solid #475569",
-            background: "transparent", color: "#94a3b8", fontWeight: 700, cursor: "pointer", fontSize: 14,
+            padding: "13px 18px", borderRadius: 12, border: "1px solid var(--muted3)",
+            background: "transparent", color: "var(--faint)", fontWeight: 700, cursor: "pointer", fontSize: 14,
           }}
         >
           ← Atrás
@@ -139,8 +139,8 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
           type="button"
           onClick={clear}
           style={{
-            padding: "13px 18px", borderRadius: 12, border: "1px solid #0284c7",
-            background: "transparent", color: "#38bdf8", fontWeight: 700, cursor: "pointer", fontSize: 14,
+            padding: "13px 18px", borderRadius: 12, border: "1px solid var(--accent)",
+            background: "transparent", color: "var(--accent-hi)", fontWeight: 700, cursor: "pointer", fontSize: 14,
           }}
         >
           Repetir
@@ -150,7 +150,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
           onClick={aceptar}
           style={{
             flex: 1, padding: "13px", borderRadius: 12, border: "none",
-            background: "#0284c7", color: "white", fontWeight: 800, cursor: "pointer", fontSize: 15,
+            background: "var(--accent)", color: "var(--card)", fontWeight: 800, cursor: "pointer", fontSize: 15,
           }}
         >
           ✓ Aceptar
@@ -176,7 +176,7 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "var(--text)"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
     hasDrawn.current = false;
     let drawing = false;
     const getPos = (e: MouseEvent | TouchEvent) => {
@@ -211,15 +211,15 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
       <>
         <div style={{ ...labelStyle, display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
           {label}
-          {opcional && <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>(opcional — puede completarse después)</span>}
+          {opcional && <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(opcional — puede completarse después)</span>}
         </div>
         <div
           onClick={() => setModalOpen(true)}
           style={{
             cursor: "pointer",
             borderRadius: 14,
-            border: firmaSaved ? "2px solid #16a34a" : "2px dashed #cbd5e1",
-            background: firmaSaved ? "#f0fdf4" : "#fafafa",
+            border: firmaSaved ? "2px solid var(--ok)" : "2px dashed var(--line2)",
+            background: firmaSaved ? "var(--ok-soft)" : "var(--soft2)",
             overflow: "hidden",
             position: "relative",
             minHeight: firmaSaved ? undefined : 72,
@@ -231,7 +231,7 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
           {firmaSaved ? (
             <img src={firmaSaved} alt="Firma guardada" style={{ width: "100%", display: "block", maxHeight: 110, objectFit: "contain" }} />
           ) : (
-            <div style={{ padding: "18px 20px", textAlign: "center", color: "#94a3b8", fontSize: 14, fontWeight: 600 }}>
+            <div style={{ padding: "18px 20px", textAlign: "center", color: "var(--faint)", fontSize: 14, fontWeight: 600 }}>
               Toque aquí para firmar
             </div>
           )}
@@ -241,14 +241,14 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700 }}
+              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid var(--line2)", background: "var(--card)", fontSize: 12, cursor: "pointer", fontWeight: 700 }}
             >
               ✏️ Editar firma
             </button>
             <button
               type="button"
               onClick={() => { setFirmaSaved(null); onChange(null); }}
-              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #fca5a5", background: "#fff", fontSize: 12, cursor: "pointer", color: "#dc2626", fontWeight: 700 }}
+              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid var(--bad-line)", background: "var(--card)", fontSize: 12, cursor: "pointer", color: "var(--bad)", fontWeight: 700 }}
             >
               Borrar
             </button>
@@ -273,14 +273,14 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
   return (
     <div>
       <div style={labelStyle}>{label}</div>
-      <div style={{ borderRadius: 14, border: "2px dashed #cbd5e1", background: "#fafafa", overflow: "hidden", position: "relative" }}>
+      <div style={{ borderRadius: 14, border: "2px dashed var(--line2)", background: "var(--soft2)", overflow: "hidden", position: "relative" }}>
         <canvas ref={canvasRef} width={640} height={180}
           style={{ width: "100%", height: 180, display: "block", touchAction: "none", cursor: "crosshair" }} />
-        <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "#cbd5e1", pointerEvents: "none", background: "white", padding: "2px 10px", borderRadius: 20, border: "1px solid #f1f5f9" }}>
+        <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "var(--line2)", pointerEvents: "none", background: "var(--card)", padding: "2px 10px", borderRadius: 20, border: "1px solid var(--soft)" }}>
           Firme aquí con el dedo o el lápiz digital
         </div>
       </div>
-      <button onClick={clearInline} style={{ marginTop: 8, padding: "7px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", fontWeight: 700, cursor: "pointer", fontSize: 12, color: "#64748b" }}>
+      <button onClick={clearInline} style={{ marginTop: 8, padding: "7px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 12, color: "var(--muted)" }}>
         Borrar firma
       </button>
     </div>

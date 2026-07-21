@@ -11,18 +11,18 @@ import { hoyDate } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
-const btn = (bg: string, color = "white"): React.CSSProperties => ({ background: bg, color, border: "none", borderRadius: 12, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 13 });
-const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #cbd5e1", fontSize: 13, outline: "none" };
-const label: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: "#334155", marginBottom: 4, display: "block" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
+const btn = (bg: string, color = "var(--card)"): React.CSSProperties => ({ background: bg, color, border: "none", borderRadius: 12, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 13 });
+const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid var(--line2)", fontSize: 13, outline: "none" };
+const label: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: "var(--muted2)", marginBottom: 4, display: "block" };
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  iniciada: { label: "Iniciada", color: "#92400e", bg: "#fef3c7" },
-  en_taller: { label: "En taller", color: "#3730a3", bg: "#e0e7ff" },
-  calculada: { label: "Calculada", color: "#0369a1", bg: "#e0f2fe" },
-  documento_generado: { label: "Doc. generado", color: "#6d28d9", bg: "#ede9fe" },
-  firmada: { label: "Firmada", color: "#166534", bg: "#dcfce7" },
-  cerrada: { label: "Cerrada", color: "#475569", bg: "#f1f5f9" },
+  iniciada: { label: "Iniciada", color: "var(--warn-ink)", bg: "var(--warn-soft)" },
+  en_taller: { label: "En taller", color: "var(--indigo-ink)", bg: "var(--indigo-soft)" },
+  calculada: { label: "Calculada", color: "var(--accent-ink)", bg: "var(--accent-soft)" },
+  documento_generado: { label: "Doc. generado", color: "var(--violet)", bg: "var(--indigo-soft)" },
+  firmada: { label: "Firmada", color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+  cerrada: { label: "Cerrada", color: "var(--muted3)", bg: "var(--soft)" },
 };
 
 const PASOS = ["iniciada", "en_taller", "calculada", "documento_generado", "firmada", "cerrada"];
@@ -34,7 +34,7 @@ const MOTIVO_LABEL: Record<MotivoLiquidacion, string> = {
 };
 
 function Badge({ estado }: { estado: string }) {
-  const cfg = ESTADO_CONFIG[estado] ?? { label: estado, color: "#334155", bg: "#e2e8f0" };
+  const cfg = ESTADO_CONFIG[estado] ?? { label: estado, color: "var(--muted2)", bg: "var(--line)" };
   return <span style={{ display: "inline-block", padding: "4px 10px", borderRadius: 999, background: cfg.bg, color: cfg.color, fontSize: 12, fontWeight: 700 }}>{cfg.label}</span>;
 }
 
@@ -51,14 +51,14 @@ function Stepper({ estado }: { estado: string }) {
             <div style={{
               width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 11, fontWeight: 700,
-              background: pasado ? "#10b981" : activo ? cfg.bg : "#e2e8f0",
-              color: pasado ? "white" : activo ? cfg.color : "#94a3b8",
+              background: pasado ? "var(--ok2)" : activo ? cfg.bg : "var(--line)",
+              color: pasado ? "var(--card)" : activo ? cfg.color : "var(--faint)",
               border: activo ? `2px solid ${cfg.color}` : "2px solid transparent",
             }}>
               {pasado ? "✓" : i + 1}
             </div>
-            <span style={{ fontSize: 10, color: activo ? cfg.color : "#94a3b8", fontWeight: activo ? 700 : 400, display: "none" }}>{cfg.label}</span>
-            {i < PASOS.length - 1 && <div style={{ width: 16, height: 2, background: pasado ? "#10b981" : "#e2e8f0" }} />}
+            <span style={{ fontSize: 10, color: activo ? cfg.color : "var(--faint)", fontWeight: activo ? 700 : 400, display: "none" }}>{cfg.label}</span>
+            {i < PASOS.length - 1 && <div style={{ width: 16, height: 2, background: pasado ? "var(--ok2)" : "var(--line)" }} />}
           </div>
         );
       })}
@@ -183,17 +183,17 @@ export default function LiquidacionesView() {
   }
 
   if (!esAdmin) {
-    return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Acceso restringido a administradores.</div>;
+    return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Acceso restringido a administradores.</div>;
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Cargando...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Cargando...</div>;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: sel ? "320px 1fr" : "1fr", gap: 16 }}>
       {/* Lista */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {activas.length === 0 && cerradas.length === 0 && (
-          <div style={{ ...card, color: "#64748b", textAlign: "center" }}>No hay liquidaciones registradas.</div>
+          <div style={{ ...card, color: "var(--muted)", textAlign: "center" }}>No hay liquidaciones registradas.</div>
         )}
 
         {activas.length > 0 && (
@@ -202,12 +202,12 @@ export default function LiquidacionesView() {
             {activas.map((l) => {
               const cliente = clienteDe(l);
               return (
-                <div key={l.id} onClick={() => seleccionar(l)} style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: sel?.id === l.id ? "#f0f9ff" : "#f8fafc", marginBottom: 8, border: sel?.id === l.id ? "2px solid #0284c7" : "2px solid transparent" }}>
+                <div key={l.id} onClick={() => seleccionar(l)} style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: sel?.id === l.id ? "var(--accent-soft4)" : "var(--soft2)", marginBottom: 8, border: sel?.id === l.id ? "2px solid var(--accent)" : "2px solid transparent" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{l.numero}</span>
                     <Badge estado={l.estado} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[l.motivo]}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[l.motivo]}</div>
                 </div>
               );
             })}
@@ -216,16 +216,16 @@ export default function LiquidacionesView() {
 
         {cerradas.length > 0 && (
           <div style={card}>
-            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: "#64748b" }}>Cerradas ({cerradas.length})</div>
+            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: "var(--muted)" }}>Cerradas ({cerradas.length})</div>
             {cerradas.map((l) => {
               const cliente = clienteDe(l);
               return (
-                <div key={l.id} onClick={() => seleccionar(l)} style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: sel?.id === l.id ? "#f8fafc" : "transparent", marginBottom: 6, border: sel?.id === l.id ? "2px solid #e2e8f0" : "2px solid transparent" }}>
+                <div key={l.id} onClick={() => seleccionar(l)} style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: sel?.id === l.id ? "var(--soft2)" : "transparent", marginBottom: 6, border: sel?.id === l.id ? "2px solid var(--line)" : "2px solid transparent" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: "#64748b" }}>{l.numero}</span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: "var(--muted)" }}>{l.numero}</span>
                     <Badge estado={l.estado} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
+                  <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
                 </div>
               );
             })}
@@ -243,27 +243,27 @@ export default function LiquidacionesView() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 18 }}>{sel.numero}</div>
-                  <div style={{ fontSize: 13, color: "#64748b", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
                 </div>
-                <button onClick={() => setSel(null)} style={btn("#e2e8f0", "#334155")}>✕</button>
+                <button onClick={() => setSel(null)} style={btn("var(--line)", "var(--muted2)")}>✕</button>
               </div>
               <Stepper estado={sel.estado} />
 
               {/* Resumen financiero */}
-              <div style={{ background: "#f8fafc", borderRadius: 12, padding: 12, marginTop: 8, fontSize: 13 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "#64748b" }}>Ahorro acumulado</span><span style={{ fontWeight: 600, color: "#16a34a" }}>${sel.ahorro_acumulado.toLocaleString("es-CO")}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "#64748b" }}>Total deudas</span><span style={{ fontWeight: 600, color: "#dc2626" }}>- ${sel.total_deudas.toLocaleString("es-CO")}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "#64748b" }}>Costo daños</span><span style={{ fontWeight: 600, color: "#dc2626" }}>- ${sel.costo_danos.toLocaleString("es-CO")}</span></div>
-                <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
+              <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 12, marginTop: 8, fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Ahorro acumulado</span><span style={{ fontWeight: 600, color: "var(--ok)" }}>${sel.ahorro_acumulado.toLocaleString("es-CO")}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Total deudas</span><span style={{ fontWeight: 600, color: "var(--bad)" }}>- ${sel.total_deudas.toLocaleString("es-CO")}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Costo daños</span><span style={{ fontWeight: 600, color: "var(--bad)" }}>- ${sel.costo_danos.toLocaleString("es-CO")}</span></div>
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700 }}>Saldo final</span>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: sel.saldo_final >= 0 ? "#16a34a" : "#dc2626" }}>
+                  <span style={{ fontWeight: 800, fontSize: 16, color: sel.saldo_final >= 0 ? "var(--ok)" : "var(--bad)" }}>
                     {sel.saldo_final >= 0 ? `$${sel.saldo_final.toLocaleString("es-CO")} a favor` : `$${Math.abs(sel.saldo_final).toLocaleString("es-CO")} pendiente`}
                   </span>
                 </div>
               </div>
             </div>
 
-            {msg && <div style={{ ...card, background: msg.includes("error") || msg.includes("Error") ? "#fef2f2" : "#f0fdf4", color: msg.includes("error") || msg.includes("Error") ? "#dc2626" : "#16a34a", fontSize: 13 }}>{msg}</div>}
+            {msg && <div style={{ ...card, background: msg.includes("error") || msg.includes("Error") ? "var(--bad-soft)" : "var(--ok-soft)", color: msg.includes("error") || msg.includes("Error") ? "var(--bad)" : "var(--ok)", fontSize: 13 }}>{msg}</div>}
 
             {/* Paso: registrar revisión taller */}
             {(sel.estado === "iniciada" || sel.estado === "en_taller") && (
@@ -278,22 +278,22 @@ export default function LiquidacionesView() {
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <input style={{ ...inputStyle, flex: 2 }} placeholder="Concepto" value={d.concepto} onChange={(e) => setDanos(danos.map((x, j) => j === i ? { ...x, concepto: e.target.value } : x))} />
                     <MoneyInput style={{ flex: 1 }} value={d.monto ? String(d.monto) : ""} onChange={v => setDanos(danos.map((x, j) => j === i ? { ...x, monto: Number(v) || 0 } : x))} />
-                    {danos.length > 1 && <button style={btn("#fef2f2", "#dc2626")} onClick={() => setDanos(danos.filter((_, j) => j !== i))}>✕</button>}
+                    {danos.length > 1 && <button style={btn("var(--bad-soft)", "var(--bad)")} onClick={() => setDanos(danos.filter((_, j) => j !== i))}>✕</button>}
                   </div>
                 ))}
-                <button style={{ ...btn("#f1f5f9", "#334155"), marginBottom: 14, fontSize: 12 }} onClick={() => setDanos([...danos, { concepto: "", monto: 0 }])}>+ Agregar daño</button>
+                <button style={{ ...btn("var(--soft)", "var(--muted2)"), marginBottom: 14, fontSize: 12 }} onClick={() => setDanos([...danos, { concepto: "", monto: 0 }])}>+ Agregar daño</button>
 
                 <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Deudas pendientes</div>
                 {deudas.map((d, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <input style={{ ...inputStyle, flex: 2 }} placeholder="Concepto" value={d.concepto} onChange={(e) => setDeudas(deudas.map((x, j) => j === i ? { ...x, concepto: e.target.value } : x))} />
                     <MoneyInput style={{ flex: 1 }} value={d.monto ? String(d.monto) : ""} onChange={v => setDeudas(deudas.map((x, j) => j === i ? { ...x, monto: Number(v) || 0 } : x))} />
-                    {deudas.length > 1 && <button style={btn("#fef2f2", "#dc2626")} onClick={() => setDeudas(deudas.filter((_, j) => j !== i))}>✕</button>}
+                    {deudas.length > 1 && <button style={btn("var(--bad-soft)", "var(--bad)")} onClick={() => setDeudas(deudas.filter((_, j) => j !== i))}>✕</button>}
                   </div>
                 ))}
-                <button style={{ ...btn("#f1f5f9", "#334155"), marginBottom: 14, fontSize: 12 }} onClick={() => setDeudas([...deudas, { concepto: "", monto: 0 }])}>+ Agregar deuda</button>
+                <button style={{ ...btn("var(--soft)", "var(--muted2)"), marginBottom: 14, fontSize: 12 }} onClick={() => setDeudas([...deudas, { concepto: "", monto: 0 }])}>+ Agregar deuda</button>
 
-                <button style={btn("#0284c7")} onClick={handleRegistrarTaller} disabled={guardando}>
+                <button style={btn("var(--accent)")} onClick={handleRegistrarTaller} disabled={guardando}>
                   {guardando ? "Guardando..." : "Registrar revisión y calcular"}
                 </button>
               </div>
@@ -307,7 +307,7 @@ export default function LiquidacionesView() {
                 <input style={{ ...inputStyle, marginBottom: 10 }} placeholder="Ej: Carlos Martínez" value={nombreResp} onChange={(e) => setNombreResp(e.target.value)} />
                 <label style={label}>Cargo</label>
                 <input style={{ ...inputStyle, marginBottom: 14 }} placeholder="Ej: Gerente" value={cargoResp} onChange={(e) => setCargoResp(e.target.value)} />
-                <button style={btn("#7c3aed")} onClick={handleGenerarDoc} disabled={guardando}>
+                <button style={btn("var(--violet)")} onClick={handleGenerarDoc} disabled={guardando}>
                   {guardando ? "Generando..." : "Generar e imprimir documento"}
                 </button>
               </div>
@@ -317,18 +317,18 @@ export default function LiquidacionesView() {
             {sel.estado === "documento_generado" && (
               <div style={card}>
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>Subir documento firmado por el cliente</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>Fotografía o escaneo del documento con la firma del cliente.</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>Fotografía o escaneo del documento con la firma del cliente.</div>
                 {sel.documento_firmado_url && (
                   <div style={{ marginBottom: 10 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0284c7", fontSize: 13 }}>Ver documento actual</a>
+                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento actual</a>
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ ...btn("#0284c7"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                     📷 Cámara
                     <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
                   </label>
-                  <label style={{ ...btn("#475569"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <label style={{ ...btn("var(--muted3)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                     🖼 Galería / PDF
                     <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
                   </label>
@@ -342,31 +342,31 @@ export default function LiquidacionesView() {
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>Confirmar cierre de liquidación</div>
                 {sel.documento_firmado_url && (
                   <div style={{ marginBottom: 12 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0284c7", fontSize: 13 }}>Ver documento firmado</a>
+                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento firmado</a>
                   </div>
                 )}
-                <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
                   Al confirmar: el contrato quedará <strong>{sel.motivo === "incumplimiento" ? "Cancelado" : "Finalizado"}</strong>
                   {sel.motivo === "cumplimiento" ? ", la moto pasará a En traspaso (propiedad del cliente) y el cliente quedará Egresado" : ""}
                   {sel.saldo_final < 0 ? " y el cliente será marcado en lista negra por saldo pendiente" : ""}.
                 </div>
-                <button style={btn(sel.saldo_final < 0 ? "#dc2626" : "#16a34a")} onClick={handleCerrar} disabled={guardando}>
+                <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={handleCerrar} disabled={guardando}>
                   {guardando ? "Cerrando..." : "Confirmar y cerrar liquidación"}
                 </button>
               </div>
             )}
 
             {sel.estado === "cerrada" && (
-              <div style={{ ...card, background: "#f0fdf4", color: "#166534", fontWeight: 700, textAlign: "center" }}>
+              <div style={{ ...card, background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700, textAlign: "center" }}>
                 Liquidación cerrada
                 {sel.documento_firmado_url && (
                   <div style={{ marginTop: 8 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "#0284c7", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
+                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
                   </div>
                 )}
                 {sel.motivo === "cumplimiento" && (
                   <div style={{ marginTop: 10 }}>
-                    <button style={btn("#0284c7")} onClick={handlePazYSalvo}>🖨️ Imprimir Paz y Salvo</button>
+                    <button style={btn("var(--accent)")} onClick={handlePazYSalvo}>🖨️ Imprimir Paz y Salvo</button>
                   </div>
                 )}
               </div>

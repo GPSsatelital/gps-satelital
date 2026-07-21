@@ -19,43 +19,43 @@ function diasRestantes(fecha: string | null | undefined): number | null {
 }
 
 const GRUPO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  RASTREADOR: { bg: "#dbeafe", color: "#1d4ed8", border: "#3b82f6" },
-  COSTA:      { bg: "#dcfce7", color: "#166534", border: "#22c55e" },
-  PRADERA:    { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
-  OTRO:       { bg: "#f1f5f9", color: "#334155", border: "#94a3b8" },
+  RASTREADOR: { bg: "var(--accent-soft3)", color: "var(--accent-ink)", border: "#3b82f6" },
+  COSTA:      { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
+  PRADERA:    { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
+  OTRO:       { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
 };
 
 const ESTADO_MOTO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  Disponible:  { bg: "#dcfce7", color: "#166534", border: "#16a34a" },
-  Reservada:   { bg: "#e0f2fe", color: "#0369a1", border: "#0ea5e9" },
-  Asignada:    { bg: "#dbeafe", color: "#1d4ed8", border: "#3b82f6" },
-  Mantenimiento:{ bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
-  Recuperada:  { bg: "#e0f2fe", color: "#0369a1", border: "#0ea5e9" },
-  Fiscalia:    { bg: "#fee2e2", color: "#991b1b", border: "#dc2626" },
-  Transito:    { bg: "#fee2e2", color: "#be123c", border: "#f43f5e" },
-  Garantia:    { bg: "#f1f5f9", color: "#334155", border: "#94a3b8" },
+  Disponible:  { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
+  Reservada:   { bg: "var(--accent-soft)", color: "var(--accent-ink)", border: "#0ea5e9" },
+  Asignada:    { bg: "var(--accent-soft3)", color: "var(--accent-ink)", border: "#3b82f6" },
+  Mantenimiento:{ bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
+  Recuperada:  { bg: "var(--accent-soft)", color: "var(--accent-ink)", border: "#0ea5e9" },
+  Fiscalia:    { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad)" },
+  Transito:    { bg: "var(--bad-soft)", color: "var(--bad)", border: "#f43f5e" },
+  Garantia:    { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
   // legacy display names
-  "En taller": { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
-  Suspendida:  { bg: "#ede9fe", color: "#6d28d9", border: "#8b5cf6" },
-  Fiscalía:    { bg: "#fee2e2", color: "#991b1b", border: "#dc2626" },
-  Tránsito:    { bg: "#fee2e2", color: "#be123c", border: "#f43f5e" },
-  Garantía:    { bg: "#f1f5f9", color: "#334155", border: "#94a3b8" },
+  "En taller": { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
+  Suspendida:  { bg: "var(--indigo-soft)", color: "var(--violet)", border: "var(--violet)" },
+  Fiscalía:    { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad)" },
+  Tránsito:    { bg: "var(--bad-soft)", color: "var(--bad)", border: "#f43f5e" },
+  Garantía:    { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
 };
 
 const ESTADO_C: Record<string, { bg: string; color: string }> = {
-  Activo:       { bg: "#dcfce7", color: "#166534" },
-  "En proceso": { bg: "#dbeafe", color: "#1d4ed8" },
-  Finalizado:   { bg: "#e2e8f0", color: "#334155" },
-  Cancelado:    { bg: "#fee2e2", color: "#991b1b" },
-  Suspendido:   { bg: "#fef3c7", color: "#92400e" },
+  Activo:       { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  "En proceso": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  Finalizado:   { bg: "var(--line)", color: "var(--muted2)" },
+  Cancelado:    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  Suspendido:   { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
 };
 
 const TALLER_COLORS: Record<string, { bg: string; color: string }> = {
-  Pendiente:          { bg: "#fef3c7", color: "#92400e" },
-  "En diagnóstico":   { bg: "#dbeafe", color: "#1d4ed8" },
-  "En reparación":    { bg: "#fee2e2", color: "#991b1b" },
-  "Listo para salida":{ bg: "#dcfce7", color: "#166534" },
-  Finalizado:         { bg: "#e2e8f0", color: "#334155" },
+  Pendiente:          { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  "En diagnóstico":   { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  "En reparación":    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  "Listo para salida":{ bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  Finalizado:         { bg: "var(--line)", color: "var(--muted2)" },
 };
 
 type Tab = "info" | "contrato" | "historial" | "taller";
@@ -70,12 +70,12 @@ function Badge({ children, bg, color }: { children: React.ReactNode; bg: string;
 
 function InfoRow({ label, value, mono, highlight }: { label: string; value: React.ReactNode; mono?: boolean; highlight?: { bg: string; color: string } }) {
   return (
-    <div style={{ display: "flex", gap: 12, fontSize: 13, padding: "7px 0", borderBottom: "1px solid #f1f5f9", alignItems: "center" }}>
-      <span style={{ color: "#64748b", minWidth: 160, flexShrink: 0 }}>{label}</span>
+    <div style={{ display: "flex", gap: 12, fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--soft)", alignItems: "center" }}>
+      <span style={{ color: "var(--muted)", minWidth: 160, flexShrink: 0 }}>{label}</span>
       {highlight ? (
         <span style={{ fontWeight: 700, color: highlight.color, background: highlight.bg, padding: "2px 10px", borderRadius: 999, fontSize: 12 }}>{value}</span>
       ) : (
-        <span style={{ fontWeight: 600, color: "#0f172a", fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</span>
+        <span style={{ fontWeight: 600, color: "var(--text)", fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</span>
       )}
     </div>
   );
@@ -84,7 +84,7 @@ function InfoRow({ label, value, mono, highlight }: { label: string; value: Reac
 function Card({ children, borderColor }: { children: React.ReactNode; borderColor?: string }) {
   return (
     <div style={{
-      background: "white", borderRadius: 16, padding: "18px 20px",
+      background: "var(--card)", borderRadius: 16, padding: "18px 20px",
       boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
       borderLeft: borderColor ? `4px solid ${borderColor}` : undefined,
     }}>
@@ -95,18 +95,18 @@ function Card({ children, borderColor }: { children: React.ReactNode; borderColo
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", marginBottom: 12 }}>
+    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", marginBottom: 12 }}>
       {children}
     </div>
   );
 }
 
 function docColorFn(dias: number | null): { bg: string; color: string } {
-  if (dias === null) return { bg: "#f1f5f9", color: "#94a3b8" };
-  if (dias < 0)  return { bg: "#fee2e2", color: "#991b1b" };
-  if (dias < 15) return { bg: "#fee2e2", color: "#991b1b" };
-  if (dias < 30) return { bg: "#fef3c7", color: "#92400e" };
-  return { bg: "#dcfce7", color: "#166534" };
+  if (dias === null) return { bg: "var(--soft)", color: "var(--faint)" };
+  if (dias < 0)  return { bg: "var(--bad-soft)", color: "var(--bad-ink)" };
+  if (dias < 15) return { bg: "var(--bad-soft)", color: "var(--bad-ink)" };
+  if (dias < 30) return { bg: "var(--warn-soft)", color: "var(--warn-ink)" };
+  return { bg: "var(--ok-soft)", color: "var(--ok-ink)" };
 }
 
 export default function FichaMotoView({ motoId, onNavigate }: {
@@ -152,17 +152,17 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   if (!moto) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 64, gap: 16 }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>?</div>
-        <div style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>Moto no encontrada</div>
-        <button onClick={() => onNavigate("motos", "")} style={{ padding: "10px 24px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>?</div>
+        <div style={{ fontWeight: 700, fontSize: 18, color: "var(--text)" }}>Moto no encontrada</div>
+        <button onClick={() => onNavigate("motos", "")} style={{ padding: "10px 24px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
           Volver a motos
         </button>
       </div>
     );
   }
 
-  const ec = ESTADO_MOTO_COLORS[moto.estado] ?? { bg: "#e2e8f0", color: "#334155", border: "#94a3b8" };
-  const gColor = GRUPO_COLORS[moto.grupo] ?? { bg: "#e2e8f0", color: "#334155", border: "#94a3b8" };
+  const ec = ESTADO_MOTO_COLORS[moto.estado] ?? { bg: "var(--line)", color: "var(--muted2)", border: "var(--faint)" };
+  const gColor = GRUPO_COLORS[moto.grupo] ?? { bg: "var(--line)", color: "var(--muted2)", border: "var(--faint)" };
   const diasSoat = diasRestantes(moto.fecha_seguro);
   const diasTecno = diasRestantes(moto.fecha_tecnomecanica);
   const costoTotalTaller = ordenesTodo.reduce((s, t) => s + (t.costo ?? 0), 0);
@@ -180,35 +180,35 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       {/* Back */}
       <button
         onClick={() => onNavigate("motos", "")}
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
       >
         ← Volver a motos
       </button>
 
       {/* Hero card */}
-      <div style={{ background: "white", borderRadius: 20, marginBottom: 20, boxShadow: "0 4px 24px rgba(15,23,42,0.10)", overflow: "hidden" }}>
+      <div style={{ background: "var(--card)", borderRadius: 20, marginBottom: 20, boxShadow: "0 4px 24px rgba(15,23,42,0.10)", overflow: "hidden" }}>
         <div style={{ height: 5, background: `linear-gradient(90deg, ${ec.border}, ${gColor.border})` }} />
         <div style={{ padding: isMobile ? "18px 16px 20px" : "24px 28px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Placa */}
-              <div style={{ fontSize: isMobile ? 28 : 38, fontWeight: 900, color: "#0f172a", letterSpacing: 2, lineHeight: 1, marginBottom: 4, fontFamily: "monospace" }}>
+              <div style={{ fontSize: isMobile ? 28 : 38, fontWeight: 900, color: "var(--text)", letterSpacing: 2, lineHeight: 1, marginBottom: 4, fontFamily: "monospace" }}>
                 {moto.placa}
               </div>
-              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 600, color: "#334155", marginBottom: 10 }}>
+              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 600, color: "var(--muted2)", marginBottom: 10 }}>
                 {moto.marca} {moto.modelo}
                 {(moto as { color?: string }).color ? ` · ${(moto as { color?: string }).color}` : ""}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Badge bg={ec.bg} color={ec.color}>{moto.estado}</Badge>
                 <Badge bg={gColor.bg} color={gColor.color}>{moto.grupo}</Badge>
-                <Badge bg={moto.condicion_ingreso === "nueva" ? "#dcfce7" : "#f1f5f9"} color={moto.condicion_ingreso === "nueva" ? "#166534" : "#64748b"}>
+                <Badge bg={moto.condicion_ingreso === "nueva" ? "var(--ok-soft)" : "var(--soft)"} color={moto.condicion_ingreso === "nueva" ? "var(--ok-ink)" : "var(--muted)"}>
                   {moto.condicion_ingreso === "nueva" ? "Nueva" : "Usada"}
                 </Badge>
               </div>
               {moto.propietario && (
-                <div style={{ marginTop: 8, fontSize: 13, color: "#64748b" }}>
-                  Propietario: <strong style={{ color: "#0f172a" }}>{moto.propietario}</strong>
+                <div style={{ marginTop: 8, fontSize: 13, color: "var(--muted)" }}>
+                  Propietario: <strong style={{ color: "var(--text)" }}>{moto.propietario}</strong>
                 </div>
               )}
             </div>
@@ -231,9 +231,9 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                 </div>
               )}
               {costoTotalTaller > 0 && (
-                <div style={{ textAlign: "center", padding: "12px 14px", borderRadius: 14, background: "#fef3c7", minWidth: 64 }}>
-                  <div style={{ fontSize: isMobile ? 13 : 16, fontWeight: 900, color: "#92400e" }}>${fmt(costoTotalTaller)}</div>
-                  <div style={{ fontSize: 10, color: "#92400e", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Taller</div>
+                <div style={{ textAlign: "center", padding: "12px 14px", borderRadius: 14, background: "var(--warn-soft)", minWidth: 64 }}>
+                  <div style={{ fontSize: isMobile ? 13 : 16, fontWeight: 900, color: "var(--warn-ink)" }}>${fmt(costoTotalTaller)}</div>
+                  <div style={{ fontSize: 10, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Taller</div>
                 </div>
               )}
             </div>
@@ -242,7 +242,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid var(--line)", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
         {TABS.map(t => (
           <button
             key={t.key}
@@ -251,8 +251,8 @@ export default function FichaMotoView({ motoId, onNavigate }: {
               padding: isMobile ? "9px 12px" : "10px 18px",
               border: "none", background: "none", cursor: "pointer",
               fontSize: isMobile ? 12 : 13, fontWeight: tab === t.key ? 700 : 500,
-              color: tab === t.key ? "#0284c7" : "#64748b",
-              borderBottom: tab === t.key ? "2px solid #0284c7" : "2px solid transparent",
+              color: tab === t.key ? "var(--accent)" : "var(--muted)",
+              borderBottom: tab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
               marginBottom: -2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5,
               transition: "color 0.15s",
             }}
@@ -260,8 +260,8 @@ export default function FichaMotoView({ motoId, onNavigate }: {
             {t.label}
             {t.count !== undefined && t.count > 0 && (
               <span style={{
-                background: tab === t.key ? "#0284c7" : "#e2e8f0",
-                color: tab === t.key ? "white" : "#64748b",
+                background: tab === t.key ? "var(--accent)" : "var(--line)",
+                color: tab === t.key ? "var(--card)" : "var(--muted)",
                 borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700,
               }}>{t.count}</span>
             )}
@@ -292,10 +292,10 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                 const dc = docColorFn(doc.dias);
                 const label = doc.dias === null ? "No registrado" : doc.dias < 0 ? `Vencido hace ${Math.abs(doc.dias)} días` : doc.dias === 0 ? "Vence hoy" : `${doc.dias} días restantes`;
                 return (
-                  <div key={doc.label} style={{ display: "flex", gap: 12, alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f1f5f9" }}>
+                  <div key={doc.label} style={{ display: "flex", gap: 12, alignItems: "center", padding: "9px 0", borderBottom: "1px solid var(--soft)" }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{doc.label}</div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{fmtFecha(doc.fecha)}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{doc.label}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{fmtFecha(doc.fecha)}</div>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: dc.bg, color: dc.color, whiteSpace: "nowrap" }}>
                       {label}
@@ -309,7 +309,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
               <Card>
                 <SectionTitle>Estado y ubicacion</SectionTitle>
                 {moto.retencion_fecha && (
-                  <InfoRow label="Fecha retención" value={fmtFecha(moto.retencion_fecha)} highlight={{ bg: "#fee2e2", color: "#991b1b" }} />
+                  <InfoRow label="Fecha retención" value={fmtFecha(moto.retencion_fecha)} highlight={{ bg: "var(--bad-soft)", color: "var(--bad-ink)" }} />
                 )}
                 {moto.retencion_numero_caso && (
                   <InfoRow label="N° caso retención" value={moto.retencion_numero_caso} mono />
@@ -318,8 +318,8 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                   <InfoRow label="Detalle retención" value={moto.retencion_detalle} />
                 )}
                 {moto.observaciones && (
-                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "#f8fafc", fontSize: 13, color: "#334155" }}>
-                    <div style={{ fontWeight: 700, fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Observaciones</div>
+                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", fontSize: 13, color: "var(--muted2)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: "var(--faint)", textTransform: "uppercase", marginBottom: 4 }}>Observaciones</div>
                     {moto.observaciones}
                   </div>
                 )}
@@ -334,7 +334,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {!contratoActivo ? (
             <Card>
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--muted)" }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Sin contrato activo</div>
                 <div style={{ fontSize: 13 }}>Esta moto no tiene un contrato vigente en este momento.</div>
@@ -343,23 +343,23 @@ export default function FichaMotoView({ motoId, onNavigate }: {
           ) : (
             <>
               {clienteActivo && (
-                <Card borderColor="#0284c7">
+                <Card borderColor="var(--accent)">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                     <div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>Cliente</div>
+                      <div style={{ fontSize: 11, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700, marginBottom: 4 }}>Cliente</div>
                       <button
                         onClick={() => onNavigate("ficha_cliente", clienteActivo.id)}
                         style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
                       >
-                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                           {clienteActivo.nombre}
                         </div>
                       </button>
-                      <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>CC {clienteActivo.cedula} · {clienteActivo.telefono}</div>
+                      <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>CC {clienteActivo.cedula} · {clienteActivo.telefono}</div>
                       <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <Badge bg="#dcfce7" color="#166534">{contratoActivo.estado}</Badge>
-                        <Badge bg="#dbeafe" color="#1d4ed8">{contratoActivo.forma_pago}</Badge>
-                        {contratoActivo.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {formatDiaPago(contratoActivo)}</Badge>}
+                        <Badge bg="var(--ok-soft)" color="var(--ok-ink)">{contratoActivo.estado}</Badge>
+                        <Badge bg="var(--accent-soft3)" color="var(--accent-ink)">{contratoActivo.forma_pago}</Badge>
+                        {contratoActivo.dia_pago && <Badge bg="var(--soft)" color="var(--muted)">Pago: {formatDiaPago(contratoActivo)}</Badge>}
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
@@ -367,8 +367,8 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                         const totalPagado = pagos.filter(p => p.contrato_id === contratoActivo.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
                         return (
                           <>
-                            <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(totalPagado)}</div>
-                            <div style={{ fontSize: 11, color: "#94a3b8" }}>total pagado</div>
+                            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
+                            <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                           </>
                         );
                       })()}
@@ -386,26 +386,26 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     { label: "Tarifa diaria", val: contratoActivo.tarifa_diaria ? `$${fmt(contratoActivo.tarifa_diaria)}` : "—" },
                     { label: "Ahorro diario", val: contratoActivo.ahorro_diario ? `$${fmt(contratoActivo.ahorro_diario)}` : "—" },
                   ].map(item => (
-                    <div key={item.label} style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>{item.label}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{item.val}</div>
+                    <div key={item.label} style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>{item.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>{item.val}</div>
                     </div>
                   ))}
                 </div>
 
                 {contratoActivo.tipo_ruta === "diario" && (contratoActivo.ahorro_acumulado !== undefined) && (
                   <div style={{ marginTop: 4 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 5 }}>
                       <span>Progreso ahorro base inicial</span>
-                      <strong style={{ color: ahorroTotal(contratoActivo) >= 510000 ? "#166534" : "#0f172a" }}>
+                      <strong style={{ color: ahorroTotal(contratoActivo) >= 510000 ? "var(--ok-ink)" : "var(--text)" }}>
                         ${fmt(ahorroTotal(contratoActivo))} / $510.000
                       </strong>
                     </div>
-                    <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+                    <div style={{ height: 8, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
                       <div style={{
                         height: "100%", borderRadius: 999,
                         width: `${Math.min(100, (ahorroTotal(contratoActivo) / 510000) * 100)}%`,
-                        background: ahorroTotal(contratoActivo) >= 510000 ? "#16a34a" : "#0284c7",
+                        background: ahorroTotal(contratoActivo) >= 510000 ? "var(--ok)" : "var(--accent)",
                         transition: "width 0.5s",
                       }} />
                     </div>
@@ -422,7 +422,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {prestamosMoto.length > 0 && (
             <Card>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>
               <div style={{ display: "grid", gap: 6 }}>
                 {prestamosMoto.map(p => {
                   const comoPrestada = p.moto_prestada_id === motoId;
@@ -431,7 +431,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                   const cont = contratos.find(c => c.id === p.contrato_id);
                   const cli = cont ? clientes.find(cl => cl.id === cont.cliente_id) : null;
                   return (
-                    <div key={p.id} style={{ fontSize: 12, color: "#334155", borderLeft: "3px solid #c4b5fd", paddingLeft: 8 }}>
+                    <div key={p.id} style={{ fontSize: 12, color: "var(--muted2)", borderLeft: "3px solid #c4b5fd", paddingLeft: 8 }}>
                       {comoPrestada
                         ? <>Prestada a <strong style={{ textTransform: "uppercase" }}>{cli?.nombre ?? "?"}</strong> (su moto {otraMoto?.placa ?? "?"} en taller)</>
                         : <>Reemplazada por <strong>{otraMoto?.placa ?? "?"}</strong> mientras estuvo en taller</>}
@@ -443,10 +443,10 @@ export default function FichaMotoView({ motoId, onNavigate }: {
             </Card>
           )}
           {historialContratos.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin historial de contratos.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin historial de contratos.</div></Card>
           ) : historialContratos.map(c => {
             const cliente = clientes.find(cl => cl.id === c.cliente_id);
-            const cEc = ESTADO_C[c.estado] ?? { bg: "#e2e8f0", color: "#334155" };
+            const cEc = ESTADO_C[c.estado] ?? { bg: "var(--line)", color: "var(--muted2)" };
             const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
             return (
               <Card key={c.id} borderColor={cEc.color}>
@@ -455,25 +455,25 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     {cliente ? (
                       <button
                         onClick={() => onNavigate("ficha_cliente", cliente.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 800, fontSize: 15, padding: 0, textTransform: "uppercase", textAlign: "left" }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 800, fontSize: 15, padding: 0, textTransform: "uppercase", textAlign: "left" }}
                       >
                         {cliente.nombre}
                       </button>
                     ) : (
-                      <div style={{ fontWeight: 700, color: "#64748b", fontSize: 14 }}>Cliente desconocido</div>
+                      <div style={{ fontWeight: 700, color: "var(--muted)", fontSize: 14 }}>Cliente desconocido</div>
                     )}
                     <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                       <Badge bg={cEc.bg} color={cEc.color}>{c.estado}</Badge>
-                      <Badge bg="#f1f5f9" color="#334155">{c.forma_pago}</Badge>
+                      <Badge bg="var(--soft)" color="var(--muted2)">{c.forma_pago}</Badge>
                     </div>
-                    <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
                       {c.fecha_entrega && `Entrega: ${fmtFecha(c.fecha_entrega)}`}
                       {c.valor_semanal > 0 && ` · $${fmt(c.valor_semanal)}`}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#166534" }}>${fmt(pagosContrato)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>total pagado</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                   </div>
                 </div>
               </Card>
@@ -486,15 +486,15 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       {tab === "taller" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {costoTotalTaller > 0 && (
-            <div style={{ padding: "12px 16px", borderRadius: 12, background: "#fef3c7", fontSize: 13, fontWeight: 700, color: "#92400e", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "12px 16px", borderRadius: 12, background: "var(--warn-soft)", fontSize: 13, fontWeight: 700, color: "var(--warn-ink)", display: "flex", justifyContent: "space-between" }}>
               <span>{ordenesTodo.length} orden{ordenesTodo.length !== 1 ? "es" : ""} de taller</span>
               <span>Costo total: ${fmt(costoTotalTaller)}</span>
             </div>
           )}
           {ordenesTodo.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin órdenes de taller registradas.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin órdenes de taller registradas.</div></Card>
           ) : ordenesTodo.map(t => {
-            const tc = TALLER_COLORS[t.estado_tecnico] ?? { bg: "#e2e8f0", color: "#334155" };
+            const tc = TALLER_COLORS[t.estado_tecnico] ?? { bg: "var(--line)", color: "var(--muted2)" };
             const entrada = t.fecha_ingreso ? new Date(t.fecha_ingreso + "T00:00:00") : null;
             const salida = t.fecha_salida ? new Date(t.fecha_salida + "T00:00:00") : new Date();
             const dias = entrada ? Math.floor((salida.getTime() - entrada.getTime()) / 86400000) : 0;
@@ -504,21 +504,21 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                       <Badge bg={tc.bg} color={tc.color}>{t.estado_tecnico}</Badge>
-                      <span style={{ fontSize: 12, color: "#94a3b8", alignSelf: "center" }}>
+                      <span style={{ fontSize: 12, color: "var(--faint)", alignSelf: "center" }}>
                         {fmtFecha(t.fecha_ingreso)} → {t.fecha_salida ? fmtFecha(t.fecha_salida) : "En curso"} ({dias}d)
                       </span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{t.detalle}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t.detalle}</div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "#0284c7" }}>${fmt(t.costo ?? 0)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>costo</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--accent)" }}>${fmt(t.costo ?? 0)}</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>costo</div>
                   </div>
                 </div>
                 {t.repuestos && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {t.repuestos.split(",").map((r, i) => (
-                      <span key={i} style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", border: "1px solid #e2e8f0", fontSize: 12, color: "#334155" }}>
+                      <span key={i} style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", fontSize: 12, color: "var(--muted2)" }}>
                         {r.trim()}
                       </span>
                     ))}

@@ -13,15 +13,15 @@ interface Props {
 
 // ── Severity mapping ──────────────────────────────────────────────────────────
 const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: string; label: string; severidad: string }> = {
-  critico: { bg: "#fff5f5", color: "#991b1b", border: "#fecaca", label: "Crítico",  severidad: "Crítica" },
-  alerta:  { bg: "#fefce8", color: "#92400e", border: "#fde68a", label: "Alerta",   severidad: "Alta"    },
-  info:    { bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd", label: "Info",     severidad: "Baja"    },
+  critico: { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad-line)", label: "Crítico",  severidad: "Crítica" },
+  alerta:  { bg: "var(--warn-soft2)", color: "var(--warn-ink)", border: "var(--warn-line)", label: "Alerta",   severidad: "Alta"    },
+  info:    { bg: "var(--accent-soft4)", color: "var(--accent-ink)", border: "var(--accent-line)", label: "Info",     severidad: "Baja"    },
 };
 
 const NIVEL_BADGE_BG: Record<Alerta["nivel"], string> = {
-  critico: "#fee2e2",
-  alerta:  "#fef3c7",
-  info:    "#dbeafe",
+  critico: "var(--bad-soft)",
+  alerta:  "var(--warn-soft)",
+  info:    "var(--accent-soft3)",
 };
 
 const TIPO_ICON: Record<Alerta["tipo"], string> = {
@@ -178,8 +178,8 @@ export default function AlertasView({ onNavegar }: Props) {
     const vista   = vistas.has(a.id);
 
     const cardStyle: React.CSSProperties = {
-      background:    vista ? "#f8fafc" : s.bg,
-      border:        `1px solid ${vista ? "#e2e8f0" : s.border}`,
+      background:    vista ? "var(--soft2)" : s.bg,
+      border:        `1px solid ${vista ? "var(--line)" : s.border}`,
       borderRadius:  14,
       padding:       "14px 16px",
       opacity:       vista ? 0.65 : 1,
@@ -210,23 +210,23 @@ export default function AlertasView({ onNavegar }: Props) {
                   {s.severidad}
                 </span>
                 {/* Type badge */}
-                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "rgba(0,0,0,0.05)", color: "#64748b" }}>
+                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "rgba(0,0,0,0.05)", color: "var(--muted)" }}>
                   {TIPO_LABEL[a.tipo]}
                 </span>
                 {moto && (
-                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>
+                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>
                     🏍️ {moto.placa}
                   </span>
                 )}
                 {vista && (
-                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8" }}>
+                  <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "var(--soft)", color: "var(--faint)" }}>
                     Vista
                   </span>
                 )}
               </div>
 
               {/* Detail */}
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>{a.detalle}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>{a.detalle}</div>
 
               {/* Metrics */}
               {(dias !== null || dVenc !== null) && (
@@ -236,23 +236,23 @@ export default function AlertasView({ onNavegar }: Props) {
                       <div style={{ fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }}>
                         {dias === 999 ? "∞" : dias}
                       </div>
-                      <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
+                      <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
                     </div>
                   )}
                   {dVenc !== null && (
                     <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: dVenc < 0 ? "#991b1b" : s.color, lineHeight: 1 }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: dVenc < 0 ? "var(--bad-ink)" : s.color, lineHeight: 1 }}>
                         {dVenc < 0 ? `+${Math.abs(dVenc)}` : dVenc}
                       </div>
-                      <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                      <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
                         {dVenc < 0 ? "días vencida" : "días restantes"}
                       </div>
                     </div>
                   )}
                   {cliente?.telefono && (
                     <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: 10, padding: "6px 12px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>{cliente.whatsapp ?? cliente.telefono}</div>
-                      <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>contacto</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>{cliente.whatsapp ?? cliente.telefono}</div>
+                      <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>contacto</div>
                     </div>
                   )}
                 </div>
@@ -264,10 +264,10 @@ export default function AlertasView({ onNavegar }: Props) {
           <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 5, flexShrink: isMobile ? 1 : 0, flexWrap: "wrap", minWidth: 0 }}>
             {tel && (
               <>
-                <button onClick={() => llamar(a.clienteId)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}>
+                <button onClick={() => llamar(a.clienteId)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}>
                   📞 Llamar
                 </button>
-                <button onClick={() => abrirWA(a.clienteId, a.titulo, a.detalle)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
+                <button onClick={() => abrirWA(a.clienteId, a.titulo, a.detalle)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
                   💬 WhatsApp
                 </button>
               </>
@@ -275,7 +275,7 @@ export default function AlertasView({ onNavegar }: Props) {
             {a.clienteId && (
               <button
                 onClick={() => onNavegar("ficha_cliente", a.clienteId)}
-                style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}
+                style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}
               >
                 👤 Ver cliente
               </button>
@@ -283,45 +283,45 @@ export default function AlertasView({ onNavegar }: Props) {
             {a.motoId && (
               <button
                 onClick={() => onNavegar("ficha_moto", a.motoId)}
-                style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}
+                style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
               >
                 🏍️ Ver moto
               </button>
             )}
             {(a.tipo === "mora_critica" || a.tipo === "gabela") && (
-              <button onClick={() => onNavegar("cobros")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>
+              <button onClick={() => onNavegar("cobros")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
                 💳 Cartera
               </button>
             )}
             {(a.tipo === "base_completada" || a.tipo === "traspaso_proximo" || a.tipo === "contrato_sin_activar") && (
-              <button onClick={() => onNavegar("contratos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
+              <button onClick={() => onNavegar("contratos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
                 📄 Contratos
               </button>
             )}
             {(a.tipo === "soat_vence" || a.tipo === "tecno_vence" || a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada") && (
-              <button onClick={() => onNavegar("motos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}>
+              <button onClick={() => onNavegar("motos")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
                 🏍️ Ir a Motos
               </button>
             )}
             {a.tipo === "moto_taller_demorada" && (
-              <button onClick={() => onNavegar("taller")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fff7ed", color: "#c2410c" }}>
+              <button onClick={() => onNavegar("taller")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--orange-soft)", color: "var(--orange)" }}>
                 🔧 Taller
               </button>
             )}
             {a.tipo === "transferencia_pendiente" && (
-              <button onClick={() => onNavegar("cobros")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>
+              <button onClick={() => onNavegar("cobros")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>
                 💳 Confirmar
               </button>
             )}
             {(a.tipo === "convenio_incumplido_3") && (
-              <button onClick={() => onNavegar("liquidaciones")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#fee2e2", color: "#991b1b" }}>
+              <button onClick={() => onNavegar("liquidaciones")} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                 ⚖️ Liquidar
               </button>
             )}
             {!vista && (
               <button
                 onClick={() => marcarVista(a.id)}
-                style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "white", color: "#64748b" }}
+                style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line)", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--card)", color: "var(--muted)" }}
               >
                 ✓ Vista
               </button>
@@ -336,12 +336,12 @@ export default function AlertasView({ onNavegar }: Props) {
     return (
       <div>
         <div style={{ marginBottom: 22 }}>
-          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Alertas del sistema</h2>
-          <p style={{ margin: "5px 0 0", color: "#94a3b8", fontSize: 14 }}>Cargando datos...</p>
+          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Alertas del sistema</h2>
+          <p style={{ margin: "5px 0 0", color: "var(--faint)", fontSize: 14 }}>Cargando datos...</p>
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {[1,2,3,4].map(i => (
-            <div key={i} style={{ height: 80, borderRadius: 14, background: "#e2e8f0", animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 80, borderRadius: 14, background: "var(--line)", animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
       </div>
@@ -352,8 +352,8 @@ export default function AlertasView({ onNavegar }: Props) {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Alertas del sistema</h2>
-        <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 14 }}>
+        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Alertas del sistema</h2>
+        <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
           Situaciones que requieren atención — {alertas.length} alerta{alertas.length !== 1 ? "s" : ""} activa{alertas.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -361,22 +361,22 @@ export default function AlertasView({ onNavegar }: Props) {
       {/* Summary KPI row */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[
-          { label: "Críticas",   value: alertas.filter(a => a.nivel === "critico").length, color: "#991b1b", bg: "#fee2e2" },
-          { label: "Alertas",    value: alertas.filter(a => a.nivel === "alerta").length,  color: "#92400e", bg: "#fef3c7" },
-          { label: "Info",       value: alertas.filter(a => a.nivel === "info").length,    color: "#0369a1", bg: "#e0f2fe" },
-          { label: "En mora",    value: alertas.filter(a => a.tipo === "mora_critica").length,   color: "#991b1b", bg: "#fff5f5" },
-          { label: "Gabela",     value: alertas.filter(a => a.tipo === "gabela").length,         color: "#854d0e", bg: "#fef9c3" },
-          { label: "SOAT/Tecno", value: alertas.filter(a => a.tipo === "soat_vence" || a.tipo === "tecno_vence").length, color: "#0369a1", bg: "#f0f9ff" },
+          { label: "Críticas",   value: alertas.filter(a => a.nivel === "critico").length, color: "var(--bad-ink)", bg: "var(--bad-soft)" },
+          { label: "Alertas",    value: alertas.filter(a => a.nivel === "alerta").length,  color: "var(--warn-ink)", bg: "var(--warn-soft)" },
+          { label: "Info",       value: alertas.filter(a => a.nivel === "info").length,    color: "var(--accent-ink)", bg: "var(--accent-soft)" },
+          { label: "En mora",    value: alertas.filter(a => a.tipo === "mora_critica").length,   color: "var(--bad-ink)", bg: "var(--bad-soft)" },
+          { label: "Gabela",     value: alertas.filter(a => a.tipo === "gabela").length,         color: "var(--warn-ink)", bg: "var(--warn-soft)" },
+          { label: "SOAT/Tecno", value: alertas.filter(a => a.tipo === "soat_vence" || a.tipo === "tecno_vence").length, color: "var(--accent-ink)", bg: "var(--accent-soft4)" },
         ].map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 12, padding: "10px 14px", minWidth: 72, flex: "0 0 auto", boxShadow: "0 1px 6px rgba(15,23,42,0.05)" }}>
-            <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>{k.label}</div>
+            <div style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>{k.label}</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
           </div>
         ))}
       </div>
 
       {/* Category tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 18, flexWrap: "wrap", borderBottom: "2px solid #e2e8f0", paddingBottom: 0 }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 18, flexWrap: "wrap", borderBottom: "2px solid var(--line)", paddingBottom: 0 }}>
         {TABS.map(t => {
           const count = tabCounts[t.key];
           const isActive = tab === t.key;
@@ -388,8 +388,8 @@ export default function AlertasView({ onNavegar }: Props) {
                 padding: "8px 16px", border: "none", cursor: "pointer",
                 fontSize: 13, fontWeight: 700,
                 background: "transparent",
-                color: isActive ? "#0284c7" : "#64748b",
-                borderBottom: isActive ? "2px solid #0284c7" : "2px solid transparent",
+                color: isActive ? "var(--accent)" : "var(--muted)",
+                borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
                 marginBottom: -2,
                 display: "flex", alignItems: "center", gap: 6,
                 borderRadius: 0,
@@ -398,8 +398,8 @@ export default function AlertasView({ onNavegar }: Props) {
               {t.label}
               {count > 0 && (
                 <span style={{
-                  background: isActive ? "#0284c7" : "#e2e8f0",
-                  color: isActive ? "white" : "#64748b",
+                  background: isActive ? "var(--accent)" : "var(--line)",
+                  color: isActive ? "var(--card)" : "var(--muted)",
                   borderRadius: 999, fontSize: 10, fontWeight: 900,
                   padding: "1px 7px", minWidth: 18, textAlign: "center",
                 }}>
@@ -414,14 +414,14 @@ export default function AlertasView({ onNavegar }: Props) {
       {/* Empty state */}
       {filtradas.length === 0 && (
         <div style={{
-          background: "white", borderRadius: 16, padding: "52px 24px",
+          background: "var(--card)", borderRadius: 16, padding: "52px 24px",
           textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
         }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>
             {tab === "mora" ? "🎉" : tab === "soat_tecno" ? "🛡️" : tab === "contratos" ? "📄" : tab === "flota" ? "🏍️" : tab === "convenios" ? "🤝" : "✅"}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Sin alertas en esta categoría</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>Sin alertas en esta categoría</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
             {tab === "mora"       ? "Todos los clientes están al día con sus pagos." :
              tab === "soat_tecno" ? "Todos los documentos están vigentes." :
              tab === "contratos"  ? "No hay contratos pendientes de acción." :

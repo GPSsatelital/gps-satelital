@@ -14,7 +14,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 14,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
@@ -24,7 +24,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
   fontSize: 14,
   fontWeight: 600,
-  color: "#334155",
+  color: "var(--muted2)",
 };
 
 const TIPOS: { value: TipoDeuda; label: string }[] = [
@@ -75,17 +75,17 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 480, background: "white", borderRadius: 20, padding: 24, display: "grid", gap: 16 }}
+        style={{ width: "100%", maxWidth: 480, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16 }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>📋 Nueva deuda</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📋 Nueva deuda</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
         </div>
 
-        <div style={{ padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+        <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
           ⚠️ Esta deuda requiere autorización del administrador. Se registrará como pendiente.
         </div>
 
@@ -111,23 +111,23 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
         </div>
 
         {error && (
-          <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>
+          <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>
         )}
 
         {exito && (
-          <div style={{ color: "#166534", background: "#dcfce7", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 13 }}>
+          <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 13 }}>
             Deuda registrada correctamente.
           </div>
         )}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={{ background: "#f1f5f9", color: "#334155", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+          <button onClick={onClose} style={{ background: "var(--soft)", color: "var(--muted2)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
             Cancelar
           </button>
           <button
             onClick={handleGuardar}
             disabled={guardando || exito}
-            style={{ background: "#fef3c7", color: "#92400e", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
+            style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
           >
             {guardando ? "Guardando..." : "Registrar deuda"}
           </button>

@@ -17,10 +17,10 @@ const GRUPO_NAMES: Record<GrupoMoto, string> = {
 };
 
 const GRUPO_COLOR: Record<GrupoMoto, string> = {
-  RASTREADOR: "#0284c7",
+  RASTREADOR: "var(--accent)",
   COSTA: "#0d9488",
-  PRADERA: "#7c3aed",
-  USADAS: "#ea580c",
+  PRADERA: "var(--violet)",
+  USADAS: "var(--orange)",
 };
 
 function fmt(n: number) {
@@ -51,7 +51,7 @@ function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
         return (
           <div key={b.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
             {b.total > 0 && (
-              <div style={{ fontSize: 9, fontWeight: 700, color: b.esHoy ? "#0284c7" : "#64748b", textAlign: "center", lineHeight: 1.2 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: b.esHoy ? "var(--accent)" : "var(--muted)", textAlign: "center", lineHeight: 1.2 }}>
                 ${fmt(b.total / 1000)}k
               </div>
             )}
@@ -61,16 +61,16 @@ function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
                 height: `${Math.max(pct, b.total > 0 ? 6 : 2)}%`,
                 borderRadius: "3px 3px 0 0",
                 background: b.esHoy
-                  ? "#0284c7"
+                  ? "var(--accent)"
                   : isWeekend
-                  ? "#cbd5e1"
+                  ? "var(--line2)"
                   : b.total > 0
-                  ? "#bfdbfe"
-                  : "#e2e8f0",
+                  ? "var(--accent-line)"
+                  : "var(--line)",
                 minHeight: 2,
               }} />
             </div>
-            <div style={{ fontSize: 9, fontWeight: b.esHoy ? 800 : 500, color: b.esHoy ? "#0284c7" : "#94a3b8" }}>
+            <div style={{ fontSize: 9, fontWeight: b.esHoy ? 800 : 500, color: b.esHoy ? "var(--accent)" : "var(--faint)" }}>
               {DIAS_ABREV[b.dow]}
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function SocioDashboard() {
   const proyeccionMensual = tarifaPromedio * contratosActivos.length * 26;
 
   const cardBase: React.CSSProperties = {
-    background: "white",
+    background: "var(--card)",
     borderRadius: 16,
     padding: "18px 20px",
     boxShadow: "0 2px 12px rgba(15,23,42,0.07)",
@@ -162,21 +162,21 @@ export default function SocioDashboard() {
       label: "Contratos activos",
       value: contratosActivos.length,
       sub: "generando ingreso",
-      color: "#166534",
+      color: "var(--ok-ink)",
       icon: "📄",
     },
     {
       label: "Clientes en mora",
       value: enMora.length,
       sub: enMora.length > 0 ? "requieren atención" : "todo al día",
-      color: enMora.length > 0 ? "#991b1b" : "#166534",
+      color: enMora.length > 0 ? "var(--bad-ink)" : "var(--ok-ink)",
       icon: enMora.length > 0 ? "⚠️" : "✅",
     },
     {
       label: "Clientes al día",
       value: alDia.length,
       sub: `de ${contratosActivos.length} contratos`,
-      color: "#166534",
+      color: "var(--ok-ink)",
       icon: "✓",
     },
   ];
@@ -198,12 +198,12 @@ export default function SocioDashboard() {
             🏍️
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "#0f172a" }}>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "var(--text)" }}>
               Dashboard — Grupo {GRUPO_NAMES[grupo]}
             </h2>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3, display: "flex", gap: 8, alignItems: "center" }}>
               <span style={{ textTransform: "uppercase", fontWeight: 700 }}>{profile?.nombre}</span>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#94a3b8", display: "inline-block" }} />
+              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--faint)", display: "inline-block" }} />
               <span>Solo lectura</span>
             </div>
           </div>
@@ -211,9 +211,9 @@ export default function SocioDashboard() {
         <button
           onClick={() => signOut()}
           style={{
-            padding: "8px 18px", borderRadius: 10, border: "1.5px solid #e2e8f0",
-            background: "white", cursor: "pointer", fontSize: 13, fontWeight: 700,
-            color: "#64748b", display: "flex", alignItems: "center", gap: 6,
+            padding: "8px 18px", borderRadius: 10, border: "1.5px solid var(--line)",
+            background: "var(--card)", cursor: "pointer", fontSize: 13, fontWeight: 700,
+            color: "var(--muted)", display: "flex", alignItems: "center", gap: 6,
           }}
         >
           <span>⎋</span> Cerrar sesión
@@ -224,7 +224,7 @@ export default function SocioDashboard() {
       <div style={{
         ...cardBase,
         background: `linear-gradient(135deg, ${grupoColor} 0%, ${grupoColor}cc 100%)`,
-        color: "white", marginBottom: 20,
+        color: "var(--card)", marginBottom: 20,
         display: "flex", justifyContent: "space-between", alignItems: "center",
         flexWrap: "wrap", gap: 16,
       }}>
@@ -257,7 +257,7 @@ export default function SocioDashboard() {
         {kpis.map(k => (
           <div key={k.label} style={{ ...cardBase, borderTop: `3px solid ${k.color}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>
                 {k.label}
               </div>
               <span style={{ fontSize: 18 }}>{k.icon}</span>
@@ -265,7 +265,7 @@ export default function SocioDashboard() {
             <div style={{ fontSize: 36, fontWeight: 900, color: k.color, lineHeight: 1.1, marginTop: 8 }}>
               {k.value}
             </div>
-            {k.sub && <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>{k.sub}</div>}
+            {k.sub && <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 4 }}>{k.sub}</div>}
           </div>
         ))}
       </div>
@@ -273,43 +273,43 @@ export default function SocioDashboard() {
       {/* Recaudo 14 días */}
       <div style={{ ...cardBase, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Recaudo — últimos 14 días</div>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
-            Total: <strong style={{ color: "#0284c7" }}>${fmt(recaudadoMes)}</strong> este mes
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Recaudo — últimos 14 días</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            Total: <strong style={{ color: "var(--accent)" }}>${fmt(recaudadoMes)}</strong> este mes
           </div>
         </div>
         <BarChart pagosGrupo={pagosGrupo} dias={14} />
-        <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11, color: "#94a3b8" }}>
+        <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11, color: "var(--faint)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "#0284c7", display: "inline-block" }} /> Hoy
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} /> Hoy
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "#bfdbfe", display: "inline-block" }} /> Día hábil
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--accent-line)", display: "inline-block" }} /> Día hábil
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "#cbd5e1", display: "inline-block" }} /> Fin de semana
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--line2)", display: "inline-block" }} /> Fin de semana
           </span>
         </div>
       </div>
 
       {/* Estado de la flota */}
       <div style={{ ...cardBase, marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a", marginBottom: 14 }}>Estado de la flota</div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 14 }}>Estado de la flota</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {(["Disponible", "Asignada", "En taller", "Recuperada", "Suspendida", "Fiscalía", "Tránsito", "Garantía"] as const).map(estado => {
             const count = motosGrupo.filter(m => m.estado === estado).length;
             if (count === 0) return null;
             const colores: Record<string, { bg: string; color: string }> = {
-              "Asignada":    { bg: "#dcfce7", color: "#166534" },
-              "Disponible":  { bg: "#dbeafe", color: "#1e40af" },
-              "En taller":   { bg: "#fef3c7", color: "#92400e" },
-              "Recuperada":  { bg: "#e0f2fe", color: "#0369a1" },
-              "Suspendida":  { bg: "#ede9fe", color: "#6d28d9" },
-              "Fiscalía":    { bg: "#fee2e2", color: "#991b1b" },
-              "Tránsito":    { bg: "#fee2e2", color: "#991b1b" },
+              "Asignada":    { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+              "Disponible":  { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              "En taller":   { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+              "Recuperada":  { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+              "Suspendida":  { bg: "var(--indigo-soft)", color: "var(--violet)" },
+              "Fiscalía":    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+              "Tránsito":    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
               "Garantía":    { bg: "#f3f4f6", color: "#6b7280" },
             };
-            const c = colores[estado] ?? { bg: "#f1f5f9", color: "#334155" };
+            const c = colores[estado] ?? { bg: "var(--soft)", color: "var(--muted2)" };
             return (
               <div key={estado} style={{
                 background: c.bg, borderRadius: 12, padding: "10px 16px",
@@ -325,10 +325,10 @@ export default function SocioDashboard() {
 
       {/* Clientes en mora */}
       {enMora.length > 0 && (
-        <div style={{ ...cardBase, marginBottom: 20, borderLeft: "4px solid #ef4444" }}>
+        <div style={{ ...cardBase, marginBottom: 20, borderLeft: "4px solid var(--bad)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <span style={{ fontSize: 20 }}>⚠️</span>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#991b1b" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--bad-ink)" }}>
               Clientes en mora — {enMora.length}
             </h3>
           </div>
@@ -339,34 +339,34 @@ export default function SocioDashboard() {
               return (
                 <div key={contrato.id} style={{
                   padding: "12px 14px", borderRadius: 12,
-                  background: esCritico ? "#fff5f5" : "#fefce8",
-                  border: `1px solid ${esCritico ? "#fecaca" : "#fde68a"}`,
+                  background: esCritico ? "var(--bad-soft)" : "var(--warn-soft2)",
+                  border: `1px solid ${esCritico ? "var(--bad-line)" : "var(--warn-line)"}`,
                   display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "#0f172a" }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>
                       {cliente?.nombre ?? "Sin cliente"}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       {moto?.placa ? `Placa: ${moto.placa} · ` : ""}
                       {moto?.marca} {moto?.modelo}
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: esCritico ? "#991b1b" : "#92400e", lineHeight: 1 }}>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)", lineHeight: 1 }}>
                         {diasSinPago === 999 ? "∞" : diasSinPago}
                       </div>
-                      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b" }}>${fmt(deuda)}</div>
-                      <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>adeudado</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--bad-ink)" }}>${fmt(deuda)}</div>
+                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>adeudado</div>
                     </div>
                     <span style={{
                       padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                      background: esCritico ? "#fee2e2" : "#fef3c7",
-                      color: esCritico ? "#991b1b" : "#92400e",
+                      background: esCritico ? "var(--bad-soft)" : "var(--warn-soft)",
+                      color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)",
                     }}>
                       {esCritico ? "Crítico" : "Mora"}
                     </span>
@@ -382,9 +382,9 @@ export default function SocioDashboard() {
       <div style={{ ...cardBase }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Contratos activos</h3>
-          <div style={{ fontSize: 13, color: "#64748b" }}>
-            <span style={{ color: "#166534", fontWeight: 700 }}>{alDia.length} al día</span>
-            {enMora.length > 0 && <> · <span style={{ color: "#991b1b", fontWeight: 700 }}>{enMora.length} en mora</span></>}
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>
+            <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{alDia.length} al día</span>
+            {enMora.length > 0 && <> · <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{enMora.length} en mora</span></>}
           </div>
         </div>
         <div style={{ display: "grid", gap: 6, maxHeight: 420, overflowY: "auto" }}>
@@ -393,22 +393,22 @@ export default function SocioDashboard() {
             return (
               <div key={contrato.id} style={{
                 padding: "10px 14px", borderRadius: 10,
-                background: enM ? "#fff5f5" : "#f8fafc",
-                border: `1px solid ${enM ? "#fecaca" : "#e2e8f0"}`,
+                background: enM ? "var(--bad-soft)" : "var(--soft2)",
+                border: `1px solid ${enM ? "var(--bad-line)" : "var(--line)"}`,
                 display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap",
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
                     {moto?.placa ? `${moto.placa} · ` : ""}{cliente?.nombre ?? "Sin cliente"}
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
                     {contrato.tipo_ruta ?? contrato.forma_pago ?? "Contrato"}
                     {ultimoPago ? ` · Último pago: ${new Date(ultimoPago.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin pagos"}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0284c7" }}>${fmt(contrato.tarifa_diaria ?? 27000)}/día</div>
-                  {enM && <div style={{ fontSize: 11, color: "#991b1b", fontWeight: 700 }}>{diasSinPago === 999 ? "Sin pagos" : `${diasSinPago}d sin pago`}</div>}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>${fmt(contrato.tarifa_diaria ?? 27000)}/día</div>
+                  {enM && <div style={{ fontSize: 11, color: "var(--bad-ink)", fontWeight: 700 }}>{diasSinPago === 999 ? "Sin pagos" : `${diasSinPago}d sin pago`}</div>}
                 </div>
               </div>
             );

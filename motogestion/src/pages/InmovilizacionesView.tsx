@@ -63,9 +63,9 @@ type Fila = {
 };
 
 const PRIO: Record<Prioridad, { bg: string; color: string; border: string; label: string; icon: string }> = {
-  critica: { bg: "#fff5f5", color: "#991b1b", border: "#fecaca", label: "Crítica",  icon: "🔴" },
-  alta:    { bg: "#fefce8", color: "#92400e", border: "#fde68a", label: "Alta",     icon: "🟠" },
-  media:   { bg: "#fff7ed", color: "#c2410c", border: "#fed7aa", label: "Media",    icon: "🟡" },
+  critica: { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad-line)", label: "Crítica",  icon: "🔴" },
+  alta:    { bg: "var(--warn-soft2)", color: "var(--warn-ink)", border: "var(--warn-line)", label: "Alta",     icon: "🟠" },
+  media:   { bg: "var(--orange-soft)", color: "var(--orange)", border: "var(--orange-soft)", label: "Media",    icon: "🟡" },
 };
 
 type FiltroP = "todos" | "criticos" | "en_proceso" | Prioridad;
@@ -447,33 +447,33 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     <div>
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "#0f172a" }}>Inmovilizaciones</h2>
-        <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 14 }}>
+        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Inmovilizaciones</h2>
+        <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
           Motos retenidas y contratos en mora real — gestión de recuperación
         </p>
       </div>
 
       {/* KPI header cards */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        <div onClick={() => setTab("en_mora")} style={{ background: "#fee2e2", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Mora crítica (+3d)</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "#991b1b", lineHeight: 1.1, marginTop: 6 }}>{resumen.total}</div>
-          <div style={{ fontSize: 11, color: "#991b1b", fontWeight: 700, marginTop: 2 }}>{resumen.critica} críticos (+10d)</div>
+        <div onClick={() => setTab("en_mora")} style={{ background: "var(--bad-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+          <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Mora crítica (+3d)</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: 6 }}>{resumen.total}</div>
+          <div style={{ fontSize: 11, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2 }}>{resumen.critica} críticos (+10d)</div>
         </div>
-        <div onClick={() => setTab("en_mora")} style={{ background: "#fef3c7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>En proceso recolección</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "#92400e", lineHeight: 1.1, marginTop: 6 }}>{resumen.recoleccion}</div>
-          <div style={{ fontSize: 11, color: "#92400e", fontWeight: 700, marginTop: 2 }}>orden activa</div>
+        <div onClick={() => setTab("en_mora")} style={{ background: "var(--warn-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+          <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>En proceso recolección</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--warn-ink)", lineHeight: 1.1, marginTop: 6 }}>{resumen.recoleccion}</div>
+          <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2 }}>orden activa</div>
         </div>
-        <div onClick={() => setTab("retenidas")} style={{ background: "#dcfce7", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Recuperadas esta semana</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "#166534", lineHeight: 1.1, marginTop: 6 }}>{recuperadasSemana}</div>
-          <div style={{ fontSize: 11, color: "#166534", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
+        <div onClick={() => setTab("retenidas")} style={{ background: "var(--ok-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+          <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Recuperadas esta semana</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--ok-ink)", lineHeight: 1.1, marginTop: 6 }}>{recuperadasSemana}</div>
+          <div style={{ fontSize: 11, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
         </div>
-        <div style={{ background: "#fff5f5", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#991b1b", lineHeight: 1.1, marginTop: 6 }}>${fmt(resumen.deudaTotal)}</div>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
+        <div style={{ background: "var(--bad-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+          <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: 6 }}>${fmt(resumen.deudaTotal)}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
         </div>
       </div>
 
@@ -489,16 +489,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             style={{
               flex: 1, padding: "12px 14px", borderRadius: 12, border: "none", cursor: "pointer",
               fontSize: 14, fontWeight: 800,
-              background: tab === t.key ? "#0f172a" : "#f1f5f9",
-              color: tab === t.key ? "white" : "#64748b",
+              background: tab === t.key ? "var(--text)" : "var(--soft)",
+              color: tab === t.key ? "var(--card)" : "var(--muted)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
             {t.label}
             <span style={{
-              background: tab === t.key ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+              background: tab === t.key ? "rgba(255,255,255,0.2)" : "var(--line)",
               borderRadius: 999, fontSize: 12, fontWeight: 900, padding: "1px 8px",
-              color: tab === t.key ? "white" : "#64748b",
+              color: tab === t.key ? "var(--card)" : "var(--muted)",
             }}>{t.count}</span>
           </button>
         ))}
@@ -506,7 +506,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
       {tab === "en_mora" && (<>
       {/* GPS notice */}
-      <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", display: "flex", gap: 8, alignItems: "flex-start" }}>
         <span style={{ fontSize: 16 }}>📡</span>
         <span>
           <strong>GPS no integrado.</strong> Sirena (máx. 10s) y apagado remoto (máx. 1h) disponibles al integrar la plataforma GPS.{" "}
@@ -524,17 +524,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               style={{
                 padding: "6px 14px", borderRadius: 999, border: "none", cursor: "pointer",
                 fontSize: 12, fontWeight: 700,
-                background: filtro === btn.key ? "#0f172a" : "#f1f5f9",
-                color: filtro === btn.key ? "white" : "#64748b",
+                background: filtro === btn.key ? "var(--text)" : "var(--soft)",
+                color: filtro === btn.key ? "var(--card)" : "var(--muted)",
                 display: "flex", alignItems: "center", gap: 5,
               }}
             >
               {btn.label}
               <span style={{
-                background: filtro === btn.key ? "rgba(255,255,255,0.2)" : "#e2e8f0",
+                background: filtro === btn.key ? "rgba(255,255,255,0.2)" : "var(--line)",
                 borderRadius: 999, fontSize: 10, fontWeight: 900,
                 padding: "1px 6px",
-                color: filtro === btn.key ? "white" : "#64748b",
+                color: filtro === btn.key ? "var(--card)" : "var(--muted)",
               }}>{btn.count}</span>
             </button>
           ))}
@@ -543,16 +543,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar cliente o placa..."
-          style={{ flex: 1, minWidth: 180, padding: "7px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 13 }}
+          style={{ flex: 1, minWidth: 180, padding: "7px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}
         />
       </div>
 
       {/* Empty state */}
       {filas.length === 0 && (
-        <div style={{ background: "white", borderRadius: 16, padding: "52px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: "52px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>✅</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>Sin motos en mora</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>Todos los contratos están al día</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>Sin motos en mora</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Todos los contratos están al día</div>
         </div>
       )}
 
@@ -570,29 +570,29 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                       {onNavigate && f.motoId
-                        ? <button onClick={() => onNavigate("ficha_moto", f.motoId!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 900, fontSize: 16, color: "#0284c7", textDecoration: "underline" }}>{f.placa}</button>
-                        : <span style={{ fontWeight: 900, fontSize: 16, color: "#0f172a" }}>{f.placa}</span>
+                        ? <button onClick={() => onNavigate("ficha_moto", f.motoId!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 900, fontSize: 16, color: "var(--accent)", textDecoration: "underline" }}>{f.placa}</button>
+                        : <span style={{ fontWeight: 900, fontSize: 16, color: "var(--text)" }}>{f.placa}</span>
                       }
-                      <span style={{ color: "#cbd5e1" }}>·</span>
+                      <span style={{ color: "var(--line2)" }}>·</span>
                       {onNavigate
-                        ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 15, color: "#0f172a", textTransform: "uppercase" }}>{f.clienteNombre}</button>
+                        ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>{f.clienteNombre}</button>
                         : <span style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase" }}>{f.clienteNombre}</span>
                       }
                       <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: s.border, color: s.color }}>
                         {s.icon} {s.label}
                       </span>
                       {f.recoleccionOrdenada && (
-                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>
+                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                           🚔 Recolección
                         </span>
                       )}
                     </div>
 
                     {(f.marca || f.modelo) && (
-                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 2 }}>{f.marca} {f.modelo}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 2 }}>{f.marca} {f.modelo}</div>
                     )}
                     {f.clienteTel && (
-                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>📞 {f.clienteTel}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>📞 {f.clienteTel}</div>
                     )}
 
                     {/* Metrics row */}
@@ -601,31 +601,31 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         <div style={{ fontSize: 34, fontWeight: 900, color: s.color, lineHeight: 1 }}>
                           {f.diasMora}
                         </div>
-                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
+                        <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>${fmt(f.deudaReal)}</div>
-                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>deuda real</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>${fmt(f.deudaReal)}</div>
+                        <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>deuda real</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#334155" }}>${fmt(f.tarifa)}/día</div>
-                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>tarifa</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)" }}>${fmt(f.tarifa)}/día</div>
+                        <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>tarifa</div>
                       </div>
                       {f.ultimoPago && (
                         <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{fmtFecha(f.ultimoPago)}</div>
-                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>último pago</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>{fmtFecha(f.ultimoPago)}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>último pago</div>
                         </div>
                       )}
                       {f.ultimaGestion ? (
                         <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>{fmtFecha(f.ultimaGestion)}</div>
-                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>última gestión · {f.tipoUltimaGestion}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>{fmtFecha(f.ultimaGestion)}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>última gestión · {f.tipoUltimaGestion}</div>
                         </div>
                       ) : (
                         <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: "#991b1b" }}>Sin gestiones</div>
-                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>requiere acción</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--bad-ink)" }}>Sin gestiones</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>requiere acción</div>
                         </div>
                       )}
                     </div>
@@ -636,10 +636,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         <div style={{
                           height: "100%", borderRadius: 999,
                           width: `${Math.min(100, (f.diasMora / 14) * 100)}%`,
-                          background: f.prioridad === "critica" ? "#ef4444" : f.prioridad === "alta" ? "#f59e0b" : "#f97316",
+                          background: f.prioridad === "critica" ? "var(--bad)" : f.prioridad === "alta" ? "var(--warn2)" : "var(--orange)",
                         }} />
                       </div>
-                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, textAlign: "right" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2, textAlign: "right" }}>
                         {`${f.diasMora} / 14 días en mora`}
                       </div>
                     </div>
@@ -651,13 +651,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <>
                         <button
                           onClick={() => window.open(`tel:+57${f.clienteTel.replace(/\D/g, "")}`)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}
                         >
                           📞 Llamar
                         </button>
                         <button
                           onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
                         >
                           💬 WA
                         </button>
@@ -665,7 +665,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     )}
                     <button
                       onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); setGestionPasosPrevios(f.pasosPrevios); }}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#fef3c7", color: "#92400e" }}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}
                     >
                       📋 Gestión
                     </button>
@@ -673,14 +673,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <>
                         <button
                           onClick={() => onNavigate("ficha_cliente", f.clienteId)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}
                         >
                           👤 Ficha
                         </button>
                         {f.motoId && (
                           <button
                             onClick={() => onNavigate("ficha_moto", f.motoId!)}
-                            style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}
+                            style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
                           >
                             🏍️ Moto
                           </button>
@@ -690,20 +690,20 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     <button
                       disabled
                       title="Requiere GPS — solo con vehículo detenido, máx. 10s"
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "var(--soft)", color: "var(--faint)", opacity: 0.5 }}
                     >
                       📡 Sirena
                     </button>
                     <button
                       disabled
                       title="Requiere GPS — solo con vehículo detenido, máx. 1h"
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#94a3b8", opacity: 0.5 }}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "not-allowed", fontSize: 12, fontWeight: 700, background: "var(--soft)", color: "var(--faint)", opacity: 0.5 }}
                     >
                       🔴 Apagar
                     </button>
                     <button
                       onClick={() => setExpandido(abierto ? null : f.contratoId)}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f1f5f9", color: "#334155" }}
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--soft)", color: "var(--muted2)" }}
                     >
                       {abierto ? "▲ Cerrar" : "▼ Protocolo"}
                     </button>
@@ -714,16 +714,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               {/* Protocol panel */}
               {abierto && (
                 <div style={{ borderTop: `1px solid ${s.border}`, padding: "14px 16px", background: "rgba(255,255,255,0.7)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
                     Protocolo de mora
                   </div>
-                  <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.6 }}>
                     Mensaje → Llamada → Apagado/Recolección — disponibles desde el primer día de mora. El funcionario escala
                     según si logra contacto o hay pago, pudiendo pasar los 3 pasos el mismo día. La recolección física se
                     ejecuta desde el Panel Hoy de Cartera.
                   </div>
-                  <div style={{ marginTop: 10, padding: "8px 12px", background: "white", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12, color: "#64748b" }}>
-                    <strong style={{ color: "#0f172a" }}>Regla GPS:</strong> Sirena máx. 10 seg · Apagado máx. 1 hora · Solo vehículo{" "}
+                  <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--line)", fontSize: 12, color: "var(--muted)" }}>
+                    <strong style={{ color: "var(--text)" }}>Regla GPS:</strong> Sirena máx. 10 seg · Apagado máx. 1 hora · Solo vehículo{" "}
                     <strong>detenido</strong> · Recolección siempre con acompañamiento policial.
                   </div>
                 </div>
@@ -738,8 +738,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {tab === "retenidas" && (<>
       {/* Motos retenidas — datos reales (contrato Suspendido + moto Recuperada) */}
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "#0f172a" }}>🔒 Motos retenidas</h3>
-        <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>
+        <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "var(--text)" }}>🔒 Motos retenidas</h3>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
           Motos fuera de servicio, en poder de la empresa — por mora, entregadas temporal, o en taller.
         </p>
       </div>
@@ -754,19 +754,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         ] as const).map(f => (
           <button key={f.key} onClick={() => setFiltroRet(f.key)} style={{
             padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-            background: filtroRet === f.key ? "#0f172a" : "#f1f5f9", color: filtroRet === f.key ? "white" : "#64748b",
+            background: filtroRet === f.key ? "var(--text)" : "var(--soft)", color: filtroRet === f.key ? "var(--card)" : "var(--muted)",
             display: "flex", alignItems: "center", gap: 5,
           }}>
             {f.label}
-            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "#e2e8f0", borderRadius: 999, fontSize: 10, fontWeight: 900, padding: "1px 6px", color: filtroRet === f.key ? "white" : "#64748b" }}>{f.count}</span>
+            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "var(--line)", borderRadius: 999, fontSize: 10, fontWeight: 900, padding: "1px 6px", color: filtroRet === f.key ? "var(--card)" : "var(--muted)" }}>{f.count}</span>
           </button>
         ))}
       </div>
 
       {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).length === 0 ? (
-        <div style={{ background: "white", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 28 }}>
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 28 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>No hay motos retenidas</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>No hay motos retenidas</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
@@ -776,28 +776,28 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.cuotasAtrasadas > 0 && m.convenioId == null;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
-              <div key={m.contratoId} style={{ background: m.esTemporal ? "#f0f9ff" : "#fff5f5", border: `2px solid ${m.esTemporal ? "#bae6fd" : "#fecaca"}`, borderRadius: 16, padding: "14px 16px" }}>
+              <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "#0f172a" }}>
+                    <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>
                       {m.placa} · {m.clienteNombre}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{m.marca} {m.modelo}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{m.marca} {m.modelo}</div>
                     <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
                       {m.deudasPendientes.length === 0 ? (
-                        <span style={{ fontSize: 12, color: "#166534", fontWeight: 700 }}>✓ Sin deudas pendientes</span>
+                        <span style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>✓ Sin deudas pendientes</span>
                       ) : m.deudasPendientes.map(d => (
-                        <div key={d.id} style={{ fontSize: 12, color: "#991b1b" }}>
+                        <div key={d.id} style={{ fontSize: 12, color: "var(--bad-ink)" }}>
                           {d.concepto === "multa_recoleccion" ? "Multa por recolección/inmovilización" : d.descripcion}: <strong>${fmt(d.monto_pendiente)}</strong>
                         </div>
                       ))}
                       {!m.soloInfoTaller && m.cuotasAtrasadas > 0 && (
-                        <div style={{ fontSize: 12, color: m.convenioId != null ? "#0369a1" : "#991b1b" }}>
+                        <div style={{ fontSize: 12, color: m.convenioId != null ? "var(--accent-ink)" : "var(--bad-ink)" }}>
                           Cuotas atrasadas: <strong>${fmt(m.cuotasAtrasadas)}</strong>
                           {m.convenioId != null && <span style={{ fontSize: 11, fontWeight: 700 }}> · 📝 en convenio</span>}
                         </div>
                       )}
-                      <div style={{ fontSize: 13, fontWeight: 800, color: m.soloInfoTaller ? "#7c3aed" : m.esTemporal ? "#0369a1" : entregable ? "#166534" : "#991b1b", marginTop: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: m.soloInfoTaller ? "var(--violet)" : m.esTemporal ? "var(--accent-ink)" : entregable ? "var(--ok-ink)" : "var(--bad-ink)", marginTop: 2 }}>
                         {m.soloInfoTaller
                           ? "🔧 En taller (varada) — se resuelve el tiempo al salir"
                           : m.esTemporal
@@ -810,15 +810,15 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                         {m.categoria === "taller"
-                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#ede9fe", color: "#7c3aed" }}>🔧 En taller</span>
+                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 En taller</span>
                           : m.categoria === "temporal"
-                            ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#e0f2fe", color: "#0369a1" }}>🅿️ Guardada temporal (incapacidad)</span>
-                            : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>🔴 Por mora / recolección</span>}
-                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#f1f5f9", color: "#334155" }}>
+                            ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>🅿️ Guardada temporal (incapacidad)</span>
+                            : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>🔴 Por mora / recolección</span>}
+                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--soft)", color: "var(--muted2)" }}>
                           ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
                         </span>
                         {m.listaParaLiquidar && (
-                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "#fee2e2", color: "#991b1b" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                             📄 Lista para liquidar (7+ días)
                           </span>
                         )}
@@ -829,7 +829,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     {m.clienteTel && (
                       <button
                         onClick={() => window.open(`tel:+57${m.clienteTel.replace(/\D/g, "")}`)}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dbeafe", color: "#1d4ed8" }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}
                       >
                         📞 Llamar
                       </button>
@@ -838,13 +838,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       ? <button
                           onClick={() => setLiquidacionModal(m)}
                           title="Diario varado: liquida este contrato y crea uno nuevo en otra moto trasladando el ahorro"
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#c2410c", color: "white" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--orange)", color: "var(--card)" }}
                         >
                           🔁 Liquidar y reasignar
                         </button>
                       : <button
                           onClick={() => setPrestarRec(m)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#7c3aed", color: "white" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--violet)", color: "var(--card)" }}
                         >
                           🔄 Prestar reemplazo
                         </button>
@@ -853,7 +853,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <button
                         onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
                         disabled={procesandoEsta}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#166534", color: "white" }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--ok-ink)", color: "var(--card)" }}
                       >
                         💵 Cobrar
                       </button>
@@ -863,7 +863,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         onClick={() => setConvenioRec(m)}
                         disabled={procesandoEsta}
                         title="Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#0369a1", color: "white" }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--accent-ink)", color: "var(--card)" }}
                       >
                         📝 Convenio
                       </button>
@@ -873,7 +873,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         onClick={() => handleAbrirEntrega(m)}
                         disabled={!entregable || procesandoEsta}
                         title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "#dcfce7" : "#f1f5f9", color: entregable ? "#166534" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "var(--ok-soft)" : "var(--soft)", color: entregable ? "var(--ok-ink)" : "var(--faint)", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
                         {procesandoEsta ? "Procesando..." : m.esTemporal ? "✓ Reactivar / entregar" : "✓ Entregar moto"}
                       </button>
@@ -883,7 +883,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         onClick={() => setLiquidacionModal(m)}
                         disabled={procesandoEsta || !m.listaParaLiquidar}
                         title={!m.listaParaLiquidar ? `Se habilita a los 7 días retenida (lleva ${m.diasRetenida})` : ""}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (procesandoEsta || !m.listaParaLiquidar) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: m.listaParaLiquidar ? "#fef3c7" : "#f1f5f9", color: m.listaParaLiquidar ? "#92400e" : "#94a3b8", opacity: procesandoEsta ? 0.6 : 1 }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (procesandoEsta || !m.listaParaLiquidar) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: m.listaParaLiquidar ? "var(--warn-soft)" : "var(--soft)", color: m.listaParaLiquidar ? "var(--warn-ink)" : "var(--faint)", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
                         {m.listaParaLiquidar ? "📄 Iniciar liquidación" : "🔒 Liquidar (a los 7d)"}
                       </button>
@@ -899,7 +899,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {/* Préstamos activos: cobrar el alquiler diario y devolver cuando la moto salga de taller */}
       {prestamos.filter(p => p.estado === "activo").length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 28 }}>
-          <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 900, color: "#0f172a" }}>🔄 Préstamos activos</h3>
+          <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 900, color: "var(--text)" }}>🔄 Préstamos activos</h3>
           <div style={{ display: "grid", gap: 8 }}>
             {prestamos.filter(p => p.estado === "activo").map(p => {
               const cont = contratos.find(c => c.id === p.contrato_id);
@@ -910,19 +910,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               return (
                 <div key={p.id} style={{ background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 14, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", textTransform: "uppercase" }}>{cli?.nombre ?? "—"}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{cli?.nombre ?? "—"}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       Anda en <strong>{motoP?.placa ?? "?"}</strong> (prestada) · su moto <strong>{motoO?.placa ?? "?"}</strong> en taller · desde {p.fecha_inicio}
                     </div>
-                    <div style={{ fontSize: 12, color: "#7c3aed", fontWeight: 700, marginTop: 2 }}>Alquiler: ${fmt(p.tarifa_dia)}/día</div>
+                    <div style={{ fontSize: 12, color: "var(--violet)", fontWeight: 700, marginTop: 2 }}>Alquiler: ${fmt(p.tarifa_dia)}/día</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                     <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "#166534", color: "white", opacity: proc ? 0.6 : 1 }}>
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
                       💵 Cobrar alquiler
                     </button>
                     <button onClick={() => handleDevolverPrestamo(p.id)} disabled={proc}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#dcfce7", color: "#166534", opacity: proc ? 0.6 : 1 }}>
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)", opacity: proc ? 0.6 : 1 }}>
                       ✓ Devolver (salió de taller)
                     </button>
                   </div>
@@ -960,11 +960,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {cobroRec && (
         <>
           <div onClick={() => !cobroProc && setCobroRec(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "white", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>💵 Cobrar para recuperar</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, textTransform: "uppercase" }}>{cobroRec.placa} · {cobroRec.clienteNombre}</div>
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>💵 Cobrar para recuperar</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14, textTransform: "uppercase" }}>{cobroRec.placa} · {cobroRec.clienteNombre}</div>
 
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "#991b1b", fontWeight: 700 }}>
+            <div style={{ background: "var(--bad-soft)", border: "1px solid var(--bad-line)", borderRadius: 12, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "var(--bad-ink)", fontWeight: 700 }}>
               Debe para recuperar: <strong>${fmt(cobroRec.totalRecuperar)}</strong>
               <div style={{ fontSize: 12, fontWeight: 400, marginTop: 2 }}>
                 {cobroRec.cuotasAtrasadas > 0 && `Cuotas atrasadas $${fmt(cobroRec.cuotasAtrasadas)}`}
@@ -974,13 +974,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             </div>
 
             <MoneyInput label="Valor recibido (efectivo)" value={cobroMonto} onChange={setCobroMonto} />
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>El pago cubre primero la <strong>multa/deudas</strong> (mínimo para llevarse la moto) y luego las cuotas atrasadas. Pídele lo máximo que pueda dar; lo que quede de atrasado se puede dejar en un convenio (botón 📝 Convenio).</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>El pago cubre primero la <strong>multa/deudas</strong> (mínimo para llevarse la moto) y luego las cuotas atrasadas. Pídele lo máximo que pueda dar; lo que quede de atrasado se puede dejar en un convenio (botón 📝 Convenio).</div>
 
-            {cobroErr && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{cobroErr}</div>}
+            {cobroErr && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{cobroErr}</div>}
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button onClick={() => setCobroRec(null)} disabled={cobroProc} style={{ flex: 1, padding: 11, borderRadius: 12, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#334155" }}>Cancelar</button>
-              <button onClick={handleCobrarRecuperar} disabled={cobroProc} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "#166534", color: "white", cursor: "pointer", fontWeight: 800, fontSize: 14, opacity: cobroProc ? 0.6 : 1 }}>
+              <button onClick={() => setCobroRec(null)} disabled={cobroProc} style={{ flex: 1, padding: 11, borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
+              <button onClick={handleCobrarRecuperar} disabled={cobroProc} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: "pointer", fontWeight: 800, fontSize: 14, opacity: cobroProc ? 0.6 : 1 }}>
                 {cobroProc ? "Registrando..." : "Registrar pago"}
               </button>
             </div>

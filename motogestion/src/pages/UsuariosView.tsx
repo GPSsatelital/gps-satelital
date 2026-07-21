@@ -5,10 +5,10 @@ import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
 import { ACCIONES, calcularPuede, type AccionesUsuario, type EstadoAccion } from "../lib/acciones";
 
-const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
-const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
-const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line2)", outline: "none", fontSize: 14, boxSizing: "border-box" };
+const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
 
 type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null; email: string | null };
@@ -28,14 +28,14 @@ function roleLabel(role: Role) {
 
 function roleBadge(role: Role) {
   const map: Record<Role, { bg: string; color: string }> = {
-    ADMIN: { bg: "#dbeafe", color: "#1d4ed8" },
-    ADMIN_PRINCIPAL: { bg: "#ede9fe", color: "#6d28d9" },
-    SECRETARIA: { bg: "#fef3c7", color: "#92400e" },
-    MECANICO: { bg: "#dcfce7", color: "#166534" },
-    SUBADMIN: { bg: "#e0f2fe", color: "#0369a1" },
-    SOCIO: { bg: "#f1f5f9", color: "#334155" },
+    ADMIN: { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+    ADMIN_PRINCIPAL: { bg: "var(--indigo-soft)", color: "var(--violet)" },
+    SECRETARIA: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+    MECANICO: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+    SUBADMIN: { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+    SOCIO: { bg: "var(--soft)", color: "var(--muted2)" },
   };
-  return map[role] ?? { bg: "#e2e8f0", color: "#334155" };
+  return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
 
 // Llama a la Edge Function manage-users con el token del admin actual
@@ -58,7 +58,7 @@ function SelectorAccesos({ accesos, onToggle }: { accesos: ViewKey[]; onToggle: 
     <div style={{ display: "grid", gap: 12 }}>
       {grupos.map(g => (
         <div key={g}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.06em", marginBottom: 6, textTransform: "uppercase" }}>{g}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.06em", marginBottom: 6, textTransform: "uppercase" }}>{g}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {MODULOS_ASIGNABLES.filter(m => m.grupo === g).map(m => {
               const on = accesos.includes(m.key);
@@ -70,9 +70,9 @@ function SelectorAccesos({ accesos, onToggle }: { accesos: ViewKey[]; onToggle: 
                   style={{
                     display: "flex", alignItems: "center", gap: 6,
                     padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-                    border: on ? "1px solid #0284c7" : "1px solid #e2e8f0",
-                    background: on ? "#e0f2fe" : "#f8fafc",
-                    color: on ? "#0369a1" : "#64748b",
+                    border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    background: on ? "var(--accent-soft)" : "var(--soft2)",
+                    color: on ? "var(--accent-ink)" : "var(--muted)",
                     fontSize: 13, fontWeight: on ? 700 : 500,
                   }}
                 >
@@ -163,7 +163,7 @@ export default function UsuariosView() {
   return (
     <div>
       <h2 style={{ fontSize: 22, margin: 0 }}>Usuarios & Roles</h2>
-      <p style={{ marginTop: 6, color: "#64748b" }}>Crea cuentas, asígnales rol y marca a qué módulos tiene acceso cada quien. Solo un ADMIN entra aquí.</p>
+      <p style={{ marginTop: 6, color: "var(--muted)" }}>Crea cuentas, asígnales rol y marca a qué módulos tiene acceso cada quien. Solo un ADMIN entra aquí.</p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginTop: 20, alignItems: "flex-start" }}>
         {/* ── Crear ── */}
@@ -199,20 +199,20 @@ export default function UsuariosView() {
                   <option value="PRADERA">Pradera</option>
                   <option value="USADAS">Usadas Club</option>
                 </select>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>El socio solo verá el dashboard de este grupo.</div>
               </div>
             ) : (
               <div>
                 <div style={labelStyle}>Accesos a módulos</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
                   Precargados según el rol. Ajusta lo que este usuario podrá ver. (El panel general siempre está disponible.)
                 </div>
                 <SelectorAccesos accesos={accesos} onToggle={toggleAcceso} />
               </div>
             )}
 
-            {formError && <div style={{ color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
-            {info && <div style={{ color: "#166534", fontWeight: 600 }}>{info}</div>}
+            {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
+            {info && <div style={{ color: "var(--ok-ink)", fontWeight: 600 }}>{info}</div>}
 
             <button onClick={handleCrear} disabled={creando} style={{ ...primaryBtn, opacity: creando ? 0.7 : 1 }}>
               {creando ? "Creando..." : "Crear usuario"}
@@ -223,26 +223,26 @@ export default function UsuariosView() {
         {/* ── Equipo ── */}
         <div style={{ ...card, flex: "1 1 340px", minWidth: 0 }}>
           <h3 style={{ margin: 0, fontSize: 20 }}>Equipo actual</h3>
-          {listError && <div style={{ marginTop: 12, color: "#991b1b" }}>Error: {listError}</div>}
+          {listError && <div style={{ marginTop: 12, color: "var(--bad-ink)" }}>Error: {listError}</div>}
 
           {loading ? (
-            <div style={{ marginTop: 16, color: "#64748b" }}>Cargando usuarios...</div>
+            <div style={{ marginTop: 16, color: "var(--muted)" }}>Cargando usuarios...</div>
           ) : (
             <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-              {usuarios.length === 0 && <div style={{ color: "#64748b" }}>No hay usuarios todavía.</div>}
+              {usuarios.length === 0 && <div style={{ color: "var(--muted)" }}>No hay usuarios todavía.</div>}
               {usuarios.map(u => {
                 const nAccesos = Array.isArray(u.permisos) ? u.permisos.length : null;
                 const badge = roleBadge(u.role);
                 return (
-                  <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{u.nombre}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
                         {u.role === "SOCIO" ? u.grupo : nAccesos === null ? "Accesos por defecto" : `${nAccesos} módulos`}
                       </div>
                     </div>
                     <span style={{ padding: "4px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: "nowrap" }}>{roleLabel(u.role)}</span>
-                    <button onClick={() => setEditando(u)} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid #cbd5e1", background: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#334155", whiteSpace: "nowrap" }}>✏️</button>
+                    <button onClick={() => setEditando(u)} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--card)", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--muted2)", whiteSpace: "nowrap" }}>✏️</button>
                   </div>
                 );
               })}
@@ -279,7 +279,7 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
   const modConAcciones = MODULOS_ASIGNABLES.filter(m => ACCIONES.some(a => a.modulo === m.key));
   const modSinAcciones = MODULOS_ASIGNABLES.filter(m => !ACCIONES.some(a => a.modulo === m.key));
   const orphan = ACCIONES.filter(a => !MODULOS_ASIGNABLES.some(m => m.key === a.modulo));
-  const chk: React.CSSProperties = { width: 18, height: 18, accentColor: "#0284c7", cursor: "pointer", flexShrink: 0 };
+  const chk: React.CSSProperties = { width: 18, height: 18, accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 };
 
   function filaAccion(a: typeof ACCIONES[number], moduloOn: boolean) {
     const activo = calcularPuede(role, overrides, a.key);
@@ -288,10 +288,10 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
     return (
       <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: usable ? "pointer" : "default", opacity: moduloOn ? 1 : 0.4, minWidth: 0 }}>
         <input type="checkbox" checked={activo} disabled={!usable} onChange={() => onSetAccion(a.key, !activo)} style={chk} />
-        <span style={{ fontSize: 13, color: "#334155", minWidth: 0 }}>
+        <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>
           {a.label}
-          {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ marginLeft: 5, fontSize: 10, color: "#0369a1" }}>🔒</span>}
-          {editado && <span title="Distinto a lo normal de su rol" style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "#b45309", background: "#fef3c7", borderRadius: 6, padding: "1px 5px" }}>editado</span>}
+          {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ marginLeft: 5, fontSize: 10, color: "var(--accent-ink)" }}>🔒</span>}
+          {editado && <span title="Distinto a lo normal de su rol" style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "var(--warn-strong)", background: "var(--warn-soft)", borderRadius: 6, padding: "1px 5px" }}>editado</span>}
         </span>
       </label>
     );
@@ -300,13 +300,13 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>
           {esAP ? "Puede todo (Administrador Principal)"
             : nPersonalizados > 0 ? `${nPersonalizados} permiso${nPersonalizados !== 1 ? "s" : ""} personalizado${nPersonalizados !== 1 ? "s" : ""}`
             : "Todo según su rol"}
         </div>
         {!esAP && nPersonalizados > 0 && (
-          <button type="button" onClick={onReset} style={{ fontSize: 12, fontWeight: 700, border: "1px solid #e2e8f0", background: "white", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#334155" }}>
+          <button type="button" onClick={onReset} style={{ fontSize: 12, fontWeight: 700, border: "1px solid var(--line)", background: "var(--card)", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "var(--muted2)" }}>
             ↺ Volver a lo normal del rol
           </button>
         )}
@@ -315,12 +315,12 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
       {modConAcciones.map(m => {
         const on = accesos.includes(m.key);
         return (
-          <div key={m.key} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px", background: on ? "white" : "#f8fafc", boxSizing: "border-box" }}>
+          <div key={m.key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "8px 10px", background: on ? "var(--card)" : "var(--soft2)", boxSizing: "border-box" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="checkbox" checked={on} onChange={() => onToggleModulo(m.key)} style={chk} />
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{m.icon} {m.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{m.icon} {m.label}</span>
             </label>
-            <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid #f1f5f9", paddingLeft: 12 }}>
+            <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid var(--soft)", paddingLeft: 12 }}>
               {ACCIONES.filter(a => a.modulo === m.key).map(a => filaAccion(a, on))}
             </div>
           </div>
@@ -328,9 +328,9 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
       })}
 
       {orphan.length > 0 && (
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "8px 10px", boxSizing: "border-box" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>⚙️ Configuración</div>
-          <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid #f1f5f9", paddingLeft: 12 }}>
+        <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "8px 10px", boxSizing: "border-box" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>⚙️ Configuración</div>
+          <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid var(--soft)", paddingLeft: 12 }}>
             {orphan.map(a => filaAccion(a, true))}
           </div>
         </div>
@@ -338,14 +338,14 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
 
       {modSinAcciones.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", margin: "4px 0 6px" }}>Otros accesos (solo ver la pantalla)</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", margin: "4px 0 6px" }}>Otros accesos (solo ver la pantalla)</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {modSinAcciones.map(m => {
               const on = accesos.includes(m.key);
               return (
                 <button key={m.key} type="button" onClick={() => onToggleModulo(m.key)} style={{
-                  display: "flex", alignItems: "center", gap: 6, border: `1px solid ${on ? "#86efac" : "#e2e8f0"}`,
-                  background: on ? "#f0fdf4" : "#f8fafc", color: on ? "#166534" : "#94a3b8", borderRadius: 999,
+                  display: "flex", alignItems: "center", gap: 6, border: `1px solid ${on ? "var(--ok-line)" : "var(--line)"}`,
+                  background: on ? "var(--ok-soft)" : "var(--soft2)", color: on ? "var(--ok-ink)" : "var(--faint)", borderRadius: 999,
                   padding: "5px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer",
                 }}>
                   <span>{on ? "☑" : "☐"}</span>{m.icon} {m.label}
@@ -447,11 +447,11 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       <div style={{
         position: "fixed", zIndex: 81, top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "min(560px, calc(100vw - 24px))", maxHeight: "calc(100dvh - 80px)", overflowY: "auto",
-        background: "white", borderRadius: 18, padding: 20, boxShadow: "0 30px 80px rgba(15,23,42,0.3)",
+        background: "var(--card)", borderRadius: 18, padding: 20, boxShadow: "0 30px 80px rgba(15,23,42,0.3)",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ margin: 0, fontSize: 19 }}>Editar usuario</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--faint)" }}>×</button>
         </div>
 
         <div style={{ display: "grid", gap: 12 }}>
@@ -483,7 +483,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
           ) : (
             <div>
               <div style={labelStyle}>Permisos</div>
-              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
                 Marca qué pantallas ve y, debajo de cada una, qué acciones puede hacer. Las acciones arrancan según su rol; cámbialas solo para esta persona. Las de 🔒 se refuerzan en la base de datos.
               </div>
               <SelectorPermisos
@@ -501,19 +501,19 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
             {guardando ? "Guardando..." : "Guardar cambios"}
           </button>
 
-          <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginTop: 4 }}>
+          <div style={{ borderTop: "1px solid var(--soft)", paddingTop: 14, marginTop: 4 }}>
             <div style={labelStyle}>Resetear contraseña</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>Asigna una contraseña temporal nueva y compártela con el usuario.</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Asigna una contraseña temporal nueva y compártela con el usuario.</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input type="text" style={{ ...inputStyle, flex: "1 1 180px" }} value={nuevaPass} onChange={e => setNuevaPass(e.target.value)} placeholder="Nueva contraseña (mín. 6)" />
-              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "#0f172a", color: "white", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>
+              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "var(--ink)", color: "var(--card)", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>
                 {reseteando ? "..." : "Resetear"}
               </button>
             </div>
           </div>
 
-          {error && <div style={{ color: "#991b1b", fontWeight: 600 }}>{error}</div>}
-          {ok && <div style={{ color: "#166534", fontWeight: 600 }}>{ok}</div>}
+          {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600 }}>{error}</div>}
+          {ok && <div style={{ color: "var(--ok-ink)", fontWeight: 600 }}>{ok}</div>}
         </div>
       </div>
     </>

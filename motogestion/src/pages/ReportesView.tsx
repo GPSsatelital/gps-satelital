@@ -15,7 +15,7 @@ interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
 }
 
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(15,23,42,0.08)" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(15,23,42,0.08)" };
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
@@ -44,12 +44,12 @@ const ANG_LABEL: Record<string, string> = {
 };
 const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA", "USADAS"] as const;
 const GRUPO_COLORS: Record<string, string> = {
-  RASTREADOR: "#0284c7", COSTA: "#10b981", PRADERA: "#f59e0b", USADAS: "#ea580c",
+  RASTREADOR: "var(--accent)", COSTA: "var(--ok2)", PRADERA: "var(--warn2)", USADAS: "var(--orange)",
 };
 const ESTADO_MOTO_COLOR: Record<string, string> = {
-  Asignada: "#166534", Disponible: "#1e40af", "En taller": "#92400e",
-  Recuperada: "#0369a1", Suspendida: "#6d28d9", Fiscalia: "#991b1b",
-  Transito: "#be123c", Garantia: "#6b7280",
+  Asignada: "var(--ok-ink)", Disponible: "var(--accent-ink)", "En taller": "var(--warn-ink)",
+  Recuperada: "var(--accent-ink)", Suspendida: "var(--violet)", Fiscalia: "var(--bad-ink)",
+  Transito: "var(--bad)", Garantia: "#6b7280",
 };
 
 function getRango(r: Rango): { desde: string; hasta: string } {
@@ -74,10 +74,10 @@ function Barra({ label, valor, total, color, sub }: { label: string; valor: numb
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 3 }}>
-        <span style={{ fontWeight: 600, color: "#334155" }}>{label}{sub && <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 6 }}>{sub}</span>}</span>
-        <span style={{ color: "#64748b" }}>$ {fmt(valor)} <span style={{ color: "#94a3b8" }}>({p}%)</span></span>
+        <span style={{ fontWeight: 600, color: "var(--muted2)" }}>{label}{sub && <span style={{ fontSize: 11, color: "var(--faint)", marginLeft: 6 }}>{sub}</span>}</span>
+        <span style={{ color: "var(--muted)" }}>$ {fmt(valor)} <span style={{ color: "var(--faint)" }}>({p}%)</span></span>
       </div>
-      <div style={{ height: 8, borderRadius: 999, background: "#f1f5f9", overflow: "hidden" }}>
+      <div style={{ height: 8, borderRadius: 999, background: "var(--soft)", overflow: "hidden" }}>
         <div style={{ height: "100%", borderRadius: 999, width: `${p}%`, background: color, transition: "width 0.4s" }} />
       </div>
     </div>
@@ -89,10 +89,10 @@ function BarraN({ label, valor, total, color }: { label: string; valor: number; 
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 3 }}>
-        <span style={{ fontWeight: 600, color: "#334155" }}>{label}</span>
-        <span style={{ color: "#64748b" }}>{valor} <span style={{ color: "#94a3b8" }}>({p}%)</span></span>
+        <span style={{ fontWeight: 600, color: "var(--muted2)" }}>{label}</span>
+        <span style={{ color: "var(--muted)" }}>{valor} <span style={{ color: "var(--faint)" }}>({p}%)</span></span>
       </div>
-      <div style={{ height: 8, borderRadius: 999, background: "#f1f5f9", overflow: "hidden" }}>
+      <div style={{ height: 8, borderRadius: 999, background: "var(--soft)", overflow: "hidden" }}>
         <div style={{ height: "100%", borderRadius: 999, width: `${p}%`, background: color, transition: "width 0.4s" }} />
       </div>
     </div>
@@ -102,12 +102,12 @@ function BarraN({ label, valor, total, color }: { label: string; valor: number; 
 function KPI({ label, value, sub, color, bg }: { label: string; value: string; sub?: string; color?: string; bg?: string }) {
   const icon = KPI_ICONS[label];
   return (
-    <div style={{ ...card, background: bg ?? "white", padding: "14px 16px" }}>
-      <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>
+    <div style={{ ...card, background: bg ?? "var(--card)", padding: "14px 16px" }}>
+      <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>
         {icon && <span style={{ marginRight: 4 }}>{icon}</span>}{label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: color ?? "#0f172a", marginTop: 6 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
+      <div style={{ fontSize: 22, fontWeight: 800, color: color ?? "var(--text)", marginTop: 6 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -405,9 +405,9 @@ export default function ReportesView({ onNavigate }: Props) {
     const win = window.open("", "_blank", "width=840,height=920");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${nombreDoc}</title>
-      <style>@media print{.no-print{display:none}} body{margin:0;background:#f1f5f9}</style></head><body>
-      <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:flex-end">
-        <button onclick="window.print()" style="padding:9px 18px;border:none;border-radius:8px;background:#0284c7;color:white;font-weight:700;cursor:pointer">🖨️ Descargar / Imprimir</button>
+      <style>@media print{.no-print{display:none}} body{margin:0;background:var(--soft)}</style></head><body>
+      <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:flex-end">
+        <button onclick="window.print()" style="padding:9px 18px;border:none;border-radius:8px;background:var(--accent);color:white;font-weight:700;cursor:pointer">🖨️ Descargar / Imprimir</button>
       </div>${cuerpo}</body></html>`);
     win.document.close();
   }
@@ -418,8 +418,8 @@ export default function ReportesView({ onNavigate }: Props) {
     if (!win) return;
     const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
     const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
-    const si = "<span style='color:#166534;font-weight:700;'>✓</span>";
-    const no = "<span style='color:#991b1b;font-weight:700;'>✗</span>";
+    const si = "<span style='color:var(--ok-ink);font-weight:700;'>✓</span>";
+    const no = "<span style='color:var(--bad-ink);font-weight:700;'>✗</span>";
     const filas = entregas.map(e => `<tr>
       <td style="padding:7px 8px;">${new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO")}</td>
       <td style="padding:7px 8px;font-weight:700;">${e.placa}</td>
@@ -433,16 +433,16 @@ export default function ReportesView({ onNavigate }: Props) {
       <td style="padding:7px 8px;text-align:center;">${e.docs.contrato && e.docs.pagare && e.docs.certificado && e.docs.firma ? si : no}</td>
       <td style="padding:7px 8px;text-align:center;">${e.nFotos}</td>
     </tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;color:#475569;}tr:nth-child(even){background:#f8fafc;}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:var(--text);padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:var(--soft);padding:8px 10px;text-align:left;font-weight:700;color:var(--muted3);}tr:nth-child(even){background:var(--soft2);}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:var(--faint);text-align:center;}</style></head><body>
       <h1>Reporte de entregas de motos</h1>
-      <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Grupo: <strong>${grupoEnt}</strong> · Generado el ${fechaHoy}</p>
+      <p style="color:var(--muted);margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Grupo: <strong>${grupoEnt}</strong> · Generado el ${fechaHoy}</p>
       <div class="kpis">
         <div class="kpi"><div class="kpi-val">${entregas.length}</div><div>Motos entregadas</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:#166534;">${entregasCompletas}</div><div>Documentación completa</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:#991b1b;">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:#0284c7;">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:var(--ok-ink);">${entregasCompletas}</div><div>Documentación completa</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:var(--bad-ink);">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:var(--accent);">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
       </div>
-      ${entregas.length === 0 ? "<p style='color:#64748b;margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
+      ${entregas.length === 0 ? "<p style='color:var(--muted);margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
       <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();
@@ -455,17 +455,17 @@ export default function ReportesView({ onNavigate }: Props) {
     if (!win) return;
     const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
     const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
-    const gruposHTML = reporteGrupos.map(g => `<tr><td style="padding:8px 12px;font-weight:700;">${g.grupo}</td><td style="padding:8px 12px;text-align:center;">${g.motosAsignadas}</td><td style="padding:8px 12px;text-align:center;">$ ${fmt(g.recaudo)}</td><td style="padding:8px 12px;text-align:center;">${g.contratosActivos}</td><td style="padding:8px 12px;text-align:center;color:${g.enMora > 0 ? "#991b1b" : "#166534"};">${g.enMora}</td></tr>`).join("");
-    const moraHTML = moraDetallada.slice(0, 30).map(m => `<tr><td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td><td style="padding:8px 12px;">${m.placa}</td><td style="padding:8px 12px;text-align:center;color:#991b1b;font-weight:700;">${m.diasSinPago}</td><td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaPendiente)}</td><td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:14px;}h1{font-size:22px;margin-bottom:4px;}h2{font-size:16px;margin:24px 0 10px;border-bottom:2px solid #e2e8f0;padding-bottom:6px;}.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:14px 20px;min-width:130px;}.kpi-val{font-size:20px;font-weight:800;color:#0284c7;}.kpi-lbl{font-size:11px;color:#64748b;text-transform:uppercase;margin-top:2px;}table{width:100%;border-collapse:collapse;font-size:13px;}th{background:#f1f5f9;padding:8px 12px;text-align:left;font-weight:700;color:#64748b;}tr:nth-child(even){background:#f8fafc;}footer{margin-top:32px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
+    const gruposHTML = reporteGrupos.map(g => `<tr><td style="padding:8px 12px;font-weight:700;">${g.grupo}</td><td style="padding:8px 12px;text-align:center;">${g.motosAsignadas}</td><td style="padding:8px 12px;text-align:center;">$ ${fmt(g.recaudo)}</td><td style="padding:8px 12px;text-align:center;">${g.contratosActivos}</td><td style="padding:8px 12px;text-align:center;color:${g.enMora > 0 ? "var(--bad-ink)" : "var(--ok-ink)"};">${g.enMora}</td></tr>`).join("");
+    const moraHTML = moraDetallada.slice(0, 30).map(m => `<tr><td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td><td style="padding:8px 12px;">${m.placa}</td><td style="padding:8px 12px;text-align:center;color:var(--bad-ink);font-weight:700;">${m.diasSinPago}</td><td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaPendiente)}</td><td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>body{font-family:Arial,sans-serif;color:var(--text);padding:32px;font-size:14px;}h1{font-size:22px;margin-bottom:4px;}h2{font-size:16px;margin:24px 0 10px;border-bottom:2px solid var(--line);padding-bottom:6px;}.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}.kpi{border:1px solid var(--line);border-radius:10px;padding:14px 20px;min-width:130px;}.kpi-val{font-size:20px;font-weight:800;color:var(--accent);}.kpi-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:2px;}table{width:100%;border-collapse:collapse;font-size:13px;}th{background:var(--soft);padding:8px 12px;text-align:left;font-weight:700;color:var(--muted);}tr:nth-child(even){background:var(--soft2);}footer{margin-top:32px;font-size:11px;color:var(--faint);text-align:center;}</style></head><body>
       <h1>Reporte MotoGestión — GPS Satelital Cartagena</h1>
-      <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy}</p>
+      <p style="color:var(--muted);margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy}</p>
       <h2>KPIs de Recaudo</h2>
       <div class="kpis"><div class="kpi"><div class="kpi-val">$ ${fmt(totalRecaudado)}</div><div class="kpi-lbl">Total recaudado</div></div><div class="kpi"><div class="kpi-val">$ ${fmt(totalEfectivo)}</div><div class="kpi-lbl">Efectivo</div></div><div class="kpi"><div class="kpi-val">$ ${fmt(totalTransferencia)}</div><div class="kpi-lbl">Transferencias</div></div><div class="kpi"><div class="kpi-val">${contratosActivos.length}</div><div class="kpi-lbl">Contratos activos</div></div><div class="kpi"><div class="kpi-val">${enMora.length}</div><div class="kpi-lbl">En mora</div></div></div>
       <h2>Recaudo por Grupo</h2>
       <table><thead><tr><th>Grupo</th><th>Motos asignadas</th><th>Recaudo período</th><th>Contratos activos</th><th>En mora</th></tr></thead><tbody>${gruposHTML}</tbody></table>
       <h2>Mora y Cartera Vencida (${moraDetallada.length} contratos)</h2>
-      ${moraDetallada.length === 0 ? "<p style='color:#166534;'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda pendiente</th><th>Último pago</th></tr></thead><tbody>${moraHTML}</tbody></table>`}
+      ${moraDetallada.length === 0 ? "<p style='color:var(--ok-ink);'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda pendiente</th><th>Último pago</th></tr></thead><tbody>${moraHTML}</tbody></table>`}
       <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();
@@ -474,21 +474,21 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── Avisos rápidos ─────────────────────────────────────────────────────────
   const avisos = [
-    enMoraCritica > 0 && { color: "#991b1b", bg: "#fee2e2", border: "#ef4444", text: `🚨 ${enMoraCritica} contrato${enMoraCritica > 1 ? "s" : ""} en mora crítica (+7 días) — requieren recolección` },
-    diasBase.length > 0 && { color: "#92400e", bg: "#fef3c7", border: "#f59e0b", text: `⚠️ ${diasBase.length} cliente${diasBase.length > 1 ? "s" : ""} cerca de completar la base ($510.000) — gestionar cambio de contrato` },
-    alertasVencimiento.length > 0 && { color: "#92400e", bg: "#fef3c7", border: "#f59e0b", text: `📋 ${alertasVencimiento.length} moto${alertasVencimiento.length > 1 ? "s" : ""} con SOAT o tecno venciendo en 30 días` },
+    enMoraCritica > 0 && { color: "var(--bad-ink)", bg: "var(--bad-soft)", border: "var(--bad)", text: `🚨 ${enMoraCritica} contrato${enMoraCritica > 1 ? "s" : ""} en mora crítica (+7 días) — requieren recolección` },
+    diasBase.length > 0 && { color: "var(--warn-ink)", bg: "var(--warn-soft)", border: "var(--warn2)", text: `⚠️ ${diasBase.length} cliente${diasBase.length > 1 ? "s" : ""} cerca de completar la base ($510.000) — gestionar cambio de contrato` },
+    alertasVencimiento.length > 0 && { color: "var(--warn-ink)", bg: "var(--warn-soft)", border: "var(--warn2)", text: `📋 ${alertasVencimiento.length} moto${alertasVencimiento.length > 1 ? "s" : ""} con SOAT o tecno venciendo en 30 días` },
   ].filter(Boolean) as { color: string; bg: string; border: string; text: string }[];
 
   return (
     <div>
       {/* Hero header */}
-      <div style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)", borderRadius: 20, padding: isMobile ? "20px 16px" : "28px 32px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+      <div style={{ background: "linear-gradient(135deg, var(--text) 0%, var(--accent-ink2) 100%)", borderRadius: 20, padding: isMobile ? "20px 16px" : "28px 32px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: isMobile ? 20 : 26, margin: 0, fontWeight: 800, color: "white" }}>Reportes</h2>
+          <h2 style={{ fontSize: isMobile ? 20 : 26, margin: 0, fontWeight: 800, color: "var(--card)" }}>Reportes</h2>
           <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Resumen operativo y financiero en tiempo real.</p>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, color: "#38bdf8", lineHeight: 1 }}>$ {fmt(recaudadoHoy)}</div>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, color: "var(--accent-hi)", lineHeight: 1 }}>$ {fmt(recaudadoHoy)}</div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4, fontWeight: 600 }}>Recaudado hoy</div>
         </div>
       </div>
@@ -497,7 +497,7 @@ export default function ReportesView({ onNavigate }: Props) {
       <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
         <div style={{ display: "flex", gap: 4 }}>
           {RANGOS.map(r => (
-            <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: rango === r.key ? "#0284c7" : "#f1f5f9", color: rango === r.key ? "white" : "#64748b", flexShrink: 0 }}>
+            <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: rango === r.key ? "var(--accent)" : "var(--soft)", color: rango === r.key ? "var(--card)" : "var(--muted)", flexShrink: 0 }}>
               {r.label}
             </button>
           ))}
@@ -517,9 +517,9 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* Tabs */}
       <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 4, background: "white", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+        <div style={{ display: "flex", gap: 4, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === t.key ? "#0f172a" : "transparent", color: tab === t.key ? "white" : "#64748b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexShrink: 0 }}>
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === t.key ? "var(--text)" : "transparent", color: tab === t.key ? "var(--card)" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexShrink: 0 }}>
               <span>{t.icon}</span><span>{t.label}</span>
             </button>
           ))}
@@ -531,20 +531,20 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           {/* KPIs principales */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-            <KPI label="Total recaudado"    value={`$ ${fmt(totalRecaudado)}`}    color="#166534" bg="#f0fdf4" />
-            <KPI label="Efectivo"           value={`$ ${fmt(totalEfectivo)}`}     color="#0284c7" sub={pct(totalEfectivo, totalRecaudado)} />
-            <KPI label="Transferencias"     value={`$ ${fmt(totalTransferencia)}`}color="#6d28d9" sub={pct(totalTransferencia, totalRecaudado)} />
-            <KPI label="Cobro en campo"     value={`$ ${fmt(totalCampo)}`}        color="#0369a1" sub={pct(totalCampo, totalRecaudado)} />
-            <KPI label="Proyección mensual" value={`$ ${fmt(proyeccionMensual)}`} color="#334155" sub="~26 días L-S" />
+            <KPI label="Total recaudado"    value={`$ ${fmt(totalRecaudado)}`}    color="var(--ok-ink)" bg="var(--ok-soft)" />
+            <KPI label="Efectivo"           value={`$ ${fmt(totalEfectivo)}`}     color="var(--accent)" sub={pct(totalEfectivo, totalRecaudado)} />
+            <KPI label="Transferencias"     value={`$ ${fmt(totalTransferencia)}`}color="var(--violet)" sub={pct(totalTransferencia, totalRecaudado)} />
+            <KPI label="Cobro en campo"     value={`$ ${fmt(totalCampo)}`}        color="var(--accent-ink)" sub={pct(totalCampo, totalRecaudado)} />
+            <KPI label="Proyección mensual" value={`$ ${fmt(proyeccionMensual)}`} color="var(--muted2)" sub="~26 días L-S" />
           </div>
 
           {/* Comparativa mes anterior */}
           {comparativaMes && (
             <div style={{ ...card, display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", padding: "14px 20px" }}>
-              <span style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>vs mes anterior:</span>
+              <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>vs mes anterior:</span>
               <span style={{ fontSize: 14 }}>$ {fmt(comparativaMes.totalAnt)}</span>
               {comparativaMes.delta !== null && (
-                <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700, background: comparativaMes.delta >= 0 ? "#dcfce7" : "#fee2e2", color: comparativaMes.delta >= 0 ? "#166534" : "#991b1b" }}>
+                <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700, background: comparativaMes.delta >= 0 ? "var(--ok-soft)" : "var(--bad-soft)", color: comparativaMes.delta >= 0 ? "var(--ok-ink)" : "var(--bad-ink)" }}>
                   {comparativaMes.delta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(comparativaMes.delta))}%
                 </span>
               )}
@@ -561,9 +561,9 @@ export default function ReportesView({ onNavigate }: Props) {
                   const isHoy = fecha === hoyStr;
                   return (
                     <div key={fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`$ ${fmt(total)}`}>
-                      {total > 0 && <div style={{ fontSize: 8, color: isHoy ? "#0284c7" : "#94a3b8", fontWeight: 700 }}>${fmt(total / 1000)}k</div>}
-                      <div style={{ width: "100%", height: h, borderRadius: "4px 4px 0 0", background: isHoy ? "#0284c7" : total === 0 ? "#e2e8f0" : "#93c5fd" }} />
-                      <div style={{ fontSize: 8, color: isHoy ? "#0284c7" : "#94a3b8", fontWeight: isHoy ? 700 : 400, textAlign: "center" }}>{label.split(" ")[0]}<br />{label.split(" ")[1]}</div>
+                      {total > 0 && <div style={{ fontSize: 8, color: isHoy ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>${fmt(total / 1000)}k</div>}
+                      <div style={{ width: "100%", height: h, borderRadius: "4px 4px 0 0", background: isHoy ? "var(--accent)" : total === 0 ? "var(--line)" : "var(--accent-line)" }} />
+                      <div style={{ fontSize: 8, color: isHoy ? "var(--accent)" : "var(--faint)", fontWeight: isHoy ? 700 : 400, textAlign: "center" }}>{label.split(" ")[0]}<br />{label.split(" ")[1]}</div>
                     </div>
                   );
                 })}
@@ -579,9 +579,9 @@ export default function ReportesView({ onNavigate }: Props) {
                   const isLast = i === recaudoSemanal.length - 1;
                   return (
                     <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <div style={{ fontSize: 10, color: isLast ? "#0284c7" : "#94a3b8", fontWeight: 700 }}>${fmt(total / 1000)}k</div>
-                      <div style={{ width: "100%", height: h, borderRadius: "6px 6px 0 0", background: isLast ? "#0284c7" : "#bfdbfe" }} />
-                      <div style={{ fontSize: 11, color: isLast ? "#0284c7" : "#64748b", fontWeight: isLast ? 700 : 400, textAlign: "center" }}>{label}</div>
+                      <div style={{ fontSize: 10, color: isLast ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>${fmt(total / 1000)}k</div>
+                      <div style={{ width: "100%", height: h, borderRadius: "6px 6px 0 0", background: isLast ? "var(--accent)" : "var(--accent-line)" }} />
+                      <div style={{ fontSize: 11, color: isLast ? "var(--accent)" : "var(--muted)", fontWeight: isLast ? 700 : 400, textAlign: "center" }}>{label}</div>
                     </div>
                   );
                 })}
@@ -598,14 +598,14 @@ export default function ReportesView({ onNavigate }: Props) {
                   <div style={{ fontWeight: 800, fontSize: 15, color: GRUPO_COLORS[g.grupo], marginBottom: 10 }}>{g.grupo}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                     {[
-                      { label: "Motos asignadas", value: g.motosAsignadas, color: "#0f172a" },
+                      { label: "Motos asignadas", value: g.motosAsignadas, color: "var(--text)" },
                       { label: "Recaudo período", value: `$${fmt(g.recaudo)}`, color: GRUPO_COLORS[g.grupo] },
-                      { label: "Contratos activos", value: g.contratosActivos, color: "#166534" },
-                      { label: "En mora", value: g.enMora, color: g.enMora > 0 ? "#991b1b" : "#166534" },
+                      { label: "Contratos activos", value: g.contratosActivos, color: "var(--ok-ink)" },
+                      { label: "En mora", value: g.enMora, color: g.enMora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" },
                     ].map(k => (
-                      <div key={k.label} style={{ padding: "8px 10px", borderRadius: 10, background: "#f8fafc", textAlign: "center" }}>
+                      <div key={k.label} style={{ padding: "8px 10px", borderRadius: 10, background: "var(--soft2)", textAlign: "center" }}>
                         <div style={{ fontSize: 16, fontWeight: 800, color: k.color }}>{k.value}</div>
-                        <div style={{ fontSize: 9, color: "#64748b", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>{k.label}</div>
+                        <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>{k.label}</div>
                       </div>
                     ))}
                   </div>
@@ -620,12 +620,12 @@ export default function ReportesView({ onNavigate }: Props) {
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Top pagadores — {RANGOS.find(r => r.key === rango)?.label}</div>
               <div style={{ display: "grid", gap: 8 }}>
                 {topPagadores.map((p, i) => (
-                  <div key={p.clienteId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", borderRadius: 10, background: i === 0 ? "#f0fdf4" : "#f8fafc" }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 999, background: i === 0 ? "#22c55e" : i === 1 ? "#64748b" : i === 2 ? "#f59e0b" : "#e2e8f0", color: i < 3 ? "white" : "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{i + 1}</div>
+                  <div key={p.clienteId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", borderRadius: 10, background: i === 0 ? "var(--ok-soft)" : "var(--soft2)" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 999, background: i === 0 ? "var(--ok)" : i === 1 ? "var(--muted)" : i === 2 ? "var(--warn2)" : "var(--line)", color: i < 3 ? "var(--card)" : "var(--faint)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{i + 1}</div>
                     <div style={{ flex: 1, fontWeight: 700, textTransform: "uppercase", fontSize: 13 }}>{p.nombre}</div>
-                    <div style={{ fontWeight: 800, color: "#166534" }}>$ {fmt(p.total)}</div>
+                    <div style={{ fontWeight: 800, color: "var(--ok-ink)" }}>$ {fmt(p.total)}</div>
                     {onNavigate && (
-                      <button onClick={() => onNavigate("ficha_cliente", p.clienteId)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>
+                      <button onClick={() => onNavigate("ficha_cliente", p.clienteId)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>
                         Ver ficha
                       </button>
                     )}
@@ -642,32 +642,32 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           {/* KPI cartera */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
-            <KPI label="Al día"       value={String(contratosActivos.length - enMora.length)} color="#166534" bg="#f0fdf4" />
-            <KPI label="En mora"      value={String(enMora.length - enMoraCritica)}           color="#92400e" bg="#fefce8" />
-            <KPI label="Mora crítica" value={String(enMoraCritica)}                            color="#991b1b" bg="#fff5f5" />
-            <KPI label="Deuda total"  value={`$ ${fmt(deudaTotalCartera)}`} color="#991b1b" />
+            <KPI label="Al día"       value={String(contratosActivos.length - enMora.length)} color="var(--ok-ink)" bg="var(--ok-soft)" />
+            <KPI label="En mora"      value={String(enMora.length - enMoraCritica)}           color="var(--warn-ink)" bg="var(--warn-soft2)" />
+            <KPI label="Mora crítica" value={String(enMoraCritica)}                            color="var(--bad-ink)" bg="var(--bad-soft)" />
+            <KPI label="Deuda total"  value={`$ ${fmt(deudaTotalCartera)}`} color="var(--bad-ink)" />
           </div>
 
           {/* Barras cartera */}
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Estado cartera ({contratosActivos.length} contratos)</div>
-            <Barra label="Al día"       valor={contratosActivos.length - enMora.length} total={contratosActivos.length} color="#22c55e" />
-            <Barra label="En mora"      valor={enMora.length - enMoraCritica}           total={contratosActivos.length} color="#f59e0b" />
-            <Barra label="Mora crítica" valor={enMoraCritica}                            total={contratosActivos.length} color="#ef4444" />
+            <Barra label="Al día"       valor={contratosActivos.length - enMora.length} total={contratosActivos.length} color="var(--ok)" />
+            <Barra label="En mora"      valor={enMora.length - enMoraCritica}           total={contratosActivos.length} color="var(--warn2)" />
+            <Barra label="Mora crítica" valor={enMoraCritica}                            total={contratosActivos.length} color="var(--bad)" />
           </div>
 
           {/* Contratos por modalidad */}
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Contratos por modalidad</div>
             {contratosPorForma.map(([forma, count]) => (
-              <BarraN key={forma} label={forma} valor={count} total={contratosActivos.length} color="#0284c7" />
+              <BarraN key={forma} label={forma} valor={count} total={contratosActivos.length} color="var(--accent)" />
             ))}
           </div>
 
           {/* Mora detallada — cards en móvil, tabla en desktop */}
           {moraDetallada.length > 0 && (
             <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "#991b1b" }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "var(--bad-ink)" }}>
                 🔴 Mora detallada — {moraDetallada.length} contrato{moraDetallada.length > 1 ? "s" : ""}
               </div>
 
@@ -677,29 +677,29 @@ export default function ReportesView({ onNavigate }: Props) {
                     <div
                       key={m.id}
                       onClick={() => onNavigate?.("ficha_cliente", m.clienteId)}
-                      style={{ padding: "12px 14px", borderRadius: 14, background: m.diasSinPago > 7 ? "#fff5f5" : "#fffbeb", border: `1px solid ${m.diasSinPago > 7 ? "#fecaca" : "#fde68a"}`, cursor: "pointer" }}
+                      style={{ padding: "12px 14px", borderRadius: 14, background: m.diasSinPago > 7 ? "var(--bad-soft)" : "var(--warn-soft2)", border: `1px solid ${m.diasSinPago > 7 ? "var(--bad-line)" : "var(--warn-line)"}`, cursor: "pointer" }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 13 }}>{m.cliente}</span>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: "#334155" }}>{m.placa}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--muted2)" }}>{m.placa}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d sin pago</span>
-                        <span style={{ fontWeight: 800, color: "#991b1b", fontSize: 14 }}>$ {fmt(m.deudaPendiente)}</span>
+                        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "var(--bad-soft)" : "var(--warn-soft)", color: m.diasSinPago > 7 ? "var(--bad-ink)" : "var(--warn-ink)" }}>{m.diasSinPago}d sin pago</span>
+                        <span style={{ fontWeight: 800, color: "var(--bad-ink)", fontSize: 14 }}>$ {fmt(m.deudaPendiente)}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-                        Último pago: {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                        Último pago: {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "var(--faint)" }}>Sin pagos</span>}
                       </div>
                       {onNavigate && (
                         <div style={{ display: "flex", gap: 6 }}>
                           <button
                             onClick={e => { e.stopPropagation(); onNavigate("ficha_cliente", m.clienteId); }}
-                            style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}
+                            style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}
                           >👤 Ver cliente</button>
                           {m.motoId && (
                             <button
                               onClick={e => { e.stopPropagation(); onNavigate("ficha_moto", m.motoId!); }}
-                              style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}
+                              style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
                             >🏍️ Ver moto</button>
                           )}
                         </div>
@@ -711,27 +711,27 @@ export default function ReportesView({ onNavigate }: Props) {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                      <tr style={{ borderBottom: "2px solid var(--line)" }}>
                         {["Cliente","Placa","Días sin pago","Deuda pendiente","Último pago",""].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
+                          <th key={h} style={{ textAlign: "left", padding: "8px 10px", color: "var(--muted)", fontWeight: 700 }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {moraDetallada.map(m => (
-                        <tr key={m.id} onClick={() => onNavigate?.("ficha_cliente", m.clienteId)} style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                        <tr key={m.id} onClick={() => onNavigate?.("ficha_cliente", m.clienteId)} style={{ borderBottom: "1px solid var(--soft)", cursor: "pointer" }}>
                           <td style={{ padding: "8px 10px", fontWeight: 700, textTransform: "uppercase" }}>{m.cliente}</td>
                           <td style={{ padding: "8px 10px" }}>{m.placa}</td>
                           <td style={{ padding: "8px 10px" }}>
-                            <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "#fee2e2" : "#fef3c7", color: m.diasSinPago > 7 ? "#991b1b" : "#92400e" }}>{m.diasSinPago}d</span>
+                            <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "var(--bad-soft)" : "var(--warn-soft)", color: m.diasSinPago > 7 ? "var(--bad-ink)" : "var(--warn-ink)" }}>{m.diasSinPago}d</span>
                           </td>
-                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991b1b" }}>$ {fmt(m.deudaPendiente)}</td>
-                          <td style={{ padding: "8px 10px", color: "#64748b" }}>{m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "#94a3b8" }}>Sin pagos</span>}</td>
+                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "var(--bad-ink)" }}>$ {fmt(m.deudaPendiente)}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "var(--faint)" }}>Sin pagos</span>}</td>
                           <td style={{ padding: "8px 6px" }}>
                             {onNavigate && (
                               <div style={{ display: "flex", gap: 4 }}>
-                                <button onClick={e => { e.stopPropagation(); onNavigate("ficha_cliente", m.clienteId); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤</button>
-                                {m.motoId && <button onClick={e => { e.stopPropagation(); onNavigate("ficha_moto", m.motoId!); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️</button>}
+                                <button onClick={e => { e.stopPropagation(); onNavigate("ficha_cliente", m.clienteId); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>👤</button>
+                                {m.motoId && <button onClick={e => { e.stopPropagation(); onNavigate("ficha_moto", m.motoId!); }} style={{ padding: "3px 7px", borderRadius: 7, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️</button>}
                               </div>
                             )}
                           </td>
@@ -747,23 +747,23 @@ export default function ReportesView({ onNavigate }: Props) {
           {/* Base casi completada */}
           {diasBase.length > 0 && (
             <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: "#92400e" }}>⚠️ Base casi completada — gestionar cambio de contrato</div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--warn-ink)" }}>⚠️ Base casi completada — gestionar cambio de contrato</div>
               <div style={{ display: "grid", gap: 8 }}>
                 {diasBase.map(c => {
                   const cliente = clientes.find(cl => cl.id === c.cliente_id);
                   const ahorro = ahorroTotal(c);
                   const p = Math.min(100, Math.round((ahorro / 510000) * 100));
                   return (
-                    <div key={c.id} style={{ padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fcd34d" }}>
+                    <div key={c.id} style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid #fcd34d" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                         <div style={{ fontWeight: 700, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <span style={{ fontSize: 13 }}>$ {fmt(ahorro)} / $510.000 ({p}%)</span>
-                          {onNavigate && <button onClick={() => onNavigate("ficha_cliente", c.cliente_id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>Ver ficha</button>}
+                          {onNavigate && <button onClick={() => onNavigate("ficha_cliente", c.cliente_id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>Ver ficha</button>}
                         </div>
                       </div>
                       <div style={{ marginTop: 6, height: 6, borderRadius: 999, background: "rgba(0,0,0,0.1)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 999, width: `${p}%`, background: "#f59e0b" }} />
+                        <div style={{ height: "100%", borderRadius: 999, width: `${p}%`, background: "var(--warn2)" }} />
                       </div>
                     </div>
                   );
@@ -779,14 +779,14 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           {/* KPI flota */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
-            <KPI label="Total motos"      value={String(motos.length)}                                                        color="#334155" />
-            <KPI label="Asignadas"        value={String(motos.filter(m => m.estado === "Asignada").length)}                   color="#166534" bg="#f0fdf4" />
-            <KPI label="Disponibles"      value={String(motos.filter(m => m.estado === "Disponible").length)}                 color="#0284c7" />
-            <KPI label="En taller"        value={String(motos.filter(m => m.estado === "Mantenimiento").length)}                  color="#92400e" />
-            <KPI label="Retenciones"      value={String(motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado as string)).length)} color="#991b1b" bg="#fff5f5" />
-            <KPI label="Clientes activos" value={String(clientesActivos)}                                                     color="#166534" />
-            <KPI label="En proceso"       value={String(clientesEnProceso)}                                                   color="#92400e" />
-            <KPI label="Nuevos este mes"  value={String(clientesNuevosMes)}                                                   color="#0284c7" />
+            <KPI label="Total motos"      value={String(motos.length)}                                                        color="var(--muted2)" />
+            <KPI label="Asignadas"        value={String(motos.filter(m => m.estado === "Asignada").length)}                   color="var(--ok-ink)" bg="var(--ok-soft)" />
+            <KPI label="Disponibles"      value={String(motos.filter(m => m.estado === "Disponible").length)}                 color="var(--accent)" />
+            <KPI label="En taller"        value={String(motos.filter(m => m.estado === "Mantenimiento").length)}                  color="var(--warn-ink)" />
+            <KPI label="Retenciones"      value={String(motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado as string)).length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
+            <KPI label="Clientes activos" value={String(clientesActivos)}                                                     color="var(--ok-ink)" />
+            <KPI label="En proceso"       value={String(clientesEnProceso)}                                                   color="var(--warn-ink)" />
+            <KPI label="Nuevos este mes"  value={String(clientesNuevosMes)}                                                   color="var(--accent)" />
           </div>
 
           {/* Flota por estado */}
@@ -794,19 +794,19 @@ export default function ReportesView({ onNavigate }: Props) {
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Flota por estado ({motos.length} motos)</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8 }}>
               {motosPorEstado.map(([estado, count]) => {
-                const color = ESTADO_MOTO_COLOR[estado] ?? "#334155";
+                const color = ESTADO_MOTO_COLOR[estado] ?? "var(--muted2)";
                 return (
-                  <div key={estado} style={{ padding: "10px 12px", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" }}>
+                  <div key={estado} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", textAlign: "center" }}>
                     <div style={{ fontSize: 22, fontWeight: 800, color }}>{count}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color, marginTop: 2 }}>{estado}</div>
-                    <div style={{ fontSize: 10, color: "#94a3b8" }}>{pct(count, motos.length)}</div>
+                    <div style={{ fontSize: 10, color: "var(--faint)" }}>{pct(count, motos.length)}</div>
                   </div>
                 );
               })}
             </div>
             <div style={{ marginTop: 14 }}>
               {motosPorEstado.map(([estado, count]) => (
-                <BarraN key={estado} label={estado} valor={count} total={motos.length} color={ESTADO_MOTO_COLOR[estado] ?? "#94a3b8"} />
+                <BarraN key={estado} label={estado} valor={count} total={motos.length} color={ESTADO_MOTO_COLOR[estado] ?? "var(--faint)"} />
               ))}
             </div>
           </div>
@@ -814,33 +814,33 @@ export default function ReportesView({ onNavigate }: Props) {
           {/* Vencimientos */}
           {alertasVencimiento.length > 0 && (
             <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "#92400e" }}>📋 Documentos venciendo — próximos 30 días</div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "var(--warn-ink)" }}>📋 Documentos venciendo — próximos 30 días</div>
 
               {isMobile ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   {alertasVencimiento.map(a => (
-                    <div key={a.id} style={{ padding: "12px 14px", borderRadius: 14, background: "#fffbeb", border: "1px solid #fde68a" }}>
+                    <div key={a.id} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <span style={{ fontWeight: 800, fontSize: 15 }}>{a.placa}</span>
                         {onNavigate && (
-                          <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Ver moto</button>
+                          <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Ver moto</button>
                         )}
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                         <div>
-                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>SOAT vence</div>
-                          <div style={{ color: (a.diasSeguro ?? 999) < 0 ? "#991b1b" : "#334155" }}>{a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>SOAT vence</div>
+                          <div style={{ color: (a.diasSeguro ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>{a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
                           {a.diasSeguro !== null && (
-                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "#fee2e2" : a.diasSeguro < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasSeguro < 0 ? "#991b1b" : a.diasSeguro < 10 ? "#92400e" : "#166534" }}>
+                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "var(--bad-soft)" : a.diasSeguro < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasSeguro < 0 ? "var(--bad-ink)" : a.diasSeguro < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
                               {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
                             </span>
                           )}
                         </div>
                         <div>
-                          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Tecno vence</div>
-                          <div style={{ color: (a.diasTecno ?? 999) < 0 ? "#991b1b" : "#334155" }}>{a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Tecno vence</div>
+                          <div style={{ color: (a.diasTecno ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>{a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
                           {a.diasTecno !== null && (
-                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "#fee2e2" : a.diasTecno < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasTecno < 0 ? "#991b1b" : a.diasTecno < 10 ? "#92400e" : "#166534" }}>
+                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "var(--bad-soft)" : a.diasTecno < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasTecno < 0 ? "var(--bad-ink)" : a.diasTecno < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
                               {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
                             </span>
                           )}
@@ -853,39 +853,39 @@ export default function ReportesView({ onNavigate }: Props) {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: "2px solid #e2e8f0" }}>
+                      <tr style={{ borderBottom: "2px solid var(--line)" }}>
                         {["Placa","SOAT vence","Días","Tecno vence","Días",""].map((h, i) => (
-                          <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "#64748b", fontWeight: 700 }}>{h}</th>
+                          <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "var(--muted)", fontWeight: 700 }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {alertasVencimiento.map(a => (
-                        <tr key={a.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <tr key={a.id} style={{ borderBottom: "1px solid var(--soft)" }}>
                           <td style={{ padding: "8px 10px", fontWeight: 700 }}>{a.placa}</td>
-                          <td style={{ padding: "8px 10px", color: (a.diasSeguro ?? 999) < 0 ? "#991b1b" : "#334155" }}>
+                          <td style={{ padding: "8px 10px", color: (a.diasSeguro ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>
                             {a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}
                           </td>
                           <td style={{ padding: "8px 10px" }}>
                             {a.diasSeguro !== null && (
-                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "#fee2e2" : a.diasSeguro < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasSeguro < 0 ? "#991b1b" : a.diasSeguro < 10 ? "#92400e" : "#166534" }}>
+                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "var(--bad-soft)" : a.diasSeguro < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasSeguro < 0 ? "var(--bad-ink)" : a.diasSeguro < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
                                 {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: "8px 10px", color: (a.diasTecno ?? 999) < 0 ? "#991b1b" : "#334155" }}>
+                          <td style={{ padding: "8px 10px", color: (a.diasTecno ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>
                             {a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}
                           </td>
                           <td style={{ padding: "8px 10px" }}>
                             {a.diasTecno !== null && (
-                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "#fee2e2" : a.diasTecno < 10 ? "#fef3c7" : "#f0fdf4", color: a.diasTecno < 0 ? "#991b1b" : a.diasTecno < 10 ? "#92400e" : "#166534" }}>
+                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "var(--bad-soft)" : a.diasTecno < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasTecno < 0 ? "var(--bad-ink)" : a.diasTecno < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
                                 {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
                               </span>
                             )}
                           </td>
                           <td style={{ padding: "8px 6px" }}>
                             {onNavigate && (
-                              <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Ficha</button>
+                              <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Ficha</button>
                             )}
                           </td>
                         </tr>
@@ -906,10 +906,10 @@ export default function ReportesView({ onNavigate }: Props) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {["Todos", ...GRUPOS].map(g => {
               const activo = grupoEnt === g;
-              const color = g === "Todos" ? "#0f172a" : GRUPO_COLORS[g];
+              const color = g === "Todos" ? "var(--text)" : GRUPO_COLORS[g];
               return (
-                <button key={g} onClick={() => setGrupoEnt(g)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activo ? color : "#e2e8f0"}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: activo ? color : "white", color: activo ? "white" : "#64748b" }}>
-                  {g !== "Todos" && <span style={{ width: 8, height: 8, borderRadius: 999, background: activo ? "white" : color }} />}
+                <button key={g} onClick={() => setGrupoEnt(g)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activo ? color : "var(--line)"}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: activo ? color : "var(--card)", color: activo ? "var(--card)" : "var(--muted)" }}>
+                  {g !== "Todos" && <span style={{ width: 8, height: 8, borderRadius: 999, background: activo ? "var(--card)" : color }} />}
                   {g}
                 </button>
               );
@@ -918,66 +918,66 @@ export default function ReportesView({ onNavigate }: Props) {
 
           {/* KPIs de entregas */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-            <KPI label="Motos entregadas"   value={String(entregas.length)}       color="#0f172a" />
-            <KPI label="Documentación completa"   value={String(entregasCompletas)}   color="#166534" bg="#f0fdf4" />
-            <KPI label="Documentación incompleta" value={String(entregasIncompletas)} color="#991b1b" bg={entregasIncompletas > 0 ? "#fff5f5" : "white"} />
-            <KPI label="Con fotos de entrega"     value={String(entregasConFotos)}    color="#0284c7" />
+            <KPI label="Motos entregadas"   value={String(entregas.length)}       color="var(--text)" />
+            <KPI label="Documentación completa"   value={String(entregasCompletas)}   color="var(--ok-ink)" bg="var(--ok-soft)" />
+            <KPI label="Documentación incompleta" value={String(entregasIncompletas)} color="var(--bad-ink)" bg={entregasIncompletas > 0 ? "var(--bad-soft)" : "var(--card)"} />
+            <KPI label="Con fotos de entrega"     value={String(entregasConFotos)}    color="var(--accent)" />
           </div>
 
           {/* Botón imprimir/enviar */}
-          <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "#e2e8f0" : "#0284c7", color: entregas.length === 0 ? "#94a3b8" : "white", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "var(--line)" : "var(--accent)", color: entregas.length === 0 ? "var(--faint)" : "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             🖨️ Imprimir reporte para los socios
           </button>
 
           {/* Regenerar documentos en blanco (solo ADMIN/AP) — bug histórico del PDF */}
           {esAdmin && (
-            <div style={{ ...card, padding: "14px 16px", border: "1px solid #fde68a", background: "#fffbeb" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#92400e", marginBottom: 4 }}>🔄 Regenerar documentos en blanco</div>
-              <div style={{ fontSize: 12, color: "#78716c", marginBottom: 10 }}>
+            <div style={{ ...card, padding: "14px 16px", border: "1px solid var(--warn-line)", background: "var(--warn-soft2)" }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--warn-ink)", marginBottom: 4 }}>🔄 Regenerar documentos en blanco</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
                 Vuelve a armar el contrato y pagaré de las entregas cuyo PDF salió en blanco, usando las firmas y huellas ya guardadas. Nadie tiene que volver a firmar. Úsalo una vez; los que no tengan firma guardada se omiten.
               </div>
               <button
                 onClick={regenerarDocumentosEnBlanco}
                 disabled={regen.estado === "buscando" || regen.estado === "regenerando"}
-                style={{ padding: "10px 16px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 13, background: "#d97706", color: "white", cursor: regen.estado === "buscando" || regen.estado === "regenerando" ? "default" : "pointer", opacity: regen.estado === "buscando" || regen.estado === "regenerando" ? 0.6 : 1 }}
+                style={{ padding: "10px 16px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 13, background: "var(--warn)", color: "var(--card)", cursor: regen.estado === "buscando" || regen.estado === "regenerando" ? "default" : "pointer", opacity: regen.estado === "buscando" || regen.estado === "regenerando" ? 0.6 : 1 }}
               >
                 {regen.estado === "buscando" ? "Buscando…"
                   : regen.estado === "regenerando" ? `Regenerando ${regen.hechos} de ${regen.total}…`
                   : "🔄 Buscar y regenerar"}
               </button>
               {regen.estado === "hecho" && regen.msg && (
-                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: "#166534" }}>{regen.msg}</div>
+                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}>{regen.msg}</div>
               )}
             </div>
           )}
 
           {/* Lista de entregas */}
           {entregas.length === 0 ? (
-            <div style={{ ...card, textAlign: "center", color: "#64748b", padding: "32px 20px" }}>
+            <div style={{ ...card, textAlign: "center", color: "var(--muted)", padding: "32px 20px" }}>
               No hay entregas de motos en este período{grupoEnt !== "Todos" ? ` para ${grupoEnt}` : ""}.
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>Cambia el rango de fechas arriba para ver otras.</div>
+              <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 6 }}>Cambia el rango de fechas arriba para ver otras.</div>
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
               {entregas.map(e => (
-                <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${GRUPO_COLORS[e.grupo] ?? "#94a3b8"}` }}>
+                <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${GRUPO_COLORS[e.grupo] ?? "var(--faint)"}` }}>
                   {/* Encabezado */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontWeight: 800, fontSize: 18 }}>{e.placa}</span>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: GRUPO_COLORS[e.grupo] ?? "#64748b", background: "#f8fafc", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "#e2e8f0"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: GRUPO_COLORS[e.grupo] ?? "var(--muted)", background: "var(--soft2)", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "var(--line)"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "#334155", marginTop: 4 }}>{e.cliente}</div>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>C.C. {e.cedula}</div>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "var(--muted2)", marginTop: 4 }}>{e.cliente}</div>
+                      <div style={{ fontSize: 12, color: "var(--faint)" }}>C.C. {e.cedula}</div>
                     </div>
-                    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: e.docsOk ? "#dcfce7" : "#fee2e2", color: e.docsOk ? "#166534" : "#991b1b" }}>
+                    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: e.docsOk ? "var(--ok-soft)" : "var(--bad-soft)", color: e.docsOk ? "var(--ok-ink)" : "var(--bad-ink)" }}>
                       {e.docsOk ? "✓ Completo" : "⚠ Incompleto"}
                     </span>
                   </div>
 
                   {/* Fecha + km */}
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
                     <span>📅 {new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}</span>
                     {e.km != null && <span>⏱️ {fmt(e.km)} km</span>}
                   </div>
@@ -995,7 +995,7 @@ export default function ReportesView({ onNavigate }: Props) {
                         onClick={() => d.url && window.open(d.url, "_blank")}
                         disabled={!d.url}
                         title={d.ok ? (d.url ? "Abrir documento" : "Firmado") : "Falta"}
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, padding: "7px 10px", borderRadius: 10, border: "1px solid " + (d.ok ? "#bbf7d0" : "#fecaca"), background: d.ok ? "#f0fdf4" : "#fff5f5", color: d.ok ? "#166534" : "#991b1b", fontSize: 12, fontWeight: 700, cursor: d.url ? "pointer" : "default", minWidth: 0 }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, padding: "7px 10px", borderRadius: 10, border: "1px solid " + (d.ok ? "var(--ok-line)" : "var(--bad-line)"), background: d.ok ? "var(--ok-soft)" : "var(--bad-soft)", color: d.ok ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 12, fontWeight: 700, cursor: d.url ? "pointer" : "default", minWidth: 0 }}
                       >
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
                         <span style={{ flexShrink: 0 }}>{d.ok ? (d.url ? "↗" : "✓") : "✗"}</span>
@@ -1013,20 +1013,20 @@ export default function ReportesView({ onNavigate }: Props) {
                           alt={ANG_LABEL[ang] ?? ang}
                           title={ANG_LABEL[ang] ?? ang}
                           onClick={() => setFotosVer({ placa: e.placa, cliente: e.cliente, fotos: e.fotos })}
-                          style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "pointer" }}
+                          style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)", cursor: "pointer" }}
                         />
                       ))}
-                      <button onClick={() => setFotosVer({ placa: e.placa, cliente: e.cliente, fotos: e.fotos })} style={{ width: 48, height: 48, borderRadius: 8, border: "1px dashed #cbd5e1", background: "#f8fafc", color: "#64748b", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                      <button onClick={() => setFotosVer({ placa: e.placa, cliente: e.cliente, fotos: e.fotos })} style={{ width: 48, height: 48, borderRadius: 8, border: "1px dashed var(--line2)", background: "var(--soft2)", color: "var(--muted)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                         Ver<br />{e.nFotos}
                       </button>
                     </div>
                   )}
 
                   {/* Acciones */}
-                  <div style={{ display: "flex", gap: 6, borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-                    <button onClick={() => verResumenEntrega(e)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f5f3ff", color: "#6d28d9" }}>📄 Resumen</button>
-                    {onNavigate && <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#0284c7" }}>👤 Cliente</button>}
-                    {onNavigate && e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f0fdf4", color: "#166534" }}>🏍️ Moto</button>}
+                  <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--soft)", paddingTop: 10 }}>
+                    <button onClick={() => verResumenEntrega(e)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f5f3ff", color: "var(--violet)" }}>📄 Resumen</button>
+                    {onNavigate && <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>👤 Cliente</button>}
+                    {onNavigate && e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Moto</button>}
                   </div>
                 </div>
               ))}
@@ -1038,18 +1038,18 @@ export default function ReportesView({ onNavigate }: Props) {
       {/* Lightbox de fotos de entrega */}
       {fotosVer && (
         <div onClick={() => setFotosVer(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.9)", zIndex: 1000, display: "flex", flexDirection: "column", padding: isMobile ? 12 : 32, overflowY: "auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, color: "white" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, color: "var(--card)" }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 18 }}>{fotosVer.placa}</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>{fotosVer.cliente}</div>
             </div>
-            <button onClick={() => setFotosVer(null)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: "white", color: "#0f172a" }}>Cerrar ✕</button>
+            <button onClick={() => setFotosVer(null)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: "var(--card)", color: "var(--text)" }}>Cerrar ✕</button>
           </div>
           <div onClick={e => e.stopPropagation()} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
             {fotosVer.fotos.map(([ang, url]) => (
-              <div key={ang} style={{ background: "white", borderRadius: 12, overflow: "hidden" }}>
+              <div key={ang} style={{ background: "var(--card)", borderRadius: 12, overflow: "hidden" }}>
                 <img src={url} alt={ANG_LABEL[ang] ?? ang} style={{ width: "100%", display: "block", maxHeight: 400, objectFit: "contain", background: "#000" }} />
-                <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 13, color: "#334155", textAlign: "center" }}>{ANG_LABEL[ang] ?? ang}</div>
+                <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 13, color: "var(--muted2)", textAlign: "center" }}>{ANG_LABEL[ang] ?? ang}</div>
               </div>
             ))}
           </div>
@@ -1061,7 +1061,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ ...card, display: "grid", gap: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Exportar datos</div>
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Período seleccionado: <strong>{RANGOS.find(r => r.key === rango)?.label}</strong> ({desde} → {hasta})</p>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Período seleccionado: <strong>{RANGOS.find(r => r.key === rango)?.label}</strong> ({desde} → {hasta})</p>
             {[
               {
                 label: "⬇️ CSV — Pagos del período",
@@ -1098,12 +1098,12 @@ export default function ReportesView({ onNavigate }: Props) {
                 onClick: imprimirReporte,
               },
             ].map((btn, i) => (
-              <button key={i} onClick={btn.onClick} style={{ padding: "14px 18px", borderRadius: 14, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <button key={i} onClick={btn.onClick} style={{ padding: "14px 18px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{btn.label}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>{btn.desc}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{btn.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{btn.desc}</div>
                 </div>
-                <span style={{ fontSize: 20, color: "#cbd5e1" }}>›</span>
+                <span style={{ fontSize: 20, color: "var(--line2)" }}>›</span>
               </button>
             ))}
           </div>

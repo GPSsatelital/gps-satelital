@@ -9,9 +9,9 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
 
 const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: string; dot: string }> = {
-  critico: { bg: "#fff5f5", color: "#991b1b", border: "#fecaca", dot: "#ef4444" },
-  alerta:  { bg: "#fefce8", color: "#92400e", border: "#fde68a", dot: "#f59e0b" },
-  info:    { bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd", dot: "#0284c7" },
+  critico: { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad-line)", dot: "var(--bad)" },
+  alerta:  { bg: "var(--warn-soft2)", color: "var(--warn-ink)", border: "var(--warn-line)", dot: "var(--warn2)" },
+  info:    { bg: "var(--accent-soft4)", color: "var(--accent-ink)", border: "var(--accent-line)", dot: "var(--accent)" },
 };
 
 const TIPO_ICON: Record<Alerta["tipo"], string> = {
@@ -74,26 +74,26 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setAbierto(o => !o)}
-        style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: "6px 8px", borderRadius: 10, fontSize: 20, lineHeight: 1, color: total > 0 ? "#0f172a" : "#94a3b8" }}
+        style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: "6px 8px", borderRadius: 10, fontSize: 20, lineHeight: 1, color: total > 0 ? "var(--text)" : "var(--faint)" }}
         title="Alertas del sistema"
       >
         🔔
         {total > 0 && (
-          <span style={{ position: "absolute", top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: criticos > 0 ? "#ef4444" : "#f59e0b", color: "white", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+          <span style={{ position: "absolute", top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: criticos > 0 ? "var(--bad)" : "var(--warn2)", color: "var(--card)", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
             {total > 99 ? "99+" : total}
           </span>
         )}
       </button>
 
       {abierto && (
-        <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 340, maxHeight: "80vh", overflowY: "auto", background: "white", borderRadius: 16, boxShadow: "0 20px 60px rgba(15,23,42,0.18)", border: "1px solid #e2e8f0", zIndex: 200 }}>
-          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 340, maxHeight: "80vh", overflowY: "auto", background: "var(--card)", borderRadius: 16, boxShadow: "0 20px 60px rgba(15,23,42,0.18)", border: "1px solid var(--line)", zIndex: 200 }}>
+          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--soft)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>Alertas del sistema</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{total} activa{total !== 1 ? "s" : ""}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{total} activa{total !== 1 ? "s" : ""}</div>
           </div>
 
           {alertas.length === 0 ? (
-            <div style={{ padding: "24px 16px", textAlign: "center", color: "#64748b", fontSize: 13 }}>
+            <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
               Sin alertas pendientes
             </div>
@@ -111,7 +111,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
                       <span style={{ fontSize: 16, flexShrink: 0 }}>{TIPO_ICON[a.tipo]}</span>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: s.color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.titulo}</div>
-                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{a.detalle}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{a.detalle}</div>
                       </div>
                     </div>
                   </div>
@@ -120,8 +120,8 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
             </div>
           )}
           {onNavegar && alertas.length > 0 && (
-            <div style={{ padding: "8px 12px 12px", borderTop: "1px solid #f1f5f9" }}>
-              <button onClick={() => { onNavegar("alertas"); setAbierto(false); }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "#f1f5f9", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
+            <div style={{ padding: "8px 12px 12px", borderTop: "1px solid var(--soft)" }}>
+              <button onClick={() => { onNavegar("alertas"); setAbierto(false); }} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "var(--soft)", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
                 Ver todas las alertas ({total}) →
               </button>
             </div>

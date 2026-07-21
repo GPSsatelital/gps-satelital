@@ -121,14 +121,14 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", background: "white", borderRadius: 20, padding: 24, display: "grid", gap: 16, boxSizing: "border-box" }}
+        style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16, boxSizing: "border-box" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>✏️ Editar contrato</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>✏️ Editar contrato</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -178,7 +178,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
               onChange={setValorSemanal}
             />
             {esCalendario && (
-              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>
                 El sistema calcula el total del período automáticamente
               </div>
             )}
@@ -192,7 +192,7 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
         </div>
 
         {esCalendario && (
-          <div style={{ padding: "10px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13, color: "#0369a1", fontWeight: 700 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13, color: "var(--accent-ink)", fontWeight: 700 }}>
             Total {formaPago === "Quincenal" ? "quincenal" : "mensual"} calculado: {fmtMoney(totalPeriodoPreview)}
           </div>
         )}
@@ -210,9 +210,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
         </div>
 
         {empalmeAbierto && (
-          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12, padding: 12 }}>
+          <div style={{ background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", borderRadius: 12, padding: 12 }}>
             <MoneyInput label="Ahorro de apertura (lo que traía de antes — empalme)" value={ahorroApertura} onChange={setAhorroApertura} />
-            <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 4 }}>
               Editable solo mientras el empalme esté abierto. Al confirmar la migración se consolida con el ahorro nuevo y queda sellado.
             </div>
           </div>
@@ -231,17 +231,17 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           )}
         </div>
         {formaPago !== "Diario" && (
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          <div style={{ fontSize: 12, color: "var(--faint)" }}>
             Se calcula sola al crear el contrato (entrega + plazo). Corrígela aquí solo si sabes que el valor real es distinto (ej. tiempo en taller ya transcurrido).
           </div>
         )}
 
         {error && (
-          <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>
+          <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>
         )}
 
         {exito && (
-          <div style={{ color: "#166534", background: "#dcfce7", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 13 }}>
+          <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 13 }}>
             Contrato actualizado correctamente.
           </div>
         )}
@@ -259,21 +259,21 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           </button>
         </div>
 
-        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>🕓 Historial de cambios</div>
+        <div style={{ borderTop: "1px solid var(--soft)", paddingTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>🕓 Historial de cambios</div>
           {cargandoAuditoria ? (
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>Cargando...</div>
+            <div style={{ fontSize: 12, color: "var(--faint)" }}>Cargando...</div>
           ) : auditoria.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>Sin ediciones registradas todavía.</div>
+            <div style={{ fontSize: 12, color: "var(--faint)" }}>Sin ediciones registradas todavía.</div>
           ) : (
             <div style={{ display: "grid", gap: 8, maxHeight: 180, overflowY: "auto" }}>
               {auditoria.map(a => (
-                <div key={a.id} style={{ fontSize: 12, background: "#f8fafc", borderRadius: 10, padding: "8px 10px" }}>
-                  <div style={{ fontWeight: 700, color: "#0f172a" }}>{a.campo}</div>
-                  <div style={{ color: "#64748b" }}>
-                    {a.valor_anterior || "—"} → <span style={{ color: "#0f172a", fontWeight: 600 }}>{a.valor_nuevo || "—"}</span>
+                <div key={a.id} style={{ fontSize: 12, background: "var(--soft2)", borderRadius: 10, padding: "8px 10px" }}>
+                  <div style={{ fontWeight: 700, color: "var(--text)" }}>{a.campo}</div>
+                  <div style={{ color: "var(--muted)" }}>
+                    {a.valor_anterior || "—"} → <span style={{ color: "var(--text)", fontWeight: 600 }}>{a.valor_nuevo || "—"}</span>
                   </div>
-                  <div style={{ color: "#94a3b8", marginTop: 2 }}>
+                  <div style={{ color: "var(--faint)", marginTop: 2 }}>
                     {(a.profiles?.nombre ?? "").toUpperCase() || "—"} · {new Date(a.created_at).toLocaleString("es-CO")}
                   </div>
                 </div>

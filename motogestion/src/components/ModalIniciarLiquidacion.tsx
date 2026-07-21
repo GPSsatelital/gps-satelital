@@ -59,17 +59,17 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: "min(480px, 96vw)", background: "white", borderRadius: 20, padding: 24,
+        width: "min(480px, 96vw)", background: "var(--card)", borderRadius: 20, padding: 24,
         zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.22)", display: "grid", gap: 14, boxSizing: "border-box",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>📄 Iniciar liquidación</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📄 Iniciar liquidación</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>
               {placa} · {clienteNombre}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, width: 34, height: 34, cursor: "pointer", fontSize: 16, color: "#64748b" }}>✕</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, width: 34, height: 34, cursor: "pointer", fontSize: 16, color: "var(--muted)" }}>✕</button>
         </div>
 
         <div>
@@ -77,18 +77,18 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
           <select style={inputStyle} value={motivo} onChange={e => setMotivo(e.target.value as MotivoLiquidacion)}>
             {MOTIVOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>{motivoSel.desc}</div>
+          <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>{motivoSel.desc}</div>
         </div>
 
-        <div style={{ padding: "10px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0369a1" }}>
+        <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent-ink)" }}>
           Al iniciar: las deudas pendientes y el convenio se traen automáticamente del sistema,
           {motoId ? " la moto entra a revisión de taller obligatoria (el mecánico la ve en su lista)," : ""} y el proceso
           sigue las 6 etapas hasta el documento firmado. El cálculo final del saldo y el cierre los hace ADMIN.
         </div>
 
-        {error && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>}
+        {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>}
         {exito && (
-          <div style={{ color: "#166534", background: "#dcfce7", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14 }}>
+          <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14 }}>
             ✅ Liquidación iniciada — continúa en el módulo Liquidaciones.
           </div>
         )}

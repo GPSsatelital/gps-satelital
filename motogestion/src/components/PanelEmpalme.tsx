@@ -56,34 +56,34 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
       {auto ? (
         <span style={{ fontSize: 16, lineHeight: "20px" }}>{checked ? "✅" : "❌"}</span>
       ) : (
-        <input type="checkbox" checked={checked} onChange={() => onToggle?.()} style={{ width: 18, height: 18, marginTop: 1, accentColor: "#92400e", cursor: "pointer" }} />
+        <input type="checkbox" checked={checked} onChange={() => onToggle?.()} style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--warn-ink)", cursor: "pointer" }} />
       )}
       <span style={{ minWidth: 0 }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", display: "block" }}>{titulo}</span>
-        <span style={{ fontSize: 12, color: "#64748b" }}>{detalle}</span>
+        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", display: "block" }}>{titulo}</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{detalle}</span>
       </span>
     </label>
   );
 
   return (
-    <div style={{ background: "#fffbeb", border: "2px solid #f59e0b", borderRadius: 16, padding: 16, display: "grid", gap: 12, boxSizing: "border-box" }}>
+    <div style={{ background: "var(--warn-soft2)", border: "2px solid var(--warn2)", borderRadius: 16, padding: 16, display: "grid", gap: 12, boxSizing: "border-box" }}>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 15, color: "#92400e" }}>⚠️ Empalme pendiente — cliente migrado sin revisar</div>
-        <div style={{ fontSize: 12, color: "#78716c", marginTop: 2 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: "var(--warn-ink)" }}>⚠️ Empalme pendiente — cliente migrado sin revisar</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           Revisa cada punto CON el cliente presente. Al confirmar, sus cifras viejas quedan selladas.
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 140px", background: "white", borderRadius: 10, padding: "8px 12px", border: "1px solid #fde68a", minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: "#92400e", fontWeight: 700 }}>AHORRO QUE TRAÍA</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>$ {fmt(contrato.ahorro_apertura ?? 0)}</div>
-          <div style={{ fontSize: 10, color: "#94a3b8" }}>editable en Editar contrato</div>
+        <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--warn-line)", minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700 }}>AHORRO QUE TRAÍA</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>$ {fmt(contrato.ahorro_apertura ?? 0)}</div>
+          <div style={{ fontSize: 10, color: "var(--faint)" }}>editable en Editar contrato</div>
         </div>
-        <div style={{ flex: "1 1 140px", background: "white", borderRadius: 10, padding: "8px 12px", border: "1px solid #fde68a", minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: "#92400e", fontWeight: 700 }}>DEUDA QUE TRAE</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: deudaApertura > 0 ? "#991b1b" : "#166534" }}>$ {fmt(deudaApertura)}</div>
-          <div style={{ fontSize: 10, color: "#94a3b8" }}>editable en la pestaña Deudas</div>
+        <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--warn-line)", minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700 }}>DEUDA QUE TRAE</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: deudaApertura > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>$ {fmt(deudaApertura)}</div>
+          <div style={{ fontSize: 10, color: "var(--faint)" }}>editable en la pestaña Deudas</div>
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
         )}
       </div>
 
-      {error && <div style={{ color: "#991b1b", fontWeight: 600, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>}
 
       {puedeCerrar ? (
         <button
@@ -117,7 +117,7 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
           disabled={!todoListo || guardando}
           style={{
             ...primaryBtn,
-            background: todoListo ? "#166534" : "#94a3b8",
+            background: todoListo ? "var(--ok-ink)" : "var(--faint)",
             cursor: todoListo ? "pointer" : "not-allowed",
             opacity: guardando ? 0.6 : 1,
           }}
@@ -125,7 +125,7 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
           {guardando ? "Confirmando..." : todoListo ? "✅ Confirmar migración" : "Completa la lista para confirmar"}
         </button>
       ) : (
-        <div style={{ fontSize: 12, color: "#78716c", fontWeight: 600 }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>
           La confirmación la hace ADMIN, ADMIN PRINCIPAL o SECRETARIA.
         </div>
       )}

@@ -16,7 +16,7 @@ export default function FirmaCanvas({ onFirma, onLimpiar, label = "Firma aquí" 
     if (!c) return null;
     const ctx = c.getContext("2d");
     if (!ctx) return null;
-    ctx.strokeStyle = "#0f172a";
+    ctx.strokeStyle = "var(--text)";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -85,8 +85,8 @@ export default function FirmaCanvas({ onFirma, onLimpiar, label = "Firma aquí" 
 
   return (
     <div>
-      <div style={{ marginBottom: 6, fontSize: 13, fontWeight: 600, color: "#334155" }}>{label}</div>
-      <div style={{ position: "relative", borderRadius: 12, border: "2px dashed #cbd5e1", background: "#f8fafc", overflow: "hidden" }}>
+      <div style={{ marginBottom: 6, fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>{label}</div>
+      <div style={{ position: "relative", borderRadius: 12, border: "2px dashed var(--line2)", background: "var(--soft2)", overflow: "hidden" }}>
         <canvas
           ref={canvasRef}
           style={{ display: "block", width: "100%", height: 140, cursor: "crosshair", touchAction: "none" }}
@@ -99,13 +99,13 @@ export default function FirmaCanvas({ onFirma, onLimpiar, label = "Firma aquí" 
           onTouchEnd={terminar}
         />
         {!tieneFirma && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", color: "#94a3b8", fontSize: 13 }}>
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", color: "var(--faint)", fontSize: 13 }}>
             ✍️ Dibuja tu firma aquí
           </div>
         )}
       </div>
       {tieneFirma && (
-        <button onClick={limpiar} style={{ marginTop: 6, background: "none", border: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: 0 }}>
+        <button onClick={limpiar} style={{ marginTop: 6, background: "none", border: "none", color: "var(--faint)", fontSize: 12, cursor: "pointer", padding: 0 }}>
           Limpiar y volver a firmar
         </button>
       )}

@@ -25,19 +25,19 @@ function diasDesde(s: string | null | undefined): number {
 }
 
 const ESTADO_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  "En proceso":       { bg: "#f1f5f9", color: "#334155", border: "#94a3b8" },
-  "Listo para visita":{ bg: "#dbeafe", color: "#1d4ed8", border: "#3b82f6" },
-  "Pendiente evaluación": { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
-  Aprobado:           { bg: "#dcfce7", color: "#166534", border: "#22c55e" },
-  Rechazado:          { bg: "#fee2e2", color: "#991b1b", border: "#ef4444" },
-  Activo:             { bg: "#dcfce7", color: "#166534", border: "#16a34a" },
-  "En seguimiento":   { bg: "#e0f2fe", color: "#0369a1", border: "#0ea5e9" },
-  "En riesgo":        { bg: "#fef3c7", color: "#92400e", border: "#f59e0b" },
-  "En mora":          { bg: "#fee2e2", color: "#991b1b", border: "#dc2626" },
-  Retirado:           { bg: "#ede9fe", color: "#6d28d9", border: "#8b5cf6" },
-  Egresado:           { bg: "#dcfce7", color: "#15803d", border: "#16a34a" },
-  "Lista negra":      { bg: "#1f2937", color: "#f9fafb", border: "#111827" },
-  "Inmovilización documentación incompleta": { bg: "#fee2e2", color: "#7f1d1d", border: "#991b1b" },
+  "En proceso":       { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
+  "Listo para visita":{ bg: "var(--accent-soft3)", color: "var(--accent-ink)", border: "#3b82f6" },
+  "Pendiente evaluación": { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
+  Aprobado:           { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
+  Rechazado:          { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad)" },
+  Activo:             { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok)" },
+  "En seguimiento":   { bg: "var(--accent-soft)", color: "var(--accent-ink)", border: "#0ea5e9" },
+  "En riesgo":        { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
+  "En mora":          { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad)" },
+  Retirado:           { bg: "var(--indigo-soft)", color: "var(--violet)", border: "var(--violet)" },
+  Egresado:           { bg: "var(--ok-soft)", color: "var(--ok)", border: "var(--ok)" },
+  "Lista negra":      { bg: "var(--text)", color: "var(--soft2)", border: "#111827" },
+  "Inmovilización documentación incompleta": { bg: "var(--bad-soft)", color: "var(--bad-ink2)", border: "var(--bad-ink)" },
 };
 
 const REFERIDOS_HITOS = [
@@ -60,15 +60,15 @@ const TIPO_GESTION_LABEL: Record<string, string> = {
 };
 
 const GESTION_COLORS: Record<string, { bg: string; color: string }> = {
-  mensaje_recordatorio: { bg: "#dbeafe", color: "#1d4ed8" },
-  llamada:    { bg: "#dcfce7", color: "#166534" },
-  whatsapp:   { bg: "#dcfce7", color: "#166534" },
-  sirena:     { bg: "#fef3c7", color: "#92400e" },
-  visita:     { bg: "#e0f2fe", color: "#0369a1" },
-  plazo_extra:{ bg: "#fef3c7", color: "#92400e" },
-  recoleccion:{ bg: "#fee2e2", color: "#991b1b" },
-  cobro_campo:{ bg: "#dcfce7", color: "#166534" },
-  otro:       { bg: "#f1f5f9", color: "#64748b" },
+  mensaje_recordatorio: { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  llamada:    { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  whatsapp:   { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  sirena:     { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  visita:     { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+  plazo_extra:{ bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  recoleccion:{ bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  cobro_campo:{ bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  otro:       { bg: "var(--soft)", color: "var(--muted)" },
 };
 
 type Tab = "resumen" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
@@ -97,9 +97,9 @@ function Badge({ children, bg, color }: { children: React.ReactNode; bg: string;
 
 function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div style={{ display: "flex", gap: 12, fontSize: 13, padding: "7px 0", borderBottom: "1px solid #f1f5f9" }}>
-      <span style={{ color: "#64748b", minWidth: 150, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontWeight: 600, color: "#0f172a", fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</span>
+    <div style={{ display: "flex", gap: 12, fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--soft)" }}>
+      <span style={{ color: "var(--muted)", minWidth: 150, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 600, color: "var(--text)", fontFamily: mono ? "monospace" : undefined }}>{value ?? "—"}</span>
     </div>
   );
 }
@@ -107,7 +107,7 @@ function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode
 function Card({ children, borderColor }: { children: React.ReactNode; borderColor?: string }) {
   return (
     <div style={{
-      background: "white", borderRadius: 16, padding: "18px 20px",
+      background: "var(--card)", borderRadius: 16, padding: "18px 20px",
       boxShadow: "0 2px 8px rgba(15,23,42,0.06)",
       borderLeft: borderColor ? `4px solid ${borderColor}` : undefined,
     }}>
@@ -118,7 +118,7 @@ function Card({ children, borderColor }: { children: React.ReactNode; borderColo
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
       {children}
     </div>
   );
@@ -224,16 +224,16 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   if (!cliente) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 64, gap: 16 }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>?</div>
-        <div style={{ fontWeight: 700, fontSize: 18, color: "#0f172a" }}>Cliente no encontrado</div>
-        <button onClick={() => onNavigate("clientes")} style={{ padding: "10px 24px", borderRadius: 12, border: "none", background: "#0284c7", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>?</div>
+        <div style={{ fontWeight: 700, fontSize: 18, color: "var(--text)" }}>Cliente no encontrado</div>
+        <button onClick={() => onNavigate("clientes")} style={{ padding: "10px 24px", borderRadius: 12, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
           Volver a clientes
         </button>
       </div>
     );
   }
 
-  const estadoC = ESTADO_COLORS[cliente.estado as ClienteEstado] ?? { bg: "#e2e8f0", color: "#334155", border: "#94a3b8" };
+  const estadoC = ESTADO_COLORS[cliente.estado as ClienteEstado] ?? { bg: "var(--line)", color: "var(--muted2)", border: "var(--faint)" };
   const diasActivo = diasDesde(cliente.created_at);
   const refConfirmados = cliente.referidos_confirmados ?? 0;
   const proximoHito = REFERIDOS_HITOS.find(h => h.n > refConfirmados);
@@ -255,14 +255,14 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {/* Back */}
       <button
         onClick={() => onNavigate("clientes", "")}
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
       >
         ← Volver a clientes
       </button>
 
       {/* Hero card */}
       <div style={{
-        background: "white", borderRadius: 20, marginBottom: 20,
+        background: "var(--card)", borderRadius: 20, marginBottom: 20,
         boxShadow: "0 4px 24px rgba(15,23,42,0.10)",
         overflow: "hidden",
       }}>
@@ -275,9 +275,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 onClick={() => cliente.foto_perfil_url && setImagenAmpliada(cliente.foto_perfil_url)}
                 style={{
                   width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: "50%",
-                  background: "#e0f2fe", flexShrink: 0, overflow: "hidden",
+                  background: "var(--accent-soft)", flexShrink: 0, overflow: "hidden",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: isMobile ? 22 : 26, fontWeight: 800, color: "#0284c7",
+                  fontSize: isMobile ? 22 : 26, fontWeight: 800, color: "var(--accent)",
                   cursor: cliente.foto_perfil_url ? "pointer" : "default",
                 }}
               >
@@ -288,17 +288,17 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: "#0f172a", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
                 {cliente.nombre}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
                 <Badge bg={estadoC.bg} color={estadoC.color}>{cliente.estado}</Badge>
-                <Badge bg={cliente.ruta_contrato === "diario" ? "#dbeafe" : "#dcfce7"} color={cliente.ruta_contrato === "diario" ? "#1d4ed8" : "#166534"}>
+                <Badge bg={cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)"} color={cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)"}>
                   {cliente.ruta_contrato === "diario" ? "Ruta diaria" : "Tiempo definido"}
                 </Badge>
-                {cliente.lista_negra && <Badge bg="#1f2937" color="#f9fafb">Lista negra</Badge>}
+                {cliente.lista_negra && <Badge bg="var(--text)" color="var(--soft2)">Lista negra</Badge>}
               </div>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#64748b" }}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
                 <span>CC {cliente.cedula}</span>
                 {cliente.telefono && <span>{cliente.telefono}</span>}
                 {cliente.whatsapp && !cliente.mismo_whatsapp && <span>WA: {cliente.whatsapp}</span>}
@@ -308,23 +308,23 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             </div>
             {/* KPI mini cards */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#f0f9ff", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#0284c7" }}>{diasActivo}</div>
-                <div style={{ fontSize: 10, color: "#0284c7", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--accent)" }}>{diasActivo}</div>
+                <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
               </div>
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#dcfce7", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "#166534" }}>${fmt(totalPagado)}</div>
-                <div style={{ fontSize: 10, color: "#166534", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--ok-soft)", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
+                <div style={{ fontSize: 10, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
               </div>
               {deudaActiva > 0 && (
-                <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fee2e2", minWidth: 72 }}>
-                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "#991b1b" }}>${fmt(deudaActiva)}</div>
-                  <div style={{ fontSize: 10, color: "#991b1b", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
+                <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--bad-soft)", minWidth: 72 }}>
+                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
+                  <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
                 </div>
               )}
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "#fef3c7", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "#92400e" }}>{refConfirmados}</div>
-                <div style={{ fontSize: 10, color: "#92400e", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Referidos</div>
+              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--warn-soft)", minWidth: 72 }}>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--warn-ink)" }}>{refConfirmados}</div>
+                <div style={{ fontSize: 10, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Referidos</div>
               </div>
             </div>
           </div>
@@ -332,7 +332,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e2e8f0", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid var(--line)", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
         {TABS.map(t => (
           <button
             key={t.key}
@@ -341,8 +341,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               padding: isMobile ? "9px 12px" : "10px 18px",
               border: "none", background: "none", cursor: "pointer",
               fontSize: isMobile ? 12 : 13, fontWeight: tab === t.key ? 700 : 500,
-              color: tab === t.key ? "#0284c7" : "#64748b",
-              borderBottom: tab === t.key ? "2px solid #0284c7" : "2px solid transparent",
+              color: tab === t.key ? "var(--accent)" : "var(--muted)",
+              borderBottom: tab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
               marginBottom: -2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5,
               transition: "color 0.15s",
             }}
@@ -350,8 +350,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             {t.label}
             {t.count !== undefined && t.count > 0 && (
               <span style={{
-                background: tab === t.key ? "#0284c7" : "#e2e8f0",
-                color: tab === t.key ? "white" : "#64748b",
+                background: tab === t.key ? "var(--accent)" : "var(--line)",
+                color: tab === t.key ? "var(--card)" : "var(--muted)",
                 borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700,
               }}>{t.count}</span>
             )}
@@ -367,13 +367,13 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             <Card>
               <SectionTitle>Programa de referidos</SectionTitle>
               <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "#92400e" }}>{refConfirmados}</div>
+                <div style={{ fontSize: 32, fontWeight: 900, color: "var(--warn-ink)" }}>{refConfirmados}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    Próximo premio: <strong style={{ color: "#92400e" }}>{proximoHito.premio}</strong> ({proximoHito.n - refConfirmados} referido{proximoHito.n - refConfirmados !== 1 ? "s" : ""} más)
+                  <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>
+                    Próximo premio: <strong style={{ color: "var(--warn-ink)" }}>{proximoHito.premio}</strong> ({proximoHito.n - refConfirmados} referido{proximoHito.n - refConfirmados !== 1 ? "s" : ""} más)
                   </div>
-                  <div style={{ height: 8, borderRadius: 999, background: "#fef3c7", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, (refConfirmados / proximoHito.n) * 100)}%`, background: "#f59e0b", transition: "width 0.5s" }} />
+                  <div style={{ height: 8, borderRadius: 999, background: "var(--warn-soft)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${Math.min(100, (refConfirmados / proximoHito.n) * 100)}%`, background: "var(--warn2)", transition: "width 0.5s" }} />
                   </div>
                 </div>
               </div>
@@ -381,9 +381,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 {REFERIDOS_HITOS.map(h => (
                   <div key={h.n} style={{
                     padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600,
-                    background: refConfirmados >= h.n ? "#dcfce7" : "#f1f5f9",
-                    color: refConfirmados >= h.n ? "#166534" : "#94a3b8",
-                    border: refConfirmados >= h.n ? "1.5px solid #22c55e" : "1.5px solid #e2e8f0",
+                    background: refConfirmados >= h.n ? "var(--ok-soft)" : "var(--soft)",
+                    color: refConfirmados >= h.n ? "var(--ok-ink)" : "var(--faint)",
+                    border: refConfirmados >= h.n ? "1.5px solid var(--ok)" : "1.5px solid var(--line)",
                   }}>
                     {h.n} → {h.premio}
                   </div>
@@ -407,7 +407,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   <InfoRow label="Base inicial entregada" value={`$ ${fmt(cliente.ingreso_inicial ?? 0)}`} />
                   <button
                     onClick={() => setReciboBase(buildTicketBaseInicial(cliente.nombre, cliente.cedula, cliente.ingreso_inicial ?? 0, profile?.nombre ?? "", cliente.created_at.slice(0, 10)))}
-                    style={{ marginTop: 10, width: "100%", background: "#e0f2fe", color: "#0369a1", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                    style={{ marginTop: 10, width: "100%", background: "var(--accent-soft)", color: "var(--accent-ink)", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                   >
                     🖨️ Recibo de base inicial
                   </button>
@@ -434,15 +434,15 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               )}
 
               {contratoActivo && motoActiva && (
-                <Card borderColor="#0284c7">
+                <Card borderColor="var(--accent)">
                   <SectionTitle>Moto asignada</SectionTitle>
                   <button
                     onClick={() => onNavigate("ficha_moto", motoActiva.id)}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", width: "100%" }}
                   >
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "#0284c7", letterSpacing: 1 }}>{motoActiva.placa}</div>
-                    <div style={{ fontSize: 14, color: "#334155", fontWeight: 600 }}>{motoActiva.marca} {motoActiva.modelo}</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{motoActiva.grupo}</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "var(--accent)", letterSpacing: 1 }}>{motoActiva.placa}</div>
+                    <div style={{ fontSize: 14, color: "var(--muted2)", fontWeight: 600 }}>{motoActiva.marca} {motoActiva.modelo}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{motoActiva.grupo}</div>
                   </button>
                 </Card>
               )}
@@ -450,8 +450,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           </div>
 
           {cliente.excepcion_documental && (
-            <Card borderColor="#f59e0b">
-              <div style={{ fontSize: 13, color: "#92400e", fontWeight: 600 }}>
+            <Card borderColor="var(--warn2)">
+              <div style={{ fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
                 Excepcion documental: {cliente.excepcion_motivo}
                 {cliente.excepcion_plazo && <span style={{ marginLeft: 8, fontWeight: 400 }}>Plazo: {fmtFecha(cliente.excepcion_plazo)}</span>}
               </div>
@@ -465,7 +465,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {contratosCliente.length === 0 ? (
             <Card>
-              <div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>
+              <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>
                 <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
                 <div style={{ fontWeight: 700 }}>Sin contrato activo</div>
               </div>
@@ -473,13 +473,13 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           ) : contratosCliente.map(c => {
             const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : null;
             const ESTADO_C: Record<string, { bg: string; color: string }> = {
-              Activo: { bg: "#dcfce7", color: "#166534" },
-              "En proceso": { bg: "#dbeafe", color: "#1d4ed8" },
-              Finalizado: { bg: "#e2e8f0", color: "#334155" },
-              Cancelado: { bg: "#fee2e2", color: "#991b1b" },
-              Suspendido: { bg: "#fef3c7", color: "#92400e" },
+              Activo: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+              "En proceso": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+              Finalizado: { bg: "var(--line)", color: "var(--muted2)" },
+              Cancelado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+              Suspendido: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
             };
-            const ec = ESTADO_C[c.estado] ?? { bg: "#e2e8f0", color: "#334155" };
+            const ec = ESTADO_C[c.estado] ?? { bg: "var(--line)", color: "var(--muted2)" };
             const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
             const ahorro = ahorroTotal(c);
             const isActive = c.estado === "Activo";
@@ -489,63 +489,63 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   <div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                       <Badge bg={ec.bg} color={ec.color}>{c.estado}</Badge>
-                      <Badge bg="#f1f5f9" color="#334155">{c.forma_pago}</Badge>
-                      {c.dia_pago && <Badge bg="#f1f5f9" color="#64748b">Pago: {formatDiaPago(c)}</Badge>}
+                      <Badge bg="var(--soft)" color="var(--muted2)">{c.forma_pago}</Badge>
+                      {c.dia_pago && <Badge bg="var(--soft)" color="var(--muted)">Pago: {formatDiaPago(c)}</Badge>}
                     </div>
                     {moto ? (
                       <button
                         onClick={() => onNavigate("ficha_moto", moto.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 800, fontSize: 16, padding: 0, letterSpacing: 0.5 }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 800, fontSize: 16, padding: 0, letterSpacing: 0.5 }}
                       >
                         {moto.placa} — {moto.marca} {moto.modelo}
                       </button>
                     ) : (
-                      <div style={{ fontWeight: 700, color: "#64748b", fontSize: 14 }}>Sin moto asignada</div>
+                      <div style={{ fontWeight: 700, color: "var(--muted)", fontSize: 14 }}>Sin moto asignada</div>
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "#166534" }}>${fmt(pagosContrato)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>total pagado</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                   </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 12 }}>
                   {c.fecha_entrega && (
-                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Fecha entrega</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>{fmtFecha(c.fecha_entrega)}</div>
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Fecha entrega</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>{fmtFecha(c.fecha_entrega)}</div>
                     </div>
                   )}
                   {c.valor_semanal > 0 && (
-                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Valor período</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>${fmt(c.valor_semanal)}</div>
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Valor período</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>${fmt(c.valor_semanal)}</div>
                     </div>
                   )}
                   {c.tarifa_diaria && (
-                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "#f8fafc" }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Tarifa diaria</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginTop: 2 }}>${fmt(c.tarifa_diaria)}</div>
+                    <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)" }}>
+                      <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Tarifa diaria</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>${fmt(c.tarifa_diaria)}</div>
                     </div>
                   )}
                 </div>
 
                 {c.tipo_ruta === "diario" && isActive && (
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#64748b", marginBottom: 5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 5 }}>
                       <span>Ahorro acumulado hacia base inicial</span>
-                      <strong style={{ color: ahorro >= 510000 ? "#166534" : "#0f172a" }}>${fmt(ahorro)} / $510.000 ({Math.min(100, Math.round((ahorro / 510000) * 100))}%)</strong>
+                      <strong style={{ color: ahorro >= 510000 ? "var(--ok-ink)" : "var(--text)" }}>${fmt(ahorro)} / $510.000 ({Math.min(100, Math.round((ahorro / 510000) * 100))}%)</strong>
                     </div>
-                    <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+                    <div style={{ height: 8, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
                       <div style={{
                         height: "100%", borderRadius: 999,
                         width: `${Math.min(100, (ahorro / 510000) * 100)}%`,
-                        background: ahorro >= 510000 ? "#16a34a" : "#0284c7",
+                        background: ahorro >= 510000 ? "var(--ok)" : "var(--accent)",
                         transition: "width 0.5s",
                       }} />
                     </div>
                     {ahorro >= 510000 && (
-                      <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, background: "#dcfce7", fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                      <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, background: "var(--ok-soft)", fontSize: 12, fontWeight: 700, color: "var(--ok-ink)" }}>
                         Base completada — listo para cambio de contrato
                       </div>
                     )}
@@ -553,23 +553,23 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 )}
 
                 {/* Documentos del contrato (PDFs firmados) */}
-                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Documentos</div>
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--soft)", paddingTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Documentos</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {[
                       { url: c.contrato_pdf_url, label: "Contrato firmado" },
                       { url: c.pagare_pdf_url, label: "Pagaré firmado" },
                       { url: c.certificado_pdf_url, label: "Certificado de conocimiento" },
                     ].map((d, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#334155", minWidth: 0 }}>{d.label}</span>
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)", minWidth: 0 }}>{d.label}</span>
                         {d.url ? (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                            <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "#e0f2fe" }}>👁 Ver</a>
-                            <a href={`${d.url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "#166534", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "#dcfce7" }}>⬇ Descargar</a>
+                            <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--accent-soft)" }}>👁 Ver</a>
+                            <a href={`${d.url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--ok-soft)" }}>⬇ Descargar</a>
                           </div>
                         ) : (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>Falta</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>Falta</span>
                         )}
                       </div>
                     ))}
@@ -587,10 +587,10 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
             {[
-              { label: "Confirmados", val: pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), color: "#166534", bg: "#dcfce7" },
-              { label: "Efectivo", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0), color: "#166534", bg: "#f0fdf4" },
-              { label: "Transferencia", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0), color: "#1d4ed8", bg: "#dbeafe" },
-              { label: "Pendientes", val: pagosCliente.filter(p => p.estado === "Pendiente").reduce((s, p) => s + p.valor, 0), color: "#92400e", bg: "#fef3c7" },
+              { label: "Confirmados", val: pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+              { label: "Efectivo", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+              { label: "Transferencia", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0), color: "var(--accent-ink)", bg: "var(--accent-soft3)" },
+              { label: "Pendientes", val: pagosCliente.filter(p => p.estado === "Pendiente").reduce((s, p) => s + p.valor, 0), color: "var(--warn-ink)", bg: "var(--warn-soft)" },
             ].map(kpi => (
               <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase", marginBottom: 4 }}>{kpi.label}</div>
@@ -600,28 +600,28 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           </div>
 
           {pagosCliente.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin pagos registrados.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin pagos registrados.</div></Card>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {pagosCliente.map(p => {
                 const c = contratos.find(ct => ct.id === p.contrato_id);
                 const moto = c?.moto_id ? motos.find(m => m.id === c.moto_id) : null;
-                const estadoP = p.estado === "Confirmado" ? { bg: "#dcfce7", color: "#166534" } : p.estado === "Pendiente" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#fee2e2", color: "#991b1b" };
+                const estadoP = p.estado === "Confirmado" ? { bg: "var(--ok-soft)", color: "var(--ok-ink)" } : p.estado === "Pendiente" ? { bg: "var(--warn-soft)", color: "var(--warn-ink)" } : { bg: "var(--bad-soft)", color: "var(--bad-ink)" };
                 return (
-                  <div key={p.id} style={{ background: "white", borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
+                  <div key={p.id} style={{ background: "var(--card)", borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{fmtFecha(p.fecha)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{fmtFecha(p.fecha)}</div>
                       {moto && (
-                        <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", fontWeight: 600, fontSize: 12, padding: 0 }}>
+                        <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 600, fontSize: 12, padding: 0 }}>
                           {moto.placa}
                         </button>
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <Badge bg={p.metodo === "Efectivo" ? "#dcfce7" : "#dbeafe"} color={p.metodo === "Efectivo" ? "#166534" : "#1d4ed8"}>{p.metodo}</Badge>
+                      <Badge bg={p.metodo === "Efectivo" ? "var(--ok-soft)" : "var(--accent-soft3)"} color={p.metodo === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)"}>{p.metodo}</Badge>
                       <Badge bg={estadoP.bg} color={estadoP.color}>{p.estado}</Badge>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", textAlign: "right", minWidth: 90 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", textAlign: "right", minWidth: 90 }}>
                       ${fmt(p.valor)}
                     </div>
                   </div>
@@ -636,11 +636,11 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {tab === "visitas" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {visitasCliente.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin visitas registradas.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin visitas registradas.</div></Card>
           ) : visitasCliente.map((v, idx) => {
-            const rColor = v.resultado === "Aprobado" ? "#166534" : v.resultado === "Rechazado" ? "#991b1b" : "#92400e";
-            const rBg = v.resultado === "Aprobado" ? "#dcfce7" : v.resultado === "Rechazado" ? "#fee2e2" : "#fef3c7";
-            const borderC = v.resultado === "Aprobado" ? "#16a34a" : v.resultado === "Rechazado" ? "#dc2626" : "#f59e0b";
+            const rColor = v.resultado === "Aprobado" ? "var(--ok-ink)" : v.resultado === "Rechazado" ? "var(--bad-ink)" : "var(--warn-ink)";
+            const rBg = v.resultado === "Aprobado" ? "var(--ok-soft)" : v.resultado === "Rechazado" ? "var(--bad-soft)" : "var(--warn-soft)";
+            const borderC = v.resultado === "Aprobado" ? "var(--ok)" : v.resultado === "Rechazado" ? "var(--bad)" : "var(--warn2)";
             return (
               <div key={v.id} style={{ display: "flex", gap: 0 }}>
                 {/* Timeline line */}
@@ -649,20 +649,20 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     {idx + 1}
                   </div>
                   {idx < visitasCliente.length - 1 && (
-                    <div style={{ width: 2, flex: 1, background: "#e2e8f0", marginTop: 4, minHeight: 20 }} />
+                    <div style={{ width: 2, flex: 1, background: "var(--line)", marginTop: 4, minHeight: 20 }} />
                   )}
                 </div>
                 <Card borderColor={borderC}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: v.entrevista ? 14 : 0 }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>Visita — {fmtFecha(v.fecha)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>Visita — {fmtFecha(v.fecha)}</div>
                       <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                        <Badge bg={v.estado === "Realizada" ? "#dcfce7" : "#fef3c7"} color={v.estado === "Realizada" ? "#166534" : "#92400e"}>{v.estado}</Badge>
+                        <Badge bg={v.estado === "Realizada" ? "var(--ok-soft)" : "var(--warn-soft)"} color={v.estado === "Realizada" ? "var(--ok-ink)" : "var(--warn-ink)"}>{v.estado}</Badge>
                         {v.resultado && <Badge bg={rBg} color={rColor}>{v.resultado}</Badge>}
                       </div>
                     </div>
                     {v.ubicacion && (
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}</div>
+                      <div style={{ fontSize: 12, color: "var(--faint)" }}>{v.ubicacion.lat.toFixed(4)}, {v.ubicacion.lng.toFixed(4)}</div>
                     )}
                   </div>
                   {v.entrevista && (
@@ -686,12 +686,12 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                       {v.fotos.fachada && /^https?:\/\//.test(v.fotos.fachada) && (
                         <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada de la vivienda">
-                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
                       {v.fotos.clienteFuncionario && /^https?:\/\//.test(v.fotos.clienteFuncionario) && (
                         <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Cliente + funcionario">
-                          <img src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid #e2e8f0" }} />
+                          <img src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
                     </div>
@@ -704,7 +704,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                         href={`https://www.google.com/maps?q=${v.ubicacion.lat},${v.ubicacion.lng}`}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
                       >
                         📍 Ver dónde vive en el mapa
                       </a>
@@ -737,12 +737,12 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               <Card key={section.title}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                   <SectionTitle>{section.title}</SectionTitle>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: ok === total ? "#166534" : "#92400e", background: ok === total ? "#dcfce7" : "#fef3c7", padding: "3px 10px", borderRadius: 999 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: ok === total ? "var(--ok-ink)" : "var(--warn-ink)", background: ok === total ? "var(--ok-soft)" : "var(--warn-soft)", padding: "3px 10px", borderRadius: 999 }}>
                     {ok}/{total}
                   </span>
                 </div>
                 {section.title === "Documentos del acompañante" && cliente.mismo_domicilio_acompanante && (
-                  <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+                  <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent-ink)", fontWeight: 600 }}>
                     ℹ️ Vive con el cliente — usa el mismo recibo público.
                   </div>
                 )}
@@ -753,21 +753,21 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     return (
                       <div key={key} style={{
                         display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
-                        borderRadius: 10, background: isOk ? "#f0fdf4" : "#fef9f9",
-                        border: `1.5px solid ${isOk ? "#bbf7d0" : "#fecaca"}`,
+                        borderRadius: 10, background: isOk ? "var(--ok-soft)" : "#fef9f9",
+                        border: `1.5px solid ${isOk ? "var(--ok-line)" : "var(--bad-line)"}`,
                       }}>
                         <div style={{
                           width: 22, height: 22, borderRadius: "50%",
-                          background: isOk ? "#16a34a" : "#fee2e2",
+                          background: isOk ? "var(--ok)" : "var(--bad-soft)",
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 12, fontWeight: 800, color: isOk ? "white" : "#991b1b",
+                          fontSize: 12, fontWeight: 800, color: isOk ? "var(--card)" : "var(--bad-ink)",
                           flexShrink: 0,
                         }}>
                           {isOk ? "✓" : "✗"}
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: isOk ? "#166534" : "#991b1b", flex: 1 }}>{label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: isOk ? "var(--ok-ink)" : "var(--bad-ink)", flex: 1 }}>{label}</span>
                         {item?.file && (
-                          <a href={item.file} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#0284c7", fontWeight: 600 }}>Ver</a>
+                          <a href={item.file} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>Ver</a>
                         )}
                       </div>
                     );
@@ -784,30 +784,30 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
               {cliente.autorizacion_datos_firma_url && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Firma</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Firma</div>
                   <img
                     src={cliente.autorizacion_datos_firma_url}
                     alt="Firma"
                     onClick={() => setImagenAmpliada(cliente.autorizacion_datos_firma_url)}
-                    style={{ width: 100, height: 100, objectFit: "contain", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                    style={{ width: 100, height: 100, objectFit: "contain", background: "var(--soft2)", border: "1px solid var(--line)", borderRadius: 10, cursor: "pointer" }}
                   />
                 </div>
               )}
               {cliente.autorizacion_datos_huella_url && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>Huella</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Huella</div>
                   <img
                     src={cliente.autorizacion_datos_huella_url}
                     alt="Huella"
                     onClick={() => setImagenAmpliada(cliente.autorizacion_datos_huella_url)}
-                    style={{ width: 100, height: 100, objectFit: "contain", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, cursor: "pointer" }}
+                    style={{ width: 100, height: 100, objectFit: "contain", background: "var(--soft2)", border: "1px solid var(--line)", borderRadius: 10, cursor: "pointer" }}
                   />
                 </div>
               )}
             </div>
             <div
               onClick={() => imprimirAutorizacionDatos(cliente)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0284c7" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--accent)" }}
             >
               🖨️ Imprimir / Guardar PDF
             </div>
@@ -820,20 +820,20 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {tab === "deudas" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {deudasCliente.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin deudas registradas.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin deudas registradas.</div></Card>
           ) : deudasCliente.map(d => {
-            const ec = d.estado === "pendiente" ? { bg: "#fee2e2", color: "#991b1b" } : d.estado === "en_convenio" ? { bg: "#fef3c7", color: "#92400e" } : { bg: "#dcfce7", color: "#166534" };
+            const ec = d.estado === "pendiente" ? { bg: "var(--bad-soft)", color: "var(--bad-ink)" } : d.estado === "en_convenio" ? { bg: "var(--warn-soft)", color: "var(--warn-ink)" } : { bg: "var(--ok-soft)", color: "var(--ok-ink)" };
             return (
               <Card key={d.id} borderColor={ec.color}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 4 }}>{d.descripcion}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>{d.concepto.replace(/_/g, " ")}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 4 }}>{d.descripcion}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{d.concepto.replace(/_/g, " ")}</div>
                     <div style={{ marginTop: 8 }}><Badge bg={ec.bg} color={ec.color}>{d.estado}</Badge></div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 20, fontWeight: 900, color: ec.color }}>${fmt(d.monto_pendiente)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>de ${fmt(d.monto)}</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>de ${fmt(d.monto)}</div>
                   </div>
                 </div>
               </Card>
@@ -846,9 +846,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {tab === "convenios" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {conveniosCliente.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin convenios registrados.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin convenios registrados.</div></Card>
           ) : conveniosCliente.map(cv => {
-            const ec = cv.estado === "activo" ? { bg: "#dbeafe", color: "#1d4ed8" } : cv.estado === "cumplido" ? { bg: "#dcfce7", color: "#166534" } : cv.estado === "incumplido" ? { bg: "#fee2e2", color: "#991b1b" } : { bg: "#f1f5f9", color: "#334155" };
+            const ec = cv.estado === "activo" ? { bg: "var(--accent-soft3)", color: "var(--accent-ink)" } : cv.estado === "cumplido" ? { bg: "var(--ok-soft)", color: "var(--ok-ink)" } : cv.estado === "incumplido" ? { bg: "var(--bad-soft)", color: "var(--bad-ink)" } : { bg: "var(--soft)", color: "var(--muted2)" };
             const pct = cv.numero_cuotas > 0 ? Math.round((cv.cuotas_pagadas / cv.numero_cuotas) * 100) : 0;
             return (
               <Card key={cv.id} borderColor={ec.color}>
@@ -858,26 +858,26 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                       <span style={{ fontWeight: 800, fontSize: 15 }}>Convenio #{cv.numero_convenio}</span>
                       <Badge bg={ec.bg} color={ec.color}>{cv.estado}</Badge>
                     </div>
-                    <div style={{ fontSize: 13, color: "#64748b" }}>{cv.concepto}</div>
-                    <div style={{ fontSize: 13, color: "#334155", marginTop: 4 }}>
+                    <div style={{ fontSize: 13, color: "var(--muted)" }}>{cv.concepto}</div>
+                    <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 4 }}>
                       Cuota: <strong>${fmt(cv.cuota_por_periodo)}</strong> · {cv.cuotas_pagadas}/{cv.numero_cuotas} cuotas · Vence: {fmtFecha(cv.fecha_limite)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>${fmt(cv.deuda_total)}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>deuda total</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text)" }}>${fmt(cv.deuda_total)}</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>deuda total</div>
                   </div>
                 </div>
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>
                     <span>Progreso</span>
                     <span>{pct}%</span>
                   </div>
-                  <div style={{ height: 8, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}>
+                  <div style={{ height: 8, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: ec.color, transition: "width 0.5s" }} />
                   </div>
                 </div>
-                <div style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 10, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--soft)", paddingTop: 10, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
                   <div
                     onClick={() => {
                       const contratoCv = contratosCliente.find(c => c.id === cv.contrato_id);
@@ -885,14 +885,14 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                       const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado !== "pagada");
                       imprimirAcuerdoPago(cliente, moto, deudasContrato, cv, contratoCv ? infoFinContrato(contratoCv) : undefined);
                     }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#166534" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}
                   >
                     🖨️ Imprimir acuerdo de pago / Guardar PDF
                   </div>
                   {puedeEliminarConvenio && (
                     <div
                       onClick={() => handleEliminarConvenio(cv.id, cv.numero_convenio)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: borrandoConvenio ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "#991b1b", opacity: borrandoConvenio === cv.id ? 0.6 : 1 }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: borrandoConvenio ? "wait" : "pointer", fontSize: 13, fontWeight: 700, color: "var(--bad-ink)", opacity: borrandoConvenio === cv.id ? 0.6 : 1 }}
                     >
                       {borrandoConvenio === cv.id ? "Eliminando…" : "🗑️ Eliminar (creado por error)"}
                     </div>
@@ -908,22 +908,22 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {tab === "gestiones" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {gestionesCliente.length === 0 ? (
-            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "#64748b" }}>Sin gestiones de cobro registradas.</div></Card>
+            <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin gestiones de cobro registradas.</div></Card>
           ) : gestionesCliente.map(g => {
-            const gc = GESTION_COLORS[g.tipo] ?? { bg: "#f1f5f9", color: "#64748b" };
+            const gc = GESTION_COLORS[g.tipo] ?? { bg: "var(--soft)", color: "var(--muted)" };
             return (
-              <div key={g.id} style={{ background: "white", borderRadius: 12, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
+              <div key={g.id} style={{ background: "var(--card)", borderRadius: 12, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: gc.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <span style={{ fontSize: 11, fontWeight: 800, color: gc.color, textAlign: "center", lineHeight: 1.2 }}>{TIPO_GESTION_LABEL[g.tipo]?.slice(0, 4) ?? "—"}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{TIPO_GESTION_LABEL[g.tipo] ?? g.tipo}</span>
-                    <span style={{ fontSize: 12, color: "#94a3b8" }}>{fmtFecha(g.fecha)}</span>
+                    <span style={{ fontSize: 12, color: "var(--faint)" }}>{fmtFecha(g.fecha)}</span>
                   </div>
-                  {g.resultado && <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>{g.resultado}</div>}
+                  {g.resultado && <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{g.resultado}</div>}
                   {g.plazo_extra_dias && (
-                    <div style={{ fontSize: 12, color: "#92400e", marginTop: 3, fontWeight: 600 }}>
+                    <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 3, fontWeight: 600 }}>
                       Plazo extra: {g.plazo_extra_dias} días — {g.plazo_extra_motivo}
                     </div>
                   )}
@@ -946,7 +946,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           <img
             src={imagenAmpliada}
             alt="Ampliada"
-            style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, background: "white", objectFit: "contain" }}
+            style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 12, background: "var(--card)", objectFit: "contain" }}
           />
         </div>
       )}

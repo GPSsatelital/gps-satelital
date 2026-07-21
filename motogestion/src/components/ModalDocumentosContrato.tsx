@@ -46,57 +46,57 @@ export default function ModalDocumentosContrato({ contrato: contratoInicial, cli
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", background: "white", borderRadius: 20, padding: 24, display: "grid", gap: 16, boxSizing: "border-box" }}
+        style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16, boxSizing: "border-box" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>📎 Documentos del contrato</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📎 Documentos del contrato</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
-          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
         </div>
 
-        <div style={{ fontSize: 12, color: "#64748b" }}>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>
           Sube la foto o escaneo del documento físico firmado. Si ya había uno, subir uno nuevo lo reemplaza.
         </div>
 
         {DOCUMENTOS.map(({ tipo, label }) => {
           const url = contrato[tipo];
           return (
-            <div key={tipo} style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+            <div key={tipo} style={{ padding: 14, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#334155" }}>{label}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)" }}>{label}</div>
                 {url ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", background: "#dcfce7", borderRadius: 999, padding: "2px 8px" }}>✅ Adjunto</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 999, padding: "2px 8px" }}>✅ Adjunto</span>
                 ) : (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", borderRadius: 999, padding: "2px 8px" }}>⏳ Falta</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 999, padding: "2px 8px" }}>⏳ Falta</span>
                 )}
               </div>
 
               {url && (
                 <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#0284c7" }}>
+                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
                     👁 Ver
                   </a>
-                  <a href={`${url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>
+                  <a href={`${url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)" }}>
                     ⬇ Descargar
                   </a>
                 </div>
               )}
 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#0284c7", color: "#fff", fontWeight: 700, fontSize: 13, opacity: subiendo ? 0.6 : 1 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13, opacity: subiendo ? 0.6 : 1 }}>
                   📷 Cámara
                   <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={!!subiendo} onChange={e => subir(tipo, e.target.files?.[0])} />
                 </label>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: 13, opacity: subiendo ? 0.6 : 1 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, opacity: subiendo ? 0.6 : 1 }}>
                   🖼 Galería
                   <input type="file" accept="image/*,.pdf" style={{ display: "none" }} disabled={!!subiendo} onChange={e => subir(tipo, e.target.files?.[0])} />
                 </label>
               </div>
 
-              {subiendo === tipo && <div style={{ marginTop: 8, fontSize: 12, color: "#0284c7", fontWeight: 700 }}>Subiendo…</div>}
-              {errorTipo?.tipo === tipo && <div style={{ marginTop: 8, fontSize: 12, color: "#991b1b", fontWeight: 700 }}>⛔ {errorTipo.msg}</div>}
+              {subiendo === tipo && <div style={{ marginTop: 8, fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>Subiendo…</div>}
+              {errorTipo?.tipo === tipo && <div style={{ marginTop: 8, fontSize: 12, color: "var(--bad-ink)", fontWeight: 700 }}>⛔ {errorTipo.msg}</div>}
             </div>
           );
         })}

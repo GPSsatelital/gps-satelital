@@ -18,7 +18,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function SkeletonCard() {
   return (
     <div style={{
-      height: 110, borderRadius: 16, background: "#e2e8f0",
+      height: 110, borderRadius: 16, background: "var(--line)",
       animation: "pulse 1.5s ease-in-out infinite",
     }} />
   );
@@ -29,11 +29,11 @@ function Section({ title, children, action }: {
 }) {
   return (
     <div style={{
-      background: "white", borderRadius: 16, padding: "18px 20px",
+      background: "var(--card)", borderRadius: 16, padding: "18px 20px",
       boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", letterSpacing: "0.02em" }}>{title}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)", letterSpacing: "0.02em" }}>{title}</div>
         {action}
       </div>
       {children}
@@ -242,9 +242,9 @@ export default function DashboardView({ onNavigate }: {
   if (loading || !stats) {
     return (
       <div style={{ padding: "20px 16px", maxWidth: 1040, margin: "0 auto" }}>
-        <div style={{ height: 110, borderRadius: 20, background: "#e2e8f0", marginBottom: 20, animation: "pulse 1.5s infinite" }} />
+        <div style={{ height: 110, borderRadius: 20, background: "var(--line)", marginBottom: 20, animation: "pulse 1.5s infinite" }} />
         <div style={{ display: "flex", gap: 12, marginBottom: 20, overflowX: "auto" }}>
-          {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "#e2e8f0", animation: "pulse 1.5s infinite" }} />)}
+          {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "var(--line)", animation: "pulse 1.5s infinite" }} />)}
         </div>
         <div style={{ display: "grid", gap: 14, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
@@ -257,24 +257,24 @@ export default function DashboardView({ onNavigate }: {
 
   // Pipeline rows
   const pipelineRows = [
-    { label: "En proceso",        count: stats.clientesProceso,   color: "#94a3b8", filter: "En proceso" },
+    { label: "En proceso",        count: stats.clientesProceso,   color: "var(--faint)", filter: "En proceso" },
     { label: "Listos para visita",count: stats.clientesVisita,    color: "#60a5fa", filter: "Listo para visita" },
-    { label: "Pendiente eval.",   count: stats.clientesPendEval,  color: "#f59e0b", filter: "Pendiente evaluación" },
-    { label: "Aprobados",         count: stats.clientesAprobados, color: "#34d399", filter: "Aprobado" },
-    { label: "Activos",           count: stats.clientesActivos,   color: "#10b981", filter: "Activo" },
-    { label: "En mora / riesgo",  count: stats.clientesMora,      color: "#ef4444", filter: "mora" },
+    { label: "Pendiente eval.",   count: stats.clientesPendEval,  color: "var(--warn2)", filter: "Pendiente evaluación" },
+    { label: "Aprobados",         count: stats.clientesAprobados, color: "var(--ok2)", filter: "Aprobado" },
+    { label: "Activos",           count: stats.clientesActivos,   color: "var(--ok2)", filter: "Activo" },
+    { label: "En mora / riesgo",  count: stats.clientesMora,      color: "var(--bad)", filter: "mora" },
   ];
   const totalClientes = clientes.length || 1;
 
   function calcDelta(curr: number, prev: number): { pct: number; label: string; color: string } {
-    if (prev === 0) return { pct: 0, label: "—", color: "#94a3b8" };
+    if (prev === 0) return { pct: 0, label: "—", color: "var(--faint)" };
     const pct = Math.round(((curr - prev) / prev) * 100);
-    if (pct === 0) return { pct: 0, label: "= sin cambio", color: "#94a3b8" };
+    if (pct === 0) return { pct: 0, label: "= sin cambio", color: "var(--faint)" };
     const up = pct > 0;
     return {
       pct,
       label: `${up ? "▲" : "▼"} ${Math.abs(pct)}% vs sem. pasada`,
-      color: up ? "#166534" : "#991b1b",
+      color: up ? "var(--ok-ink)" : "var(--bad-ink)",
     };
   }
 
@@ -319,36 +319,36 @@ const grupoActualStats = grupoSeleccionado === "todos"
           return (
             <div
               onClick={() => onNavigate("alertas")}
-              style={{ marginBottom: 16, background: "#f0fdf4", borderRadius: 14, padding: "12px 18px", border: "1px solid #bbf7d0", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+              style={{ marginBottom: 16, background: "var(--ok-soft)", borderRadius: 14, padding: "12px 18px", border: "1px solid var(--ok-line)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
             >
               <span style={{ fontSize: 18 }}>✅</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#166534", flex: 1 }}>Todo al día — sin alertas pendientes</span>
-              <span style={{ color: "#166534", fontSize: 14 }}>›</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ok-ink)", flex: 1 }}>Todo al día — sin alertas pendientes</span>
+              <span style={{ color: "var(--ok-ink)", fontSize: 14 }}>›</span>
             </div>
           );
         }
         return (
           <div
             onClick={() => onNavigate("alertas")}
-            style={{ marginBottom: 16, background: nCrit > 0 ? "#fff1f2" : "#fff7ed", borderRadius: 14, padding: "10px 16px", border: `1px solid ${nCrit > 0 ? "#fecdd3" : "#fed7aa"}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
+            style={{ marginBottom: 16, background: nCrit > 0 ? "#fff1f2" : "var(--orange-soft)", borderRadius: 14, padding: "10px 16px", border: `1px solid ${nCrit > 0 ? "#fecdd3" : "var(--orange-soft)"}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
           >
             <span style={{ fontSize: 16 }}>{nCrit > 0 ? "🚨" : "⚠️"}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: nCrit > 0 ? "#991b1b" : "#c2410c", flex: 1, minWidth: 120 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: nCrit > 0 ? "var(--bad-ink)" : "var(--orange)", flex: 1, minWidth: 120 }}>
               {total} alerta{total > 1 ? "s" : ""} activa{total > 1 ? "s" : ""}
             </span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "#991b1b", background: "#fee2e2", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
-              {nAlert > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", padding: "3px 10px", borderRadius: 999 }}>⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</span>}
-              {nInfo  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#0369a1", background: "#dbeafe", padding: "3px 10px", borderRadius: 999 }}>ℹ️ {nInfo} info</span>}
+              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
+              {nAlert > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", padding: "3px 10px", borderRadius: 999 }}>⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</span>}
+              {nInfo  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft3)", padding: "3px 10px", borderRadius: 999 }}>ℹ️ {nInfo} info</span>}
             </div>
-            <span style={{ color: nCrit > 0 ? "#991b1b" : "#c2410c", fontSize: 16, fontWeight: 700 }}>›</span>
+            <span style={{ color: nCrit > 0 ? "var(--bad-ink)" : "var(--orange)", fontSize: 16, fontWeight: 700 }}>›</span>
           </div>
         );
       })()}
 
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
       <div style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
+        background: "linear-gradient(135deg, var(--text) 0%, var(--accent-ink2) 100%)",
         borderRadius: 20, padding: isMobile ? "22px 20px" : "28px 32px",
         marginBottom: 20, position: "relative", overflow: "hidden",
       }}>
@@ -357,38 +357,38 @@ const grupoActualStats = grupoSeleccionado === "todos"
           width: 180, height: 180, borderRadius: "50%",
           background: "rgba(2,132,199,0.15)", pointerEvents: "none",
         }} />
-        <div style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize", marginBottom: 6, letterSpacing: "0.04em" }}>
+        <div style={{ fontSize: 12, color: "var(--faint)", textTransform: "capitalize", marginBottom: 6, letterSpacing: "0.04em" }}>
           {hoy}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#38bdf8", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-hi)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             Recaudo del día
           </div>
           {grupoSeleccionado !== "todos" && (
             <span style={{
               fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
-              background: "rgba(56,189,248,0.15)", color: "#38bdf8",
+              background: "rgba(56,189,248,0.15)", color: "var(--accent-hi)",
               padding: "2px 8px", borderRadius: 999,
             }}>
               {grupoSeleccionado}
             </span>
           )}
         </div>
-        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>
+        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em" }}>
           ${fmt(recaudoFiltrado.hoy)}
         </div>
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13, color: "#94a3b8" }}>
+          <div style={{ fontSize: 13, color: "var(--faint)" }}>
             Semana:&nbsp;
-            <span style={{ color: "#34d399", fontWeight: 700 }}>${fmt(recaudoFiltrado.semana)}</span>
+            <span style={{ color: "var(--ok2)", fontWeight: 700 }}>${fmt(recaudoFiltrado.semana)}</span>
             &nbsp;en pagos confirmados
           </div>
-          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
-            <span style={{ color: "#7dd3fc", fontWeight: 700 }}>{grupoActualStats.asignadas}</span>
+          <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 4 }}>
+            <span style={{ color: "var(--accent-hi)", fontWeight: 700 }}>{grupoActualStats.asignadas}</span>
             {" en campo · "}
-            <span style={{ color: "#34d399", fontWeight: 700 }}>{grupoActualStats.disponibles}</span>
+            <span style={{ color: "var(--ok2)", fontWeight: 700 }}>{grupoActualStats.disponibles}</span>
             {" disponibles · "}
-            <span style={{ color: "#bae6fd", fontWeight: 700 }}>{grupoActualStats.pct}%</span>
+            <span style={{ color: "var(--accent-line)", fontWeight: 700 }}>{grupoActualStats.pct}%</span>
             {" asignado"}
           </div>
         </div>
@@ -408,7 +408,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "5px 12px", borderRadius: 99, border: "none", cursor: "pointer",
                   background: isSelected ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)",
-                  color: isSelected ? "white" : "#94a3b8",
+                  color: isSelected ? "var(--card)" : "var(--faint)",
                   fontWeight: isSelected ? 700 : 500, fontSize: 11,
                   transition: "all 0.15s",
                   outline: isSelected ? "1.5px solid rgba(255,255,255,0.3)" : "1px solid rgba(255,255,255,0.1)",
@@ -417,7 +417,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 <span>{op.label}</span>
                 <span style={{
                   fontSize: 10, fontWeight: 800,
-                  color: isSelected ? "#38bdf8" : "#64748b",
+                  color: isSelected ? "var(--accent-hi)" : "var(--muted)",
                 }}>{op.total}</span>
               </button>
             );
@@ -429,7 +429,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           <div style={{
             position: "absolute", bottom: 14, right: 18,
             fontSize: 10, fontWeight: 700,
-            color: recaudoDelta.color === "#166534" ? "#34d399" : "#fca5a5",
+            color: recaudoDelta.color === "var(--ok-ink)" ? "var(--ok2)" : "var(--bad-line)",
             opacity: 0.8,
           }}>
             {recaudoDelta.label}
@@ -449,19 +449,19 @@ const grupoActualStats = grupoSeleccionado === "todos"
         {[
           {
             icon: "👥", label: "Clientes activos", value: stats.clientesActivos,
-            sub: "con moto asignada", color: "#166534",
-            bg: "#f0fdf4", onClick: () => onNavigate("clientes", "Activo"),
+            sub: "con moto asignada", color: "var(--ok-ink)",
+            bg: "var(--ok-soft)", onClick: () => onNavigate("clientes", "Activo"),
             delta: calcDelta(stats.clientesActivos, stats.prevClientesActivos),
           },
           {
             icon: "🏍️", label: "Motos en campo", value: stats.motosAsignadas,
-            sub: `${stats.motosDisponibles} disponibles`, color: "#0284c7",
-            bg: "#eff6ff", onClick: () => onNavigate("motos", "Asignada"),
+            sub: `${stats.motosDisponibles} disponibles`, color: "var(--accent)",
+            bg: "var(--accent-soft2)", onClick: () => onNavigate("motos", "Asignada"),
             delta: calcDelta(stats.motosAsignadas, stats.prevMotosAsignadas),
           },
           {
             icon: "🚨", label: "En mora", value: stats.clientesMora,
-            sub: "requieren acción", color: "#991b1b",
+            sub: "requieren acción", color: "var(--bad-ink)",
             bg: "#fff1f2", onClick: () => onNavigate("clientes", "mora"),
             delta: calcDelta(stats.clientesMora, stats.prevClientesMora),
           },
@@ -474,10 +474,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
           {
             icon: "🔒", label: "Por inmovilizar", value: stats.motosInmovilizar,
             sub: stats.motosInmovilizar === 0 ? "todo al día" : "recuperar ahora",
-            color: stats.motosInmovilizar > 0 ? "#92400e" : "#166534",
-            bg: stats.motosInmovilizar > 0 ? "#fffbeb" : "#f0fdf4",
+            color: stats.motosInmovilizar > 0 ? "var(--warn-ink)" : "var(--ok-ink)",
+            bg: stats.motosInmovilizar > 0 ? "var(--warn-soft2)" : "var(--ok-soft)",
             onClick: () => onNavigate("inmovilizaciones"),
-            delta: { pct: 0, label: "", color: "#94a3b8" },
+            delta: { pct: 0, label: "", color: "var(--faint)" },
           },
         ].map(kpi => (
           <div
@@ -504,9 +504,9 @@ const grupoActualStats = grupoSeleccionado === "todos"
             }}
           >
             <div style={{ fontSize: 18, marginBottom: 4 }}>{kpi.icon}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{kpi.value}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 3 }}>{kpi.label}</div>
-            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{kpi.sub}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>{kpi.value}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{kpi.label}</div>
+            <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{kpi.sub}</div>
             {kpi.delta.pct !== 0 && (
               <div style={{ fontSize: 10, fontWeight: 700, color: kpi.delta.color, marginTop: 3 }}>
                 {kpi.delta.label}
@@ -519,10 +519,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
 
       {/* ── ACCIONES RÁPIDAS (entre banner y tarjetas) ── */}
       <div style={{
-        background: "white", borderRadius: 16, padding: "14px 16px",
+        background: "var(--card)", borderRadius: 16, padding: "14px 16px",
         boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
       }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10 }}>Acciones rápidas</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Acciones rápidas</div>
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
@@ -536,18 +536,18 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 display: "flex", flexDirection: isMobile ? "column" : "row",
                 alignItems: "center", justifyContent: "center", gap: isMobile ? 4 : 8,
                 padding: "10px 10px", borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                background: "#f8fafc",
-                cursor: "pointer", fontSize: isMobile ? 11 : 13, fontWeight: 600, color: "#334155",
+                border: "1px solid var(--line)",
+                background: "var(--soft2)",
+                cursor: "pointer", fontSize: isMobile ? 11 : 13, fontWeight: 600, color: "var(--muted2)",
                 textAlign: "center", transition: "background 0.12s, border-color 0.12s",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#eff6ff";
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "#bae6fd";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-soft2)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent-line)";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc";
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--soft2)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)";
               }}
             >
               <span style={{ fontSize: isMobile ? 20 : 18 }}>{a.icon}</span>
@@ -569,28 +569,28 @@ const grupoActualStats = grupoSeleccionado === "todos"
             label: "Pagan hoy",
             value: stats.paganHoy,
             icon: "📅",
-            color: "#0284c7", bg: "#eff6ff",
+            color: "var(--accent)", bg: "var(--accent-soft2)",
             onClick: () => onNavigate("cobros"),
           },
           {
             label: "En gabela",
             value: stats.clientesMora > 0 ? stats.clientesMora : 0,
             icon: "⏳",
-            color: "#92400e", bg: "#fef3c7",
+            color: "var(--warn-ink)", bg: "var(--warn-soft)",
             onClick: () => onNavigate("cobros"),
           },
           {
             label: "En mora",
             value: stats.clientesMora,
             icon: "🔴",
-            color: "#991b1b", bg: "#fee2e2",
+            color: "var(--bad-ink)", bg: "var(--bad-soft)",
             onClick: () => onNavigate("clientes", "mora"),
           },
           {
             label: "Recuperadas (sem.)",
             value: stats.recuperadasSemana,
             icon: "🔄",
-            color: "#166534", bg: "#dcfce7",
+            color: "var(--ok-ink)", bg: "var(--ok-soft)",
             onClick: () => onNavigate("motos", "Recuperada"),
           },
         ].map(s => (
@@ -618,7 +618,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", marginTop: 3 }}>{s.label}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{s.label}</div>
               </div>
               <span style={{ fontSize: 20, opacity: 0.7 }}>{s.icon}</span>
             </div>
@@ -629,10 +629,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
       {/* ── CONTRATOS POR MODALIDAD: chips compactos (móvil arriba, desktop dentro de grid) ── */}
       {isMobile ? (
         <div style={{
-          background: "white", borderRadius: 14, padding: "10px 14px",
+          background: "var(--card)", borderRadius: 14, padding: "10px 14px",
           boxShadow: "0 1px 8px rgba(15,23,42,0.07)", marginBottom: 12,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 8, letterSpacing: "0.04em" }}>Contratos por modalidad</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, letterSpacing: "0.04em" }}>Contratos por modalidad</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {Object.entries(stats.porModalidad).map(([mod, n]) => (
               <div
@@ -641,13 +641,13 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
                   padding: "7px 4px", borderRadius: 9, textAlign: "center",
-                  background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                  border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                  background: n > 0 ? "var(--accent-soft4)" : "var(--soft2)",
+                  border: `1px solid ${n > 0 ? "var(--accent-line)" : "var(--line)"}`,
                   cursor: "pointer",
                 }}
               >
-                <span style={{ fontSize: 16, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</span>
-                <span style={{ fontSize: 9, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 3 }}>{mod}</span>
+                <span style={{ fontSize: 16, fontWeight: 900, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: n > 0 ? "var(--muted2)" : "var(--faint)", marginTop: 3 }}>{mod}</span>
               </div>
             ))}
           </div>
@@ -664,10 +664,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
       }}>
         {/* Pipeline de clientes */}
         <div style={{
-          background: "white", borderRadius: 16, padding: "14px 16px",
+          background: "var(--card)", borderRadius: 16, padding: "14px 16px",
           boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
         }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 10 }}>Pipeline de clientes</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Pipeline de clientes</div>
           {pipelineRows.map(row => {
             const pct = Math.round((row.count / totalClientes) * 100);
             return (
@@ -677,10 +677,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 style={{ marginBottom: 8, cursor: "pointer" }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, marginBottom: 4 }}>
-                  <span style={{ color: "#64748b", fontWeight: 500 }}>{row.label}</span>
-                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 12 }}>{row.count}</span>
+                  <span style={{ color: "var(--muted)", fontWeight: 500 }}>{row.label}</span>
+                  <span style={{ fontWeight: 800, color: "var(--text)", fontSize: 12 }}>{row.count}</span>
                 </div>
-                <div style={{ height: 7, borderRadius: 99, background: "#f1f5f9", overflow: "hidden" }}>
+                <div style={{ height: 7, borderRadius: 99, background: "var(--soft)", overflow: "hidden" }}>
                   <div style={{
                     height: "100%", borderRadius: 99,
                     background: row.color,
@@ -704,15 +704,15 @@ const grupoActualStats = grupoSeleccionado === "todos"
                   style={{
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                     padding: "16px 10px", borderRadius: 12, textAlign: "center",
-                    background: n > 0 ? "#f0f9ff" : "#f8fafc",
-                    border: `1px solid ${n > 0 ? "#bae6fd" : "#e2e8f0"}`,
+                    background: n > 0 ? "var(--accent-soft4)" : "var(--soft2)",
+                    border: `1px solid ${n > 0 ? "var(--accent-line)" : "var(--line)"}`,
                     cursor: "pointer", transition: "background 0.15s",
                   }}
-                  onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "#e0f2fe")}
-                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "#f0f9ff" : "#f8fafc")}
+                  onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "var(--accent-soft)")}
+                  onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "var(--accent-soft4)" : "var(--soft2)")}
                 >
-                  <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "#0284c7" : "#cbd5e1", lineHeight: 1 }}>{n}</div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "#334155" : "#94a3b8", marginTop: 5 }}>{mod}</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "var(--muted2)" : "var(--faint)", marginTop: 5 }}>{mod}</div>
                 </div>
               ))}
             </div>
@@ -725,38 +725,38 @@ const grupoActualStats = grupoSeleccionado === "todos"
         <div
           onClick={() => onNavigate("taller")}
           style={{
-            background: "#fff7ed", borderRadius: 16, padding: "16px 18px",
-            border: "1px solid #fed7aa", cursor: "pointer",
+            background: "var(--orange-soft)", borderRadius: 16, padding: "16px 18px",
+            border: "1px solid var(--orange-soft)", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 14,
             boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
             transition: "background 0.15s", marginBottom: 16,
           }}
-          onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "#fef3c7"}
-          onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "#fff7ed"}
+          onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "var(--warn-soft)"}
+          onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "var(--orange-soft)"}
         >
           <span style={{ fontSize: 28 }}>🔧</span>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#c2410c" }}>{stats.tallerActivo}</div>
-            <div style={{ fontSize: 12, color: "#9a3412", fontWeight: 600 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "var(--orange)" }}>{stats.tallerActivo}</div>
+            <div style={{ fontSize: 12, color: "var(--orange-ink)", fontWeight: 600 }}>
               moto{stats.tallerActivo > 1 ? "s" : ""} en taller
             </div>
           </div>
-          <span style={{ marginLeft: "auto", color: "#c2410c", fontSize: 20 }}>›</span>
+          <span style={{ marginLeft: "auto", color: "var(--orange)", fontSize: 20 }}>›</span>
         </div>
       )}
 
       {/* ── RECAUDO CHART ── */}
       <div style={{
-        background: "white", borderRadius: 16, padding: "18px 20px",
+        background: "var(--card)", borderRadius: 16, padding: "18px 20px",
         boxShadow: "0 2px 14px rgba(15,23,42,0.07)", marginBottom: 16,
         overflow: "hidden",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#334155" }}>Recaudo — últimos {chartDays} días</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Total: <span style={{ fontWeight: 800, color: "#0284c7" }}>${fmt(totalRecaudoChart)}</span></div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>Recaudo — últimos {chartDays} días</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Total: <span style={{ fontWeight: 800, color: "var(--accent)" }}>${fmt(totalRecaudoChart)}</span></div>
           </div>
-          <div style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 10, padding: 3 }}>
+          <div style={{ display: "flex", gap: 4, background: "var(--soft)", borderRadius: 10, padding: 3 }}>
             {([7, 14, 30] as const).map(d => (
               <button
                 key={d}
@@ -764,8 +764,8 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 style={{
                   padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer",
                   fontSize: 12, fontWeight: 700,
-                  background: chartDays === d ? "#0f172a" : "transparent",
-                  color: chartDays === d ? "white" : "#64748b",
+                  background: chartDays === d ? "var(--text)" : "transparent",
+                  color: chartDays === d ? "var(--card)" : "var(--muted)",
                   transition: "all 0.15s",
                 }}
               >
@@ -785,19 +785,19 @@ const grupoActualStats = grupoSeleccionado === "todos"
               <Fragment key={d.fecha}>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, height: "100%", justifyContent: "flex-end" }}>
                   {label && (
-                    <div style={{ fontSize: 8, fontWeight: 700, color: d.esHoy ? "#0284c7" : "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "clip", maxWidth: "100%", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, color: d.esHoy ? "var(--accent)" : "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "clip", maxWidth: "100%", textAlign: "center" }}>
                       {label}
                     </div>
                   )}
                   <div style={{
                     width: "100%", borderRadius: "3px 3px 0 0",
-                    background: d.esHoy ? "#0284c7" : "#cbd5e1",
+                    background: d.esHoy ? "var(--accent)" : "var(--line2)",
                     height: `${altoPx}%`, minHeight: 3,
                     transition: "height 0.3s",
                     boxShadow: d.esHoy ? "0 0 8px rgba(2,132,199,0.4)" : "none",
                   }} />
                   {(chartDays <= 14 || d.esHoy) && (
-                    <div style={{ fontSize: 8, color: "#94a3b8", textTransform: "capitalize", whiteSpace: "nowrap" }}>{diaSemana}</div>
+                    <div style={{ fontSize: 8, color: "var(--faint)", textTransform: "capitalize", whiteSpace: "nowrap" }}>{diaSemana}</div>
                   )}
                 </div>
               </Fragment>
@@ -809,10 +809,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
       {/* ── TOP MORA LIST ── */}
       {top5SinPago.length > 0 && (
         <div style={{
-          background: "white", borderRadius: 16, padding: "18px 20px",
+          background: "var(--card)", borderRadius: 16, padding: "18px 20px",
           boxShadow: "0 2px 14px rgba(15,23,42,0.07)",
         }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)", marginBottom: 14 }}>
             Contratos con más días sin pago
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -821,10 +821,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
               const motoItem    = motos.find(m => m.id === contrato.moto_id);
               const esCritico   = diasSinPago > 7;
               const esMora      = diasSinPago >= 3 && diasSinPago <= 7;
-              const badgeBg     = esCritico ? "#fee2e2" : esMora ? "#fef3c7" : "#f1f5f9";
-              const badgeColor  = esCritico ? "#991b1b" : esMora ? "#92400e" : "#64748b";
+              const badgeBg     = esCritico ? "var(--bad-soft)" : esMora ? "var(--warn-soft)" : "var(--soft)";
+              const badgeColor  = esCritico ? "var(--bad-ink)" : esMora ? "var(--warn-ink)" : "var(--muted)";
               const badgeLabel  = esCritico ? "Crítico" : esMora ? "Mora" : "Gabela";
-              const borderColor = esCritico ? "#ef4444" : esMora ? "#f59e0b" : "#e2e8f0";
+              const borderColor = esCritico ? "var(--bad)" : esMora ? "var(--warn2)" : "var(--line)";
               return (
                 <div
                   key={contrato.id}
@@ -833,7 +833,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                     padding: "12px 16px", borderRadius: 12,
                     borderLeft: `4px solid ${borderColor}`,
-                    background: esCritico ? "#fff8f8" : esMora ? "#fffdf5" : "#f8fafc",
+                    background: esCritico ? "#fff8f8" : esMora ? "#fffdf5" : "var(--soft2)",
                     cursor: "pointer", gap: 12,
                     transition: "background 0.12s",
                   }}
@@ -841,10 +841,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
                   onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.opacity = "1"}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {motoItem ? `${motoItem.placa} · ` : ""}{clienteItem?.nombre ?? "Sin cliente"}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       {diasSinPago} día{diasSinPago !== 1 ? "s" : ""} sin pago
                     </div>
                   </div>

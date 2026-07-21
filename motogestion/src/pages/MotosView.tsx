@@ -28,13 +28,13 @@ import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
-    case "Disponible":    return { bg: "#dcfce7", color: "#166534", border: "#86efac" };
-    case "Reservada":     return { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" };
-    case "Asignada":      return { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" };
-    case "Mantenimiento": return { bg: "#ffe4e6", color: "#be123c", border: "#fda4af" };
-    case "Recuperada":    return { bg: "#e2e8f0", color: "#334155", border: "#cbd5e1" };
-    case "Fiscalia":      return { bg: "#fef9c3", color: "#713f12", border: "#fde047" };
-    case "Transito":      return { bg: "#ffedd5", color: "#9a3412", border: "#fdba74" };
+    case "Disponible":    return { bg: "var(--ok-soft)", color: "var(--ok-ink)", border: "var(--ok-line)" };
+    case "Reservada":     return { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "#fcd34d" };
+    case "Asignada":      return { bg: "var(--accent-soft3)", color: "var(--accent-ink)", border: "var(--accent-line)" };
+    case "Mantenimiento": return { bg: "var(--bad-soft)", color: "var(--bad)", border: "#fda4af" };
+    case "Recuperada":    return { bg: "var(--line)", color: "var(--muted2)", border: "var(--line2)" };
+    case "Fiscalia":      return { bg: "var(--warn-soft)", color: "var(--warn-ink2)", border: "var(--warn-line)" };
+    case "Transito":      return { bg: "var(--orange-soft)", color: "var(--orange-ink)", border: "#fdba74" };
     case "Garantia":      return { bg: "#f3e8ff", color: "#6b21a8", border: "#d8b4fe" };
     case "En traspaso":   return { bg: "#ecfdf5", color: "#047857", border: "#6ee7b7" };
   }
@@ -66,8 +66,8 @@ function formatDate(date: string | null) {
   return new Date(date).toLocaleDateString("es-CO");
 }
 
-const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "#334155" };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box" };
+const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
+const inputStyle: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line2)", outline: "none", fontSize: 14, boxSizing: "border-box" };
 
 import type { ViewKey } from "../App";
 
@@ -223,8 +223,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             style={{
               padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
               fontSize: 12, fontWeight: 700,
-              background: filtroGrupo === g ? "#0284c7" : "#f1f5f9",
-              color: filtroGrupo === g ? "white" : "#334155",
+              background: filtroGrupo === g ? "var(--accent)" : "var(--soft)",
+              color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
             }}
           >
             {g === "todos" ? "Todos" : g}
@@ -236,8 +236,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             style={{
               padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
               fontSize: 12, fontWeight: 700,
-              background: soloSinAsignar ? "#b45309" : "#fef3c7",
-              color: soloSinAsignar ? "white" : "#92400e",
+              background: soloSinAsignar ? "var(--warn-strong)" : "var(--warn-soft)",
+              color: soloSinAsignar ? "var(--card)" : "var(--warn-ink)",
             }}
           >
             👤 Sin asignar
@@ -474,25 +474,25 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     setOpen(false);
   }
 
-  if (loading) return <div style={{ padding: 24, color: "#64748b" }}>Cargando motos...</div>;
+  if (loading) return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando motos...</div>;
 
   // Panel de detalle (reutilizado en móvil y desktop)
   function DetallePanel() {
-    if (!selectedMoto) return <div style={{ padding: 24, color: "#64748b", textAlign: "center" }}>Selecciona una moto de la lista.</div>;
+    if (!selectedMoto) return <div style={{ padding: 24, color: "var(--muted)", textAlign: "center" }}>Selecciona una moto de la lista.</div>;
     return (
       <div style={{ display: "grid", gap: 12 }}>
         {/* Header moto */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900, fontSize: 22, color: "#0f172a" }}>{selectedMoto.placa}</div>
-            <div style={{ fontSize: 14, color: "#64748b" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
+            <div style={{ fontWeight: 900, fontSize: 22, color: "var(--text)" }}>{selectedMoto.placa}</div>
+            <div style={{ fontSize: 14, color: "var(--muted)" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
           </div>
           <StatusBadge status={selectedMoto.estado} />
         </div>
-        {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid #0284c7", background: "#eff6ff", color: "#0284c7", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
+        {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid var(--accent)", background: "var(--accent-soft2)", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
         {editandoMoto ? (
-          <div style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0", display: "grid", gap: 10 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>✏️ Editando: {selectedMoto.placa}</div>
+          <div style={{ background: "var(--soft2)", borderRadius: 14, padding: 16, border: "1px solid var(--line)", display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>✏️ Editando: {selectedMoto.placa}</div>
             {([
               { key: "marca", label: "Marca" }, { key: "modelo", label: "Modelo" },
               { key: "color", label: "Color" }, { key: "cilindraje", label: "Cilindraje" },
@@ -500,40 +500,40 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               { key: "propietario", label: "Propietario" },
             ] as { key: keyof typeof editForm; label: string }[]).map(({ key, label }) => (
               <div key={key}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>{label}</div>
                 <input value={(editForm[key] as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, [key]: key === "propietario" ? e.target.value : e.target.value.toUpperCase() }))}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13 }} />
               </div>
             ))}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>SOAT vence</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>SOAT vence</div>
               <input type="date" value={(editForm.fecha_seguro as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, fecha_seguro: e.target.value }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13 }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Tecnomecánica vence</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>Tecnomecánica vence</div>
               <input type="date" value={(editForm.fecha_tecnomecanica as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, fecha_tecnomecanica: e.target.value }))}
-                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }} />
+                style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13 }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Grupo</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>Grupo</div>
               {/* Cambiar de grupo mueve la moto entre portafolios de socios — permiso aparte */}
               <select value={editForm.grupo ?? selectedMoto.grupo} onChange={e => setEditForm(f => ({ ...f, grupo: e.target.value as GrupoMoto }))}
                 disabled={!puedeCambiarGrupo}
                 title={!puedeCambiarGrupo ? "No tienes permiso para cambiar el grupo (mueve la moto entre portafolios de socios)" : ""}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, opacity: puedeCambiarGrupo ? 1 : 0.6, cursor: puedeCambiarGrupo ? "pointer" : "not-allowed" }}>
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13, opacity: puedeCambiarGrupo ? 1 : 0.6, cursor: puedeCambiarGrupo ? "pointer" : "not-allowed" }}>
                 {(["COSTA","PRADERA","RASTREADOR","USADAS"] as GrupoMoto[]).map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 3 }}>Observaciones</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>Observaciones</div>
               <textarea value={(editForm.observaciones as string) ?? ""} onChange={e => setEditForm(f => ({ ...f, observaciones: e.target.value }))}
-                rows={2} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, resize: "vertical" }} />
+                rows={2} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line2)", fontSize: 13, resize: "vertical" }} />
             </div>
-            {editError && <div style={{ color: "#991b1b", fontSize: 12, padding: "6px 10px", background: "#fee2e2", borderRadius: 8 }}>{editError}</div>}
+            {editError && <div style={{ color: "var(--bad-ink)", fontSize: 12, padding: "6px 10px", background: "var(--bad-soft)", borderRadius: 8 }}>{editError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontWeight: 700, color: "#64748b", fontSize: 13 }}>Cancelar</button>
-              <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: "#0f172a", color: "white", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: editGuardando ? 0.7 : 1 }}>
+              <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, color: "var(--muted)", fontSize: 13 }}>Cancelar</button>
+              <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: "var(--ink)", color: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: editGuardando ? 0.7 : 1 }}>
                 {editGuardando ? "Guardando..." : "💾 Guardar"}
               </button>
             </div>
@@ -546,34 +546,34 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               <InfoBox label="Tecnomecánica" value={formatDate(selectedMoto.fecha_tecnomecanica)} />
               {(selectedMoto as any).color && <InfoBox label="Color" value={(selectedMoto as any).color} />}
             </div>
-            {selectedMoto.observaciones && <div style={{ fontSize: 13, color: "#64748b", padding: "8px 12px", background: "#f8fafc", borderRadius: 10 }}>{selectedMoto.observaciones}</div>}
-            <button onClick={abrirEdicion} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "white", color: "#334155", cursor: "pointer", fontWeight: 700, fontSize: 13, textAlign: "left" as const }}>✏️ Editar datos</button>
+            {selectedMoto.observaciones && <div style={{ fontSize: 13, color: "var(--muted)", padding: "8px 12px", background: "var(--soft2)", borderRadius: 10 }}>{selectedMoto.observaciones}</div>}
+            <button onClick={abrirEdicion} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", cursor: "pointer", fontWeight: 700, fontSize: 13, textAlign: "left" as const }}>✏️ Editar datos</button>
           </>
         )}
-        {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "#f0fdf4", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
+        {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "var(--ok-soft)", color: "var(--ok)", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
             <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
             {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida. */}
             {selectedMoto.estado === "Fiscalia" && (
-              <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Salida Fiscalía</button>
+              <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}>✅ Salida Fiscalía</button>
             )}
             {["Transito","Garantia"].includes(selectedMoto.estado) && (
-              <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "#166534" }}>✅ Liberar retención</button>
+              <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}>✅ Liberar retención</button>
             )}
           </div>
         )}
         {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
-          <div style={{ background: "#fef9c3", borderRadius: 10, padding: 10, border: "1px solid #fde047", fontSize: 13 }}>
-            <div style={{ fontWeight: 700, color: "#713f12", marginBottom: 4 }}>🚨 {ESTADO_LABEL[selectedMoto.estado]}</div>
+          <div style={{ background: "var(--warn-soft)", borderRadius: 10, padding: 10, border: "1px solid var(--warn-line)", fontSize: 13 }}>
+            <div style={{ fontWeight: 700, color: "var(--warn-ink2)", marginBottom: 4 }}>🚨 {ESTADO_LABEL[selectedMoto.estado]}</div>
             {selectedMoto.retencion_fecha && <div>Fecha: <strong>{selectedMoto.retencion_fecha}</strong></div>}
             {selectedMoto.retencion_numero_caso && <div>N° caso: <strong>{selectedMoto.retencion_numero_caso}</strong></div>}
-            {selectedMoto.retencion_detalle && <div style={{ color: "#64748b", marginTop: 4 }}>{selectedMoto.retencion_detalle}</div>}
+            {selectedMoto.retencion_detalle && <div style={{ color: "var(--muted)", marginTop: 4 }}>{selectedMoto.retencion_detalle}</div>}
           </div>
         )}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>Cambiar estado</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 6 }}>Cambiar estado</div>
           <select value={selectedMoto.estado} onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)} style={inputStyle}>
             <option value="Disponible">Disponible</option>
             <option value="Reservada">Reservada</option>
@@ -584,7 +584,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         </div>
         {esAdminOSuperior && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>Sub-admin a cargo</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 6 }}>Sub-admin a cargo</div>
             <select
               value={selectedMoto.subadmin_id ?? ""}
               onChange={e => asignarSubadmin(selectedMoto.id, e.target.value || null)}
@@ -599,11 +599,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         )}
         {historialDeMoto(selectedMoto.id).length > 0 && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#334155" }}>Historial ubicaciones</div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--muted2)" }}>Historial ubicaciones</div>
             {historialDeMoto(selectedMoto.id).slice(0, 3).map((h) => (
-              <div key={h.id} style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, background: "#f8fafc", marginBottom: 3, color: "#475569" }}>
+              <div key={h.id} style={{ fontSize: 12, padding: "5px 8px", borderRadius: 6, background: "var(--soft2)", marginBottom: 3, color: "var(--muted3)" }}>
                 <strong>{UBICACION_LABEL[h.ubicacion_nueva as UbicacionFisica] ?? h.ubicacion_nueva}</strong>
-                <span style={{ color: "#94a3b8", marginLeft: 6 }}>{new Date(h.created_at).toLocaleDateString("es-CO")}</span>
+                <span style={{ color: "var(--faint)", marginLeft: 6 }}>{new Date(h.created_at).toLocaleDateString("es-CO")}</span>
               </div>
             ))}
           </div>
@@ -617,17 +617,17 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
         <div>
           <h2 style={{ fontSize: 20, margin: 0 }}>Motos</h2>
-          <p style={{ marginTop: 4, color: "#64748b", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
+          <p style={{ marginTop: 4, color: "var(--muted)", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
         </div>
       </div>
-      {error && <div style={{ marginBottom: 12, color: "#991b1b" }}>Error: {error}</div>}
+      {error && <div style={{ marginBottom: 12, color: "var(--bad-ink)" }}>Error: {error}</div>}
 
       {/* Móvil: lista → detalle (nunca juntos) */}
       {isMobile ? (
         selectedId && selectedMoto ? (
           <div>
             <button onClick={() => { setSelectedId(null); setEditandoMoto(false); setMsgDetalle(null); }}
-              style={{ border: "none", background: "none", color: "#0284c7", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "0 0 12px 0" }}>
+              style={{ border: "none", background: "none", color: "var(--accent)", fontWeight: 700, fontSize: 14, cursor: "pointer", padding: "0 0 12px 0" }}>
               ← Volver a la lista
             </button>
             <div style={card}>{DetallePanel()}</div>
@@ -636,24 +636,24 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <div>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 12 }} />
             <ChipsGrupo />
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>}
             <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {filtered.map((moto) => {
                 const sc = getStatusColors(moto.estado);
                 return (
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ background: "white", borderRadius: 12, padding: "12px 14px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid #e2e8f0" }}>
+                    style={{ background: "var(--card)", borderRadius: 12, padding: "12px 14px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>{moto.placa}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>{moto.placa}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
                           style={{
                             marginTop: 6, padding: "3px 10px", borderRadius: 999, border: "none", cursor: "pointer",
                             fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            background: moto.subadmin_id ? "#e0e7ff" : "#f1f5f9",
-                            color: moto.subadmin_id ? "#3730a3" : "#94a3b8",
+                            background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
+                            color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
                             textTransform: moto.subadmin_id ? "uppercase" : "none",
                           }}
                         >
@@ -664,7 +664,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                     <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
                       {ESTADO_LABEL[moto.estado]}
                     </span>
-                    <span style={{ color: "#cbd5e1" }}>›</span>
+                    <span style={{ color: "var(--line2)" }}>›</span>
                   </div>
                 );
               })}
@@ -677,25 +677,25 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
             <ChipsGrupo />
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "#64748b" }}>No hay motos.</div>}
+            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>}
             <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map((moto) => {
                 const sc = getStatusColors(moto.estado);
                 const sel = selectedId === moto.id;
                 return (
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid #0284c7" : "1px solid #e2e8f0", background: sel ? "#eff6ff" : "white" }}>
+                    style={{ borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: sel ? "var(--accent-soft2)" : "var(--card)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{moto.placa}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{moto.placa}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
                           style={{
                             marginTop: 5, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
                             fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            background: moto.subadmin_id ? "#e0e7ff" : "#f1f5f9",
-                            color: moto.subadmin_id ? "#3730a3" : "#94a3b8",
+                            background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
+                            color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
                             textTransform: moto.subadmin_id ? "uppercase" : "none",
                           }}
                         >
@@ -708,7 +708,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                     </span>
                     {onNavigate && (
                       <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
-                        style={{ border: "none", background: "#f1f5f9", color: "#0284c7", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        style={{ border: "none", background: "var(--soft)", color: "var(--accent)", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
                         Ficha
                       </button>
                     )}
@@ -734,8 +734,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #0284c7 0%, #10b981 100%)",
-          color: "white",
+          background: "linear-gradient(135deg, var(--accent) 0%, var(--ok2) 100%)",
+          color: "var(--card)",
           border: "none",
           fontSize: 28,
           fontWeight: 700,
@@ -754,7 +754,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {/* Modal cambiar ubicación */}
       {openUbicacion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenUbicacion(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "white", borderRadius: 16, padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "var(--card)", borderRadius: 16, padding: 24 }}>
             <h3 style={{ margin: "0 0 16px" }}>Cambiar ubicación física</h3>
             <Field label="Nueva ubicación">
               <select style={inputStyle} value={formUbic.ubicacion_nueva} onChange={(e) => setFormUbic((p) => ({ ...p, ubicacion_nueva: e.target.value as UbicacionFisica }))}>
@@ -778,7 +778,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {/* Modal recepción de vehículo */}
       {openRecepcion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenRecepcion(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "var(--card)", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: "0 0 16px" }}>Formulario de recepción — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Motivo de ingreso">
@@ -794,11 +794,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               {/* Entrega voluntaria con contrato activo: suspende el contrato. El costo de
                   $20.000 solo aplica si hubo que ir a buscarla (no si la trajo el cliente). */}
               {formRec.motivo === "entrega_voluntaria" && contratos.some(c => c.moto_id === selectedMoto.id && c.estado === "Activo") && (
-                <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0369a1", marginBottom: 4 }}>
+                <div style={{ background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-ink)", marginBottom: 4 }}>
                     Esto suspenderá el contrato de {clientes.find(cl => cl.id === contratos.find(c => c.moto_id === selectedMoto.id && c.estado === "Activo")?.cliente_id)?.nombre ?? "el cliente"}.
                   </div>
-                  <div style={{ fontSize: 12, color: "#334155", marginBottom: 10 }}>¿Cómo llegó la moto?</div>
+                  <div style={{ fontSize: 12, color: "var(--muted2)", marginBottom: 10 }}>¿Cómo llegó la moto?</div>
                   <div style={{ display: "grid", gap: 8 }}>
                     {([[false, "🙋 La trajo el cliente", "Sin costo"], [true, "🚚 Se fue a buscar", "+ $20.000 por movimiento de personal"]] as [boolean, string, string][]).map(([val, label, sub]) => (
                       <button
@@ -807,12 +807,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                         onClick={() => setRecFueBuscada(val)}
                         style={{
                           textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                          border: recFueBuscada === val ? "2px solid #0284c7" : "1px solid #cbd5e1",
-                          background: recFueBuscada === val ? "#e0f2fe" : "white",
+                          border: recFueBuscada === val ? "2px solid var(--accent)" : "1px solid var(--line2)",
+                          background: recFueBuscada === val ? "var(--accent-soft)" : "var(--card)",
                         }}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{label}</div>
-                        <div style={{ fontSize: 12, color: recFueBuscada === val ? "#0369a1" : "#64748b" }}>{sub}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{label}</div>
+                        <div style={{ fontSize: 12, color: recFueBuscada === val ? "var(--accent-ink)" : "var(--muted)" }}>{sub}</div>
                       </button>
                     ))}
                   </div>
@@ -839,13 +839,13 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   {ANGULOS_FOTO.map(({ key, label }) => {
                     const dataUrl = fotosRec[key];
                     return (
-                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "#bbf7d0" : "#e2e8f0"}`, background: dataUrl ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "var(--ok-line)" : "var(--line)"}`, background: dataUrl ? "var(--ok-soft)" : "var(--soft2)", padding: 8, textAlign: "center" }}>
                         {dataUrl ? (
                           <div style={{ position: "relative" }}>
                             <img src={dataUrl} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
                             <button type="button" onClick={() => setFotosRec(p => { const n = { ...p }; delete n[key]; return n; })} style={{
                               position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
-                              background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                              background: "var(--bad)", border: "none", color: "var(--card)", fontSize: 10, cursor: "pointer",
                               display: "flex", alignItems: "center", justifyContent: "center",
                             }}>✕</button>
                           </div>
@@ -854,10 +854,10 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                             <IconoAngulo angulo={key} />
                           </div>
                         )}
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 4, marginBottom: 6 }}>{label}</div>
                         {!dataUrl && (
                           <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent)" }} title="Cámara">
                               📷
                               <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                                 onChange={(e) => {
@@ -869,7 +869,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                                   e.target.value = "";
                                 }} />
                             </label>
-                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent-soft)" }} title="Galería">
                               🖼
                               <input type="file" accept="image/*" style={{ display: "none" }}
                                 onChange={(e) => {
@@ -899,7 +899,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
       {open && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "white", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "var(--card)", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Registrar nueva moto</h3>
 
             <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
@@ -930,7 +930,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               <Field label="Observaciones"><input style={inputStyle} value={form.observaciones} onChange={(e) => setForm((p) => ({ ...p, observaciones: e.target.value }))} /></Field>
             </div>
 
-            {formError && <div style={{ marginTop: 12, color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
+            {formError && <div style={{ marginTop: 12, color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>
@@ -943,7 +943,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {/* ── Modal Retención ── */}
       {openRetencion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: "0 0 16px" }}>Registrar retención — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Tipo de retención">
@@ -965,7 +965,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 <input style={inputStyle} value={formRetencion.detalle} onChange={e => setFormRetencion(p => ({ ...p, detalle: e.target.value }))} placeholder="Descripción..." />
               </Field>
               {formRetencion.tipo === "Fiscalia" && (
-                <div style={{ padding: "8px 12px", background: "#fef9c3", borderRadius: 10, fontSize: 13, color: "#713f12" }}>
+                <div style={{ padding: "8px 12px", background: "var(--warn-soft)", borderRadius: 10, fontSize: 13, color: "var(--warn-ink2)" }}>
                   Tarifa se congela. Al recuperar la moto se registra la salida y entra a taller automáticamente.
                 </div>
               )}
@@ -977,7 +977,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpenRetencion(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={handleRegistrarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "#92400e" }}>
+              <button onClick={handleRegistrarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "var(--warn-ink)" }}>
                 {guardando ? "Guardando..." : "Registrar retención"}
               </button>
             </div>
@@ -988,9 +988,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       {/* ── Modal Salida de Fiscalía ── */}
       {openLiberarFiscalia && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "white", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420 }}>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420 }}>
             <h3 style={{ margin: "0 0 8px" }}>Registrar salida de Fiscalía</h3>
-            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 16px" }}>
+            <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 16px" }}>
               La moto {selectedMoto.placa} sale de Fiscalía y queda en poder de la empresa. Pasará a taller automáticamente para revisión antes de operar.
             </p>
             <div style={{ display: "grid", gap: 12 }}>
@@ -1001,13 +1001,13 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   ))}
                 </select>
               </Field>
-              <div style={{ padding: "8px 12px", background: "#f0fdf4", borderRadius: 10, fontSize: 13, color: "#166534" }}>
+              <div style={{ padding: "8px 12px", background: "var(--ok-soft)", borderRadius: 10, fontSize: 13, color: "var(--ok-ink)" }}>
                 Estado → <strong>En taller</strong>. Debe pasar revisión antes de volver a operar.
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpenLiberarFiscalia(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={handleLiberarFiscalia} disabled={guardando} style={{ ...primaryBtn, background: "#166534" }}>
+              <button onClick={handleLiberarFiscalia} disabled={guardando} style={{ ...primaryBtn, background: "var(--ok-ink)" }}>
                 {guardando ? "Registrando..." : "Confirmar salida"}
               </button>
             </div>
@@ -1042,18 +1042,18 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             onClick={() => setAsignarMotoId(null)}
             style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: "white", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>Asignar encargado</div>
-                <button onClick={() => setAsignarMotoId(null)} style={{ border: "none", background: "#f1f5f9", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 15, color: "#334155" }}>✕</button>
+                <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text)" }}>Asignar encargado</div>
+                <button onClick={() => setAsignarMotoId(null)} style={{ border: "none", background: "var(--soft)", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 15, color: "var(--muted2)" }}>✕</button>
               </div>
-              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>Moto <b style={{ color: "#0f172a" }}>{motoAsig.placa}</b> · toca un sub-admin</div>
+              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>Moto <b style={{ color: "var(--text)" }}>{motoAsig.placa}</b> · toca un sub-admin</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
                   onClick={() => elegir(null)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${!motoAsig.subadmin_id ? "#b45309" : "#e2e8f0"}`, background: !motoAsig.subadmin_id ? "#fffbeb" : "white", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#92400e", textAlign: "left" }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${!motoAsig.subadmin_id ? "var(--warn-strong)" : "var(--line)"}`, background: !motoAsig.subadmin_id ? "var(--warn-soft2)" : "var(--card)", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "var(--warn-ink)", textAlign: "left" }}
                 >
-                  🚫 Sin asignar {!motoAsig.subadmin_id && <span style={{ marginLeft: "auto", fontSize: 12, color: "#b45309" }}>● actual</span>}
+                  🚫 Sin asignar {!motoAsig.subadmin_id && <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--warn-strong)" }}>● actual</span>}
                 </button>
                 {subadmins.map(s => {
                   const actual = motoAsig.subadmin_id === s.id;
@@ -1061,13 +1061,13 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                     <button
                       key={s.id}
                       onClick={() => elegir(s.id)}
-                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${actual ? "#0284c7" : "#e2e8f0"}`, background: actual ? "#eff6ff" : "white", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#0f172a", textAlign: "left", textTransform: "uppercase" }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${actual ? "var(--accent)" : "var(--line)"}`, background: actual ? "var(--accent-soft2)" : "var(--card)", cursor: "pointer", fontSize: 14, fontWeight: 700, color: "var(--text)", textAlign: "left", textTransform: "uppercase" }}
                     >
-                      👤 {s.nombre} {actual && <span style={{ marginLeft: "auto", fontSize: 12, color: "#0284c7", textTransform: "none" }}>● actual</span>}
+                      👤 {s.nombre} {actual && <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--accent)", textTransform: "none" }}>● actual</span>}
                     </button>
                   );
                 })}
-                {subadmins.length === 0 && <div style={{ fontSize: 13, color: "#94a3b8", padding: 8 }}>No hay sub-admins registrados.</div>}
+                {subadmins.length === 0 && <div style={{ fontSize: 13, color: "var(--faint)", padding: 8 }}>No hay sub-admins registrados.</div>}
               </div>
             </div>
           </div>
@@ -1113,10 +1113,10 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenNovedad(false)}>
             <div onClick={e => e.stopPropagation()} style={{ ...card, width: "min(480px, 96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto", display: "grid", gap: 10, boxSizing: "border-box" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>🏍️ Registrar novedad</div>
-                <div style={{ fontSize: 13, color: "#64748b", marginTop: 4, textTransform: "uppercase" }}>{selectedMoto.placa}{clienteMoto ? ` · ${clienteMoto.nombre}` : ""}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>🏍️ Registrar novedad</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>{selectedMoto.placa}{clienteMoto ? ` · ${clienteMoto.nombre}` : ""}</div>
               </div>
-              <div style={{ fontSize: 13, color: "#334155" }}>¿Qué pasó con la moto? Elige la situación:</div>
+              <div style={{ fontSize: 13, color: "var(--muted2)" }}>¿Qué pasó con la moto? Elige la situación:</div>
               {opciones.map((o, i) => (
                 <button
                   key={i}
@@ -1124,16 +1124,16 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   disabled={!o.enabled}
                   title={o.enabled ? "" : o.motivoOff}
                   style={{
-                    textAlign: "left", border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px",
-                    background: o.enabled ? "white" : "#f8fafc", cursor: o.enabled ? "pointer" : "not-allowed",
+                    textAlign: "left", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px",
+                    background: o.enabled ? "var(--card)" : "var(--soft2)", cursor: o.enabled ? "pointer" : "not-allowed",
                     opacity: o.enabled ? 1 : 0.55, display: "flex", gap: 12, alignItems: "flex-start",
                   }}
                 >
                   <span style={{ fontSize: 22, lineHeight: 1 }}>{o.icono}</span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{o.titulo}</span>
-                    <span style={{ display: "block", fontSize: 12, color: "#64748b", marginTop: 2 }}>{o.desc}</span>
-                    {!o.enabled && o.motivoOff && <span style={{ display: "block", fontSize: 11, color: "#92400e", marginTop: 3, fontWeight: 700 }}>No disponible: {o.motivoOff}</span>}
+                    <span style={{ display: "block", fontWeight: 800, fontSize: 14, color: "var(--text)" }}>{o.titulo}</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.desc}</span>
+                    {!o.enabled && o.motivoOff && <span style={{ display: "block", fontSize: 11, color: "var(--warn-ink)", marginTop: 3, fontWeight: 700 }}>No disponible: {o.motivoOff}</span>}
                   </span>
                 </button>
               ))}
@@ -1175,8 +1175,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
 function InfoBox({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: "#f8fafc", borderRadius: 16, padding: 14 }}>
-      <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase" }}>{label}</div>
+    <div style={{ background: "var(--soft2)", borderRadius: 16, padding: 14 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase" }}>{label}</div>
       <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600 }}>{value}</div>
     </div>
   );
@@ -1186,6 +1186,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><div style={labelStyle}>{label}</div>{children}</div>;
 }
 
-const card: React.CSSProperties = { background: "white", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
-const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)", color: "white", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
-const secondaryBtn: React.CSSProperties = { background: "white", border: "1px solid #cbd5e1", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "#334155" };
+const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 700, cursor: "pointer" };
+const secondaryBtn: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)" };

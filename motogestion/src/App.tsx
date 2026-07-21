@@ -171,7 +171,7 @@ function Sidebar({
     gap: 10, padding: collapsed ? "10px 0" : "9px 12px",
     borderRadius: 10, border: "none",
     background: active ? "rgba(56,189,248,0.15)" : "transparent",
-    color: active ? "#38bdf8" : "#94a3b8",
+    color: active ? "var(--accent-hi)" : "var(--faint)",
     cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
     transition: "all 0.15s", marginBottom: 1,
   });
@@ -182,7 +182,7 @@ function Sidebar({
 
   return (
     <div style={{
-      width: W, minHeight: "100vh", background: "#0f172a",
+      width: W, minHeight: "100vh", background: "var(--ink)",
       display: "flex", flexDirection: "column", flexShrink: 0,
       transition: "width 0.2s", position: "sticky", top: 0, alignSelf: "flex-start",
       overflow: "hidden",
@@ -196,8 +196,8 @@ function Sidebar({
         <span style={{ fontSize: 20, flexShrink: 0, width: collapsed ? "100%" : "auto", textAlign: "center" }}>🏍️</span>
         {!collapsed && (
           <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>MotoGestión</div>
-            <div style={{ fontSize: 10, color: "#475569" }}>GPS Satelital · Cartagena</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--card)" }}>MotoGestión</div>
+            <div style={{ fontSize: 10, color: "var(--muted3)" }}>GPS Satelital · Cartagena</div>
           </div>
         )}
       </div>
@@ -215,7 +215,7 @@ function Sidebar({
         {groups.map(g => (
           <div key={g.label} style={{ marginTop: 16 }}>
             {!collapsed
-              ? <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", letterSpacing: "0.1em", padding: "0 8px 4px" }}>{g.label}</div>
+              ? <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", letterSpacing: "0.1em", padding: "0 8px 4px" }}>{g.label}</div>
               : <div style={{ margin: "6px 8px", borderTop: "1px solid rgba(255,255,255,0.06)" }} />
             }
             {g.items.map(item => (
@@ -232,7 +232,7 @@ function Sidebar({
                     <span style={{ fontSize: 16 }}>{item.icon}</span>
                     {!collapsed && item.label}
                   </span>
-                  {!collapsed && item.sub && <span style={{ fontSize: 10, color: "#475569" }}>{open[item.key] ? "▾" : "▸"}</span>}
+                  {!collapsed && item.sub && <span style={{ fontSize: 10, color: "var(--muted3)" }}>{open[item.key] ? "▾" : "▸"}</span>}
                 </button>
 
                 {!collapsed && item.sub && open[item.key] && (
@@ -247,7 +247,7 @@ function Sidebar({
                             width: "100%", textAlign: "left", display: "block",
                             padding: "6px 10px", borderRadius: 8, border: "none",
                             background: isAct ? "rgba(56,189,248,0.12)" : "transparent",
-                            color: isAct ? "#38bdf8" : "#64748b",
+                            color: isAct ? "var(--accent-hi)" : "var(--muted)",
                             cursor: "pointer", fontSize: 12,
                             fontWeight: isAct ? 700 : 400,
                           }}
@@ -265,7 +265,7 @@ function Sidebar({
       </div>
 
       <div style={{ padding: "8px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-        <button onClick={onCollapse} style={{ width: "100%", padding: 8, borderRadius: 10, border: "none", background: "rgba(255,255,255,0.04)", color: "#475569", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8 }}>
+        <button onClick={onCollapse} style={{ width: "100%", padding: 8, borderRadius: 10, border: "none", background: "rgba(255,255,255,0.04)", color: "var(--muted3)", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8 }}>
           <span>{collapsed ? "▶" : "◀"}</span>
           {!collapsed && "Contraer menú"}
         </button>
@@ -329,31 +329,31 @@ function MasSheet({
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 200 }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201,
-        background: "white", borderRadius: "20px 20px 0 0",
+        background: "var(--card)", borderRadius: "20px 20px 0 0",
         padding: "12px 0 32px",
         boxShadow: "0 -8px 40px rgba(15,23,42,0.2)",
         maxHeight: "85dvh", overflowY: "auto",
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 99, background: "#e2e8f0", margin: "0 auto 16px" }} />
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--line)", margin: "0 auto 16px" }} />
         {seccionesVisibles.map((seccion, si) => (
           <div key={seccion.titulo}>
-            <div style={{ padding: si === 0 ? "0 20px 8px" : "16px 20px 8px", fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.1em" }}>{seccion.titulo}</div>
+            <div style={{ padding: si === 0 ? "0 20px 8px" : "16px 20px 8px", fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.1em" }}>{seccion.titulo}</div>
             {seccion.items.map(e => (
               <button
                 key={e.key}
                 onClick={() => { navigate(e.key); onClose(); }}
                 style={{
                   width: "100%", display: "flex", alignItems: "center", gap: 16,
-                  padding: "12px 20px", border: "none", background: ctx.view === e.key ? "#eff6ff" : "transparent",
+                  padding: "12px 20px", border: "none", background: ctx.view === e.key ? "var(--accent-soft2)" : "transparent",
                   cursor: "pointer", textAlign: "left",
                 }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{e.icon}</div>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{e.icon}</div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{e.label}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{e.desc}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{e.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>{e.desc}</div>
                 </div>
-                <span style={{ marginLeft: "auto", color: "#cbd5e1", fontSize: 18 }}>›</span>
+                <span style={{ marginLeft: "auto", color: "var(--line2)", fontSize: 18 }}>›</span>
               </button>
             ))}
           </div>
@@ -374,11 +374,11 @@ function InstallBanner() {
   }, []);
   if (!visible) return null;
   return (
-    <div style={{ background: "#0284c7", color: "white", padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <div style={{ background: "var(--accent)", color: "var(--card)", padding: "10px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
       <span style={{ fontSize: 13, fontWeight: 600 }}>Instala MotoGestión en tu celular para acceso rápido</span>
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => { prompt?.prompt(); setVisible(false); }} style={{ background: "white", color: "#0284c7", border: "none", borderRadius: 10, padding: "6px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Instalar</button>
-        <button onClick={() => setVisible(false)} style={{ background: "transparent", color: "white", border: "1px solid rgba(255,255,255,0.5)", borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 13 }}>✕</button>
+        <button onClick={() => { prompt?.prompt(); setVisible(false); }} style={{ background: "var(--card)", color: "var(--accent)", border: "none", borderRadius: 10, padding: "6px 14px", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Instalar</button>
+        <button onClick={() => setVisible(false)} style={{ background: "transparent", color: "var(--card)", border: "1px solid rgba(255,255,255,0.5)", borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontSize: 13 }}>✕</button>
       </div>
     </div>
   );
@@ -504,10 +504,10 @@ function Shell() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f172a" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--ink)" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🏍️</div>
-          <div style={{ color: "#64748b", fontSize: 14 }}>Cargando MotoGestión...</div>
+          <div style={{ color: "var(--muted)", fontSize: 14 }}>Cargando MotoGestión...</div>
         </div>
       </div>
     );
@@ -536,7 +536,7 @@ function Shell() {
   }
 
   const contentView = (
-    <div style={{ flex: 1, background: "#f1f5f9", minHeight: 0 }}>
+    <div style={{ flex: 1, background: "var(--bg)", minHeight: 0 }}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
@@ -567,29 +567,29 @@ function Shell() {
 
     return (
       <SubadminScopeProvider scope={scope}>
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "#0f172a", background: "#f1f5f9" }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "var(--text)", background: "var(--bg)" }}>
         <InstallBanner />
 
         {/* Mobile top header */}
         <header style={{
           position: "sticky", top: 0, zIndex: 50,
-          background: "white", borderBottom: "1px solid #f1f5f9",
+          background: "var(--card)", borderBottom: "1px solid var(--soft)",
           padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
           boxShadow: "0 1px 8px rgba(15,23,42,0.06)",
         }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a" }}>{currentTitle}</div>
-            {filterLabel && <div style={{ fontSize: 11, color: "#0284c7", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
+            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>{currentTitle}</div>
+            {filterLabel && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{filterLabel}</div>}
           </div>
-          <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
+          <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>
           <CampanaAlertas onNavegar={navigate} />
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setUserMenuOpen(p => !p)}
               style={{
                 width: 36, height: 36, borderRadius: 999, border: "none",
-                background: "linear-gradient(135deg, #0284c7, #10b981)",
-                color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                background: "linear-gradient(135deg, var(--accent), var(--ok2))",
+                color: "var(--card)", fontWeight: 800, fontSize: 13, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
@@ -600,14 +600,14 @@ function Shell() {
                 <div onClick={() => setUserMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
                 <div style={{
                   position: "absolute", top: 44, right: 0, width: 200,
-                  background: "white", borderRadius: 14, zIndex: 99,
+                  background: "var(--card)", borderRadius: 14, zIndex: 99,
                   boxShadow: "0 8px 32px rgba(15,23,42,0.15)", overflow: "hidden",
                 }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{profile?.nombre ?? "Usuario"}</div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Rol: {profile?.role}</div>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--soft)" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{profile?.nombre ?? "Usuario"}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Rol: {profile?.role}</div>
                   </div>
-                  <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
+                  <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--bad)", fontWeight: 600 }}>
                     Cerrar sesión
                   </button>
                 </div>
@@ -624,7 +624,7 @@ function Shell() {
         {/* Bottom tab bar */}
         <nav style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: "white", borderTop: "1px solid #e2e8f0",
+          background: "var(--card)", borderTop: "1px solid var(--line)",
           display: "flex", alignItems: "stretch",
           boxShadow: "0 -2px 16px rgba(15,23,42,0.08)",
           paddingBottom: "env(safe-area-inset-bottom)",
@@ -639,8 +639,8 @@ function Shell() {
                   flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
                   justifyContent: "center", padding: "8px 4px", border: "none",
                   background: "transparent", cursor: "pointer", gap: 3,
-                  color: active ? "#0284c7" : "#94a3b8",
-                  borderTop: active ? "2px solid #0284c7" : "2px solid transparent",
+                  color: active ? "var(--accent)" : "var(--faint)",
+                  borderTop: active ? "2px solid var(--accent)" : "2px solid transparent",
                 }}
               >
                 <span style={{ fontSize: 22 }}>{tab.icon}</span>
@@ -655,8 +655,8 @@ function Shell() {
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
                 justifyContent: "center", padding: "8px 4px", border: "none",
                 background: "transparent", cursor: "pointer", gap: 3,
-                color: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "#0284c7" : "#94a3b8",
-                borderTop: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "2px solid #0284c7" : "2px solid transparent",
+                color: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "var(--accent)" : "var(--faint)",
+                borderTop: ["contratos","taller","liquidaciones","usuarios","configuracion"].includes(ctx.view) ? "2px solid var(--accent)" : "2px solid transparent",
               }}
             >
               <span style={{ fontSize: 22 }}>☰</span>
@@ -675,35 +675,35 @@ function Shell() {
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
     <SubadminScopeProvider scope={scope}>
-    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "#0f172a" }}>
+    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "var(--text)" }}>
       <InstallBanner />
       <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: "100vh" }}>
         {/* Desktop top bar */}
         <header style={{
-          position: "sticky", top: 0, zIndex: 40, background: "white",
-          borderBottom: "1px solid #e2e8f0", padding: "0 24px",
+          position: "sticky", top: 0, zIndex: 40, background: "var(--card)",
+          borderBottom: "1px solid var(--line)", padding: "0 24px",
           display: "flex", alignItems: "center", gap: 16, height: 56,
           boxShadow: "0 1px 4px rgba(15,23,42,0.04)",
         }}>
           <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{currentTitle}</span>
-            {filterLabel && <span style={{ marginLeft: 8, fontSize: 13, color: "#0284c7", fontWeight: 600 }}>/ {filterLabel}</span>}
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{currentTitle}</span>
+            {filterLabel && <span style={{ marginLeft: 8, fontSize: 13, color: "var(--accent)", fontWeight: 600 }}>/ {filterLabel}</span>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 13, color: "#64748b" }}>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
               {profile?.nombre ?? "Usuario"} · <span style={{ fontWeight: 700 }}>{profile?.role}</span>
             </div>
-            <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "#64748b" }}>🔍</button>
+            <button onClick={() => setBusquedaOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, padding: 4, color: "var(--muted)" }}>🔍</button>
             <CampanaAlertas onNavegar={navigate} />
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setUserMenuOpen(p => !p)}
                 style={{
                   width: 34, height: 34, borderRadius: 999, border: "none",
-                  background: "linear-gradient(135deg, #0284c7, #10b981)",
-                  color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer",
+                  background: "linear-gradient(135deg, var(--accent), var(--ok2))",
+                  color: "var(--card)", fontWeight: 800, fontSize: 13, cursor: "pointer",
                 }}
               >
                 {(profile?.nombre ?? "U")[0].toUpperCase()}
@@ -713,14 +713,14 @@ function Shell() {
                   <div onClick={() => setUserMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
                   <div style={{
                     position: "absolute", top: 42, right: 0, width: 200,
-                    background: "white", borderRadius: 14, zIndex: 99,
+                    background: "var(--card)", borderRadius: 14, zIndex: 99,
                     boxShadow: "0 8px 32px rgba(15,23,42,0.15)", overflow: "hidden",
                   }}>
-                    <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--soft)" }}>
                       <div style={{ fontSize: 13, fontWeight: 700 }}>{profile?.nombre ?? "Usuario"}</div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Rol: {profile?.role}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Rol: {profile?.role}</div>
                     </div>
-                    <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
+                    <button onClick={signOut} style={{ width: "100%", textAlign: "left", padding: "12px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--bad)", fontWeight: 600 }}>
                       Cerrar sesión
                     </button>
                   </div>

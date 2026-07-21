@@ -171,7 +171,7 @@ export default function LectorHuella({ label, onChange }: Props) {
   return (
     <div>
       <label style={labelStyle}>{label}</label>
-      <div style={{ margin: "2px 0 8px", fontSize: 12, fontWeight: 700, color: "#0369a1" }}>
+      <div style={{ margin: "2px 0 8px", fontSize: 12, fontWeight: 700, color: "var(--accent-ink)" }}>
         👉 Dedo a usar: <span style={{ textTransform: "uppercase" }}>índice derecho</span>
       </div>
       {estado === "capturada" && huella ? (
@@ -179,18 +179,18 @@ export default function LectorHuella({ label, onChange }: Props) {
           <img
             src={huella}
             alt="Huella capturada"
-            style={{ width: 90, height: 110, objectFit: "contain", background: "#fff", border: `2px solid ${calidadBaja ? "#d97706" : "#16a34a"}`, borderRadius: 10 }}
+            style={{ width: 90, height: 110, objectFit: "contain", background: "var(--card)", border: `2px solid ${calidadBaja ? "var(--warn)" : "var(--ok)"}`, borderRadius: 10 }}
           />
           <div style={{ minWidth: 0 }}>
             {calidadBaja ? (
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#92400e" }}>⚠ Huella capturada, pero de BAJA calidad — se recomienda repetir</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--warn-ink)" }}>⚠ Huella capturada, pero de BAJA calidad — se recomienda repetir</div>
             ) : (
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>✔ Huella capturada con buena calidad</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ok-ink)" }}>✔ Huella capturada con buena calidad</div>
             )}
             <button
               type="button"
               onClick={repetir}
-              style={{ marginTop: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, cursor: "pointer" }}
+              style={{ marginTop: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--card)", fontSize: 12, cursor: "pointer" }}
             >
               🔄 Repetir captura
             </button>
@@ -205,9 +205,9 @@ export default function LectorHuella({ label, onChange }: Props) {
               fontSize: 13,
               fontWeight: 600,
               background:
-                estado === "esperando" ? "#dcfce7" : estado === "conectando" ? "#f1f5f9" : "#fee2e2",
+                estado === "esperando" ? "var(--ok-soft)" : estado === "conectando" ? "var(--soft)" : "var(--bad-soft)",
               color:
-                estado === "esperando" ? "#166534" : estado === "conectando" ? "#64748b" : "#991b1b",
+                estado === "esperando" ? "var(--ok-ink)" : estado === "conectando" ? "var(--muted)" : "var(--bad-ink)",
             }}
           >
             {estado === "conectando" && "Conectando con el lector de huellas..."}
@@ -221,19 +221,19 @@ export default function LectorHuella({ label, onChange }: Props) {
               <button
                 type="button"
                 onClick={reiniciarConexion}
-                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#334155" }}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}
               >
                 🔄 Reintentar lectura
               </button>
               {estado === "esperando" && (
-                <span style={{ fontSize: 11, color: "#64748b" }}>¿Puso el dedo y no lee? Toque Reintentar.</span>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>¿Puso el dedo y no lee? Toque Reintentar.</span>
               )}
             </div>
           )}
         </>
       )}
       {aviso && (
-        <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "#fef3c7", color: "#92400e", fontSize: 12 }}>
+        <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12 }}>
           ⚠ {aviso}
         </div>
       )}

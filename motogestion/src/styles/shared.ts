@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 // esto asegura que cualquier lista/tarjeta/input nuevo se vea igual.
 
 export const card: CSSProperties = {
-  background: "white",
+  background: "var(--card)",
   borderRadius: 16,
   padding: 16,
   boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
@@ -16,22 +16,26 @@ export const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 14,
-  border: "1px solid #cbd5e1",
+  border: "1px solid var(--line2)",
   outline: "none",
   fontSize: 14,
   boxSizing: "border-box",
+  // Fondo y color explícitos: sin esto, el modo oscuro del celular pintaba
+  // las letras del mismo color del recuadro (bug de "no salen las letras").
+  background: "var(--card)",
+  color: "var(--text)",
 };
 
 export const labelStyle: CSSProperties = {
   marginBottom: 6,
   fontSize: 14,
   fontWeight: 600,
-  color: "#334155",
+  color: "var(--muted2)",
 };
 
 export const primaryBtn: CSSProperties = {
-  background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-  color: "white",
+  background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+  color: "var(--card)",
   border: "none",
   borderRadius: 14,
   padding: "10px 16px",
@@ -40,13 +44,13 @@ export const primaryBtn: CSSProperties = {
 };
 
 export const secondaryBtn: CSSProperties = {
-  background: "white",
-  border: "1px solid #cbd5e1",
+  background: "var(--card)",
+  border: "1px solid var(--line2)",
   borderRadius: 14,
   padding: "10px 16px",
   fontWeight: 600,
   cursor: "pointer",
-  color: "#334155",
+  color: "var(--muted2)",
 };
 
 // Formato de dinero — una sola fuente de verdad ($ + separador de miles).

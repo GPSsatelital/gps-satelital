@@ -25,18 +25,18 @@ type Props = {
 };
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "11px 13px", borderRadius: 12, border: "1px solid #cbd5e1",
+  width: "100%", padding: "11px 13px", borderRadius: 12, border: "1px solid var(--line2)",
   outline: "none", fontSize: 14, boxSizing: "border-box",
 };
-const labelStyle: React.CSSProperties = { marginBottom: 5, fontSize: 13, fontWeight: 700, color: "#334155", display: "block" };
+const labelStyle: React.CSSProperties = { marginBottom: 5, fontSize: 13, fontWeight: 700, color: "var(--muted2)", display: "block" };
 const btnPrimary: React.CSSProperties = {
   flex: 1, padding: "12px", borderRadius: 12, border: "none",
-  background: "linear-gradient(90deg,#0284c7,#0369a1)", color: "white",
+  background: "linear-gradient(90deg,var(--accent),var(--accent-ink))", color: "var(--card)",
   fontWeight: 800, fontSize: 14, cursor: "pointer",
 };
 const btnSecondary: React.CSSProperties = {
-  padding: "12px 18px", borderRadius: 12, border: "1px solid #e2e8f0",
-  background: "white", fontWeight: 700, cursor: "pointer", color: "#64748b", fontSize: 13,
+  padding: "12px 18px", borderRadius: 12, border: "1px solid var(--line)",
+  background: "var(--card)", fontWeight: 700, cursor: "pointer", color: "var(--muted)", fontSize: 13,
 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -485,21 +485,21 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 0 : 16, zIndex: 100, backdropFilter: "blur(4px)" }}
       onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 600, background: "white",
+        width: "100%", maxWidth: 600, background: "var(--card)",
         borderRadius: isMobile ? 0 : 22, display: "flex", flexDirection: "column",
         maxHeight: isMobile ? "100dvh" : "96vh", height: isMobile ? "100dvh" : undefined,
         overflow: "hidden", boxShadow: "0 24px 80px rgba(15,23,42,0.3)",
       }}>
 
         {/* Header */}
-        <div style={{ padding: "16px 20px 12px", background: "#0f172a" }}>
+        <div style={{ padding: "16px 20px 12px", background: "var(--ink)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>
                 Paso {step} de 6
               </div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "white" }}>{pasoTitulos[step - 1]}</div>
-              {clienteActual && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
+              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--card)" }}>{pasoTitulos[step - 1]}</div>
+              {clienteActual && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {contratoId && (
@@ -507,12 +507,12 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   onClick={handleCancelarYEliminar}
                   disabled={eliminando}
                   title="Eliminar este intento de contrato por completo"
-                  style={{ background: "rgba(248,113,113,0.15)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", color: "#fca5a5", opacity: eliminando ? 0.6 : 1 }}
+                  style={{ background: "rgba(248,113,113,0.15)", border: "none", borderRadius: 999, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", color: "var(--bad-line)", opacity: eliminando ? 0.6 : 1 }}
                 >
                   {eliminando ? "Eliminando..." : "🗑️ Cancelar y eliminar"}
                 </button>
               )}
-              <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", width: 32, height: 32, borderRadius: "50%", fontSize: 18, cursor: "pointer", color: "var(--card)", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
           </div>
           {/* Stepper */}
@@ -522,12 +522,12 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 <div style={{
                   width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 800,
-                  background: i + 1 < step ? "#22c55e" : i + 1 === step ? "#0284c7" : "rgba(255,255,255,0.1)",
-                  color: "white",
+                  background: i + 1 < step ? "var(--ok)" : i + 1 === step ? "var(--accent)" : "rgba(255,255,255,0.1)",
+                  color: "var(--card)",
                 }}>
                   {i + 1 < step ? "✓" : i + 1}
                 </div>
-                <div style={{ fontSize: 9, color: i + 1 === step ? "white" : "#475569", fontWeight: i + 1 === step ? 700 : 400, textAlign: "center" }}>{lbl}</div>
+                <div style={{ fontSize: 9, color: i + 1 === step ? "var(--card)" : "var(--muted3)", fontWeight: i + 1 === step ? 700 : 400, textAlign: "center" }}>{lbl}</div>
               </div>
             ))}
           </div>
@@ -579,30 +579,30 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   </div>
 
                   {valorSemanal > 0 && (
-                    <div style={{ padding: "12px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd", fontSize: 13 }}>
-                      <div style={{ fontWeight: 800, color: "#0369a1", marginBottom: 8 }}>Desglose del período</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, fontSize: 12, color: "#334155", marginBottom: 6 }}>
-                        <div style={{ fontWeight: 700, color: "#64748b" }}>Día</div>
-                        <div style={{ fontWeight: 700, color: "#64748b" }}>Tarifa empresa</div>
-                        <div style={{ fontWeight: 700, color: "#166534" }}>Ahorro cliente</div>
-                        <div style={{ fontWeight: 700, color: "#64748b" }}>Pago día</div>
+                    <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13 }}>
+                      <div style={{ fontWeight: 800, color: "var(--accent-ink)", marginBottom: 8 }}>Desglose del período</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, fontSize: 12, color: "var(--muted2)", marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700, color: "var(--muted)" }}>Día</div>
+                        <div style={{ fontWeight: 700, color: "var(--muted)" }}>Tarifa empresa</div>
+                        <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>Ahorro cliente</div>
+                        <div style={{ fontWeight: 700, color: "var(--muted)" }}>Pago día</div>
                         <div>L–S (×6)</div>
                         <div>$ {fmt(tarifaDiaria)}</div>
-                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroLS)}</div>
+                        <div style={{ color: "var(--ok-ink)", fontWeight: 700 }}>$ {fmt(ahorroLS)}</div>
                         <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaLS)}</div>
                         <div>Domingo</div>
                         <div>$ {fmt(tarifaDomingo)}</div>
-                        <div style={{ color: "#166534", fontWeight: 700 }}>$ {fmt(ahorroDom)}</div>
+                        <div style={{ color: "var(--ok-ink)", fontWeight: 700 }}>$ {fmt(ahorroDom)}</div>
                         <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaDom)}</div>
                       </div>
-                      <div style={{ borderTop: "1px solid #bae6fd", paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ borderTop: "1px solid var(--accent-line)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-                          <span style={{ color: "#64748b", fontSize: 12 }}>Empresa/sem: <strong>$ {fmt(tarifaSemana)}</strong></span>
-                          <span style={{ color: "#166534", fontSize: 12 }}>Ahorro/sem: <strong>$ {fmt(ahorroSemana)}</strong></span>
-                          <span style={{ color: "#64748b", fontSize: 12 }}>Total/sem: <strong>$ {fmt(valorSemanal)}</strong></span>
+                          <span style={{ color: "var(--muted)", fontSize: 12 }}>Empresa/sem: <strong>$ {fmt(tarifaSemana)}</strong></span>
+                          <span style={{ color: "var(--ok-ink)", fontSize: 12 }}>Ahorro/sem: <strong>$ {fmt(ahorroSemana)}</strong></span>
+                          <span style={{ color: "var(--muted)", fontSize: 12 }}>Total/sem: <strong>$ {fmt(valorSemanal)}</strong></span>
                         </div>
                         {form.forma_pago !== "Semanal" && (
-                          <div style={{ background: "#0284c7", color: "white", borderRadius: 8, padding: "6px 10px", fontWeight: 800, fontSize: 13, textAlign: "center" }}>
+                          <div style={{ background: "var(--accent)", color: "var(--card)", borderRadius: 8, padding: "6px 10px", fontWeight: 800, fontSize: 13, textAlign: "center" }}>
                             Total {form.forma_pago}: $ {fmt(valorPeriodo)}
                           </div>
                         )}
@@ -619,13 +619,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                           const active = form.dia_pago === dia;
                           return (
                             <button key={dia} onClick={() => setForm(prev => ({ ...prev, dia_pago: dia }))} style={{
-                              flex: 1, padding: "10px 12px", borderRadius: 12, border: `2px solid ${active ? "#0284c7" : "#e2e8f0"}`,
-                              background: active ? "#eff6ff" : "white", cursor: "pointer", textAlign: "left",
+                              flex: 1, padding: "10px 12px", borderRadius: 12, border: `2px solid ${active ? "var(--accent)" : "var(--line)"}`,
+                              background: active ? "var(--accent-soft2)" : "var(--card)", cursor: "pointer", textAlign: "left",
                             }}>
-                              <div style={{ fontWeight: 800, fontSize: 13, color: active ? "#0284c7" : "#334155" }}>{dia}</div>
-                              {p && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                              <div style={{ fontWeight: 800, fontSize: 13, color: active ? "var(--accent)" : "var(--muted2)" }}>{dia}</div>
+                              {p && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                                 Primer pago: {new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}<br />
-                                <span style={{ fontWeight: 700, color: active ? "#0284c7" : "#334155" }}>$ {fmt(p.valor)}</span> ({p.dias} días)
+                                <span style={{ fontWeight: 700, color: active ? "var(--accent)" : "var(--muted2)" }}>$ {fmt(p.valor)}</span> ({p.dias} días)
                               </div>}
                             </button>
                           );
@@ -647,8 +647,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                           const active = form.dias_pago_mes.length === preset.length && preset.every(d => form.dias_pago_mes.includes(d));
                           return (
                             <button key={preset.join("-")} onClick={() => setForm(p => ({ ...p, dias_pago_mes: preset }))} style={{
-                              padding: "6px 12px", borderRadius: 10, border: `1px solid ${active ? "#0284c7" : "#e2e8f0"}`,
-                              background: active ? "#eff6ff" : "white", color: active ? "#0284c7" : "#64748b",
+                              padding: "6px 12px", borderRadius: 10, border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`,
+                              background: active ? "var(--accent-soft2)" : "var(--card)", color: active ? "var(--accent)" : "var(--muted)",
                               fontWeight: 700, fontSize: 12, cursor: "pointer",
                             }}>
                               {preset.join(" y ")}
@@ -679,15 +679,15 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                         )}
                       </div>
                       {form.forma_pago === "Quincenal" && form.dias_pago_mes.length === 2 && form.dias_pago_mes[0] === form.dias_pago_mes[1] && (
-                        <div style={{ fontSize: 12, color: "#991b1b", marginTop: 4 }}>Las 2 fechas deben ser distintas.</div>
+                        <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 4 }}>Las 2 fechas deben ser distintas.</div>
                       )}
                       {previewCalendario && (
-                        <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "2px solid #0284c7", background: "#eff6ff" }}>
-                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                        <div style={{ marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "2px solid var(--accent)", background: "var(--accent-soft2)" }}>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>
                             Primer pago: {new Date(previewCalendario.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
                           </div>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#0284c7" }}>$ {fmt(previewCalendario.valor)}</span>
-                          <span style={{ fontSize: 12, color: "#64748b" }}> ({previewCalendario.dias} días)</span>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>$ {fmt(previewCalendario.valor)}</span>
+                          <span style={{ fontSize: 12, color: "var(--muted)" }}> ({previewCalendario.dias} días)</span>
                         </div>
                       )}
                     </div>
@@ -698,27 +698,27 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     <input type="number" min="1" max="24" style={inputStyle} value={form.meses}
                       onChange={e => setForm(p => ({ ...p, meses: e.target.value }))} placeholder="Máx. 24 meses" />
                     {form.meses && (
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#0369a1", marginTop: 3 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-ink)", marginTop: 3 }}>
                         = {totalCajasContrato(form.forma_pago, Number(form.meses) || 0)} cuotas {form.forma_pago === "Semanal" ? "semanales" : form.forma_pago === "Quincenal" ? "quincenales" : "mensuales"} (calendario real)
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label style={labelStyle}>Base inicial entregada <span style={{ fontWeight: 400, fontSize: 11, color: "#94a3b8" }}>(del registro del cliente)</span></label>
+                    <label style={labelStyle}>Base inicial entregada <span style={{ fontWeight: 400, fontSize: 11, color: "var(--faint)" }}>(del registro del cliente)</span></label>
                     <div style={{
                       padding: "6px 10px", borderRadius: 10, fontSize: 12, lineHeight: 1.4, textAlign: "center",
-                      background: form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "#dcfce7" : "#fef3c7") : "#f1f5f9",
-                      border: `1px solid ${form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "#bbf7d0" : "#fde68a") : "#e2e8f0"}`,
+                      background: form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "var(--ok-soft)" : "var(--warn-soft)") : "var(--soft)",
+                      border: `1px solid ${form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "var(--ok-line)" : "var(--warn-line)") : "var(--line)"}`,
                     }}>
                       <div>
-                        <span style={{ fontWeight: 800, color: "#0f172a" }}>$ {fmt(ahorroEntregado)}</span>
+                        <span style={{ fontWeight: 800, color: "var(--text)" }}>$ {fmt(ahorroEntregado)}</span>
                         {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
-                          <span style={{ color: "#64748b" }}> de $ {fmt(baseRequerida)}</span>
+                          <span style={{ color: "var(--muted)" }}> de $ {fmt(baseRequerida)}</span>
                         )}
                       </div>
                       {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
-                        <div style={{ fontWeight: 700, color: baseSuficiente ? "#166534" : "#92400e" }}>
+                        <div style={{ fontWeight: 700, color: baseSuficiente ? "var(--ok-ink)" : "var(--warn-ink)" }}>
                           {baseSuficiente ? "✅ suficiente" : `falta $ ${fmt(baseRequerida - ahorroEntregado)}`}
                         </div>
                       )}
@@ -741,7 +741,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <input style={{ ...inputStyle, marginBottom: 12 }} placeholder="Buscar por placa, marca o modelo..."
                 value={motoBusqueda} onChange={e => setMotoBusqueda(e.target.value)} />
               {motosDisponibles.length === 0 && (
-                <div style={{ textAlign: "center", padding: "32px 16px", color: "#64748b", fontSize: 14 }}>
+                <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)", fontSize: 14 }}>
                   No hay motos disponibles{motoBusqueda ? " con ese filtro" : ""}.
                 </div>
               )}
@@ -751,16 +751,16 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                     if (!confirm(`¿Confirmas la moto ${m.placa} (${m.marca} ${m.modelo}) para ${(clienteActual?.nombre ?? "").toUpperCase()}?`)) return;
                     handleStep2(m.id);
                   }} disabled={guardando} style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0",
-                    background: "white", cursor: "pointer", textAlign: "left", opacity: guardando ? 0.6 : 1,
+                    width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--line)",
+                    background: "var(--card)", cursor: "pointer", textAlign: "left", opacity: guardando ? 0.6 : 1,
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: "#0284c7" }}>{m.placa}</div>
-                        <div style={{ fontSize: 13, color: "#334155" }}>{m.marca} {m.modelo} · {m.color}</div>
-                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{m.grupo} · {m.cilindraje}</div>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{m.placa}</div>
+                        <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
+                        <div style={{ fontSize: 11, color: "var(--faint)" }}>{m.grupo} · {m.cilindraje}</div>
                       </div>
-                      <div style={{ fontSize: 22, color: "#0284c7" }}>→</div>
+                      <div style={{ fontSize: 22, color: "var(--accent)" }}>→</div>
                     </div>
                   </button>
                 ))}
@@ -771,34 +771,34 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           {/* ── PASO 3: Firma contrato ── */}
           {step === 3 && clienteActual && contratoData && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", maxHeight: 280, overflowY: "auto", padding: "12px 16px" }}>
-                <div style={{ fontSize: 11, lineHeight: 1.7, color: "#334155" }}
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", maxHeight: 280, overflowY: "auto", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, lineHeight: 1.7, color: "var(--muted2)" }}
                   dangerouslySetInnerHTML={{ __html: generarHTMLContrato(contratoData, clienteActual, motoActual ?? null) }} />
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={leido3} onChange={e => setLeido3(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el contrato de arrendamiento</span>
+                  style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>He leído y acepto el contrato de arrendamiento</span>
               </label>
               <CanvasFirma key="firma-contrato-cliente" label="Firma del cliente" modal opcional={false} onChange={setFirmaContrato} />
               <CanvasFirma key="firma-contrato-acomp" label="Firma del acompañante" modal opcional={false} onChange={setFirmaContratoAcomp} />
-              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
+              <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
                 {clienteActual.autorizacion_datos_huella_url ? (
-                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
                     ✔ Se usará la huella registrada del cliente
                   </div>
                 ) : (
                   <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
                 )}
                 {clienteActual.acompanante_huella_url ? (
-                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
                     ✔ Se usará la huella registrada del acompañante
                   </div>
                 ) : huellaAcompanante ? (
                   <LectorHuella label="Huella del acompañante" onChange={setHuellaAcompanante} />
                 ) : (
-                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 13, fontWeight: 600, color: "#991b1b" }}>
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
                     ⚠ Falta la huella del acompañante — captúrala en la oficina (ficha del cliente → Editar) antes de firmar.
                   </div>
                 )}
@@ -809,21 +809,21 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           {/* ── PASO 4: Firma pagaré ── */}
           {step === 4 && clienteActual && contratoData && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", maxHeight: 280, overflowY: "auto", padding: "12px 16px" }}>
-                <div style={{ fontSize: 11, lineHeight: 1.7, color: "#334155" }}
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", maxHeight: 280, overflowY: "auto", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, lineHeight: 1.7, color: "var(--muted2)" }}
                   dangerouslySetInnerHTML={{ __html: generarHTMLPagare(contratoData, clienteActual) }} />
               </div>
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={leido4} onChange={e => setLeido4(e.target.checked)}
-                  style={{ width: 18, height: 18, accentColor: "#0284c7" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#334155" }}>He leído y acepto el pagaré y carta de instrucciones</span>
+                  style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>He leído y acepto el pagaré y carta de instrucciones</span>
               </label>
               <CanvasFirma key="firma-pagare-cliente" label="Firma del cliente" modal opcional={false} onChange={setFirmaPagare} />
               <CanvasFirma key="firma-pagare-acomp" label="Firma del acompañante" modal opcional={false} onChange={setFirmaPagareAcomp} />
-              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
+              <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
                 {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) && (clienteActual.acompanante_huella_url || huellaAcompanante) ? (
-                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "#dcfce7", border: "1px solid #86efac", fontSize: 13, fontWeight: 600, color: "#166534" }}>
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
                     ✔ Se usarán las huellas registradas (cliente y acompañante)
                   </div>
                 ) : (
@@ -832,7 +832,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                       <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
                     )}
                     {!clienteActual.acompanante_huella_url && !huellaAcompanante && (
-                      <div style={{ padding: "8px 12px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 13, fontWeight: 600, color: "#991b1b" }}>
+                      <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
                         ⚠ Falta la huella del acompañante — captúrala en la oficina (ficha del cliente → Editar) antes de firmar.
                       </div>
                     )}
@@ -845,27 +845,27 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           {/* ── PASO 5: Foto certificado ── */}
           {step === 5 && clienteActual && contratoData && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ padding: "14px 16px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>📋 Certificado de conocimiento</div>
-                <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.6 }}>
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--accent-ink)", marginBottom: 6 }}>📋 Certificado de conocimiento</div>
+                <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.6 }}>
                   Verifica que el cliente haya leído y firmado el documento físico. El contenido del certificado es:
                 </div>
               </div>
-              <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", maxHeight: 300, overflowY: "auto", padding: "12px 16px" }}>
-                <div style={{ fontSize: 11, lineHeight: 1.7, color: "#334155" }}
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", maxHeight: 300, overflowY: "auto", padding: "12px 16px" }}>
+                <div style={{ fontSize: 11, lineHeight: 1.7, color: "var(--muted2)" }}
                   dangerouslySetInnerHTML={{ __html: generarHTMLCertificado(contratoData, clienteActual) }} />
               </div>
-              <div style={{ padding: "10px 14px", borderRadius: 10, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 12, color: "#92400e", fontWeight: 600 }}>
+              <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>
                 Ahora toma una foto al documento físico firmado y súbela como evidencia.
               </div>
 
               <div style={{ display: "flex", gap: 10 }}>
-                <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px", borderRadius: 12, border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px", borderRadius: 12, border: "1px solid var(--line2)", background: "var(--soft2)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
                   📷 Cámara
                   <input ref={inputCertCamRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                     onChange={e => { const f = e.target.files?.[0]; if (f) setFotoCert(f); }} />
                 </label>
-                <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px", borderRadius: 12, border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+                <label style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px", borderRadius: 12, border: "1px solid var(--line2)", background: "var(--soft2)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
                   🖼 Galería
                   <input ref={inputCertGalRef} type="file" accept="image/*,application/pdf" style={{ display: "none" }}
                     onChange={e => { const f = e.target.files?.[0]; if (f) setFotoCert(f); }} />
@@ -874,9 +874,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
               {fotoCert && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#166534", marginBottom: 6 }}>✅ {fotoCert.name}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 6 }}>✅ {fotoCert.name}</div>
                   {fotoCert.type.startsWith("image/") && (
-                    <div style={{ borderRadius: 12, overflow: "hidden", maxWidth: 320, border: "1px solid #e2e8f0" }}>
+                    <div style={{ borderRadius: 12, overflow: "hidden", maxWidth: 320, border: "1px solid var(--line)" }}>
                       <img src={URL.createObjectURL(fotoCert)} alt="Certificado" style={{ width: "100%", display: "block" }} />
                     </div>
                   )}
@@ -889,9 +889,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           {step === 6 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {motoActual && (
-                <div style={{ padding: "12px 14px", borderRadius: 12, background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0284c7" }}>🏍️ {motoActual.placa}</div>
-                  <div style={{ fontSize: 13, color: "#334155" }}>{motoActual.marca} {motoActual.modelo} · {motoActual.color}</div>
+                <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "var(--accent)" }}>🏍️ {motoActual.placa}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted2)" }}>{motoActual.marca} {motoActual.modelo} · {motoActual.color}</div>
                 </div>
               )}
 
@@ -907,13 +907,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   {ANGULOS_FOTO.map(({ key, label }) => {
                     const file = fotosEntrega[key];
                     return (
-                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${file ? "#bbf7d0" : "#e2e8f0"}`, background: file ? "#f0fdf4" : "#f8fafc", padding: 8, textAlign: "center" }}>
+                      <div key={key} style={{ borderRadius: 12, border: `1px solid ${file ? "var(--ok-line)" : "var(--line)"}`, background: file ? "var(--ok-soft)" : "var(--soft2)", padding: 8, textAlign: "center" }}>
                         {file ? (
                           <div style={{ position: "relative" }}>
                             <img src={URL.createObjectURL(file)} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
                             <button onClick={() => setFotosEntrega(p => { const n = { ...p }; delete n[key]; return n; })} style={{
                               position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
-                              background: "#ef4444", border: "none", color: "white", fontSize: 10, cursor: "pointer",
+                              background: "var(--bad)", border: "none", color: "var(--card)", fontSize: 10, cursor: "pointer",
                               display: "flex", alignItems: "center", justifyContent: "center",
                             }}>✕</button>
                           </div>
@@ -922,15 +922,15 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                             <IconoAngulo angulo={key} />
                           </div>
                         )}
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#334155", marginTop: 4, marginBottom: 6 }}>{label}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 4, marginBottom: 6 }}>{label}</div>
                         {!file && (
                           <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#0284c7" }} title="Cámara">
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent)" }} title="Cámara">
                               📷
                               <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                                 onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => ({ ...p, [key]: f })); }} />
                             </label>
-                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "#e0f2fe" }} title="Galería">
+                            <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent-soft)" }} title="Galería">
                               🖼
                               <input type="file" accept="image/*" style={{ display: "none" }}
                                 onChange={e => { const f = e.target.files?.[0]; if (f) setFotosEntrega(p => ({ ...p, [key]: f })); }} />
@@ -947,10 +947,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 <div style={labelStyle}>Checklist de condición</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {CHECKLIST.map((item, i) => (
-                    <label key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10, background: checklist[i] ? "#dcfce7" : "#f8fafc", border: `1px solid ${checklist[i] ? "#bbf7d0" : "#e2e8f0"}`, cursor: "pointer" }}>
+                    <label key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10, background: checklist[i] ? "var(--ok-soft)" : "var(--soft2)", border: `1px solid ${checklist[i] ? "var(--ok-line)" : "var(--line)"}`, cursor: "pointer" }}>
                       <input type="checkbox" checked={checklist[i]} onChange={e => setChecklist(p => p.map((v, j) => j === i ? e.target.checked : v))}
-                        style={{ width: 16, height: 16, accentColor: "#166534" }} />
-                      <span style={{ fontSize: 13, fontWeight: checklist[i] ? 700 : 400, color: checklist[i] ? "#166534" : "#334155" }}>{item}</span>
+                        style={{ width: 16, height: 16, accentColor: "var(--ok-ink)" }} />
+                      <span style={{ fontSize: 13, fontWeight: checklist[i] ? 700 : 400, color: checklist[i] ? "var(--ok-ink)" : "var(--muted2)" }}>{item}</span>
                     </label>
                   ))}
                 </div>
@@ -959,14 +959,14 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           )}
 
           {error && (
-            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "#fee2e2", color: "#991b1b", fontWeight: 600, fontSize: 13 }}>
+            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "var(--bad-soft)", color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>
               ⚠️ {error}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" }}>
+        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--line)", background: "var(--soft2)" }}>
           <div style={{ display: "flex", gap: 10 }}>
             {step > 1 && step !== 2 && (
               <button onClick={() => { setError(null); setStep(s => s - 1); }} style={btnSecondary}>← Atrás</button>
@@ -992,7 +992,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </button>
             )}
             {step === 6 && (
-              <button onClick={handleStep6} disabled={guardando} style={{ ...btnPrimary, background: guardando ? "#94a3b8" : "linear-gradient(90deg,#166534,#15803d)", opacity: guardando ? 0.6 : 1 }}>
+              <button onClick={handleStep6} disabled={guardando} style={{ ...btnPrimary, background: guardando ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok))", opacity: guardando ? 0.6 : 1 }}>
                 {guardando ? "Activando contrato..." : "✅ Activar contrato"}
               </button>
             )}

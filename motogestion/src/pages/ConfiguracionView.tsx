@@ -5,30 +5,31 @@ import type { Role } from "../contexts/AuthContext";
 import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
 import { useMensajesWhatsapp, MENSAJES_META, type ClaveMensaje } from "../hooks/useMensajesWhatsapp";
+import { getThemeMode, setThemeMode, type ThemeMode } from "../lib/theme";
 
 // ── Estilos compartidos ────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
-  background: "white", borderRadius: 16, padding: 20,
+  background: "var(--card)", borderRadius: 16, padding: 20,
   boxShadow: "0 2px 12px rgba(15,23,42,0.06)", marginBottom: 16,
 };
 const sectionTitle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: "#94a3b8",
+  fontSize: 11, fontWeight: 700, color: "var(--faint)",
   letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14,
 };
 const rowStyle: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between",
-  padding: "13px 0", borderBottom: "1px solid #f1f5f9",
+  padding: "13px 0", borderBottom: "1px solid var(--soft)",
 };
-const labelCol: React.CSSProperties = { fontSize: 14, color: "#334155", fontWeight: 500 };
-const valueCol: React.CSSProperties = { fontSize: 14, color: "#64748b", fontWeight: 400, textAlign: "right" };
+const labelCol: React.CSSProperties = { fontSize: 14, color: "var(--muted2)", fontWeight: 500 };
+const valueCol: React.CSSProperties = { fontSize: 14, color: "var(--muted)", fontWeight: 400, textAlign: "right" };
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: 12,
-  border: "1px solid #cbd5e1", outline: "none", fontSize: 14, boxSizing: "border-box",
+  border: "1px solid var(--line2)", outline: "none", fontSize: 14, boxSizing: "border-box",
 };
-const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 13, fontWeight: 600, color: "#334155" };
+const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 13, fontWeight: 600, color: "var(--muted2)" };
 const primaryBtn: React.CSSProperties = {
-  background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
-  color: "white", border: "none", borderRadius: 12, padding: "10px 20px",
+  background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
+  color: "var(--card)", border: "none", borderRadius: 12, padding: "10px 20px",
   fontWeight: 700, cursor: "pointer", fontSize: 14,
 };
 
@@ -51,14 +52,14 @@ function roleLabel(role: Role) {
 
 function roleBadge(role: Role) {
   const map: Record<Role, { bg: string; color: string }> = {
-    ADMIN:           { bg: "#dbeafe", color: "#1d4ed8" },
-    ADMIN_PRINCIPAL: { bg: "#ede9fe", color: "#6d28d9" },
-    SECRETARIA:      { bg: "#fef3c7", color: "#92400e" },
-    MECANICO:        { bg: "#dcfce7", color: "#166534" },
-    SUBADMIN:        { bg: "#e0f2fe", color: "#0369a1" },
-    SOCIO:           { bg: "#f1f5f9", color: "#334155" },
+    ADMIN:           { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+    ADMIN_PRINCIPAL: { bg: "var(--indigo-soft)", color: "var(--violet)" },
+    SECRETARIA:      { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+    MECANICO:        { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+    SUBADMIN:        { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+    SOCIO:           { bg: "var(--soft)", color: "var(--muted2)" },
   };
-  return map[role] ?? { bg: "#e2e8f0", color: "#334155" };
+  return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
 
 async function invocar(payload: Record<string, unknown>): Promise<{ error: string | null }> {
@@ -79,7 +80,7 @@ function SelectorAccesos({ accesos, onToggle }: { accesos: ViewKey[]; onToggle: 
     <div style={{ display: "grid", gap: 10 }}>
       {grupos.map(g => (
         <div key={g}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.06em", marginBottom: 6, textTransform: "uppercase" }}>{g}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.06em", marginBottom: 6, textTransform: "uppercase" }}>{g}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {MODULOS_ASIGNABLES.filter(m => m.grupo === g).map(m => {
               const on = accesos.includes(m.key);
@@ -87,9 +88,9 @@ function SelectorAccesos({ accesos, onToggle }: { accesos: ViewKey[]; onToggle: 
                 <button key={m.key} type="button" onClick={() => onToggle(m.key)} style={{
                   display: "flex", alignItems: "center", gap: 5,
                   padding: "6px 10px", borderRadius: 999, cursor: "pointer",
-                  border: on ? "1px solid #0284c7" : "1px solid #e2e8f0",
-                  background: on ? "#e0f2fe" : "#f8fafc",
-                  color: on ? "#0369a1" : "#64748b",
+                  border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
+                  background: on ? "var(--accent-soft)" : "var(--soft2)",
+                  color: on ? "var(--accent-ink)" : "var(--muted)",
                   fontSize: 12, fontWeight: on ? 700 : 500,
                 }}>
                   <span>{m.icon}</span>{m.label}
@@ -147,10 +148,10 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 80 }} />
-      <div style={{ position: "fixed", zIndex: 81, top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px, calc(100vw - 24px))", maxHeight: "calc(100dvh - 80px)", overflowY: "auto", background: "white", borderRadius: 18, padding: 20, boxShadow: "0 30px 80px rgba(15,23,42,0.3)" }}>
+      <div style={{ position: "fixed", zIndex: 81, top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px, calc(100vw - 24px))", maxHeight: "calc(100dvh - 80px)", overflowY: "auto", background: "var(--card)", borderRadius: 18, padding: 20, boxShadow: "0 30px 80px rgba(15,23,42,0.3)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ margin: 0, fontSize: 19 }}>Editar usuario</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#94a3b8" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--faint)" }}>×</button>
         </div>
         <div style={{ display: "grid", gap: 12 }}>
           <div><div style={labelStyle}>Nombre completo</div><input style={inputStyle} value={nombre} onChange={e => setNombre(e.target.value)} /></div>
@@ -172,16 +173,16 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
             <div><div style={labelStyle}>Accesos a módulos</div><SelectorAccesos accesos={accesos} onToggle={toggleAcceso} /></div>
           )}
           <button onClick={guardar} disabled={guardando} style={{ ...primaryBtn, opacity: guardando ? 0.7 : 1 }}>{guardando ? "Guardando..." : "Guardar cambios"}</button>
-          <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginTop: 4 }}>
+          <div style={{ borderTop: "1px solid var(--soft)", paddingTop: 14, marginTop: 4 }}>
             <div style={labelStyle}>Resetear contraseña</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>Asigna una contraseña temporal y compártela con el usuario.</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Asigna una contraseña temporal y compártela con el usuario.</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input type="text" style={{ ...inputStyle, flex: "1 1 180px" }} value={nuevaPass} onChange={e => setNuevaPass(e.target.value)} placeholder="Nueva contraseña (mín. 6)" />
-              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "#0f172a", color: "white", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>{reseteando ? "..." : "Resetear"}</button>
+              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "var(--ink)", color: "var(--card)", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>{reseteando ? "..." : "Resetear"}</button>
             </div>
           </div>
-          {error && <div style={{ color: "#991b1b", fontWeight: 600 }}>{error}</div>}
-          {ok && <div style={{ color: "#166534", fontWeight: 600 }}>{ok}</div>}
+          {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600 }}>{error}</div>}
+          {ok && <div style={{ color: "var(--ok-ink)", fontWeight: 600 }}>{ok}</div>}
         </div>
       </div>
     </>
@@ -191,10 +192,10 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
 // ── Badges ─────────────────────────────────────────────────────────────────────
 function Badge({ label, color }: { label: string; color: string }) {
   const colors: Record<string, { bg: string; text: string }> = {
-    green:  { bg: "#dcfce7", text: "#166534" },
-    blue:   { bg: "#dbeafe", text: "#1d4ed8" },
-    orange: { bg: "#fef3c7", text: "#92400e" },
-    gray:   { bg: "#f1f5f9", text: "#64748b" },
+    green:  { bg: "var(--ok-soft)", text: "var(--ok-ink)" },
+    blue:   { bg: "var(--accent-soft3)", text: "var(--accent-ink)" },
+    orange: { bg: "var(--warn-soft)", text: "var(--warn-ink)" },
+    gray:   { bg: "var(--soft)", text: "var(--muted)" },
   };
   const c = colors[color] ?? colors.gray;
   return <span style={{ padding: "3px 10px", borderRadius: 999, background: c.bg, color: c.text, fontSize: 11, fontWeight: 700 }}>{label}</span>;
@@ -208,11 +209,11 @@ function RoadmapItem({ icon, label, desc, status }: { icon: string; label: strin
   };
   const s = statusMap[status];
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: "1px solid #f1f5f9", opacity: status === "planificado" ? 0.6 : 1 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--soft)", opacity: status === "planificado" ? 0.6 : 1 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--soft2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{label}</div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{desc}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{desc}</div>
       </div>
       <Badge label={s.label} color={s.color} />
     </div>
@@ -314,8 +315,8 @@ export default function ConfiguracionView() {
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 16px 48px" }}>
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Configuración</div>
-        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>Ajustes del sistema y tu cuenta</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Configuración</div>
+        <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 3 }}>Ajustes del sistema y tu cuenta</div>
       </div>
 
       {/* ── Mi cuenta ── */}
@@ -323,58 +324,61 @@ export default function ConfiguracionView() {
         <div style={sectionTitle}>👤 Mi cuenta</div>
         <div style={{ ...rowStyle, borderBottom: "none" }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{profile?.nombre ?? "—"}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{ROLE_LABEL[profile?.role ?? ""] ?? profile?.role}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{profile?.nombre ?? "—"}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{ROLE_LABEL[profile?.role ?? ""] ?? profile?.role}</div>
           </div>
-          <div style={{ width: 48, height: 48, borderRadius: 999, background: "linear-gradient(135deg,#0284c7,#10b981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "white", fontWeight: 800 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 999, background: "linear-gradient(135deg,var(--accent),var(--ok2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--card)", fontWeight: 800 }}>
             {(profile?.nombre ?? "U")[0].toUpperCase()}
           </div>
         </div>
 
-        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginTop: 4 }}>
+        <div style={{ borderTop: "1px solid var(--soft)", paddingTop: 14, marginTop: 4 }}>
           {!editandoNombre ? (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={labelCol}>Nombre de usuario</div>
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>{profile?.nombre}</div>
+                <div style={{ fontSize: 12, color: "var(--faint)" }}>{profile?.nombre}</div>
               </div>
-              <button onClick={() => { setEditandoNombre(true); setNuevoNombre(profile?.nombre ?? ""); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155" }}>✏️ Editar</button>
+              <button onClick={() => { setEditandoNombre(true); setNuevoNombre(profile?.nombre ?? ""); }} style={{ background: "var(--soft)", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>✏️ Editar</button>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               <input style={inputStyle} value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value.toUpperCase())} placeholder="Tu nombre" />
-              {msgNombre && <div style={{ fontSize: 13, color: "#16a34a" }}>{msgNombre}</div>}
+              {msgNombre && <div style={{ fontSize: 13, color: "var(--ok)" }}>{msgNombre}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={handleGuardarNombre} disabled={guardandoNombre} style={{ ...primaryBtn, flex: 1 }}>{guardandoNombre ? "Guardando..." : "Guardar nombre"}</button>
-                <button onClick={() => { setEditandoNombre(false); setMsgNombre(null); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>Cancelar</button>
+                <button onClick={() => { setEditandoNombre(false); setMsgNombre(null); }} style={{ background: "var(--soft)", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>Cancelar</button>
               </div>
             </div>
           )}
         </div>
 
-        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 14, marginTop: 4 }}>
+        <div style={{ borderTop: "1px solid var(--soft)", paddingTop: 14, marginTop: 4 }}>
           {!cambiarPass ? (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={labelCol}>Contraseña</div>
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>••••••••</div>
+                <div style={{ fontSize: 12, color: "var(--faint)" }}>••••••••</div>
               </div>
-              <button onClick={() => { setCambiarPass(true); setMsgPass(null); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155" }}>🔑 Cambiar</button>
+              <button onClick={() => { setCambiarPass(true); setMsgPass(null); }} style={{ background: "var(--soft)", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>🔑 Cambiar</button>
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Nueva contraseña</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Nueva contraseña</div>
               <input type="password" style={inputStyle} value={passNueva} onChange={e => setPassNueva(e.target.value)} placeholder="Mínimo 8 caracteres" />
               <input type="password" style={inputStyle} value={passConfirm} onChange={e => setPassConfirm(e.target.value)} placeholder="Confirmar nueva contraseña" />
-              {msgPass && <div style={{ fontSize: 13, fontWeight: 600, color: msgPass.ok ? "#16a34a" : "#dc2626", padding: "8px 12px", borderRadius: 10, background: msgPass.ok ? "#f0fdf4" : "#fef2f2" }}>{msgPass.text}</div>}
+              {msgPass && <div style={{ fontSize: 13, fontWeight: 600, color: msgPass.ok ? "var(--ok)" : "var(--bad)", padding: "8px 12px", borderRadius: 10, background: msgPass.ok ? "var(--ok-soft)" : "var(--bad-soft)" }}>{msgPass.text}</div>}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={handleCambiarPassword} disabled={guardandoPass} style={{ ...primaryBtn, flex: 1 }}>{guardandoPass ? "Guardando..." : "Actualizar contraseña"}</button>
-                <button onClick={() => { setCambiarPass(false); setMsgPass(null); setPassNueva(""); setPassConfirm(""); }} style={{ background: "#f1f5f9", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>Cancelar</button>
+                <button onClick={() => { setCambiarPass(false); setMsgPass(null); setPassNueva(""); setPassConfirm(""); }} style={{ background: "var(--soft)", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>Cancelar</button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Apariencia: modo día/noche (personal, por dispositivo) ── */}
+      <SeccionApariencia />
 
       {/* ── Equipo & Usuarios (solo admins) ── */}
       {esAdmin && (
@@ -383,7 +387,7 @@ export default function ConfiguracionView() {
             <div style={sectionTitle}>👥 Equipo & Usuarios</div>
             <button
               onClick={() => { setMostrarFormCrear(p => !p); setFormError(null); setFormOk(null); }}
-              style={{ background: mostrarFormCrear ? "#f1f5f9" : "linear-gradient(90deg,#0284c7,#10b981)", color: mostrarFormCrear ? "#334155" : "white", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
+              style={{ background: mostrarFormCrear ? "var(--soft)" : "linear-gradient(90deg,var(--accent),var(--ok2))", color: mostrarFormCrear ? "var(--muted2)" : "var(--card)", border: "none", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}
             >
               {mostrarFormCrear ? "✕ Cancelar" : "➕ Crear usuario"}
             </button>
@@ -391,8 +395,8 @@ export default function ConfiguracionView() {
 
           {/* Formulario crear (colapsable) */}
           {mostrarFormCrear && (
-            <div style={{ background: "#f8fafc", borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 14 }}>Nuevo usuario</div>
+            <div style={{ background: "var(--soft2)", borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid var(--line)" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Nuevo usuario</div>
               <div style={{ display: "grid", gap: 12 }}>
                 <div><div style={labelStyle}>Nombre completo</div><input style={inputStyle} value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej. María Pérez" /></div>
                 <div><div style={labelStyle}>Correo electrónico</div><input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" /></div>
@@ -410,45 +414,45 @@ export default function ConfiguracionView() {
                       <option value="PRADERA">Pradera</option>
                       <option value="USADAS">Usadas Club</option>
                     </select>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>El socio solo verá el dashboard de su grupo.</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>El socio solo verá el dashboard de su grupo.</div>
                   </div>
                 ) : (
                   <div>
                     <div style={labelStyle}>Accesos a módulos</div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>Precargados según el rol. Ajusta lo que este usuario podrá ver.</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>Precargados según el rol. Ajusta lo que este usuario podrá ver.</div>
                     <SelectorAccesos accesos={accesos} onToggle={toggleAcceso} />
                   </div>
                 )}
-                {formError && <div style={{ color: "#991b1b", fontWeight: 600 }}>{formError}</div>}
-                {formOk   && <div style={{ color: "#166534", fontWeight: 600 }}>{formOk}</div>}
+                {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
+                {formOk   && <div style={{ color: "var(--ok-ink)", fontWeight: 600 }}>{formOk}</div>}
                 <button onClick={handleCrear} disabled={creando} style={{ ...primaryBtn, opacity: creando ? 0.7 : 1 }}>{creando ? "Creando..." : "Crear usuario"}</button>
               </div>
             </div>
           )}
 
           {/* Lista del equipo */}
-          {listError && <div style={{ color: "#991b1b", marginBottom: 10 }}>Error: {listError}</div>}
+          {listError && <div style={{ color: "var(--bad-ink)", marginBottom: 10 }}>Error: {listError}</div>}
           {loadingUsuarios ? (
-            <div style={{ color: "#64748b", padding: "12px 0" }}>Cargando equipo...</div>
+            <div style={{ color: "var(--muted)", padding: "12px 0" }}>Cargando equipo...</div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {usuarios.length === 0 && <div style={{ color: "#64748b" }}>No hay usuarios todavía.</div>}
+              {usuarios.length === 0 && <div style={{ color: "var(--muted)" }}>No hay usuarios todavía.</div>}
               {usuarios.map(u => {
                 const nAccesos = Array.isArray(u.permisos) ? u.permisos.length : null;
                 return (
-                  <div key={u.id} style={{ padding: 14, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div key={u.id} style={{ padding: 14, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 14 }}>{u.nombre}</div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {u.role === "SOCIO" && u.grupo && <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#e0f2fe", color: "#0369a1" }}>{u.grupo}</span>}
+                        {u.role === "SOCIO" && u.grupo && <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>{u.grupo}</span>}
                         <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: roleBadge(u.role).bg, color: roleBadge(u.role).color }}>{roleLabel(u.role)}</span>
                       </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "wrap", gap: 8 }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                      <div style={{ fontSize: 12, color: "var(--faint)" }}>
                         {u.role === "SOCIO" ? "Dashboard de su grupo" : nAccesos === null ? "Accesos por defecto del rol" : `${nAccesos} módulo${nAccesos !== 1 ? "s" : ""} asignado${nAccesos !== 1 ? "s" : ""}`}
                       </div>
-                      <button onClick={() => setEditando(u)} style={{ padding: "6px 12px", borderRadius: 10, border: "1px solid #cbd5e1", background: "white", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#334155" }}>✏️ Editar</button>
+                      <button onClick={() => setEditando(u)} style={{ padding: "6px 12px", borderRadius: 10, border: "1px solid var(--line2)", background: "var(--card)", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>✏️ Editar</button>
                     </div>
                   </div>
                 );
@@ -475,7 +479,7 @@ export default function ConfiguracionView() {
       {/* ── Tarifas vigentes ── */}
       <div style={card}>
         <div style={sectionTitle}>💰 Tarifas y parámetros del negocio</div>
-        <div style={{ padding: "10px 14px", borderRadius: 12, background: "#fffbeb", border: "1px solid #fde68a", marginBottom: 14, fontSize: 12, color: "#92400e" }}>
+        <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", marginBottom: 14, fontSize: 12, color: "var(--warn-ink)" }}>
           Estos valores se aplican automáticamente en cobros y liquidaciones. Contacta al desarrollador para modificarlos.
         </div>
         {[
@@ -486,7 +490,7 @@ export default function ConfiguracionView() {
           { label: "Período — Quincenal",             value: "15 días" },
           { label: "Período — Mensual",               value: "30 días" },
         ].map(r => (
-          <div key={r.label} style={rowStyle}><span style={labelCol}>{r.label}</span><span style={{ ...valueCol, fontWeight: 700, color: "#0f172a" }}>{r.value}</span></div>
+          <div key={r.label} style={rowStyle}><span style={labelCol}>{r.label}</span><span style={{ ...valueCol, fontWeight: 700, color: "var(--text)" }}>{r.value}</span></div>
         ))}
       </div>
 
@@ -502,7 +506,7 @@ export default function ConfiguracionView() {
         ].map(r => (
           <div key={r.label} style={rowStyle}>
             <span style={labelCol}>{r.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: r.ok ? "#16a34a" : "#dc2626" }}>{r.ok ? "✅" : "❌"} {r.value}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: r.ok ? "var(--ok)" : "var(--bad)" }}>{r.ok ? "✅" : "❌"} {r.value}</span>
           </div>
         ))}
       </div>
@@ -511,11 +515,11 @@ export default function ConfiguracionView() {
       <div style={card}>
         <button onClick={() => setExpandSugerencias(p => !p)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <div style={sectionTitle}>🚀 Hoja de ruta — módulos y mejoras</div>
-          <span style={{ fontSize: 18, color: "#94a3b8", marginBottom: 14 }}>{expandSugerencias ? "▾" : "▸"}</span>
+          <span style={{ fontSize: 18, color: "var(--faint)", marginBottom: 14 }}>{expandSugerencias ? "▾" : "▸"}</span>
         </button>
         {expandSugerencias ? (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", marginBottom: 8, marginTop: 4 }}>YA ACTIVO</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.08em", marginBottom: 8, marginTop: 4 }}>YA ACTIVO</div>
             {[
               { icon: "👥", label: "Gestión de clientes",  desc: "Registro, aprobación, visita domiciliaria, documentos",   status: "activo" as const },
               { icon: "📄", label: "Contratos D/S/Q/M",    desc: "Diario, semanal, quincenal y mensual con equivalencias",  status: "activo" as const },
@@ -524,7 +528,7 @@ export default function ConfiguracionView() {
               { icon: "🔧", label: "Taller",               desc: "Órdenes de mantenimiento y seguimiento técnico",          status: "activo" as const },
               { icon: "📊", label: "Liquidaciones",        desc: "Cierre de contratos con prorrateo",                       status: "activo" as const },
             ].map(i => <RoadmapItem key={i.label} {...i} />)}
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", letterSpacing: "0.08em", marginBottom: 8, marginTop: 18 }}>PRÓXIMAMENTE</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--warn2)", letterSpacing: "0.08em", marginBottom: 8, marginTop: 18 }}>PRÓXIMAMENTE</div>
             {[
               { icon: "📅", label: "Calendario de cobros",   desc: "Vista semanal: quién paga cada día",                    status: "proximo" as const },
               { icon: "📊", label: "Reportes exportables",   desc: "PDF/Excel de cobros, cartera, contratos por período",   status: "proximo" as const },
@@ -532,7 +536,7 @@ export default function ConfiguracionView() {
               { icon: "💰", label: "Caja diaria",            desc: "Resumen de entradas y salidas del día en tiempo real",  status: "proximo" as const },
               { icon: "💬", label: "Mensajes WhatsApp",      desc: "Recordatorios de pago automáticos al cliente",          status: "proximo" as const },
             ].map(i => <RoadmapItem key={i.label} {...i} />)}
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", marginBottom: 8, marginTop: 18 }}>PLANIFICADO</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.08em", marginBottom: 8, marginTop: 18 }}>PLANIFICADO</div>
             {[
               { icon: "📍", label: "Rutas de cobro",        desc: "Agrupación geográfica de clientes por sector",          status: "planificado" as const },
               { icon: "📈", label: "Estadísticas avanzadas",desc: "Gráficas de recaudo, mora, rendimiento por grupo",      status: "planificado" as const },
@@ -562,7 +566,7 @@ export default function ConfiguracionView() {
         ].map(r => (
           <div key={r.label} style={rowStyle}><span style={labelCol}>{r.label}</span><span style={valueCol}>{r.value}</span></div>
         ))}
-        <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "#cbd5e1" }}>© 2026 GPS Satelital Cartagena · Todos los derechos reservados</div>
+        <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "var(--line2)" }}>© 2026 GPS Satelital Cartagena · Todos los derechos reservados</div>
       </div>
 
       {editando && (
@@ -573,6 +577,46 @@ export default function ConfiguracionView() {
 }
 
 // ── Sección: mensajes de WhatsApp editables ────────────────────────────────────
+// ── Apariencia: día / noche / automático — se guarda en este dispositivo ──
+function SeccionApariencia() {
+  const [modo, setModo] = useState<ThemeMode>(getThemeMode());
+  const elegir = (m: ThemeMode) => { setThemeMode(m); setModo(m); };
+  const opciones: Array<{ m: ThemeMode; icono: string; titulo: string; desc: string }> = [
+    { m: "light",  icono: "☀️", titulo: "Día",        desc: "Fondo claro, siempre" },
+    { m: "dark",   icono: "🌙", titulo: "Noche",      desc: "Fondo oscuro, siempre" },
+    { m: "system", icono: "📱", titulo: "Automático", desc: "Sigue el modo del equipo" },
+  ];
+  return (
+    <div style={card}>
+      <div style={sectionTitle}>🎨 Apariencia</div>
+      <div style={{ fontSize: 12, color: "var(--faint)", marginBottom: 12 }}>
+        Cada quien elige su modo — se recuerda solo en este equipo o celular.
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {opciones.map(o => {
+          const activo = modo === o.m;
+          return (
+            <button
+              key={o.m}
+              onClick={() => elegir(o.m)}
+              style={{
+                flex: 1, minWidth: 0, padding: "12px 8px", borderRadius: 12, cursor: "pointer",
+                border: activo ? "2px solid var(--accent)" : "1.5px solid var(--line)",
+                background: activo ? "var(--accent-soft)" : "var(--card)",
+                textAlign: "center", transition: "all 0.15s",
+              }}
+            >
+              <div style={{ fontSize: 22 }}>{o.icono}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: activo ? "var(--accent-ink)" : "var(--text)", marginTop: 4 }}>{o.titulo}</div>
+              <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 2 }}>{o.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SeccionMensajesWhatsapp() {
   const { plantilla, guardar } = useMensajesWhatsapp();
   const [borradores, setBorradores] = useState<Record<string, string>>({});
@@ -595,14 +639,14 @@ function SeccionMensajesWhatsapp() {
   return (
     <div style={card}>
       <div style={sectionTitle}>💬 Mensajes de WhatsApp</div>
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
         Personaliza los textos que se envían por WhatsApp. Usa los comodines entre llaves — se reemplazan solos con los datos reales de cada cliente al enviar.
       </div>
       <div style={{ display: "grid", gap: 18 }}>
         {MENSAJES_META.map(m => (
-          <div key={m.clave} style={{ background: "#f8fafc", borderRadius: 14, padding: 16, border: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{m.label}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, marginBottom: 8 }}>{m.descripcion}</div>
+          <div key={m.clave} style={{ background: "var(--soft2)", borderRadius: 14, padding: 16, border: "1px solid var(--line)" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{m.label}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, marginBottom: 8 }}>{m.descripcion}</div>
             <textarea
               value={valor(m.clave)}
               onChange={e => setBorradores(prev => ({ ...prev, [m.clave]: e.target.value }))}
@@ -610,13 +654,13 @@ function SeccionMensajesWhatsapp() {
               style={{ ...inputStyle, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>Comodines:</span>
+              <span style={{ fontSize: 11, color: "var(--faint)", fontWeight: 700 }}>Comodines:</span>
               {m.comodines.map(c => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setBorradores(prev => ({ ...prev, [m.clave]: valor(m.clave) + " " + c }))}
-                  style={{ background: "#e0f2fe", color: "#0369a1", border: "none", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}
+                  style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", border: "none", borderRadius: 999, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "monospace" }}
                   title="Insertar comodín"
                 >
                   {c}
@@ -627,11 +671,11 @@ function SeccionMensajesWhatsapp() {
               <button
                 onClick={() => handleGuardar(m.clave)}
                 disabled={guardando === m.clave}
-                style={{ background: "linear-gradient(90deg,#0284c7,#10b981)", color: "white", border: "none", borderRadius: 10, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: guardando === m.clave ? 0.6 : 1 }}
+                style={{ background: "linear-gradient(90deg,var(--accent),var(--ok2))", color: "var(--card)", border: "none", borderRadius: 10, padding: "8px 18px", cursor: "pointer", fontSize: 13, fontWeight: 700, opacity: guardando === m.clave ? 0.6 : 1 }}
               >
                 {guardando === m.clave ? "Guardando..." : "Guardar"}
               </button>
-              {guardado === m.clave && <span style={{ fontSize: 13, color: "#166534", fontWeight: 700 }}>✅ Guardado</span>}
+              {guardado === m.clave && <span style={{ fontSize: 13, color: "var(--ok-ink)", fontWeight: 700 }}>✅ Guardado</span>}
             </div>
           </div>
         ))}

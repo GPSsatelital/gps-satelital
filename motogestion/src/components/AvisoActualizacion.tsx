@@ -50,14 +50,14 @@ export default function AvisoActualizacion() {
   return (
     <div style={{
       position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 84, zIndex: 3000,
-      background: "#0f172a", color: "white", borderRadius: 14, padding: "12px 16px",
+      background: "var(--ink)", color: "var(--card)", borderRadius: 14, padding: "12px 16px",
       boxShadow: "0 12px 40px rgba(15,23,42,0.35)", display: "flex", alignItems: "center", gap: 14,
       maxWidth: "calc(100vw - 24px)", boxSizing: "border-box",
     }}>
       <div style={{ fontSize: 13, fontWeight: 700, minWidth: 0 }}>🔄 Hay una versión nueva de la app.</div>
       <button
         onClick={() => window.location.reload()}
-        style={{ background: "#38bdf8", color: "#0f172a", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", flexShrink: 0 }}
+        style={{ background: "var(--accent-hi)", color: "var(--text)", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", flexShrink: 0 }}
       >
         Actualizar
       </button>

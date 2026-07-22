@@ -27,6 +27,7 @@ import { generarHTMLAcuerdoPago, generarHTMLEstadoCuenta, armarTextoEstadoCuenta
 import { supabase } from "../lib/supabase";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
+import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
@@ -145,9 +146,9 @@ type EstadoCartera = "al-dia" | "gabela" | "mora";
 // (antes la franja usaba otra función que no contaba el convenio → decía "Gabela" mientras
 // el badge decía "Al día").
 const ESTADO_CARTERA_STYLE: Record<EstadoCartera, { bg: string; color: string; label: string }> = {
-  "al-dia": { bg: "var(--ok-soft)", color: "var(--ok-ink)", label: "Al día" },
-  gabela: { bg: "var(--warn-soft)", color: "var(--warn-ink)", label: "Gabela" },
-  mora: { bg: "var(--bad-soft)", color: "var(--bad-ink)", label: "Mora" },
+  "al-dia": { bg: "var(--ok-soft)", color: "var(--ok-ink)", label: "● Al día" },
+  gabela: { bg: "var(--warn-soft)", color: "var(--warn-ink)", label: "▲ Gabela" },
+  mora: { bg: "var(--bad-soft)", color: "var(--bad-ink)", label: "✕ Mora" },
 };
 
 function EstadoBadge({ estado }: { estado: EstadoCartera }) {
@@ -2326,11 +2327,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
-                    {cliente?.nombre || "Sin cliente"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    {moto && <Placa placa={moto.placa} size="sm" />}
+                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {cliente?.nombre || "Sin cliente"}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    {moto ? `🏍️ ${moto.placa} · ` : ""}
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
                     {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
                     {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
                       <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
@@ -2655,6 +2658,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         background: todasHechas ? "var(--soft2)" : "var(--card)",
                         opacity: todasHechas ? 0.6 : 1,
                         display: "flex", flexDirection: "column", gap: 10,
+                        animation: "mgEntra .3s var(--ease) both",
                       }}
                     >
                       {/* Fila superior: nombre + badge — clic va al detalle */}
@@ -2667,7 +2671,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                             {cliente?.nombre ?? "Sin cliente"}
                           </div>
                           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                            {moto && <span style={{ color: "var(--accent)", fontWeight: 600 }}>🏍️ {moto.placa} · </span>}
+                            {moto && <><Placa placa={moto.placa} size="sm" /><span> · </span></>}
                             {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
                               ? <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
                               : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}</span>
@@ -2684,13 +2688,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
                       {/* Fila inferior: monto + botones de tarea */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span
-                          style={{ fontSize: 12, fontWeight: 700, color: debePagar > 0 ? "var(--bad-ink)" : "var(--ok-ink)", background: debePagar > 0 ? "var(--bad-soft)" : "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}
-                        >
-                          {todasHechas ? "✓ Listo" : debePagar > 0
-                            ? `Debe $${fmt(debePagar)} (cuota $${fmt(cuotaPendParte)}${c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""})`
-                            : c.convenioActivo ? "Al día · convenio" : "Al día"}
-                        </span>
+                        <div style={{ minWidth: 0 }}>
+                          {todasHechas ? (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>✓ Listo</span>
+                          ) : debePagar > 0 ? (
+                            <>
+                              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--muted)" }}>Debe pagar</div>
+                              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums", color: "var(--bad)", lineHeight: 1.15 }}>$ {fmt(debePagar)}</div>
+                              <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                                cuota ${fmt(cuotaPendParte)}{c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""}
+                              </div>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>{c.convenioActivo ? "● Al día · convenio" : "● Al día"}</span>
+                          )}
+                        </div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           {tareasDe.map(t => {
                             const hecha = gestionHechaHoy(c.id, t.tipo);
@@ -2940,8 +2952,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               return (
                 <div key={p.id} style={{ padding: "12px 14px", borderRadius: 14, background: p.estado === "Pendiente" ? "var(--warn-soft2)" : "var(--soft2)", border: p.estado === "Pendiente" ? "1px solid var(--warn-line)" : "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>
-                      {moto ? `${moto.placa} · ` : ""}{cliente?.nombre || "Sin cliente"}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
+                      {moto && <Placa placa={moto.placa} size="sm" />}
+                      <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</span>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
                       {formatDate(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}

@@ -1551,7 +1551,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }, [pagos, filtroPagos]);
 
   if (loadingPagos || loadingContratos) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando cartera...</div>;
+    return (
+      <div style={{ padding: "16px 12px", maxWidth: 1040, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          {[68, 92, 80, 76].map((w, i) => <div key={i} style={{ width: w, height: 30, borderRadius: 999, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {[1, 2, 3, 4, 5].map(i => <div key={i} style={{ height: 74, borderRadius: 14, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+        </div>
+      </div>
+    );
   }
 
   // ── Panel de detalle del contrato ─────────────────────────────────────────
@@ -1673,8 +1682,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
                 {motoDetalle && (
-                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>
-                    🏍️ {motoDetalle.placa}
+                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
+                    <Placa placa={motoDetalle.placa} size="lg" />
                   </button>
                 )}
                 {clienteDetalle?.telefono && <span style={{ color: "var(--muted2)" }}>📞 {clienteDetalle.telefono}</span>}
@@ -1737,13 +1746,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Cuota hoy" : "Cuota período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
+              <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Pagado hoy" : "Pagado período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>$ {fmt(pagadoEnPeriodo)}</div>
+              <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(pagadoEnPeriodo)}</div>
             </div>
             {/* "Al día" solo si de verdad no debe nada — incluye deuda pendiente y convenio,
                 no solo la cuota de esta semana (mismo criterio que Panel Hoy y Cobro en campo). */}
@@ -1751,7 +1760,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {enProrrateo ? "Próx. pago" : "Pendiente"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
+              <div style={{ fontWeight: 900, fontSize: 20, lineHeight: 1.1, fontVariantNumeric: "tabular-nums", color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                 {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalDebeAhora > 0 ? `$ ${fmt(totalDebeAhora)}` : "✓ Al día"}
               </div>
             </div>
@@ -2770,8 +2779,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    {moto ? `🏍️ ${moto.placa} · ` : ""}{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                    {moto && <Placa placa={moto.placa} size="sm" />}
+                    <span>{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}</span>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                     <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft3)", color: "var(--accent-ink)", fontSize: 11, fontWeight: 700 }}>
@@ -3075,7 +3085,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         >
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                            {moto && <div style={{ fontSize: 12, color: "var(--accent)" }}>🏍️ {moto.placa}</div>}
+                            {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} size="sm" /></div>}
                           </div>
                           <EstadoBadge estado={r.estadoCartera} />
                         </div>
@@ -3104,7 +3114,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <div style={{ display: "grid", gap: 12 }}>
                       <div style={{ padding: "10px 14px", background: "var(--soft2)", borderRadius: 12, border: "1px solid var(--line)" }}>
                         <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                        {moto && <div style={{ fontSize: 13, color: "var(--accent)" }}>🏍️ {moto.placa}</div>}
+                        {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} size="sm" /></div>}
                       </div>
 
                       {/* Referencia: cuánto debe pagar */}
@@ -3338,10 +3348,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   </div>
                   <EstadoBadge estado={modalContrato.estadoCartera as EstadoCartera} />
                 </div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
-                  {modalMoto ? `🏍️ ${modalMoto.placa} · ` : ""}
-                  {modalContrato.forma_pago === "Diario" ? "Contrato diario" : "Pago semanal"}
-                  {modalContrato.diasSinPago < 999 ? ` · ${modalContrato.diasSinPago} días sin pago` : ""}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
+                  {modalMoto && <Placa placa={modalMoto.placa} size="sm" />}
+                  <span>
+                    {modalContrato.forma_pago === "Diario" ? "Contrato diario" : "Pago semanal"}
+                    {modalContrato.diasSinPago < 999 ? ` · ${modalContrato.diasSinPago} días sin pago` : ""}
+                  </span>
                 </div>
 
                 {/* Cuotas */}

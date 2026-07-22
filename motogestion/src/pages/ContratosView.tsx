@@ -8,6 +8,7 @@ import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
 
@@ -167,7 +168,16 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     cancelados: contratos.filter(c => c.estado === "Cancelado").length,
   }), [contratos]);
 
-  if (loading) return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando contratos...</div>;
+  if (loading) return (
+    <div style={{ padding: "16px 12px", maxWidth: 1040, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {[72, 60, 88, 66].map((w, i) => <div key={i} style={{ width: w, height: 30, borderRadius: 999, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {[1, 2, 3, 4, 5].map(i => <div key={i} style={{ height: 78, borderRadius: 16, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+      </div>
+    </div>
+  );
 
   function PanelDetalle() {
     if (!contratoSeleccionado || !clienteDetalle) {
@@ -197,7 +207,12 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             <div>
               <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "var(--text)" }}>{clienteDetalle.nombre}</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>CC {clienteDetalle.cedula}{clienteDetalle.telefono && ` · 📞 ${clienteDetalle.telefono}`}</div>
-              {motoDetalle && <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: "var(--accent)" }}>🏍️ {motoDetalle.placa} — {motoDetalle.marca} {motoDetalle.modelo}</div>}
+              {motoDetalle && (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <Placa placa={motoDetalle.placa} size="lg" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>{motoDetalle.marca} {motoDetalle.modelo}</span>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
               <ContractBadge estado={c.estado} />
@@ -437,7 +452,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             <div style={{ ...card, color: "var(--muted)", textAlign: "center", padding: 24 }}>No hay contratos con ese filtro.</div>
           )}
 
-          {contratosFiltrados.map(c => {
+          {contratosFiltrados.map((c, idx) => {
             const cliente = clientes.find(cl => cl.id === c.cliente_id);
             const moto = motos.find(m => m.id === c.moto_id);
             const esDiario = c.forma_pago === "Diario";
@@ -452,16 +467,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 ...card, cursor: "pointer",
                 border: seleccionado ? "2px solid var(--accent)" : c.base_completada ? "2px solid var(--ok2)" : alertaBase ? "2px solid var(--warn2)" : "2px solid transparent",
                 background: seleccionado ? "var(--accent-soft2)" : "var(--card)", padding: "14px 16px",
+                animation: "mgEntra .28s var(--ease) both", animationDelay: `${Math.min(idx, 12) * 25}ms`,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {cliente?.nombre ?? "Sin cliente"}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-                      {moto ? `🏍️ ${moto.placa} · ` : "Sin moto · "}
-                      {esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`}
-                      {" · "}$ {fmt(c.valor_semanal)}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                      {moto ? <Placa placa={moto.placa} size="sm" /> : <span>Sin moto</span>}
+                      <span>
+                        {esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`}
+                        {" · "}$ {fmt(c.valor_semanal)}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>

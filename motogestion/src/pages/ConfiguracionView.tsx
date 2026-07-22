@@ -178,7 +178,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Asigna una contraseña temporal y compártela con el usuario.</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input type="text" style={{ ...inputStyle, flex: "1 1 180px" }} value={nuevaPass} onChange={e => setNuevaPass(e.target.value)} placeholder="Nueva contraseña (mín. 6)" />
-              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "var(--ink)", color: "var(--card)", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>{reseteando ? "..." : "Resetear"}</button>
+              <button onClick={resetear} disabled={reseteando} style={{ padding: "10px 16px", borderRadius: 14, border: "none", background: "var(--ink)", color: "var(--on-ink)", fontWeight: 700, cursor: "pointer", opacity: reseteando ? 0.7 : 1 }}>{reseteando ? "..." : "Resetear"}</button>
             </div>
           </div>
           {error && <div style={{ color: "var(--bad-ink)", fontWeight: 600 }}>{error}</div>}

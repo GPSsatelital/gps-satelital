@@ -315,7 +315,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     return (
       <div style={{ display: "flex", flexDirection: vertical ? "column" : "row", gap: 5, flexShrink: 0, flexWrap: "wrap" }}>
         {!f.pagadoHoyBool && (
-          <button onClick={() => abrirCobrar(f)} style={{ ...s, background: "var(--ink)", color: "var(--card)" }} title="Registrar pago">💳</button>
+          <button onClick={() => abrirCobrar(f)} style={{ ...s, background: "var(--ink)", color: "var(--on-ink)" }} title="Registrar pago">💳</button>
         )}
         {f.clienteTel && (
           <>
@@ -925,7 +925,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                      <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--ink)", color: "var(--card)" }}>💳</button>
+                      <button onClick={() => abrirCobrar(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--ink)", color: "var(--on-ink)" }}>💳</button>
                       {f.clienteTel && (
                         <button onClick={() => abrirWA(f)} style={{ padding: "7px 11px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>💬</button>
                       )}

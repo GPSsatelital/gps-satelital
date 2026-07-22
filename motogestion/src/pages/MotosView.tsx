@@ -534,7 +534,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             {editError && <div style={{ color: "var(--bad-ink)", fontSize: 12, padding: "6px 10px", background: "var(--bad-soft)", borderRadius: 8 }}>{editError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setEditandoMoto(false)} style={{ flex: 1, padding: "9px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, color: "var(--muted)", fontSize: 13 }}>Cancelar</button>
-              <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: "var(--ink)", color: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: editGuardando ? 0.7 : 1 }}>
+              <button onClick={guardarEdicionMoto} disabled={editGuardando} style={{ flex: 2, padding: "9px", borderRadius: 8, border: "none", background: "var(--ink)", color: "var(--on-ink)", cursor: "pointer", fontWeight: 700, fontSize: 13, opacity: editGuardando ? 0.7 : 1 }}>
                 {editGuardando ? "Guardando..." : "💾 Guardar"}
               </button>
             </div>

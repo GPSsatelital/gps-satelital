@@ -50,7 +50,7 @@ export default function AvisoActualizacion() {
   return (
     <div style={{
       position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 84, zIndex: 3000,
-      background: "var(--ink)", color: "var(--card)", borderRadius: 14, padding: "12px 16px",
+      background: "var(--ink)", color: "var(--on-ink)", borderRadius: 14, padding: "12px 16px",
       boxShadow: "0 12px 40px rgba(15,23,42,0.35)", display: "flex", alignItems: "center", gap: 14,
       maxWidth: "calc(100vw - 24px)", boxSizing: "border-box",
     }}>

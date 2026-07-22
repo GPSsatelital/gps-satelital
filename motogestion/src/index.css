@@ -121,6 +121,7 @@ code {
   --soft: #f1f5f9;          /* rellenos suaves: chips, botones secundarios */
   --soft2: #f8fafc;         /* relleno aún más tenue */
   --ink: #0f172a;           /* superficies oscuras fijas (sidebar) — igual en ambos modos */
+  --on-ink: #f8fafc;        /* texto SOBRE --ink: siempre claro en ambos modos (nunca usar --card, que es navy en noche) */
   --text: #0f172a;
   --muted: #64748b;
   --muted2: #334155;

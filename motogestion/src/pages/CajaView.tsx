@@ -311,7 +311,7 @@ export default function CajaView() {
         </div>
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "var(--faint)" }}>Total general</div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: "var(--card)", marginTop: 2 }}>${fmt(resumen.total)}</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total)}</div>
         </div>
       </div>
       {resumen.pendientes.length > 0 && (
@@ -403,7 +403,7 @@ export default function CajaView() {
           </div>
           <div style={{ flex: 1, minWidth: 120, background: "var(--ink)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase" }}>Total general</div>
-            <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "var(--card)", marginTop: 4 }}>${fmt(resumen.total)}</div>
+            <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "var(--on-ink)", marginTop: 4 }}>${fmt(resumen.total)}</div>
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{resumen.confirmados} confirmados{filtroGrupo !== "todos" ? ` · ${filtroGrupo}` : ""}</div>
           </div>
         </div>
@@ -537,7 +537,7 @@ export default function CajaView() {
             </div>
             <div style={{ background: COLOR_GRUPO[grupoACerrar], borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Total a cerrar — {grupoACerrar}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "var(--card)" }}>${fmt(rc.total)}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: "#ffffff" }}>${fmt(rc.total)}</div>
             </div>
             {rc.pendientes.length > 0 && (
               <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>

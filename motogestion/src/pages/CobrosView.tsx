@@ -78,23 +78,23 @@ const card: React.CSSProperties = {
 };
 const primaryBtn: React.CSSProperties = {
   background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
-  color: "var(--card)",
+  color: "#0f172a",
   border: "none",
-  borderRadius: 14,
+  borderRadius: 8,
   padding: "10px 16px",
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
-  fontSize: 14,
+  fontSize: 13,
 };
 const secondaryBtn: React.CSSProperties = {
   background: "var(--soft)",
   color: "var(--muted2)",
   border: "none",
-  borderRadius: 14,
+  borderRadius: 8,
   padding: "10px 16px",
   fontWeight: 600,
   cursor: "pointer",
-  fontSize: 14,
+  fontSize: 13,
 };
 
 function miniBtn(bg: string, color: string): React.CSSProperties {

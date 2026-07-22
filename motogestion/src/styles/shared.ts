@@ -15,10 +15,10 @@ export const card: CSSProperties = {
 export const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
-  borderRadius: 14,
+  borderRadius: 10,
   border: "1px solid var(--line2)",
   outline: "none",
-  fontSize: 14,
+  fontSize: 15,
   boxSizing: "border-box",
   // Fondo y color explícitos: sin esto, el modo oscuro del celular pintaba
   // las letras del mismo color del recuadro (bug de "no salen las letras").
@@ -28,25 +28,28 @@ export const inputStyle: CSSProperties = {
 
 export const labelStyle: CSSProperties = {
   marginBottom: 6,
-  fontSize: 14,
+  fontSize: 13,
   fontWeight: 600,
   color: "var(--muted2)",
 };
 
+// Botones = mismo look que el átomo <Btn> (radio 8, peso 600). El gradiente
+// lleva texto oscuro (contraste correcto en día y noche; var(--card) era navy
+// sobre cyan en noche = ilegible).
 export const primaryBtn: CSSProperties = {
   background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
-  color: "var(--card)",
+  color: "#0f172a",
   border: "none",
-  borderRadius: 14,
+  borderRadius: 8,
   padding: "10px 16px",
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
 };
 
 export const secondaryBtn: CSSProperties = {
   background: "var(--card)",
   border: "1px solid var(--line2)",
-  borderRadius: 14,
+  borderRadius: 8,
   padding: "10px 16px",
   fontWeight: 600,
   cursor: "pointer",

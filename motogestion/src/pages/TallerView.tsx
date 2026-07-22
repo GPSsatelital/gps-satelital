@@ -35,21 +35,21 @@ const labelStyle: React.CSSProperties = { marginBottom: 4, fontSize: 13, fontWei
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 20, boxShadow: "0 2px 12px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = {
   background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
-  color: "var(--card)",
+  color: "#0f172a",
   border: "none",
-  borderRadius: 10,
+  borderRadius: 8,
   padding: "10px 18px",
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
-  fontSize: 14,
+  fontSize: 13,
 };
 const dangerBtn: React.CSSProperties = {
   background: "var(--bad-soft)",
   color: "var(--bad-ink)",
   border: "none",
-  borderRadius: 10,
+  borderRadius: 8,
   padding: "8px 14px",
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
   fontSize: 13,
 };
@@ -57,9 +57,9 @@ const ghostBtn: React.CSSProperties = {
   background: "var(--line)",
   color: "var(--muted2)",
   border: "none",
-  borderRadius: 10,
+  borderRadius: 8,
   padding: "8px 14px",
-  fontWeight: 700,
+  fontWeight: 600,
   cursor: "pointer",
   fontSize: 13,
 };

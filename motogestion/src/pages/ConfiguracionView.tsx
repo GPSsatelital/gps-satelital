@@ -29,8 +29,8 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 13, fontWeight: 600, color: "var(--muted2)" };
 const primaryBtn: React.CSSProperties = {
   background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)",
-  color: "var(--card)", border: "none", borderRadius: 12, padding: "10px 20px",
-  fontWeight: 700, cursor: "pointer", fontSize: 14,
+  color: "#0f172a", border: "none", borderRadius: 8, padding: "10px 20px",
+  fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 // ── Tipos usuarios ─────────────────────────────────────────────────────────────

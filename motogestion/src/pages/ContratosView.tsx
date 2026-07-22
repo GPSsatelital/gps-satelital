@@ -15,7 +15,7 @@ import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
-const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 14 };
+const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 13 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 

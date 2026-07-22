@@ -2304,7 +2304,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: 20, paddingBottom: 4 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: isMobile ? 10 : 20, paddingBottom: 4 }}>
         {tabs.map(t => (
           <button
             key={t.key}
@@ -3010,11 +3010,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
       {/* CONTRATOS — lista navegable con chips de filtro */}
       {activeTab === "contratos" && (
-        <div style={{ marginTop: 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, alignItems: isMobile ? "stretch" : "start" }}>
+        <div style={{ marginTop: isMobile ? 8 : 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 20, alignItems: isMobile ? "stretch" : "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Chips de filtro */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12, paddingBottom: 2 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 5 : 6, marginBottom: isMobile ? 7 : 12, paddingBottom: 2 }}>
               {FILTROS_CONTRATOS.map(f => (
                 <button
                   key={f.key}
@@ -3022,21 +3022,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   style={{
                     background: filtroContratos === f.key ? "var(--accent)" : "var(--soft)",
                     color: filtroContratos === f.key ? "var(--card)" : "var(--muted2)",
-                    border: "none", borderRadius: 999, padding: "7px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap",
+                    border: "none", borderRadius: 999, padding: isMobile ? "5px 10px" : "7px 12px", fontWeight: 700, fontSize: isMobile ? 11.5 : 12.5, cursor: "pointer", whiteSpace: "nowrap",
                   }}
                 >
                   {f.label} <span style={{ opacity: 0.7 }}>({f.count})</span>
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: isMobile ? 5 : 6, flexWrap: "wrap", marginBottom: isMobile ? 7 : 12 }}>
               {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
                 <button
                   key={g}
                   onClick={() => setFiltroGrupoContratos(g)}
                   style={{
-                    padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-                    fontSize: 12, fontWeight: 700,
+                    padding: isMobile ? "5px 10px" : "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+                    fontSize: isMobile ? 11.5 : 12, fontWeight: 700,
                     background: filtroGrupoContratos === g ? "var(--accent)" : "var(--soft)",
                     color: filtroGrupoContratos === g ? "var(--card)" : "var(--muted2)",
                   }}
@@ -3045,9 +3045,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </button>
               ))}
             </div>
-            <div style={card}>
+            <div style={{ ...card, padding: isMobile ? 10 : 16 }}>
               <input
-                style={{ ...inputStyle, marginBottom: 12 }}
+                style={{ ...inputStyle, marginBottom: isMobile ? 8 : 12 }}
                 placeholder="Buscar cliente o placa..."
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}

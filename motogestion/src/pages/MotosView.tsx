@@ -644,7 +644,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 return (
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
                     style={{ background: "var(--card)", borderRadius: 12, padding: "9px 12px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
-                    <Placa placa={moto.placa} />
+                    <Placa placa={moto.placa} size="sm" />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (

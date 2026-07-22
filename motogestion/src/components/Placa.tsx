@@ -5,20 +5,22 @@
 // que guía el ojo también en modo noche.
 
 export default function Placa({ placa, size = "md" }: { placa: string; size?: "sm" | "md" | "lg" }) {
+  // Letras grandes y gruesas que llenan el recuadro: font alto + padding chico
+  // (el recuadro amarillo casi no crece, lo que crece son las letras).
   const s = size === "sm"
-    ? { fontSize: 12, padding: "6px 8px 5px", letterSpacing: 1.1, borderRadius: 6 }
+    ? { fontSize: 14, padding: "3px 7px 2px", letterSpacing: 0.8, borderRadius: 6 }
     : size === "lg"
-      ? { fontSize: 16, padding: "9px 11px 8px", letterSpacing: 1.5, borderRadius: 8 }
-      : { fontSize: 13, padding: "7px 9px 6px", letterSpacing: 1.3, borderRadius: 7 };
+      ? { fontSize: 19, padding: "5px 10px 4px", letterSpacing: 1.2, borderRadius: 8 }
+      : { fontSize: 16, padding: "4px 8px 3px", letterSpacing: 1, borderRadius: 7 };
   return (
     <span
       style={{
         background: "#FFD100",
         color: "#111111",
         border: "2px solid #111111",
-        fontWeight: 800,
+        fontWeight: 900,
         fontVariantNumeric: "tabular-nums",
-        lineHeight: 1.1,
+        lineHeight: 1.08,
         whiteSpace: "nowrap",
         boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.22)",
         display: "inline-block",

@@ -643,15 +643,15 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 const sc = getStatusColors(moto.estado);
                 return (
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ background: "var(--card)", borderRadius: 12, padding: "12px 14px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
+                    style={{ background: "var(--card)", borderRadius: 12, padding: "9px 12px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
+                    <Placa placa={moto.placa} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div><Placa placa={moto.placa} /></div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
                           style={{
-                            marginTop: 6, padding: "3px 10px", borderRadius: 999, border: "none", cursor: "pointer",
+                            marginTop: 4, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
                             fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
                             color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
@@ -685,15 +685,15 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 const sel = selectedId === moto.id;
                 return (
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: sel ? "var(--accent-soft2)" : "var(--card)" }}>
+                    style={{ borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: sel ? "var(--accent-soft2)" : "var(--card)" }}>
+                    <Placa placa={moto.placa} size="sm" />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div><Placa placa={moto.placa} size="sm" /></div>
                       <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
                           style={{
-                            marginTop: 5, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
+                            marginTop: 4, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
                             fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
                             color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",

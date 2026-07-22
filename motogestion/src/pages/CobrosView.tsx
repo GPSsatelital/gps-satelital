@@ -2638,7 +2638,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>No tienes tareas pendientes hoy</div>
               </div>
             ) : (
-              <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 16, padding: 12, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 16, padding: 10, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
                 {listaOrdenada.length === 0 ? (
                   <div style={{ color: "var(--muted)", fontSize: 14, padding: "12px 0" }}>Sin resultados.</div>
                 ) : listaOrdenada.map(c => {
@@ -2667,13 +2667,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <div
                       key={c.id}
                       style={{
-                        padding: "12px 14px",
+                        padding: "9px 12px",
                         borderRadius: 14,
                         border: todasHechas ? "1px solid var(--line)" : `1px solid ${borderColor}44`,
                         borderLeft: `4px solid ${todasHechas ? "var(--line2)" : borderColor}`,
                         background: todasHechas ? "var(--soft2)" : "var(--card)",
                         opacity: todasHechas ? 0.6 : 1,
-                        display: "flex", flexDirection: "column", gap: 10,
+                        display: "flex", flexDirection: "column", gap: 7,
                         animation: "mgEntra .3s var(--ease) both",
                       }}
                     >

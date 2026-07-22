@@ -50,7 +50,8 @@ import {
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
-import { Chip, Badge, type BadgeTone } from "../components/atomos";
+import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
+import { ItemLista } from "../components/ListaEstandar";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -2112,7 +2113,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       return <div style={{ color: "var(--muted)", fontSize: 14, padding: "12px 0" }}>Sin contratos en esta categoría.</div>;
     }
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {lista.map(c => {
           const cliente = clientes.find(cl => cl.id === c.cliente_id);
           const moto = motos.find(m => m.id === c.moto_id);
@@ -2122,84 +2123,66 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           // Fuente única (ledger + convenio + deuda) — misma cifra que el detalle y Panel Hoy.
           const pendiente = calcularPendienteContrato(c);
+          const faltaConvenio = !empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioActivo;
+
+          // Monto = héroe: color por estado (prorrateo=próximo pago en cyan, deuda en rojo, al día en verde)
+          const montoColor = pendiente > 0 ? (enProrrateoLista ? "var(--accent)" : "var(--bad-ink)") : "var(--ok-ink)";
+          const rielColor = c.estadoCartera === "mora" ? "var(--bad)" : c.estadoCartera === "gabela" ? "var(--warn2)" : "var(--ok2)";
 
           return (
-            <div
+            <ItemLista
               key={c.id}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 14,
-                border: seleccionado ? "2px solid var(--accent)" : `1px solid ${c.estadoCartera === "mora" ? "var(--bad-line)" : "var(--line)"}`,
-                background: seleccionado ? "var(--accent-soft2)" : c.estadoCartera === "mora" ? "var(--bad-soft)" : "var(--soft2)",
-                gap: 8,
-              }}
-            >
-              {/* Fila principal — clic para ver detalle */}
-              <div
-                onClick={() => setContratoSeleccionadoId(c.id)}
-                style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
-              >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    {moto && <Placa placa={moto.placa} size="sm" />}
-                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {cliente?.nombre || "Sin cliente"}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-                    {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
-                    {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
-                      <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · {c.diasSinPago}d sin pagar</span>
+              placa={moto?.placa}
+              titulo={cliente?.nombre || "Sin cliente"}
+              subtitulo={<>
+                {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
+                {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
+                  <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}> · {c.diasSinPago}d sin pagar</span>
+                )}
+              </>}
+              right={<>
+                <div style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: montoColor, whiteSpace: "nowrap", lineHeight: 1.1 }}>
+                  {pendiente > 0 ? `$${fmt(pendiente)}` : "✓ Al día"}
+                </div>
+                <EstadoBadge estado={c.estadoCartera} />
+              </>}
+              rielColor={rielColor}
+              seleccionado={seleccionado}
+              onClick={() => setContratoSeleccionadoId(c.id)}
+              extra={
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    {enProrrateoLista && pendiente > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-ink)" }}>Próximo pago</span>
                     )}
+                    {paso && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: paso.color, background: paso.bg, borderRadius: 8, padding: "2px 8px" }}>
+                        P{paso.paso}: {paso.label}
+                      </span>
+                    )}
+                    {c.pendientesCount > 0 && (
+                      <span style={{ fontSize: 11, color: "var(--warn-ink)" }}>{c.pendientesCount} pend.</span>
+                    )}
+                    {empalmePendiente(c) && <Badge tone="warn">⚠️ Empalme</Badge>}
+                    {faltaConvenio && <Badge tone="accent">📝 Falta convenio</Badge>}
                   </div>
+                  <Btn
+                    variant="primary"
+                    size="sm"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setModalContratoId(c.id);
+                      setModalBusqueda(etiquetaContrato(c));
+                      setModalListaAbierta(false);
+                      setModalPago(true);
+                    }}
+                    style={{ flexShrink: 0 }}
+                  >
+                    💰 Pagar
+                  </Btn>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                  <EstadoBadge estado={c.estadoCartera} />
-                  {empalmePendiente(c) && (
-                    <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
-                  )}
-                  {/* Migrado ya confirmado que debe y no tiene acuerdo de pago → falta sentarlo a firmar convenio */}
-                  {!empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioActivo && (
-                    <span style={{ background: "var(--accent-soft)", color: "var(--accent-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>📝 Falta convenio</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Fila inferior — monto + protocolo + botón pagar */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  {pendiente > 0 ? (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: enProrrateoLista ? "var(--accent)" : "var(--bad-ink)", background: enProrrateoLista ? "var(--accent-soft2)" : "var(--bad-soft)", borderRadius: 8, padding: "2px 8px" }}>
-                      {enProrrateoLista ? `Próx. pago $${fmt(pendiente)}` : `Debe $${fmt(pendiente)}`}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>
-                      ✓ Al día
-                    </span>
-                  )}
-                  {paso && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: paso.color, background: paso.bg, borderRadius: 8, padding: "2px 8px" }}>
-                      P{paso.paso}: {paso.label}
-                    </span>
-                  )}
-                  {c.pendientesCount > 0 && (
-                    <span style={{ fontSize: 11, color: "var(--warn-ink)" }}>{c.pendientesCount} pend.</span>
-                  )}
-                </div>
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    setModalContratoId(c.id);
-                    setModalBusqueda(etiquetaContrato(c));
-                    setModalListaAbierta(false);
-                    setModalPago(true);
-                  }}
-                  style={{ ...miniBtn("var(--accent)", "var(--card)"), padding: "5px 12px", fontSize: 12, flexShrink: 0 }}
-                >
-                  💰 Pagar
-                </button>
-              </div>
-            </div>
+              }
+            />
           );
         })}
       </div>
@@ -2978,35 +2961,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Chips de filtro */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 5 : 6, marginBottom: isMobile ? 7 : 12, paddingBottom: 2 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: isMobile ? 7 : 12, paddingBottom: 2 }}>
               {FILTROS_CONTRATOS.map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => { setFiltroContratos(f.key); setContratoSeleccionadoId(null); }}
-                  style={{
-                    background: filtroContratos === f.key ? "var(--accent)" : "var(--soft)",
-                    color: filtroContratos === f.key ? "var(--card)" : "var(--muted2)",
-                    border: "none", borderRadius: 999, padding: isMobile ? "5px 10px" : "7px 12px", fontWeight: 700, fontSize: isMobile ? 11.5 : 12.5, cursor: "pointer", whiteSpace: "nowrap",
-                  }}
-                >
-                  {f.label} <span style={{ opacity: 0.7 }}>({f.count})</span>
-                </button>
+                <Chip key={f.key} activo={filtroContratos === f.key} count={f.count} onClick={() => { setFiltroContratos(f.key); setContratoSeleccionadoId(null); }}>
+                  {f.label}
+                </Chip>
               ))}
             </div>
-            <div style={{ display: "flex", gap: isMobile ? 5 : 6, flexWrap: "wrap", marginBottom: isMobile ? 7 : 12 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: isMobile ? 7 : 12 }}>
               {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
-                <button
-                  key={g}
-                  onClick={() => setFiltroGrupoContratos(g)}
-                  style={{
-                    padding: isMobile ? "5px 10px" : "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-                    fontSize: isMobile ? 11.5 : 12, fontWeight: 700,
-                    background: filtroGrupoContratos === g ? "var(--accent)" : "var(--soft)",
-                    color: filtroGrupoContratos === g ? "var(--card)" : "var(--muted2)",
-                  }}
-                >
+                <Chip key={g} activo={filtroGrupoContratos === g} onClick={() => setFiltroGrupoContratos(g)}>
                   {g === "todos" ? "Todos" : g}
-                </button>
+                </Chip>
               ))}
             </div>
             <div style={{ ...card, padding: isMobile ? 10 : 16 }}>

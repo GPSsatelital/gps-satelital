@@ -6,22 +6,21 @@
 
 export default function Placa({ placa, size = "md" }: { placa: string; size?: "sm" | "md" | "lg" }) {
   const s = size === "sm"
-    ? { fontSize: 10.5, padding: "2px 6px 1px", letterSpacing: 1 }
+    ? { fontSize: 12, padding: "6px 8px 5px", letterSpacing: 1.1, borderRadius: 6 }
     : size === "lg"
-      ? { fontSize: 15, padding: "4px 10px 3px", letterSpacing: 1.6 }
-      : { fontSize: 11.5, padding: "3px 7px 2px", letterSpacing: 1.2 };
+      ? { fontSize: 16, padding: "9px 11px 8px", letterSpacing: 1.5, borderRadius: 8 }
+      : { fontSize: 13, padding: "7px 9px 6px", letterSpacing: 1.3, borderRadius: 7 };
   return (
     <span
       style={{
         background: "#FFD100",
         color: "#111111",
-        border: "1.6px solid #111111",
-        borderRadius: 6,
+        border: "2px solid #111111",
         fontWeight: 800,
         fontVariantNumeric: "tabular-nums",
-        lineHeight: 1.25,
+        lineHeight: 1.1,
         whiteSpace: "nowrap",
-        boxShadow: "inset 0 -1.5px 0 rgba(0,0,0,0.22)",
+        boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.22)",
         display: "inline-block",
         textTransform: "uppercase",
         ...s,

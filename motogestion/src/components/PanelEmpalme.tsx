@@ -68,7 +68,7 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
   return (
     <div style={{ background: "var(--warn-soft2)", border: "2px solid var(--warn2)", borderRadius: 16, padding: 16, display: "grid", gap: 12, boxSizing: "border-box" }}>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 15, color: "var(--warn-ink)" }}>⚠️ Empalme pendiente — cliente migrado sin revisar</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--warn-ink)" }}>⚠️ Empalme pendiente — cliente migrado sin revisar</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           Revisa cada punto CON el cliente presente. Al confirmar, sus cifras viejas quedan selladas.
         </div>
@@ -77,12 +77,12 @@ export default function PanelEmpalme({ contrato, cliente, deudaApertura, puedeCe
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--warn-line)", minWidth: 0 }}>
           <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700 }}>AHORRO QUE TRAÍA</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>$ {fmt(contrato.ahorro_apertura ?? 0)}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>$ {fmt(contrato.ahorro_apertura ?? 0)}</div>
           <div style={{ fontSize: 10, color: "var(--faint)" }}>editable en Editar contrato</div>
         </div>
         <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "8px 12px", border: "1px solid var(--warn-line)", minWidth: 0 }}>
           <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700 }}>DEUDA QUE TRAE</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: deudaApertura > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>$ {fmt(deudaApertura)}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: deudaApertura > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>$ {fmt(deudaApertura)}</div>
           <div style={{ fontSize: 10, color: "var(--faint)" }}>editable en la pestaña Deudas</div>
         </div>
       </div>

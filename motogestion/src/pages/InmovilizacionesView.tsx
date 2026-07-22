@@ -447,7 +447,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     <div>
       {/* Header — subtítulo solo en desktop para ahorrar alto en móvil */}
       <div style={{ marginBottom: isMobile ? 10 : 22 }}>
-        <h2 style={{ fontSize: isMobile ? 19 : 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Inmovilizaciones</h2>
+        <h2 style={{ fontSize: isMobile ? 19 : 22, margin: 0, fontWeight: 700, color: "var(--text)" }}>Inmovilizaciones</h2>
         {!isMobile && (
           <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
             Motos retenidas y contratos en mora real — gestión de recuperación
@@ -459,22 +459,22 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 12 : 20 }}>
         <div onClick={() => setTab("en_mora")} style={{ background: "var(--bad-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Mora crítica (+3d)</div>
-          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.total}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 700, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.total}</div>
           <div style={{ fontSize: 11, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2 }}>{resumen.critica} críticos (+10d)</div>
         </div>
         <div onClick={() => setTab("en_mora")} style={{ background: "var(--warn-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>En proceso recolección</div>
-          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--warn-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.recoleccion}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 700, color: "var(--warn-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.recoleccion}</div>
           <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2 }}>orden activa</div>
         </div>
         <div onClick={() => setTab("retenidas")} style={{ background: "var(--ok-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Recuperadas esta semana</div>
-          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--ok-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{recuperadasSemana}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 700, color: "var(--ok-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{recuperadasSemana}</div>
           <div style={{ fontSize: 11, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
         </div>
         <div style={{ background: "var(--bad-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>${fmt(resumen.deudaTotal)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>${fmt(resumen.deudaTotal)}</div>
           <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
         </div>
       </div>
@@ -490,7 +490,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             onClick={() => setTab(t.key)}
             style={{
               flex: 1, padding: "12px 14px", borderRadius: 12, border: "none", cursor: "pointer",
-              fontSize: 14, fontWeight: 800,
+              fontSize: 14, fontWeight: 700,
               background: tab === t.key ? "var(--text)" : "var(--soft)",
               color: tab === t.key ? "var(--card)" : "var(--muted)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -499,7 +499,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             {t.label}
             <span style={{
               background: tab === t.key ? "rgba(255,255,255,0.2)" : "var(--line)",
-              borderRadius: 999, fontSize: 12, fontWeight: 900, padding: "1px 8px",
+              borderRadius: 999, fontSize: 12, fontWeight: 700, padding: "1px 8px",
               color: tab === t.key ? "var(--card)" : "var(--muted)",
             }}>{t.count}</span>
           </button>
@@ -534,7 +534,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               {btn.label}
               <span style={{
                 background: filtro === btn.key ? "rgba(255,255,255,0.2)" : "var(--line)",
-                borderRadius: 999, fontSize: 10, fontWeight: 900,
+                borderRadius: 999, fontSize: 10, fontWeight: 700,
                 padding: "1px 6px",
                 color: filtro === btn.key ? "var(--card)" : "var(--muted)",
               }}>{btn.count}</span>
@@ -553,7 +553,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {filas.length === 0 && (
         <div style={{ background: "var(--card)", borderRadius: 16, padding: "52px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
           <div style={{ fontSize: 44, marginBottom: 14 }}>✅</div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>Sin motos en mora</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>Sin motos en mora</div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Todos los contratos están al día</div>
         </div>
       )}
@@ -572,19 +572,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                       {onNavigate && f.motoId
-                        ? <button onClick={() => onNavigate("ficha_moto", f.motoId!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 900, fontSize: 16, color: "var(--accent)", textDecoration: "underline" }}>{f.placa}</button>
-                        : <span style={{ fontWeight: 900, fontSize: 16, color: "var(--text)" }}>{f.placa}</span>
+                        ? <button onClick={() => onNavigate("ficha_moto", f.motoId!)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 16, color: "var(--accent)", textDecoration: "underline" }}>{f.placa}</button>
+                        : <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text)" }}>{f.placa}</span>
                       }
                       <span style={{ color: "var(--line2)" }}>·</span>
                       {onNavigate
-                        ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>{f.clienteNombre}</button>
-                        : <span style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase" }}>{f.clienteNombre}</span>
+                        ? <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>{f.clienteNombre}</button>
+                        : <span style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase" }}>{f.clienteNombre}</span>
                       }
-                      <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: s.border, color: s.color }}>
+                      <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.border, color: s.color }}>
                         {s.icon} {s.label}
                       </span>
                       {f.recoleccionOrdenada && (
-                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
+                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                           🚔 Recolección
                         </span>
                       )}
@@ -600,13 +600,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     {/* Metrics row */}
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
                       <div>
-                        <div style={{ fontSize: 34, fontWeight: 900, color: s.color, lineHeight: 1 }}>
+                        <div style={{ fontSize: 34, fontWeight: 700, color: s.color, lineHeight: 1 }}>
                           {f.diasMora}
                         </div>
                         <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>${fmt(f.deudaReal)}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>${fmt(f.deudaReal)}</div>
                         <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>deuda real</div>
                       </div>
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
@@ -626,7 +626,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         </div>
                       ) : (
                         <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--bad-ink)" }}>Sin gestiones</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--bad-ink)" }}>Sin gestiones</div>
                           <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>requiere acción</div>
                         </div>
                       )}
@@ -716,7 +716,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               {/* Protocol panel */}
               {abierto && (
                 <div style={{ borderTop: `1px solid ${s.border}`, padding: "14px 16px", background: "rgba(255,255,255,0.7)" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.4 }}>
                     Protocolo de mora
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.6 }}>
@@ -740,7 +740,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {tab === "retenidas" && (<>
       {/* Motos retenidas — datos reales (contrato Suspendido + moto Recuperada) */}
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 900, color: "var(--text)" }}>🔒 Motos retenidas</h3>
+        <h3 style={{ fontSize: 18, margin: "0 0 4px", fontWeight: 700, color: "var(--text)" }}>🔒 Motos retenidas</h3>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
           Motos fuera de servicio, en poder de la empresa — por mora, entregadas temporal, o en taller.
         </p>
@@ -760,7 +760,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             display: "flex", alignItems: "center", gap: 5,
           }}>
             {f.label}
-            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "var(--line)", borderRadius: 999, fontSize: 10, fontWeight: 900, padding: "1px 6px", color: filtroRet === f.key ? "var(--card)" : "var(--muted)" }}>{f.count}</span>
+            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "var(--line)", borderRadius: 999, fontSize: 10, fontWeight: 700, padding: "1px 6px", color: filtroRet === f.key ? "var(--card)" : "var(--muted)" }}>{f.count}</span>
           </button>
         ))}
       </div>
@@ -768,7 +768,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).length === 0 ? (
         <div style={{ background: "var(--card)", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: isMobile ? 16 : 28 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>No hay motos retenidas</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>No hay motos retenidas</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: isMobile ? 16 : 28 }}>
@@ -781,7 +781,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>
                       {m.placa} · {m.clienteNombre}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{m.marca} {m.modelo}</div>
@@ -799,7 +799,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           {m.convenioId != null && <span style={{ fontSize: 11, fontWeight: 700 }}> · 📝 en convenio</span>}
                         </div>
                       )}
-                      <div style={{ fontSize: 13, fontWeight: 800, color: m.soloInfoTaller ? "var(--violet)" : m.esTemporal ? "var(--accent-ink)" : entregable ? "var(--ok-ink)" : "var(--bad-ink)", marginTop: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: m.soloInfoTaller ? "var(--violet)" : m.esTemporal ? "var(--accent-ink)" : entregable ? "var(--ok-ink)" : "var(--bad-ink)", marginTop: 2 }}>
                         {m.soloInfoTaller
                           ? "🔧 En taller (varada) — se resuelve el tiempo al salir"
                           : m.esTemporal
@@ -812,15 +812,15 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                         {m.categoria === "taller"
-                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 En taller</span>
+                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 En taller</span>
                           : m.categoria === "temporal"
-                            ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>🅿️ Guardada temporal (incapacidad)</span>
-                            : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>🔴 Por mora / recolección</span>}
-                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--soft)", color: "var(--muted2)" }}>
+                            ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>🅿️ Guardada temporal (incapacidad)</span>
+                            : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>🔴 Por mora / recolección</span>}
+                        <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--soft)", color: "var(--muted2)" }}>
                           ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
                         </span>
                         {m.listaParaLiquidar && (
-                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                             📄 Lista para liquidar (7+ días)
                           </span>
                         )}
@@ -840,13 +840,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       ? <button
                           onClick={() => setLiquidacionModal(m)}
                           title="Diario varado: liquida este contrato y crea uno nuevo en otra moto trasladando el ahorro"
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--orange)", color: "var(--card)" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--orange)", color: "var(--card)" }}
                         >
                           🔁 Liquidar y reasignar
                         </button>
                       : <button
                           onClick={() => setPrestarRec(m)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--violet)", color: "var(--card)" }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--violet)", color: "var(--card)" }}
                         >
                           🔄 Prestar reemplazo
                         </button>
@@ -855,7 +855,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <button
                         onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
                         disabled={procesandoEsta}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--ok-ink)", color: "var(--card)" }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)" }}
                       >
                         💵 Cobrar
                       </button>
@@ -865,7 +865,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         onClick={() => setConvenioRec(m)}
                         disabled={procesandoEsta}
                         title="Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--accent-ink)", color: "var(--card)" }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-ink)", color: "var(--card)" }}
                       >
                         📝 Convenio
                       </button>
@@ -901,7 +901,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {/* Préstamos activos: cobrar el alquiler diario y devolver cuando la moto salga de taller */}
       {prestamos.filter(p => p.estado === "activo").length > 0 && (
         <div style={{ marginTop: 8, marginBottom: isMobile ? 16 : 28 }}>
-          <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 900, color: "var(--text)" }}>🔄 Préstamos activos</h3>
+          <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 700, color: "var(--text)" }}>🔄 Préstamos activos</h3>
           <div style={{ display: "grid", gap: 8 }}>
             {prestamos.filter(p => p.estado === "activo").map(p => {
               const cont = contratos.find(c => c.id === p.contrato_id);
@@ -912,7 +912,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               return (
                 <div key={p.id} style={{ background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 14, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{cli?.nombre ?? "—"}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{cli?.nombre ?? "—"}</div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       Anda en <strong>{motoP?.placa ?? "?"}</strong> (prestada) · su moto <strong>{motoO?.placa ?? "?"}</strong> en taller · desde {p.fecha_inicio}
                     </div>
@@ -920,7 +920,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                     <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
+                      style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
                       💵 Cobrar alquiler
                     </button>
                     <button onClick={() => handleDevolverPrestamo(p.id)} disabled={proc}
@@ -963,7 +963,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         <>
           <div onClick={() => !cobroProc && setCobroRec(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
           <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>💵 Cobrar para recuperar</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>💵 Cobrar para recuperar</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14, textTransform: "uppercase" }}>{cobroRec.placa} · {cobroRec.clienteNombre}</div>
 
             <div style={{ background: "var(--bad-soft)", border: "1px solid var(--bad-line)", borderRadius: 12, padding: "10px 12px", marginBottom: 14, fontSize: 13, color: "var(--bad-ink)", fontWeight: 700 }}>
@@ -982,7 +982,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={() => setCobroRec(null)} disabled={cobroProc} style={{ flex: 1, padding: 11, borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
-              <button onClick={handleCobrarRecuperar} disabled={cobroProc} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: "pointer", fontWeight: 800, fontSize: 14, opacity: cobroProc ? 0.6 : 1 }}>
+              <button onClick={handleCobrarRecuperar} disabled={cobroProc} style={{ flex: 2, padding: 11, borderRadius: 12, border: "none", background: "var(--ok-ink)", color: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, opacity: cobroProc ? 0.6 : 1 }}>
                 {cobroProc ? "Registrando..." : "Registrar pago"}
               </button>
             </div>

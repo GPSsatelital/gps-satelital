@@ -377,14 +377,14 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
       >
         {/* Encabezado (no se imprime) */}
         <div className="recibo-no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>🧾 Recibo de pago</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>🧾 Recibo de pago</div>
           <button onClick={onCerrar} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--faint)" }}>✕</button>
         </div>
 
         {/* Ticket — esto es lo único que se imprime (ver #recibo-ticket / @media print más abajo) */}
         <div id="recibo-ticket">
           <div style={{ textAlign: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
             {datos.grupo && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{datos.grupo}</div>}
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>Comprobante de pago</div>
           </div>
@@ -414,7 +414,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
           </div>
 
           <div style={{ background: "var(--soft2)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", marginBottom: 2 }}>Detalle de su cuenta</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 2 }}>Detalle de su cuenta</div>
             {[
               ["Debía en total",       `$${Math.round(datos.debiaTotal).toLocaleString("es-CO")}`],
               datos.aplicadoTarifa > 0 ? ["→ A la cuota", `$${Math.round(datos.aplicadoTarifa).toLocaleString("es-CO")}`] : null,
@@ -433,7 +433,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
             })}
             {datos.convenioAbonado != null && (
               <>
-                <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>Convenio</div>
+                <div style={{ borderTop: "1px solid var(--line)", marginTop: 4, paddingTop: 6, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>Convenio</div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 12, color: "var(--muted)" }}>Abonó hoy al convenio</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>${Math.round(datos.convenioAbonado).toLocaleString("es-CO")}</span>
@@ -1572,7 +1572,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         <div style={{ ...card, padding: isMobile ? "12px 14px" : 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.15 }}>
+              <div style={{ fontWeight: 700, fontSize: isMobile ? 17 : 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.15 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
@@ -1589,7 +1589,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
               {contratoDetalle.motor_v2 && (contratoDetalle.total_cajas ?? 0) > 0 && (
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-ink)", marginTop: 2 }}>
                   📦 Va {contratoDetalle.cajas_pagadas ?? 0} de {contratoDetalle.total_cajas} cuotas pagadas
                 </div>
               )}
@@ -1641,13 +1641,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Cuota hoy" : "Cuota período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
             </div>
             <div style={{ background: "var(--soft2)", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Pagado hoy" : "Pagado período"}
               </div>
-              <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(pagadoEnPeriodo)}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(pagadoEnPeriodo)}</div>
             </div>
             {/* "Al día" solo si de verdad no debe nada — incluye deuda pendiente y convenio,
                 no solo la cuota de esta semana (mismo criterio que Panel Hoy y Cobro en campo). */}
@@ -1655,7 +1655,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {enProrrateo ? "Próx. pago" : "Pendiente"}
               </div>
-              <div style={{ fontWeight: 900, fontSize: 20, lineHeight: 1.1, fontVariantNumeric: "tabular-nums", color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
+              <div style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.1, fontVariantNumeric: "tabular-nums", color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                 {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalDebeAhora > 0 ? `$ ${fmt(totalDebeAhora)}` : "✓ Al día"}
               </div>
             </div>
@@ -1667,9 +1667,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           {desg && totalDebeAhora > 0 && (
             <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--bad-line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--bad-ink)", textTransform: "uppercase" }}>Debe pagar ahora</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--bad-ink)", textTransform: "uppercase" }}>Debe pagar ahora</span>
                 {periodosDebe.length >= 2 && (
-                  <span style={{ fontSize: 10, fontWeight: 800, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 999, padding: "2px 8px" }}>🔴 {periodosDebe.length} cuotas vencidas</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 999, padding: "2px 8px" }}>🔴 {periodosDebe.length} cuotas vencidas</span>
                 )}
               </div>
               <div style={{ display: "grid", gap: 3 }}>
@@ -1699,8 +1699,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 )}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--line)" }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>TOTAL A COBRAR</span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "var(--bad-ink)" }}>$ {fmt(totalDebeAhora)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>TOTAL A COBRAR</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "var(--bad-ink)" }}>$ {fmt(totalDebeAhora)}</span>
               </div>
               {desg.proximaFecha && (
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
@@ -1730,7 +1730,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>
                     Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${fmtFecha(proximoPagoFecha)}` : ""}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--accent-ink)", marginTop: 2 }}>$ {fmt(proximoPagoConv)}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>cuota $ {fmt(valorPeriodoReal(contratoDetalle))} + convenio $ {fmt(cuotaConvActiva)}</div>
                 </div>
               )}
@@ -1744,7 +1744,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
               </span>
               {totalPendiente > cuotaPendiente && (
-                <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 900, fontSize: 14, color: "var(--bad-ink)", marginLeft: "auto" }}>
+                <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 14, color: "var(--bad-ink)", marginLeft: "auto" }}>
                   Total: $ {fmt(totalPendiente)}
                 </span>
               )}
@@ -1755,7 +1755,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--accent-soft2)", borderRadius: 10, padding: "8px 12px" }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase" }}>Saldo a favor</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
               </div>
               {puedeAplicarSaldo && (
                 <button onClick={handleAplicarSaldo} style={{ background: "var(--accent)", color: "var(--card)", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
@@ -1876,7 +1876,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                       <div style={{ fontSize: 12, color: "var(--muted)" }}>{d.descripcion}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--bad-ink)", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: "var(--bad-ink)", whiteSpace: "nowrap" }}>$ {fmt(d.monto_pendiente)}</div>
                       {puedeEditarDeuda && (
                         <button onClick={() => abrirEdicionDeuda(d)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15 }}>✏️</button>
                       )}
@@ -2224,7 +2224,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       {/* Header — oculto en móvil (el header de la app ya dice "Cartera & Cobros") */}
       {!isMobile && (
         <>
-          <h2 style={{ fontSize: 24, margin: 0, fontWeight: 800 }}>Cartera</h2>
+          <h2 style={{ fontSize: 24, margin: 0, fontWeight: 700 }}>Cartera</h2>
           <p style={{ marginTop: 6, color: "var(--muted)", margin: "6px 0 0" }}>
             Control de cobros, deudas, convenios y gestiones de mora.
           </p>
@@ -2256,7 +2256,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
-              <span style={{ fontSize: 20, fontWeight: 900, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
             </div>
             {k.sub && (
               <div style={{ fontSize: 10, color: k.color, opacity: 0.8, marginTop: 1, textAlign: "right" }}>{k.sub}</div>
@@ -2464,7 +2464,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                           <EstadoBadge estado={c.estadoCartera} />
                           {empalmePendiente(c) && (
-                            <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800 }}>⚠️ Empalme</span>
+                            <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 700 }}>⚠️ Empalme</span>
                           )}
                         </div>
                       </div>
@@ -2477,7 +2477,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                           ) : debePagar > 0 ? (
                             <>
                               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--muted)" }}>Debe pagar</div>
-                              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums", color: "var(--bad)", lineHeight: 1.15 }}>$ {fmt(debePagar)}</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums", color: "var(--bad)", lineHeight: 1.15 }}>$ {fmt(debePagar)}</div>
                               <div style={{ fontSize: 11, color: "var(--muted)" }}>
                                 cuota ${fmt(cuotaPendParte)}{c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""}
                               </div>
@@ -2552,7 +2552,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div key={p.id} style={{ border: "1px solid var(--warn-line)", background: "var(--warn-soft2)", borderRadius: 14, padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
+                  <div style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                     {moto && <Placa placa={moto.placa} size="sm" />}
                     <span>{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}</span>
@@ -2561,7 +2561,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                     <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft3)", color: "var(--accent-ink)", fontSize: 11, fontWeight: 700 }}>
                       {esCampo ? "💵 Cobro en campo" : "🏦 Transferencia"}
                     </span>
-                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", color: "var(--text)", fontSize: 11, fontWeight: 800 }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", color: "var(--text)", fontSize: 11, fontWeight: 700 }}>
                       $ {fmt(p.valor)}
                     </span>
                     {esCampo && (
@@ -2639,7 +2639,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {/* Transferencias — solo staff de oficina, SUBADMIN no confirma transferencias */}
             {(esSecretaria || esAdmin) && (
               <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
-                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Comprobantes de transferencia esperando verificación.</div>
                 <input
                   style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
@@ -2661,7 +2661,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             )}
 
             <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>💵 Efectivo de campo por confirmar</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>💵 Efectivo de campo por confirmar</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Cobros recuperados en campo por ADMIN/SUBADMIN, esperando entrega y confirmación.</div>
               <input
                 style={{ ...inputStyle, marginBottom: 10, fontSize: 13 }}
@@ -2815,7 +2815,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         >
           <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 120px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text)" }}>💵 Cobro en campo</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text)" }}>💵 Cobro en campo</h3>
               <button onClick={cerrarModalCampo} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--faint)" }}>✕</button>
             </div>
 
@@ -2887,14 +2887,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   return (
                     <div style={{ display: "grid", gap: 12 }}>
                       <div style={{ padding: "10px 14px", background: "var(--soft2)", borderRadius: 12, border: "1px solid var(--line)" }}>
-                        <div style={{ fontWeight: 800, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
+                        <div style={{ fontWeight: 700, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
                         {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} size="sm" /></div>}
                       </div>
 
                       {/* Referencia: cuánto debe pagar */}
                       <div style={{ background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "10px 14px" }}>
                         <div style={{ fontSize: 11, color: "var(--accent-ink)", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent)" }}>$ {fmt(debeTotal)}</div>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(debeTotal)}</div>
                         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                           Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
                         </div>
@@ -3052,7 +3052,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         >
           <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Registrar pago</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text)" }}>Registrar pago</h3>
               <button onClick={cerrarModalPago} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--faint)" }}>✕</button>
             </div>
 
@@ -3104,7 +3104,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             {modalContrato && (
               <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14, marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", textTransform: "uppercase" }}>
                     {modalCliente?.nombre || "Sin cliente"}
                   </div>
                   <EstadoBadge estado={modalContrato.estadoCartera as EstadoCartera} />
@@ -3121,15 +3121,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                   <div style={{ flex: 1, background: "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
                     <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Cuota período</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>$ {fmt(modalCuotaPactada)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>$ {fmt(modalCuotaPactada)}</div>
                   </div>
                   <div style={{ flex: 1, background: "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
                     <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Pagado</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ok-ink)" }}>$ {fmt(modalPagadoPeriodo)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--ok-ink)" }}>$ {fmt(modalPagadoPeriodo)}</div>
                   </div>
                   <div style={{ flex: 1, background: modalCuotaPendiente > 0 ? "var(--bad-soft)" : "var(--soft2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
                     <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>Pendiente</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: modalCuotaPendiente > 0 ? "var(--bad-ink)" : "var(--text)" }}>$ {fmt(modalCuotaPendiente)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: modalCuotaPendiente > 0 ? "var(--bad-ink)" : "var(--text)" }}>$ {fmt(modalCuotaPendiente)}</div>
                   </div>
                 </div>
 

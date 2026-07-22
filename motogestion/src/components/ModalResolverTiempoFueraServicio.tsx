@@ -90,7 +90,7 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>⏱️ Tiempo fuera de servicio</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>⏱️ Tiempo fuera de servicio</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre} · {motoPlaca}</div>
           </div>
           <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>
@@ -100,7 +100,7 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
           <div style={{ fontSize: 13, color: "var(--accent-ink)" }}>
             La moto estuvo <strong>{dias} día{dias !== 1 ? "s" : ""}</strong> por <strong>{motivo}</strong> ({fechaEntrada} → {fechaSalida}).
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)", marginTop: 4 }}>$ {fmt(valorTotal)}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent)", marginTop: 4 }}>$ {fmt(valorTotal)}</div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{dias} días × $ {fmt(tarifa)}/día (tarifa diaria)</div>
         </div>
 

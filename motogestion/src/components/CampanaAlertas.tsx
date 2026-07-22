@@ -79,7 +79,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
       >
         🔔
         {total > 0 && (
-          <span style={{ position: "absolute", top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: criticos > 0 ? "var(--bad)" : "var(--warn2)", color: "var(--card)", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+          <span style={{ position: "absolute", top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 999, background: criticos > 0 ? "var(--bad)" : "var(--warn2)", color: "var(--card)", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
             {total > 99 ? "99+" : total}
           </span>
         )}
@@ -88,7 +88,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
       {abierto && (
         <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 340, maxHeight: "80vh", overflowY: "auto", background: "var(--card)", borderRadius: 16, boxShadow: "0 20px 60px rgba(15,23,42,0.18)", border: "1px solid var(--line)", zIndex: 200 }}>
           <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--soft)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: 14 }}>Alertas del sistema</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Alertas del sistema</div>
             <div style={{ fontSize: 12, color: "var(--muted)" }}>{total} activa{total !== 1 ? "s" : ""}</div>
           </div>
 

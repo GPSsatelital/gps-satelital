@@ -163,7 +163,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>🤝 {obligatorio ? "Convenio obligatorio" : "Nuevo convenio"}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>🤝 {obligatorio ? "Convenio obligatorio" : "Nuevo convenio"}</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
           {!obligatorio && (
@@ -202,7 +202,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             <div>
               <div style={labelStyle}>Meta a pagar (total del convenio)</div>
               {metaFija != null ? (
-                <div style={{ ...inputStyle, background: "var(--soft)", fontWeight: 800, color: "var(--text)" }}>
+                <div style={{ ...inputStyle, background: "var(--soft)", fontWeight: 700, color: "var(--text)" }}>
                   $ {fmt(metaFija)}
                 </div>
               ) : (

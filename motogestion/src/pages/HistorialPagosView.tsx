@@ -5,8 +5,16 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { hoyISO, hoyDate } from "../utils/fecha";
+import { Badge, type BadgeTone } from "../components/atomos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
+
+function estadoTone(estado: string): BadgeTone {
+  if (estado === "Confirmado") return "ok";
+  if (estado === "Pendiente") return "warn";
+  if (estado === "Rechazado") return "bad";
+  return "neutral";
+}
 
 function isoMes(offset = 0) {
   const d = new Date();
@@ -121,18 +129,18 @@ export default function HistorialPagosView({ onNavigate }: {
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {cliente?.nombre ?? "—"}
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
               {p.fecha} · {hora}{moto ? ` · ${moto.placa}` : ""}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: mb.bg, color: mb.color }}>{mb.label}</span>
-              <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: eb.bg, color: eb.color }}>{p.estado}</span>
+              <Badge tone={p.metodo === "Efectivo" ? "ok" : "accent"}>{mb.label}</Badge>
+              <Badge tone={estadoTone(p.estado)}>{p.estado}</Badge>
             </div>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: p.estado === "Rechazado" ? "var(--faint)" : "var(--text)", flexShrink: 0, textDecoration: p.estado === "Rechazado" ? "line-through" : "none" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: p.estado === "Rechazado" ? "var(--faint)" : "var(--text)", flexShrink: 0, textDecoration: p.estado === "Rechazado" ? "line-through" : "none" }}>
             ${fmt(p.valor)}
           </div>
         </div>
@@ -143,20 +151,20 @@ export default function HistorialPagosView({ onNavigate }: {
   const detailPanel = pagoSeleccionado && infoSeleccionado && (
     <div style={{ background: "var(--card)", borderRadius: 16, padding: "24px", border: "1px solid var(--line)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>Detalle del pago</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Detalle del pago</div>
         <button onClick={() => setSeleccionado(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--faint)", lineHeight: 1 }}>×</button>
       </div>
-      <div style={{ fontSize: 32, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>${fmt(pagoSeleccionado.valor)}</div>
+      <div style={{ fontSize: 32, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>${fmt(pagoSeleccionado.valor)}</div>
       <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        <span style={{ ...estadoBadge(pagoSeleccionado.estado), padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>{pagoSeleccionado.estado}</span>
-        <span style={{ ...metodoBadge(pagoSeleccionado.metodo), padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>{pagoSeleccionado.metodo}</span>
+        <Badge tone={estadoTone(pagoSeleccionado.estado)}>{pagoSeleccionado.estado}</Badge>
+        <Badge tone={pagoSeleccionado.metodo === "Efectivo" ? "ok" : "accent"}>{pagoSeleccionado.metodo}</Badge>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ background: "var(--soft2)", borderRadius: 12, padding: "14px 16px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 8 }}>Cliente</div>
           <button onClick={() => infoSeleccionado.cliente && onNavigate("ficha_cliente", infoSeleccionado.cliente.id)}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-            <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--accent)" }}>{infoSeleccionado.cliente?.nombre ?? "—"}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--accent)" }}>{infoSeleccionado.cliente?.nombre ?? "—"}</div>
             {infoSeleccionado.cliente && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>C.C. {infoSeleccionado.cliente.cedula}</div>}
           </button>
         </div>
@@ -165,7 +173,7 @@ export default function HistorialPagosView({ onNavigate }: {
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 8 }}>Moto</div>
             <button onClick={() => onNavigate("ficha_moto", infoSeleccionado.moto!.id)}
               style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--accent)" }}>{infoSeleccionado.moto.placa}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--accent)" }}>{infoSeleccionado.moto.placa}</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{infoSeleccionado.moto.marca} {infoSeleccionado.moto.modelo}</div>
             </button>
           </div>
@@ -195,7 +203,7 @@ export default function HistorialPagosView({ onNavigate }: {
   return (
     <div style={{ paddingBottom: 32 }}>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 900, color: "var(--text)" }}>Historial de Pagos</h2>
+        <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Historial de Pagos</h2>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>{pagosFiltrados.length} registro{pagosFiltrados.length !== 1 ? "s" : ""} encontrado{pagosFiltrados.length !== 1 ? "s" : ""}</div>
       </div>
 
@@ -255,7 +263,7 @@ export default function HistorialPagosView({ onNavigate }: {
         ].map(kpi => (
           <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 12, padding: "12px 16px", flex: 1, minWidth: 120 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color, marginTop: 3 }}>${fmt(kpi.val)}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color, marginTop: 3 }}>${fmt(kpi.val)}</div>
           </div>
         ))}
       </div>

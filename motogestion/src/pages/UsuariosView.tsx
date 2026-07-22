@@ -291,7 +291,7 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
         <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>
           {a.label}
           {a.dbEnforced && <span title="Reforzado en la base de datos" style={{ marginLeft: 5, fontSize: 10, color: "var(--accent-ink)" }}>🔒</span>}
-          {editado && <span title="Distinto a lo normal de su rol" style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "var(--warn-strong)", background: "var(--warn-soft)", borderRadius: 6, padding: "1px 5px" }}>editado</span>}
+          {editado && <span title="Distinto a lo normal de su rol" style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "var(--warn-strong)", background: "var(--warn-soft)", borderRadius: 6, padding: "1px 5px" }}>editado</span>}
         </span>
       </label>
     );
@@ -318,7 +318,7 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
           <div key={m.key} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "8px 10px", background: on ? "var(--card)" : "var(--soft2)", boxSizing: "border-box" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="checkbox" checked={on} onChange={() => onToggleModulo(m.key)} style={chk} />
-              <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{m.icon} {m.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{m.icon} {m.label}</span>
             </label>
             <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid var(--soft)", paddingLeft: 12 }}>
               {ACCIONES.filter(a => a.modulo === m.key).map(a => filaAccion(a, on))}
@@ -329,7 +329,7 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
 
       {orphan.length > 0 && (
         <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "8px 10px", boxSizing: "border-box" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>⚙️ Configuración</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>⚙️ Configuración</div>
           <div style={{ marginLeft: 12, marginTop: 4, borderLeft: "2px solid var(--soft)", paddingLeft: 12 }}>
             {orphan.map(a => filaAccion(a, true))}
           </div>

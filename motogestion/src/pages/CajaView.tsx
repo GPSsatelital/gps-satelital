@@ -194,13 +194,13 @@ export default function CajaView() {
         gap: 12,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {nombre}
           </div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{placa} · {hora}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>${fmt(p.valor)}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>${fmt(p.valor)}</div>
           {showConfirm && (
             <button onClick={() => handleConfirmar(p.id)} disabled={confirmando === p.id}
               style={{ padding: "6px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent)", color: "var(--card)", opacity: confirmando === p.id ? 0.7 : 1, whiteSpace: "nowrap" }}>
@@ -215,10 +215,10 @@ export default function CajaView() {
   const seccionEfectivo = (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontWeight: 800, fontSize: 13, color: "var(--ok-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ok-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
           Efectivo recibido
         </div>
-        <span style={{ background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 800, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
+        <span style={{ background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
           {pagosEfectivo.length} pagos
         </span>
       </div>
@@ -237,10 +237,10 @@ export default function CajaView() {
   const seccionTransfer = (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontWeight: 800, fontSize: 13, color: "var(--accent-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--accent-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
           Transferencias confirmadas
         </div>
-        <span style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", fontWeight: 800, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
+        <span style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
           {pagosTransfer.length} pagos
         </span>
       </div>
@@ -259,10 +259,10 @@ export default function CajaView() {
   const seccionPendientes = resumen.pendientes.length > 0 && (
     <div style={{ background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", borderRadius: 16, padding: "16px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ fontWeight: 800, fontSize: 13, color: "var(--warn-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--warn-ink)", textTransform: "uppercase", letterSpacing: 0.5 }}>
           Pendientes de confirmar
         </div>
-        <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", fontWeight: 800, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
+        <span style={{ background: "var(--warn-soft)", color: "var(--warn-ink)", fontWeight: 700, fontSize: 12, padding: "3px 10px", borderRadius: 999 }}>
           ${fmt(resumen.totalPendiente)}
         </span>
       </div>
@@ -274,7 +274,7 @@ export default function CajaView() {
 
   const seccionConciliacionCampo = conciliacionCampo.length > 0 && (
     <div style={{ background: "var(--ok-soft)", border: "1px solid var(--ok-line)", borderRadius: 16, padding: "16px 20px" }}>
-      <div style={{ fontWeight: 800, fontSize: 13, color: "var(--ok-ink)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--ok-ink)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
         💵 Cobros en campo — efectivo a recibir por funcionario
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -282,7 +282,7 @@ export default function CajaView() {
           <div key={i} style={{ background: "var(--card)", borderRadius: 12, padding: "10px 14px", border: "1px solid var(--line)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>{p.nombre}</div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ok-ink)" }}>${fmt(p.total)}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ok-ink)" }}>${fmt(p.total)}</div>
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
               {p.count} cobro(s)
@@ -303,15 +303,15 @@ export default function CajaView() {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "var(--faint)" }}>Efectivo</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--ok)", marginTop: 2 }}>${fmt(resumen.efectivo)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ok)", marginTop: 2 }}>${fmt(resumen.efectivo)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "var(--faint)" }}>Transferencias</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--accent-line)", marginTop: 2 }}>${fmt(resumen.transfer)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent-line)", marginTop: 2 }}>${fmt(resumen.transfer)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "var(--faint)" }}>Total general</div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total)}</div>
         </div>
       </div>
       {resumen.pendientes.length > 0 && (
@@ -344,7 +344,7 @@ export default function CajaView() {
           <button
             onClick={() => abrirCierre(grupoEnVista)}
             disabled={resumen.total === 0}
-            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "var(--line)" : COLOR_GRUPO[grupoEnVista], color: resumen.total === 0 ? "var(--faint)" : "var(--card)", fontSize: 14, fontWeight: 800, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
+            style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: resumen.total === 0 ? "var(--line)" : COLOR_GRUPO[grupoEnVista], color: resumen.total === 0 ? "var(--faint)" : "var(--card)", fontSize: 14, fontWeight: 700, cursor: resumen.total === 0 ? "not-allowed" : "pointer" }}
           >
             Cerrar caja de {grupoEnVista} — ${fmt(resumen.total)}
           </button>
@@ -353,7 +353,7 @@ export default function CajaView() {
         <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--soft)", fontSize: 12, color: "var(--muted3)", fontWeight: 600, textAlign: "center" }}>
           Cada grupo se cierra por aparte desde su tarjeta de arriba.
           {gruposConDinero.length > 0 && (
-            <div style={{ marginTop: 4, fontWeight: 800, color: "var(--text)" }}>
+            <div style={{ marginTop: 4, fontWeight: 700, color: "var(--text)" }}>
               {gruposCerrados.length} de {gruposConDinero.length} grupos cerrados
             </div>
           )}
@@ -371,7 +371,7 @@ export default function CajaView() {
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
               Caja del
             </div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--text)" }}>{fechaDisplay}</h2>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--text)" }}>{fechaDisplay}</h2>
             {grupoEnVista ? (
               cajaGrupoVista && (
                 <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, background: "var(--ok-soft)", border: "1px solid var(--ok-line)" }}>
@@ -393,17 +393,17 @@ export default function CajaView() {
         <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 100, background: "var(--ok-soft)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ok-ink)", textTransform: "uppercase" }}>Efectivo</div>
-            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "var(--ok-ink)", marginTop: 4 }}>${fmt(resumen.efectivo)}</div>
+            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: "var(--ok-ink)", marginTop: 4 }}>${fmt(resumen.efectivo)}</div>
             <div style={{ fontSize: 11, color: "var(--ok-ink)", opacity: 0.7, marginTop: 2 }}>{pagosEfectivo.length} pagos</div>
           </div>
           <div style={{ flex: 1, minWidth: 100, background: "var(--accent-soft3)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Transferencias</div>
-            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "var(--accent-ink)", marginTop: 4 }}>${fmt(resumen.transfer)}</div>
+            <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: "var(--accent-ink)", marginTop: 4 }}>${fmt(resumen.transfer)}</div>
             <div style={{ fontSize: 11, color: "var(--accent-ink)", opacity: 0.7, marginTop: 2 }}>{pagosTransfer.length} pagos</div>
           </div>
           <div style={{ flex: 1, minWidth: 120, background: "var(--ink)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase" }}>Total general</div>
-            <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "var(--on-ink)", marginTop: 4 }}>${fmt(resumen.total)}</div>
+            <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "var(--on-ink)", marginTop: 4 }}>${fmt(resumen.total)}</div>
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{resumen.confirmados} confirmados{filtroGrupo !== "todos" ? ` · ${filtroGrupo}` : ""}</div>
           </div>
         </div>
@@ -429,7 +429,7 @@ export default function CajaView() {
       {/* Resumen por grupo (portafolios) — solo en la vista "Todos" */}
       {filtroGrupo === "todos" && resumenPorGrupo.length > 0 && (
         <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 20px", marginBottom: 20 }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
             📊 Recaudo por grupo
           </div>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
@@ -442,10 +442,10 @@ export default function CajaView() {
                 >
                   <div onClick={() => setFiltroGrupo(g.grupo)} style={{ cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
-                      {cerrada && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>}
+                      <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                      {cerrada && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>}
                     </div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "var(--text)" }}>${fmt(g.total)}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>${fmt(g.total)}</div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                       Efectivo ${fmt(g.efectivo)} · Transf. ${fmt(g.transfer)}
                       <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
@@ -454,7 +454,7 @@ export default function CajaView() {
                   {puedeCerrarCaja && !cerrada && g.total > 0 && (
                     <button
                       onClick={() => abrirCierre(g.grupo)}
-                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: COLOR_GRUPO[g.grupo], color: "var(--card)", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: COLOR_GRUPO[g.grupo], color: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                     >
                       Cerrar caja de {g.grupo}
                     </button>
@@ -465,7 +465,7 @@ export default function CajaView() {
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>Total general del día</span>
-            <span style={{ fontSize: 20, fontWeight: 900, color: "var(--text)" }}>${fmt(resumenDia.total)}</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(resumenDia.total)}</span>
           </div>
         </div>
       )}
@@ -523,21 +523,21 @@ export default function CajaView() {
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%" }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900, color: COLOR_GRUPO[grupoACerrar] }}>Cerrar caja de {grupoACerrar}</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: COLOR_GRUPO[grupoACerrar] }}>Cerrar caja de {grupoACerrar}</h3>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>{fechaDisplay}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, background: "var(--ok-soft)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ok-ink)", textTransform: "uppercase" }}>Efectivo</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(rc.efectivo)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(rc.efectivo)}</div>
               </div>
               <div style={{ flex: 1, background: "var(--accent-soft3)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Transferencias</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "var(--accent-ink)" }}>${fmt(rc.transfer)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent-ink)" }}>${fmt(rc.transfer)}</div>
               </div>
             </div>
             <div style={{ background: COLOR_GRUPO[grupoACerrar], borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Total a cerrar — {grupoACerrar}</div>
-              <div style={{ fontSize: 26, fontWeight: 900, color: "#ffffff" }}>${fmt(rc.total)}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: "#ffffff" }}>${fmt(rc.total)}</div>
             </div>
             {rc.pendientes.length > 0 && (
               <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>
@@ -556,7 +556,7 @@ export default function CajaView() {
                 Cancelar
               </button>
               <button onClick={handleCerrarCaja} disabled={cerrando}
-                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "var(--ok-ink)", color: "var(--card)", fontWeight: 800, fontSize: 13, cursor: cerrando ? "not-allowed" : "pointer", opacity: cerrando ? 0.7 : 1 }}>
+                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "var(--ok-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: cerrando ? "not-allowed" : "pointer", opacity: cerrando ? 0.7 : 1 }}>
                 {cerrando ? "Cerrando..." : "Confirmar cierre"}
               </button>
             </div>

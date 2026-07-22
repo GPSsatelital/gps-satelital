@@ -165,7 +165,7 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
     <div style={{ display: "grid", gap: 10 }}>
       {labels.map(([key, label]) => (
         <div key={key} style={{ padding: 12, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted2)", marginBottom: 8 }}>{label}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>{label}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
               📷 Cámara
@@ -358,7 +358,7 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                   {semaforo.icono}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     C.C. {cliente.cedula} · {semaforo.texto}
                     {visita ? ` · Visita: ${new Date(visita.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin visita registrada"}
@@ -984,7 +984,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
         {/* Ruta del cliente */}
         <div style={{ padding: 16, borderRadius: 16, background: "var(--accent-soft4)", border: "2px solid var(--accent)" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--accent)", marginBottom: 12 }}>Ruta del cliente</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", marginBottom: 12 }}>Ruta del cliente</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {([
               { value: "diario", label: "Diario", desc: "Ahorrando base inicial ($510.000)", badge: { bg: "var(--accent-soft3)", color: "var(--accent-ink)" } },
@@ -1002,7 +1002,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                  <span style={{ padding: "4px 12px", borderRadius: 999, background: op.badge.bg, color: op.badge.color, fontSize: 13, fontWeight: 800, border: `1px solid ${op.badge.color}` }}>
+                  <span style={{ padding: "4px 12px", borderRadius: 999, background: op.badge.bg, color: op.badge.color, fontSize: 13, fontWeight: 700, border: `1px solid ${op.badge.color}` }}>
                     {op.label}
                   </span>
                   {data.ruta_contrato === op.value && (
@@ -1017,7 +1017,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
         {/* Ingreso inicial */}
         <div style={{ padding: 16, borderRadius: 16, background: "var(--warn-soft2)", border: "2px solid #fbbf24" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--warn-ink)", marginBottom: 6 }}>Ingreso inicial</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 6 }}>Ingreso inicial</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
             Mínimo ${INGRESO_MINIMO.toLocaleString("es-CO")} · Ideal ${INGRESO_IDEAL.toLocaleString("es-CO")} (55% de la base de $510.000)
           </div>
@@ -1037,7 +1037,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Datos personales</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Datos personales</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.nombre} onChange={(e) => update({ nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
@@ -1047,7 +1047,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Contacto</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Contacto</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Teléfono principal</div><input style={inputStyle} value={data.telefono} onChange={(e) => update({ telefono: e.target.value })} /></div>
             <div>
@@ -1064,7 +1064,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(debe ser mujer — obligatorio)</span></div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(debe ser mujer — obligatorio)</span></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.acompanante_nombre ?? ""} onChange={(e) => update({ acompanante_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.acompanante_cedula ?? ""} onChange={(e) => update({ acompanante_cedula: e.target.value })} /></div>
@@ -1080,7 +1080,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div style={{ padding: 14, borderRadius: 16, background: "var(--ok-soft)", border: "1px solid var(--ok-line)" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--ok-ink)", marginBottom: 10 }}>Referido por (opcional)</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 10 }}>Referido por (opcional)</div>
           <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
@@ -1089,12 +1089,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Documentos cliente</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Documentos cliente</div>
           <DocsChecklist doc={data.documentos_cliente} onChange={(next) => update({ documentos_cliente: next })} carpeta={data.cedula || "sin-cedula"} subir={subirDocumento} />
         </div>
 
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--muted2)", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(sin hoja de vida ni licencia)</span></div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Documentos acompañante <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>(sin hoja de vida ni licencia)</span></div>
           {data.mismo_domicilio_acompanante && (
             <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent-ink)", fontWeight: 600 }}>
               ℹ️ Vive con el cliente — usa el mismo recibo público, no se pide uno aparte.
@@ -1104,7 +1104,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         </div>
 
         <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid var(--warn2)" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--warn-ink)", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12, lineHeight: 1.5 }}>
             De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
             con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
@@ -1230,7 +1230,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </button>
               <div style={{ ...card }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
+                  <span style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
                   <ClienteBadge estado={estadoVisual(selectedCliente)} />
                   <span style={{
                     display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
@@ -1271,7 +1271,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               {filtered.length === 0 && clientes.length === 0 ? (
                 <div style={{ ...card, textAlign: "center", padding: "40px 24px" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
                   <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
                 </div>
               ) : filtered.length === 0 ? (
@@ -1330,7 +1330,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               {filtered.length === 0 && clientes.length === 0 ? (
                 <div style={{ ...card, textAlign: "center", padding: "40px 24px" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>Registra el primer cliente</div>
                   <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
                 </div>
@@ -1377,7 +1377,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 <>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase", color: "var(--text)" }}>{selectedCliente.nombre}</div>
+                      <div style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)" }}>{selectedCliente.nombre}</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                         <ClienteBadge estado={estadoVisual(selectedCliente)} />
                         <span style={{
@@ -1605,7 +1605,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             {visitasVisibles.map((v) => (
               <div key={v.id} style={{ padding: 12, borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)", display: "grid", gap: 6, fontSize: 13 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 800 }}>{formatDate(v.fecha)}</span>
+                  <span style={{ fontWeight: 700 }}>{formatDate(v.fecha)}</span>
                   {v.resultado === "Repetir" && (
                     <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 11, fontWeight: 700 }}>🔁 Repetir visita ordenada</span>
                   )}
@@ -1688,7 +1688,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       {documentosFaltantes(selectedCliente).length > 0 && (
         <div style={{ padding: 14, borderRadius: 16, background: "var(--orange-soft)", border: "1px solid var(--orange-soft)", color: "var(--orange-ink)" }}>
-          <div style={{ fontWeight: 900 }}>Documentos obligatorios pendientes</div>
+          <div style={{ fontWeight: 700 }}>Documentos obligatorios pendientes</div>
           <div style={{ marginTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
             {documentosFaltantes(selectedCliente).map(([key, label, owner]) => (
               <div key={`${owner}-${key}`}>• {owner}: {label}</div>
@@ -1700,7 +1700,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
               <div><b>Motivo:</b> {selectedCliente.excepcion_motivo}</div>
               <div><b>Plazo máximo:</b> {selectedCliente.excepcion_plazo ? formatDate(selectedCliente.excepcion_plazo) : "Sin plazo"}</div>
               {plazoVencido(selectedCliente) && (
-                <div style={{ marginTop: 6, fontWeight: 900, color: "var(--bad-ink)" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
+                <div style={{ marginTop: 6, fontWeight: 700, color: "var(--bad-ink)" }}>Plazo vencido: inmovilización por documentación incompleta.</div>
               )}
             </div>
           )}
@@ -1768,7 +1768,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             padding: 22, boxShadow: "0 30px 80px rgba(15,23,42,0.35)",
           }}>
             <div style={{ fontSize: 40, textAlign: "center", marginBottom: 8 }}>🗑</div>
-            <div style={{ fontWeight: 800, fontSize: 18, color: "var(--text)", textAlign: "center", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: "var(--text)", textAlign: "center", marginBottom: 8 }}>¿Eliminar a {selectedCliente.nombre}?</div>
             <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", marginBottom: 18 }}>Esta acción no se puede deshacer. Solo es posible si el cliente no tiene contratos activos.</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setEliminando(false)} style={{ flex: 1, padding: "11px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--muted2)" }}>Cancelar</button>
@@ -1806,20 +1806,20 @@ function DecisionFinal({ clienteId, onEstado }: { clienteId: string; onEstado: (
 
   return (
     <div style={{ padding: 16, borderRadius: 16, background: "var(--accent-soft4)", border: "2px solid var(--accent)", marginTop: 4 }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--accent)", marginBottom: 4 }}>Decisión final del cliente</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", marginBottom: 4 }}>Decisión final del cliente</div>
       <div style={{ fontSize: 12, color: "var(--muted3)", marginBottom: 12 }}>Tras revisar la visita y los documentos, decide si el cliente queda aprobado o rechazado definitivamente.</div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button
           onClick={() => decidir("Aprobado")}
           disabled={!!procesando}
-          style={{ flex: 1, padding: "12px 20px", background: procesando ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok2))", color: "var(--card)", border: "none", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+          style={{ flex: 1, padding: "12px 20px", background: procesando ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok2))", color: "var(--card)", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
         >
           {procesando === "Aprobado" ? "Aprobando..." : "✅ Aprobar cliente"}
         </button>
         <button
           onClick={() => decidir("Rechazado")}
           disabled={!!procesando}
-          style={{ flex: 1, padding: "12px 20px", background: "var(--bad-soft)", color: "var(--bad-ink)", border: "2px solid var(--bad-line)", borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
+          style={{ flex: 1, padding: "12px 20px", background: "var(--bad-soft)", color: "var(--bad-ink)", border: "2px solid var(--bad-line)", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: procesando ? "not-allowed" : "pointer", opacity: procesando ? 0.7 : 1 }}
         >
           {procesando === "Rechazado" ? "Rechazando..." : "❌ Rechazar cliente"}
         </button>

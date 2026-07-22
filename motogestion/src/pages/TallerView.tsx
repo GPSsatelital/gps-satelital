@@ -9,6 +9,15 @@ import { hoyISO } from "../utils/fecha";
 import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import MoneyInput from "../components/MoneyInput";
+import { Badge, type BadgeTone } from "../components/atomos";
+
+const TALLER_TONE: Record<TallerEstado, BadgeTone> = {
+  Pendiente: "warn",
+  "En diagnóstico": "accent",
+  "En reparación": "bad",
+  "Listo para salida": "ok",
+  Finalizado: "neutral",
+};
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -84,12 +93,7 @@ function formatCOP(value: number) {
 }
 
 function TallerBadge({ estado }: { estado: TallerEstado }) {
-  const { bg, color } = ESTADO_COLORS[estado];
-  return (
-    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: bg, color, whiteSpace: "nowrap" }}>
-      {estado}
-    </span>
-  );
+  return <Badge tone={TALLER_TONE[estado] ?? "neutral"}>{estado}</Badge>;
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
@@ -98,7 +102,7 @@ function KpiCard({ label, value, accent }: { label: string; value: string | numb
   return (
     <div style={{ ...card, borderLeft: `4px solid ${accent ?? "var(--accent)"}` }}>
       <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: "var(--text)" }}>{value}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text)" }}>{value}</div>
     </div>
   );
 }
@@ -130,7 +134,7 @@ function OrdenCard({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>{motoLabel}</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{motoLabel}</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
             Ingreso: {formatDate(item.fecha_ingreso)} · {dias} día{dias !== 1 ? "s" : ""}
           </div>
@@ -314,7 +318,7 @@ function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
             <span style={{ color: "var(--muted)", margin: "0 10px" }}>+</span>
             <span style={{ color: "var(--muted)" }}>Mano de obra: <strong>${(Number(costoManoObra) || 0).toLocaleString("es-CO")}</strong></span>
             <span style={{ color: "var(--muted)", margin: "0 10px" }}>=</span>
-            <span style={{ color: "var(--accent)", fontWeight: 800 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
+            <span style={{ color: "var(--accent)", fontWeight: 700 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
           </div>
         )}
         {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{formError}</div>}

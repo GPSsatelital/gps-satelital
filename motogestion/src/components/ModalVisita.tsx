@@ -30,7 +30,7 @@ const labelStyle: React.CSSProperties = {
 
 const sectionTitle: React.CSSProperties = {
   fontSize: 14,
-  fontWeight: 800,
+  fontWeight: 700,
   color: "var(--text)",
   marginBottom: 12,
   paddingBottom: 6,

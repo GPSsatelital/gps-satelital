@@ -79,7 +79,7 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📋 Nueva deuda</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>📋 Nueva deuda</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
           </div>
           <button onClick={onClose} style={{ background: "var(--soft)", border: "none", borderRadius: 999, padding: "6px 12px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✕</button>

@@ -136,7 +136,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📋 Registrar gestión</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>📋 Registrar gestión</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>
               {clienteNombre}
             </div>

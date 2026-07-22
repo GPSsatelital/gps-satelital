@@ -95,7 +95,7 @@ function Card({ children, borderColor }: { children: React.ReactNode; borderColo
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", marginBottom: 12 }}>
+    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 12 }}>
       {children}
     </div>
   );
@@ -192,7 +192,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Placa */}
-              <div style={{ fontSize: isMobile ? 28 : 38, fontWeight: 900, color: "var(--text)", letterSpacing: 2, lineHeight: 1, marginBottom: 4, fontFamily: "monospace" }}>
+              <div style={{ fontSize: isMobile ? 28 : 38, fontWeight: 700, color: "var(--text)", letterSpacing: 2, lineHeight: 1, marginBottom: 4, fontFamily: "monospace" }}>
                 {moto.placa}
               </div>
               <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 600, color: "var(--muted2)", marginBottom: 10 }}>
@@ -216,7 +216,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
               {diasSoat !== null && (
                 <div style={{ textAlign: "center", padding: "12px 14px", borderRadius: 14, background: docColorFn(diasSoat).bg, minWidth: 64 }}>
-                  <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 900, color: docColorFn(diasSoat).color }}>
+                  <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 700, color: docColorFn(diasSoat).color }}>
                     {diasSoat < 0 ? "VENC." : `${diasSoat}d`}
                   </div>
                   <div style={{ fontSize: 10, color: docColorFn(diasSoat).color, fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>SOAT</div>
@@ -224,7 +224,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
               )}
               {diasTecno !== null && (
                 <div style={{ textAlign: "center", padding: "12px 14px", borderRadius: 14, background: docColorFn(diasTecno).bg, minWidth: 64 }}>
-                  <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 900, color: docColorFn(diasTecno).color }}>
+                  <div style={{ fontSize: isMobile ? 14 : 18, fontWeight: 700, color: docColorFn(diasTecno).color }}>
                     {diasTecno < 0 ? "VENC." : `${diasTecno}d`}
                   </div>
                   <div style={{ fontSize: 10, color: docColorFn(diasTecno).color, fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Tecno.</div>
@@ -232,7 +232,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
               )}
               {costoTotalTaller > 0 && (
                 <div style={{ textAlign: "center", padding: "12px 14px", borderRadius: 14, background: "var(--warn-soft)", minWidth: 64 }}>
-                  <div style={{ fontSize: isMobile ? 13 : 16, fontWeight: 900, color: "var(--warn-ink)" }}>${fmt(costoTotalTaller)}</div>
+                  <div style={{ fontSize: isMobile ? 13 : 16, fontWeight: 700, color: "var(--warn-ink)" }}>${fmt(costoTotalTaller)}</div>
                   <div style={{ fontSize: 10, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Taller</div>
                 </div>
               )}
@@ -351,7 +351,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                         onClick={() => onNavigate("ficha_cliente", clienteActivo.id)}
                         style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
                       >
-                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                           {clienteActivo.nombre}
                         </div>
                       </button>
@@ -367,7 +367,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                         const totalPagado = pagos.filter(p => p.contrato_id === contratoActivo.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
                         return (
                           <>
-                            <div style={{ fontSize: 20, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
                             <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                           </>
                         );
@@ -422,7 +422,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {prestamosMoto.length > 0 && (
             <Card>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>
               <div style={{ display: "grid", gap: 6 }}>
                 {prestamosMoto.map(p => {
                   const comoPrestada = p.moto_prestada_id === motoId;
@@ -455,7 +455,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     {cliente ? (
                       <button
                         onClick={() => onNavigate("ficha_cliente", cliente.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 800, fontSize: 15, padding: 0, textTransform: "uppercase", textAlign: "left" }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 15, padding: 0, textTransform: "uppercase", textAlign: "left" }}
                       >
                         {cliente.nombre}
                       </button>
@@ -472,7 +472,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                   </div>
                 </div>
@@ -511,7 +511,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t.detalle}</div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--accent)" }}>${fmt(t.costo ?? 0)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent)" }}>${fmt(t.costo ?? 0)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>costo</div>
                   </div>
                 </div>

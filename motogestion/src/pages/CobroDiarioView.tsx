@@ -348,7 +348,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 17, textTransform: "uppercase", color: "var(--text)" }}>{f.clienteNombre}</div>
+              <div style={{ fontWeight: 700, fontSize: 17, textTransform: "uppercase", color: "var(--text)" }}>{f.clienteNombre}</div>
               <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
                 {f.placa !== "—" && (
                   <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft2)", padding: "2px 10px", borderRadius: 999 }}>🏍️ {f.placa}</span>
@@ -364,7 +364,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           {/* Valor esperado */}
           <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Valor esperado</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
               ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
             </span>
           </div>
@@ -386,7 +386,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             <MoneyInput
               value={cobrarValor}
               onChange={setCobrarValor}
-              style={{ padding: "14px", border: "2px solid var(--line)", fontSize: 22, fontWeight: 900, textAlign: "center" }}
+              style={{ padding: "14px", border: "2px solid var(--line)", fontSize: 22, fontWeight: 700, textAlign: "center" }}
               autoFocus
             />
           </div>
@@ -472,8 +472,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             {/* Nombre + placa */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
               {onNavigate && f.motoId
-                ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{f.placa}</button>
-                : <span style={{ fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{f.placa}</span>
+                ? <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>{f.placa}</button>
+                : <span style={{ fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>{f.placa}</span>
               }
               <span style={{ fontSize: 12, color: "var(--line2)" }}>·</span>
               {onNavigate
@@ -501,7 +501,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             {/* Montos */}
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
                   ${fmt(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo)}
                   <span style={{ fontSize: 11, fontWeight: 400, color: "var(--faint)", marginLeft: 3 }}>
                     /{f.tipoRuta === "diario" ? "día" : "sem"}
@@ -517,7 +517,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               </div>
               {f.pagadoHoyBool && (
                 <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 14 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ok-ink)" }}>${fmt(f.pagadoHoy)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(f.pagadoHoy)}</div>
                   <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>pagado hoy</div>
                 </div>
               )}
@@ -529,7 +529,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               )}
               {f.diasSinPago > 0 && f.deudaEstimada > 0 && (
                 <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--bad-ink)" }}>${fmt(f.deudaEstimada)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(f.deudaEstimada)}</div>
                   <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, textTransform: "uppercase" }}>deuda est.</div>
                 </div>
               )}
@@ -569,7 +569,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Total recaudado hoy</div>
-            <div style={{ fontSize: isMobile ? 34 : 44, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em" }}>${fmt(kpiRecaudado)}</div>
+            <div style={{ fontSize: isMobile ? 34 : 44, fontWeight: 700, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em" }}>${fmt(kpiRecaudado)}</div>
           </div>
           <div style={{ paddingBottom: 4 }}>
             <div style={{ fontSize: 11, color: "var(--faint)", marginBottom: 2 }}>Meta estimada</div>
@@ -606,7 +606,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         ].map(kpi => (
           <div key={kpi.label} style={{ flex: isMobile ? "0 0 auto" : 1, minWidth: isMobile ? 130 : 110, background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color, marginTop: 2 }}>{kpi.value}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color, marginTop: 2 }}>{kpi.value}</div>
             <div style={{ fontSize: 11, color: kpi.color, opacity: 0.75, marginTop: 1 }}>{kpi.sub}</div>
           </div>
         ))}
@@ -807,14 +807,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               ].map(c => (
                 <div key={c.label} style={{ flex: 1, minWidth: 140, background: c.bg, borderRadius: 14, padding: "14px 16px" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: c.color, textTransform: "uppercase", opacity: c.label === "Total del día" ? 0.7 : 1 }}>{c.label}</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: c.color }}>${fmt(c.value)}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: c.color }}>${fmt(c.value)}</div>
                 </div>
               ))}
             </div>
 
             {/* Lista pagos */}
             <div style={{ background: "var(--card)", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-              <div style={{ padding: "13px 18px", borderBottom: "1px solid var(--soft)", fontWeight: 800, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "13px 18px", borderBottom: "1px solid var(--soft)", fontWeight: 700, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Pagos recibidos hoy</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>{pagosHoy.length} registros</span>
               </div>
@@ -832,7 +832,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{p.metodo}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontWeight: 900, fontSize: 15, color: p.metodo === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)" }}>${fmt(p.valor)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: p.metodo === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)" }}>${fmt(p.valor)}</div>
                       {onNavigate && cl && (
                         <button onClick={() => onNavigate("ficha_cliente", cl.id)} style={{ padding: "3px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>Ver ficha</button>
                       )}
@@ -851,7 +851,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                   Cierre por grupo
                 </div>
                 <textarea
@@ -870,13 +870,13 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   <div key={g.grupo} style={{ border: `1px solid ${COLOR_GRUPO_CAJA[g.grupo]}33`, borderLeft: `4px solid ${COLOR_GRUPO_CAJA[g.grupo]}`, borderRadius: 12, padding: "12px 14px", background: "var(--soft2)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: COLOR_GRUPO_CAJA[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_GRUPO_CAJA[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
                         <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 8 }}>Ef. ${fmt(g.efectivo)} · Tr. ${fmt(g.transfer)} · {g.count} pago{g.count !== 1 ? "s" : ""}</span>
                       </div>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: "var(--text)" }}>${fmt(g.total)}</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>${fmt(g.total)}</span>
                     </div>
                     {g.cerrada ? (
-                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 12, fontWeight: 800, color: "var(--ok-ink)", textAlign: "center" }}>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", textAlign: "center" }}>
                         ✅ Cerrada — ${fmt(g.cerrada.total)}
                       </div>
                     ) : (
@@ -886,7 +886,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                         style={{
                           width: "100%", padding: "11px", borderRadius: 10, border: "none",
                           cursor: cerrandoCaja !== null ? "not-allowed" : "pointer",
-                          fontWeight: 800, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "var(--card)",
+                          fontWeight: 700, fontSize: 13, background: COLOR_GRUPO_CAJA[g.grupo], color: "var(--card)",
                           opacity: cerrandoCaja === g.grupo ? 0.7 : 1,
                         }}
                       >
@@ -904,7 +904,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {/* ── Sección mora / inmovilizar (siempre visible bajo cualquier tab si hay) ── */}
       {tab !== "caja" && filasInmov.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--bad-ink)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             🚨 Requieren inmovilización ({filasInmov.length})
           </div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -915,7 +915,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 800, fontSize: 13, color: "var(--accent)" }}>{f.placa}</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>{f.placa}</span>
                         <span style={{ fontSize: 12, color: "var(--faint)" }}>·</span>
                         <span style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>{f.clienteNombre}</span>
                         <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: s.border, color: s.color }}>{s.label} · {f.diasSinPago}d</span>

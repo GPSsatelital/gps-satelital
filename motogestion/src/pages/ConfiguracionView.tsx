@@ -315,7 +315,7 @@ export default function ConfiguracionView() {
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "16px 16px 48px" }}>
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Configuración</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Configuración</div>
         <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 3 }}>Ajustes del sistema y tu cuenta</div>
       </div>
 
@@ -324,10 +324,10 @@ export default function ConfiguracionView() {
         <div style={sectionTitle}>👤 Mi cuenta</div>
         <div style={{ ...rowStyle, borderBottom: "none" }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{profile?.nombre ?? "—"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{profile?.nombre ?? "—"}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{ROLE_LABEL[profile?.role ?? ""] ?? profile?.role}</div>
           </div>
-          <div style={{ width: 48, height: 48, borderRadius: 999, background: "linear-gradient(135deg,var(--accent),var(--ok2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--card)", fontWeight: 800 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 999, background: "linear-gradient(135deg,var(--accent),var(--ok2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--card)", fontWeight: 700 }}>
             {(profile?.nombre ?? "U")[0].toUpperCase()}
           </div>
         </div>
@@ -607,7 +607,7 @@ function SeccionApariencia() {
               }}
             >
               <div style={{ fontSize: 22 }}>{o.icono}</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: activo ? "var(--accent-ink)" : "var(--text)", marginTop: 4 }}>{o.titulo}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: activo ? "var(--accent-ink)" : "var(--text)", marginTop: 4 }}>{o.titulo}</div>
               <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 2 }}>{o.desc}</div>
             </button>
           );
@@ -645,7 +645,7 @@ function SeccionMensajesWhatsapp() {
       <div style={{ display: "grid", gap: 18 }}>
         {MENSAJES_META.map(m => (
           <div key={m.clave} style={{ background: "var(--soft2)", borderRadius: 14, padding: 16, border: "1px solid var(--line)" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{m.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{m.label}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, marginBottom: 8 }}>{m.descripcion}</div>
             <textarea
               value={valor(m.clave)}

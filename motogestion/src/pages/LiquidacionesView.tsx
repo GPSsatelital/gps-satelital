@@ -242,7 +242,7 @@ export default function LiquidacionesView() {
             <div style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 18 }}>{sel.numero}</div>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>{sel.numero}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
                 </div>
                 <button onClick={() => setSel(null)} style={btn("var(--line)", "var(--muted2)")}>✕</button>
@@ -256,7 +256,7 @@ export default function LiquidacionesView() {
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Costo daños</span><span style={{ fontWeight: 600, color: "var(--bad)" }}>- ${sel.costo_danos.toLocaleString("es-CO")}</span></div>
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700 }}>Saldo final</span>
-                  <span style={{ fontWeight: 800, fontSize: 16, color: sel.saldo_final >= 0 ? "var(--ok)" : "var(--bad)" }}>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: sel.saldo_final >= 0 ? "var(--ok)" : "var(--bad)" }}>
                     {sel.saldo_final >= 0 ? `$${sel.saldo_final.toLocaleString("es-CO")} a favor` : `$${Math.abs(sel.saldo_final).toLocaleString("es-CO")} pendiente`}
                   </span>
                 </div>

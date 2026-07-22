@@ -183,9 +183,9 @@ export default function LectorHuella({ label, onChange }: Props) {
           />
           <div style={{ minWidth: 0 }}>
             {calidadBaja ? (
-              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--warn-ink)" }}>⚠ Huella capturada, pero de BAJA calidad — se recomienda repetir</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)" }}>⚠ Huella capturada, pero de BAJA calidad — se recomienda repetir</div>
             ) : (
-              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ok-ink)" }}>✔ Huella capturada con buena calidad</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}>✔ Huella capturada con buena calidad</div>
             )}
             <button
               type="button"

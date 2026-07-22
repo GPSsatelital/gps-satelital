@@ -486,7 +486,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {onNavigate && <button onClick={() => onNavigate("ficha_moto", selectedMoto.id)} style={{ padding: "10px 16px", borderRadius: 12, border: "1px solid var(--accent)", background: "var(--accent-soft2)", color: "var(--accent)", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>📋 Ver ficha completa →</button>}
         {editandoMoto ? (
           <div style={{ background: "var(--soft2)", borderRadius: 14, padding: 16, border: "1px solid var(--line)", display: "grid", gap: 10 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>✏️ Editando: {selectedMoto.placa}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>✏️ Editando: {selectedMoto.placa}</div>
             {([
               { key: "marca", label: "Marca" }, { key: "modelo", label: "Modelo" },
               { key: "color", label: "Color" }, { key: "cilindraje", label: "Cilindraje" },
@@ -1041,7 +1041,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           >
             <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)", animation: "mgSheetUp .22s var(--ease)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text)" }}>Asignar encargado</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)" }}>Asignar encargado</div>
                 <button onClick={() => setAsignarMotoId(null)} style={{ border: "none", background: "var(--soft)", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 15, color: "var(--muted2)" }}>✕</button>
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>Moto <b style={{ color: "var(--text)" }}>{motoAsig.placa}</b> · toca un sub-admin</div>
@@ -1110,7 +1110,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpenNovedad(false)}>
             <div onClick={e => e.stopPropagation()} style={{ ...card, width: "min(480px, 96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto", display: "grid", gap: 10, boxSizing: "border-box" }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>🏍️ Registrar novedad</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>🏍️ Registrar novedad</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>{selectedMoto.placa}{clienteMoto ? ` · ${clienteMoto.nombre}` : ""}</div>
               </div>
               <div style={{ fontSize: 13, color: "var(--muted2)" }}>¿Qué pasó con la moto? Elige la situación:</div>
@@ -1128,7 +1128,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 >
                   <span style={{ fontSize: 22, lineHeight: 1 }}>{o.icono}</span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", fontWeight: 800, fontSize: 14, color: "var(--text)" }}>{o.titulo}</span>
+                    <span style={{ display: "block", fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{o.titulo}</span>
                     <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{o.desc}</span>
                     {!o.enabled && o.motivoOff && <span style={{ display: "block", fontSize: 11, color: "var(--warn-ink)", marginTop: 3, fontWeight: 700 }}>No disponible: {o.motivoOff}</span>}
                   </span>

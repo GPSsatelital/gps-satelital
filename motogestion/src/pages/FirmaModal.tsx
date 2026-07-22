@@ -236,7 +236,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
                 Firma digital · Documento {docIndex + 1} de {PASOS.length}
               </div>
-              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--card)" }}>
+              <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--card)" }}>
                 {cliente.nombre.toUpperCase()}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{pasoActual.titulo}</div>
@@ -255,7 +255,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 <div style={{
                   width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
+                  fontSize: 10, fontWeight: 700,
                   background: i < docIndex ? "var(--ok)" : i === docIndex ? "var(--accent)" : "rgba(255,255,255,0.1)",
                   color: "var(--card)",
                 }}>
@@ -302,23 +302,23 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ flex: "1 1 140px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
                     <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Cliente</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{cliente.nombre}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{cliente.nombre}</div>
                   </div>
                   {moto && (
                     <div style={{ flex: "1 1 120px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
                       <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Moto</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2 }}>{moto.placa}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>{moto.placa}</div>
                       <div style={{ fontSize: 11, color: "var(--muted)" }}>{moto.marca} {moto.modelo}</div>
                     </div>
                   )}
                   <div style={{ flex: "1 1 120px", background: "var(--card)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
                     <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", fontWeight: 700 }}>Tipo</div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{contrato.tipo_ruta}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 2, textTransform: "uppercase" }}>{contrato.tipo_ruta}</div>
                   </div>
                   {contrato.valor_semanal != null && (
                     <div style={{ flex: "1 1 120px", background: "var(--accent-soft2)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--accent)" }}>
                       <div style={{ fontSize: 10, color: "var(--accent-ink)", textTransform: "uppercase", fontWeight: 700 }}>Valor semana</div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--accent)", marginTop: 2 }}>{fmt(contrato.valor_semanal)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{fmt(contrato.valor_semanal)}</div>
                     </div>
                   )}
                 </div>
@@ -359,7 +359,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   <button onClick={goToFirma} style={{
                     flex: 1, padding: "12px", borderRadius: 12, border: "none",
                     background: leido ? "linear-gradient(90deg, var(--accent), var(--accent-ink))" : "var(--faint)",
-                    color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: leido ? "pointer" : "not-allowed",
+                    color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: leido ? "pointer" : "not-allowed",
                     transition: "background 0.2s",
                   }}>
                     Proceder a firmar →
@@ -375,7 +375,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
               <div style={{ padding: "20px 20px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
 
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Captura de firma</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Captura de firma</div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>Firma con el dedo o el ratón en el recuadro de abajo</div>
                 </div>
 
@@ -464,7 +464,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   <button onClick={goToConfirmacion} style={{
                     flex: 1, padding: "12px", borderRadius: 12, border: "none",
                     background: "linear-gradient(90deg, var(--accent), var(--accent-ink))",
-                    color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: "pointer",
+                    color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: "pointer",
                   }}>
                     Ver confirmación →
                   </button>
@@ -478,7 +478,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
             <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
               <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Confirmar y guardar</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Confirmar y guardar</div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>Verifica la firma antes de guardar. Si algo no está bien, puedes volver a firmar.</div>
                 </div>
 
@@ -554,7 +554,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                     <button onClick={siguienteDocumento} style={{
                       flex: 1, padding: "12px", borderRadius: 12, border: "none",
                       background: "linear-gradient(90deg, var(--accent), var(--accent-ink))",
-                      color: "var(--card)", fontWeight: 800, fontSize: 14, cursor: "pointer",
+                      color: "var(--card)", fontWeight: 700, fontSize: 14, cursor: "pointer",
                     }}>
                       Siguiente documento →
                     </button>
@@ -565,7 +565,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                       style={{
                         flex: 1, padding: "12px", borderRadius: 12, border: "none",
                         background: guardando || !allSigned ? "var(--faint)" : "linear-gradient(90deg, var(--ok-ink), var(--ok))",
-                        color: "var(--card)", fontWeight: 800, fontSize: 14,
+                        color: "var(--card)", fontWeight: 700, fontSize: 14,
                         cursor: guardando || !allSigned ? "not-allowed" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       }}>

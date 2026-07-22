@@ -100,7 +100,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Firma digital
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--card)", marginTop: 1 }}>{label}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--card)", marginTop: 1 }}>{label}</div>
         </div>
         <div style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>Firme con el dedo</div>
       </div>
@@ -150,7 +150,7 @@ function ModalFirma({ label, onAceptar, onCerrar }: {
           onClick={aceptar}
           style={{
             flex: 1, padding: "13px", borderRadius: 12, border: "none",
-            background: "var(--accent)", color: "var(--card)", fontWeight: 800, cursor: "pointer", fontSize: 15,
+            background: "var(--accent)", color: "var(--card)", fontWeight: 700, cursor: "pointer", fontSize: 15,
           }}
         >
           ✓ Aceptar

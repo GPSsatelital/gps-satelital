@@ -196,7 +196,7 @@ export default function AlertasView({ onNavegar }: Props) {
             <div style={{ fontSize: 28, flexShrink: 0, lineHeight: 1.2 }}>{TIPO_ICON[a.tipo]}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Title */}
-              <div style={{ fontSize: 14, fontWeight: 800, color: s.color, textTransform: "uppercase" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: s.color, textTransform: "uppercase" }}>
                 {a.titulo}
               </div>
 
@@ -204,7 +204,7 @@ export default function AlertasView({ onNavegar }: Props) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 5 }}>
                 {/* Severity badge */}
                 <span style={{
-                  padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 800,
+                  padding: "2px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700,
                   background: NIVEL_BADGE_BG[a.nivel], color: s.color,
                 }}>
                   {s.severidad}
@@ -233,7 +233,7 @@ export default function AlertasView({ onNavegar }: Props) {
                 <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
                   {dias !== null && (
                     <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: s.color, lineHeight: 1 }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>
                         {dias === 999 ? "∞" : dias}
                       </div>
                       <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
@@ -241,7 +241,7 @@ export default function AlertasView({ onNavegar }: Props) {
                   )}
                   {dVenc !== null && (
                     <div style={{ background: "rgba(0,0,0,0.06)", borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: dVenc < 0 ? "var(--bad-ink)" : s.color, lineHeight: 1 }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: dVenc < 0 ? "var(--bad-ink)" : s.color, lineHeight: 1 }}>
                         {dVenc < 0 ? `+${Math.abs(dVenc)}` : dVenc}
                       </div>
                       <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
@@ -336,7 +336,7 @@ export default function AlertasView({ onNavegar }: Props) {
     return (
       <div>
         <div style={{ marginBottom: 22 }}>
-          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Alertas del sistema</h2>
+          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 700, color: "var(--text)" }}>Alertas del sistema</h2>
           <p style={{ margin: "5px 0 0", color: "var(--faint)", fontSize: 14 }}>Cargando datos...</p>
         </div>
         <div style={{ display: "grid", gap: 10 }}>
@@ -352,7 +352,7 @@ export default function AlertasView({ onNavegar }: Props) {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Alertas del sistema</h2>
+        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 700, color: "var(--text)" }}>Alertas del sistema</h2>
         <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
           Situaciones que requieren atención — {alertas.length} alerta{alertas.length !== 1 ? "s" : ""} activa{alertas.length !== 1 ? "s" : ""}
         </p>
@@ -370,7 +370,7 @@ export default function AlertasView({ onNavegar }: Props) {
         ].map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 12, padding: "10px 14px", minWidth: 72, flex: "0 0 auto", boxShadow: "0 1px 6px rgba(15,23,42,0.05)" }}>
             <div style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>{k.label}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: k.color, lineHeight: 1.2 }}>{k.value}</div>
           </div>
         ))}
       </div>
@@ -400,7 +400,7 @@ export default function AlertasView({ onNavegar }: Props) {
                 <span style={{
                   background: isActive ? "var(--accent)" : "var(--line)",
                   color: isActive ? "var(--card)" : "var(--muted)",
-                  borderRadius: 999, fontSize: 10, fontWeight: 900,
+                  borderRadius: 999, fontSize: 10, fontWeight: 700,
                   padding: "1px 7px", minWidth: 18, textAlign: "center",
                 }}>
                   {count}
@@ -420,7 +420,7 @@ export default function AlertasView({ onNavegar }: Props) {
           <div style={{ fontSize: 44, marginBottom: 14 }}>
             {tab === "mora" ? "🎉" : tab === "soat_tecno" ? "🛡️" : tab === "contratos" ? "📄" : tab === "flota" ? "🏍️" : tab === "convenios" ? "🤝" : "✅"}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>Sin alertas en esta categoría</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>Sin alertas en esta categoría</div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
             {tab === "mora"       ? "Todos los clientes están al día con sus pagos." :
              tab === "soat_tecno" ? "Todos los documentos están vigentes." :
@@ -446,7 +446,7 @@ export default function AlertasView({ onNavegar }: Props) {
                   <div style={{
                     padding: "4px 16px", borderRadius: 999,
                     background: s.bg, border: `1px solid ${s.border}`,
-                    fontSize: 11, fontWeight: 900, color: s.color, textTransform: "uppercase", letterSpacing: 0.5,
+                    fontSize: 11, fontWeight: 700, color: s.color, textTransform: "uppercase", letterSpacing: 0.5,
                   }}>
                     {s.label} — {items.length}
                   </div>

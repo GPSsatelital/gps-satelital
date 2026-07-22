@@ -74,7 +74,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{title}</div>
       {children}
     </div>
   );
@@ -142,14 +142,14 @@ export default function MotoDetalleSheet({ motoId, onClose }: Props) {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg, var(--accent), var(--ok2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🏍️</div>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "var(--card)", letterSpacing: "0.05em" }}>{moto.placa}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--card)", letterSpacing: "0.05em" }}>{moto.placa}</div>
                 <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 2 }}>{moto.marca} · {moto.modelo}</div>
               </div>
             </div>
             <button onClick={onClose} style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 10, padding: "6px 10px", color: "var(--card)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span style={{ padding: "5px 12px", borderRadius: 999, background: badgeEstado.bg, color: badgeEstado.color, fontSize: 12, fontWeight: 800 }}>
+            <span style={{ padding: "5px 12px", borderRadius: 999, background: badgeEstado.bg, color: badgeEstado.color, fontSize: 12, fontWeight: 700 }}>
               {badgeEstado.label}
             </span>
             <span style={{ padding: "5px 12px", borderRadius: 999, background: "rgba(255,255,255,0.1)", color: "var(--faint)", fontSize: 12, fontWeight: 700 }}>
@@ -179,7 +179,7 @@ export default function MotoDetalleSheet({ motoId, onClose }: Props) {
           {contratoActivo && clienteActivo && (
             <Section title="Contrato activo">
               <div style={{ padding: "12px 14px", borderRadius: 14, background: "var(--ok-soft)", border: "1px solid var(--ok-line)" }}>
-                <div style={{ fontSize: 15, fontWeight: 800, textTransform: "uppercase", color: "var(--text)" }}>{clienteActivo.nombre}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, textTransform: "uppercase", color: "var(--text)" }}>{clienteActivo.nombre}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>C.C. {clienteActivo.cedula} · {clienteActivo.telefono}</div>
                 <div style={{ marginTop: 10 }}>
                   <Row label="Tipo contrato" value={contratoActivo.forma_pago} />

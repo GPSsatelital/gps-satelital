@@ -118,7 +118,7 @@ function Card({ children, borderColor }: { children: React.ReactNode; borderColo
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
       {children}
     </div>
   );
@@ -277,7 +277,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: "50%",
                   background: "var(--accent-soft)", flexShrink: 0, overflow: "hidden",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: isMobile ? 22 : 26, fontWeight: 800, color: "var(--accent)",
+                  fontSize: isMobile ? 22 : 26, fontWeight: 700, color: "var(--accent)",
                   cursor: cliente.foto_perfil_url ? "pointer" : "default",
                 }}
               >
@@ -288,7 +288,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
                 {cliente.nombre}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
@@ -309,21 +309,21 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             {/* KPI mini cards */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
               <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--accent)" }}>{diasActivo}</div>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)" }}>{diasActivo}</div>
                 <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
               </div>
               <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--ok-soft)", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
+                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
                 <div style={{ fontSize: 10, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
               </div>
               {deudaActiva > 0 && (
                 <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--bad-soft)", minWidth: 72 }}>
-                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 900, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
+                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
                   <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
                 </div>
               )}
               <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--warn-soft)", minWidth: 72 }}>
-                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 900, color: "var(--warn-ink)" }}>{refConfirmados}</div>
+                <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--warn-ink)" }}>{refConfirmados}</div>
                 <div style={{ fontSize: 10, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Referidos</div>
               </div>
             </div>
@@ -367,7 +367,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             <Card>
               <SectionTitle>Programa de referidos</SectionTitle>
               <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-                <div style={{ fontSize: 32, fontWeight: 900, color: "var(--warn-ink)" }}>{refConfirmados}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: "var(--warn-ink)" }}>{refConfirmados}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>
                     Próximo premio: <strong style={{ color: "var(--warn-ink)" }}>{proximoHito.premio}</strong> ({proximoHito.n - refConfirmados} referido{proximoHito.n - refConfirmados !== 1 ? "s" : ""} más)
@@ -440,7 +440,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     onClick={() => onNavigate("ficha_moto", motoActiva.id)}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", width: "100%" }}
                   >
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "var(--accent)", letterSpacing: 1 }}>{motoActiva.placa}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)", letterSpacing: 1 }}>{motoActiva.placa}</div>
                     <div style={{ fontSize: 14, color: "var(--muted2)", fontWeight: 600 }}>{motoActiva.marca} {motoActiva.modelo}</div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{motoActiva.grupo}</div>
                   </button>
@@ -495,7 +495,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     {moto ? (
                       <button
                         onClick={() => onNavigate("ficha_moto", moto.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 800, fontSize: 16, padding: 0, letterSpacing: 0.5 }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 16, padding: 0, letterSpacing: 0.5 }}
                       >
                         {moto.placa} — {moto.marca} {moto.modelo}
                       </button>
@@ -504,7 +504,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(pagosContrato)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>total pagado</div>
                   </div>
                 </div>
@@ -554,7 +554,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
 
                 {/* Documentos del contrato (PDFs firmados) */}
                 <div style={{ marginTop: 12, borderTop: "1px solid var(--soft)", paddingTop: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Documentos</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Documentos</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {[
                       { url: c.contrato_pdf_url, label: "Contrato firmado" },
@@ -594,7 +594,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             ].map(kpi => (
               <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase", marginBottom: 4 }}>{kpi.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: kpi.color }}>${fmt(kpi.val)}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color }}>${fmt(kpi.val)}</div>
               </div>
             ))}
           </div>
@@ -621,7 +621,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                       <Badge bg={p.metodo === "Efectivo" ? "var(--ok-soft)" : "var(--accent-soft3)"} color={p.metodo === "Efectivo" ? "var(--ok-ink)" : "var(--accent-ink)"}>{p.metodo}</Badge>
                       <Badge bg={estadoP.bg} color={estadoP.color}>{p.estado}</Badge>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", textAlign: "right", minWidth: 90 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", textAlign: "right", minWidth: 90 }}>
                       ${fmt(p.valor)}
                     </div>
                   </div>
@@ -645,7 +645,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               <div key={v.id} style={{ display: "flex", gap: 0 }}>
                 {/* Timeline line */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginRight: 16 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: rBg, border: `2px solid ${borderC}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 800, fontSize: 13, color: rColor }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: rBg, border: `2px solid ${borderC}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 13, color: rColor }}>
                     {idx + 1}
                   </div>
                   {idx < visitasCliente.length - 1 && (
@@ -760,7 +760,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                           width: 22, height: 22, borderRadius: "50%",
                           background: isOk ? "var(--ok)" : "var(--bad-soft)",
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 12, fontWeight: 800, color: isOk ? "var(--card)" : "var(--bad-ink)",
+                          fontSize: 12, fontWeight: 700, color: isOk ? "var(--card)" : "var(--bad-ink)",
                           flexShrink: 0,
                         }}>
                           {isOk ? "✓" : "✗"}
@@ -832,7 +832,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ marginTop: 8 }}><Badge bg={ec.bg} color={ec.color}>{d.estado}</Badge></div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: ec.color }}>${fmt(d.monto_pendiente)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: ec.color }}>${fmt(d.monto_pendiente)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>de ${fmt(d.monto)}</div>
                   </div>
                 </div>
@@ -855,7 +855,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
-                      <span style={{ fontWeight: 800, fontSize: 15 }}>Convenio #{cv.numero_convenio}</span>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>Convenio #{cv.numero_convenio}</span>
                       <Badge bg={ec.bg} color={ec.color}>{cv.estado}</Badge>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)" }}>{cv.concepto}</div>
@@ -864,7 +864,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text)" }}>${fmt(cv.deuda_total)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(cv.deuda_total)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>deuda total</div>
                   </div>
                 </div>
@@ -914,7 +914,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
             return (
               <div key={g.id} style={{ background: "var(--card)", borderRadius: 12, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: gc.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: gc.color, textAlign: "center", lineHeight: 1.2 }}>{TIPO_GESTION_LABEL[g.tipo]?.slice(0, 4) ?? "—"}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: gc.color, textAlign: "center", lineHeight: 1.2 }}>{TIPO_GESTION_LABEL[g.tipo]?.slice(0, 4) ?? "—"}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>

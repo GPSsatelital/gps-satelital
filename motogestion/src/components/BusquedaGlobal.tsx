@@ -80,7 +80,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
   const previewContratoMoto = previewContrato ? motos.find(m => m.id === previewContrato.moto_id)       : null;
 
   function GroupLabel({ label }: { label: string }) {
-    return <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 800, color: "var(--faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>;
+    return <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 700, color: "var(--faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>;
   }
 
   // Panel de detalle — se muestra en la derecha (desktop) o encima (móvil)
@@ -91,7 +91,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
       <div style={{ padding: "18px 18px 8px" }}>
         {previewCliente && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 19, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewCliente.nombre}</div>
+            <div style={{ fontWeight: 700, fontSize: 19, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewCliente.nombre}</div>
             <div style={{ marginBottom: 14 }}><Badge label={previewCliente.estado} /></div>
             <InfoRow label="Cédula"      value={previewCliente.cedula} />
             <InfoRow label="Teléfono"    value={previewCliente.telefono ?? "—"} />
@@ -114,7 +114,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
 
         {previewMoto && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 22, color: "var(--text)", marginBottom: 8 }}>{previewMoto.placa}</div>
+            <div style={{ fontWeight: 700, fontSize: 22, color: "var(--text)", marginBottom: 8 }}>{previewMoto.placa}</div>
             <div style={{ marginBottom: 14 }}><Badge label={previewMoto.estado === "Mantenimiento" ? "En taller" : previewMoto.estado} /></div>
             <InfoRow label="Marca / Modelo" value={`${previewMoto.marca} ${previewMoto.modelo}`} />
             <InfoRow label="Grupo"          value={previewMoto.grupo} />
@@ -138,7 +138,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
 
         {previewContrato && (
           <>
-            <div style={{ fontWeight: 900, fontSize: 16, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewContratoCli?.nombre ?? "Sin cliente"}</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewContratoCli?.nombre ?? "Sin cliente"}</div>
             <div style={{ marginBottom: 14, display: "flex", gap: 6, flexWrap: "wrap" }}>
               <Badge label={previewContrato.estado} />
               {previewContrato.forma_pago && <Badge label={previewContrato.forma_pago} />}

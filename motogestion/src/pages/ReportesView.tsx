@@ -106,7 +106,7 @@ function KPI({ label, value, sub, color, bg }: { label: string; value: string; s
       <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.5 }}>
         {icon && <span style={{ marginRight: 4 }}>{icon}</span>}{label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: color ?? "var(--text)", marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: color ?? "var(--text)", marginTop: 6 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 3 }}>{sub}</div>}
     </div>
   );
@@ -484,11 +484,11 @@ export default function ReportesView({ onNavigate }: Props) {
       {/* Hero header */}
       <div style={{ background: "linear-gradient(135deg, var(--text) 0%, var(--accent-ink2) 100%)", borderRadius: 20, padding: isMobile ? "20px 16px" : "28px 32px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: isMobile ? 20 : 26, margin: 0, fontWeight: 800, color: "var(--card)" }}>Reportes</h2>
+          <h2 style={{ fontSize: isMobile ? 20 : 26, margin: 0, fontWeight: 700, color: "var(--card)" }}>Reportes</h2>
           <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Resumen operativo y financiero en tiempo real.</p>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 900, color: "var(--accent-hi)", lineHeight: 1 }}>$ {fmt(recaudadoHoy)}</div>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: "var(--accent-hi)", lineHeight: 1 }}>$ {fmt(recaudadoHoy)}</div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4, fontWeight: 600 }}>Recaudado hoy</div>
         </div>
       </div>
@@ -595,7 +595,7 @@ export default function ReportesView({ onNavigate }: Props) {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {reporteGrupos.map(g => (
                 <div key={g.grupo} onClick={() => onNavigate?.("motos", "grupo:" + g.grupo)} style={{ flex: 1, minWidth: 160, borderRadius: 14, border: `2px solid ${GRUPO_COLORS[g.grupo]}`, padding: "14px 16px", cursor: "pointer" }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: GRUPO_COLORS[g.grupo], marginBottom: 10 }}>{g.grupo}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: GRUPO_COLORS[g.grupo], marginBottom: 10 }}>{g.grupo}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                     {[
                       { label: "Motos asignadas", value: g.motosAsignadas, color: "var(--text)" },
@@ -604,7 +604,7 @@ export default function ReportesView({ onNavigate }: Props) {
                       { label: "En mora", value: g.enMora, color: g.enMora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" },
                     ].map(k => (
                       <div key={k.label} style={{ padding: "8px 10px", borderRadius: 10, background: "var(--soft2)", textAlign: "center" }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: k.color }}>{k.value}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.value}</div>
                         <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>{k.label}</div>
                       </div>
                     ))}
@@ -621,9 +621,9 @@ export default function ReportesView({ onNavigate }: Props) {
               <div style={{ display: "grid", gap: 8 }}>
                 {topPagadores.map((p, i) => (
                   <div key={p.clienteId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", borderRadius: 10, background: i === 0 ? "var(--ok-soft)" : "var(--soft2)" }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 999, background: i === 0 ? "var(--ok)" : i === 1 ? "var(--muted)" : i === 2 ? "var(--warn2)" : "var(--line)", color: i < 3 ? "var(--card)" : "var(--faint)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ width: 28, height: 28, borderRadius: 999, background: i === 0 ? "var(--ok)" : i === 1 ? "var(--muted)" : i === 2 ? "var(--warn2)" : "var(--line)", color: i < 3 ? "var(--card)" : "var(--faint)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{i + 1}</div>
                     <div style={{ flex: 1, fontWeight: 700, textTransform: "uppercase", fontSize: 13 }}>{p.nombre}</div>
-                    <div style={{ fontWeight: 800, color: "var(--ok-ink)" }}>$ {fmt(p.total)}</div>
+                    <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>$ {fmt(p.total)}</div>
                     {onNavigate && (
                       <button onClick={() => onNavigate("ficha_cliente", p.clienteId)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>
                         Ver ficha
@@ -685,7 +685,7 @@ export default function ReportesView({ onNavigate }: Props) {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontWeight: 700, fontSize: 12, background: m.diasSinPago > 7 ? "var(--bad-soft)" : "var(--warn-soft)", color: m.diasSinPago > 7 ? "var(--bad-ink)" : "var(--warn-ink)" }}>{m.diasSinPago}d sin pago</span>
-                        <span style={{ fontWeight: 800, color: "var(--bad-ink)", fontSize: 14 }}>$ {fmt(m.deudaPendiente)}</span>
+                        <span style={{ fontWeight: 700, color: "var(--bad-ink)", fontSize: 14 }}>$ {fmt(m.deudaPendiente)}</span>
                       </div>
                       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
                         Último pago: {m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "var(--faint)" }}>Sin pagos</span>}
@@ -797,7 +797,7 @@ export default function ReportesView({ onNavigate }: Props) {
                 const color = ESTADO_MOTO_COLOR[estado] ?? "var(--muted2)";
                 return (
                   <div key={estado} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", textAlign: "center" }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color }}>{count}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color }}>{count}</div>
                     <div style={{ fontSize: 11, fontWeight: 700, color, marginTop: 2 }}>{estado}</div>
                     <div style={{ fontSize: 10, color: "var(--faint)" }}>{pct(count, motos.length)}</div>
                   </div>
@@ -821,7 +821,7 @@ export default function ReportesView({ onNavigate }: Props) {
                   {alertasVencimiento.map(a => (
                     <div key={a.id} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ fontWeight: 800, fontSize: 15 }}>{a.placa}</span>
+                        <span style={{ fontWeight: 700, fontSize: 15 }}>{a.placa}</span>
                         {onNavigate && (
                           <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Ver moto</button>
                         )}
@@ -965,13 +965,13 @@ export default function ReportesView({ onNavigate }: Props) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 800, fontSize: 18 }}>{e.placa}</span>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: GRUPO_COLORS[e.grupo] ?? "var(--muted)", background: "var(--soft2)", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "var(--line)"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
+                        <span style={{ fontWeight: 700, fontSize: 18 }}>{e.placa}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: GRUPO_COLORS[e.grupo] ?? "var(--muted)", background: "var(--soft2)", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "var(--line)"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
                       </div>
                       <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "var(--muted2)", marginTop: 4 }}>{e.cliente}</div>
                       <div style={{ fontSize: 12, color: "var(--faint)" }}>C.C. {e.cedula}</div>
                     </div>
-                    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: e.docsOk ? "var(--ok-soft)" : "var(--bad-soft)", color: e.docsOk ? "var(--ok-ink)" : "var(--bad-ink)" }}>
+                    <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: e.docsOk ? "var(--ok-soft)" : "var(--bad-soft)", color: e.docsOk ? "var(--ok-ink)" : "var(--bad-ink)" }}>
                       {e.docsOk ? "✓ Completo" : "⚠ Incompleto"}
                     </span>
                   </div>
@@ -1040,7 +1040,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div onClick={() => setFotosVer(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.9)", zIndex: 1000, display: "flex", flexDirection: "column", padding: isMobile ? 12 : 32, overflowY: "auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, color: "var(--card)" }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 18 }}>{fotosVer.placa}</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{fotosVer.placa}</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>{fotosVer.cliente}</div>
             </div>
             <button onClick={() => setFotosVer(null)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: "var(--card)", color: "var(--text)" }}>Cerrar ✕</button>

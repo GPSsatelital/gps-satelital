@@ -26,12 +26,12 @@ export default function ModalConfirmarPago({ monto, metodo, clienteNombre, placa
     <>
       <div onClick={() => !procesando && onCancelar()} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 500 }} />
       <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,94vw)", background: "var(--card)", borderRadius: 18, padding: 22, zIndex: 501, boxShadow: "0 20px 60px rgba(15,23,42,0.28)", boxSizing: "border-box" }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Confirmar pago</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Confirmar pago</div>
         <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14, textTransform: "uppercase" }}>{clienteNombre}{placa ? ` · ${placa}` : ""}</div>
 
         <div style={{ textAlign: "center", background: fondo, border: `1px solid ${borde}`, borderRadius: 12, padding: "14px 12px", marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: acento, fontWeight: 700 }}>Vas a registrar</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: acento }}>$ {fmt(monto)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: acento }}>$ {fmt(monto)}</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: acento }}>{esTransf ? "🏦 Transferencia" : "💵 Efectivo"}</div>
         </div>
 

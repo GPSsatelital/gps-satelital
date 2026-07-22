@@ -198,7 +198,7 @@ export default function SocioDashboard() {
             🏍️
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 900, color: "var(--text)" }}>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "var(--text)" }}>
               Dashboard — Grupo {GRUPO_NAMES[grupo]}
             </h2>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3, display: "flex", gap: 8, alignItems: "center" }}>
@@ -232,7 +232,7 @@ export default function SocioDashboard() {
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", opacity: 0.8, letterSpacing: 0.5 }}>
             Recaudo esta semana
           </div>
-          <div style={{ fontSize: isMobile ? 34 : 42, fontWeight: 900, lineHeight: 1.1, marginTop: 6 }}>
+          <div style={{ fontSize: isMobile ? 34 : 42, fontWeight: 700, lineHeight: 1.1, marginTop: 6 }}>
             ${fmt(recaudadoSemana)}
           </div>
           <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>
@@ -243,7 +243,7 @@ export default function SocioDashboard() {
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", opacity: 0.8, letterSpacing: 0.5, marginBottom: 4 }}>
             Proyección mensual
           </div>
-          <div style={{ fontSize: 24, fontWeight: 900 }}>${fmt(proyeccionMensual)}</div>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>${fmt(proyeccionMensual)}</div>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>~26 días L–S</div>
         </div>
       </div>
@@ -262,7 +262,7 @@ export default function SocioDashboard() {
               </div>
               <span style={{ fontSize: 18 }}>{k.icon}</span>
             </div>
-            <div style={{ fontSize: 36, fontWeight: 900, color: k.color, lineHeight: 1.1, marginTop: 8 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: k.color, lineHeight: 1.1, marginTop: 8 }}>
               {k.value}
             </div>
             {k.sub && <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 4 }}>{k.sub}</div>}
@@ -273,7 +273,7 @@ export default function SocioDashboard() {
       {/* Recaudo 14 días */}
       <div style={{ ...cardBase, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Recaudo — últimos 14 días</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Recaudo — últimos 14 días</div>
           <div style={{ fontSize: 12, color: "var(--muted)" }}>
             Total: <strong style={{ color: "var(--accent)" }}>${fmt(recaudadoMes)}</strong> este mes
           </div>
@@ -294,7 +294,7 @@ export default function SocioDashboard() {
 
       {/* Estado de la flota */}
       <div style={{ ...cardBase, marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginBottom: 14 }}>Estado de la flota</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Estado de la flota</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {(["Disponible", "Asignada", "En taller", "Recuperada", "Suspendida", "Fiscalía", "Tránsito", "Garantía"] as const).map(estado => {
             const count = motosGrupo.filter(m => m.estado === estado).length;
@@ -315,7 +315,7 @@ export default function SocioDashboard() {
                 background: c.bg, borderRadius: 12, padding: "10px 16px",
                 display: "flex", alignItems: "center", gap: 10,
               }}>
-                <span style={{ fontSize: 22, fontWeight: 900, color: c.color }}>{count}</span>
+                <span style={{ fontSize: 22, fontWeight: 700, color: c.color }}>{count}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: c.color }}>{estado}</span>
               </div>
             );
@@ -328,7 +328,7 @@ export default function SocioDashboard() {
         <div style={{ ...cardBase, marginBottom: 20, borderLeft: "4px solid var(--bad)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <span style={{ fontSize: 20 }}>⚠️</span>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--bad-ink)" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--bad-ink)" }}>
               Clientes en mora — {enMora.length}
             </h3>
           </div>
@@ -344,7 +344,7 @@ export default function SocioDashboard() {
                   display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap",
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>
                       {cliente?.nombre ?? "Sin cliente"}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
@@ -354,13 +354,13 @@ export default function SocioDashboard() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)", lineHeight: 1 }}>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)", lineHeight: 1 }}>
                         {diasSinPago === 999 ? "∞" : diasSinPago}
                       </div>
                       <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--bad-ink)" }}>${fmt(deuda)}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deuda)}</div>
                       <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>adeudado</div>
                     </div>
                     <span style={{
@@ -381,7 +381,7 @@ export default function SocioDashboard() {
       {/* Tabla contratos activos */}
       <div style={{ ...cardBase }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Contratos activos</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Contratos activos</h3>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>
             <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{alDia.length} al día</span>
             {enMora.length > 0 && <> · <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{enMora.length} en mora</span></>}

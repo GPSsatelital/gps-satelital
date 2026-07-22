@@ -32,7 +32,7 @@ const labelStyle: React.CSSProperties = { marginBottom: 5, fontSize: 13, fontWei
 const btnPrimary: React.CSSProperties = {
   flex: 1, padding: "12px", borderRadius: 12, border: "none",
   background: "linear-gradient(90deg,var(--accent),var(--accent-ink))", color: "var(--card)",
-  fontWeight: 800, fontSize: 14, cursor: "pointer",
+  fontWeight: 700, fontSize: 14, cursor: "pointer",
 };
 const btnSecondary: React.CSSProperties = {
   padding: "12px 18px", borderRadius: 12, border: "1px solid var(--line)",
@@ -498,7 +498,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>
                 Paso {step} de 6
               </div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "var(--card)" }}>{pasoTitulos[step - 1]}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--card)" }}>{pasoTitulos[step - 1]}</div>
               {clienteActual && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -521,7 +521,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <div key={lbl} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div style={{
                   width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
+                  fontSize: 10, fontWeight: 700,
                   background: i + 1 < step ? "var(--ok)" : i + 1 === step ? "var(--accent)" : "rgba(255,255,255,0.1)",
                   color: "var(--card)",
                 }}>
@@ -580,7 +580,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
                   {valorSemanal > 0 && (
                     <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13 }}>
-                      <div style={{ fontWeight: 800, color: "var(--accent-ink)", marginBottom: 8 }}>Desglose del período</div>
+                      <div style={{ fontWeight: 700, color: "var(--accent-ink)", marginBottom: 8 }}>Desglose del período</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 4, fontSize: 12, color: "var(--muted2)", marginBottom: 6 }}>
                         <div style={{ fontWeight: 700, color: "var(--muted)" }}>Día</div>
                         <div style={{ fontWeight: 700, color: "var(--muted)" }}>Tarifa empresa</div>
@@ -589,11 +589,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                         <div>L–S (×6)</div>
                         <div>$ {fmt(tarifaDiaria)}</div>
                         <div style={{ color: "var(--ok-ink)", fontWeight: 700 }}>$ {fmt(ahorroLS)}</div>
-                        <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaLS)}</div>
+                        <div style={{ fontWeight: 700 }}>$ {fmt(pagoDiaLS)}</div>
                         <div>Domingo</div>
                         <div>$ {fmt(tarifaDomingo)}</div>
                         <div style={{ color: "var(--ok-ink)", fontWeight: 700 }}>$ {fmt(ahorroDom)}</div>
-                        <div style={{ fontWeight: 800 }}>$ {fmt(pagoDiaDom)}</div>
+                        <div style={{ fontWeight: 700 }}>$ {fmt(pagoDiaDom)}</div>
                       </div>
                       <div style={{ borderTop: "1px solid var(--accent-line)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
@@ -602,7 +602,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                           <span style={{ color: "var(--muted)", fontSize: 12 }}>Total/sem: <strong>$ {fmt(valorSemanal)}</strong></span>
                         </div>
                         {form.forma_pago !== "Semanal" && (
-                          <div style={{ background: "var(--accent)", color: "var(--card)", borderRadius: 8, padding: "6px 10px", fontWeight: 800, fontSize: 13, textAlign: "center" }}>
+                          <div style={{ background: "var(--accent)", color: "var(--card)", borderRadius: 8, padding: "6px 10px", fontWeight: 700, fontSize: 13, textAlign: "center" }}>
                             Total {form.forma_pago}: $ {fmt(valorPeriodo)}
                           </div>
                         )}
@@ -622,7 +622,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                               flex: 1, padding: "10px 12px", borderRadius: 12, border: `2px solid ${active ? "var(--accent)" : "var(--line)"}`,
                               background: active ? "var(--accent-soft2)" : "var(--card)", cursor: "pointer", textAlign: "left",
                             }}>
-                              <div style={{ fontWeight: 800, fontSize: 13, color: active ? "var(--accent)" : "var(--muted2)" }}>{dia}</div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: active ? "var(--accent)" : "var(--muted2)" }}>{dia}</div>
                               {p && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                                 Primer pago: {new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" })}<br />
                                 <span style={{ fontWeight: 700, color: active ? "var(--accent)" : "var(--muted2)" }}>$ {fmt(p.valor)}</span> ({p.dias} días)
@@ -712,7 +712,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                       border: `1px solid ${form.cliente_id && baseRequerida > 0 ? (baseSuficiente ? "var(--ok-line)" : "var(--warn-line)") : "var(--line)"}`,
                     }}>
                       <div>
-                        <span style={{ fontWeight: 800, color: "var(--text)" }}>$ {fmt(ahorroEntregado)}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text)" }}>$ {fmt(ahorroEntregado)}</span>
                         {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && (
                           <span style={{ color: "var(--muted)" }}> de $ {fmt(baseRequerida)}</span>
                         )}
@@ -756,7 +756,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--accent)" }}>{m.placa}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>{m.placa}</div>
                         <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
                         <div style={{ fontSize: 11, color: "var(--faint)" }}>{m.grupo} · {m.cilindraje}</div>
                       </div>
@@ -890,7 +890,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {motoActual && (
                 <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "var(--accent)" }}>🏍️ {motoActual.placa}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--accent)" }}>🏍️ {motoActual.placa}</div>
                   <div style={{ fontSize: 13, color: "var(--muted2)" }}>{motoActual.marca} {motoActual.modelo} · {motoActual.color}</div>
                 </div>
               )}

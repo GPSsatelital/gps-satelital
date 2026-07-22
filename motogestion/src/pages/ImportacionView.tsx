@@ -280,7 +280,7 @@ export default function ImportacionView() {
             📊
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 900, color: "var(--card)" }}>
+            <h1 style={{ margin: 0, fontSize: isMobile ? 20 : 26, fontWeight: 700, color: "var(--card)" }}>
               Importación de Datos
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: "var(--faint)", marginTop: 2 }}>
@@ -314,7 +314,7 @@ export default function ImportacionView() {
                 <div style={{
                   width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: done ? 16 : 14, fontWeight: 800,
+                  fontSize: done ? 16 : 14, fontWeight: 700,
                   background: active ? "var(--accent)" : done ? "var(--ok-ink)" : "rgba(255,255,255,0.1)",
                   color: "var(--card)",
                 }}>
@@ -342,7 +342,7 @@ export default function ImportacionView() {
 
             {/* Tipo de datos */}
             <div style={{ background: "var(--card)", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>¿Qué tipo de datos contiene el archivo?</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>¿Qué tipo de datos contiene el archivo?</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>Selecciona el tipo antes de subir el archivo</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {TIPOS.map(t => (
@@ -369,7 +369,7 @@ export default function ImportacionView() {
 
             {/* Columnas esperadas */}
             <div style={{ background: "var(--card)", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 12 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>
                 Columnas esperadas para {TIPOS.find(t => t.key === tipo)?.label}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -390,7 +390,7 @@ export default function ImportacionView() {
 
             {/* Drag and drop */}
             <div style={{ background: "var(--card)", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 16 }}>Subir archivo Excel</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>Subir archivo Excel</div>
               <div
                 ref={dropRef}
                 onClick={() => fileRef.current?.click()}
@@ -411,7 +411,7 @@ export default function ImportacionView() {
                 </div>
                 {fileName ? (
                   <>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ok-ink)" }}>{fileName}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ok-ink)" }}>{fileName}</div>
                     <div style={{ fontSize: 12, color: "var(--ok)", marginTop: 4 }}>Archivo cargado — haz clic para cambiar</div>
                   </>
                 ) : (
@@ -482,7 +482,7 @@ export default function ImportacionView() {
                     border: "none",
                     background: filas.length === 0 ? "var(--faint)" : "linear-gradient(90deg, var(--text) 0%, var(--accent-ink2) 100%)",
                     color: "var(--card)",
-                    fontWeight: 800,
+                    fontWeight: 700,
                     fontSize: 15,
                     cursor: filas.length === 0 ? "not-allowed" : "pointer",
                     letterSpacing: "0.02em",
@@ -499,7 +499,7 @@ export default function ImportacionView() {
         {paso === 2 && (
           <div style={{ background: "var(--card)", borderRadius: 18, padding: isMobile ? 18 : 28, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Mapeo de columnas</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>Mapeo de columnas</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
                 Indica qué columna de tu Excel corresponde a cada campo del sistema.
                 Las sugerencias automáticas están marcadas en azul.
@@ -568,7 +568,7 @@ export default function ImportacionView() {
               <button onClick={() => setPaso(3)} style={{
                 flex: 1, padding: "14px", borderRadius: 14, border: "none",
                 background: "linear-gradient(90deg, var(--text) 0%, var(--accent-ink2) 100%)",
-                color: "var(--card)", fontWeight: 800, fontSize: 15, cursor: "pointer",
+                color: "var(--card)", fontWeight: 700, fontSize: 15, cursor: "pointer",
               }}>
                 Continuar — Ver preview →
               </button>
@@ -584,17 +584,17 @@ export default function ImportacionView() {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "var(--card)", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid var(--ok)" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ok-ink)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Registros válidos</div>
-                <div style={{ fontSize: 30, fontWeight: 900, color: "var(--ok-ink)", marginTop: 4 }}>{fmt(validos.length)}</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: "var(--ok-ink)", marginTop: 4 }}>{fmt(validos.length)}</div>
                 <div style={{ fontSize: 11, color: "var(--ok)" }}>Listos para importar</div>
               </div>
               <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "var(--card)", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid #f87171" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Con errores</div>
-                <div style={{ fontSize: 30, fontWeight: 900, color: "var(--bad-ink)", marginTop: 4 }}>{fmt(invalidos.length)}</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: "var(--bad-ink)", marginTop: 4 }}>{fmt(invalidos.length)}</div>
                 <div style={{ fontSize: 11, color: "var(--bad-line)" }}>Se omitirán</div>
               </div>
               <div style={{ flex: "1 1 140px", padding: "16px 18px", background: "var(--card)", borderRadius: 16, boxShadow: "0 2px 12px rgba(15,23,42,0.06)", borderLeft: "4px solid var(--faint)" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Total en archivo</div>
-                <div style={{ fontSize: 30, fontWeight: 900, color: "var(--text)", marginTop: 4 }}>{fmt(filas.length)}</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>{fmt(filas.length)}</div>
                 <div style={{ fontSize: 11, color: "var(--faint)" }}>Filas leídas</div>
               </div>
             </div>
@@ -616,7 +616,7 @@ export default function ImportacionView() {
 
             {/* Preview */}
             <div style={{ background: "var(--card)", borderRadius: 18, padding: isMobile ? 18 : 24, boxShadow: "0 2px 16px rgba(15,23,42,0.06)" }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>
                 Vista previa — primeras {Math.min(validos.length, 15)} filas válidas
               </div>
               <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--line)" }}>
@@ -687,7 +687,7 @@ export default function ImportacionView() {
                   style={{
                     flex: 1, padding: "14px", borderRadius: 14, border: "none",
                     background: validos.length === 0 ? "var(--faint)" : "linear-gradient(90deg, var(--ok-ink), var(--ok))",
-                    color: "var(--card)", fontWeight: 800, fontSize: 15,
+                    color: "var(--card)", fontWeight: 700, fontSize: 15,
                     cursor: validos.length === 0 || (!!progreso && !importDone) ? "not-allowed" : "pointer",
                     opacity: !!progreso && !importDone ? 0.7 : 1,
                   }}>
@@ -696,7 +696,7 @@ export default function ImportacionView() {
               ) : (
                 <button
                   onClick={() => { setPaso(1); setProgreso(null); setImportDone(false); setFilas([]); setColumnas([]); setHojas([]); setWorkbook(null); setFileName(""); }}
-                  style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: "linear-gradient(90deg, var(--text) 0%, var(--accent-ink2) 100%)", color: "var(--card)", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+                  style={{ flex: 1, padding: "14px", borderRadius: 14, border: "none", background: "linear-gradient(90deg, var(--text) 0%, var(--accent-ink2) 100%)", color: "var(--card)", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                   Importar otro archivo
                 </button>
               )}

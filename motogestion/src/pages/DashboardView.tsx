@@ -338,7 +338,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
               {total} alerta{total > 1 ? "s" : ""} activa{total > 1 ? "s" : ""}
             </span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
+              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
               {nAlert > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", padding: "3px 10px", borderRadius: 999 }}>⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</span>}
               {nInfo  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft3)", padding: "3px 10px", borderRadius: 999 }}>ℹ️ {nInfo} info</span>}
             </div>
@@ -367,7 +367,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           </div>
           {grupoSeleccionado !== "todos" && (
             <span style={{
-              fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
               background: "rgba(56,189,248,0.15)", color: "var(--accent-hi)",
               padding: "2px 8px", borderRadius: 999,
             }}>
@@ -375,7 +375,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             </span>
           )}
         </div>
-        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 700, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
           ${fmt(recaudoFiltrado.hoy)}
         </div>
         <div style={{ marginTop: 10 }}>
@@ -417,7 +417,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
               >
                 <span>{op.label}</span>
                 <span style={{
-                  fontSize: 10, fontWeight: 800,
+                  fontSize: 10, fontWeight: 700,
                   color: isSelected ? "var(--accent-hi)" : "var(--muted)",
                 }}>{op.total}</span>
               </button>
@@ -507,7 +507,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             {isMobile ? (
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: kpi.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: kpi.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
                   <span style={{ fontSize: 15, opacity: 0.55 }}>{kpi.icon}</span>
                 </div>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted2)", marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kpi.label}</div>
@@ -515,7 +515,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             ) : (
               <>
                 <div style={{ fontSize: 18, marginBottom: 4 }}>{kpi.icon}</div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>{kpi.value}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>{kpi.value}</div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{kpi.label}</div>
                 <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{kpi.sub}</div>
                 {kpi.delta.pct !== 0 && (
@@ -630,7 +630,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{s.label}</div>
               </div>
               <span style={{ fontSize: 20, opacity: 0.7 }}>{s.icon}</span>
@@ -659,7 +659,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                   cursor: "pointer",
                 }}
               >
-                <span style={{ fontSize: 16, fontWeight: 900, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</span>
                 <span style={{ fontSize: 9, fontWeight: 600, color: n > 0 ? "var(--muted2)" : "var(--faint)", marginTop: 3 }}>{mod}</span>
               </div>
             ))}
@@ -691,7 +691,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, marginBottom: 4 }}>
                   <span style={{ color: "var(--muted)", fontWeight: 500 }}>{row.label}</span>
-                  <span style={{ fontWeight: 800, color: "var(--text)", fontSize: 12 }}>{row.count}</span>
+                  <span style={{ fontWeight: 700, color: "var(--text)", fontSize: 12 }}>{row.count}</span>
                 </div>
                 <div style={{ height: 7, borderRadius: 99, background: "var(--soft)", overflow: "hidden" }}>
                   <div style={{
@@ -724,7 +724,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                   onMouseEnter={e => n > 0 && ((e.currentTarget as HTMLDivElement).style.background = "var(--accent-soft)")}
                   onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = n > 0 ? "var(--accent-soft4)" : "var(--soft2)")}
                 >
-                  <div style={{ fontSize: 24, fontWeight: 900, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: n > 0 ? "var(--accent)" : "var(--line2)", lineHeight: 1 }}>{n}</div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: n > 0 ? "var(--muted2)" : "var(--faint)", marginTop: 5 }}>{mod}</div>
                 </div>
               ))}
@@ -749,7 +749,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
         >
           <span style={{ fontSize: 28 }}>🔧</span>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "var(--orange)" }}>{stats.tallerActivo}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--orange)" }}>{stats.tallerActivo}</div>
             <div style={{ fontSize: 12, color: "var(--orange-ink)", fontWeight: 600 }}>
               moto{stats.tallerActivo > 1 ? "s" : ""} en taller
             </div>
@@ -767,7 +767,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>Recaudo — últimos {chartDays} días</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Total: <span style={{ fontWeight: 800, color: "var(--accent)" }}>${fmt(totalRecaudoChart)}</span></div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Total: <span style={{ fontWeight: 700, color: "var(--accent)" }}>${fmt(totalRecaudoChart)}</span></div>
           </div>
           <div style={{ display: "flex", gap: 4, background: "var(--soft)", borderRadius: 10, padding: 3 }}>
             {([7, 14, 30] as const).map(d => (

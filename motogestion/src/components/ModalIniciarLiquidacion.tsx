@@ -64,7 +64,7 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>📄 Iniciar liquidación</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>📄 Iniciar liquidación</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>
               {placa} · {clienteNombre}
             </div>

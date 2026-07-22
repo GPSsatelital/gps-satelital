@@ -57,7 +57,7 @@ export default function AvisoActualizacion() {
       <div style={{ fontSize: 13, fontWeight: 700, minWidth: 0 }}>🔄 Hay una versión nueva de la app.</div>
       <button
         onClick={() => window.location.reload()}
-        style={{ background: "var(--accent-hi)", color: "var(--text)", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", flexShrink: 0 }}
+        style={{ background: "var(--accent-hi)", color: "var(--text)", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", flexShrink: 0 }}
       >
         Actualizar
       </button>

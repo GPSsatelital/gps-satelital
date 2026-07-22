@@ -90,7 +90,7 @@ export default function ReferidosView() {
     <div style={{ paddingBottom: 32 }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 900, color: "var(--text)" }}>Programa de Referidos</h2>
+        <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Programa de Referidos</h2>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>Seguimiento de referidos y premios por cliente.</div>
       </div>
 
@@ -110,14 +110,14 @@ export default function ReferidosView() {
         ].map(kpi => (
           <div key={kpi.label} style={{ flex: 1, minWidth: 110, background: kpi.bg, borderRadius: 14, padding: "16px 18px", border: "1px solid var(--line)" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase", letterSpacing: 0.5 }}>{kpi.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: kpi.color, marginTop: 6 }}>{kpi.val}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: kpi.color, marginTop: 6 }}>{kpi.val}</div>
           </div>
         ))}
       </div>
 
       {/* Hitos / Milestones */}
       <div style={{ background: "var(--card)", borderRadius: 16, padding: "20px 24px", marginBottom: 20, border: "1px solid var(--line)" }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", marginBottom: 16 }}>Tabla de premios</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", marginBottom: 16 }}>Tabla de premios</div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {PREMIOS.map(p => {
             const count = referidores.filter(r => r.confirmados >= p.hito).length;
@@ -126,7 +126,7 @@ export default function ReferidosView() {
             return (
               <div key={p.hito} style={{ flex: 1, minWidth: isMobile ? 140 : 160, padding: "18px 16px", borderRadius: 14, background: "var(--soft2)", border: "1px solid var(--line)", textAlign: "center" }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>{p.icon}</div>
-                <div style={{ fontWeight: 900, fontSize: 16, color: "var(--text)" }}>{p.hito} referidos</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)" }}>{p.hito} referidos</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{p.premio}</div>
                 <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>{count} cliente{count !== 1 ? "s" : ""} alcanzaron</div>
@@ -148,14 +148,14 @@ export default function ReferidosView() {
       {/* Premios pendientes de entrega */}
       {pendientesEntrega.length > 0 && (
         <div style={{ background: "var(--warn-soft2)", borderRadius: 16, padding: "20px 24px", marginBottom: 20, border: "1px solid var(--warn-line)" }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--warn-ink)", marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--warn-ink)", marginBottom: 14 }}>
             Premios pendientes de entrega ({pendientesEntrega.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {pendientesEntrega.map(({ cliente, confirmados, premiosPendientesEntrega }) => (
               <div key={cliente.id} style={{ padding: "14px 16px", borderRadius: 12, background: "var(--card)", border: "1px solid var(--warn-line)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>{cliente.nombre}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>{cliente.nombre}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{confirmados} referidos confirmados · C.C. {cliente.cedula}</div>
                   <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                     {premiosPendientesEntrega.map(p => (
@@ -183,7 +183,7 @@ export default function ReferidosView() {
       {/* Lista de referidores */}
       <div style={{ background: "var(--card)", borderRadius: 16, padding: "20px 24px", border: "1px solid var(--line)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>Todos los referidores ({referidores.length})</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Todos los referidores ({referidores.length})</div>
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre o cédula..."
             style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, width: isMobile ? "100%" : 240 }} />
         </div>
@@ -202,7 +202,7 @@ export default function ReferidosView() {
                 <div style={{ padding: "16px 18px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 900, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>{cliente.nombre}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>{cliente.nombre}</div>
                       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>C.C. {cliente.cedula}{cliente.telefono ? ` · ${cliente.telefono}` : ""}</div>
 
                       {/* Badges de premios */}
@@ -227,7 +227,7 @@ export default function ReferidosView() {
                     </div>
 
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 24, fontWeight: 900, color: "var(--accent)" }}>{referidos.length}</div>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: "var(--accent)" }}>{referidos.length}</div>
                       <div style={{ fontSize: 11, color: "var(--muted)" }}>referido{referidos.length !== 1 ? "s" : ""}</div>
                       <div style={{ fontSize: 11, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2 }}>{referidos.filter(r => r.estado === "Activo").length} activos</div>
                     </div>

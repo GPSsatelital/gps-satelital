@@ -326,13 +326,14 @@ function MasSheet({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 200 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 200, animation: "mgFadeIn .15s var(--ease)" }} />
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201,
         background: "var(--card)", borderRadius: "20px 20px 0 0",
         padding: "12px 0 32px",
         boxShadow: "0 -8px 40px rgba(15,23,42,0.2)",
         maxHeight: "85dvh", overflowY: "auto",
+        animation: "mgSheetUp .22s var(--ease)",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--line)", margin: "0 auto 16px" }} />
         {seccionesVisibles.map((seccion, si) => (

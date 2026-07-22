@@ -21,6 +21,7 @@ import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
@@ -484,7 +485,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {/* Header moto */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900, fontSize: 22, color: "var(--text)" }}>{selectedMoto.placa}</div>
+            <div><Placa placa={selectedMoto.placa} size="lg" /></div>
             <div style={{ fontSize: 14, color: "var(--muted)" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
           </div>
           <StatusBadge status={selectedMoto.estado} />
@@ -644,7 +645,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
                     style={{ background: "var(--card)", borderRadius: 12, padding: "12px 14px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text)" }}>{moto.placa}</div>
+                      <div><Placa placa={moto.placa} /></div>
                       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
@@ -686,7 +687,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <div key={moto.id} onClick={() => setSelectedId(moto.id)}
                     style={{ borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: sel ? "var(--accent-soft2)" : "var(--card)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{moto.placa}</div>
+                      <div><Placa placa={moto.placa} size="sm" /></div>
                       <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
                       {esAdminOSuperior && (
                         <button
@@ -1042,7 +1043,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             onClick={() => setAsignarMotoId(null)}
             style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 }}
           >
-            <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)" }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderTopLeftRadius: 20, borderTopRightRadius: 20, width: "100%", maxWidth: 480, maxHeight: "70vh", overflowY: "auto", padding: 20, boxShadow: "0 -8px 30px rgba(15,23,42,0.2)", animation: "mgSheetUp .22s var(--ease)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text)" }}>Asignar encargado</div>
                 <button onClick={() => setAsignarMotoId(null)} style={{ border: "none", background: "var(--soft)", borderRadius: 999, padding: "6px 12px", fontWeight: 700, cursor: "pointer", fontSize: 15, color: "var(--muted2)" }}>✕</button>

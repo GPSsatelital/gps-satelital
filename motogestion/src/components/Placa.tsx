@@ -7,11 +7,13 @@
 export default function Placa({ placa, size = "md" }: { placa: string; size?: "sm" | "md" | "lg" }) {
   // Letras grandes y gruesas que llenan el recuadro: font alto + padding chico
   // (el recuadro amarillo casi no crece, lo que crece son las letras).
+  // minWidth = ancho fijo del recuadro por tamaño → las placas angostas (con I/1)
+  // se emparejan con las anchas (D/Q/W/M) y la columna izquierda queda pareja.
   const s = size === "sm"
-    ? { fontSize: 14, padding: "3px 7px 2px", letterSpacing: 0.8, borderRadius: 6 }
+    ? { fontSize: 14, padding: "3px 7px 2px", letterSpacing: 0.8, borderRadius: 6, minWidth: 66 }
     : size === "lg"
-      ? { fontSize: 19, padding: "5px 10px 4px", letterSpacing: 1.2, borderRadius: 8 }
-      : { fontSize: 16, padding: "4px 8px 3px", letterSpacing: 1, borderRadius: 7 };
+      ? { fontSize: 19, padding: "5px 10px 4px", letterSpacing: 1.2, borderRadius: 8, minWidth: 92 }
+      : { fontSize: 16, padding: "4px 8px 3px", letterSpacing: 1, borderRadius: 7, minWidth: 76 };
   return (
     <span
       style={{
@@ -24,6 +26,8 @@ export default function Placa({ placa, size = "md" }: { placa: string; size?: "s
         whiteSpace: "nowrap",
         boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.22)",
         display: "inline-block",
+        textAlign: "center",
+        boxSizing: "border-box",
         textTransform: "uppercase",
         ...s,
       }}

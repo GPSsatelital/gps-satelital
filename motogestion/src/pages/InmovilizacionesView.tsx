@@ -30,6 +30,7 @@ import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoF
 import ModalPrestarReemplazo from "../components/ModalPrestarReemplazo";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { usePrestamos } from "../hooks/usePrestamos";
+import { Chip } from "../components/atomos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -518,27 +519,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
       {/* Filters + search */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {filtroBtns.map(btn => (
-            <button
-              key={btn.key}
-              onClick={() => setFiltro(btn.key)}
-              style={{
-                padding: "6px 14px", borderRadius: 999, border: "none", cursor: "pointer",
-                fontSize: 12, fontWeight: 700,
-                background: filtro === btn.key ? "var(--text)" : "var(--soft)",
-                color: filtro === btn.key ? "var(--card)" : "var(--muted)",
-                display: "flex", alignItems: "center", gap: 5,
-              }}
-            >
+            <Chip key={btn.key} activo={filtro === btn.key} count={btn.count} onClick={() => setFiltro(btn.key)}>
               {btn.label}
-              <span style={{
-                background: filtro === btn.key ? "rgba(255,255,255,0.2)" : "var(--line)",
-                borderRadius: 999, fontSize: 10, fontWeight: 700,
-                padding: "1px 6px",
-                color: filtro === btn.key ? "var(--card)" : "var(--muted)",
-              }}>{btn.count}</span>
-            </button>
+            </Chip>
           ))}
         </div>
         <input
@@ -747,21 +732,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       </div>
 
       {/* Filtros: mora / temporal / taller / todas */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {([
           { key: "todas",    label: "Todas",         count: motosRetenidas.length },
           { key: "mora",     label: "🔴 Mora",       count: motosRetenidas.filter(m => m.categoria === "mora").length },
           { key: "temporal", label: "🅿️ Temporal",   count: motosRetenidas.filter(m => m.categoria === "temporal").length },
           { key: "taller",   label: "🔧 Taller",     count: motosRetenidas.filter(m => m.categoria === "taller").length },
         ] as const).map(f => (
-          <button key={f.key} onClick={() => setFiltroRet(f.key)} style={{
-            padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700,
-            background: filtroRet === f.key ? "var(--text)" : "var(--soft)", color: filtroRet === f.key ? "var(--card)" : "var(--muted)",
-            display: "flex", alignItems: "center", gap: 5,
-          }}>
+          <Chip key={f.key} activo={filtroRet === f.key} count={f.count} onClick={() => setFiltroRet(f.key)}>
             {f.label}
-            <span style={{ background: filtroRet === f.key ? "rgba(255,255,255,0.2)" : "var(--line)", borderRadius: 999, fontSize: 10, fontWeight: 700, padding: "1px 6px", color: filtroRet === f.key ? "var(--card)" : "var(--muted)" }}>{f.count}</span>
-          </button>
+          </Chip>
         ))}
       </div>
 

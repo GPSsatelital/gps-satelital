@@ -264,6 +264,12 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
+/* Accesibilidad: anillo de foco visible SOLO al navegar por teclado (no en click). */
+:where(button, a, input, textarea, select, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Hojas y modales que suben deslizando / aparecen suave (se usan por nombre
    desde estilos inline: animation: "mgSheetUp .22s var(--ease)") */
 @keyframes mgSheetUp {

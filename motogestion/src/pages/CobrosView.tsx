@@ -2238,7 +2238,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       )}
 
       {/* KPI cards — 2x2 grid compacto: etiqueta + número en la misma línea, riel de color */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: isMobile ? 4 : 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: isMobile ? 2 : 16 }}>
         {kpis.map(k => (
           <button
             key={k.label}
@@ -2248,7 +2248,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               border: "none",
               borderLeft: `4px solid ${k.color}`,
               borderRadius: 12,
-              padding: "9px 12px",
+              padding: "7px 11px",
               cursor: "pointer",
               boxShadow: "0 2px 10px rgba(15,23,42,0.06)",
               textAlign: "left",
@@ -2256,7 +2256,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
             </div>
             {k.sub && (
               <div style={{ fontSize: 10, color: k.color, opacity: 0.8, marginTop: 1, textAlign: "right" }}>{k.sub}</div>
@@ -2266,7 +2266,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: isMobile ? 10 : 20, paddingBottom: 4 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: isMobile ? 6 : 20, paddingBottom: 2 }}>
         {tabs.map(t => (
           <button
             key={t.key}
@@ -2368,9 +2368,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ];
 
         return (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: isMobile ? 8 : 20 }}>
             {/* Chips de filtro — igual que Contratos */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {CHIPS_HOY.map(ch => (
                 <Chip key={ch.key} activo={filtroHoy === ch.key} count={ch.count} onClick={() => setFiltroHoy(ch.key)}>
                   {ch.label}
@@ -2389,7 +2389,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             )}
 
             {/* Buscador — igual que Contratos */}
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: isMobile ? 8 : 12 }}>
               <input
                 value={busquedaHoy}
                 onChange={e => setBusquedaHoy(e.target.value)}
@@ -2957,18 +2957,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
       {/* CONTRATOS — lista navegable con chips de filtro */}
       {activeTab === "contratos" && (
-        <div style={{ marginTop: isMobile ? 8 : 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 20, alignItems: isMobile ? "stretch" : "start" }}>
+        <div style={{ marginTop: isMobile ? 6 : 18, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 8 : 20, alignItems: isMobile ? "stretch" : "start" }}>
           {/* Lista */}
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Chips de filtro */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: isMobile ? 7 : 12, paddingBottom: 2 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: isMobile ? 5 : 12, paddingBottom: 0 }}>
               {FILTROS_CONTRATOS.map(f => (
                 <Chip key={f.key} activo={filtroContratos === f.key} count={f.count} onClick={() => { setFiltroContratos(f.key); setContratoSeleccionadoId(null); }}>
                   {f.label}
                 </Chip>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: isMobile ? 7 : 12 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: isMobile ? 6 : 12 }}>
               {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
                 <Chip key={g} activo={filtroGrupoContratos === g} onClick={() => setFiltroGrupoContratos(g)}>
                   {g === "todos" ? "Todos" : g}

@@ -2458,7 +2458,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 <div style={{ fontWeight: 700, color: "var(--ok-ink)" }}>No tienes tareas pendientes hoy</div>
               </div>
             ) : (
-              <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 16, padding: 10, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "56vh" : "62vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ marginTop: 12, background: "var(--card)", borderRadius: 16, padding: 10, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
                 {listaOrdenada.length === 0 ? (
                   <div style={{ color: "var(--muted)", fontSize: 14, padding: "12px 0" }}>Sin resultados.</div>
                 ) : listaOrdenada.map(c => {
@@ -2780,7 +2780,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
               ))}
             </div>
           </div>
-          <div style={{ display: "grid", gap: 10, maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
+          <div style={{ display: "grid", gap: 10, maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto", paddingRight: 2 }}>
             {pagosFiltrados.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin pagos registrados.</div>}
             {pagosFiltrados.map(p => {
               const contrato = contratos.find(c => c.id === p.contrato_id);
@@ -3053,7 +3053,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 onChange={e => setBusqueda(e.target.value)}
               />
               {/* Lista dentro de recuadro con scroll propio */}
-              <div style={{ maxHeight: isMobile ? "62vh" : "66vh", overflowY: "auto", paddingRight: 2 }}>
+              <div style={{ maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto", paddingRight: 2 }}>
                 {listaFiltrada.length === 0
                   ? <div style={{ textAlign: "center", padding: "28px 12px", color: "var(--faint)", fontSize: 14 }}>No hay contratos en este filtro.</div>
                   : <ListaContratos lista={listaFiltrada} />}

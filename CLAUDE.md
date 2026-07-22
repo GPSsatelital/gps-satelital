@@ -147,6 +147,39 @@ No basta con que la tarea funcione donde se probó. Antes de darla por terminada
 
 ---
 
+## SISTEMA DE DISEÑO — OBLIGATORIO SIEMPRE (definido 22-jul-2026)
+
+Antes de tocar CUALQUIER cosa visual (color, tipografía, layout, componente, animación): **invocar los skills `frontend-design` y `theme-factory`** para fundamentar la decisión, y **mostrar mockup/preview** (herramienta visualize) ANTES de implementar. No improvisar a ojo.
+
+### Identidad (LOCKED — se refina, no se reemplaza)
+- **Firma:** la **placa amarilla colombiana** (`src/components/Placa.tsx`, amarillo `#FFD100`) — es lo que hace la app inconfundible. Todo render de placa usa `<Placa>` (listas=`sm`, detalles=`lg`). Nunca placa como texto plano.
+- **Paleta:** navy + cyan (día = paleta clara actual, noche = navy). Tokens día/noche en `src/index.css` (`:root[data-theme=light|dark]`). Texto sobre `--ink` usa `--on-ink` (nunca `--card`, que es navy en noche).
+
+### Tipografía
+- Fuente UI = **Inter** (`--font-ui` en index.css, cargada en index.html). Documentos IMPRESOS (useDocumentos/TallerView/liquidación) siguen en Arial a propósito.
+- `font-variant-numeric: tabular-nums` global (la plata aliña en columnas).
+- Escala fija: **22 / 18 / 15 / 13 / 12 / 11 px**. Pesos **400/500/600/700** (nada de 800/900).
+
+### Componentes = ÚNICA FUENTE (no dibujar filas/listas a mano)
+- **`src/components/ListaEstandar.tsx`** → `ListBox` (recuadro con scroll, **58vh/64vh** via `listaConScroll`) + `ItemLista` (fila estándar: placa · título uppercase · subtítulo muted · `right`=badges/monto · `extra`=barra/chips · `rielColor`=color del estado · seleccionado · onClick). **TODA lista nueva DEBE usarlos.**
+- Estilos compartidos en `src/styles/shared.ts` (`card`, `inputStyle`, `listaConScroll`, etc.).
+- Al agregar UI: reutilizar el flujo/componente que YA existe, nunca un atajo paralelo (ver ERRORES PASADOS).
+- OJO: varias vistas tienen listas **móvil Y desktop separadas** — al estandarizar, revisar y arreglar LAS DOS.
+
+### Espaciado y átomos
+- Grilla de **4px** (4/8/12/16/24). No 5/6/7/9/11 sueltos.
+- Pendiente crear: componentes únicos `Badge`, `Chip`, `Btn` (hoy cada vista tiene el suyo).
+
+### Movimiento
+- **`framer-motion`** (instalado). Usar con **restraint** (entrada de listas, hojas/modales, transición de vista, micro-interacciones de estado). El exceso de animación hace que se vea "generado por IA".
+
+### Verificación visual
+- Siempre a **375px** (mobile-first). `npm run build` + `npm test` + preview logueado antes de dar por cerrado.
+
+> Estado del rediseño y plan por fases (A: Cartera→ItemLista · B: tokens de átomos · C: plata-primero · D: framer-motion · E: resto de pantallas): ver memoria `compactar-densidad-movil` y `rediseno-visual-f1`.
+
+---
+
 ## LA EMPRESA
 
 **Nombre:** Club de moteros (nombre exacto y logo pendiente de recibir)

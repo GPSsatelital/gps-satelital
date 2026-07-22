@@ -50,6 +50,7 @@ import {
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
+import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -118,26 +119,12 @@ function fmt(n: number) {
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function PagoBadge({ estado }: { estado: PagoEstado }) {
-  const map: Record<PagoEstado, { bg: string; color: string }> = {
-    Confirmado: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
-    Pendiente: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-    Rechazado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  const tone: Record<PagoEstado, BadgeTone> = {
+    Confirmado: "ok",
+    Pendiente: "warn",
+    Rechazado: "bad",
   };
-  const colors = map[estado];
-  return (
-    <span
-      style={{
-        padding: "4px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        background: colors.bg,
-        color: colors.color,
-      }}
-    >
-      {estado}
-    </span>
-  );
+  return <Badge tone={tone[estado]}>{estado}</Badge>;
 }
 
 type EstadoCartera = "al-dia" | "gabela" | "mora";
@@ -151,22 +138,14 @@ const ESTADO_CARTERA_STYLE: Record<EstadoCartera, { bg: string; color: string; l
   mora: { bg: "var(--bad-soft)", color: "var(--bad-ink)", label: "✕ Mora" },
 };
 
+const ESTADO_CARTERA_TONE: Record<EstadoCartera, BadgeTone> = {
+  "al-dia": "ok",
+  gabela: "warn",
+  mora: "bad",
+};
+
 function EstadoBadge({ estado }: { estado: EstadoCartera }) {
-  const s = ESTADO_CARTERA_STYLE[estado];
-  return (
-    <span
-      style={{
-        padding: "4px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        background: s.bg,
-        color: s.color,
-      }}
-    >
-      {s.label}
-    </span>
-  );
+  return <Badge tone={ESTADO_CARTERA_TONE[estado]}>{ESTADO_CARTERA_STYLE[estado].label}</Badge>;
 }
 
 function InfoBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
@@ -2408,26 +2387,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         return (
           <div style={{ marginTop: 20 }}>
             {/* Chips de filtro — igual que Contratos */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {CHIPS_HOY.map(ch => (
-                <button
-                  key={ch.key}
-                  onClick={() => setFiltroHoy(ch.key)}
-                  style={{
-                    background: filtroHoy === ch.key ? "var(--accent)" : "var(--soft)",
-                    color: filtroHoy === ch.key ? "var(--card)" : "var(--muted2)",
-                    border: "none", borderRadius: 999, padding: "5px 10px",
-                    fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
-                  }}
-                >
+                <Chip key={ch.key} activo={filtroHoy === ch.key} count={ch.count} onClick={() => setFiltroHoy(ch.key)}>
                   {ch.label}
-                  <span style={{
-                    marginLeft: 4,
-                    background: filtroHoy === ch.key ? "rgba(255,255,255,0.3)" : "var(--line)",
-                    color: filtroHoy === ch.key ? "var(--card)" : "var(--muted)",
-                    borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
-                  }}>{ch.count}</span>
-                </button>
+                </Chip>
               ))}
             </div>
 

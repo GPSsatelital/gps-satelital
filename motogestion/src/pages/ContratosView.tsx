@@ -12,6 +12,7 @@ import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
+import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 14 };
@@ -37,25 +38,32 @@ function VencimientoBadge({ contrato }: { contrato: Contrato }) {
   if (contrato.estado !== "Activo") return null;
   const dias = calcularDiasHastaVencimiento(contrato);
   if (dias === null || dias > 7) return null;
-  const [bg, color, text] = dias < 0
-    ? ["var(--bad-soft)", "var(--bad-ink)", `Vencido hace ${Math.abs(dias)}d`]
-    : dias === 0 ? ["var(--warn-soft)", "var(--warn-ink)", "Vence hoy"]
-    : dias === 1 ? ["var(--warn-soft)", "var(--warn-ink)", "Vence mañana"]
-    : ["var(--warn-soft)", "var(--warn-ink)", `Vence en ${dias}d`];
-  return <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: bg, color, fontSize: 12, fontWeight: 700 }}>{text}</span>;
+  const [tone, text]: [BadgeTone, string] = dias < 0
+    ? ["bad", `Vencido hace ${Math.abs(dias)}d`]
+    : dias === 0 ? ["warn", "Vence hoy"]
+    : dias === 1 ? ["warn", "Vence mañana"]
+    : ["warn", `Vence en ${dias}d`];
+  return <Badge tone={tone}>{text}</Badge>;
 }
 
-const ESTADO_COLORS: Record<ContratoEstado, { bg: string; color: string }> = {
-  "En proceso": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-  Activo:       { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
-  Finalizado:   { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
-  Cancelado:    { bg: "var(--bad-soft)", color: "var(--bad)" },
-  Suspendido:   { bg: "var(--indigo-soft)", color: "var(--violet)" },
+const ESTADO_TONE: Record<ContratoEstado, BadgeTone> = {
+  "En proceso": "warn",
+  Activo:       "ok",
+  Finalizado:   "accent",
+  Cancelado:    "bad",
+  Suspendido:   "indigo",
+};
+
+const ESTADO_RIEL: Record<ContratoEstado, string> = {
+  "En proceso": "var(--warn2)",
+  Activo:       "var(--ok2)",
+  Finalizado:   "var(--accent)",
+  Cancelado:    "var(--bad)",
+  Suspendido:   "var(--violet)",
 };
 
 function ContractBadge({ estado }: { estado: ContratoEstado }) {
-  const c = ESTADO_COLORS[estado] ?? { bg: "var(--soft)", color: "var(--muted2)" };
-  return <span style={{ display: "inline-block", padding: "5px 12px", borderRadius: 999, background: c.bg, color: c.color, fontSize: 12, fontWeight: 700 }}>{estado}</span>;
+  return <Badge tone={ESTADO_TONE[estado] ?? "neutral"}>{estado}</Badge>;
 }
 
 function wizardStep(c: Contrato): number {
@@ -137,20 +145,11 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
     return (
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {GRUPOS_FILTRO.map(g => (
-          <button
-            key={g}
-            onClick={() => setFiltroGrupo(g)}
-            style={{
-              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700,
-              background: filtroGrupo === g ? "var(--accent)" : "var(--soft)",
-              color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
-            }}
-          >
+          <Chip key={g} activo={filtroGrupo === g} onClick={() => setFiltroGrupo(g)}>
             {g === "todos" ? "Todos" : g}
-          </button>
+          </Chip>
         ))}
       </div>
     );
@@ -206,7 +205,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "var(--text)" }}>{clienteDetalle.nombre}</div>
+              <div style={{ fontWeight: 700, fontSize: 20, textTransform: "uppercase", color: "var(--text)" }}>{clienteDetalle.nombre}</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>CC {clienteDetalle.cedula}{clienteDetalle.telefono && ` · 📞 ${clienteDetalle.telefono}`}</div>
               {motoDetalle && (
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -274,7 +273,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 <button onClick={() => abrirWizardContinuar(c)} style={{
                   padding: "12px 16px", borderRadius: 14, border: "none",
                   background: "linear-gradient(90deg,var(--accent),var(--ok2))", color: "var(--card)",
-                  fontWeight: 800, fontSize: 14, cursor: "pointer", textAlign: "center",
+                  fontWeight: 700, fontSize: 14, cursor: "pointer", textAlign: "center",
                 }}>
                   {!c.moto_id ? "🏍️ Continuar — asignar moto" : !c.firma_cliente ? "✍️ Continuar — firmar documentos" : "🚀 Continuar — entregar moto"}
                 </button>
@@ -405,7 +404,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
       {!isMobile && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
           <div>
-            <h2 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Contratos</h2>
+            <h2 style={{ fontSize: 22, margin: 0, fontWeight: 700 }}>Contratos</h2>
             <p style={{ marginTop: 4, color: "var(--muted)", margin: "4px 0 0", fontSize: 14 }}>Solo clientes aprobados con visita domiciliaria.</p>
           </div>
         </div>
@@ -429,7 +428,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             background: filtroEstado === k.estado ? k.bg : "var(--card)",
             cursor: "pointer", boxShadow: "0 2px 10px rgba(15,23,42,0.06)", textAlign: "center", minWidth: 80,
           }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: k.color }}>{k.value}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontWeight: 600 }}>{k.label}</div>
           </button>
         ))}
@@ -447,7 +446,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           {contratosFiltrados.length === 0 && contratos.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin contratos</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Sin contratos</div>
               <div style={{ fontSize: 13, color: "var(--muted)" }}>Crea el primer contrato con el botón +</div>
             </div>
           )}
@@ -474,7 +473,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                     titulo={cliente?.nombre ?? "Sin cliente"}
                     subtitulo={`${moto ? "" : "Sin moto · "}${esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`} · $ ${fmt(c.valor_semanal)}`}
                     right={<><ContractBadge estado={c.estado} /><VencimientoBadge contrato={c} /></>}
-                    rielColor={c.base_completada ? "var(--ok2)" : alertaBase ? "var(--warn2)" : (ESTADO_COLORS[c.estado]?.color ?? "var(--muted)")}
+                    rielColor={c.base_completada ? "var(--ok2)" : alertaBase ? "var(--warn2)" : (ESTADO_RIEL[c.estado] ?? "var(--muted)")}
                     seleccionado={seleccionado}
                     onClick={() => setSelectedId(c.id)}
                     extra={tieneExtra ? <>
@@ -495,9 +494,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                       )}
                       {c.estado === "En proceso" && (
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {!c.moto_id && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--accent-soft2)", color: "var(--accent)", fontWeight: 700 }}>🏍️ Falta asignar moto</span>}
-                          {c.moto_id && !c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontWeight: 700 }}>⏳ Falta firma</span>}
-                          {c.moto_id && c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700 }}>🚀 Listo para entregar</span>}
+                          {!c.moto_id && <Badge tone="accent">🏍️ Falta asignar moto</Badge>}
+                          {c.moto_id && !c.firma_cliente && <Badge tone="warn">⏳ Falta firma</Badge>}
+                          {c.moto_id && c.firma_cliente && <Badge tone="ok">🚀 Listo para entregar</Badge>}
                         </div>
                       )}
                     </> : undefined}

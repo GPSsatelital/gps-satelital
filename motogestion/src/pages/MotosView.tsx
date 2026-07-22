@@ -28,6 +28,19 @@ import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
+import { Chip, Badge, type BadgeTone } from "../components/atomos";
+
+const MOTO_TONE: Record<MotoStatus, BadgeTone> = {
+  Disponible: "ok",
+  Reservada: "warn",
+  Asignada: "accent",
+  Mantenimiento: "bad",
+  Recuperada: "neutral",
+  Fiscalia: "warn",
+  Transito: "warn",
+  Garantia: "indigo",
+  "En traspaso": "ok",
+};
 
 function getStatusColors(status: MotoStatus) {
   switch (status) {
@@ -56,12 +69,7 @@ const ESTADO_LABEL: Record<MotoStatus, string> = {
 };
 
 function StatusBadge({ status }: { status: MotoStatus }) {
-  const colors = getStatusColors(status);
-  return (
-    <span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`, fontSize: 12, fontWeight: 700 }}>
-      {ESTADO_LABEL[status]}
-    </span>
-  );
+  return <Badge tone={MOTO_TONE[status] ?? "neutral"}>{ESTADO_LABEL[status]}</Badge>;
 }
 
 function formatDate(date: string | null) {
@@ -218,33 +226,16 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
     return (
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {GRUPOS_FILTRO.map(g => (
-          <button
-            key={g}
-            onClick={() => setFiltroGrupo(g)}
-            style={{
-              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700,
-              background: filtroGrupo === g ? "var(--accent)" : "var(--soft)",
-              color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
-            }}
-          >
+          <Chip key={g} activo={filtroGrupo === g} onClick={() => setFiltroGrupo(g)}>
             {g === "todos" ? "Todos" : g}
-          </button>
+          </Chip>
         ))}
         {esAdminOSuperior && (
-          <button
-            onClick={() => setSoloSinAsignar(v => !v)}
-            style={{
-              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700,
-              background: soloSinAsignar ? "var(--warn-strong)" : "var(--warn-soft)",
-              color: soloSinAsignar ? "var(--card)" : "var(--warn-ink)",
-            }}
-          >
+          <Chip activo={soloSinAsignar} onClick={() => setSoloSinAsignar(v => !v)}>
             👤 Sin asignar
-          </button>
+          </Chip>
         )}
       </div>
     );
@@ -666,11 +657,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                             👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
                           </button>
                         ) : undefined}
-                        right={
-                          <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                            {ESTADO_LABEL[moto.estado]}
-                          </span>
-                        }
+                        right={<StatusBadge status={moto.estado} />}
                         rielColor={sc.color}
                         seleccionado={selectedId === moto.id}
                         onClick={() => setSelectedId(moto.id)}
@@ -711,9 +698,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                       </button>
                     ) : undefined}
                     right={<>
-                      <span style={{ padding: "3px 8px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                        {ESTADO_LABEL[moto.estado]}
-                      </span>
+                      <StatusBadge status={moto.estado} />
                       {onNavigate && (
                         <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
                           style={{ border: "none", background: "var(--soft)", color: "var(--accent)", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>

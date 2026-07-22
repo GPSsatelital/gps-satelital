@@ -23,6 +23,7 @@ import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
 import FotoPerfil from "../components/FotoPerfil";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
+import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
@@ -63,13 +64,24 @@ function rielCliente(estado: ClienteEstado): string {
   return COLORES_ESTADO_CLIENTE[estado]?.color ?? "var(--muted)";
 }
 
+const CLIENTE_TONE: Record<ClienteEstado, BadgeTone> = {
+  "En proceso": "neutral",
+  "Listo para visita": "accent",
+  "Pendiente evaluación": "warn",
+  Aprobado: "ok",
+  Rechazado: "bad",
+  Activo: "ok",
+  "En seguimiento": "accent",
+  "En riesgo": "warn",
+  "En mora": "bad",
+  Retirado: "indigo",
+  Egresado: "ok",
+  "Lista negra": "bad",
+  "Inmovilización documentación incompleta": "bad",
+};
+
 function ClienteBadge({ estado }: { estado: ClienteEstado }) {
-  const colors = COLORES_ESTADO_CLIENTE[estado];
-  return (
-    <span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: colors.bg, color: colors.color, fontSize: 12, fontWeight: 700 }}>
-      {estado}
-    </span>
-  );
+  return <Badge tone={CLIENTE_TONE[estado] ?? "neutral"}>{estado}</Badge>;
 }
 
 // El acompañante solo aporta cédula y recibo (sin hoja de vida, licencia ni antecedentes)
@@ -629,20 +641,11 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const GRUPOS_FILTRO_CLIENTES: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
     return (
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {GRUPOS_FILTRO_CLIENTES.map(g => (
-          <button
-            key={g}
-            onClick={() => setFiltroGrupo(g)}
-            style={{
-              padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-              fontSize: 12, fontWeight: 700,
-              background: filtroGrupo === g ? "var(--accent)" : "var(--soft)",
-              color: filtroGrupo === g ? "var(--card)" : "var(--muted2)",
-            }}
-          >
+          <Chip key={g} activo={filtroGrupo === g} onClick={() => setFiltroGrupo(g)}>
             {g === "todos" ? "Todos" : g}
-          </button>
+          </Chip>
         ))}
       </div>
     );

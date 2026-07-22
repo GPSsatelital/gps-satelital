@@ -230,10 +230,22 @@ code {
   background-repeat: no-repeat;
 }
 
+/* Tipografía de la app: Inter (profesional). Los <input>/<button> no heredan la
+   fuente por defecto → se fija explícito. Números tabulares en toda la app para
+   que las cifras de dinero aliñen columna a columna. */
+:root { --font-ui: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif; }
+body {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Inputs siempre legibles (bug de "letras invisibles" en modo oscuro del celular) */
 input, textarea, select {
   color: var(--text);
 }
+input, textarea, select, button { font-family: var(--font-ui); }
 
 /* ── Movimiento (F2): 2 duraciones, 1 curva — sutil y consistente ── */
 :root {

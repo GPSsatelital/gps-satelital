@@ -568,7 +568,7 @@ function Shell() {
 
     return (
       <SubadminScopeProvider scope={scope}>
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", color: "var(--text)", background: "var(--bg)" }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--font-ui)", color: "var(--text)", background: "var(--bg)" }}>
         <InstallBanner />
 
         {/* Mobile top header */}
@@ -676,7 +676,7 @@ function Shell() {
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
     <SubadminScopeProvider scope={scope}>
-    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "Arial, sans-serif", color: "var(--text)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", fontFamily: "var(--font-ui)", color: "var(--text)" }}>
       <InstallBanner />
       <Sidebar ctx={ctx} navigate={navigate} puedeVer={puedeVer} collapsed={collapsed} onCollapse={() => setCollapsed(p => !p)} />
 

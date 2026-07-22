@@ -7,6 +7,7 @@ import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
+import Placa from "../components/Placa";
 import { esDiaDePago } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import type { ViewKey } from "../App";
@@ -19,7 +20,7 @@ function SkeletonCard() {
   return (
     <div style={{
       height: 110, borderRadius: 16, background: "var(--line)",
-      animation: "pulse 1.5s ease-in-out infinite",
+      animation: "mgPulsa 1.5s ease-in-out infinite",
     }} />
   );
 }
@@ -242,9 +243,9 @@ export default function DashboardView({ onNavigate }: {
   if (loading || !stats) {
     return (
       <div style={{ padding: "20px 16px", maxWidth: 1040, margin: "0 auto" }}>
-        <div style={{ height: 110, borderRadius: 20, background: "var(--line)", marginBottom: 20, animation: "pulse 1.5s infinite" }} />
+        <div style={{ height: 110, borderRadius: 20, background: "var(--line)", marginBottom: 20, animation: "mgPulsa 1.5s ease-in-out infinite" }} />
         <div style={{ display: "flex", gap: 12, marginBottom: 20, overflowX: "auto" }}>
-          {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "var(--line)", animation: "pulse 1.5s infinite" }} />)}
+          {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
         </div>
         <div style={{ display: "grid", gap: 14, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr" }}>
           {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
@@ -374,7 +375,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             </span>
           )}
         </div>
-        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em" }}>
+        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
           ${fmt(recaudoFiltrado.hoy)}
         </div>
         <div style={{ marginTop: 10 }}>
@@ -816,14 +817,15 @@ const grupoActualStats = grupoSeleccionado === "todos"
             Contratos con más días sin pago
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {top5SinPago.map(({ contrato, diasSinPago }) => {
+            {top5SinPago.map(({ contrato, diasSinPago }, i) => {
               const clienteItem = clientes.find(cl => cl.id === contrato.cliente_id);
               const motoItem    = motos.find(m => m.id === contrato.moto_id);
               const esCritico   = diasSinPago > 7;
               const esMora      = diasSinPago >= 3 && diasSinPago <= 7;
               const badgeBg     = esCritico ? "var(--bad-soft)" : esMora ? "var(--warn-soft)" : "var(--soft)";
               const badgeColor  = esCritico ? "var(--bad-ink)" : esMora ? "var(--warn-ink)" : "var(--muted)";
-              const badgeLabel  = esCritico ? "Crítico" : esMora ? "Mora" : "Gabela";
+              // Forma + color (daltónico-safe): ✕ mora/crítico · ▲ gabela — igual que Cartera.
+              const badgeLabel  = esCritico ? "✕ Crítico" : esMora ? "✕ Mora" : "▲ Gabela";
               const borderColor = esCritico ? "var(--bad)" : esMora ? "var(--warn2)" : "var(--line)";
               return (
                 <div
@@ -836,15 +838,20 @@ const grupoActualStats = grupoSeleccionado === "todos"
                     background: esCritico ? "#fff8f8" : esMora ? "#fffdf5" : "var(--soft2)",
                     cursor: "pointer", gap: 12,
                     transition: "background 0.12s",
+                    animation: "mgEntra .28s var(--ease) both",
+                    animationDelay: `${i * 35}ms`,
                   }}
                   onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.opacity = "0.85"}
                   onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.opacity = "1"}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {motoItem ? `${motoItem.placa} · ` : ""}{clienteItem?.nombre ?? "Sin cliente"}
+                  <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      {motoItem && <Placa placa={motoItem.placa} size="sm" />}
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
+                        {clienteItem?.nombre ?? "Sin cliente"}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
                       {diasSinPago} día{diasSinPago !== 1 ? "s" : ""} sin pago
                     </div>
                   </div>

@@ -1666,18 +1666,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     }
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 9 : 12 }}>
         {isMobile && (
-          <button onClick={() => setContratoSeleccionadoId(null)} style={{ ...secondaryBtn, fontSize: 13, padding: "8px 14px", alignSelf: "flex-start" }}>
+          <button onClick={() => setContratoSeleccionadoId(null)} style={{ ...secondaryBtn, fontSize: 13, padding: "6px 12px", alignSelf: "flex-start" }}>
             ← Volver
           </button>
         )}
 
         {/* Header */}
-        <div style={card}>
+        <div style={{ ...card, padding: isMobile ? "12px 14px" : 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.2 }}>
+              <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.15 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
@@ -1727,7 +1727,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
         {/* Estado de cuenta — la etiqueta/color usan estadoCartera (misma fuente que el badge),
             no la función vieja, para que no diga "Gabela" mientras el badge dice "Al día". */}
-        <div style={{ ...card, background: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].bg, border: `1px solid ${ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color}44` }}>
+        <div style={{ ...card, padding: isMobile ? "12px 14px" : 16, background: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].bg, border: `1px solid ${ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color}44` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--muted2)", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color }}>{ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].label}</span>
@@ -2439,11 +2439,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   return (
     <div>
-      {/* Header */}
-      <h2 style={{ fontSize: 24, margin: 0, fontWeight: 800 }}>Cartera</h2>
-      <p style={{ marginTop: 6, color: "var(--muted)", margin: "6px 0 0" }}>
-        Control de cobros, deudas, convenios y gestiones de mora.
-      </p>
+      {/* Header — oculto en móvil (el header de la app ya dice "Cartera & Cobros") */}
+      {!isMobile && (
+        <>
+          <h2 style={{ fontSize: 24, margin: 0, fontWeight: 800 }}>Cartera</h2>
+          <p style={{ marginTop: 6, color: "var(--muted)", margin: "6px 0 0" }}>
+            Control de cobros, deudas, convenios y gestiones de mora.
+          </p>
+        </>
+      )}
 
       {errorPagos && (
         <div style={{ marginTop: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "10px 14px", borderRadius: 12 }}>
@@ -2451,26 +2455,29 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         </div>
       )}
 
-      {/* KPI cards — 2x2 grid, clickable */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
+      {/* KPI cards — 2x2 grid compacto: etiqueta + número en la misma línea, riel de color */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: isMobile ? 4 : 16 }}>
         {kpis.map(k => (
           <button
             key={k.label}
             onClick={k.onClick}
             style={{
               background: "var(--card)",
-              border: "2px solid transparent",
-              borderRadius: 16,
-              padding: "14px 16px",
+              border: "none",
+              borderLeft: `4px solid ${k.color}`,
+              borderRadius: 12,
+              padding: "9px 12px",
               cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
+              boxShadow: "0 2px 10px rgba(15,23,42,0.06)",
               textAlign: "left",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: k.color }}>{k.value}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
+              <span style={{ fontSize: 20, fontWeight: 900, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
+            </div>
             {k.sub && (
-              <div style={{ fontSize: 11, color: k.color, opacity: 0.75, marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 10, color: k.color, opacity: 0.8, marginTop: 1, textAlign: "right" }}>{k.sub}</div>
             )}
           </button>
         ))}

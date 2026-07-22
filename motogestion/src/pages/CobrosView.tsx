@@ -1742,13 +1742,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
+            <div style={{ background: "var(--soft2)", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Cuota hoy" : "Cuota período"}
               </div>
               <div style={{ fontWeight: 800, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>$ {fmt(cuotaPactada)}</div>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 10, padding: "8px 10px" }}>
+            <div style={{ background: "var(--soft2)", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
                 {contratoDetalle.forma_pago === "Diario" ? "Pagado hoy" : "Pagado período"}
               </div>

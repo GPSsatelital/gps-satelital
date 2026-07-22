@@ -603,7 +603,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
               borderRadius: 14,
               padding: "14px 16px",
               cursor: "pointer",
-              borderBottom: `3px solid ${s.color}`,
+              borderLeft: `4px solid ${s.color}`,
               boxShadow: "0 1px 6px rgba(15,23,42,0.06)",
               transition: "transform 0.12s, box-shadow 0.12s",
             }}

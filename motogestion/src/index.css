@@ -165,7 +165,7 @@ code {
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b1220;
+  --bg: transparent;       /* el fondo real + destellos viven en body (regla de abajo) */
   --card: #121c30;
   --soft: #1b2740;
   --soft2: #16223a;
@@ -179,39 +179,54 @@ code {
   --line2: #2c3b58;
   --accent: #38bdf8;
   --accent-hi: #7dd3fc;
-  --accent-ink: #8ad4fc;
-  --accent-ink2: #b5e2fd;
-  --accent-soft: #12293c;
-  --accent-soft2: #102337;
-  --accent-soft3: #14304a;
-  --accent-soft4: #0f2033;
-  --accent-line: #1e3a5c;
+  --accent-ink: #9bdcfd;
+  --accent-ink2: #c3e8fe;
+  --accent-soft: #1c3e5e;
+  --accent-soft2: #18344f;
+  --accent-soft3: #1f4569;
+  --accent-soft4: #163149;
+  --accent-line: #356291;
   --ok: #4ade80;
   --ok2: #34d399;
-  --ok-ink: #a7f3c5;
-  --ok-soft: #10291b;
-  --ok-line: #1c3a28;
+  --ok-ink: #b6f7cf;
+  --ok-soft: #18432e;
+  --ok-line: #2a7049;
   --bad: #f87171;
   --bad2: #fda4a4;
-  --bad-ink: #fecaca;
-  --bad-ink2: #fecaca;
-  --bad-soft: #331616;
-  --bad-line: #4a2020;
+  --bad-ink: #fed0d0;
+  --bad-ink2: #fed0d0;
+  --bad-soft: #512525;
+  --bad-line: #843838;
   --warn: #fbbf24;
   --warn2: #fbbf24;
   --warn-strong: #f59e0b;
-  --warn-ink: #fde68a;
-  --warn-ink2: #fde68a;
-  --warn-soft: #2e2410;
-  --warn-soft2: #241d0c;
-  --warn-line: #4a3a12;
-  --indigo-soft: #232b52;
-  --indigo-ink: #c7d2fe;
-  --violet: #a78bfa;
+  --warn-ink: #fbe08a;
+  --warn-ink2: #fbe08a;
+  --warn-soft: #4a3c16;
+  --warn-soft2: #3a3110;
+  --warn-line: #705b22;
+  --indigo-soft: #303c74;
+  --indigo-ink: #d3dbfe;
+  --violet: #b39bfb;
   --orange: #fb923c;
-  --orange-ink: #fed7aa;
-  --orange-soft: #331f10;
+  --orange-ink: #ffd9b0;
+  --orange-soft: #4a2e16;
   color-scheme: dark;
+}
+
+/* Destellos de luz de fondo — solo en noche. Halos fijos, suaves y fríos
+   (cian arriba-der · violeta abajo-izq · toque verde-agua al centro) detrás de
+   TODO el contenido: dan profundidad y calma sin distraer. Se pintan en body con
+   attachment fijo; por eso --bg queda transparent en noche (las superficies que
+   usan var(--bg) dejan ver el body). En día e impresión no aplica. */
+:root[data-theme="dark"] body {
+  background-color: #0b1220;
+  background-image:
+    radial-gradient(680px circle at 90% -6%, rgba(56, 189, 248, 0.17), transparent 44%),
+    radial-gradient(560px circle at 4% 106%, rgba(129, 140, 248, 0.15), transparent 44%),
+    radial-gradient(720px circle at 52% 50%, rgba(45, 212, 191, 0.06), transparent 55%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 /* Inputs siempre legibles (bug de "letras invisibles" en modo oscuro del celular) */
@@ -281,6 +296,8 @@ button:active:not(:disabled) {
     --orange: #f97316; --orange-ink: #9a3412; --orange-soft: #ffedd5;
     color-scheme: light;
   }
+  /* Sin destellos al imprimir: papel blanco, tinta negra */
+  body { background: #ffffff !important; }
 }
 
 /* ── Impresión de recibos en térmica 80mm (ver components/TicketTermico.tsx) ── */

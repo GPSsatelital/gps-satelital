@@ -401,17 +401,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-        <div>
-          <h2 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Contratos</h2>
-          <p style={{ marginTop: 4, color: "var(--muted)", margin: "4px 0 0", fontSize: 14 }}>Solo clientes aprobados con visita domiciliaria.</p>
+      {!isMobile && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 22, margin: 0, fontWeight: 800 }}>Contratos</h2>
+            <p style={{ marginTop: 4, color: "var(--muted)", margin: "4px 0 0", fontSize: 14 }}>Solo clientes aprobados con visita domiciliaria.</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && <div style={{ marginBottom: 12, color: "var(--bad-ink)" }}>Error: {error}</div>}
 
       {/* KPI pills */}
-      <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, marginTop: isMobile ? 4 : 0, marginBottom: isMobile ? 10 : 16 }}>
         {[
           { label: "Total",       value: counts.total,       estado: "",            color: "var(--muted2)", bg: "var(--soft)" },
           { label: "Activos",     value: counts.activos,     estado: "Activo",      color: "var(--ok-ink)", bg: "var(--ok-soft)" },

@@ -1152,15 +1152,17 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
   return (
     <div>
-      {/* Header compacto */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
-        <h2 style={{ fontSize: 20, margin: 0, color: "var(--text)" }}>Clientes</h2>
-      </div>
+      {/* Header — oculto en móvil (el header de la app ya dice "Clientes") */}
+      {!isMobile && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <h2 style={{ fontSize: 20, margin: 0, color: "var(--text)" }}>Clientes</h2>
+        </div>
+      )}
 
       {error && <div style={{ marginBottom: 10, color: "var(--bad-ink)", fontSize: 13 }}>Error: {error}</div>}
 
       {/* Chips de filtro */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 5 : 6, marginBottom: isMobile ? 8 : 14 }}>
         {CHIPS_CLIENTES.map(chip => (
           <button
             key={chip.filter}

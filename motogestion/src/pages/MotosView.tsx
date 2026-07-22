@@ -615,12 +615,14 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, margin: 0 }}>Motos</h2>
-          <p style={{ marginTop: 4, color: "var(--muted)", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
+      {!isMobile && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 20, margin: 0 }}>Motos</h2>
+            <p style={{ marginTop: 4, color: "var(--muted)", fontSize: 13, margin: "4px 0 0" }}>Flota en tiempo real</p>
+          </div>
         </div>
-      </div>
+      )}
       {error && <div style={{ marginBottom: 12, color: "var(--bad-ink)" }}>Error: {error}</div>}
 
       {/* Móvil: lista → detalle (nunca juntos) */}

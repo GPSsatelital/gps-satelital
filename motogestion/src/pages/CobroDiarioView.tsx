@@ -26,6 +26,7 @@ import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import MoneyInput from "../components/MoneyInput";
+import { Badge } from "../components/atomos";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -482,13 +483,13 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               }
               {/* Estado badge */}
               {f.pagadoHoyBool ? (
-                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>✅ Pagado</span>
+                <Badge tone="ok">✅ Pagado</Badge>
               ) : f.diasSinPago > 0 ? (
                 <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: prot.bg, color: prot.color }}>
                   {f.diasSinPago}d · {prot.label}
                 </span>
               ) : (
-                <span style={{ padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>⏳ Pendiente</span>
+                <Badge tone="warn">⏳ Pendiente</Badge>
               )}
             </div>
 
@@ -657,16 +658,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {tab === "diario" && (
         <div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 12, fontWeight: 700 }}>
-              ✅ {filasHoy.filter(f => f.pagadoHoyBool).length} pagaron
-            </span>
-            <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12, fontWeight: 700 }}>
-              ⏳ {filasHoy.filter(f => !f.pagadoHoyBool).length} pendientes
-            </span>
+            <Badge tone="ok">✅ {filasHoy.filter(f => f.pagadoHoyBool).length} pagaron</Badge>
+            <Badge tone="warn">⏳ {filasHoy.filter(f => !f.pagadoHoyBool).length} pendientes</Badge>
             {filasHoy.filter(f => f.diasSinPago > 0).length > 0 && (
-              <span style={{ padding: "4px 12px", borderRadius: 999, background: "var(--bad-soft)", color: "var(--bad-ink)", fontSize: 12, fontWeight: 700 }}>
-                🔴 {filasHoy.filter(f => f.diasSinPago > 0).length} con mora acumulada
-              </span>
+              <Badge tone="bad">🔴 {filasHoy.filter(f => f.diasSinPago > 0).length} con mora acumulada</Badge>
             )}
           </div>
           <div style={{ display: "grid", gap: 10 }}>

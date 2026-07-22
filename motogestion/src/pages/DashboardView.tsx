@@ -8,6 +8,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
+import { Badge } from "../components/atomos";
 import { esDiaDePago } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import type { ViewKey } from "../App";
@@ -338,9 +339,9 @@ const grupoActualStats = grupoSeleccionado === "todos"
               {total} alerta{total > 1 ? "s" : ""} activa{total > 1 ? "s" : ""}
             </span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {nCrit  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "3px 10px", borderRadius: 999 }}>🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</span>}
-              {nAlert > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", padding: "3px 10px", borderRadius: 999 }}>⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</span>}
-              {nInfo  > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft3)", padding: "3px 10px", borderRadius: 999 }}>ℹ️ {nInfo} info</span>}
+              {nCrit  > 0 && <Badge tone="bad">🚨 {nCrit} crítica{nCrit > 1 ? "s" : ""}</Badge>}
+              {nAlert > 0 && <Badge tone="warn">⚠️ {nAlert} alerta{nAlert > 1 ? "s" : ""}</Badge>}
+              {nInfo  > 0 && <Badge tone="accent">ℹ️ {nInfo} info</Badge>}
             </div>
             <span style={{ color: nCrit > 0 ? "var(--bad-ink)" : "var(--orange)", fontSize: 16, fontWeight: 700 }}>›</span>
           </div>
@@ -834,8 +835,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
               const motoItem    = motos.find(m => m.id === contrato.moto_id);
               const esCritico   = diasSinPago > 7;
               const esMora      = diasSinPago >= 3 && diasSinPago <= 7;
-              const badgeBg     = esCritico ? "var(--bad-soft)" : esMora ? "var(--warn-soft)" : "var(--soft)";
-              const badgeColor  = esCritico ? "var(--bad-ink)" : esMora ? "var(--warn-ink)" : "var(--muted)";
+              const badgeTone   = esCritico ? "bad" as const : esMora ? "warn" as const : "neutral" as const;
               // Forma + color (daltónico-safe): ✕ mora/crítico · ▲ gabela — igual que Cartera.
               const badgeLabel  = esCritico ? "✕ Crítico" : esMora ? "✕ Mora" : "▲ Gabela";
               const borderColor = esCritico ? "var(--bad)" : esMora ? "var(--warn2)" : "var(--line)";
@@ -867,12 +867,8 @@ const grupoActualStats = grupoSeleccionado === "todos"
                       {diasSinPago} día{diasSinPago !== 1 ? "s" : ""} sin pago
                     </div>
                   </div>
-                  <span style={{
-                    padding: "4px 12px", borderRadius: 999,
-                    fontSize: 11, fontWeight: 700,
-                    background: badgeBg, color: badgeColor, flexShrink: 0,
-                  }}>
-                    {badgeLabel}
+                  <span style={{ flexShrink: 0 }}>
+                    <Badge tone={badgeTone}>{badgeLabel}</Badge>
                   </span>
                 </div>
               );

@@ -149,7 +149,15 @@ No basta con que la tarea funcione donde se probó. Antes de darla por terminada
 
 ## SISTEMA DE DISEÑO — OBLIGATORIO SIEMPRE (definido 22-jul-2026)
 
-Antes de tocar CUALQUIER cosa visual (color, tipografía, layout, componente, animación): **invocar los skills `frontend-design` y `theme-factory`** para fundamentar la decisión, y **mostrar mockup/preview** (herramienta visualize) ANTES de implementar. No improvisar a ojo.
+Antes de tocar CUALQUIER cosa visual (color, tipografía, layout, componente, animación): **invocar los skills de diseño** para fundamentar la decisión, y **mostrar mockup/preview** (herramienta visualize) ANTES de implementar. No improvisar a ojo.
+
+**Skills de diseño del proyecto (instalados 22-jul, usar según el caso):**
+- **`interface-design`** — arquitecto/guardián de craft para dashboards/SaaS (NUESTRO caso). Es el principal.
+- **`design-review`** — auditar una pantalla (6 dimensiones + Nielsen + score) antes/después de construir.
+- **`design-component`** — especificar un componente (anatomía, variantes, 8 estados, tokens, a11y) antes de codear.
+- **`design-tokens`** / **`apply-aesthetic`** (138 sistemas: linear/stripe/vercel…) / **`redesign`** (mejorar sin romper) / **`ux-writing`** / **`a11y-audit`** / **`design-code`** / **`design-qa`** — según la tarea.
+- `frontend-design` / `theme-factory` (oficiales de Anthropic) como apoyo de dirección estética.
+- **OJO:** estos skills están pensados para UI genérica/producto. **Nuestra identidad LOCKED manda** (placa amarilla, navy, Inter para densidad operativa) — se adaptan a las necesidades de ESTE sistema, no imponen un genérico. Ignorar cualquier consejo suyo que contradiga la identidad (ej. algunos "prohíben Inter" — no aplica a apps operativas densas).
 
 ### Identidad (LOCKED — se refina, no se reemplaza)
 - **Firma:** la **placa amarilla colombiana** (`src/components/Placa.tsx`, amarillo `#FFD100`) — es lo que hace la app inconfundible. Todo render de placa usa `<Placa>` (listas=`sm`, detalles=`lg`). Nunca placa como texto plano.

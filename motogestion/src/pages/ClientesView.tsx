@@ -939,7 +939,16 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     setSelectedId(null);
   }
 
-  if (loading) return <div style={{ padding: 24, color: "var(--muted)" }}>Cargando clientes...</div>;
+  if (loading) return (
+    <div style={{ padding: "16px 12px", maxWidth: 1040, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {[64, 78, 92, 70, 84].map((w, i) => <div key={i} style={{ width: w, height: 30, borderRadius: 999, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+      </div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {[1, 2, 3, 4, 5, 6].map(i => <div key={i} style={{ height: 62, borderRadius: 10, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
+      </div>
+    </div>
+  );
 
   const CHIPS_CLIENTES = [
     { label: "Todos", count: clientes.length, filter: "" },
@@ -1318,7 +1327,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   </div>
                 )}
                 {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>}
-                {filtered.map((cliente) => {
+                {filtered.map((cliente, idx) => {
                   const activo = selectedId === cliente.id || (!selectedId && filtered[0]?.id === cliente.id);
                   return (
                     <button
@@ -1330,6 +1339,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                         background: activo ? "var(--accent-soft2)" : "var(--soft2)",
                         cursor: "pointer", textAlign: "left",
                         outline: activo ? "2px solid var(--accent)" : "none",
+                        animation: "mgEntra .28s var(--ease) both",
+                        animationDelay: `${Math.min(idx, 12) * 25}ms`,
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>

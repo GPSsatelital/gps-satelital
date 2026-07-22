@@ -10,6 +10,8 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
   }
   return null;
 }
+import { listaConScroll } from "../styles/shared";
+import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -637,41 +639,46 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           </div>
         ) : (
           <div>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 12 }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 10 }} />
             <ChipsGrupo />
-            {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>}
-            <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filtered.map((moto) => {
-                const sc = getStatusColors(moto.estado);
-                return (
-                  <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ background: "var(--card)", borderRadius: 12, padding: "9px 12px", boxShadow: "0 1px 4px rgba(15,23,42,0.06)", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: "1px solid var(--line)" }}>
-                    <Placa placa={moto.placa} size="sm" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
-                      {esAdminOSuperior && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
-                          style={{
-                            marginTop: 4, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
-                            fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
-                            color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
-                            textTransform: moto.subadmin_id ? "uppercase" : "none",
-                          }}
-                        >
-                          👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
-                        </button>
-                      )}
-                    </div>
-                    <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {ESTADO_LABEL[moto.estado]}
-                    </span>
-                    <span style={{ color: "var(--line2)" }}>›</span>
-                  </div>
-                );
-              })}
-            </div>
+            {filtered.length === 0
+              ? <div style={{ ...card, textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>
+              : (
+                <ListBox isMobile scrollRef={el => { listWrapRef.current = el; }}>
+                  {filtered.map((moto) => {
+                    const sc = getStatusColors(moto.estado);
+                    return (
+                      <ItemLista
+                        key={moto.id}
+                        placa={moto.placa}
+                        titulo={`${moto.marca} ${moto.modelo} · ${moto.grupo}`}
+                        subtitulo={esAdminOSuperior ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
+                            style={{
+                              padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
+                              fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
+                              color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
+                              textTransform: moto.subadmin_id ? "uppercase" : "none",
+                            }}
+                          >
+                            👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
+                          </button>
+                        ) : undefined}
+                        right={
+                          <span style={{ padding: "4px 9px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                            {ESTADO_LABEL[moto.estado]}
+                          </span>
+                        }
+                        rielColor={sc.color}
+                        seleccionado={selectedId === moto.id}
+                        onClick={() => setSelectedId(moto.id)}
+                      />
+                    );
+                  })}
+                </ListBox>
+              )}
           </div>
         )
       ) : (
@@ -681,41 +688,43 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
             <ChipsGrupo />
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>}
-            <div ref={listWrapRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div ref={listWrapRef} style={{ ...listaConScroll(false), gap: 6 }}>
               {filtered.map((moto) => {
                 const sc = getStatusColors(moto.estado);
-                const sel = selectedId === moto.id;
                 return (
-                  <div key={moto.id} onClick={() => setSelectedId(moto.id)}
-                    style={{ borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", border: sel ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: sel ? "var(--accent-soft2)" : "var(--card)" }}>
-                    <Placa placa={moto.placa} size="sm" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moto.marca} {moto.modelo} · {moto.grupo}</div>
-                      {esAdminOSuperior && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
-                          style={{
-                            marginTop: 4, padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
-                            fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
-                            color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
-                            textTransform: moto.subadmin_id ? "uppercase" : "none",
-                          }}
-                        >
-                          👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
+                  <ItemLista
+                    key={moto.id}
+                    placa={moto.placa}
+                    titulo={`${moto.marca} ${moto.modelo} · ${moto.grupo}`}
+                    subtitulo={esAdminOSuperior ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAsignarMotoId(moto.id); }}
+                        style={{
+                          padding: "2px 9px", borderRadius: 999, border: "none", cursor: "pointer",
+                          fontSize: 11, fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          background: moto.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
+                          color: moto.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
+                          textTransform: moto.subadmin_id ? "uppercase" : "none",
+                        }}
+                      >
+                        👤 {moto.subadmin_id ? nombreSubadmin(moto.subadmin_id) : "Sin asignar"}
+                      </button>
+                    ) : undefined}
+                    right={<>
+                      <span style={{ padding: "3px 8px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {ESTADO_LABEL[moto.estado]}
+                      </span>
+                      {onNavigate && (
+                        <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
+                          style={{ border: "none", background: "var(--soft)", color: "var(--accent)", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          Ficha
                         </button>
                       )}
-                    </div>
-                    <span style={{ padding: "3px 8px", borderRadius: 999, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {ESTADO_LABEL[moto.estado]}
-                    </span>
-                    {onNavigate && (
-                      <button onClick={(e) => { e.stopPropagation(); onNavigate("ficha_moto", moto.id); }}
-                        style={{ border: "none", background: "var(--soft)", color: "var(--accent)", borderRadius: 6, padding: "3px 8px", fontWeight: 700, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        Ficha
-                      </button>
-                    )}
-                  </div>
+                    </>}
+                    rielColor={sc.color}
+                    seleccionado={selectedId === moto.id}
+                    onClick={() => setSelectedId(moto.id)}
+                  />
                 );
               })}
             </div>

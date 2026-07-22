@@ -11,6 +11,7 @@ import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
+import { listaConScroll } from "../styles/shared";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 14 };
@@ -441,8 +442,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
       <ChipsGrupo />
 
       <div style={{ display: "flex", gap: 20, alignItems: "start" }}>
-        {/* Lista */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Lista — recuadro con scroll propio (no ocupa toda la página) */}
+        <div style={{ flex: 1, minWidth: 0, ...listaConScroll(isMobile), gap: 10 }}>
           {contratosFiltrados.length === 0 && contratos.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>

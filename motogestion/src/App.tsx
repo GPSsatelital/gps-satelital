@@ -617,8 +617,8 @@ function Shell() {
           </div>
         </header>
 
-        {/* Content */}
-        <div ref={el => { contentScrollRef.current = el; }} onScroll={onContentScroll} style={{ flex: 1, overflow: "auto", paddingBottom: 72 }}>
+        {/* Content — margen uniforme para TODAS las vistas (que ninguna lo ponga por su cuenta) */}
+        <div ref={el => { contentScrollRef.current = el; }} onScroll={onContentScroll} style={{ flex: 1, overflow: "auto", padding: "14px 12px 72px" }}>
           {contentView}
         </div>
 

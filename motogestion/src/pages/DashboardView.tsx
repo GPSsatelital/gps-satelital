@@ -242,7 +242,7 @@ export default function DashboardView({ onNavigate }: {
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading || !stats) {
     return (
-      <div style={{ padding: "20px 16px", maxWidth: 1040, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
         <div style={{ height: 110, borderRadius: 20, background: "var(--line)", marginBottom: 20, animation: "mgPulsa 1.5s ease-in-out infinite" }} />
         <div style={{ display: "flex", gap: 12, marginBottom: 20, overflowX: "auto" }}>
           {[1,2,3,4,5].map(i => <div key={i} style={{ flex: "0 0 auto", width: 148, height: 110, borderRadius: 14, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
@@ -308,7 +308,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: isMobile ? "16px 12px 40px" : "24px 24px 48px", maxWidth: 1040, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1040, margin: "0 auto" }}>
 
 {/* ── BARRA DE ALERTAS COMPACTA ── */}
       {(() => {

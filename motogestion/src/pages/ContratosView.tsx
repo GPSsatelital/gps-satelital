@@ -11,7 +11,7 @@ import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
-import { listaConScroll } from "../styles/shared";
+import { ListBox, ItemLista } from "../components/ListaEstandar";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 14, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 14 };
@@ -442,8 +442,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
       <ChipsGrupo />
 
       <div style={{ display: "flex", gap: 20, alignItems: "start" }}>
-        {/* Lista — recuadro con scroll propio (no ocupa toda la página) */}
-        <div style={{ flex: 1, minWidth: 0, ...listaConScroll(isMobile), gap: 10 }}>
+        {/* Lista */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           {contratosFiltrados.length === 0 && contratos.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
@@ -455,68 +455,57 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             <div style={{ ...card, color: "var(--muted)", textAlign: "center", padding: 24 }}>No hay contratos con ese filtro.</div>
           )}
 
-          {contratosFiltrados.map((c, idx) => {
-            const cliente = clientes.find(cl => cl.id === c.cliente_id);
-            const moto = motos.find(m => m.id === c.moto_id);
-            const esDiario = c.forma_pago === "Diario";
-            const ahorro = ahorroTotal(c);
-            const ahorroMeta = c.base_inicial ?? 510000;
-            const pctAhorro = Math.min(100, Math.round((ahorro / ahorroMeta) * 100));
-            const alertaBase = esDiario && !c.base_completada && ahorro >= ahorroMeta * 0.9;
-            const seleccionado = c.id === (contratoSeleccionado?.id ?? null);
-
-            return (
-              <div key={c.id} onClick={() => setSelectedId(c.id)} style={{
-                ...card, cursor: "pointer",
-                border: seleccionado ? "2px solid var(--accent)" : c.base_completada ? "2px solid var(--ok2)" : alertaBase ? "2px solid var(--warn2)" : "2px solid transparent",
-                background: seleccionado ? "var(--accent-soft2)" : "var(--card)", padding: "14px 16px",
-                animation: "mgEntra .28s var(--ease) both", animationDelay: `${Math.min(idx, 12) * 25}ms`,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {cliente?.nombre ?? "Sin cliente"}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                      {moto ? <Placa placa={moto.placa} size="sm" /> : <span>Sin moto</span>}
-                      <span>
-                        {esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`}
-                        {" · "}$ {fmt(c.valor_semanal)}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                    <ContractBadge estado={c.estado} />
-                    <VencimientoBadge contrato={c} />
-                  </div>
-                </div>
-
-                {esDiario && !c.base_completada && (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--faint)", marginBottom: 3 }}>
-                      <span>Ahorro base</span><span>{pctAhorro}%</span>
-                    </div>
-                    <div style={{ height: 6, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 999, width: `${pctAhorro}%`, background: alertaBase ? "var(--warn2)" : "var(--accent)" }} />
-                    </div>
-                  </div>
-                )}
-                {esDiario && c.base_completada && (
-                  <div style={{ marginTop: 8, padding: "6px 10px", background: "var(--ok-soft)", borderRadius: 8, fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>
-                    🎯 Base completada — listo para nuevo contrato
-                  </div>
-                )}
-
-                {c.estado === "En proceso" && (
-                  <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {!c.moto_id && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--accent-soft2)", color: "var(--accent)", fontWeight: 700 }}>🏍️ Falta asignar moto</span>}
-                    {c.moto_id && !c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontWeight: 700 }}>⏳ Falta firma</span>}
-                    {c.moto_id && c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700 }}>🚀 Listo para entregar</span>}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {contratosFiltrados.length > 0 && (
+            <ListBox isMobile>
+              {contratosFiltrados.map((c) => {
+                const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                const moto = motos.find(m => m.id === c.moto_id);
+                const esDiario = c.forma_pago === "Diario";
+                const ahorro = ahorroTotal(c);
+                const ahorroMeta = c.base_inicial ?? 510000;
+                const pctAhorro = Math.min(100, Math.round((ahorro / ahorroMeta) * 100));
+                const alertaBase = esDiario && !c.base_completada && ahorro >= ahorroMeta * 0.9;
+                const seleccionado = c.id === (contratoSeleccionado?.id ?? null);
+                const tieneExtra = esDiario || c.estado === "En proceso";
+                return (
+                  <ItemLista
+                    key={c.id}
+                    placa={moto?.placa}
+                    titulo={cliente?.nombre ?? "Sin cliente"}
+                    subtitulo={`${moto ? "" : "Sin moto · "}${esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`} · $ ${fmt(c.valor_semanal)}`}
+                    right={<><ContractBadge estado={c.estado} /><VencimientoBadge contrato={c} /></>}
+                    rielColor={c.base_completada ? "var(--ok2)" : alertaBase ? "var(--warn2)" : (ESTADO_COLORS[c.estado]?.color ?? "var(--muted)")}
+                    seleccionado={seleccionado}
+                    onClick={() => setSelectedId(c.id)}
+                    extra={tieneExtra ? <>
+                      {esDiario && !c.base_completada && (
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--faint)", marginBottom: 3 }}>
+                            <span>Ahorro base</span><span>{pctAhorro}%</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", borderRadius: 999, width: `${pctAhorro}%`, background: alertaBase ? "var(--warn2)" : "var(--accent)" }} />
+                          </div>
+                        </div>
+                      )}
+                      {esDiario && c.base_completada && (
+                        <div style={{ padding: "6px 10px", background: "var(--ok-soft)", borderRadius: 8, fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>
+                          🎯 Base completada — listo para nuevo contrato
+                        </div>
+                      )}
+                      {c.estado === "En proceso" && (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {!c.moto_id && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--accent-soft2)", color: "var(--accent)", fontWeight: 700 }}>🏍️ Falta asignar moto</span>}
+                          {c.moto_id && !c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--warn-soft)", color: "var(--warn-ink)", fontWeight: 700 }}>⏳ Falta firma</span>}
+                          {c.moto_id && c.firma_cliente && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700 }}>🚀 Listo para entregar</span>}
+                        </div>
+                      )}
+                    </> : undefined}
+                  />
+                );
+              })}
+            </ListBox>
+          )}
         </div>
 
         {/* Panel detalle — desktop */}

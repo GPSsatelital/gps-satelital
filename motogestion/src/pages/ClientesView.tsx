@@ -22,6 +22,7 @@ import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
 import FotoPerfil from "../components/FotoPerfil";
+import { ListBox, ItemLista } from "../components/ListaEstandar";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
@@ -40,23 +41,30 @@ function getToday() {
   return hoyISO();
 }
 
+const COLORES_ESTADO_CLIENTE: Record<ClienteEstado, { bg: string; color: string }> = {
+  "En proceso": { bg: "var(--line)", color: "var(--muted2)" },
+  "Listo para visita": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
+  "Pendiente evaluación": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  Aprobado: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  Rechazado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  Activo: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
+  "En seguimiento": { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
+  "En riesgo": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  "En mora": { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
+  Retirado: { bg: "var(--indigo-soft)", color: "var(--violet)" },
+  Egresado: { bg: "var(--ok-soft)", color: "var(--ok)" },
+  "Lista negra": { bg: "var(--text)", color: "var(--soft2)" },
+  "Inmovilización documentación incompleta": { bg: "var(--bad-soft)", color: "var(--bad-ink2)" },
+};
+
+// Color del riel de la fila (mismo criterio que el badge) — para que la lista
+// tenga el mismo formato con riel que Motos/Cartera.
+function rielCliente(estado: ClienteEstado): string {
+  return COLORES_ESTADO_CLIENTE[estado]?.color ?? "var(--muted)";
+}
+
 function ClienteBadge({ estado }: { estado: ClienteEstado }) {
-  const map: Record<ClienteEstado, { bg: string; color: string }> = {
-    "En proceso": { bg: "var(--line)", color: "var(--muted2)" },
-    "Listo para visita": { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
-    "Pendiente evaluación": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-    Aprobado: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
-    Rechazado: { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
-    Activo: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
-    "En seguimiento": { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
-    "En riesgo": { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-    "En mora": { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
-    Retirado: { bg: "var(--indigo-soft)", color: "var(--violet)" },
-    Egresado: { bg: "var(--ok-soft)", color: "var(--ok)" },
-    "Lista negra": { bg: "var(--text)", color: "var(--soft2)" },
-    "Inmovilización documentación incompleta": { bg: "var(--bad-soft)", color: "var(--bad-ink2)" },
-  };
-  const colors = map[estado];
+  const colors = COLORES_ESTADO_CLIENTE[estado];
   return (
     <span style={{ display: "inline-block", padding: "6px 10px", borderRadius: 999, background: colors.bg, color: colors.color, fontSize: 12, fontWeight: 700 }}>
       {estado}
@@ -1254,45 +1262,42 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </div>
             </div>
           ) : (
-            <div style={{ ...card }}>
-              <div style={{ marginBottom: 10 }}>
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={inputStyle} />
-              </div>
+            <div>
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Buscar por nombre, cédula o teléfono..." style={{ ...inputStyle, marginBottom: 10 }} />
               <ChipsGrupo />
-              {filtered.length === 0 && clientes.length === 0 && (
-                <div style={{ textAlign: "center", padding: "40px 24px" }}>
+              {filtered.length === 0 && clientes.length === 0 ? (
+                <div style={{ ...card, textAlign: "center", padding: "40px 24px" }}>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
                   <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
                 </div>
-              )}
-              {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>}
-              <div style={{ display: "grid", gap: 8, maxHeight: "62vh", overflowY: "auto" }}>
-                {filtered.map((cliente) => (
-                  <button
-                    key={cliente.id}
-                    onClick={() => setSelectedId(cliente.id)}
-                    style={{ width: "100%", minWidth: 0, boxSizing: "border-box", background: "var(--soft2)", border: "none", borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10 }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cliente.cedula} · {cliente.telefono}</div>
-                      <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+              ) : filtered.length === 0 ? (
+                <div style={{ ...card, textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>
+              ) : (
+                <ListBox isMobile>
+                  {filtered.map((cliente) => (
+                    <ItemLista
+                      key={cliente.id}
+                      titulo={cliente.nombre}
+                      subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
+                      rielColor={rielCliente(estadoVisual(cliente))}
+                      right={<>
+                        <ClienteBadge estado={estadoVisual(cliente)} />
                         <span style={{
-                          display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                          display: "inline-block", padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
                           background: cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
                           color: cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                         }}>{cliente.ruta_contrato === "diario" ? "Diario" : "Tiempo definido"}</span>
-                        <ClienteBadge estado={estadoVisual(cliente)} />
                         {(cliente.referidos_confirmados ?? 0) > 0 && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)" }}>👥 {cliente.referidos_confirmados} referidos</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", whiteSpace: "nowrap" }}>👥 {cliente.referidos_confirmados}</span>
                         )}
-                      </div>
-                    </div>
-                    <span style={{ color: "var(--faint)", fontSize: 22, flexShrink: 0 }}>›</span>
-                  </button>
-                ))}
-              </div>
+                      </>}
+                      seleccionado={selectedId === cliente.id}
+                      onClick={() => setSelectedId(cliente.id)}
+                    />
+                  ))}
+                </ListBox>
+              )}
             </div>
           )
         ) : (
@@ -1319,58 +1324,48 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 ))}
               </div>
               <ChipsGrupo />
-              <div style={{ display: "grid", gap: 6, maxHeight: "70vh", overflowY: "auto" }}>
-                {filtered.length === 0 && clientes.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "40px 24px" }}>
-                    <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
-                    <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>Registra el primer cliente</div>
-                    <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
-                  </div>
-                )}
-                {filtered.length === 0 && clientes.length > 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>}
-                {filtered.map((cliente, idx) => {
-                  const activo = selectedId === cliente.id || (!selectedId && filtered[0]?.id === cliente.id);
-                  return (
-                    <button
-                      key={cliente.id}
-                      onClick={() => setSelectedId(cliente.id)}
-                      style={{
-                        width: "100%", minWidth: 0, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 12px", borderRadius: 10, border: "none",
-                        background: activo ? "var(--accent-soft2)" : "var(--soft2)",
-                        cursor: "pointer", textAlign: "left",
-                        outline: activo ? "2px solid var(--accent)" : "none",
-                        animation: "mgEntra .28s var(--ease) both",
-                        animationDelay: `${Math.min(idx, 12) * 25}ms`,
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
-                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 1 }}>{cliente.cedula} · {cliente.telefono}</div>
-                        <div style={{ marginTop: 4, display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+              {filtered.length === 0 && clientes.length === 0 ? (
+                <div style={{ ...card, textAlign: "center", padding: "40px 24px" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 6 }}>Sin clientes registrados</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>Registra el primer cliente</div>
+                  <button onClick={() => setOpen(true)} style={{ background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "var(--card)", border: "none", borderRadius: 14, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>+ Nuevo cliente</button>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ ...card, textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay clientes en este filtro.</div>
+              ) : (
+                <ListBox isMobile>
+                  {filtered.map((cliente) => {
+                    const activo = selectedId === cliente.id || (!selectedId && filtered[0]?.id === cliente.id);
+                    return (
+                      <ItemLista
+                        key={cliente.id}
+                        titulo={cliente.nombre}
+                        subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
+                        rielColor={rielCliente(estadoVisual(cliente))}
+                        right={<>
+                          <ClienteBadge estado={estadoVisual(cliente)} />
                           <span style={{
                             display: "inline-block", padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 700,
                             background: cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)",
                             color: cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)",
                           }}>{cliente.ruta_contrato === "diario" ? "Diario" : "T. definido"}</span>
-                          <ClienteBadge estado={estadoVisual(cliente)} />
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                        {cliente.estado === "Listo para visita" && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setClienteVisitaId(cliente.id); setClienteVisitaNombre(cliente.nombre); }}
-                            style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 999, padding: "4px 9px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
-                          >
-                            🏠 Visita
-                          </button>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                          {cliente.estado === "Listo para visita" && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setClienteVisitaId(cliente.id); setClienteVisitaNombre(cliente.nombre); }}
+                              style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 999, padding: "4px 9px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                            >
+                              🏠 Visita
+                            </button>
+                          )}
+                        </>}
+                        seleccionado={activo}
+                        onClick={() => setSelectedId(cliente.id)}
+                      />
+                    );
+                  })}
+                </ListBox>
+              )}
             </div>
 
             {/* Right panel */}

@@ -2755,8 +2755,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         );
       })()}
-      </>
-      )}
 
       {/* Visor de foto del comprobante */}
       {fotoAmpliada && (
@@ -3071,6 +3069,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           )}
         </div>
       )}
+      </>
+      )}
 
       {/* Botón flotante "+" — acciones rápidas según rol */}
       {(puedePagoNormal || puedeCobroCampo) && (
@@ -3079,15 +3079,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {puedePagoNormal && (
                 <button
-                  onClick={() => { setFabOpen(false); setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }}
+                  onClick={() => { setFabOpen(false); setModalContratoId(contratoSeleccionadoId); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }}
                   style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
-                  💰 Registrar pago
+                  💰 Pago en oficina
                 </button>
               )}
               {puedeCobroCampo && (
                 <button
-                  onClick={() => { setFabOpen(false); abrirModalCampoBusqueda(); }}
+                  onClick={() => { setFabOpen(false); if (contratoSeleccionadoId) abrirCobroCampo(contratoSeleccionadoId); else abrirModalCampoBusqueda(); }}
                   style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 999, padding: "10px 16px", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 6px 20px rgba(15,23,42,0.16)" }}
                 >
                   💵 Cobro en campo
@@ -3097,18 +3097,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           )}
           <button
             onClick={() => {
-              // Si estamos en el detalle de un contrato, el "+" cobra ESE contrato ya cargado
-              const idSel = contratoSeleccionadoId;
-              if (idSel) {
-                if (puedePagoNormal) { setModalContratoId(idSel); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }
-                else if (puedeCobroCampo) { abrirCobroCampo(idSel); }
-                return;
-              }
-              // Si solo tiene una acción disponible, dispararla directo sin menú
+              // Mismo comportamiento en lista y en detalle: si en el detalle hay un contrato
+              // abierto (contratoSeleccionadoId), las acciones lo cobran YA cargado; si no, buscan.
+              // Si puede ambas (oficina/campo) → menú para elegir. Si solo una → esa directa.
               const soloPago = puedePagoNormal && !puedeCobroCampo;
               const soloCampo = puedeCobroCampo && !puedePagoNormal;
-              if (soloPago) { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); return; }
-              if (soloCampo) { abrirModalCampoBusqueda(); return; }
+              if (soloPago) { setModalContratoId(contratoSeleccionadoId); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); return; }
+              if (soloCampo) { if (contratoSeleccionadoId) abrirCobroCampo(contratoSeleccionadoId); else abrirModalCampoBusqueda(); return; }
               setFabOpen(v => !v);
             }}
             aria-label="Acciones rápidas"

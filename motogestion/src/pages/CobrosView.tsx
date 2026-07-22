@@ -2652,17 +2652,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                   { key: "por-entregar" as const, label: "Por entregar" },
                   { key: "entregado" as const, label: "Entregado, falta confirmar" },
                 ]).map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFiltroCampoConfirmar(f.key)}
-                    style={{
-                      background: filtroCampoConfirmar === f.key ? "var(--accent)" : "var(--soft)",
-                      color: filtroCampoConfirmar === f.key ? "var(--card)" : "var(--muted2)",
-                      border: "none", borderRadius: 999, padding: "5px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
-                    }}
-                  >
+                  <Chip key={f.key} activo={filtroCampoConfirmar === f.key} onClick={() => setFiltroCampoConfirmar(f.key)}>
                     {f.label}
-                  </button>
+                  </Chip>
                 ))}
               </div>
               {efectivoCampo.length === 0 ? (
@@ -2692,15 +2684,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         <div style={{ ...card, marginTop: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 18 }}>Historial general de pagos</h3>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {(["todos", "Pendiente", "Confirmado", "Rechazado"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFiltroPagos(f)}
-                  style={{ ...miniBtn(filtroPagos === f ? "var(--accent)" : "var(--soft)", filtroPagos === f ? "var(--card)" : "var(--muted2)"), padding: "7px 14px" }}
-                >
+                <Chip key={f} activo={filtroPagos === f} onClick={() => setFiltroPagos(f)}>
                   {f === "todos" ? "Todos" : f}
-                </button>
+                </Chip>
               ))}
             </div>
           </div>

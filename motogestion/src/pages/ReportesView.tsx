@@ -7,6 +7,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
+import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
@@ -495,11 +496,11 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* Rangos */}
       <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 6 }}>
           {RANGOS.map(r => (
-            <button key={r.key} onClick={() => setRango(r.key)} style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: rango === r.key ? "var(--accent)" : "var(--soft)", color: rango === r.key ? "var(--card)" : "var(--muted)", flexShrink: 0 }}>
+            <Chip key={r.key} activo={rango === r.key} onClick={() => setRango(r.key)} style={{ flexShrink: 0 }}>
               {r.label}
-            </button>
+            </Chip>
           ))}
         </div>
       </div>

@@ -1173,26 +1173,16 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       {error && <div style={{ marginBottom: 10, color: "var(--bad-ink)", fontSize: 13 }}>Error: {error}</div>}
 
       {/* Chips de filtro */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 5 : 6, marginBottom: isMobile ? 8 : 14 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: isMobile ? 8 : 14 }}>
         {CHIPS_CLIENTES.map(chip => (
-          <button
+          <Chip
             key={chip.filter}
+            activo={filtroEstado === chip.filter}
+            count={chip.count}
             onClick={() => { setFiltroEstado(chip.filter); setSelectedId(null); }}
-            style={{
-              border: "none", borderRadius: 999, padding: "5px 12px",
-              fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
-              background: filtroEstado === chip.filter ? "var(--accent)" : "var(--soft)",
-              color: filtroEstado === chip.filter ? "var(--card)" : "var(--muted2)",
-            }}
           >
             {chip.label}
-            <span style={{
-              marginLeft: 4,
-              background: filtroEstado === chip.filter ? "rgba(255,255,255,0.3)" : "var(--line)",
-              color: filtroEstado === chip.filter ? "var(--card)" : "var(--muted)",
-              borderRadius: 999, padding: "1px 5px", fontSize: 11, fontWeight: 700,
-            }}>{chip.count}</span>
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -1313,17 +1303,9 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                 {FILTROS_CLIENTE.map(f => (
-                  <button
-                    key={f.filter}
-                    onClick={() => setFiltroEstado(f.filter)}
-                    style={{
-                      padding: "5px 12px", borderRadius: 999, border: "none", cursor: "pointer",
-                      fontSize: 12, fontWeight: filtroEstado === f.filter ? 700 : 500,
-                      background: filtroEstado === f.filter ? "var(--accent)" : "var(--soft)",
-                      color: filtroEstado === f.filter ? "var(--card)" : "var(--muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >{f.label}</button>
+                  <Chip key={f.filter} activo={filtroEstado === f.filter} onClick={() => setFiltroEstado(f.filter)}>
+                    {f.label}
+                  </Chip>
                 ))}
               </div>
               <ChipsGrupo />

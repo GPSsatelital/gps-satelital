@@ -595,15 +595,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // Recibo panel
   const [reciboData, setReciboData] = useState<DatosRecibo | null>(null);
 
-  // Payment form state
-  const [valor, setValor] = useState("");
-  // Punto 1 (registro dentro del contrato) = SOLO efectivo. Las transferencias se registran
-  // por la ventana flotante "Cobrar", que sí exige la foto del comprobante.
-  const [metodo] = useState<MetodoPago>("Efectivo");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formExito, setFormExito] = useState(false);
+  // (El registro de pago inline del detalle se eliminó — el pago va por el modal
+  //  flotante. `procesando` se conserva: lo usan muchos botones de la vista.)
   const [procesando, setProcesando] = useState(false);
-  const [confirmarPagoOpen, setConfirmarPagoOpen] = useState(false);
   const [confirmarModalOpen, setConfirmarModalOpen] = useState(false);
   const [confirmarCampoOpen, setConfirmarCampoOpen] = useState(false);
   const [recolectandoId] = useState<string | null>(null);
@@ -1039,8 +1033,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     ? gestiones.filter(g => g.contrato_id === contratoSeleccionadoId).slice(0, 5)
     : [];
 
-  // ── Desglose en tiempo real ───────────────────────────────────────────────
-  const montoIngresado = Number(valor) || 0;
   const esDomingo = new Date().getDay() === 0;
 
   // Detectar si está en período de prorrateo (contrato nuevo que nunca ha recibido un pago).
@@ -1067,35 +1059,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   // Desglose por fecha (motor de cajas): qué períodos debe, de qué fecha, y el próximo pago.
   const desg = contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario"
     ? desgloseExigible(contratoDetalle, hoyDate()) : null;
-
-  // "¿Qué cubre este pago?" en vivo: simula el reparto FIFO del monto que escribe el funcionario
-  // (prorrateo → cajas más viejas → deuda → convenio) para que sepa qué queda cubierto y qué falta.
-  const coberturaEnVivo = (() => {
-    const monto = Number(valor) || 0;
-    if (!desg || monto <= 0 || !contratoDetalle) return null;
-    let resto = monto;
-    const lineas: { txt: string; ok: boolean }[] = [];
-    if (desg.prorrateoPendiente > 0 && resto > 0) {
-      const a = Math.min(resto, desg.prorrateoPendiente); resto -= a;
-      lineas.push({ txt: a >= desg.prorrateoPendiente ? "Prorrateo inicial" : `Prorrateo (abona $${fmt(a)})`, ok: a >= desg.prorrateoPendiente });
-    }
-    for (const p of desg.periodos) {
-      if (resto <= 0) break;
-      const a = Math.min(resto, p.monto); resto -= a;
-      lineas.push({ txt: a >= p.monto ? `Cuota ${fmtFecha(p.fecha)}` : `Cuota ${fmtFecha(p.fecha)} (abona $${fmt(a)}, faltan $${fmt(p.monto - a)})`, ok: a >= p.monto });
-    }
-    if (resto > 0 && contratoDetalle.deudaContrato > 0) {
-      const a = Math.min(resto, contratoDetalle.deudaContrato); resto -= a;
-      lineas.push({ txt: a >= contratoDetalle.deudaContrato ? "Multa / deuda" : `Multa/deuda (abona $${fmt(a)})`, ok: a >= contratoDetalle.deudaContrato });
-    }
-    if (resto > 0 && contratoDetalle.cuotaConvenio > 0) {
-      const a = Math.min(resto, contratoDetalle.cuotaConvenio); resto -= a;
-      lineas.push({ txt: a >= contratoDetalle.cuotaConvenio ? "Cuota del convenio" : `Cuota convenio (abona $${fmt(a)})`, ok: a >= contratoDetalle.cuotaConvenio });
-    }
-    const totalDebe = cuotaPendiente + contratoDetalle.deudaContrato + contratoDetalle.cuotaConvenio;
-    const quedaDebiendo = Math.max(totalDebe - monto, 0);
-    return { lineas, quedaDebiendo, sobra: resto };
-  })();
 
   // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
   // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
@@ -1140,23 +1103,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     setConvFechaLimite(fechaISO(d));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convCuotasCalc, mostrarFormConvenio, contratoSeleccionadoId]);
-
-  const desglose: AplicadoPago = contratoDetalle
-    ? (() => {
-        const a = calcularAplicacion(
-          montoIngresado,
-          cuotaPendiente,
-          0,
-          contratoDetalle.deudaContrato,
-          contratoDetalle.cuotaConvenio,
-        );
-        // Ahorro con regla "tarifa primero, ahorro de último" — abonos parciales dan $0
-        // hasta cubrir la parte de la empresa; al completar el período cierra exacto.
-        a.ahorro = calcularAhorroAplicado(contratoDetalle, a.tarifa, enProrrateo,
-          tarifaPagadaPeriodoActual(contratoDetalle, pagos.filter(p => p.contrato_id === contratoDetalle.id), hoyDate()));
-        return a;
-      })()
-    : { tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0 };
 
   // ── Modal de pago: cálculos independientes ────────────────────────────────
   const modalContrato = modalContratoId
@@ -1292,39 +1238,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  // Valida y abre la ventana flotante de confirmación (en vez de registrar directo).
-  function pedirConfirmacionPago() {
-    if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
-    if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
-    setFormError(null);
-    setConfirmarPagoOpen(true);
-  }
-
-  async function handleRegistrarPago() {
-    if (procesando) return;
-    if (!contratoSeleccionadoId) { setFormError("Selecciona un contrato."); return; }
-    if (!valor || montoIngresado <= 0) { setFormError("Ingresa un valor valido."); return; }
-    setFormError(null);
-    setFormExito(false);
-    setProcesando(true);
-    try {
-      const { error } = await registrarPago(
-        contratoSeleccionadoId,
-        montoIngresado,
-        metodo,
-        // Motor v2: la BD reparte al confirmar; el desglose local es solo preview.
-        contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : desglose,
-        contratoDetalle?.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
-      );
-      if (error) { setFormError(error); return; }
-      setValor("");
-      setConfirmarPagoOpen(false);
-      setFormExito(true);
-      setTimeout(() => setFormExito(false), 3000);
-    } finally {
-      setProcesando(false);
-    }
-  }
+  // (El registro de pago inline del detalle se eliminó — ahora se cobra con el
+  //  botón flotante "+". El flujo de pago vive en el modal `modalPago`.)
 
   async function handleAplicarSaldo() {
     if (procesando) return;
@@ -1342,7 +1257,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         contratoDetalle.motor_v2 && contratoDetalle.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
       );
-      if (error) { setFormError(error); return; }
+      if (error) { alert(error); return; }
       setSaldoExito(true);
       setTimeout(() => setSaldoExito(false), 3000);
     } finally {
@@ -1876,99 +1791,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           )}
         </div>
 
-        {/* Formulario de pago */}
-        <div style={card}>
-          <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Registrar pago</h3>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ flex: "2 1 130px" }}>
-              <MoneyInput label="Valor recibido" value={valor} onChange={v => { setValor(v); setFormExito(false); }} />
-            </div>
-            <div style={{ flex: "3 1 160px" }}>
-              <div style={labelStyle}>Método</div>
-              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, background: "var(--ok-soft)", borderColor: "var(--ok-line)", color: "var(--ok-ink)", fontWeight: 700 }}>
-                💵 Efectivo (confirma automático)
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Para transferencia usa el botón "💵 Cobrar" (pide la foto del comprobante).</div>
-            </div>
-          </div>
-
-          {/* Motor de cajas: "qué cubre este pago" POR FECHA (FIFO en vivo) */}
-          {coberturaEnVivo && (
-            <div style={{ background: "var(--accent-soft2)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--accent-line)", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: "var(--accent-ink)", marginBottom: 2 }}>Este pago cubre:</div>
-              {coberturaEnVivo.lineas.map((l, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", color: l.ok ? "var(--ok-ink)" : "var(--warn-ink)" }}>
-                  <span>{l.ok ? "✓" : "•"}</span><span>{l.txt}</span>
-                </div>
-              ))}
-              <div style={{ borderTop: "1px solid var(--accent-line)", marginTop: 4, paddingTop: 4, fontWeight: 800, color: coberturaEnVivo.quedaDebiendo > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
-                {coberturaEnVivo.quedaDebiendo > 0
-                  ? `Quedaría debiendo: $ ${fmt(coberturaEnVivo.quedaDebiendo)}`
-                  : coberturaEnVivo.sobra > 0
-                    ? `Queda al día · sobra $ ${fmt(coberturaEnVivo.sobra)} (saldo a favor)`
-                    : "Queda al día ✓"}
-              </div>
-            </div>
-          )}
-
-          {montoIngresado > 0 && !coberturaEnVivo && (
-            <div style={{ background: "var(--ok-soft)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--ok-line)", marginTop: 10, display: "grid", gap: 4, fontSize: 13 }}>
-              <div style={{ fontWeight: 700, color: "var(--ok-ink)", marginBottom: 2 }}>Cómo se aplica:</div>
-              {desglose.tarifa > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Cuota</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.tarifa)}</span>
-                </div>
-              )}
-              {desglose.deuda > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Deuda</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.deuda)}</span>
-                </div>
-              )}
-              {desglose.convenio > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Convenio</span><span style={{ fontWeight: 700 }}>$ {fmt(desglose.convenio)}</span>
-                </div>
-              )}
-              {desglose.saldo > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--accent)", fontWeight: 700 }}>
-                  <span>Saldo a favor</span><span>$ {fmt(desglose.saldo)}</span>
-                </div>
-              )}
-              <div style={{ borderTop: "1px solid var(--ok-line)", marginTop: 4, paddingTop: 4, display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
-                <span>Total</span><span>$ {fmt(montoIngresado)}</span>
-              </div>
-            </div>
-          )}
-
-          {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, marginTop: 8 }}>{formError}</div>}
-          {formExito && (
-            <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13, marginTop: 8 }}>
-              ✅ Pago registrado.
-            </div>
-          )}
-          <button onClick={pedirConfirmacionPago} disabled={procesando} style={{ ...primaryBtn, width: "100%", marginTop: 10, padding: "12px 16px", opacity: procesando ? 0.6 : 1 }}>
-            Registrar pago
-          </button>
-        </div>
-
-        {confirmarPagoOpen && contratoDetalle && (() => {
-          const cDup = contratos.find(c => c.id === contratoSeleccionadoId);
-          const cliDup = cDup ? clientes.find(c => c.id === cDup.cliente_id) : null;
-          const motDup = cDup ? motos.find(m => m.id === cDup.moto_id) : null;
-          const dup = !!pagos.find(p => p.contrato_id === contratoSeleccionadoId && p.estado !== "Rechazado" && Math.round(p.valor) === montoIngresado && p.fecha === hoyISO());
-          return (
-            <ModalConfirmarPago
-              monto={montoIngresado}
-              metodo="Efectivo"
-              clienteNombre={cliDup?.nombre ?? ""}
-              placa={motDup?.placa}
-              duplicado={dup}
-              procesando={procesando}
-              onCancelar={() => setConfirmarPagoOpen(false)}
-              onConfirmar={handleRegistrarPago}
-            />
-          );
-        })()}
+        {/* Sección "Registrar pago" del detalle eliminada (decisión del usuario):
+            el pago ahora se hace con el botón flotante "+" (abre la ventana Cobrar
+            ya cargada con este contrato). */}
 
         {/* Tabs secundarias */}
         <div style={card}>
@@ -2428,17 +2253,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     { key: "convenio", label: "🤝 Convenio", count: conConvenio.length },
   ];
 
-  // On mobile with a selected contract → show only detail
-  if (isMobile && contratoSeleccionadoId) {
-    return (
-      <div style={{ padding: "0 0 80px" }}>
-        {PanelDetalle()}
-      </div>
-    );
-  }
-
   return (
-    <div>
+    <div style={isMobile && contratoSeleccionadoId ? { padding: "0 0 80px" } : undefined}>
+      {/* En móvil con un contrato abierto → solo el detalle. El FAB "+" y los modales
+          (más abajo) quedan SIEMPRE montados para poder cobrar desde el detalle. */}
+      {isMobile && contratoSeleccionadoId ? PanelDetalle() : (
+      <>
       {/* Header — oculto en móvil (el header de la app ya dice "Cartera & Cobros") */}
       {!isMobile && (
         <>
@@ -2935,6 +2755,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           </div>
         );
       })()}
+      </>
+      )}
 
       {/* Visor de foto del comprobante */}
       {fotoAmpliada && (
@@ -3275,6 +3097,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           )}
           <button
             onClick={() => {
+              // Si estamos en el detalle de un contrato, el "+" cobra ESE contrato ya cargado
+              const idSel = contratoSeleccionadoId;
+              if (idSel) {
+                if (puedePagoNormal) { setModalContratoId(idSel); setModalBusqueda(""); setModalListaAbierta(false); setModalPago(true); }
+                else if (puedeCobroCampo) { abrirCobroCampo(idSel); }
+                return;
+              }
               // Si solo tiene una acción disponible, dispararla directo sin menú
               const soloPago = puedePagoNormal && !puedeCobroCampo;
               const soloCampo = puedeCobroCampo && !puedePagoNormal;

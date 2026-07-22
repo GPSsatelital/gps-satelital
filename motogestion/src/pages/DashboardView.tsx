@@ -331,7 +331,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
         return (
           <div
             onClick={() => onNavigate("alertas")}
-            style={{ marginBottom: 16, background: nCrit > 0 ? "#fff1f2" : "var(--orange-soft)", borderRadius: 14, padding: "10px 16px", border: `1px solid ${nCrit > 0 ? "#fecdd3" : "var(--orange-soft)"}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
+            style={{ marginBottom: 16, background: nCrit > 0 ? "var(--bad-soft)" : "var(--orange-soft)", borderRadius: 14, padding: "10px 16px", border: `1px solid ${nCrit > 0 ? "var(--bad-line)" : "var(--orange-soft)"}`, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
           >
             <span style={{ fontSize: 16 }}>{nCrit > 0 ? "🚨" : "⚠️"}</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: nCrit > 0 ? "var(--bad-ink)" : "var(--orange)", flex: 1, minWidth: 120 }}>
@@ -349,7 +349,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
 
       {/* ── HERO: recaudo del día (filtrado por grupo) ── */}
       <div style={{
-        background: "linear-gradient(135deg, var(--text) 0%, var(--accent-ink2) 100%)",
+        background: "linear-gradient(135deg, #0f172a 0%, #0c4a6e 100%)",
         borderRadius: 20, padding: isMobile ? "22px 20px" : "28px 32px",
         marginBottom: 20, position: "relative", overflow: "hidden",
       }}>
@@ -375,7 +375,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
             </span>
           )}
         </div>
-        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--card)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 900, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
           ${fmt(recaudoFiltrado.hoy)}
         </div>
         <div style={{ marginTop: 10 }}>
@@ -438,14 +438,14 @@ const grupoActualStats = grupoSeleccionado === "todos"
         )}
       </div>
 
-      {/* ── KPI STRIP (reordenado y más compacto) ── */}
+      {/* ── KPI STRIP — en móvil grilla 2 columnas (todas visibles, sin scroll lateral) ── */}
       <div style={{
-        display: "flex",
+        display: isMobile ? "grid" : "flex",
+        gridTemplateColumns: isMobile ? "1fr 1fr" : undefined,
         gap: 8,
-        overflowX: isMobile ? "auto" : "visible",
-        flexWrap: isMobile ? "nowrap" : "wrap",
-        paddingBottom: isMobile ? 4 : 0,
-        marginBottom: 20,
+        overflowX: isMobile ? "visible" : "visible",
+        flexWrap: isMobile ? undefined : "wrap",
+        marginBottom: isMobile ? 12 : 20,
       }}>
         {[
           {
@@ -463,13 +463,13 @@ const grupoActualStats = grupoSeleccionado === "todos"
           {
             icon: "🚨", label: "En mora", value: stats.clientesMora,
             sub: "requieren acción", color: "var(--bad-ink)",
-            bg: "#fff1f2", onClick: () => onNavigate("clientes", "mora"),
+            bg: "var(--bad-soft)", onClick: () => onNavigate("clientes", "mora"),
             delta: calcDelta(stats.clientesMora, stats.prevClientesMora),
           },
           {
             icon: "📄", label: "Contratos activos", value: stats.contratosActivos,
-            sub: `${stats.contratosEnProceso} en proceso`, color: "#6366f1",
-            bg: "#f5f3ff", onClick: () => onNavigate("contratos", "Activo"),
+            sub: `${stats.contratosEnProceso} en proceso`, color: "var(--violet)",
+            bg: "var(--indigo-soft)", onClick: () => onNavigate("contratos", "Activo"),
             delta: calcDelta(stats.contratosActivos, stats.prevContratosActivos),
           },
           {
@@ -485,11 +485,11 @@ const grupoActualStats = grupoSeleccionado === "todos"
             key={kpi.label}
             onClick={kpi.onClick}
             style={{
-              flex: isMobile ? "0 0 auto" : "1 1 130px",
-              minWidth: isMobile ? 136 : 120,
+              flex: isMobile ? undefined : "1 1 130px",
+              minWidth: isMobile ? 0 : 120,
               background: kpi.bg,
               borderRadius: 12,
-              padding: "12px 12px",
+              padding: isMobile ? "9px 11px" : "12px 12px",
               cursor: "pointer",
               borderLeft: `4px solid ${kpi.color}`,
               boxShadow: "0 1px 6px rgba(15,23,42,0.07)",
@@ -504,14 +504,26 @@ const grupoActualStats = grupoSeleccionado === "todos"
               (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 6px rgba(15,23,42,0.07)";
             }}
           >
-            <div style={{ fontSize: 18, marginBottom: 4 }}>{kpi.icon}</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>{kpi.value}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{kpi.label}</div>
-            <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{kpi.sub}</div>
-            {kpi.delta.pct !== 0 && (
-              <div style={{ fontSize: 10, fontWeight: 700, color: kpi.delta.color, marginTop: 3 }}>
-                {kpi.delta.label}
-              </div>
+            {isMobile ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: kpi.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
+                  <span style={{ fontSize: 15, opacity: 0.55 }}>{kpi.icon}</span>
+                </div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted2)", marginTop: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kpi.label}</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 18, marginBottom: 4 }}>{kpi.icon}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", lineHeight: 1 }}>{kpi.value}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 3 }}>{kpi.label}</div>
+                <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{kpi.sub}</div>
+                {kpi.delta.pct !== 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: kpi.delta.color, marginTop: 3 }}>
+                    {kpi.delta.label}
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}

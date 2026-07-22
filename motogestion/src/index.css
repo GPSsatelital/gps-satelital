@@ -167,51 +167,51 @@ code {
 
 :root[data-theme="dark"] {
   --bg: transparent;       /* el fondo real + destellos viven en body (regla de abajo) */
-  --card: #121c30;
-  --soft: #1b2740;
-  --soft2: #16223a;
+  --card: #1b2a45;         /* superficie con más elevación: se despega del fondo */
+  --soft: #222f4e;
+  --soft2: #1a2942;
   --ink: #0f172a;
-  --text: #e6edf7;
-  --muted: #8ca0bc;
-  --muted2: #a9bad1;
-  --muted3: #93a7c4;
-  --faint: #64789a;
-  --line: #22304a;
-  --line2: #2c3b58;
+  --text: #ecf2fb;
+  --muted: #90a4c2;
+  --muted2: #b0c0d8;
+  --muted3: #9aaecb;
+  --faint: #6d83a5;
+  --line: #33456a;         /* hairline visible sobre la tarjeta */
+  --line2: #3d5480;
   --accent: #38bdf8;
   --accent-hi: #7dd3fc;
-  --accent-ink: #9bdcfd;
+  --accent-ink: #a2ddfd;
   --accent-ink2: #c3e8fe;
-  --accent-soft: #1c3e5e;
-  --accent-soft2: #18344f;
-  --accent-soft3: #1f4569;
-  --accent-soft4: #163149;
-  --accent-line: #356291;
+  --accent-soft: #1e4568;
+  --accent-soft2: #1b3d5c;
+  --accent-soft3: #224b70;
+  --accent-soft4: #193a57;
+  --accent-line: #3a6a9c;
   --ok: #4ade80;
   --ok2: #34d399;
-  --ok-ink: #b6f7cf;
-  --ok-soft: #18432e;
-  --ok-line: #2a7049;
+  --ok-ink: #c6facd;
+  --ok-soft: #1c5a3c;
+  --ok-line: #2e7c50;
   --bad: #f87171;
   --bad2: #fda4a4;
-  --bad-ink: #fed0d0;
-  --bad-ink2: #fed0d0;
-  --bad-soft: #512525;
-  --bad-line: #843838;
+  --bad-ink: #ffdada;
+  --bad-ink2: #ffdada;
+  --bad-soft: #6e2f30;
+  --bad-line: #924042;
   --warn: #fbbf24;
   --warn2: #fbbf24;
   --warn-strong: #f59e0b;
-  --warn-ink: #fbe08a;
-  --warn-ink2: #fbe08a;
-  --warn-soft: #4a3c16;
-  --warn-soft2: #3a3110;
-  --warn-line: #705b22;
-  --indigo-soft: #303c74;
+  --warn-ink: #fbe79a;
+  --warn-ink2: #fbe79a;
+  --warn-soft: #55461b;
+  --warn-soft2: #443815;
+  --warn-line: #7d6528;
+  --indigo-soft: #34437f;
   --indigo-ink: #d3dbfe;
   --violet: #b39bfb;
   --orange: #fb923c;
   --orange-ink: #ffd9b0;
-  --orange-soft: #4a2e16;
+  --orange-soft: #55351a;
   color-scheme: dark;
 }
 
@@ -221,7 +221,7 @@ code {
    attachment fijo; por eso --bg queda transparent en noche (las superficies que
    usan var(--bg) dejan ver el body). En día e impresión no aplica. */
 :root[data-theme="dark"] body {
-  background-color: #0b1220;
+  background-color: #0a1020;
   background-image:
     radial-gradient(680px circle at 90% -6%, rgba(56, 189, 248, 0.17), transparent 44%),
     radial-gradient(560px circle at 4% 106%, rgba(129, 140, 248, 0.15), transparent 44%),

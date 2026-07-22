@@ -21,7 +21,11 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
   cont.style.left = "0";
   cont.style.top = "0";
   cont.style.width = "794px";
-  cont.style.background = "var(--card)";
+  // Papel blanco SIEMPRE. No usar var(--card): en modo noche es navy y, además,
+  // html2canvas no resuelve var() en su parser de color y lanza
+  // "unsupported color function var" (backgroundColor abajo).
+  cont.style.background = "#ffffff";
+  cont.style.color = "#000000";
   cont.style.zIndex = "2147483647";
   cont.innerHTML = html;
   document.body.appendChild(cont);
@@ -35,7 +39,7 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
     const canvas = await html2canvas(cont, {
       scale: 2,
       useCORS: true,
-      backgroundColor: "var(--card)",
+      backgroundColor: "#ffffff",
       windowWidth: 794,
     });
 
@@ -61,7 +65,7 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
         franja.width = canvas.width;
         franja.height = hpx;
         const ctx = franja.getContext("2d")!;
-        ctx.fillStyle = "var(--card)";
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, franja.width, franja.height);
         ctx.drawImage(canvas, 0, y, canvas.width, hpx, 0, 0, canvas.width, hpx);
         if (!primera) pdf.addPage();

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
 import { useSubadminScope } from "./hooks/useSubadminScope";
@@ -471,6 +472,8 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  const reduceMotion = useReducedMotion();
+
   function navigate(v: ViewKey, f = "") {
     contentScrollPos.current = 0; // nuevo módulo → empezar arriba
     setNavStack(prev => [...prev, ctx]);
@@ -537,7 +540,13 @@ function Shell() {
   }
 
   const contentView = (
-    <div style={{ flex: 1, background: "var(--bg)", minHeight: 0 }}>
+    <motion.div
+      key={ctx.view}
+      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+      style={{ flex: 1, background: "var(--bg)", minHeight: 0 }}
+    >
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
@@ -557,7 +566,7 @@ function Shell() {
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
-    </div>
+    </motion.div>
   );
 
   // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────

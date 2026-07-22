@@ -3,6 +3,7 @@
 // botones/badges/chips a mano en cada vista. Bindeados a tokens (día/noche), grilla
 // de 4px, radios en escala, targets 44px, estados, Inter (heredada).
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 
 // ── Btn ──────────────────────────────────────────────────────────────────────
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -23,9 +24,14 @@ export function Btn({
   const dims = size === "sm"
     ? { height: 32, padding: "0 12px", fontSize: 12 }
     : { height: 40, padding: "0 16px", fontSize: 13 };
+  const reduce = useReducedMotion();
+  // Press feedback (system: scale 0.97). Se siente, no se mira; respeta reduced-motion.
+  const tap = reduce || rest.disabled ? undefined : { scale: 0.97 };
   return (
-    <button
-      {...rest}
+    <motion.button
+      {...(rest as import("framer-motion").HTMLMotionProps<"button">)}
+      whileTap={tap}
+      transition={{ duration: 0.1, ease: [0.23, 1, 0.32, 1] }}
       style={{
         ...BTN_VARIANT[variant],
         ...dims,
@@ -38,7 +44,7 @@ export function Btn({
       }}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 

@@ -2265,40 +2265,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
         ))}
       </div>
 
-      {/* Tab bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 4 : 8, marginTop: isMobile ? 6 : 20, paddingBottom: 2 }}>
+      {/* Tab bar — mismo Chip que los filtros (todo del mismo tamaño) */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: isMobile ? 6 : 20, paddingBottom: 2 }}>
         {tabs.map(t => (
-          <button
+          <Chip
             key={t.key}
+            activo={activeTab === t.key}
+            count={t.count}
             onClick={() => { setActiveTab(t.key); setContratoSeleccionadoId(null); }}
-            style={{
-              background: activeTab === t.key ? "var(--accent)" : "var(--soft)",
-              color: activeTab === t.key ? "var(--card)" : "var(--muted2)",
-              border: "none",
-              borderRadius: 999,
-              padding: isMobile ? "5px 6px" : "8px 16px",
-              fontWeight: 700,
-              fontSize: isMobile ? 10.5 : 13,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
           >
             {t.label}
-            {t.count !== undefined && (
-              <span style={{
-                marginLeft: isMobile ? 3 : 6,
-                background: activeTab === t.key ? "rgba(255,255,255,0.3)" : "var(--line)",
-                color: activeTab === t.key ? "var(--card)" : "var(--muted)",
-                borderRadius: 999,
-                padding: isMobile ? "1px 4px" : "1px 7px",
-                fontSize: isMobile ? 9.5 : 11,
-                fontWeight: 700,
-              }}>
-                {t.count}
-              </span>
-            )}
-          </button>
+          </Chip>
         ))}
       </div>
 

@@ -86,11 +86,11 @@ export function Chip({ activo, count, children, onClick, style }: {
     <button
       onClick={onClick}
       style={{
-        height: 32, padding: "0 12px", borderRadius: 999, border: "none", cursor: "pointer",
-        fontSize: 12, fontWeight: activo ? 600 : 500, whiteSpace: "nowrap",
+        height: 28, padding: "0 10px", borderRadius: 999, border: "none", cursor: "pointer",
+        fontSize: 11, fontWeight: activo ? 600 : 500, whiteSpace: "nowrap",
         background: activo ? "var(--accent)" : "var(--soft)",
         color: activo ? "var(--card)" : "var(--muted2)",
-        display: "inline-flex", alignItems: "center", gap: 6, boxSizing: "border-box",
+        display: "inline-flex", alignItems: "center", gap: 5, boxSizing: "border-box",
         ...style,
       }}
     >

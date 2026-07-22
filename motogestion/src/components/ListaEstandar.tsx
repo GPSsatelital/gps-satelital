@@ -4,8 +4,11 @@
 // padding, riel, tipografía) es FIJO y solo cambia el contenido — imposible que
 // una lista nueva elija su propia apariencia y se desincronice.
 import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { card, listaConScroll } from "../styles/shared";
 import Placa from "./Placa";
+
+const EASE = [0.23, 1, 0.32, 1] as const;
 
 // Recuadro de lista con scroll propio. Envuelve las filas para que la lista nunca
 // ocupe toda la pantalla; tiene el mismo tamaño/borde/sombra en toda la app.
@@ -16,12 +19,18 @@ export function ListBox({ isMobile, children, maxHeightVh, scrollRef }: {
   scrollRef?: (el: HTMLDivElement | null) => void; // preservar posición de scroll
 }) {
   const scroll = listaConScroll(isMobile);
+  const reduce = useReducedMotion();
   return (
-    <div style={{ ...card, padding: 10 }}>
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: EASE }}
+      style={{ ...card, padding: 10 }}
+    >
       <div ref={scrollRef} style={{ ...scroll, ...(maxHeightVh ? { maxHeight: `${maxHeightVh}vh` } : {}) }}>
         {children}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -44,9 +53,12 @@ export function ItemLista({
   seleccionado?: boolean;
   onClick?: () => void;
 }) {
+  const reduce = useReducedMotion();
   return (
-    <div
+    <motion.div
       onClick={onClick}
+      whileTap={reduce || !onClick ? undefined : { scale: 0.985 }}
+      transition={{ duration: 0.12, ease: EASE }}
       style={{
         background: seleccionado ? "var(--accent-soft2)" : "var(--soft2)",
         borderRadius: 10,
@@ -77,6 +89,6 @@ export function ItemLista({
         )}
       </div>
       {extra != null && extra !== false && <div style={{ marginTop: 8 }}>{extra}</div>}
-    </div>
+    </motion.div>
   );
 }

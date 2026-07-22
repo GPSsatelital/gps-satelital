@@ -445,34 +445,36 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: 22 }}>
-        <h2 style={{ fontSize: 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Inmovilizaciones</h2>
-        <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
-          Motos retenidas y contratos en mora real — gestión de recuperación
-        </p>
+      {/* Header — subtítulo solo en desktop para ahorrar alto en móvil */}
+      <div style={{ marginBottom: isMobile ? 10 : 22 }}>
+        <h2 style={{ fontSize: isMobile ? 19 : 22, margin: 0, fontWeight: 900, color: "var(--text)" }}>Inmovilizaciones</h2>
+        {!isMobile && (
+          <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>
+            Motos retenidas y contratos en mora real — gestión de recuperación
+          </p>
+        )}
       </div>
 
       {/* KPI header cards */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        <div onClick={() => setTab("en_mora")} style={{ background: "var(--bad-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 12 : 20 }}>
+        <div onClick={() => setTab("en_mora")} style={{ background: "var(--bad-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Mora crítica (+3d)</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: 6 }}>{resumen.total}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.total}</div>
           <div style={{ fontSize: 11, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2 }}>{resumen.critica} críticos (+10d)</div>
         </div>
-        <div onClick={() => setTab("en_mora")} style={{ background: "var(--warn-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+        <div onClick={() => setTab("en_mora")} style={{ background: "var(--warn-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>En proceso recolección</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--warn-ink)", lineHeight: 1.1, marginTop: 6 }}>{resumen.recoleccion}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--warn-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{resumen.recoleccion}</div>
           <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2 }}>orden activa</div>
         </div>
-        <div onClick={() => setTab("retenidas")} style={{ background: "var(--ok-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
+        <div onClick={() => setTab("retenidas")} style={{ background: "var(--ok-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)", cursor: "pointer" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Recuperadas esta semana</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: "var(--ok-ink)", lineHeight: 1.1, marginTop: 6 }}>{recuperadasSemana}</div>
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--ok-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>{recuperadasSemana}</div>
           <div style={{ fontSize: 11, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2 }}>motos recuperadas</div>
         </div>
-        <div style={{ background: "var(--bad-soft)", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
+        <div style={{ background: "var(--bad-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: 6 }}>${fmt(resumen.deudaTotal)}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>${fmt(resumen.deudaTotal)}</div>
           <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
         </div>
       </div>
@@ -557,7 +559,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       )}
 
       {/* Main list */}
-      <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
+      <div style={{ display: "grid", gap: 10, marginBottom: isMobile ? 16 : 28 }}>
         {filtradas.map(f => {
           const s = PRIO[f.prioridad];
           const abierto = expandido === f.contratoId;
@@ -764,12 +766,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       </div>
 
       {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).length === 0 ? (
-        <div style={{ background: "var(--card)", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: 28 }}>
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: isMobile ? 16 : 28 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
           <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>No hay motos retenidas</div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
+        <div style={{ display: "grid", gap: 10, marginBottom: isMobile ? 16 : 28 }}>
           {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
             const entregable = puedeEntregar(m);
             const faltaMulta = m.totalPendiente > 0;
@@ -898,7 +900,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
       {/* Préstamos activos: cobrar el alquiler diario y devolver cuando la moto salga de taller */}
       {prestamos.filter(p => p.estado === "activo").length > 0 && (
-        <div style={{ marginTop: 8, marginBottom: 28 }}>
+        <div style={{ marginTop: 8, marginBottom: isMobile ? 16 : 28 }}>
           <h3 style={{ fontSize: 16, margin: "0 0 8px", fontWeight: 900, color: "var(--text)" }}>🔄 Préstamos activos</h3>
           <div style={{ display: "grid", gap: 8 }}>
             {prestamos.filter(p => p.estado === "activo").map(p => {

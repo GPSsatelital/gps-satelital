@@ -12,6 +12,7 @@ import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
 import Placa from "../components/Placa";
+import { useVisitas } from "../hooks/useVisitas";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -22,7 +23,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "mes" | "mes_anterior" | "anio";
-type Tab   = "resumen" | "gestion" | "cartera" | "flota" | "entregas" | "exportar";
+type Tab   = "resumen" | "admins" | "grupos" | "visitas" | "cartera" | "flota" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",          label: "Hoy" },
@@ -33,12 +34,14 @@ const RANGOS: { key: Rango; label: string }[] = [
 ];
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "resumen",  label: "Resumen",  icon: "📊" },
-  { key: "gestion",  label: "Admins",   icon: "👤" },
-  { key: "cartera",  label: "Cartera",  icon: "💳" },
-  { key: "flota",    label: "Flota",    icon: "🏍️" },
-  { key: "entregas", label: "Entregas", icon: "🛵" },
-  { key: "exportar", label: "Exportar", icon: "⬇️" },
+  { key: "resumen",  label: "Resumen",   icon: "📊" },
+  { key: "admins",   label: "Por admin", icon: "👤" },
+  { key: "grupos",   label: "Por grupo", icon: "📁" },
+  { key: "visitas",  label: "Visitas",   icon: "🏠" },
+  { key: "cartera",  label: "Cartera",   icon: "💳" },
+  { key: "flota",    label: "Flota",     icon: "🏍️" },
+  { key: "entregas", label: "Entregas",  icon: "🛵" },
+  { key: "exportar", label: "Exportar",  icon: "⬇️" },
 ];
 
 const ANG_LABEL: Record<string, string> = {
@@ -124,6 +127,170 @@ function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: str
   URL.revokeObjectURL(url);
 }
 
+// ── Excel "bonito": tabla HTML con estilo que Excel abre con colores, encabezados
+//    y filas cebra. Evita el problema del CSV (todo en una columna en Excel es-CO). ──
+type CeldaX = string | { v: string; color?: string; bold?: boolean; align?: "left" | "center" | "right" };
+type ColX = { label: string; align?: "left" | "center" | "right"; ancho?: number };
+type SeccionX = { titulo: string; color?: string; filas: CeldaX[][] };
+const GRUPO_HEX: Record<string, string> = {
+  RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
+};
+function descargarExcel(opts: { archivo: string; titulo: string; periodo: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] }) {
+  const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const NAVY = "#0f172a", CYAN_BG = "#0891b2", CYAN_LN = "#0e7490";
+  const n = opts.columnas.length;
+  const cell = (c: CeldaX, col: ColX, bg: string) => {
+    const o = (c !== null && typeof c === "object") ? c : { v: c } as { v: string; color?: string; bold?: boolean; align?: "left" | "center" | "right" };
+    const align = o.align ?? col.align ?? "left";
+    const style = `background:${bg};text-align:${align};border:1px solid #e2e8f0;padding:5px 9px;mso-number-format:'\\@';`
+      + (o.color ? `color:${o.color};` : "") + (o.bold ? "font-weight:bold;" : "");
+    return `<td style="${style}">${esc(o.v)}</td>`;
+  };
+  let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>td,th{font-family:Calibri,Arial,sans-serif;font-size:11pt;}</style></head><body>`;
+  h += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
+  h += `<tr>${opts.columnas.map(c => `<td width="${c.ancho ?? 120}"></td>`).join("")}</tr>`;
+  h += `<tr><td colspan="${n}" style="background:${NAVY};color:#ffffff;font-size:15pt;font-weight:bold;padding:10px 12px;">${esc(opts.titulo)}</td></tr>`;
+  h += `<tr><td colspan="${n}" style="background:${NAVY};color:#7dd3fc;font-size:9.5pt;padding:2px 12px 8px;">${esc(opts.periodo)}</td></tr>`;
+  h += `<tr>${opts.columnas.map(c => `<th style="background:${CYAN_BG};color:#ffffff;font-weight:bold;text-align:${c.align ?? "left"};border:1px solid ${CYAN_LN};padding:7px 9px;white-space:nowrap;">${esc(c.label)}</th>`).join("")}</tr>`;
+  opts.secciones.forEach(sec => {
+    h += `<tr><td colspan="${n}" style="background:${sec.color ?? "#334155"};color:#ffffff;font-weight:bold;padding:6px 10px;border:1px solid ${sec.color ?? "#334155"};">${esc(sec.titulo)}</td></tr>`;
+    sec.filas.forEach((fila, i) => {
+      const bg = i % 2 === 0 ? "#ffffff" : "#f1f5f9";
+      h += `<tr>${fila.map((c, ci) => cell(c, opts.columnas[ci], bg)).join("")}</tr>`;
+    });
+  });
+  if (opts.totalGeneral) {
+    h += `<tr>${opts.totalGeneral.map((c, ci) => {
+      const col = opts.columnas[ci];
+      const o = (c !== null && typeof c === "object") ? c : { v: c } as { v: string; align?: "left" | "center" | "right" };
+      const align = o.align ?? col.align ?? "left";
+      return `<td style="background:${NAVY};color:#ffffff;font-weight:bold;text-align:${align};border:1px solid ${NAVY};padding:7px 9px;mso-number-format:'\\@';">${esc(o.v)}</td>`;
+    }).join("")}</tr>`;
+  }
+  h += `</table></body></html>`;
+  const blob = new Blob(["﻿" + h], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = opts.archivo.endsWith(".xls") ? opts.archivo : opts.archivo + ".xls";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function fmtFechaCorta(iso: string) {
+  const s = (iso || "").slice(0, 10).split("-");
+  return s.length === 3 ? `${s[2]}/${s[1]}/${s[0]}` : (iso || "—");
+}
+
+// ── Gestión: fila de moto y bloque (admin o grupo). Una sola base, dos cortes. ──
+type MotoRowG = { placa: string; cliente: string; monto: number; pago: boolean; grupo: string; adminId: string; adminNombre: string };
+type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; pagaron: number; noPagaron: number; recaudado: number; pctv: number };
+function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
+  const map = new Map<string, MotoRowG[]>();
+  rows.forEach(r => {
+    const k = modo === "admin" ? r.adminId : r.grupo;
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(r);
+  });
+  const bloques: BloqueG[] = [...map.entries()].map(([key, motos]) => {
+    const pagaron = motos.filter(m => m.pago).length;
+    const recaudado = motos.reduce((s, m) => s + m.monto, 0);
+    return {
+      key,
+      nombre: modo === "admin" ? motos[0].adminNombre : key,
+      color: modo === "grupo" ? (GRUPO_COLORS[key] ?? "var(--muted)") : undefined,
+      motos: motos.slice().sort((x, y) => (x.pago === y.pago ? x.cliente.localeCompare(y.cliente) : x.pago ? 1 : -1)),
+      total: motos.length, pagaron, noPagaron: motos.length - pagaron, recaudado,
+      pctv: motos.length > 0 ? Math.round((pagaron / motos.length) * 100) : 0,
+    };
+  });
+  if (modo === "grupo") {
+    const ord = (g: string) => { const i = (GRUPOS as readonly string[]).indexOf(g); return i === -1 ? 99 : i; };
+    return bloques.sort((a, b) => ord(a.key) - ord(b.key));
+  }
+  return bloques.sort((a, b) => (a.key === "__none__" ? 1 : 0) - (b.key === "__none__" ? 1 : 0) || b.recaudado - a.recaudado);
+}
+const pctColorG = (p: number) => (p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)");
+const pctFillG  = (p: number) => (p >= 85 ? "var(--ok2)" : p >= 70 ? "var(--warn2)" : "var(--bad)");
+
+function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: BloqueG[]; modo: "admin" | "grupo"; expandido: string | null; onToggle: (k: string) => void }) {
+  if (bloques.length === 0) return <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay motos activas asignadas en este período.</div>;
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {bloques.map(b => {
+        const k = modo + "|" + b.key;
+        const open = expandido === k;
+        return (
+          <div key={b.key} style={{ ...card, padding: 0, overflow: "hidden" }}>
+            <div onClick={() => onToggle(k)} style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", alignItems: "center", gap: 10, padding: "13px 16px", cursor: "pointer", background: open ? "var(--soft2)" : "var(--card)" }}>
+              <span style={{ color: "var(--faint)", transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+              <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                {modo === "grupo"
+                  ? <span style={{ width: 11, height: 11, borderRadius: 3, background: b.color, flexShrink: 0 }} />
+                  : <span style={{ fontSize: 15, flexShrink: 0 }}>👤</span>}
+                <span style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.nombre}</span>
+                <span style={{ fontSize: 12, color: "var(--faint)", flexShrink: 0 }}>{b.total} motos</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ textAlign: "right", minWidth: 44 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: pctColorG(b.pctv) }}>{b.pctv}%</div>
+                  <div style={{ width: 56, height: 5, background: "var(--soft)", borderRadius: 999, overflow: "hidden", marginTop: 3 }}>
+                    <div style={{ width: `${b.pctv}%`, height: "100%", background: pctFillG(b.pctv) }} />
+                  </div>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 13, fontVariantNumeric: "tabular-nums", minWidth: 66, textAlign: "right" }}>$ {fmt(b.recaudado)}</div>
+              </div>
+            </div>
+            <div style={{ padding: "0 16px 8px 42px", fontSize: 11 }}>
+              <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{b.pagaron} pagaron</span>
+              <span style={{ color: "var(--faint)" }}> · </span>
+              <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{b.noPagaron} no pagaron</span>
+            </div>
+            {open && (
+              <div style={{ background: "var(--soft2)", padding: "2px 16px 14px" }}>
+                {b.motos.map((m, i) => (
+                  <div key={m.placa + i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" }}>
+                    <Placa placa={m.placa} size="sm" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>
+                        {modo === "admin"
+                          ? <><span style={{ width: 7, height: 7, borderRadius: 2, background: GRUPO_COLORS[m.grupo] ?? "var(--muted)" }} /><span style={{ color: "var(--muted)" }}>{m.grupo}</span></>
+                          : <span style={{ color: "var(--muted)", textTransform: "uppercase" }}>👤 {m.adminNombre}</span>}
+                      </div>
+                    </div>
+                    {m.pago
+                      ? <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>✓ $ {fmt(m.monto)}</span>
+                      : <span style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "2px 8px", whiteSpace: "nowrap" }}>✕ No pagó</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CabeceraGestion({ totMotos, totPag, totRec, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; totPag: number; totRec: number; rangoLabel: string; desde: string; hasta: string; nota: string; onExport: () => void }) {
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+        <KPI label="Motos activas" value={`${totMotos}`} />
+        <KPI label="Pagaron" value={`${totPag}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(totPag, totMotos)} />
+        <KPI label="No pagaron" value={`${totMotos - totPag}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+        <KPI label="Recaudado" value={`$ ${fmt(totRec)}`} color="var(--accent)" />
+      </div>
+      <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>
+          Período: <b style={{ color: "var(--text)" }}>{rangoLabel}</b>
+          <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · {nota}
+        </div>
+        <button onClick={onExport} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+      </div>
+    </>
+  );
+}
+
 const KPI_ICONS: Record<string, string> = {
   "Total recaudado": "💰",
   "Efectivo": "💵",
@@ -140,9 +307,10 @@ export default function ReportesView({ onNavigate }: Props) {
   // Regeneración de documentos en blanco (bug histórico del PDF)
   const [regen, setRegen] = useState<{ estado: "idle" | "buscando" | "regenerando" | "hecho"; total: number; hechos: number; msg: string }>({ estado: "idle", total: 0, hechos: 0, msg: "" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-  // Informe "Gestión por administrador": lista de sub-admins + fila expandida (drill-down)
+  // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
-  const [expandidoAdmin, setExpandidoAdmin] = useState<string | null>(null);
+  const [expandidoGestion, setExpandidoGestion] = useState<string | null>(null);
+  const [expandidoVisita, setExpandidoVisita] = useState<string | null>(null);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -165,6 +333,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { deudas }    = useDeudas();
+  const { visitas }   = useVisitas();
 
   // Busca contratos entregados con firmas guardadas pero PDF en blanco, y los regenera con sus
   // firmas/huellas reales (nadie re-firma). On-demand — no corre solo al abrir la pestaña.
@@ -205,57 +374,129 @@ export default function ReportesView({ onNavigate }: Props) {
     pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde && p.fecha <= hasta && esPagoDeCaja(p)),
     [pagos, desde, hasta]);
 
-  // ── INFORME "Gestión por administrador" ────────────────────────────────────
-  // Cruce grupo × admin: de las motos activas que cada sub-admin tiene asignadas
-  // (motos.subadmin_id), cuántas y cuáles pagaron en el rango. Base para la nómina.
-  const gestionData = useMemo(() => {
+  // ── INFORMES DE GESTIÓN ─────────────────────────────────────────────────────
+  // Base única: cada moto activa con su grupo, su admin asignado (motos.subadmin_id)
+  // y lo que recaudó en el rango. De aquí salen los DOS cortes (por admin / por grupo),
+  // cada uno mostrando el otro como etiqueta cruzada. Base para la nómina.
+  const baseGestion = useMemo<MotoRowG[]>(() => {
     const nombreAdmin = (id: string | null | undefined) =>
       id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar";
     const recaudoPorContrato = new Map<string, number>();
     pagosRango.forEach(p => recaudoPorContrato.set(p.contrato_id, (recaudoPorContrato.get(p.contrato_id) ?? 0) + p.valor));
-
-    type MotoRow = { placa: string; cliente: string; monto: number; pago: boolean };
-    type AdminAgg = { adminId: string; nombre: string; motos: MotoRow[]; recaudado: number; pagaron: number };
-    const porGrupo = new Map<string, Map<string, AdminAgg>>();
-
+    const rows: MotoRowG[] = [];
     contratos.filter(c => c.estado === "Activo" && c.moto_id).forEach(c => {
       const moto = motos.find(m => m.id === c.moto_id);
       if (!moto) return;
-      const grupo = moto.grupo ?? "OTRO";
-      const adminId = moto.subadmin_id ?? "__none__";
-      const cliente = clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin cliente";
       const monto = recaudoPorContrato.get(c.id) ?? 0;
-      if (!porGrupo.has(grupo)) porGrupo.set(grupo, new Map());
-      const gmap = porGrupo.get(grupo)!;
-      if (!gmap.has(adminId)) gmap.set(adminId, { adminId, nombre: nombreAdmin(moto.subadmin_id), motos: [], recaudado: 0, pagaron: 0 });
-      const agg = gmap.get(adminId)!;
-      agg.motos.push({ placa: moto.placa, cliente, monto, pago: monto > 0 });
-      agg.recaudado += monto;
-      if (monto > 0) agg.pagaron++;
+      rows.push({
+        placa: moto.placa,
+        cliente: clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin cliente",
+        monto, pago: monto > 0,
+        grupo: moto.grupo ?? "OTRO",
+        adminId: moto.subadmin_id ?? "__none__",
+        adminNombre: nombreAdmin(moto.subadmin_id),
+      });
     });
-
-    const ord = (g: string) => { const i = (GRUPOS as readonly string[]).indexOf(g); return i === -1 ? 99 : i; };
-    return [...porGrupo.entries()].sort((a, b) => ord(a[0]) - ord(b[0])).map(([grupo, gmap]) => {
-      const admins = [...gmap.values()].map(a => ({
-        ...a,
-        total: a.motos.length,
-        noPagaron: a.motos.length - a.pagaron,
-        pctv: a.motos.length > 0 ? Math.round((a.pagaron / a.motos.length) * 100) : 0,
-        motos: a.motos.slice().sort((x, y) => (x.pago === y.pago ? x.cliente.localeCompare(y.cliente) : x.pago ? 1 : -1)),
-      })).sort((a, b) => b.total - a.total);
-      const totalMotos = admins.reduce((s, a) => s + a.total, 0);
-      const totalPagaron = admins.reduce((s, a) => s + a.pagaron, 0);
-      const totalRec = admins.reduce((s, a) => s + a.recaudado, 0);
-      return { grupo, admins, totalMotos, totalPagaron, totalRec, pctv: totalMotos > 0 ? Math.round((totalPagaron / totalMotos) * 100) : 0 };
-    });
+    return rows;
   }, [contratos, motos, clientes, pagosRango, subadmins]);
 
-  function exportarGestion() {
-    const filas: string[][] = [];
-    gestionData.forEach(g => g.admins.forEach(a => a.motos.forEach(m => {
-      filas.push([g.grupo, a.nombre, m.placa, m.cliente, m.pago ? "SI" : "NO", String(Math.round(m.monto))]);
-    })));
-    exportarCSV(filas, ["Grupo", "Administrador", "Placa", "Cliente", "Pago", "Monto"], `gestion_admins_${desde}_a_${hasta}.csv`);
+  const porAdminData = useMemo(() => agruparBloques(baseGestion, "admin"), [baseGestion]);
+  const porGrupoData = useMemo(() => agruparBloques(baseGestion, "grupo"), [baseGestion]);
+  const gTotMotos = baseGestion.length;
+  const gTotPag   = baseGestion.filter(r => r.pago).length;
+  const gTotRec   = baseGestion.reduce((s, r) => s + r.monto, 0);
+
+  // ── INFORME "Visitas por administrador" ────────────────────────────────────
+  const visitasData = useMemo(() => {
+    const nombreAdmin = (id: string | null | undefined) =>
+      id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar / Oficina";
+    type VisRow = { cliente: string; fecha: string; estado: string; resultado: string | null; gps: boolean; foto: boolean };
+    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number };
+    const map = new Map<string, VisAgg>();
+    visitas.filter(v => (v.fecha || "").slice(0, 10) >= desde && (v.fecha || "").slice(0, 10) <= hasta).forEach(v => {
+      const key = v.asignada_a ?? "__none__";
+      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(v.asignada_a), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0 });
+      const agg = map.get(key)!;
+      agg.visitas.push({
+        cliente: clientes.find(cl => cl.id === v.cliente_id)?.nombre ?? "Sin cliente",
+        fecha: (v.fecha || "").slice(0, 10), estado: v.estado, resultado: v.resultado,
+        gps: !!v.ubicacion, foto: !!(v.fotos?.clienteFuncionario || v.fotos?.fachada),
+      });
+      if (v.estado === "Pendiente") agg.pendientes++;
+      else if (v.resultado === "Aprobado") agg.aprobadas++;
+      else if (v.resultado === "Rechazado") agg.rechazadas++;
+      else if (v.resultado === "Repetir") agg.repetir++;
+    });
+    return [...map.values()]
+      .map(a => ({ ...a, total: a.visitas.length, visitas: a.visitas.slice().sort((x, y) => y.fecha.localeCompare(x.fecha)) }))
+      .sort((a, b) => (a.key === "__none__" ? 1 : 0) - (b.key === "__none__" ? 1 : 0) || b.total - a.total);
+  }, [visitas, clientes, subadmins, desde, hasta]);
+
+  const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
+  const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club de Moteros`;
+
+  function exportarPorAdmin() {
+    const cols: ColX[] = [
+      { label: "Grupo", ancho: 95 }, { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 210 },
+      { label: "¿Pagó?", align: "center", ancho: 90 }, { label: "Monto", align: "right", ancho: 100 },
+    ];
+    const secciones: SeccionX[] = porAdminData.map(b => ({
+      titulo: `👤 ${b.nombre.toUpperCase()}   —   ${b.total} motos · ${b.pagaron} pagaron · ${b.noPagaron} no pagaron · $ ${fmt(b.recaudado)}`,
+      color: "#334155",
+      filas: b.motos.map(m => [
+        m.grupo, m.placa, m.cliente.toUpperCase(),
+        m.pago ? { v: "✓ Pagó", color: "#166534", align: "center" as const } : { v: "✗ No pagó", color: "#991b1b", align: "center" as const },
+        { v: m.pago ? "$ " + fmt(m.monto) : "—", align: "right" as const },
+      ]),
+    }));
+    descargarExcel({
+      archivo: `por_admin_${desde}_a_${hasta}`, titulo: "Gestión por administrador", periodo: periodoTxt, columnas: cols, secciones,
+      totalGeneral: [{ v: "TOTAL GENERAL", bold: true }, "", { v: `${gTotPag} de ${gTotMotos} pagaron`, bold: true }, "", { v: "$ " + fmt(gTotRec), align: "right", bold: true }],
+    });
+  }
+
+  function exportarPorGrupo() {
+    const cols: ColX[] = [
+      { label: "Administrador", ancho: 150 }, { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 210 },
+      { label: "¿Pagó?", align: "center", ancho: 90 }, { label: "Monto", align: "right", ancho: 100 },
+    ];
+    const secciones: SeccionX[] = porGrupoData.map(b => ({
+      titulo: `${b.key}   —   ${b.total} motos · ${b.pagaron} pagaron · ${b.noPagaron} no pagaron · $ ${fmt(b.recaudado)}`,
+      color: GRUPO_HEX[b.key] ?? "#334155",
+      filas: b.motos.map(m => [
+        m.adminNombre.toUpperCase(), m.placa, m.cliente.toUpperCase(),
+        m.pago ? { v: "✓ Pagó", color: "#166534", align: "center" as const } : { v: "✗ No pagó", color: "#991b1b", align: "center" as const },
+        { v: m.pago ? "$ " + fmt(m.monto) : "—", align: "right" as const },
+      ]),
+    }));
+    descargarExcel({
+      archivo: `por_grupo_${desde}_a_${hasta}`, titulo: "Recaudo por grupo", periodo: periodoTxt, columnas: cols, secciones,
+      totalGeneral: [{ v: "TOTAL GENERAL", bold: true }, "", { v: `${gTotPag} de ${gTotMotos} pagaron`, bold: true }, "", { v: "$ " + fmt(gTotRec), align: "right", bold: true }],
+    });
+  }
+
+  function exportarVisitas() {
+    const cols: ColX[] = [
+      { label: "Cliente", ancho: 210 }, { label: "Fecha", align: "center", ancho: 90 },
+      { label: "Estado", align: "center", ancho: 90 }, { label: "Resultado", align: "center", ancho: 110 },
+      { label: "GPS", align: "center", ancho: 55 }, { label: "Foto", align: "center", ancho: 55 },
+    ];
+    const resTxt = (est: string, res: string | null) => est === "Pendiente" ? "—" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
+    const secciones: SeccionX[] = visitasData.map(a => ({
+      titulo: `👤 ${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes`,
+      color: "#334155",
+      filas: a.visitas.map(v => [
+        v.cliente.toUpperCase(), { v: fmtFechaCorta(v.fecha), align: "center" as const },
+        { v: v.estado, align: "center" as const },
+        v.estado === "Pendiente" ? { v: "—", align: "center" as const } : { v: resTxt(v.estado, v.resultado), color: v.resultado === "Aprobado" ? "#166534" : v.resultado === "Rechazado" ? "#991b1b" : "#92400e", align: "center" as const },
+        { v: v.gps ? "✓" : "—", align: "center" as const }, { v: v.foto ? "✓" : "—", align: "center" as const },
+      ]),
+    }));
+    const tv = visitasData.reduce((s, a) => s + a.total, 0);
+    descargarExcel({
+      archivo: `visitas_${desde}_a_${hasta}`, titulo: "Visitas por administrador", periodo: periodoTxt, columnas: cols, secciones,
+      totalGeneral: [{ v: `TOTAL: ${tv} visitas`, bold: true }, "", "", "", "", ""],
+    });
   }
 
   const totalRecaudado    = pagosRango.reduce((a, p) => a + p.valor, 0);
@@ -705,97 +946,84 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── TAB GESTIÓN POR ADMINISTRADOR (nómina) ── */}
-      {tab === "gestion" && (() => {
-        const totMotos = gestionData.reduce((s, g) => s + g.totalMotos, 0);
-        const totPag = gestionData.reduce((s, g) => s + g.totalPagaron, 0);
-        const totRec = gestionData.reduce((s, g) => s + g.totalRec, 0);
-        const pctColor = (p: number) => (p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)");
-        const pctFill = (p: number) => (p >= 85 ? "var(--ok2)" : p >= 70 ? "var(--warn2)" : "var(--bad)");
+      {/* ── TAB POR ADMIN (cada moto muestra su GRUPO) ── */}
+      {tab === "admins" && (
+        <div style={{ display: "grid", gap: 16 }}>
+          <CabeceraGestion totMotos={gTotMotos} totPag={gTotPag} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+            nota="toca un admin para ver sus motos · cada moto muestra su grupo" onExport={exportarPorAdmin} />
+          <GestionBloques bloques={porAdminData} modo="admin" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
+        </div>
+      )}
+
+      {/* ── TAB POR GRUPO (cada moto muestra QUIÉN la tiene asignada) ── */}
+      {tab === "grupos" && (
+        <div style={{ display: "grid", gap: 16 }}>
+          <CabeceraGestion totMotos={gTotMotos} totPag={gTotPag} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+            nota="toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada" onExport={exportarPorGrupo} />
+          <GestionBloques bloques={porGrupoData} modo="grupo" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
+        </div>
+      )}
+
+      {/* ── TAB VISITAS por administrador ── */}
+      {tab === "visitas" && (() => {
+        const tVis = visitasData.reduce((s, a) => s + a.total, 0);
+        const tAprob = visitasData.reduce((s, a) => s + a.aprobadas, 0);
+        const tRech = visitasData.reduce((s, a) => s + a.rechazadas, 0);
+        const tPend = visitasData.reduce((s, a) => s + a.pendientes, 0);
+        const resLabel = (est: string, res: string | null) => est === "Pendiente" ? "⏳ Pendiente" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
+        const resColor = (est: string, res: string | null) => est === "Pendiente" ? "var(--warn-ink)" : res === "Aprobado" ? "var(--ok-ink)" : res === "Rechazado" ? "var(--bad-ink)" : "var(--muted)";
+        const badge = (n: number, txt: string, color: string, bg: string) => n > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{n} {txt}</span> : null;
         return (
           <div style={{ display: "grid", gap: 16 }}>
-            {/* Resumen del período */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
-              <KPI label="Motos activas" value={`${totMotos}`} />
-              <KPI label="Pagaron" value={`${totPag}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(totPag, totMotos)} />
-              <KPI label="No pagaron" value={`${totMotos - totPag}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
-              <KPI label="Recaudado" value={`$ ${fmt(totRec)}`} color="var(--accent)" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
+              <KPI label="Visitas" value={`${tVis}`} />
+              <KPI label="Aprobadas" value={`${tAprob}`} color="var(--ok-ink)" bg="var(--ok-soft)" />
+              <KPI label="Rechazadas" value={`${tRech}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+              <KPI label="Pendientes" value={`${tPend}`} color="var(--warn-ink)" bg="var(--warn-soft)" />
             </div>
-
             <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Período: <b style={{ color: "var(--text)" }}>{RANGOS.find(r => r.key === rango)?.label}</b>
-                <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · toca un admin para ver sus motos
+                Período: <b style={{ color: "var(--text)" }}>{rangoLabel}</b>
+                <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · visitas por administrador
               </div>
-              <button onClick={exportarGestion} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+              <button onClick={exportarVisitas} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
             </div>
-
-            {gestionData.length === 0 && <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay motos activas asignadas en este período.</div>}
-
-            {gestionData.map(g => (
-              <div key={g.grupo} style={card}>
-                {/* Encabezado del grupo */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[g.grupo] ?? "var(--muted)" }} />
-                    <span style={{ fontWeight: 800, fontSize: 15 }}>{g.grupo}</span>
-                    <span style={{ fontSize: 12, color: "var(--faint)" }}>{g.totalMotos} motos</span>
+            {visitasData.length === 0 && <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay visitas registradas en este período.</div>}
+            {visitasData.map(a => {
+              const k = "vis|" + a.key;
+              const open = expandidoVisita === k;
+              return (
+                <div key={a.key} style={{ ...card, padding: 0, overflow: "hidden" }}>
+                  <div onClick={() => setExpandidoVisita(open ? null : k)} style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", alignItems: "center", gap: 10, padding: "13px 16px", cursor: "pointer", background: open ? "var(--soft2)" : "var(--card)" }}>
+                    <span style={{ color: "var(--faint)", transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 15, flexShrink: 0 }}>👤</span>
+                      <span style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.nombre}</span>
+                      <span style={{ fontSize: 12, color: "var(--faint)", flexShrink: 0 }}>{a.total} visitas</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      {badge(a.aprobadas, "✓", "var(--ok-ink)", "var(--ok-soft)")}
+                      {badge(a.rechazadas, "✗", "var(--bad-ink)", "var(--bad-soft)")}
+                      {badge(a.repetir, "↻", "var(--muted)", "var(--soft)")}
+                      {badge(a.pendientes, "⏳", "var(--warn-ink)", "var(--warn-soft)")}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 13, textAlign: "right" }}>
-                    <span style={{ fontWeight: 800, color: pctColor(g.pctv) }}>{g.pctv}%</span>
-                    <span style={{ color: "var(--faint)" }}> pagó · </span>
-                    <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>$ {fmt(g.totalRec)}</span>
-                  </div>
-                </div>
-
-                {/* Filas de admin */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {g.admins.map(a => {
-                    const key = g.grupo + "|" + a.adminId;
-                    const open = expandidoAdmin === key;
-                    return (
-                      <div key={a.adminId} style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
-                        <div onClick={() => setExpandidoAdmin(open ? null : key)}
-                          style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", alignItems: "center", gap: 10, padding: "11px 12px", cursor: "pointer", background: open ? "var(--soft2)" : "var(--card)" }}>
-                          <span style={{ color: "var(--faint)", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.nombre}</div>
-                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                              {a.total} motos · <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{a.pagaron} pagaron</span> · <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{a.noPagaron} no</span>
-                            </div>
+                  {open && (
+                    <div style={{ background: "var(--soft2)", padding: "2px 16px 14px" }}>
+                      {a.visitas.map((v, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.cliente}</div>
+                            <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 1 }}>{fmtFechaCorta(v.fecha)}{v.gps && " · 📍 GPS"}{v.foto && " · 📷 Foto"}</div>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ textAlign: "right", minWidth: 44 }}>
-                              <div style={{ fontWeight: 800, fontSize: 14, color: pctColor(a.pctv) }}>{a.pctv}%</div>
-                              <div style={{ width: 56, height: 5, background: "var(--soft)", borderRadius: 999, overflow: "hidden", marginTop: 3 }}>
-                                <div style={{ width: `${a.pctv}%`, height: "100%", background: pctFill(a.pctv) }} />
-                              </div>
-                            </div>
-                            <div style={{ fontWeight: 700, fontSize: 13, fontVariantNumeric: "tabular-nums", minWidth: 66, textAlign: "right" }}>$ {fmt(a.recaudado)}</div>
-                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: resColor(v.estado, v.resultado), whiteSpace: "nowrap" }}>{resLabel(v.estado, v.resultado)}</span>
                         </div>
-
-                        {/* Detalle: sus motos (no pagaron primero) */}
-                        {open && (
-                          <div style={{ background: "var(--soft2)", padding: "4px 12px 12px" }}>
-                            {a.motos.map((m, i) => (
-                              <div key={m.placa + i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid var(--line)" }}>
-                                <Placa placa={m.placa} size="sm" />
-                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</div>
-                                {m.pago ? (
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>✓ $ {fmt(m.monto)}</span>
-                                ) : (
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "2px 8px" }}>✕ No pagó</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })()}

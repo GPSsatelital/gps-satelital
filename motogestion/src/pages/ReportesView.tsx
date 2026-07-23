@@ -311,6 +311,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
   const [expandidoGestion, setExpandidoGestion] = useState<string | null>(null);
   const [expandidoVisita, setExpandidoVisita] = useState<string | null>(null);
+  // Armador de impresión: qué secciones incluir + nivel de detalle (por defecto todo detallado)
+  const [detalleImpr, setDetalleImpr] = useState(true);
+  const [secImpr, setSecImpr] = useState<Record<string, boolean>>({
+    kpis: true, recaudoGrupo: true, porAdmin: true, porGrupo: true, visitas: true, mora: true, flota: false, entregas: false,
+  });
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -757,25 +762,96 @@ export default function ReportesView({ onNavigate }: Props) {
     setTimeout(() => win.print(), 500);
   }
 
-  // ── Imprimir PDF ───────────────────────────────────────────────────────────
-  function imprimirReporte() {
+  // ── Armador de impresión: genera UN documento solo con las secciones marcadas ─
+  //    Respeta el período elegido arriba. `detalleImpr` decide detalle vs resumen.
+  function imprimirSeleccion() {
+    if (!Object.values(secImpr).some(Boolean)) return;
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
     const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
-    const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
-    const gruposHTML = reporteGrupos.map(g => `<tr><td style="padding:8px 12px;font-weight:700;">${g.grupo}</td><td style="padding:8px 12px;text-align:center;">${g.motosAsignadas}</td><td style="padding:8px 12px;text-align:center;">$ ${fmt(g.recaudo)}</td><td style="padding:8px 12px;text-align:center;">${g.contratosActivos}</td><td style="padding:8px 12px;text-align:center;color:${g.enMora > 0 ? "var(--bad-ink)" : "var(--ok-ink)"};">${g.enMora}</td></tr>`).join("");
-    const moraHTML = moraDetallada.slice(0, 30).map(m => `<tr><td style="padding:8px 12px;text-transform:uppercase;font-weight:600;">${m.cliente}</td><td style="padding:8px 12px;">${m.placa}</td><td style="padding:8px 12px;text-align:center;color:var(--bad-ink);font-weight:700;">${m.diasSinPago}</td><td style="padding:8px 12px;text-align:right;">$ ${fmt(m.deudaPendiente)}</td><td style="padding:8px 12px;">${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>body{font-family:Arial,sans-serif;color:var(--text);padding:32px;font-size:14px;}h1{font-size:22px;margin-bottom:4px;}h2{font-size:16px;margin:24px 0 10px;border-bottom:2px solid var(--line);padding-bottom:6px;}.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}.kpi{border:1px solid var(--line);border-radius:10px;padding:14px 20px;min-width:130px;}.kpi-val{font-size:20px;font-weight:800;color:var(--accent);}.kpi-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:2px;}table{width:100%;border-collapse:collapse;font-size:13px;}th{background:var(--soft);padding:8px 12px;text-align:left;font-weight:700;color:var(--muted);}tr:nth-child(even){background:var(--soft2);}footer{margin-top:32px;font-size:11px;color:var(--faint);text-align:center;}</style></head><body>
+    const rangoLbl = RANGOS.find(r => r.key === rango)?.label ?? rango;
+    const S = secImpr, det = detalleImpr;
+    const parts: string[] = [];
+
+    if (S.kpis) parts.push(`<h2>KPIs de recaudo</h2><div class="kpis">
+      <div class="kpi"><div class="kpi-val">$ ${fmt(totalRecaudado)}</div><div class="kpi-lbl">Total recaudado</div></div>
+      <div class="kpi"><div class="kpi-val">$ ${fmt(totalEfectivo)}</div><div class="kpi-lbl">Efectivo</div></div>
+      <div class="kpi"><div class="kpi-val">$ ${fmt(totalTransferencia)}</div><div class="kpi-lbl">Transferencias</div></div>
+      <div class="kpi"><div class="kpi-val">${contratosActivos.length}</div><div class="kpi-lbl">Contratos activos</div></div>
+      <div class="kpi"><div class="kpi-val">${enMora.length}</div><div class="kpi-lbl">En mora</div></div></div>`);
+
+    if (S.recaudoGrupo) {
+      const filas = reporteGrupos.map(g => `<tr><td><b>${g.grupo}</b></td><td class="c">${g.motosAsignadas}</td><td class="r">$ ${fmt(g.recaudo)}</td><td class="c">${g.contratosActivos}</td><td class="c" style="color:${g.enMora > 0 ? "#991b1b" : "#166534"};font-weight:700">${g.enMora}</td></tr>`).join("");
+      parts.push(`<h2>Recaudo por grupo</h2><table><thead><tr><th>Grupo</th><th class="c">Motos asignadas</th><th class="r">Recaudo período</th><th class="c">Contratos activos</th><th class="c">En mora</th></tr></thead><tbody>${filas}</tbody></table>`);
+    }
+
+    const gDetalle = (bloques: BloqueG[], modo: "admin" | "grupo", cross: string) => {
+      const filas = bloques.map(b => {
+        const cab = `<tr class="sec"><td colspan="5">${modo === "admin" ? "👤 " : ""}${b.nombre.toUpperCase()} — ${b.total} motos · ${b.pagaron} pagaron · ${b.noPagaron} no pagaron · $ ${fmt(b.recaudado)} · ${b.pctv}%</td></tr>`;
+        const motos = b.motos.map(m => `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : ("👤 " + m.adminNombre)}</td><td class="c" style="color:${m.pago ? "#166534" : "#991b1b"};font-weight:700">${m.pago ? "✓ Pagó" : "✗ No pagó"}</td><td class="r">${m.pago ? "$ " + fmt(m.monto) : "—"}</td></tr>`).join("");
+        return cab + motos;
+      }).join("");
+      return `<table><thead><tr><th>Placa</th><th>Cliente</th><th>${cross}</th><th class="c">¿Pagó?</th><th class="r">Monto</th></tr></thead><tbody>${filas}</tbody></table>`;
+    };
+    const gResumen = (bloques: BloqueG[], modo: "admin" | "grupo") => {
+      const filas = bloques.map(b => `<tr><td class="up"><b>${modo === "admin" ? "👤 " : ""}${b.nombre}</b></td><td class="c">${b.total}</td><td class="c" style="color:#166534;font-weight:700">${b.pagaron}</td><td class="c" style="color:#991b1b;font-weight:700">${b.noPagaron}</td><td class="c">${b.pctv}%</td><td class="r">$ ${fmt(b.recaudado)}</td></tr>`).join("");
+      return `<table><thead><tr><th>${modo === "admin" ? "Administrador" : "Grupo"}</th><th class="c">Motos</th><th class="c">Pagaron</th><th class="c">No pagaron</th><th class="c">%</th><th class="r">Recaudado</th></tr></thead><tbody>${filas}</tbody></table>`;
+    };
+
+    if (S.porAdmin) parts.push(`<h2>Gestión por administrador${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porAdminData, "admin", "Grupo") : gResumen(porAdminData, "admin")}`);
+    if (S.porGrupo) parts.push(`<h2>Gestión por grupo${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porGrupoData, "grupo", "Administrador") : gResumen(porGrupoData, "grupo")}`);
+
+    if (S.visitas) {
+      let tabla: string;
+      if (det) {
+        const filas = visitasData.map(a => {
+          const cab = `<tr class="sec"><td colspan="5">👤 ${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend</td></tr>`;
+          const vs = a.visitas.map(v => `<tr><td class="up">${v.cliente}</td><td class="c">${fmtFechaCorta(v.fecha)}</td><td class="c">${v.estado}</td><td class="c">${v.estado === "Pendiente" ? "—" : (v.resultado ?? "—")}</td><td class="c">${((v.gps ? "📍" : "") + (v.foto ? " 📷" : "")) || "—"}</td></tr>`).join("");
+          return cab + vs;
+        }).join("");
+        tabla = `<table><thead><tr><th>Cliente</th><th class="c">Fecha</th><th class="c">Estado</th><th class="c">Resultado</th><th class="c">GPS/Foto</th></tr></thead><tbody>${filas}</tbody></table>`;
+      } else {
+        const filas = visitasData.map(a => `<tr><td class="up"><b>👤 ${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td></tr>`).join("");
+        tabla = `<table><thead><tr><th>Administrador</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th></tr></thead><tbody>${filas}</tbody></table>`;
+      }
+      parts.push(`<h2>Visitas por administrador</h2>${tabla}`);
+    }
+
+    if (S.mora) {
+      const filas = moraDetallada.map(m => `<tr><td class="up">${m.cliente}</td><td>${m.placa}</td><td class="c" style="color:#991b1b;font-weight:700">${m.diasSinPago}</td><td class="r">$ ${fmt(m.deudaPendiente)}</td><td>${m.ultimoPago ? new Date(m.ultimoPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
+      parts.push(`<h2>Mora y cartera vencida (${moraDetallada.length})</h2>${moraDetallada.length === 0 ? "<p class='ok'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th class="c">Días</th><th class="r">Deuda pendiente</th><th>Último pago</th></tr></thead><tbody>${filas}</tbody></table>`}`);
+    }
+
+    if (S.flota) {
+      const filas = motosPorEstado.map(([est, n]) => `<tr><td>${est}</td><td class="c">${n}</td><td class="c">${pct(n, motos.length)}</td></tr>`).join("");
+      parts.push(`<h2>Flota por estado (${motos.length} motos)</h2><table><thead><tr><th>Estado</th><th class="c">Cantidad</th><th class="c">%</th></tr></thead><tbody>${filas}</tbody></table>`);
+    }
+
+    if (S.entregas) {
+      const filas = entregas.map(e => `<tr><td class="c">${fmtFechaCorta(e.fecha)}</td><td class="up">${e.cliente}</td><td>${e.placa}</td><td>${e.grupo}</td><td>${e.formaPago}</td><td class="r">$ ${fmt(e.cuota)}</td><td class="c">${e.docsOk ? "✓" : "⚠"}</td></tr>`).join("");
+      parts.push(`<h2>Entregas del período (${entregas.length})</h2>${entregas.length === 0 ? "<p>Sin entregas en el período.</p>" : `<table><thead><tr><th class="c">Fecha</th><th>Cliente</th><th>Placa</th><th>Grupo</th><th>Forma</th><th class="r">Cuota</th><th class="c">Docs</th></tr></thead><tbody>${filas}</tbody></table>`}`);
+    }
+
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>
+      body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}
+      h1{font-size:22px;margin-bottom:4px;} h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #cbd5e1;padding-bottom:6px;}
+      .sub{color:#64748b;margin:0 0 4px;}
+      .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+      .kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:120px;}
+      .kpi-val{font-size:18px;font-weight:800;color:#0891b2;} .kpi-lbl{font-size:10px;color:#64748b;text-transform:uppercase;margin-top:2px;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px;}
+      th{background:#f1f5f9;padding:6px 9px;text-align:left;font-weight:700;color:#334155;border:1px solid #e2e8f0;}
+      td{padding:5px 9px;border:1px solid #e2e8f0;}
+      tr:nth-child(even) td{background:#f8fafc;} tr.sec td{background:#334155;color:#fff;font-weight:700;}
+      .c{text-align:center;} .r{text-align:right;} .up{text-transform:uppercase;} .ok{color:#166534;}
+      footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}
+      @media print{h2{page-break-after:avoid;} tr{page-break-inside:avoid;}}
+    </style></head><body>
       <h1>Reporte MotoGestión — GPS Satelital Cartagena</h1>
-      <p style="color:var(--muted);margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy}</p>
-      <h2>KPIs de Recaudo</h2>
-      <div class="kpis"><div class="kpi"><div class="kpi-val">$ ${fmt(totalRecaudado)}</div><div class="kpi-lbl">Total recaudado</div></div><div class="kpi"><div class="kpi-val">$ ${fmt(totalEfectivo)}</div><div class="kpi-lbl">Efectivo</div></div><div class="kpi"><div class="kpi-val">$ ${fmt(totalTransferencia)}</div><div class="kpi-lbl">Transferencias</div></div><div class="kpi"><div class="kpi-val">${contratosActivos.length}</div><div class="kpi-lbl">Contratos activos</div></div><div class="kpi"><div class="kpi-val">${enMora.length}</div><div class="kpi-lbl">En mora</div></div></div>
-      <h2>Recaudo por Grupo</h2>
-      <table><thead><tr><th>Grupo</th><th>Motos asignadas</th><th>Recaudo período</th><th>Contratos activos</th><th>En mora</th></tr></thead><tbody>${gruposHTML}</tbody></table>
-      <h2>Mora y Cartera Vencida (${moraDetallada.length} contratos)</h2>
-      ${moraDetallada.length === 0 ? "<p style='color:var(--ok-ink);'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th>Días sin pago</th><th>Deuda pendiente</th><th>Último pago</th></tr></thead><tbody>${moraHTML}</tbody></table>`}
+      <p class="sub">Período: <strong>${rangoLbl}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy} · ${det ? "con detalle" : "resumen"}</p>
+      ${parts.join("\n")}
       <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
-      </body></html>`);
+    </body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 500);
   }
@@ -1448,10 +1524,61 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── TAB EXPORTAR ── */}
-      {tab === "exportar" && (
+      {tab === "exportar" && (() => {
+        const SECCIONES: { key: string; label: string; desc: string }[] = [
+          { key: "kpis",        label: "KPIs de recaudo",           desc: "Total, efectivo, transferencias, activos, mora" },
+          { key: "recaudoGrupo",label: "Recaudo por grupo",         desc: "Tabla por COSTA/PRADERA/RASTREADOR/USADAS" },
+          { key: "porAdmin",    label: "Gestión por administrador", desc: "Motos que pagaron/no por admin (base de nómina)" },
+          { key: "porGrupo",    label: "Gestión por grupo",         desc: "Motos que pagaron/no por grupo" },
+          { key: "visitas",     label: "Visitas por administrador", desc: "Visitas hechas y su resultado por admin" },
+          { key: "mora",        label: "Mora y cartera vencida",    desc: "Clientes en mora con deuda y días" },
+          { key: "flota",       label: "Flota por estado",          desc: "Motos por estado (asignadas, taller, etc.)" },
+          { key: "entregas",    label: "Entregas del período",      desc: "Contratos entregados en el rango" },
+        ];
+        const nSel = Object.values(secImpr).filter(Boolean).length;
+        const toggle = (k: string) => setSecImpr(s => ({ ...s, [k]: !s[k] }));
+        const setTodas = (v: boolean) => setSecImpr(Object.fromEntries(SECCIONES.map(s => [s.key, v])));
+        return (
         <div style={{ display: "grid", gap: 16 }}>
+          {/* Armador de impresión */}
           <div style={{ ...card, display: "grid", gap: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Exportar datos</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>🖨️ Armar impresión</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setTodas(true)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>Todas</button>
+                <button onClick={() => setTodas(false)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>Ninguna</button>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Marca qué secciones incluir. Se imprime <b>solo lo marcado</b>, con el período <b>{RANGOS.find(r => r.key === rango)?.label}</b> ({desde} → {hasta}).</p>
+            <div style={{ display: "grid", gap: 8 }}>
+              {SECCIONES.map(s => {
+                const on = !!secImpr[s.key];
+                return (
+                  <label key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--card)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={on} onChange={() => toggle(s.key)} style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>{s.label}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{s.desc}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", cursor: "pointer" }}>
+              <input type="checkbox" checked={detalleImpr} onChange={() => setDetalleImpr(v => !v)} style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>Incluir detalle completo</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{detalleImpr ? "Cada moto/visita una por una (placa, cliente, monto…)" : "Solo el resumen por admin/grupo (sin la lista de motos)"}</div>
+              </div>
+            </label>
+            <button onClick={imprimirSeleccion} disabled={nSel === 0}
+              style={{ padding: "13px 18px", borderRadius: 14, border: "none", cursor: nSel === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: nSel === 0 ? "var(--line)" : "var(--accent)", color: nSel === 0 ? "var(--faint)" : "var(--card)", opacity: nSel === 0 ? 0.7 : 1 }}>
+              🖨️ Imprimir selección{nSel > 0 ? ` (${nSel})` : ""}
+            </button>
+          </div>
+
+          <div style={{ ...card, display: "grid", gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Exportar datos (CSV)</div>
             <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Período seleccionado: <strong>{RANGOS.find(r => r.key === rango)?.label}</strong> ({desde} → {hasta})</p>
             {[
               {
@@ -1483,11 +1610,6 @@ export default function ReportesView({ onNavigate }: Props) {
                   exportarCSV(filas, ["Placa","SOAT vence","Tecno vence","Dias SOAT","Dias Tecno"], `vencimientos-${hoyStr}.csv`);
                 },
               }] : []),
-              {
-                label: "🖨️ Imprimir reporte PDF",
-                desc: "Genera un PDF imprimible con todos los datos del período",
-                onClick: imprimirReporte,
-              },
             ].map((btn, i) => (
               <button key={i} onClick={btn.onClick} style={{ padding: "14px 18px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
@@ -1499,7 +1621,8 @@ export default function ReportesView({ onNavigate }: Props) {
             ))}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -4,7 +4,9 @@
 
 **Regla del cierre:** no buscamos perfección, buscamos que sea **seguro y operable**. Todo lo que no sea bloqueante va a *backlog gestionado* (lista controlada), no queda suelto.
 
-**Alcance confirmado (22-jul):** los 4 grupos operan el lunes → **COSTA debe migrarse antes del sábado.**
+**Alcance confirmado (22-jul):** los 4 grupos operan el lunes. **COSTA entra con SIEMBRA MÍNIMA + empalme abierto** (no migración grande) — las cifras se completan progresivamente operando, con el cliente presente en el primer cobro. Esto de-riesga el go-live: COSTA deja de ser bloqueante duro.
+
+> **Decisión de arquitectura (COSTA):** no se hace una migración completa desde Excel. Se siembra lo mínimo para que la moto/cliente/contrato existan (placa, nombre, cédula, forma de pago, día de pago), con `empalme abierto`. El ahorro de apertura y la deuda se cargan en el Panel de Empalme durante el primer contacto — que es justo para lo que se construyó el empalme. Los datos técnicos de moto se completan cuando estén. El SQL se genera **cuando el usuario avise** que tiene los datos mínimos.
 
 ---
 
@@ -12,7 +14,7 @@
 
 | # | Bloqueante | Estado | Dueño | Límite |
 |---|-----------|--------|-------|--------|
-| B1 | **Migración de datos de COSTA** (SQL desde Excel) | 🔴 Falta el Excel | Usuario entrega datos → Claude genera SQL | Vie 24 |
+| B1 | **Siembra mínima de COSTA** (SQL corto: cliente+moto+contrato con empalme abierto) | 🟢 Bajo riesgo — cuando el usuario dé el ok con los datos mínimos | Usuario avisa → Claude genera SQL | Sáb 25 |
 | B2 | **Verificar estado real de la BD** (todas las migraciones + Edge Function `manage-users` corridas en Supabase) | 🟡 Confirmar | Usuario verifica en Supabase | Jue 23 |
 | B3 | **Prueba en navegador con login real** de los flujos de dinero (cobro oficina/campo/transferencia → confirmar → caja diaria por grupo) | 🟡 Sin probar integral | Claude + Usuario (credenciales) | Vie 24 |
 | B4 | **Permisos por rol probados en la práctica** (cada login ve/hace solo lo suyo) | 🟡 Sin probar por rol | Usuario prueba con cada usuario | Sáb 25 |
@@ -71,29 +73,27 @@ El usuario debe confirmar que TODAS estas están aplicadas (SQL Editor → corre
 
 ---
 
-## 4. Datos que necesito por cada cliente de COSTA (B1)
+## 4. Datos MÍNIMOS para sembrar COSTA (B1)
 
-Para generar el SQL de migración de COSTA (mismo modelo de empalme que PRADERA/RASTREADOR), por cada cliente:
+COSTA no se migra completo: se siembra lo mínimo para que exista en el sistema y se completa operando. Por cada cliente, lo **imprescindible**:
 
-| Campo | Descripción |
-|-------|-------------|
-| placa | placa de la moto |
-| nombre | nombre completo del cliente |
-| cédula | |
-| teléfono / whatsapp | |
-| grupo | COSTA |
-| forma_pago | Diario / Semanal / Quincenal / Mensual |
-| día(s) de pago | Lunes/Miércoles (semanal) o fechas del mes (quincenal/mensual) |
-| tarifa | tarifa L-S y domingo (o la que aplique) |
-| meses | plazo total del contrato |
-| fecha_entrega | cuándo se entregó la moto |
-| base pagada | cuánto pagó de base inicial |
-| **ahorro acumulado al corte** | el ahorro que trae hasta la fecha de corte |
-| **deuda actual** | lo que debe hoy (deuda de apertura) |
-| saldo a favor | si tiene |
-| datos técnicos moto | marca, modelo, color, motor, chasis, cilindraje, SOAT, tecno (si los tenés; si no, se completan después) |
+| Campo | ¿Obligatorio para sembrar? |
+|-------|---------------------------|
+| placa | **Sí** (identifica la moto) |
+| nombre + cédula | **Sí** (identifica al cliente) |
+| teléfono/whatsapp | Sí (para cobro/WhatsApp) |
+| grupo = COSTA | **Sí** |
+| forma_pago + día(s) de pago | **Sí** (define la cartera y la mora) |
+| tarifa | **Sí** (define la cuota) |
+| fecha_entrega | Sí (ancla del contrato) |
+| meses | Sí (plazo) |
+| **ahorro de apertura** | **No al sembrar** — se completa en el Panel de Empalme, con el cliente |
+| **deuda de apertura** | **No al sembrar** — se completa en el Panel de Empalme, con el cliente |
+| datos técnicos moto (marca/motor/chasis/SOAT/tecno) | No — se completan después por MotosView |
 
-> La fecha de corte de COSTA = su día de pago vigente. Nace con empalme ABIERTO (badge ⚠️), y cartera lo gestiona normal desde el día 1.
+**Cómo funciona:** el SQL crea cliente + moto + contrato con `empalme abierto` y ahorro/deuda en cero. La primera vez que el cliente viene a pagar, el funcionario abre el Panel de Empalme, verifica las cifras CON el cliente, las carga, y cierra el empalme. Cero riesgo de migrar una cifra mal — se acuerda cara a cara.
+
+> El SQL se genera **cuando el usuario avise** que tiene la lista mínima. Puede ser en tandas (no hace falta todo junto).
 
 ---
 

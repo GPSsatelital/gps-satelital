@@ -24,6 +24,21 @@ Indicar siempre: qué librería detecté, por qué conviene usarlo en ese caso p
 
 ---
 
+## REGLA DE SKILLS Y HERRAMIENTAS — OBLIGATORIO SIEMPRE
+
+Para CUALQUIER tarea, **evaluar primero qué skill/habilidad o herramienta MCP se adapta mejor y usarla**, en vez de improvisar a mano. La elección se declara al inicio de la tarea. Guía rápida:
+- **Diseño/UI** (color, tipografía, layout, componentes, animación) → skills de diseño (`interface-design`, `design-review`, `design-component`, `design-tokens`, `apply-aesthetic`, `redesign`, `a11y-audit`…) + mostrar mockup antes de implementar. Ver sección "SISTEMA DE DISEÑO".
+- **Documentación de librerías** (Supabase, React, TypeScript, Vite) → Context7 (sugerir "use context7").
+- **Problema complejo con varias causas interdependientes** → sequential-thinking.
+- **Trabajo grande multi-etapa dependiente** (módulo nuevo, migración, rediseño de varias pantallas, planes de entrega) → Taskmaster (desglose por fases) y/o Superpowers (spec formal + revisión adversarial).
+- **"¿dónde está X / cómo se conecta con otros módulos?"** → codebase-memory (grafo indexado) antes de grep manual.
+- **Redacción de UI/copys** → `ux-writing`.
+- **Documentos/manuales/presentaciones** → estructurar como entregables versionados en el repo (carpeta `docs/`), no sueltos en el chat.
+
+Esto NO cambia la REGLA DE AUTORIZACIÓN: implementar código o tocar la BD sigue requiriendo plan + confirmación explícita, sin importar qué herramienta se use por debajo. Elegir bien la herramienta es parte de hacer el trabajo profesional; usar la equivocada (o ninguna) por defecto es el error a evitar.
+
+---
+
 ## POLÍTICA DE HERRAMIENTAS MCP — OBLIGATORIO SIEMPRE
 
 Objetivo: equilibrio entre consumo (tokens/tiempo) y calidad — priorizando que el resultado quede bien estructurado. Cada herramienta tiene un rol único para no duplicar esfuerzo entre ellas.

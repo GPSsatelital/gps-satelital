@@ -11,6 +11,7 @@ import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
+import Placa from "../components/Placa";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -21,7 +22,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "mes" | "mes_anterior" | "anio";
-type Tab   = "resumen" | "cartera" | "flota" | "entregas" | "exportar";
+type Tab   = "resumen" | "gestion" | "cartera" | "flota" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",          label: "Hoy" },
@@ -33,6 +34,7 @@ const RANGOS: { key: Rango; label: string }[] = [
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "resumen",  label: "Resumen",  icon: "📊" },
+  { key: "gestion",  label: "Admins",   icon: "👤" },
   { key: "cartera",  label: "Cartera",  icon: "💳" },
   { key: "flota",    label: "Flota",    icon: "🏍️" },
   { key: "entregas", label: "Entregas", icon: "🛵" },
@@ -138,11 +140,22 @@ export default function ReportesView({ onNavigate }: Props) {
   // Regeneración de documentos en blanco (bug histórico del PDF)
   const [regen, setRegen] = useState<{ estado: "idle" | "buscando" | "regenerando" | "hecho"; total: number; hechos: number; msg: string }>({ estado: "idle", total: 0, hechos: 0, msg: "" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  // Informe "Gestión por administrador": lista de sub-admins + fila expandida (drill-down)
+  const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
+  const [expandidoAdmin, setExpandidoAdmin] = useState<string | null>(null);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
+  }, []);
+
+  useEffect(() => {
+    import("../lib/supabase").then(({ supabase }) => {
+      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
+        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
+      });
+    });
   }, []);
 
   const { profile }   = useAuth();
@@ -191,6 +204,59 @@ export default function ReportesView({ onNavigate }: Props) {
   const pagosRango = useMemo(() =>
     pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde && p.fecha <= hasta && esPagoDeCaja(p)),
     [pagos, desde, hasta]);
+
+  // ── INFORME "Gestión por administrador" ────────────────────────────────────
+  // Cruce grupo × admin: de las motos activas que cada sub-admin tiene asignadas
+  // (motos.subadmin_id), cuántas y cuáles pagaron en el rango. Base para la nómina.
+  const gestionData = useMemo(() => {
+    const nombreAdmin = (id: string | null | undefined) =>
+      id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar";
+    const recaudoPorContrato = new Map<string, number>();
+    pagosRango.forEach(p => recaudoPorContrato.set(p.contrato_id, (recaudoPorContrato.get(p.contrato_id) ?? 0) + p.valor));
+
+    type MotoRow = { placa: string; cliente: string; monto: number; pago: boolean };
+    type AdminAgg = { adminId: string; nombre: string; motos: MotoRow[]; recaudado: number; pagaron: number };
+    const porGrupo = new Map<string, Map<string, AdminAgg>>();
+
+    contratos.filter(c => c.estado === "Activo" && c.moto_id).forEach(c => {
+      const moto = motos.find(m => m.id === c.moto_id);
+      if (!moto) return;
+      const grupo = moto.grupo ?? "OTRO";
+      const adminId = moto.subadmin_id ?? "__none__";
+      const cliente = clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin cliente";
+      const monto = recaudoPorContrato.get(c.id) ?? 0;
+      if (!porGrupo.has(grupo)) porGrupo.set(grupo, new Map());
+      const gmap = porGrupo.get(grupo)!;
+      if (!gmap.has(adminId)) gmap.set(adminId, { adminId, nombre: nombreAdmin(moto.subadmin_id), motos: [], recaudado: 0, pagaron: 0 });
+      const agg = gmap.get(adminId)!;
+      agg.motos.push({ placa: moto.placa, cliente, monto, pago: monto > 0 });
+      agg.recaudado += monto;
+      if (monto > 0) agg.pagaron++;
+    });
+
+    const ord = (g: string) => { const i = (GRUPOS as readonly string[]).indexOf(g); return i === -1 ? 99 : i; };
+    return [...porGrupo.entries()].sort((a, b) => ord(a[0]) - ord(b[0])).map(([grupo, gmap]) => {
+      const admins = [...gmap.values()].map(a => ({
+        ...a,
+        total: a.motos.length,
+        noPagaron: a.motos.length - a.pagaron,
+        pctv: a.motos.length > 0 ? Math.round((a.pagaron / a.motos.length) * 100) : 0,
+        motos: a.motos.slice().sort((x, y) => (x.pago === y.pago ? x.cliente.localeCompare(y.cliente) : x.pago ? 1 : -1)),
+      })).sort((a, b) => b.total - a.total);
+      const totalMotos = admins.reduce((s, a) => s + a.total, 0);
+      const totalPagaron = admins.reduce((s, a) => s + a.pagaron, 0);
+      const totalRec = admins.reduce((s, a) => s + a.recaudado, 0);
+      return { grupo, admins, totalMotos, totalPagaron, totalRec, pctv: totalMotos > 0 ? Math.round((totalPagaron / totalMotos) * 100) : 0 };
+    });
+  }, [contratos, motos, clientes, pagosRango, subadmins]);
+
+  function exportarGestion() {
+    const filas: string[][] = [];
+    gestionData.forEach(g => g.admins.forEach(a => a.motos.forEach(m => {
+      filas.push([g.grupo, a.nombre, m.placa, m.cliente, m.pago ? "SI" : "NO", String(Math.round(m.monto))]);
+    })));
+    exportarCSV(filas, ["Grupo", "Administrador", "Placa", "Cliente", "Pago", "Monto"], `gestion_admins_${desde}_a_${hasta}.csv`);
+  }
 
   const totalRecaudado    = pagosRango.reduce((a, p) => a + p.valor, 0);
   const totalEfectivo     = pagosRango.filter(p => p.metodo === "Efectivo").reduce((a, p) => a + p.valor, 0);
@@ -637,6 +703,102 @@ export default function ReportesView({ onNavigate }: Props) {
           )}
         </div>
       )}
+
+      {/* ── TAB GESTIÓN POR ADMINISTRADOR (nómina) ── */}
+      {tab === "gestion" && (() => {
+        const totMotos = gestionData.reduce((s, g) => s + g.totalMotos, 0);
+        const totPag = gestionData.reduce((s, g) => s + g.totalPagaron, 0);
+        const totRec = gestionData.reduce((s, g) => s + g.totalRec, 0);
+        const pctColor = (p: number) => (p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)");
+        const pctFill = (p: number) => (p >= 85 ? "var(--ok2)" : p >= 70 ? "var(--warn2)" : "var(--bad)");
+        return (
+          <div style={{ display: "grid", gap: 16 }}>
+            {/* Resumen del período */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+              <KPI label="Motos activas" value={`${totMotos}`} />
+              <KPI label="Pagaron" value={`${totPag}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(totPag, totMotos)} />
+              <KPI label="No pagaron" value={`${totMotos - totPag}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+              <KPI label="Recaudado" value={`$ ${fmt(totRec)}`} color="var(--accent)" />
+            </div>
+
+            <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                Período: <b style={{ color: "var(--text)" }}>{RANGOS.find(r => r.key === rango)?.label}</b>
+                <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · toca un admin para ver sus motos
+              </div>
+              <button onClick={exportarGestion} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+            </div>
+
+            {gestionData.length === 0 && <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay motos activas asignadas en este período.</div>}
+
+            {gestionData.map(g => (
+              <div key={g.grupo} style={card}>
+                {/* Encabezado del grupo */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: GRUPO_COLORS[g.grupo] ?? "var(--muted)" }} />
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>{g.grupo}</span>
+                    <span style={{ fontSize: 12, color: "var(--faint)" }}>{g.totalMotos} motos</span>
+                  </div>
+                  <div style={{ fontSize: 13, textAlign: "right" }}>
+                    <span style={{ fontWeight: 800, color: pctColor(g.pctv) }}>{g.pctv}%</span>
+                    <span style={{ color: "var(--faint)" }}> pagó · </span>
+                    <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>$ {fmt(g.totalRec)}</span>
+                  </div>
+                </div>
+
+                {/* Filas de admin */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {g.admins.map(a => {
+                    const key = g.grupo + "|" + a.adminId;
+                    const open = expandidoAdmin === key;
+                    return (
+                      <div key={a.adminId} style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
+                        <div onClick={() => setExpandidoAdmin(open ? null : key)}
+                          style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", alignItems: "center", gap: 10, padding: "11px 12px", cursor: "pointer", background: open ? "var(--soft2)" : "var(--card)" }}>
+                          <span style={{ color: "var(--faint)", transition: "transform 0.15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.nombre}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                              {a.total} motos · <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{a.pagaron} pagaron</span> · <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{a.noPagaron} no</span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ textAlign: "right", minWidth: 44 }}>
+                              <div style={{ fontWeight: 800, fontSize: 14, color: pctColor(a.pctv) }}>{a.pctv}%</div>
+                              <div style={{ width: 56, height: 5, background: "var(--soft)", borderRadius: 999, overflow: "hidden", marginTop: 3 }}>
+                                <div style={{ width: `${a.pctv}%`, height: "100%", background: pctFill(a.pctv) }} />
+                              </div>
+                            </div>
+                            <div style={{ fontWeight: 700, fontSize: 13, fontVariantNumeric: "tabular-nums", minWidth: 66, textAlign: "right" }}>$ {fmt(a.recaudado)}</div>
+                          </div>
+                        </div>
+
+                        {/* Detalle: sus motos (no pagaron primero) */}
+                        {open && (
+                          <div style={{ background: "var(--soft2)", padding: "4px 12px 12px" }}>
+                            {a.motos.map((m, i) => (
+                              <div key={m.placa + i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid var(--line)" }}>
+                                <Placa placa={m.placa} size="sm" />
+                                <div style={{ flex: 1, minWidth: 0, fontSize: 13, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</div>
+                                {m.pago ? (
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>✓ $ {fmt(m.monto)}</span>
+                                ) : (
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "2px 8px" }}>✕ No pagó</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── TAB CARTERA ── */}
       {tab === "cartera" && (

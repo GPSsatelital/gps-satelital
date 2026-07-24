@@ -535,7 +535,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   const { profile, puede } = useAuth();
   const { filtrarContratos } = useScope();
 
-  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
+  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
   const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
   const contratos = filtrarContratos(todosContratos);
@@ -1229,12 +1229,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     if (!confirm(`¿Aplicar el saldo a favor de $${fmt(saldo)} a este contrato?`)) return;
     setProcesando(true);
     try {
-      const aplicado = calcularAplicacion(saldo, cuotaPendiente, 0, contratoDetalle.deudaContrato, contratoDetalle.cuotaConvenio);
-      aplicado.ahorro = calcularAhorroAplicado(contratoDetalle, aplicado.tarifa, enProrrateo,
-        tarifaPagadaPeriodoActual(contratoDetalle, pagos.filter(p => p.contrato_id === contratoDetalle.id), hoyDate()));
-      const { error } = await registrarPago(
-        contratoSeleccionadoId, saldo, "Efectivo",
-        contratoDetalle.motor_v2 && contratoDetalle.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
+      // Movimiento interno que consume el saldo y avanza la cuota (NO efectivo nuevo, NO caja diaria).
+      const { error } = await aplicarSaldoFavor(
+        contratoSeleccionadoId, saldo,
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
       );
       if (error) { alert(error); return; }

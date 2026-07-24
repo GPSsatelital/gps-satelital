@@ -10,11 +10,13 @@ export type MetodoPago = "Efectivo" | "Transferencia";
 // 'alquiler_reemplazo': el $27.000/día por usar una moto prestada mientras la propia está
 // en taller (TEMA B). SÍ cuenta en caja diaria como ingreso, pero el trigger del motor de
 // cajas lo IGNORA (mig 053) — no es cuota, no toca el ledger del contrato.
-export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_base" | "alquiler_reemplazo";
+export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_base" | "alquiler_reemplazo" | "saldo_favor";
 
 // ¿Este pago cuenta para caja diaria / recaudo del día? (los internos no)
+// - adelanto_base: la semana adelantada de la base inicial (ya venía en la base, no es plata del día)
+// - saldo_favor: aplicar un saldo a favor existente a una cuota — es crédito viejo, NO entra plata nueva
 export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {
-  return p.tipo_registro !== "adelanto_base";
+  return p.tipo_registro !== "adelanto_base" && p.tipo_registro !== "saldo_favor";
 }
 
 // LIBRO DE CAJAS (motor v2): el reparto lo hace LA BASE DE DATOS al confirmar.
@@ -306,11 +308,44 @@ export function usePagos() {
     return pagosConfirmadosDelContrato(contratoId).reduce((acc, p) => acc + (p.aplicado_tarifa ?? 0), 0);
   }
 
+  // Aplica un SALDO A FAVOR existente a las cuotas del contrato (motor v2):
+  //   1) registra un movimiento INTERNO (tipo saldo_favor → NO cuenta en caja diaria) por el
+  //      monto del saldo; el motor lo reparte llenando cajas/deuda/convenio (avanza la cuota).
+  //   2) DESCUENTA ese saldo del acumulado (aplicado_saldo_favor negativo), restando el excedente
+  //      que el motor haya devuelto a saldo si sobró. No re-dispara el motor (no toca `estado`).
+  // Así el saldo baja de verdad y la caja del día no se infla con plata que no entró.
+  async function aplicarSaldoFavor(contratoId: string, saldo: number, opts?: { convenioId?: string }) {
+    if (saldo <= 0) return { error: "No hay saldo a favor para aplicar." };
+    const { data: ins, error: e1 } = await supabase.from("pagos").insert({
+      contrato_id: contratoId,
+      valor: saldo,
+      metodo: "Efectivo",
+      estado: "Confirmado",
+      tipo_registro: "saldo_favor",
+      aplicado: { deuda: 0, semana: 0, ahorro: 0, convenio: 0, saldo: 0 },
+      aplicado_tarifa: 0, aplicado_base_inicial: 0, aplicado_deuda: 0, aplicado_convenio: 0,
+      aplicado_ahorro: 0, aplicado_saldo_favor: 0, aplicado_prorrateo: 0,
+      convenio_id: opts?.convenioId ?? null,
+      fecha: hoyISO(),
+    }).select("id").single();
+    if (e1 || !ins) return { error: e1?.message ?? "No se pudo aplicar el saldo a favor." };
+    // Releer el pago YA repartido por el motor (RETURNING no refleja los triggers AFTER).
+    const { data: post } = await supabase.from("pagos")
+      .select("aplicado, aplicado_saldo_favor").eq("id", ins.id).single();
+    const excedente = post?.aplicado_saldo_favor ?? 0;   // lo que el motor devolvió a saldo si sobró
+    const nuevoSaldo = excedente - saldo;                 // consumo neto del crédito
+    const legacy = { ...(post?.aplicado ?? { deuda: 0, semana: 0, ahorro: 0, convenio: 0, saldo: 0 }), saldo: nuevoSaldo };
+    const { error: e2 } = await supabase.from("pagos")
+      .update({ aplicado_saldo_favor: nuevoSaldo, aplicado: legacy }).eq("id", ins.id);
+    return { error: e2?.message ?? null };
+  }
+
   return {
     pagos,
     loading,
     error,
     registrarPago,
+    aplicarSaldoFavor,
     subirComprobante,
     registrarCobroCampo,
     marcarEntregadoCaja,

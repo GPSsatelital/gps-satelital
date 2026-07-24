@@ -38,10 +38,20 @@ function roleBadge(role: Role) {
   return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
 
+// Espera a que la sesión esté hidratada (evita la carrera en la primera carga:
+// si se llama antes de tener token, la Edge Function responde 401 y salía "error").
+async function tokenListo(): Promise<string | undefined> {
+  for (let i = 0; i < 6; i++) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) return data.session.access_token;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  return undefined;
+}
+
 // Llama a la Edge Function manage-users con el token del admin actual
 async function invocar(payload: Record<string, unknown>): Promise<{ error: string | null; data?: Record<string, unknown> }> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
+  const token = await tokenListo();
   const { data, error } = await supabase.functions.invoke("manage-users", {
     body: payload,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -110,10 +120,14 @@ export default function UsuariosView() {
 
   const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "SOCIO", "MECANICO"];
 
-  async function cargarUsuarios() {
+  async function cargarUsuarios(reintento = false) {
     const { error, data } = await invocar({ action: "list" });
-    if (error) setListError(error);
-    else {
+    if (error) {
+      // La 1ª llamada tras cargar la página puede fallar por arranque en frío de la
+      // Edge Function o sesión a medio hidratar → un reintento la resuelve.
+      if (!reintento) { await new Promise(r => setTimeout(r, 1000)); return cargarUsuarios(true); }
+      setListError(error);
+    } else {
       const lista = (data?.usuarios as PerfilUsuario[]) ?? [];
       const sorted = lista.sort((a, b) =>
         ROLE_ORDER.indexOf(a.role as Role) - ROLE_ORDER.indexOf(b.role as Role)

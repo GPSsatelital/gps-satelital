@@ -675,6 +675,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                         ["Estabilidad laboral", v.entrevista.estabilidadLaboral],
                         ["Observaciones", v.entrevista.observaciones],
                         ["Recomendación", v.entrevista.recomendacion],
+                        ["¿Guarda la moto aquí?", v.entrevista.guardaMotoAqui],
+                        ["¿Dónde guarda la moto?", v.entrevista.dondeGuardaMoto],
+                        ["Condiciones del guardado", v.entrevista.condicionesGuardado],
                       ] as [string, string][]).filter(([, val]) => val).map(([k, val]) => (
                         <InfoRow key={k} label={k} value={val} />
                       ))}

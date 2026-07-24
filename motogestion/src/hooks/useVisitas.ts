@@ -19,6 +19,11 @@ export type Visita = {
     dudasCliente: string;
     observaciones: string;
     recomendacion: string;
+    // Guardado de la moto (opcionales — visitas viejas no los traen). Se pregunta al final,
+    // NO bloquea el guardado de la visita. Si guardaMotoAqui === "No", el cliente indica dónde.
+    guardaMotoAqui?: string;
+    dondeGuardaMoto?: string;
+    condicionesGuardado?: string;
   };
   fotos: {
     clienteFuncionario?: string | null;

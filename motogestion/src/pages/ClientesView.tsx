@@ -406,6 +406,11 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                         { label: "Dudas del cliente", value: visita.entrevista.dudasCliente || "Ninguna" },
                         { label: "Observaciones", value: visita.entrevista.observaciones || "—" },
                         { label: "Recomendación del visitador", value: visita.entrevista.recomendacion, alerta: visita.entrevista.recomendacion === "Rechazado" },
+                        ...(visita.entrevista.guardaMotoAqui ? [{ label: "¿Guarda la moto aquí?", value: visita.entrevista.guardaMotoAqui, alerta: visita.entrevista.guardaMotoAqui === "No" }] : []),
+                        ...(visita.entrevista.guardaMotoAqui === "No" ? [
+                          { label: "¿Dónde guarda la moto?", value: visita.entrevista.dondeGuardaMoto || "—", alerta: true },
+                          { label: "Condiciones del guardado", value: visita.entrevista.condicionesGuardado || "—", alerta: true },
+                        ] : []),
                       ].map(({ label, value, alerta }) => (
                         <div key={label} style={{ padding: "10px 12px", borderRadius: 10, background: alerta ? "var(--bad-soft)" : "var(--accent-soft4)", border: `1px solid ${alerta ? "var(--bad-line)" : "var(--accent-line)"}` }}>
                           <div style={{ fontSize: 11, color: alerta ? "var(--bad-ink)" : "var(--accent-ink)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
@@ -1610,6 +1615,11 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                 {v.entrevista.dudasCliente && <div><b>Dudas del cliente:</b> {v.entrevista.dudasCliente}</div>}
                 <div><b>Recomendación:</b> {v.entrevista.recomendacion || "Sin definir"}</div>
                 <div><b>Observaciones:</b> {v.entrevista.observaciones || "Sin observaciones"}</div>
+                {v.entrevista.guardaMotoAqui && (
+                  <div><b>Guarda la moto aquí:</b> {v.entrevista.guardaMotoAqui}
+                    {v.entrevista.guardaMotoAqui === "No" && ` · Dónde: ${v.entrevista.dondeGuardaMoto || "—"}${v.entrevista.condicionesGuardado ? ` (${v.entrevista.condicionesGuardado})` : ""}`}
+                  </div>
+                )}
                 {(v.fotos.clienteFuncionario || v.fotos.fachada) && (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                     {v.fotos.clienteFuncionario && (

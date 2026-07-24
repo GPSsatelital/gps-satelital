@@ -53,6 +53,10 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
   const [dudasCliente, setDudasCliente] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [recomendacion, setRecomendacion] = useState("");
+  // Guardado de la moto (última sección, NO obligatoria — no frena la visita de la casa).
+  const [guardaMotoAqui, setGuardaMotoAqui] = useState<"Sí" | "No" | "">("");
+  const [dondeGuardaMoto, setDondeGuardaMoto] = useState("");
+  const [condicionesGuardado, setCondicionesGuardado] = useState("");
   const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [capturandoGPS, setCapturandoGPS] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -125,6 +129,9 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       dudasCliente,
       observaciones,
       recomendacion,
+      guardaMotoAqui,
+      dondeGuardaMoto: guardaMotoAqui === "No" ? dondeGuardaMoto : "",
+      condicionesGuardado: guardaMotoAqui === "No" ? condicionesGuardado : "",
     };
 
     const clienteActual = clientes.find(c => c.id === clienteId);
@@ -333,6 +340,47 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                 <span style={{ fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
                   {capturandoGPS ? "Obteniendo ubicación…" : "⚠️ Obligatoria — permite el GPS y reintenta"}
                 </span>
+              )}
+            </div>
+          </div>
+
+          {/* Sección 5: Guardado de la moto (última — NO obligatoria, no frena la visita de la casa) */}
+          <div>
+            <div style={sectionTitle}>Guardado de la moto</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <div style={labelStyle}>¿Va a guardar la moto aquí, en esta casa?</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(["Sí", "No"] as const).map((op) => (
+                    <label key={op} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: `2px solid ${guardaMotoAqui === op ? "var(--accent)" : "var(--line)"}`, background: guardaMotoAqui === op ? "var(--accent-soft)" : "var(--card)", fontSize: 13, fontWeight: 600, color: guardaMotoAqui === op ? "var(--accent)" : "var(--muted2)" }}>
+                      <input
+                        type="radio"
+                        name="guardaMotoAqui"
+                        value={op}
+                        checked={guardaMotoAqui === op}
+                        onChange={() => setGuardaMotoAqui(op)}
+                        style={{ display: "none" }}
+                      />
+                      {op}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {guardaMotoAqui === "No" && (
+                <>
+                  <div>
+                    <div style={labelStyle}>¿Dónde la va a guardar?</div>
+                    <input style={inputStyle} placeholder="Dirección o lugar donde guardará la moto" value={dondeGuardaMoto} onChange={(e) => setDondeGuardaMoto(e.target.value)} />
+                  </div>
+                  <div>
+                    <div style={labelStyle}>Condiciones del lugar</div>
+                    <input style={inputStyle} placeholder="Ej. patio cerrado, parqueadero, techado…" value={condicionesGuardado} onChange={(e) => setCondicionesGuardado(e.target.value)} />
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", background: "var(--soft2)", borderRadius: 10, padding: "8px 12px" }}>
+                    📍 La ubicación GPS de ese lugar se registra aparte, yendo al sitio (segunda parte).
+                  </div>
+                </>
               )}
             </div>
           </div>

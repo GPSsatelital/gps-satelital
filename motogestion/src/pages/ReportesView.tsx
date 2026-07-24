@@ -403,39 +403,33 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
   );
 }
 
-type FiltrosG = { grupo: string; cobrador: string; modalidad: string; estado: string };
+type FiltrosG = { grupo: string[]; cobrador: string[]; modalidad: string[]; estado: string[] };
 const MODALIDADES = ["Diario", "Semanal", "Quincenal", "Mensual"];
 const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día" }, { v: "parcial", l: "Parcial" }, { v: "nopago", l: "No pagó" }, { v: "sinconvenio", l: "Sin convenio" }];
-const FILTROS_VACIOS: FiltrosG = { grupo: "todos", cobrador: "todos", modalidad: "todos", estado: "todos" };
+const FILTROS_VACIOS: FiltrosG = { grupo: [], cobrador: [], modalidad: [], estado: [] };
 function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: FiltrosG; setFiltros: React.Dispatch<React.SetStateAction<FiltrosG>>; subadmins: { id: string; nombre: string }[]; resumen: string }) {
-  const sel: React.CSSProperties = { fontSize: 12.5, padding: "7px 9px", borderRadius: 9, border: "1px solid var(--line2)", background: "var(--card)", color: "var(--text)", minWidth: 0, flex: "1 1 44%" };
   const activos = resumen.length > 0;
-  const set = (k: keyof FiltrosG, v: string) => setFiltros(f => ({ ...f, [k]: v }));
+  const toggle = (dim: keyof FiltrosG, val: string) => setFiltros(f => ({ ...f, [dim]: f[dim].includes(val) ? f[dim].filter(x => x !== val) : [...f[dim], val] }));
+  const chip = (dim: keyof FiltrosG, val: string, label: string) => {
+    const on = filtros[dim].includes(val);
+    return <button key={dim + val} onClick={() => toggle(dim, val)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, border: `1px solid ${on ? "var(--accent)" : "var(--line2)"}`, background: on ? "var(--accent-soft)" : "var(--card)", color: on ? "var(--accent-ink)" : "var(--muted2)", cursor: "pointer", textTransform: dim === "cobrador" ? "uppercase" : "none", whiteSpace: "nowrap" }}>{on ? "✓ " : ""}{label}</button>;
+  };
+  const fila = (titulo: string, chips: React.ReactNode) => (
+    <div style={{ display: "grid", gap: 5 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>{titulo}</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{chips}</div>
+    </div>
+  );
   return (
-    <div style={{ ...card, display: "grid", gap: 8, padding: "12px 14px" }}>
+    <div style={{ ...card, display: "grid", gap: 11, padding: "12px 14px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>🔎 Filtros</div>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>🔎 Filtros <span style={{ fontWeight: 400, fontSize: 11, color: "var(--faint)" }}>· toca varios para combinar</span></div>
         {activos && <button onClick={() => setFiltros(FILTROS_VACIOS)} style={{ fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>limpiar</button>}
       </div>
-      <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-        <select value={filtros.grupo} onChange={e => set("grupo", e.target.value)} style={sel}>
-          <option value="todos">Grupo: todos</option>
-          {(GRUPOS as readonly string[]).map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
-        <select value={filtros.cobrador} onChange={e => set("cobrador", e.target.value)} style={sel}>
-          <option value="todos">Cobrador: todos</option>
-          {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-          <option value="__none__">Sin asignar</option>
-        </select>
-        <select value={filtros.modalidad} onChange={e => set("modalidad", e.target.value)} style={sel}>
-          <option value="todos">Modalidad: todas</option>
-          {MODALIDADES.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select value={filtros.estado} onChange={e => set("estado", e.target.value)} style={sel}>
-          <option value="todos">Estado: todos</option>
-          {ESTADOS_FILTRO.map(x => <option key={x.v} value={x.v}>{x.l}</option>)}
-        </select>
-      </div>
+      {fila("Grupo", (GRUPOS as readonly string[]).map(g => chip("grupo", g, g)))}
+      {fila("Cobrador", [...subadmins.map(s => chip("cobrador", s.id, s.nombre)), chip("cobrador", "__none__", "Sin asignar")])}
+      {fila("Modalidad", MODALIDADES.map(m => chip("modalidad", m, m)))}
+      {fila("Estado", ESTADOS_FILTRO.map(x => chip("estado", x.v, x.l)))}
       {activos && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Mostrando: <b style={{ color: "var(--accent-ink)" }}>{resumen}</b></div>}
     </div>
   );
@@ -615,28 +609,29 @@ export default function ReportesView({ onNavigate }: Props) {
     return rows;
   }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, convenioActivoDelContrato]);
 
-  // ── FILTROS COMBINABLES — baseFiltrada es la fuente de TODO (on-screen, PDF, Excel) ──
+  // ── FILTROS COMBINABLES (multi-selección) — baseFiltrada es la fuente de TODO ──
+  // Array vacío en una dimensión = "todos"; con valores = OR dentro, AND entre dimensiones.
   const baseFiltrada = useMemo(() => baseGestion.filter(r =>
-    (filtros.grupo === "todos" || r.grupo === filtros.grupo) &&
-    (filtros.cobrador === "todos" || r.adminId === filtros.cobrador) &&
-    (filtros.modalidad === "todos" || r.formaPago === filtros.modalidad) &&
-    (filtros.estado === "todos" || (filtros.estado === "sinconvenio" ? r.debeSinConvenio : r.estado === filtros.estado))
+    (filtros.grupo.length === 0 || filtros.grupo.includes(r.grupo)) &&
+    (filtros.cobrador.length === 0 || filtros.cobrador.includes(r.adminId)) &&
+    (filtros.modalidad.length === 0 || filtros.modalidad.includes(r.formaPago)) &&
+    (filtros.estado.length === 0 || filtros.estado.some(e => e === "sinconvenio" ? r.debeSinConvenio : r.estado === e))
   ), [baseGestion, filtros]);
   const nombreCobradorFiltro = (id: string) => id === "__none__" ? "Sin asignar" : (subadmins.find(s => s.id === id)?.nombre ?? "cobrador");
   const ESTADO_LBL: Record<string, string> = { aldia: "al día", parcial: "parcial", nopago: "no pagó", sinconvenio: "sin convenio" };
   const filtrosResumen = [
-    filtros.grupo !== "todos" ? filtros.grupo : null,
-    filtros.cobrador !== "todos" ? nombreCobradorFiltro(filtros.cobrador) : null,
-    filtros.modalidad !== "todos" ? filtros.modalidad : null,
-    filtros.estado !== "todos" ? (ESTADO_LBL[filtros.estado] ?? filtros.estado) : null,
-  ].filter(Boolean).join(" · ");
+    ...filtros.grupo,
+    ...filtros.cobrador.map(nombreCobradorFiltro),
+    ...filtros.modalidad,
+    ...filtros.estado.map(e => ESTADO_LBL[e] ?? e),
+  ].join(" · ");
   const filtrosActivos = filtrosResumen.length > 0;
   const filtrosSlug = [
-    filtros.grupo !== "todos" ? filtros.grupo : "",
-    filtros.cobrador !== "todos" ? nombreCobradorFiltro(filtros.cobrador).replace(/\s+/g, "_") : "",
-    filtros.modalidad !== "todos" ? filtros.modalidad : "",
-    filtros.estado !== "todos" ? filtros.estado : "",
-  ].filter(Boolean).join("_");
+    ...filtros.grupo,
+    ...filtros.cobrador.map(id => nombreCobradorFiltro(id).replace(/\s+/g, "_")),
+    ...filtros.modalidad,
+    ...filtros.estado,
+  ].join("_").slice(0, 60);
 
   const porAdminData = useMemo(() => agruparBloques(baseFiltrada, "admin"), [baseFiltrada]);
   const porGrupoData = useMemo(() => agruparBloques(baseFiltrada, "grupo"), [baseFiltrada]);

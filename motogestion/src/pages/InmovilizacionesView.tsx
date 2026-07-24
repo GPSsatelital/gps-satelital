@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -308,7 +308,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           convenioId: convenioAct?.id ?? null,
           diasRetenida,
           listaParaLiquidar: diasRetenida >= 7,
-          ahorroAcumulado: c.ahorro_acumulado ?? 0,
+          ahorroAcumulado: ahorroTotal(c),
           esTemporal: c.motivo_suspension === "temporal",
           enTaller,
           categoria: (enTaller ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
@@ -755,7 +755,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
             const entregable = puedeEntregar(m);
             const faltaMulta = m.totalPendiente > 0;
-            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.cuotasAtrasadas > 0 && m.convenioId == null;
+            // La multa (y cualquier deuda pendiente) es el mínimo obligatorio EN EFECTIVO para
+            // recuperar la moto — se cobra ANTES de conveniar. Si se dejara conveniar con la multa
+            // pendiente, el trigger 054 la marcaría 'en_convenio' pero la meta del convenio solo
+            // cubre las cuotas atrasadas (no la multa) → la multa se perdería. Por eso: multa primero.
+            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.cuotasAtrasadas > 0 && m.convenioId == null && !faltaMulta;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>

@@ -16,7 +16,7 @@ import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIng
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useDeudas } from "../hooks/useDeudas";
 import { usePagos } from "../hooks/usePagos";
@@ -1161,7 +1161,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           clienteNombre={clienteMoto.nombre}
           motoId={liquidacionMoto.id}
           placa={liquidacionMoto.placa}
-          ahorroAcumulado={contratoMoto.ahorro_acumulado ?? 0}
+          ahorroAcumulado={ahorroTotal(contratoMoto)}
           onClose={() => setLiquidacionMoto(null)}
           onDone={() => setMsgDetalle("Liquidación iniciada — revisa el módulo de Liquidaciones.")}
         />

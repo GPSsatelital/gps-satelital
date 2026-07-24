@@ -48,8 +48,9 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
-  async function subirFotos(): Promise<string[]> {
+  async function subirFotos(): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
+    let fallidas = 0;
     for (const { key } of ANGULOS_FOTO) {
       const dataUrl = fotosAngulos[key];
       if (!dataUrl) continue;
@@ -59,9 +60,11 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
       if (!up) {
         const { data } = supabase.storage.from("documentos").getPublicUrl(path);
         urls.push(data.publicUrl);
+      } else {
+        fallidas++;
       }
     }
-    return urls;
+    return { urls, fallidas };
   }
 
   async function handleGuardar() {
@@ -74,7 +77,8 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
     try {
       // 1. Recepción del vehículo con evidencia
       if (motoId) {
-        const fotosUrls = await subirFotos();
+        const { urls: fotosUrls, fallidas } = await subirFotos();
+        if (fallidas > 0) { setError(`No se pudieron subir ${fallidas} foto(s). Revisa la conexión e intenta de nuevo — la recolección necesita las 6 fotos como respaldo.`); return; }
         const { error: errRec } = await registrarRecepcion({
           moto_id: motoId,
           contrato_id: contratoId,
@@ -92,8 +96,11 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
         if (errRec) { setError("Error al registrar la recepción: " + errRec); return; }
       }
 
-      // 2. Gestión de recolección (historial)
-      await registrarGestion(contratoId, "recoleccion", "Moto recolectada por mora — recepción registrada", profile.id);
+      // 2. Gestión de recolección (historial + ANCLA del reloj de 7 días para liquidar).
+      // Si esto falla y se siguiera, la moto quedaría Suspendida/Recuperada sin gestión → el
+      // reloj de retención nunca arrancaría (diasRetenida=0 para siempre). Por eso se aborta aquí.
+      const { error: errGest } = await registrarGestion(contratoId, "recoleccion", "Moto recolectada por mora — recepción registrada", profile.id);
+      if (errGest) { setError("Error al registrar la gestión de recolección: " + errGest); return; }
 
       // 3. Contrato → Suspendido, moto → Recuperada
       const { error: errSusp } = await suspenderContrato(contratoId, motoId, "mora");

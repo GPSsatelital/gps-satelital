@@ -16,6 +16,7 @@ export type PrestamoReemplazo = {
   estado: "activo" | "cerrado";
   creado_por: string | null;
   created_at: string;
+  moto_prestada_estado_previo: string | null;
 };
 
 export function usePrestamos() {
@@ -49,6 +50,10 @@ export function usePrestamos() {
     contratoId: string, motoPrestadaId: string, motoOriginalId: string | null,
     creadoPor: string, tarifaDia = 27000,
   ) {
+    // Estado previo de la prestada (Disponible o Recuperada) — se guarda para restaurarlo EXACTO
+    // al devolverla; si no, una moto que salió del pool Disponible volvería mal como Recuperada.
+    const { data: motoPrest } = await supabase.from("motos").select("estado").eq("id", motoPrestadaId).single();
+    const estadoPrevio = motoPrest?.estado ?? "Disponible";
     // 1. Swap: el contrato apunta ahora a la placa prestada.
     const { error: errC } = await supabase.from("contratos").update({ moto_id: motoPrestadaId }).eq("id", contratoId);
     if (errC) return { error: errC.message };
@@ -56,11 +61,14 @@ export function usePrestamos() {
     const { error: errM } = await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoPrestadaId);
     if (errM) return { error: errM.message };
     // 3. La suya (original) va/queda en Mantenimiento (taller).
-    if (motoOriginalId) await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoOriginalId);
-    // 4. Registro del préstamo.
+    if (motoOriginalId) {
+      const { error: errO } = await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoOriginalId);
+      if (errO) return { error: errO.message };
+    }
+    // 4. Registro del préstamo (guarda el estado previo de la prestada).
     const { error: errP } = await supabase.from("prestamos_reemplazo").insert({
       contrato_id: contratoId, moto_prestada_id: motoPrestadaId, moto_original_id: motoOriginalId,
-      tarifa_dia: tarifaDia, creado_por: creadoPor,
+      tarifa_dia: tarifaDia, creado_por: creadoPor, moto_prestada_estado_previo: estadoPrevio,
     });
     return { error: errP?.message ?? null };
   }
@@ -71,11 +79,16 @@ export function usePrestamos() {
     const p = prestamos.find(x => x.id === prestamoId);
     if (!p) return { error: "Préstamo no encontrado." };
     if (p.moto_original_id) {
-      await supabase.from("contratos").update({ moto_id: p.moto_original_id }).eq("id", p.contrato_id);
-      await supabase.from("motos").update({ estado: "Asignada" }).eq("id", p.moto_original_id);
+      const { error: e1 } = await supabase.from("contratos").update({ moto_id: p.moto_original_id }).eq("id", p.contrato_id);
+      if (e1) return { error: e1.message };
+      const { error: e2 } = await supabase.from("motos").update({ estado: "Asignada" }).eq("id", p.moto_original_id);
+      if (e2) return { error: e2.message };
     }
-    // La prestada vuelve al pool de guardadas (Recuperada) — desde ahí se resuelve su dueño.
-    await supabase.from("motos").update({ estado: "Recuperada" }).eq("id", p.moto_prestada_id);
+    // La prestada vuelve a SU estado previo: Disponible si venía del pool disponible, Recuperada si
+    // estaba retenida (desde ahí se resuelve su dueño). Fallback Recuperada para préstamos viejos.
+    const estadoDestino = p.moto_prestada_estado_previo ?? "Recuperada";
+    const { error: e3 } = await supabase.from("motos").update({ estado: estadoDestino }).eq("id", p.moto_prestada_id);
+    if (e3) return { error: e3.message };
     const { error } = await supabase.from("prestamos_reemplazo")
       .update({ estado: "cerrado", fecha_fin: hoyISO() }).eq("id", prestamoId);
     return { error: error?.message ?? null };

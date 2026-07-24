@@ -209,9 +209,9 @@ export function useUbicaciones() {
   async function subirFotoRecepcion(recepcionId: string, file: File, indice: number) {
     const ext = file.name.split(".").pop();
     const path = `recepciones/${recepcionId}/foto_${indice}.${ext}`;
-    const { error: up } = await supabase.storage.from("liquidaciones").upload(path, file, { upsert: true });
+    const { error: up } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
     if (up) return { error: up.message, url: null };
-    const { data } = supabase.storage.from("liquidaciones").getPublicUrl(path);
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
     return { error: null, url: data.publicUrl };
   }
 

@@ -69,6 +69,19 @@ export function useLiquidaciones() {
     iniciadaPor: string,
     ahorroAcumulado: number
   ) {
+    // Guarda contra doble-inicio: si ya hay una liquidación abierta (no cerrada) para este
+    // contrato, no se crea otra — evitaría una orden de taller duplicada y dos liquidaciones
+    // compitiendo por el mismo contrato/moto. El usuario debe continuar la existente.
+    const { data: abierta } = await supabase
+      .from("liquidaciones")
+      .select("id, numero, estado")
+      .eq("contrato_id", contratoId)
+      .neq("estado", "cerrada")
+      .limit(1);
+    if (abierta && abierta.length > 0) {
+      return { error: `Ya existe una liquidación en curso para este contrato (${abierta[0].numero} — ${abierta[0].estado}). Continúala en el módulo de Liquidaciones en vez de iniciar otra.` };
+    }
+
     const numero = await generarNumero();
 
     // Deudas automáticas desde el sistema (solo las pendientes/sin pagar) +
@@ -175,11 +188,11 @@ export function useLiquidaciones() {
 
   async function subirDocumentoFirmado(liquidacionId: string, file: File) {
     const ext = file.name.split(".").pop();
-    const path = `${liquidacionId}/firmado.${ext}`;
-    const { error: uploadError } = await supabase.storage.from("liquidaciones").upload(path, file, { upsert: true });
+    const path = `liquidaciones/${liquidacionId}/firmado.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
     if (uploadError) return { error: uploadError.message };
 
-    const { data } = supabase.storage.from("liquidaciones").getPublicUrl(path);
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
     const { error } = await supabase.from("liquidaciones").update({
       estado: "firmada",
       documento_firmado_url: data.publicUrl,

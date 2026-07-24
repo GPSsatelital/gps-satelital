@@ -36,8 +36,9 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
-  async function subirFotos(): Promise<string[]> {
+  async function subirFotos(): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
+    let fallidas = 0;
     const stamp = Date.now();
     for (const { key } of ANGULOS_FOTO) {
       const dataUrl = fotosAngulos[key];
@@ -48,9 +49,11 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
       if (!up) {
         const { data } = supabase.storage.from("documentos").getPublicUrl(path);
         urls.push(data.publicUrl);
+      } else {
+        fallidas++;
       }
     }
-    return urls;
+    return { urls, fallidas };
   }
 
   async function handleGuardar() {
@@ -63,7 +66,8 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
     try {
       // 1. Evidencia de la entrega (fotos + km + condición)
       if (motoId) {
-        const fotosUrls = await subirFotos();
+        const { urls: fotosUrls, fallidas } = await subirFotos();
+        if (fallidas > 0) { setError(`No se pudieron subir ${fallidas} foto(s). Revisa la conexión e intenta de nuevo — la entrega necesita las 6 fotos como respaldo.`); return; }
         const { error: errRec } = await registrarRecepcion({
           moto_id: motoId,
           contrato_id: contratoId,

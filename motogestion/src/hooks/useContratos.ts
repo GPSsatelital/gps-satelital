@@ -57,6 +57,17 @@ export type Contrato = {
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;
   fecha_fin_contrato?: string | null;
+  // Validación post-entrega de dónde se guarda la moto (mig 060). El admin valida en el GPS
+  // externo que la moto se guarda donde el cliente declaró; la tarea persiste hasta marcarse.
+  ubicacion_moto_validada?: boolean;
+  ubicacion_moto_validada_por?: string | null;
+  ubicacion_moto_validada_fecha?: string | null;
+  ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
+  // Lugar donde SÍ se guarda la moto, con su propio GPS (Fase 3, se llena yendo al sitio).
+  guardado_lugar?: {
+    lat?: number; lng?: number; direccion?: string; condiciones?: string;
+    foto_url?: string | null; fecha?: string; por?: string;
+  } | null;
   created_at: string;
 };
 
@@ -307,6 +318,30 @@ export function useContratos() {
     return { error: null };
   }
 
+  // Validación post-entrega: el admin marca si la moto se guarda donde el cliente declaró.
+  // Marca la tarea como realizada (persiste hasta aquí) y deja el resultado (coincide/no).
+  async function validarUbicacionMoto(id: string, resultado: "coincide" | "no_coincide", validadaPor: string) {
+    const { error } = await supabase.from("contratos").update({
+      ubicacion_moto_validada: true,
+      ubicacion_moto_resultado: resultado,
+      ubicacion_moto_validada_por: validadaPor,
+      ubicacion_moto_validada_fecha: new Date().toISOString(),
+    }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
+  // Fase 3: registra el lugar de guardado de la moto con su propio GPS (yendo al sitio).
+  async function registrarGuardadoMoto(
+    id: string,
+    datos: { lat: number; lng: number; direccion: string; condiciones: string; foto_url: string | null },
+    por: string,
+  ) {
+    const { error } = await supabase.from("contratos").update({
+      guardado_lugar: { ...datos, fecha: new Date().toISOString(), por },
+    }).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
   async function finalizarContrato(id: string, motoId: string | null) {
     const { error: errContrato } = await supabase.from("contratos").update({ estado: "Finalizado" }).eq("id", id);
     if (errContrato) return { error: errContrato.message };
@@ -435,6 +470,8 @@ export function useContratos() {
     eliminarContratoEnProceso,
     suspenderContrato,
     reactivarContrato,
+    validarUbicacionMoto,
+    registrarGuardadoMoto,
     finalizarContrato,
     actualizarAhorro,
     editarContrato,

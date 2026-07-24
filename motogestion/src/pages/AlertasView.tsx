@@ -38,6 +38,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   convenio_incumplido_3:  "⚖️",
   convenio_por_vencer:    "📅",
   moto_taller_demorada:   "🔧",
+  validar_ubicacion_moto: "📍",
 };
 
 const TIPO_LABEL: Record<Alerta["tipo"], string> = {
@@ -54,6 +55,7 @@ const TIPO_LABEL: Record<Alerta["tipo"], string> = {
   convenio_incumplido_3:  "Liquidación",
   convenio_por_vencer:    "Convenio",
   moto_taller_demorada:   "Taller",
+  validar_ubicacion_moto: "Guardado moto",
 };
 
 // ── Category tab definitions ──────────────────────────────────────────────────
@@ -69,7 +71,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
-  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer") return "cobros";
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto") return "cobros";
   if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
@@ -84,7 +86,7 @@ function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
   if (tab === "contratos") return a.tipo === "base_completada" || a.tipo === "plazo_extra_vence"
                                || a.tipo === "transferencia_pendiente" || a.tipo === "contrato_sin_activar"
                                || a.tipo === "traspaso_proximo";
-  if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada";
+  if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada" || a.tipo === "validar_ubicacion_moto";
   if (tab === "convenios") return a.tipo === "convenio_incumplido_3" || a.tipo === "convenio_por_vencer";
   return false;
 }

@@ -20,7 +20,8 @@ export type AlertaTipo =
   | "traspaso_proximo"
   | "convenio_incumplido_3"
   | "convenio_por_vencer"
-  | "moto_taller_demorada";
+  | "moto_taller_demorada"
+  | "validar_ubicacion_moto";
 
 export type Alerta = {
   id: string;
@@ -210,6 +211,29 @@ export function useAlertas({
           contratoId: c.id,
         });
       }
+    }
+
+    // ── 5b. VALIDAR DÓNDE SE GUARDA LA MOTO (post-entrega, persiste hasta validar) ──
+    // Aparece desde el día de la entrega y NO se quita hasta que el admin la marca. El GPS
+    // del vehículo está en la plataforma externa (no en la app) → validación manual asistida.
+    // `!== false` (no solo falsy): antes de correr la mig 060 el campo es undefined en todos
+    // los contratos y NO debe dispararse; los migrados/existentes quedan en true por el backfill.
+    for (const c of contratosActivos) {
+      if (c.ubicacion_moto_validada !== false) continue;
+      if (!c.fecha_entrega || diasEntre(c.fecha_entrega, hoy) < 0) continue;
+      const cliente = clientes.find(cl => cl.id === c.cliente_id);
+      const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : null;
+      const dias = diasEntre(c.fecha_entrega, hoy);
+      alertas.push({
+        id: `validar-ubicacion-moto-${c.id}`,
+        tipo: "validar_ubicacion_moto",
+        nivel: dias >= 3 ? "alerta" : "info",
+        titulo: `Validar dónde se guarda la moto — ${(cliente?.nombre ?? "Sin nombre").toUpperCase()}`,
+        detalle: `${moto?.placa ?? "Moto"} entregada${dias === 0 ? " hoy" : ` hace ${dias} día${dias !== 1 ? "s" : ""}`} — revisa en el GPS que duerma donde declaró y márcalo`,
+        clienteId: c.cliente_id,
+        contratoId: c.id,
+        motoId: c.moto_id ?? undefined,
+      });
     }
 
     // ── 6. MOTOS RETENIDAS (Fiscalía / Tránsito / Garantía) ──────────────────

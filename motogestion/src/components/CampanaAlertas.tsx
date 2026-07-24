@@ -28,10 +28,11 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   convenio_incumplido_3:  "⚖️",
   convenio_por_vencer:    "📅",
   moto_taller_demorada:   "🔧",
+  validar_ubicacion_moto: "📍",
 };
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
-  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer") return "cobros";
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto") return "cobros";
   if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";

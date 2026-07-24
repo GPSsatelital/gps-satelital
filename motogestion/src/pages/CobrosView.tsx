@@ -14,6 +14,7 @@ import {
 } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, empalmePendiente, infoFinContrato } from "../hooks/useContratos";
 import PanelEmpalme from "../components/PanelEmpalme";
+import PanelGuardadoMoto from "../components/PanelGuardadoMoto";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
@@ -1616,6 +1617,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
             onConfirmar={() => cerrarEmpalme(contratoDetalle.id)}
           />
         )}
+
+        {/* Validar dónde se guarda la moto (post-entrega) — solo ADMIN/AP (mig 060) */}
+        <PanelGuardadoMoto
+          contrato={contratoDetalle}
+          clienteNombre={clienteDetalle?.nombre ?? ""}
+          placa={motoDetalle?.placa ?? ""}
+        />
 
         {/* Estado de cuenta — la etiqueta/color usan estadoCartera (misma fuente que el badge),
             no la función vieja, para que no diga "Gabela" mientras el badge dice "Al día". */}

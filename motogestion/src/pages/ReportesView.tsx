@@ -1381,11 +1381,11 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* Tabs */}
-      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
-        <div style={{ display: "flex", gap: 4, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === t.key ? "var(--text)" : "transparent", color: tab === t.key ? "var(--card)" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexShrink: 0 }}>
-              <span>{t.icon}</span><span>{t.label}</span>
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "7px 3px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: tab === t.key ? "var(--text)" : "transparent", color: tab === t.key ? "var(--card)" : "var(--muted)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, minWidth: 0, lineHeight: 1.1 }}>
+              <span style={{ fontSize: 15 }}>{t.icon}</span><span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{t.label}</span>
             </button>
           ))}
         </div>

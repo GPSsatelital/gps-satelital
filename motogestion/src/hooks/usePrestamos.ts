@@ -22,6 +22,11 @@ export type PrestamoReemplazo = {
 export function usePrestamos() {
   const [prestamos, setPrestamos] = useState<PrestamoReemplazo[]>([]);
   const [loading, setLoading] = useState(true);
+  // Nombre de canal ÚNICO por instancia del hook: si dos componentes montados a la vez
+  // (ej. InmovilizacionesView + ModalPrestarReemplazo) usan un nombre fijo, el 2º .on()
+  // sobre el mismo canal ya suscrito revienta ("cannot add callbacks after subscribe()")
+  // y tumba la app. El sufijo aleatorio evita la colisión.
+  const [chId] = useState(() => Math.random().toString(36).slice(2));
 
   async function fetchAll() {
     const { data } = await supabase.from("prestamos_reemplazo").select("*").order("created_at", { ascending: false });
@@ -32,7 +37,7 @@ export function usePrestamos() {
   useEffect(() => {
     fetchAll();
     const ch = supabase
-      .channel("prestamos_reemplazo_ch")
+      .channel(`prestamos_reemplazo_ch_${chId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "prestamos_reemplazo" }, fetchAll)
       .subscribe();
     return () => { supabase.removeChannel(ch); };

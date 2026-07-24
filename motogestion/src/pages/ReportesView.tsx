@@ -11,6 +11,7 @@ import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import * as XLSX from "xlsx";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -128,8 +129,10 @@ function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: str
   URL.revokeObjectURL(url);
 }
 
-// ── Excel "bonito": tabla HTML con estilo que Excel abre con colores, encabezados
-//    y filas cebra. Evita el problema del CSV (todo en una columna en Excel es-CO). ──
+// ── Excel REAL (.xlsx) con SheetJS — abre limpio en Excel / Google Sheets / celular, sin el
+//    aviso de "archivo corrupto" del truco viejo (tabla HTML disfrazada de .xls). Los montos
+//    son NÚMERO de verdad (con separador de miles). Sin colores de celda (la versión libre de
+//    xlsx no estiliza), pero limpio y legible. ──
 type CeldaX = string | { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
 type ColX = { label: string; align?: "left" | "center" | "right"; ancho?: number };
 type SeccionX = { titulo: string; color?: string; filas: CeldaX[][] };
@@ -137,51 +140,39 @@ const GRUPO_HEX: Record<string, string> = {
   RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
 };
 function descargarExcel(opts: { archivo: string; titulo: string; periodo: string; leyenda?: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] }) {
-  const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const NAVY = "#0f172a", CYAN_BG = "#0891b2", CYAN_LN = "#0e7490";
   const n = opts.columnas.length;
-  const cell = (c: CeldaX, col: ColX, bg: string) => {
-    const o = (c !== null && typeof c === "object") ? c : { v: c } as { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
-    const isNum = typeof o.num === "number";
-    const align = o.align ?? (isNum ? "right" : col.align) ?? "left";
-    const fill = o.fill ?? bg;
-    // Números REALES (Excel los suma/ordena) con separador de miles; texto con formato-texto.
-    const numFmt = isNum ? `mso-number-format:'\\#\\,\\#\\#0';` : `mso-number-format:'\\@';`;
-    const style = `background:${fill};text-align:${align};border:1px solid #e2e8f0;padding:5px 9px;${numFmt}`
-      + (o.color ? `color:${o.color};` : "") + (o.bold ? "font-weight:bold;" : "");
-    return `<td style="${style}">${isNum ? o.num : esc(o.v ?? "")}</td>`;
+  // Valor de cada celda: número real para montos, texto para el resto.
+  const val = (c: CeldaX): string | number => {
+    if (c !== null && typeof c === "object") return typeof c.num === "number" ? c.num : (c.v ?? "");
+    return c ?? "";
   };
-  let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>td,th{font-family:Calibri,Arial,sans-serif;font-size:11pt;}</style></head><body>`;
-  h += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
-  h += `<tr>${opts.columnas.map(c => `<td width="${c.ancho ?? 120}"></td>`).join("")}</tr>`;
-  h += `<tr><td colspan="${n}" style="background:${NAVY};color:#ffffff;font-size:15pt;font-weight:bold;padding:10px 12px;">${esc(opts.titulo)}</td></tr>`;
-  h += `<tr><td colspan="${n}" style="background:${NAVY};color:#7dd3fc;font-size:9.5pt;padding:2px 12px 8px;">${esc(opts.periodo)}</td></tr>`;
-  if (opts.leyenda) h += `<tr><td colspan="${n}" style="background:#f8fafc;color:#475569;font-size:9pt;padding:5px 12px;border:1px solid #e2e8f0;">${esc(opts.leyenda)}</td></tr>`;
-  h += `<tr>${opts.columnas.map(c => `<th style="background:${CYAN_BG};color:#ffffff;font-weight:bold;text-align:${c.align ?? "left"};border:1px solid ${CYAN_LN};padding:7px 9px;white-space:nowrap;">${esc(c.label)}</th>`).join("")}</tr>`;
+  const aoa: (string | number)[][] = [];
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  let r = 0;
+  const fullRow = (txt: string) => { aoa.push([txt]); merges.push({ s: { r, c: 0 }, e: { r, c: n - 1 } }); r++; };
+  fullRow(opts.titulo);
+  fullRow(opts.periodo);
+  if (opts.leyenda) fullRow(opts.leyenda);
+  aoa.push([]); r++; // fila en blanco
+  aoa.push(opts.columnas.map(c => c.label)); r++; // encabezados
   opts.secciones.forEach(sec => {
-    h += `<tr><td colspan="${n}" style="background:${sec.color ?? "#334155"};color:#ffffff;font-weight:bold;padding:6px 10px;border:1px solid ${sec.color ?? "#334155"};">${esc(sec.titulo)}</td></tr>`;
-    sec.filas.forEach((fila, i) => {
-      const bg = i % 2 === 0 ? "#ffffff" : "#f1f5f9";
-      h += `<tr>${fila.map((c, ci) => cell(c, opts.columnas[ci], bg)).join("")}</tr>`;
-    });
+    fullRow(sec.titulo);
+    sec.filas.forEach(fila => { aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); r++; });
   });
-  if (opts.totalGeneral) {
-    h += `<tr>${opts.totalGeneral.map((c, ci) => {
-      const col = opts.columnas[ci];
-      const o = (c !== null && typeof c === "object") ? c : { v: c } as { v?: string; num?: number; align?: "left" | "center" | "right" };
-      const isNum = typeof o.num === "number";
-      const align = o.align ?? (isNum ? "right" : col.align) ?? "left";
-      const numFmt = isNum ? `mso-number-format:'\\#\\,\\#\\#0';` : `mso-number-format:'\\@';`;
-      return `<td style="background:${NAVY};color:#ffffff;font-weight:bold;text-align:${align};border:1px solid ${NAVY};padding:7px 9px;${numFmt}">${isNum ? o.num : esc(o.v ?? "")}</td>`;
-    }).join("")}</tr>`;
-  }
-  h += `</table></body></html>`;
-  const blob = new Blob(["﻿" + h], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = opts.archivo.endsWith(".xls") ? opts.archivo : opts.archivo + ".xls";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (opts.totalGeneral) { const tg = opts.totalGeneral; aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); r++; }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!merges"] = merges as XLSX.Range[];
+  ws["!cols"] = opts.columnas.map(c => ({ wch: Math.max(8, Math.round((c.ancho ?? 120) / 7)) }));
+  // Separador de miles a las celdas numéricas (los únicos números del informe son montos).
+  Object.keys(ws).forEach(addr => {
+    if (addr[0] === "!") return;
+    const cell = (ws as Record<string, { t?: string; z?: string }>)[addr];
+    if (cell && cell.t === "n") cell.z = "#,##0";
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Informe");
+  XLSX.writeFile(wb, opts.archivo.endsWith(".xlsx") ? opts.archivo : opts.archivo + ".xlsx");
 }
 function fmtFechaCorta(iso: string) {
   const s = (iso || "").slice(0, 10).split("-");

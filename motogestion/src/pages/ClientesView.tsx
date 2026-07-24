@@ -430,12 +430,17 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                       </div>
                     )}
 
-                    {/* GPS */}
+                    {/* GPS — mismo botón pastilla que la ficha del cliente y el historial de visitas */}
                     {visita.ubicacion && (
-                      <div style={{ marginTop: 10, fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>
-                        📍 Ubicación registrada: {visita.ubicacion.lat.toFixed(5)}, {visita.ubicacion.lng.toFixed(5)}
-                        {" · "}
-                        <a href={`https://maps.google.com/?q=${visita.ubicacion.lat},${visita.ubicacion.lng}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Ver en mapa</a>
+                      <div style={{ marginTop: 10 }}>
+                        <a
+                          href={`https://www.google.com/maps?q=${visita.ubicacion.lat},${visita.ubicacion.lng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
+                        >
+                          📍 Ver ubicación en el mapa · {visita.ubicacion.lat.toFixed(4)}, {visita.ubicacion.lng.toFixed(4)}
+                        </a>
                       </div>
                     )}
                   </div>

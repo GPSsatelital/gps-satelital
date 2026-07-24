@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useClientes } from "../hooks/useClientes";
 import { useVisitas } from "../hooks/useVisitas";
@@ -70,11 +70,20 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
         setCapturandoGPS(false);
       },
       () => {
-        setError("No se pudo capturar la ubicación. Revisa permisos de GPS.");
+        setError("No se pudo capturar la ubicación. Permite el acceso al GPS y toca 'Reintentar ubicación'.");
         setCapturandoGPS(false);
-      }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }
+
+  // La ubicación es obligatoria (prueba de que el visitador estuvo en la casa): se intenta
+  // capturar sola al abrir el formulario. Si el permiso está denegado, el visitador reintenta
+  // con el botón y no puede guardar hasta tenerla.
+  useEffect(() => {
+    capturarUbicacion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleGuardar() {
     if (!observaciones.trim()) {
@@ -83,6 +92,10 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
     }
     if (!viveAlli) {
       setError("Indica si el cliente vive en esa dirección.");
+      return;
+    }
+    if (!ubicacion) {
+      setError("Falta la ubicación GPS de la visita. Toca 'Reintentar ubicación' y permite el acceso al GPS del dispositivo.");
       return;
     }
 
@@ -306,7 +319,7 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                 disabled={capturandoGPS}
                 style={{ padding: "9px 16px", borderRadius: 10, border: "none", cursor: capturandoGPS ? "not-allowed" : "pointer", background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, opacity: capturandoGPS ? 0.7 : 1 }}
               >
-                {capturandoGPS ? "Capturando..." : "📍 Capturar ubicación"}
+                {capturandoGPS ? "Capturando ubicación…" : ubicacion ? "📍 Volver a capturar" : "🔄 Reintentar ubicación"}
               </button>
               {ubicacion ? (
                 <div style={{ fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
@@ -317,7 +330,9 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
                   </a>
                 </div>
               ) : (
-                <span style={{ fontSize: 13, color: "var(--faint)" }}>No capturada</span>
+                <span style={{ fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
+                  {capturandoGPS ? "Obteniendo ubicación…" : "⚠️ Obligatoria — permite el GPS y reintenta"}
+                </span>
               )}
             </div>
           </div>

@@ -1348,11 +1348,11 @@ export default function ReportesView({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Rangos */}
-      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: rango === "personalizado" ? 8 : 12 }}>
-        <div style={{ display: "flex", gap: 6 }}>
+      {/* Rangos (grid 3 columnas — sin scroll lateral) */}
+      <div style={{ marginBottom: rango === "personalizado" ? 8 : 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
           {RANGOS.map(r => (
-            <Chip key={r.key} activo={rango === r.key} onClick={() => setRango(r.key)} style={{ flexShrink: 0 }}>
+            <Chip key={r.key} activo={rango === r.key} onClick={() => setRango(r.key)} style={{ width: "100%", justifyContent: "center" }}>
               {r.label}
             </Chip>
           ))}

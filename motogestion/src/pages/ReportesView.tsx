@@ -24,15 +24,19 @@ const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16,
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
-type Rango = "hoy" | "semana" | "mes" | "mes_anterior" | "anio";
+type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
 type Tab   = "resumen" | "admins" | "grupos" | "visitas" | "cartera" | "flota" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
-  { key: "hoy",          label: "Hoy" },
-  { key: "semana",       label: "Esta semana" },
-  { key: "mes",          label: "Este mes" },
-  { key: "mes_anterior", label: "Mes anterior" },
-  { key: "anio",         label: "Este año" },
+  { key: "hoy",           label: "Hoy" },
+  { key: "semana",        label: "Esta semana" },
+  { key: "semana_pasada", label: "Semana pasada" },
+  { key: "ult7",          label: "Últimos 7 días" },
+  { key: "mes",           label: "Este mes" },
+  { key: "mes_anterior",  label: "Mes anterior" },
+  { key: "ult30",         label: "Últimos 30 días" },
+  { key: "anio",          label: "Este año" },
+  { key: "personalizado", label: "📅 Personalizado" },
 ];
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
@@ -63,11 +67,17 @@ const ESTADO_MOTO_COLOR: Record<string, string> = {
 function getRango(r: Rango): { desde: string; hasta: string } {
   const hoy = hoyDate();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const lunesEstaSemana = () => { const l = new Date(hoy); l.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); return l; };
   if (r === "hoy")    { const s = iso(hoy); return { desde: s, hasta: s }; }
-  if (r === "semana") {
-    const l = new Date(hoy); l.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
-    return { desde: iso(l), hasta: iso(hoy) };
+  if (r === "semana") return { desde: iso(lunesEstaSemana()), hasta: iso(hoy) };
+  if (r === "semana_pasada") {
+    const l = lunesEstaSemana();
+    const f = new Date(l); f.setDate(l.getDate() - 1);   // domingo pasado
+    const i = new Date(l); i.setDate(l.getDate() - 7);   // lunes pasado
+    return { desde: iso(i), hasta: iso(f) };
   }
+  if (r === "ult7")  { const i = new Date(hoy); i.setDate(hoy.getDate() - 6);  return { desde: iso(i), hasta: iso(hoy) }; }
+  if (r === "ult30") { const i = new Date(hoy); i.setDate(hoy.getDate() - 29); return { desde: iso(i), hasta: iso(hoy) }; }
   if (r === "mes")    return { desde: iso(hoy).slice(0, 7) + "-01", hasta: iso(hoy) };
   if (r === "mes_anterior") {
     const i = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
@@ -77,6 +87,16 @@ function getRango(r: Rango): { desde: string; hasta: string } {
   return { desde: `${hoy.getFullYear()}-01-01`, hasta: iso(hoy) };
 }
 
+// Ventana de igual longitud inmediatamente ANTES de [desde, hasta] (para el ▲/▼ de rangos por días).
+function rangoAnteriorDe(desde: string, hasta: string): { desde: string; hasta: string } {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const d1 = new Date(desde + "T00:00:00"), d2 = new Date(hasta + "T00:00:00");
+  const dias = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
+  const antHasta = new Date(d1); antHasta.setDate(d1.getDate() - 1);
+  const antDesde = new Date(antHasta); antDesde.setDate(antHasta.getDate() - (dias - 1));
+  return { desde: iso(antDesde), hasta: iso(antHasta) };
+}
+
 // Período inmediatamente anterior de la misma "longitud", para comparar recaudo (▲/▼).
 function getRangoAnterior(r: Rango): { desde: string; hasta: string } {
   const { desde, hasta } = getRango(r);
@@ -84,7 +104,7 @@ function getRangoAnterior(r: Rango): { desde: string; hasta: string } {
   const dDesde = new Date(desde + "T00:00:00");
   const dHasta = new Date(hasta + "T00:00:00");
   if (r === "hoy") { const a = new Date(dHasta); a.setDate(a.getDate() - 1); return { desde: iso(a), hasta: iso(a) }; }
-  if (r === "semana") { const i = new Date(dDesde); i.setDate(i.getDate() - 7); const f = new Date(dHasta); f.setDate(f.getDate() - 7); return { desde: iso(i), hasta: iso(f) }; }
+  if (r === "semana" || r === "semana_pasada" || r === "ult7" || r === "ult30") return rangoAnteriorDe(desde, hasta);
   if (r === "mes") {
     const i = new Date(dDesde.getFullYear(), dDesde.getMonth() - 1, 1);
     const ultimoMesAnt = new Date(dDesde.getFullYear(), dDesde.getMonth(), 0).getDate();
@@ -467,6 +487,7 @@ const KPI_ICONS: Record<string, string> = {
 
 export default function ReportesView({ onNavigate }: Props) {
   const [rango, setRango] = useState<Rango>("mes");
+  const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => getRango("ult7")); // rango personalizado de-fecha-a-fecha
   const [tab, setTab]     = useState<Tab>("resumen");
   const [grupoEnt, setGrupoEnt] = useState<string>("Todos");     // filtro de grupo en la pestaña Entregas
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
@@ -537,7 +558,7 @@ export default function ReportesView({ onNavigate }: Props) {
   }
 
   const hoyStr = hoyISO();
-  const { desde, hasta } = getRango(rango);
+  const { desde, hasta } = rango === "personalizado" ? rangoCustom : getRango(rango);
 
   // ── Recaudado hoy ──────────────────────────────────────────────────────────
   const recaudadoHoy = useMemo(() =>
@@ -647,7 +668,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // C1 — comparación vs período anterior (mismo set de motos filtradas; solo recaudo).
   const setContratosFiltrados = useMemo(() => new Set(baseFiltrada.map(r => r.contratoId)), [baseFiltrada]);
-  const { desde: desdeAnt, hasta: hastaAnt } = useMemo(() => getRangoAnterior(rango), [rango]);
+  const { desde: desdeAnt, hasta: hastaAnt } = useMemo(() => rango === "personalizado" ? rangoAnteriorDe(rangoCustom.desde, rangoCustom.hasta) : getRangoAnterior(rango), [rango, rangoCustom]);
   const recaudoAnterior = useMemo(() => pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desdeAnt && p.fecha <= hastaAnt && esPagoDeCaja(p) && setContratosFiltrados.has(p.contrato_id)).reduce((a, p) => a + p.valor, 0), [pagos, desdeAnt, hastaAnt, setContratosFiltrados]);
   const deltaRec = deltaRecaudo(gTotRec, recaudoAnterior);
 
@@ -1328,7 +1349,7 @@ export default function ReportesView({ onNavigate }: Props) {
       </div>
 
       {/* Rangos */}
-      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
+      <div style={{ overflowX: "auto", paddingBottom: 4, marginBottom: rango === "personalizado" ? 8 : 12 }}>
         <div style={{ display: "flex", gap: 6 }}>
           {RANGOS.map(r => (
             <Chip key={r.key} activo={rango === r.key} onClick={() => setRango(r.key)} style={{ flexShrink: 0 }}>
@@ -1337,6 +1358,16 @@ export default function ReportesView({ onNavigate }: Props) {
           ))}
         </div>
       </div>
+      {rango === "personalizado" && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12, fontSize: 13 }}>
+          <span style={{ color: "var(--muted)", fontWeight: 600 }}>Desde</span>
+          <input type="date" value={rangoCustom.desde} max={rangoCustom.hasta} onChange={e => setRangoCustom(c => ({ ...c, desde: e.target.value }))}
+            style={{ fontSize: 13, padding: "7px 9px", borderRadius: 9, border: "1px solid var(--line2)", background: "var(--card)", color: "var(--text)" }} />
+          <span style={{ color: "var(--muted)", fontWeight: 600 }}>hasta</span>
+          <input type="date" value={rangoCustom.hasta} min={rangoCustom.desde} max={hoyStr} onChange={e => setRangoCustom(c => ({ ...c, hasta: e.target.value }))}
+            style={{ fontSize: 13, padding: "7px 9px", borderRadius: 9, border: "1px solid var(--line2)", background: "var(--card)", color: "var(--text)" }} />
+        </div>
+      )}
 
       {/* Avisos */}
       {avisos.length > 0 && (

@@ -130,28 +130,33 @@ function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: str
 
 // ── Excel "bonito": tabla HTML con estilo que Excel abre con colores, encabezados
 //    y filas cebra. Evita el problema del CSV (todo en una columna en Excel es-CO). ──
-type CeldaX = string | { v: string; color?: string; bold?: boolean; align?: "left" | "center" | "right" };
+type CeldaX = string | { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
 type ColX = { label: string; align?: "left" | "center" | "right"; ancho?: number };
 type SeccionX = { titulo: string; color?: string; filas: CeldaX[][] };
 const GRUPO_HEX: Record<string, string> = {
   RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
 };
-function descargarExcel(opts: { archivo: string; titulo: string; periodo: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] }) {
+function descargarExcel(opts: { archivo: string; titulo: string; periodo: string; leyenda?: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] }) {
   const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const NAVY = "#0f172a", CYAN_BG = "#0891b2", CYAN_LN = "#0e7490";
   const n = opts.columnas.length;
   const cell = (c: CeldaX, col: ColX, bg: string) => {
-    const o = (c !== null && typeof c === "object") ? c : { v: c } as { v: string; color?: string; bold?: boolean; align?: "left" | "center" | "right" };
-    const align = o.align ?? col.align ?? "left";
-    const style = `background:${bg};text-align:${align};border:1px solid #e2e8f0;padding:5px 9px;mso-number-format:'\\@';`
+    const o = (c !== null && typeof c === "object") ? c : { v: c } as { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
+    const isNum = typeof o.num === "number";
+    const align = o.align ?? (isNum ? "right" : col.align) ?? "left";
+    const fill = o.fill ?? bg;
+    // Números REALES (Excel los suma/ordena) con separador de miles; texto con formato-texto.
+    const numFmt = isNum ? `mso-number-format:'\\#\\,\\#\\#0';` : `mso-number-format:'\\@';`;
+    const style = `background:${fill};text-align:${align};border:1px solid #e2e8f0;padding:5px 9px;${numFmt}`
       + (o.color ? `color:${o.color};` : "") + (o.bold ? "font-weight:bold;" : "");
-    return `<td style="${style}">${esc(o.v)}</td>`;
+    return `<td style="${style}">${isNum ? o.num : esc(o.v ?? "")}</td>`;
   };
   let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><style>td,th{font-family:Calibri,Arial,sans-serif;font-size:11pt;}</style></head><body>`;
   h += `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;">`;
   h += `<tr>${opts.columnas.map(c => `<td width="${c.ancho ?? 120}"></td>`).join("")}</tr>`;
   h += `<tr><td colspan="${n}" style="background:${NAVY};color:#ffffff;font-size:15pt;font-weight:bold;padding:10px 12px;">${esc(opts.titulo)}</td></tr>`;
   h += `<tr><td colspan="${n}" style="background:${NAVY};color:#7dd3fc;font-size:9.5pt;padding:2px 12px 8px;">${esc(opts.periodo)}</td></tr>`;
+  if (opts.leyenda) h += `<tr><td colspan="${n}" style="background:#f8fafc;color:#475569;font-size:9pt;padding:5px 12px;border:1px solid #e2e8f0;">${esc(opts.leyenda)}</td></tr>`;
   h += `<tr>${opts.columnas.map(c => `<th style="background:${CYAN_BG};color:#ffffff;font-weight:bold;text-align:${c.align ?? "left"};border:1px solid ${CYAN_LN};padding:7px 9px;white-space:nowrap;">${esc(c.label)}</th>`).join("")}</tr>`;
   opts.secciones.forEach(sec => {
     h += `<tr><td colspan="${n}" style="background:${sec.color ?? "#334155"};color:#ffffff;font-weight:bold;padding:6px 10px;border:1px solid ${sec.color ?? "#334155"};">${esc(sec.titulo)}</td></tr>`;
@@ -163,9 +168,11 @@ function descargarExcel(opts: { archivo: string; titulo: string; periodo: string
   if (opts.totalGeneral) {
     h += `<tr>${opts.totalGeneral.map((c, ci) => {
       const col = opts.columnas[ci];
-      const o = (c !== null && typeof c === "object") ? c : { v: c } as { v: string; align?: "left" | "center" | "right" };
-      const align = o.align ?? col.align ?? "left";
-      return `<td style="background:${NAVY};color:#ffffff;font-weight:bold;text-align:${align};border:1px solid ${NAVY};padding:7px 9px;mso-number-format:'\\@';">${esc(o.v)}</td>`;
+      const o = (c !== null && typeof c === "object") ? c : { v: c } as { v?: string; num?: number; align?: "left" | "center" | "right" };
+      const isNum = typeof o.num === "number";
+      const align = o.align ?? (isNum ? "right" : col.align) ?? "left";
+      const numFmt = isNum ? `mso-number-format:'\\#\\,\\#\\#0';` : `mso-number-format:'\\@';`;
+      return `<td style="background:${NAVY};color:#ffffff;font-weight:bold;text-align:${align};border:1px solid ${NAVY};padding:7px 9px;${numFmt}">${isNum ? o.num : esc(o.v ?? "")}</td>`;
     }).join("")}</tr>`;
   }
   h += `</table></body></html>`;
@@ -185,7 +192,7 @@ function fmtFechaCorta(iso: string) {
 // estado: al día / parcial (abonó pero debe) / no pagó — MISMA verdad de mora que Cartera,
 // con convenio: si tiene convenio activo y lo cumple, va "al día" (la deuda queda programada).
 type EstadoPagoG = "aldia" | "parcial" | "nopago";
-type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string };
+type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string };
 type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; recaudado: number; pctv: number };
 const ESTADO_RANK: Record<EstadoPagoG, number> = { nopago: 0, parcial: 1, aldia: 2 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
@@ -274,8 +281,14 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                           {modo === "admin"
                             ? <><span style={{ width: 7, height: 7, borderRadius: 2, background: GRUPO_COLORS[m.grupo] ?? "var(--muted)" }} /><span style={{ color: "var(--muted)" }}>{m.grupo}</span></>
                             : <span style={{ color: "var(--muted)", textTransform: "uppercase" }}>👤 {m.adminNombre}</span>}
+                          <span style={{ color: "var(--muted)" }}>· {m.formaPago}</span>
+                          {m.diaPago && <span style={{ color: "var(--faint)" }}>· {m.diaPago}</span>}
                           {m.tieneConvenio && <span style={{ color: "var(--accent-ink)" }}>· 📋 convenio</span>}
                           {m.debeSinConvenio && <span style={{ color: "var(--warn-ink)" }}>· ⚠️ sin convenio</span>}
+                        </div>
+                        <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "var(--faint)" }}>
+                          <span>Últ. pago: {m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos"}</span>
+                          {m.telefono && <a href={`tel:${m.telefono}`} onClick={e => e.stopPropagation()} style={{ color: "var(--accent-ink)", textDecoration: "none", fontWeight: 700 }}>📞 {m.telefono}</a>}
                         </div>
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -336,6 +349,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
+  const [filtroAdmin, setFiltroAdmin] = useState<string>("todos"); // "todos" o el id de un cobrador — filtra la pestaña Por admin
   const [expandidoGestion, setExpandidoGestion] = useState<string | null>(null);
   const [expandidoVisita, setExpandidoVisita] = useState<string | null>(null);
   // Armador de impresión: qué secciones incluir + nivel de detalle (por defecto todo detallado)
@@ -441,14 +455,21 @@ export default function ReportesView({ onNavigate }: Props) {
       const deudaP = deudaPendMap.get(c.id) ?? 0;
       const tieneConvenio = !!convenioActivo;
       const estado: EstadoPagoG = !enMora ? "aldia" : (monto > 0 ? "parcial" : "nopago");
+      const cli = clientes.find(cl => cl.id === c.cliente_id);
+      // Última fecha en que este contrato pagó (el pago confirmado más reciente).
+      const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
       rows.push({
         placa: moto.placa,
-        cliente: clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin cliente",
+        cliente: cli?.nombre ?? "Sin cliente",
         monto, estado, deudaPend: deudaP, tieneConvenio,
         debeSinConvenio: deudaP > 0 && !tieneConvenio,
         grupo: moto.grupo ?? "OTRO",
         adminId: moto.subadmin_id ?? "__none__",
         adminNombre: nombreAdmin(moto.subadmin_id),
+        formaPago: c.forma_pago ?? "—",
+        diaPago: formatDiaPago(c as never),
+        ultimaFechaPago,
+        telefono: cli?.telefono ?? "",
       });
     });
     return rows;
@@ -456,6 +477,13 @@ export default function ReportesView({ onNavigate }: Props) {
 
   const porAdminData = useMemo(() => agruparBloques(baseGestion, "admin"), [baseGestion]);
   const porGrupoData = useMemo(() => agruparBloques(baseGestion, "grupo"), [baseGestion]);
+  // Filtro "un solo cobrador" para la pestaña Por admin (se propaga a Excel e impresión).
+  const porAdminFiltrado = filtroAdmin === "todos" ? porAdminData : porAdminData.filter(b => b.key === filtroAdmin);
+  // KPIs de arriba en Por admin: reflejan el cobrador elegido (o todos).
+  const gaTot = porAdminFiltrado.reduce((s, b) => ({
+    motos: s.motos + b.total, ald: s.ald + b.alDia, par: s.par + b.parcial,
+    no: s.no + b.noPago, sc: s.sc + b.debenSinConvenio, rec: s.rec + b.recaudado,
+  }), { motos: 0, ald: 0, par: 0, no: 0, sc: 0, rec: 0 });
   const gTotMotos = baseGestion.length;
   const gAlDia    = baseGestion.filter(r => r.estado === "aldia").length;
   const gParcial  = baseGestion.filter(r => r.estado === "parcial").length;
@@ -492,44 +520,63 @@ export default function ReportesView({ onNavigate }: Props) {
   const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
   const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club de Moteros`;
 
-  // Celdas de estado/convenio compartidas por los Excel de gestión
-  const xEstado = (m: MotoRowG) => m.estado === "aldia"
-    ? { v: "🟢 Al día", color: "#166534", align: "center" as const }
+  // Celdas del Excel (SIN emojis: palabra + relleno de color suave; los montos son NÚMERO real).
+  const xEstado = (m: MotoRowG): CeldaX => m.estado === "aldia"
+    ? { v: "Al día", color: "#166534", fill: "#dcfce7", align: "center" }
     : m.estado === "parcial"
-      ? { v: "🟡 Parcial", color: "#92400e", align: "center" as const }
-      : { v: "🔴 No pagó", color: "#991b1b", align: "center" as const };
-  const xPagado = (m: MotoRowG) => ({ v: m.monto > 0 ? "$ " + fmt(m.monto) : "—", align: "right" as const });
-  const xFalta = (m: MotoRowG) => ({ v: m.deudaPend > 0 ? "$ " + fmt(m.deudaPend) : "—", align: "right" as const, color: m.deudaPend > 0 ? "#991b1b" : undefined });
-  const xConvenio = (m: MotoRowG) => m.tieneConvenio
-    ? { v: "📋 Sí", align: "center" as const }
-    : m.debeSinConvenio ? { v: "⚠️ Falta", color: "#92400e", align: "center" as const } : { v: "—", align: "center" as const };
-  const xTitulo = (b: BloqueG, icono: string) => `${icono}${b.nombre === b.key ? b.key : b.nombre.toUpperCase()}   —   ${b.total} motos · 🟢 ${b.alDia} al día · 🟡 ${b.parcial} parcial · 🔴 ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ⚠️ ${b.debenSinConvenio} sin convenio` : ""} · $ ${fmt(b.recaudado)}`;
-  const xTotal = () => [{ v: "TOTAL GENERAL", bold: true }, "", "", { v: `🟢 ${gAlDia} · 🟡 ${gParcial} · 🔴 ${gNoPago}`, align: "center" as const, bold: true }, { v: "$ " + fmt(gTotRec), align: "right" as const, bold: true }, "", gDebenSinConv > 0 ? { v: `⚠️ ${gDebenSinConv}`, align: "center" as const, bold: true } : ""];
+      ? { v: "Parcial", color: "#92400e", fill: "#fef3c7", align: "center" }
+      : { v: "No pagó", color: "#991b1b", fill: "#fee2e2", align: "center" };
+  const xPagado = (m: MotoRowG): CeldaX => m.monto > 0 ? { num: m.monto } : { v: "—", align: "center" };
+  const xFalta = (m: MotoRowG): CeldaX => m.deudaPend > 0 ? { num: m.deudaPend, color: "#991b1b" } : { v: "—", align: "center" };
+  const xConvenio = (m: MotoRowG): CeldaX => m.tieneConvenio
+    ? { v: "Sí", align: "center" }
+    : m.debeSinConvenio ? { v: "Falta", color: "#92400e", fill: "#fef3c7", align: "center" } : { v: "—", align: "center" };
+  const xModalidad = (m: MotoRowG): CeldaX => ({ v: m.formaPago, align: "center" });
+  const xDiaPago = (m: MotoRowG): CeldaX => ({ v: m.diaPago || "—", align: "center" });
+  const xUltPago = (m: MotoRowG): CeldaX => ({ v: m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos", align: "center", color: m.ultimaFechaPago ? undefined : "#94a3b8" });
+  const xTelefono = (m: MotoRowG): CeldaX => ({ v: m.telefono || "—", align: "center" });
+  const xTitulo = (b: BloqueG, prefijo: string) => `${prefijo}${b.nombre === b.key ? b.key : b.nombre.toUpperCase()}   —   ${b.total} motos · ${b.alDia} al día · ${b.parcial} parcial · ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""} · recaudado $ ${fmt(b.recaudado)}`;
+  // Fila total (misma estructura de 11 columnas de Por admin / Por grupo): TOTAL en col 0, recaudado (número) en col Pagó.
+  const xTotal = (tot: { motos: number; ald: number; par: number; no: number; sc: number; rec: number }): CeldaX[] =>
+    [{ v: "TOTAL GENERAL", bold: true }, "", "", "", "", { v: `${tot.ald} al día · ${tot.par} parcial · ${tot.no} no pagó`, align: "center", bold: true }, { num: tot.rec, bold: true }, "", "", "", tot.sc > 0 ? { v: `${tot.sc} sin conv.`, align: "center", bold: true } : ""];
+  const xLeyenda = "Estados: Al día = pagó lo que debía o su convenio está al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar. Los montos están en pesos.";
+
+  // 11 columnas (col 0 = etiqueta cruzada). Mismas para Por admin (Grupo) y Por grupo (Administrador).
+  const colsGestion = (cross: string): ColX[] => [
+    { label: cross, ancho: cross === "Administrador" ? 150 : 95 }, { label: "Placa", ancho: 75 }, { label: "Cliente", ancho: 190 },
+    { label: "Modalidad", align: "center", ancho: 90 }, { label: "Día de pago", align: "center", ancho: 95 },
+    { label: "Estado", align: "center", ancho: 80 }, { label: "Pagó período ($)", align: "right", ancho: 105 },
+    { label: "Le falta ($)", align: "right", ancho: 95 }, { label: "Últ. pago", align: "center", ancho: 90 },
+    { label: "Teléfono", align: "center", ancho: 105 }, { label: "Convenio", align: "center", ancho: 75 },
+  ];
+  const filaGestion = (m: MotoRowG, cross: "grupo" | "admin"): CeldaX[] => [
+    cross === "grupo" ? m.grupo : m.adminNombre.toUpperCase(), m.placa, m.cliente.toUpperCase(),
+    xModalidad(m), xDiaPago(m), xEstado(m), xPagado(m), xFalta(m), xUltPago(m), xTelefono(m), xConvenio(m),
+  ];
 
   function exportarPorAdmin() {
-    const cols: ColX[] = [
-      { label: "Grupo", ancho: 95 }, { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
-      { label: "Estado", align: "center", ancho: 90 }, { label: "Pagó período", align: "right", ancho: 100 },
-      { label: "Le falta (deuda)", align: "right", ancho: 110 }, { label: "Convenio", align: "center", ancho: 85 },
-    ];
-    const secciones: SeccionX[] = porAdminData.map(b => ({
-      titulo: xTitulo(b, "👤 "), color: "#334155",
-      filas: b.motos.map(m => [m.grupo, m.placa, m.cliente.toUpperCase(), xEstado(m), xPagado(m), xFalta(m), xConvenio(m)]),
+    const soloUno = filtroAdmin !== "todos";
+    const secciones: SeccionX[] = porAdminFiltrado.map(b => ({
+      titulo: xTitulo(b, ""), color: "#334155",
+      filas: b.motos.map(m => filaGestion(m, "grupo")),
     }));
-    descargarExcel({ archivo: `por_admin_${desde}_a_${hasta}`, titulo: "Gestión por administrador", periodo: periodoTxt, columnas: cols, secciones, totalGeneral: xTotal() });
+    descargarExcel({
+      archivo: `por_admin_${soloUno ? (porAdminFiltrado[0]?.nombre.replace(/\s+/g, "_") ?? "cobrador") + "_" : ""}${desde}_a_${hasta}`,
+      titulo: soloUno ? `Gestión — ${porAdminFiltrado[0]?.nombre ?? "cobrador"}` : "Gestión por administrador",
+      periodo: periodoTxt, leyenda: xLeyenda, columnas: colsGestion("Grupo"), secciones, totalGeneral: xTotal(gaTot),
+    });
   }
 
   function exportarPorGrupo() {
-    const cols: ColX[] = [
-      { label: "Administrador", ancho: 150 }, { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
-      { label: "Estado", align: "center", ancho: 90 }, { label: "Pagó período", align: "right", ancho: 100 },
-      { label: "Le falta (deuda)", align: "right", ancho: 110 }, { label: "Convenio", align: "center", ancho: 85 },
-    ];
     const secciones: SeccionX[] = porGrupoData.map(b => ({
       titulo: xTitulo(b, ""), color: GRUPO_HEX[b.key] ?? "#334155",
-      filas: b.motos.map(m => [m.adminNombre.toUpperCase(), m.placa, m.cliente.toUpperCase(), xEstado(m), xPagado(m), xFalta(m), xConvenio(m)]),
+      filas: b.motos.map(m => filaGestion(m, "admin")),
     }));
-    descargarExcel({ archivo: `por_grupo_${desde}_a_${hasta}`, titulo: "Recaudo por grupo", periodo: periodoTxt, columnas: cols, secciones, totalGeneral: xTotal() });
+    descargarExcel({
+      archivo: `por_grupo_${desde}_a_${hasta}`, titulo: "Recaudo por grupo", periodo: periodoTxt, leyenda: xLeyenda,
+      columnas: colsGestion("Administrador"), secciones,
+      totalGeneral: xTotal({ motos: gTotMotos, ald: gAlDia, par: gParcial, no: gNoPago, sc: gDebenSinConv, rec: gTotRec }),
+    });
   }
 
   function exportarVisitas() {
@@ -839,22 +886,23 @@ export default function ReportesView({ onNavigate }: Props) {
 
     const gDetalle = (bloques: BloqueG[], modo: "admin" | "grupo", cross: string) => {
       const filas = bloques.map(b => {
-        const cab = `<tr class="sec"><td colspan="7">${modo === "admin" ? "👤 " : ""}${b.nombre.toUpperCase()} — ${b.total} motos · 🟢 ${b.alDia} al día · 🟡 ${b.parcial} parcial · 🔴 ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ⚠️ ${b.debenSinConvenio} sin convenio` : ""} · $ ${fmt(b.recaudado)}</td></tr>`;
+        const cab = `<tr class="sec"><td colspan="11">${b.nombre.toUpperCase()} — ${b.total} motos · ${b.alDia} al día · ${b.parcial} parcial · ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""} · recaudado $ ${fmt(b.recaudado)}</td></tr>`;
         const motos = b.motos.map(m => {
-          const e = m.estado === "aldia" ? { t: "🟢 Al día", c: "#166534" } : m.estado === "parcial" ? { t: "🟡 Parcial", c: "#92400e" } : { t: "🔴 No pagó", c: "#991b1b" };
-          const conv = m.tieneConvenio ? "📋 Sí" : (m.debeSinConvenio ? "⚠️ Falta" : "—");
-          return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : ("👤 " + m.adminNombre)}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r" style="${m.deudaPend > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.deudaPend > 0 ? "$ " + fmt(m.deudaPend) : "—"}</td><td class="c">${conv}</td></tr>`;
+          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "parcial" ? { t: "Parcial", c: "#92400e" } : { t: "No pagó", c: "#991b1b" };
+          const conv = m.tieneConvenio ? "Sí" : (m.debeSinConvenio ? "Falta" : "—");
+          const ult = m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos";
+          return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : m.adminNombre}</td><td class="c">${m.formaPago}</td><td class="c">${m.diaPago || "—"}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r" style="${m.deudaPend > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.deudaPend > 0 ? "$ " + fmt(m.deudaPend) : "—"}</td><td class="c">${ult}</td><td class="c">${m.telefono || "—"}</td><td class="c">${conv}</td></tr>`;
         }).join("");
         return cab + motos;
       }).join("");
-      return `<table><thead><tr><th>Placa</th><th>Cliente</th><th>${cross}</th><th class="c">Estado</th><th class="r">Pagó período</th><th class="r">Le falta</th><th class="c">Convenio</th></tr></thead><tbody>${filas}</tbody></table>`;
+      return `<table><thead><tr><th>Placa</th><th>Cliente</th><th>${cross}</th><th class="c">Modalidad</th><th class="c">Día pago</th><th class="c">Estado</th><th class="r">Pagó período</th><th class="r">Le falta</th><th class="c">Últ. pago</th><th class="c">Teléfono</th><th class="c">Convenio</th></tr></thead><tbody>${filas}</tbody></table>`;
     };
     const gResumen = (bloques: BloqueG[], modo: "admin" | "grupo") => {
       const filas = bloques.map(b => `<tr><td class="up"><b>${modo === "admin" ? "👤 " : ""}${b.nombre}</b></td><td class="c">${b.total}</td><td class="c" style="color:#166534;font-weight:700">${b.alDia}</td><td class="c" style="color:#92400e;font-weight:700">${b.parcial}</td><td class="c" style="color:#991b1b;font-weight:700">${b.noPago}</td><td class="c" style="color:#92400e">${b.debenSinConvenio || "—"}</td><td class="r">$ ${fmt(b.recaudado)}</td></tr>`).join("");
       return `<table><thead><tr><th>${modo === "admin" ? "Administrador" : "Grupo"}</th><th class="c">Motos</th><th class="c">Al día</th><th class="c">Parcial</th><th class="c">No pagó</th><th class="c">Sin conv.</th><th class="r">Recaudado</th></tr></thead><tbody>${filas}</tbody></table>`;
     };
 
-    if (S.porAdmin) parts.push(`<h2>Gestión por administrador${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porAdminData, "admin", "Grupo") : gResumen(porAdminData, "admin")}`);
+    if (S.porAdmin) parts.push(`<h2>Gestión por administrador${filtroAdmin !== "todos" ? ` — ${porAdminFiltrado[0]?.nombre ?? ""}` : ""}${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porAdminFiltrado, "admin", "Grupo") : gResumen(porAdminFiltrado, "admin")}`);
     if (S.porGrupo) parts.push(`<h2>Gestión por grupo${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porGrupoData, "grupo", "Administrador") : gResumen(porGrupoData, "grupo")}`);
 
     if (S.visitas) {
@@ -1081,9 +1129,20 @@ export default function ReportesView({ onNavigate }: Props) {
       {/* ── TAB POR ADMIN (cada moto muestra su GRUPO) ── */}
       {tab === "admins" && (
         <div style={{ display: "grid", gap: 16 }}>
-          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota="toca un admin para ver sus motos · cada moto muestra su grupo" onExport={exportarPorAdmin} />
-          <GestionBloques bloques={porAdminData} modo="admin" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
+          {/* Nota: el recaudo se cuenta por el cobrador que tiene la moto HOY (el sistema no guarda la fecha de asignación) */}
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.45 }}>
+            ℹ️ El recaudo se atribuye al cobrador que tiene la moto <b>actualmente</b>. Si una moto cambió de cobrador dentro del período, todo su recaudo aparece en el cobrador de ahora.
+          </div>
+          {/* Filtro: un solo cobrador */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <Chip activo={filtroAdmin === "todos"} onClick={() => setFiltroAdmin("todos")}>Todos</Chip>
+            {porAdminData.map(b => (
+              <Chip key={b.key} activo={filtroAdmin === b.key} onClick={() => setFiltroAdmin(b.key)}>{b.nombre}</Chip>
+            ))}
+          </div>
+          <CabeceraGestion totMotos={gaTot.motos} alDia={gaTot.ald} parcial={gaTot.par} noPago={gaTot.no} debenSinConvenio={gaTot.sc} totRec={gaTot.rec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+            nota={filtroAdmin === "todos" ? "toca un cobrador para ver sus motos · cada moto muestra su grupo" : "mostrando un solo cobrador · toca «Todos» para ver a todos"} onExport={exportarPorAdmin} />
+          <GestionBloques bloques={porAdminFiltrado} modo="admin" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>
       )}
 

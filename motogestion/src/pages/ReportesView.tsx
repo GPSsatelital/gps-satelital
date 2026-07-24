@@ -11,7 +11,7 @@ import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -77,6 +77,37 @@ function getRango(r: Rango): { desde: string; hasta: string } {
   return { desde: `${hoy.getFullYear()}-01-01`, hasta: iso(hoy) };
 }
 
+// Período inmediatamente anterior de la misma "longitud", para comparar recaudo (▲/▼).
+function getRangoAnterior(r: Rango): { desde: string; hasta: string } {
+  const { desde, hasta } = getRango(r);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const dDesde = new Date(desde + "T00:00:00");
+  const dHasta = new Date(hasta + "T00:00:00");
+  if (r === "hoy") { const a = new Date(dHasta); a.setDate(a.getDate() - 1); return { desde: iso(a), hasta: iso(a) }; }
+  if (r === "semana") { const i = new Date(dDesde); i.setDate(i.getDate() - 7); const f = new Date(dHasta); f.setDate(f.getDate() - 7); return { desde: iso(i), hasta: iso(f) }; }
+  if (r === "mes") {
+    const i = new Date(dDesde.getFullYear(), dDesde.getMonth() - 1, 1);
+    const ultimoMesAnt = new Date(dDesde.getFullYear(), dDesde.getMonth(), 0).getDate();
+    const f = new Date(dDesde.getFullYear(), dDesde.getMonth() - 1, Math.min(dHasta.getDate(), ultimoMesAnt));
+    return { desde: iso(i), hasta: iso(f) };
+  }
+  if (r === "mes_anterior") {
+    const i = new Date(dDesde.getFullYear(), dDesde.getMonth() - 1, 1);
+    const f = new Date(dDesde.getFullYear(), dDesde.getMonth(), 0);
+    return { desde: iso(i), hasta: iso(f) };
+  }
+  const i = new Date(dDesde.getFullYear() - 1, 0, 1);
+  const f = new Date(dHasta.getFullYear() - 1, dHasta.getMonth(), dHasta.getDate());
+  return { desde: iso(i), hasta: iso(f) };
+}
+// Delta formateado para el ▲/▼ vs período anterior.
+function deltaRecaudo(actual: number, anterior: number): { txt: string; up: boolean | null } {
+  if (anterior <= 0) return { txt: anterior === 0 && actual > 0 ? "nuevo" : "—", up: null };
+  const d = actual - anterior;
+  const pct = Math.round((d / anterior) * 100);
+  return { txt: `${d >= 0 ? "▲" : "▼"} ${Math.abs(pct)}%`, up: d >= 0 };
+}
+
 function Barra({ label, valor, total, color, sub }: { label: string; valor: number; total: number; color: string; sub?: string }) {
   const p = total > 0 ? Math.round((valor / total) * 100) : 0;
   return (
@@ -129,50 +160,115 @@ function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: str
   URL.revokeObjectURL(url);
 }
 
-// ── Excel REAL (.xlsx) con SheetJS — abre limpio en Excel / Google Sheets / celular, sin el
-//    aviso de "archivo corrupto" del truco viejo (tabla HTML disfrazada de .xls). Los montos
-//    son NÚMERO de verdad (con separador de miles). Sin colores de celda (la versión libre de
-//    xlsx no estiliza), pero limpio y legible. ──
+// ── Excel REAL (.xlsx) con estilo (xlsx-js-style) — abre limpio en Excel / Sheets / celular,
+//    con encabezados de color, filas cebra, bordes, montos con formato y autofiltro. Montos =
+//    NÚMERO de verdad. Multi-hoja (Informe / Resumen / Por convenir). ──
 type CeldaX = string | { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
 type ColX = { label: string; align?: "left" | "center" | "right"; ancho?: number };
 type SeccionX = { titulo: string; color?: string; filas: CeldaX[][] };
-const GRUPO_HEX: Record<string, string> = {
-  RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
-};
-function descargarExcel(opts: { archivo: string; titulo: string; periodo: string; leyenda?: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] }) {
+type SeccionesOpts = { titulo: string; periodo: string; leyenda?: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] };
+
+const XLC = { navy: "0F2740", cyan: "0891B2", sec: "334155", zebra: "F3F6FA", white: "FFFFFF", line: "E2E8F0", gray: "64748B", grayL: "94A3B8", ink: "1F2937" };
+const hexNo = (h?: string) => (h || "").replace("#", "");
+const bordeF = { style: "thin", color: { rgb: XLC.line } };
+const bordeAll = { top: bordeF, bottom: bordeF, left: bordeF, right: bordeF };
+
+// Construye una hoja de cálculo ESTILIZADA a partir de título/período/leyenda/columnas/secciones.
+function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {
   const n = opts.columnas.length;
-  // Valor de cada celda: número real para montos, texto para el resto.
-  const val = (c: CeldaX): string | number => {
-    if (c !== null && typeof c === "object") return typeof c.num === "number" ? c.num : (c.v ?? "");
-    return c ?? "";
-  };
+  const val = (c: CeldaX): string | number => (c !== null && typeof c === "object") ? (typeof c.num === "number" ? c.num : (c.v ?? "")) : (c ?? "");
+  type RK = { k: "title" | "period" | "leyenda" | "blank" | "header" | "section" | "data" | "total"; sec?: string; cells?: CeldaX[]; zebra?: boolean };
   const aoa: (string | number)[][] = [];
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  const kinds: RK[] = [];
   let r = 0;
-  const fullRow = (txt: string) => { aoa.push([txt]); merges.push({ s: { r, c: 0 }, e: { r, c: n - 1 } }); r++; };
-  fullRow(opts.titulo);
-  fullRow(opts.periodo);
-  if (opts.leyenda) fullRow(opts.leyenda);
-  aoa.push([]); r++; // fila en blanco
-  aoa.push(opts.columnas.map(c => c.label)); r++; // encabezados
+  const fullRow = (txt: string, k: RK["k"], sec?: string) => { aoa.push([txt]); merges.push({ s: { r, c: 0 }, e: { r, c: n - 1 } }); kinds.push({ k, sec }); r++; };
+  fullRow(opts.titulo, "title");
+  fullRow(opts.periodo, "period");
+  if (opts.leyenda) fullRow(opts.leyenda, "leyenda");
+  aoa.push([]); kinds.push({ k: "blank" }); r++;
+  aoa.push(opts.columnas.map(c => c.label)); kinds.push({ k: "header" }); r++;
   opts.secciones.forEach(sec => {
-    fullRow(sec.titulo);
-    sec.filas.forEach(fila => { aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); r++; });
+    fullRow(sec.titulo, "section", sec.color);
+    let di = 0;
+    sec.filas.forEach(fila => { aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); kinds.push({ k: "data", cells: fila, zebra: di % 2 === 1 }); di++; r++; });
   });
-  if (opts.totalGeneral) { const tg = opts.totalGeneral; aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); r++; }
+  if (opts.totalGeneral) { const tg = opts.totalGeneral; aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); kinds.push({ k: "total" }); r++; }
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!merges"] = merges as XLSX.Range[];
-  ws["!cols"] = opts.columnas.map(c => ({ wch: Math.max(8, Math.round((c.ancho ?? 120) / 7)) }));
-  // Separador de miles a las celdas numéricas (los únicos números del informe son montos).
-  Object.keys(ws).forEach(addr => {
-    if (addr[0] === "!") return;
-    const cell = (ws as Record<string, { t?: string; z?: string }>)[addr];
-    if (cell && cell.t === "n") cell.z = "#,##0";
+  ws["!cols"] = opts.columnas.map(c => ({ wch: Math.max(9, Math.round((c.ancho ?? 120) / 6.5)) }));
+  const headerRow = kinds.findIndex(k => k.k === "header");
+  if (headerRow >= 0) ws["!autofilter"] = { ref: `${XLSX.utils.encode_cell({ r: headerRow, c: 0 })}:${XLSX.utils.encode_cell({ r: headerRow, c: n - 1 })}` };
+
+  const put = (addr: string, s: object) => { if (!ws[addr]) ws[addr] = { t: "s", v: "" }; (ws[addr] as { s?: object }).s = s; };
+  kinds.forEach((rk, ri) => {
+    if (rk.k === "blank") return;
+    for (let c = 0; c < n; c++) {
+      const addr = XLSX.utils.encode_cell({ r: ri, c });
+      const cell = ws[addr] as { t?: string } | undefined;
+      const numeric = cell?.t === "n";
+      const col = opts.columnas[c];
+      if (rk.k === "title") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 14, bold: true, color: { rgb: XLC.white } } });
+      else if (rk.k === "period") put(addr, { font: { name: "Arial", sz: 10, color: { rgb: XLC.gray } } });
+      else if (rk.k === "leyenda") put(addr, { font: { name: "Arial", sz: 9, italic: true, color: { rgb: XLC.grayL } } });
+      else if (rk.k === "header") put(addr, { fill: { fgColor: { rgb: XLC.cyan } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? "left", vertical: "center" }, border: bordeAll });
+      else if (rk.k === "section") put(addr, { fill: { fgColor: { rgb: hexNo(rk.sec) || XLC.sec } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } } });
+      else if (rk.k === "total") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? (numeric ? "right" : "left") }, border: bordeAll, ...(numeric ? { numFmt: "#,##0" } : {}) });
+      else {
+        const cx = rk.cells?.[c];
+        const cxo = (cx !== null && typeof cx === "object") ? cx : undefined;
+        put(addr, {
+          fill: { fgColor: { rgb: cxo?.fill ? hexNo(cxo.fill) : (rk.zebra ? XLC.zebra : XLC.white) } },
+          font: { name: "Arial", sz: 10, bold: !!cxo?.bold, color: { rgb: cxo?.color ? hexNo(cxo.color) : XLC.ink } },
+          alignment: { horizontal: cxo?.align ?? col.align ?? (numeric ? "right" : "left") },
+          border: bordeAll, ...(numeric ? { numFmt: "#,##0" } : {}),
+        });
+      }
+    }
   });
+  return ws;
+}
+
+function descargarLibro(archivo: string, hojas: { nombre: string; ws: XLSX.WorkSheet }[]) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Informe");
-  XLSX.writeFile(wb, opts.archivo.endsWith(".xlsx") ? opts.archivo : opts.archivo + ".xlsx");
+  hojas.forEach(h => XLSX.utils.book_append_sheet(wb, h.ws, h.nombre.slice(0, 31)));
+  XLSX.writeFile(wb, archivo.endsWith(".xlsx") ? archivo : archivo + ".xlsx");
+}
+const GRUPO_HEX: Record<string, string> = {
+  RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
+};
+function descargarExcel(opts: SeccionesOpts & { archivo: string; hoja?: string; hojasExtra?: (SeccionesOpts & { nombre: string })[] }) {
+  const hojas = [
+    { nombre: opts.hoja ?? "Informe", ws: estilarSeccionesWS(opts) },
+    ...(opts.hojasExtra ?? []).map(h => ({ nombre: h.nombre, ws: estilarSeccionesWS(h) })),
+  ];
+  descargarLibro(opts.archivo, hojas);
+}
+
+// ── Gráficos del PDF (SVG inline con hex — html2canvas los rasteriza bien) ──
+function donutSVG(al: number, par: number, no: number, total: number): string {
+  const C = 326.726; // circunferencia r=52
+  const seg = (v: number) => (total > 0 ? (v / total) * C : 0);
+  const a = seg(al), p = seg(par), nn = seg(no);
+  const pctAl = total > 0 ? Math.round((al / total) * 100) : 0;
+  return `<svg viewBox="0 0 140 140" width="150" height="150" xmlns="http://www.w3.org/2000/svg">`
+    + `<circle cx="70" cy="70" r="52" fill="none" stroke="#eef2f7" stroke-width="22"></circle>`
+    + `<g transform="rotate(-90 70 70)" fill="none" stroke-width="22">`
+    + `<circle cx="70" cy="70" r="52" stroke="#159a6d" stroke-dasharray="${a} ${C - a}"></circle>`
+    + `<circle cx="70" cy="70" r="52" stroke="#e0982a" stroke-dasharray="${p} ${C - p}" stroke-dashoffset="${-a}"></circle>`
+    + `<circle cx="70" cy="70" r="52" stroke="#d64545" stroke-dasharray="${nn} ${C - nn}" stroke-dashoffset="${-(a + p)}"></circle>`
+    + `</g>`
+    + `<text x="70" y="66" text-anchor="middle" font-size="26" font-weight="bold" fill="#0f172a">${pctAl}%</text>`
+    + `<text x="70" y="86" text-anchor="middle" font-size="11" fill="#64748b">al día</text></svg>`;
+}
+function barrasHTML(rows: { label: string; value: number; max: number; color: string; right: string }[]): string {
+  return rows.map(r => {
+    const w = r.max > 0 ? Math.max(2, Math.round((r.value / r.max) * 100)) : 0;
+    return `<div style="margin-bottom:9px">`
+      + `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#475569">${r.label}</span><span style="font-weight:bold;color:#0f172a">${r.right}</span></div>`
+      + `<div style="height:12px;background:#eef2f7;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:${r.color};border-radius:6px"></div></div></div>`;
+  }).join("");
 }
 function fmtFechaCorta(iso: string) {
   const s = (iso || "").slice(0, 10).split("-");
@@ -183,7 +279,7 @@ function fmtFechaCorta(iso: string) {
 // estado: al día / parcial (abonó pero debe) / no pagó — MISMA verdad de mora que Cartera,
 // con convenio: si tiene convenio activo y lo cumple, va "al día" (la deuda queda programada).
 type EstadoPagoG = "aldia" | "parcial" | "nopago";
-type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string };
+type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null };
 type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; recaudado: number; pctv: number };
 const ESTADO_RANK: Record<EstadoPagoG, number> = { nopago: 0, parcial: 1, aldia: 2 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
@@ -280,6 +376,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                         <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "var(--faint)" }}>
                           <span>Últ. pago: {m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos"}</span>
                           {m.telefono && <a href={`tel:${m.telefono}`} onClick={e => e.stopPropagation()} style={{ color: "var(--accent-ink)", textDecoration: "none", fontWeight: 700 }}>📞 {m.telefono}</a>}
+                          {m.asignadoDesde && <span>· asignada desde {fmtFechaCorta(m.asignadoDesde)}</span>}
                         </div>
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -341,6 +438,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
   const [filtroAdmin, setFiltroAdmin] = useState<string>("todos"); // "todos" o el id de un cobrador — filtra la pestaña Por admin
+  const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
   const [expandidoGestion, setExpandidoGestion] = useState<string | null>(null);
   const [expandidoVisita, setExpandidoVisita] = useState<string | null>(null);
   // Armador de impresión: qué secciones incluir + nivel de detalle (por defecto todo detallado)
@@ -461,6 +559,7 @@ export default function ReportesView({ onNavigate }: Props) {
         diaPago: formatDiaPago(c as never),
         ultimaFechaPago,
         telefono: cli?.telefono ?? "",
+        asignadoDesde: moto.subadmin_asignado_desde ?? null,
       });
     });
     return rows;
@@ -481,6 +580,20 @@ export default function ReportesView({ onNavigate }: Props) {
   const gNoPago   = baseGestion.filter(r => r.estado === "nopago").length;
   const gDebenSinConv = baseGestion.filter(r => r.debeSinConvenio).length;
   const gTotRec   = baseGestion.reduce((s, r) => s + r.monto, 0);
+
+  // C1 — comparación vs período anterior (solo sobre recaudo; el estado al día es foto de hoy).
+  const { desde: desdeAnt, hasta: hastaAnt } = useMemo(() => getRangoAnterior(rango), [rango]);
+  const recaudoAnterior = useMemo(() => pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desdeAnt && p.fecha <= hastaAnt && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0), [pagos, desdeAnt, hastaAnt]);
+  const deltaRec = deltaRecaudo(gTotRec, recaudoAnterior);
+
+  // C3 — ranking de cobradores por % al día (desempate por recaudo); excluye "sin asignar".
+  const rankingCobradores = useMemo(() => porAdminData.filter(b => b.key !== "__none__").slice().sort((a, b) => b.pctv - a.pctv || b.recaudado - a.recaudado), [porAdminData]);
+
+  // C2 — "por convenir": motos con deuda sin convenio por cobrador (respeta el filtro de un cobrador).
+  const porConvenir = useMemo(() => {
+    const src = filtroAdmin === "todos" ? porAdminData : porAdminData.filter(b => b.key === filtroAdmin);
+    return src.map(b => ({ nombre: b.nombre, motos: b.motos.filter(m => m.debeSinConvenio).slice().sort((x, y) => y.deudaPend - x.deudaPend) })).filter(b => b.motos.length > 0);
+  }, [porAdminData, filtroAdmin]);
 
   // ── INFORME "Visitas por administrador" ────────────────────────────────────
   const visitasData = useMemo(() => {
@@ -545,6 +658,50 @@ export default function ReportesView({ onNavigate }: Props) {
     xModalidad(m), xDiaPago(m), xEstado(m), xPagado(m), xFalta(m), xUltPago(m), xTelefono(m), xConvenio(m),
   ];
 
+  // Hoja "Resumen": ranking de cobradores + por grupo + comparación de recaudo.
+  function hojaResumen(): SeccionesOpts {
+    const cols: ColX[] = [
+      { label: "#", align: "center", ancho: 40 }, { label: "Cobrador / Grupo", ancho: 170 },
+      { label: "Motos", align: "center", ancho: 65 }, { label: "Al día", align: "center", ancho: 65 },
+      { label: "Parcial", align: "center", ancho: 65 }, { label: "No pagó", align: "center", ancho: 70 },
+      { label: "% al día", align: "center", ancho: 70 }, { label: "Recaudado ($)", align: "right", ancho: 110 },
+    ];
+    const filaBloque = (pos: string, b: BloqueG): CeldaX[] => [
+      { v: pos, align: "center" }, b.nombre === b.key ? b.key : b.nombre.toUpperCase(),
+      { num: b.total, align: "center" }, { v: String(b.alDia), align: "center", color: "#166534" },
+      { v: String(b.parcial), align: "center", color: "#92400e" }, { v: String(b.noPago), align: "center", color: "#991b1b" },
+      { v: `${b.pctv}%`, align: "center", bold: true }, { num: b.recaudado },
+    ];
+    return {
+      titulo: "Resumen gerencial", periodo: periodoTxt,
+      leyenda: `Recaudo del período $ ${fmt(gTotRec)} · anterior $ ${fmt(recaudoAnterior)} (${deltaRec.txt}) · ${gDebenSinConv} deben sin convenio`,
+      columnas: cols,
+      secciones: [
+        { titulo: "Ranking de cobradores (por % al día)", color: "#0f2740", filas: rankingCobradores.map((b, i) => filaBloque(String(i + 1), b)) },
+        { titulo: "Por grupo", color: "#334155", filas: porGrupoData.map(b => filaBloque("", b)) },
+      ],
+      totalGeneral: ["", { v: "TOTAL", bold: true }, { num: gTotMotos, align: "center", bold: true }, { v: String(gAlDia), align: "center", bold: true }, { v: String(gParcial), align: "center", bold: true }, { v: String(gNoPago), align: "center", bold: true }, { v: pct(gAlDia, gTotMotos), align: "center", bold: true }, { num: gTotRec, bold: true }],
+    };
+  }
+  // Hoja "Por convenir": deudores sin convenio por cobrador (tarea de la semana).
+  function hojaConvenir(): SeccionesOpts {
+    const cols: ColX[] = [
+      { label: "Cliente", ancho: 200 }, { label: "Placa", ancho: 80 }, { label: "Teléfono", align: "center", ancho: 120 },
+      { label: "Modalidad", align: "center", ancho: 95 }, { label: "Debe ($)", align: "right", ancho: 100 },
+    ];
+    const secciones: SeccionX[] = porConvenir.map(b => ({
+      titulo: `${b.nombre.toUpperCase()}   —   ${b.motos.length} por convenir · debe $ ${fmt(b.motos.reduce((s, m) => s + m.deudaPend, 0))}`,
+      color: "#92400e",
+      filas: b.motos.map(m => [m.cliente.toUpperCase(), m.placa, { v: m.telefono || "—", align: "center" as const }, { v: m.formaPago, align: "center" as const }, { num: m.deudaPend, color: "#991b1b" }]),
+    }));
+    return {
+      titulo: "Por convenir — tarea de la semana", periodo: periodoTxt,
+      leyenda: "Motos con deuda vieja y SIN convenio. La gestión del cobrador es ponerles convenio.",
+      columnas: cols,
+      secciones: secciones.length ? secciones : [{ titulo: "Sin pendientes por convenir", color: "#166534", filas: [] }],
+    };
+  }
+
   function exportarPorAdmin() {
     const soloUno = filtroAdmin !== "todos";
     const secciones: SeccionX[] = porAdminFiltrado.map(b => ({
@@ -555,6 +712,7 @@ export default function ReportesView({ onNavigate }: Props) {
       archivo: `por_admin_${soloUno ? (porAdminFiltrado[0]?.nombre.replace(/\s+/g, "_") ?? "cobrador") + "_" : ""}${desde}_a_${hasta}`,
       titulo: soloUno ? `Gestión — ${porAdminFiltrado[0]?.nombre ?? "cobrador"}` : "Gestión por administrador",
       periodo: periodoTxt, leyenda: xLeyenda, columnas: colsGestion("Grupo"), secciones, totalGeneral: xTotal(gaTot),
+      hojasExtra: [{ nombre: "Resumen", ...hojaResumen() }, { nombre: "Por convenir", ...hojaConvenir() }],
     });
   }
 
@@ -567,6 +725,7 @@ export default function ReportesView({ onNavigate }: Props) {
       archivo: `por_grupo_${desde}_a_${hasta}`, titulo: "Recaudo por grupo", periodo: periodoTxt, leyenda: xLeyenda,
       columnas: colsGestion("Administrador"), secciones,
       totalGeneral: xTotal({ motos: gTotMotos, ald: gAlDia, par: gParcial, no: gNoPago, sc: gDebenSinConv, rec: gTotRec }),
+      hojasExtra: [{ nombre: "Resumen", ...hojaResumen() }, { nombre: "Por convenir", ...hojaConvenir() }],
     });
   }
 
@@ -592,6 +751,56 @@ export default function ReportesView({ onNavigate }: Props) {
       archivo: `visitas_${desde}_a_${hasta}`, titulo: "Visitas por administrador", periodo: periodoTxt, columnas: cols, secciones,
       totalGeneral: [{ v: `TOTAL: ${tv} visitas`, bold: true }, "", "", "", "", ""],
     });
+  }
+
+  // ── INFORME GERENCIAL EN PDF (gráficos + estadísticas) — html2canvas→jsPDF (reusa pdf.ts) ──
+  function informeGerencialHTML(): string {
+    const uno = filtroAdmin !== "todos" ? porAdminFiltrado[0] : null;
+    const kMotos = uno ? uno.total : gTotMotos, kAld = uno ? uno.alDia : gAlDia, kPar = uno ? uno.parcial : gParcial;
+    const kNo = uno ? uno.noPago : gNoPago, kRec = uno ? uno.recaudado : gTotRec, kSc = uno ? uno.debenSinConvenio : gDebenSinConv;
+    const pctAld = kMotos > 0 ? Math.round((kAld / kMotos) * 100) : 0;
+    const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const deltaHtml = (!uno && recaudoAnterior > 0)
+      ? `<div style="font-size:10px;margin-top:2px;color:${deltaRec.up ? "#0f7a52" : "#a3202d"}">${deltaRec.txt} vs anterior ($${fmt(recaudoAnterior)})</div>` : "";
+    const kpi = (label: string, value: string, color: string, extra = "") => `<div style="flex:1;min-width:120px;background:#f6f8fb;border-radius:10px;padding:11px 13px"><div style="font-size:11px;color:#64748b">${label}</div><div style="font-size:21px;font-weight:bold;color:${color}">${value}</div>${extra}</div>`;
+    const kpis = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0">${kpi("Recaudado", "$ " + fmt(kRec), "#0f172a", deltaHtml)}${kpi("Al día", pctAld + "%", "#0f7a52")}${kpi("Motos activas", String(kMotos), "#0f172a")}${kpi("Deben sin convenio", String(kSc), "#a35a12")}</div>`;
+    const dona = `<div style="text-align:center"><div style="font-size:13px;font-weight:bold;color:#0f172a;text-align:left;margin-bottom:6px">Estado de la cartera</div>${donutSVG(kAld, kPar, kNo, kMotos)}<div style="font-size:11px;color:#334155;margin-top:4px"><span style="color:#159a6d">■</span> Al día ${kAld} &nbsp; <span style="color:#e0982a">■</span> Parcial ${kPar} &nbsp; <span style="color:#d64545">■</span> No pagó ${kNo}</div></div>`;
+    const maxGrupo = Math.max(1, ...porGrupoData.map(b => b.recaudado));
+    const barsGrupo = barrasHTML(porGrupoData.map(b => ({ label: b.key, value: b.recaudado, max: maxGrupo, color: "#2f6db0", right: "$ " + fmt(b.recaudado) })));
+    const barsCobr = barrasHTML(rankingCobradores.map(b => ({ label: b.nombre.toUpperCase(), value: b.pctv, max: 100, color: b.pctv >= 85 ? "#159a6d" : b.pctv >= 70 ? "#e0982a" : "#d64545", right: b.pctv + "%" })));
+    const graficos = uno
+      ? `<div style="margin:6px 0 14px">${dona}</div>`
+      : `<div style="display:flex;gap:22px;align-items:flex-start;margin:6px 0 16px"><div style="flex:0 0 170px">${dona}</div><div style="flex:1"><div style="font-size:13px;font-weight:bold;color:#0f172a;margin-bottom:8px">Recaudo por grupo</div>${barsGrupo}<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:14px 0 8px">Cumplimiento por cobrador</div>${barsCobr}</div></div>`;
+    const th = (t: string, al = "left") => `<th style="background:#0f2740;color:#fff;padding:6px 8px;text-align:${al};font-size:11px">${t}</th>`;
+    const td = (t: string, al = "left", color = "#0f172a", bold = false) => `<td style="padding:5px 8px;border-bottom:1px solid #e2e8f0;text-align:${al};font-size:11px;color:${color};${bold ? "font-weight:bold" : ""}">${t}</td>`;
+    const tablaRanking = uno ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:8px 0 6px">Detalle por cobrador</div><table style="width:100%;border-collapse:collapse"><tr>${th("#", "center")}${th("Cobrador")}${th("Motos", "center")}${th("Al día", "center")}${th("Parcial", "center")}${th("No pagó", "center")}${th("% al día", "center")}${th("Recaudado", "right")}</tr>${rankingCobradores.map((b, i) => `<tr>${td(String(i + 1), "center")}${td(esc(b.nombre.toUpperCase()))}${td(String(b.total), "center")}${td(String(b.alDia), "center", "#166534")}${td(String(b.parcial), "center", "#92400e")}${td(String(b.noPago), "center", "#991b1b")}${td(b.pctv + "%", "center", "#0f172a", true)}${td("$ " + fmt(b.recaudado), "right")}</tr>`).join("")}</table>`;
+    const convenirHtml = porConvenir.length === 0 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:16px 0 6px">Por convenir — tarea de la semana</div>${porConvenir.map(b => `<div style="margin-bottom:8px"><div style="background:#fff7ed;color:#92400e;font-weight:bold;font-size:12px;padding:4px 8px;border-radius:5px">${esc(b.nombre.toUpperCase())} — ${b.motos.length} por convenir · debe $ ${fmt(b.motos.reduce((s, m) => s + m.deudaPend, 0))}</div><table style="width:100%;border-collapse:collapse">${b.motos.map(m => `<tr>${td(esc(m.cliente.toUpperCase()))}${td(m.placa, "center")}${td(m.telefono || "—", "center", "#185fa5")}${td(m.formaPago, "center")}${td("debe $ " + fmt(m.deudaPend), "right", "#991b1b", true)}</tr>`).join("")}</table></div>`).join("")}`;
+    const titulo = uno ? `Informe gerencial — ${esc(uno.nombre.toUpperCase())}` : "Informe gerencial de cartera";
+    return `<div style="font-family:Arial,sans-serif;color:#0f172a;width:794px">`
+      + `<div style="background:#0f2740;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">${titulo}</div><div style="font-size:12px;color:#7fb2e6;margin-top:2px">Recaudo y gestión por cobrador</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB DE MOTEROS</div></div>`
+      + `<div style="padding:6px 18px;background:#f1f5f9;font-size:11px;color:#475569">del ${fmtFechaCorta(desde)} al ${fmtFechaCorta(hasta)} &nbsp;·&nbsp; generado ${fmtFechaCorta(hoyISO())}</div>`
+      + `<div style="padding:8px 18px 18px">${kpis}${graficos}${tablaRanking}${convenirHtml}<div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#94a3b8;text-align:center">Estados: Al día = cubrió su período o su convenio está al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar. El recaudo se atribuye al cobrador que tiene la moto actualmente.<br>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div></div></div>`;
+  }
+
+  async function descargarInformePdf() {
+    if (generandoPdf) return;
+    setGenerandoPdf(true);
+    try {
+      const html = informeGerencialHTML();
+      const { htmlAPdfBlob } = await import("../utils/pdf");
+      const blob = await htmlAPdfBlob(html);
+      const url = URL.createObjectURL(blob);
+      const uno = filtroAdmin !== "todos" ? porAdminFiltrado[0] : null;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `informe_gerencial_${uno ? uno.nombre.replace(/\s+/g, "_") + "_" : ""}${desde}_a_${hasta}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      alert("No se pudo generar el PDF: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setGenerandoPdf(false);
+    }
   }
 
   const totalRecaudado    = pagosRango.reduce((a, p) => a + p.valor, 0);
@@ -1133,6 +1342,28 @@ export default function ReportesView({ onNavigate }: Props) {
           </div>
           <CabeceraGestion totMotos={gaTot.motos} alDia={gaTot.ald} parcial={gaTot.par} noPago={gaTot.no} debenSinConvenio={gaTot.sc} totRec={gaTot.rec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
             nota={filtroAdmin === "todos" ? "toca un cobrador para ver sus motos · cada moto muestra su grupo" : "mostrando un solo cobrador · toca «Todos» para ver a todos"} onExport={exportarPorAdmin} />
+          {/* C1 — comparación de recaudo vs período anterior */}
+          <div style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12.5 }}>
+            <span style={{ color: "var(--muted)" }}>Recaudo del período: <b style={{ color: "var(--text)" }}>$ {fmt(gTotRec)}</b> <span style={{ color: "var(--faint)" }}>· anterior $ {fmt(recaudoAnterior)}</span></span>
+            {deltaRec.up !== null && <span style={{ fontWeight: 800, color: deltaRec.up ? "var(--ok-ink)" : "var(--bad-ink)", background: deltaRec.up ? "var(--ok-soft)" : "var(--bad-soft)", borderRadius: 8, padding: "2px 9px" }}>{deltaRec.txt} vs anterior</span>}
+          </div>
+          {/* C3 — ranking de cobradores (solo en vista Todos) */}
+          {filtroAdmin === "todos" && rankingCobradores.length > 1 && (
+            <div style={{ ...card, display: "grid", gap: 9 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>🏆 Ranking por cumplimiento</div>
+              {rankingCobradores.map((b, i) => (
+                <div key={b.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, minWidth: 0 }}>
+                  <span style={{ width: 16, textAlign: "center", fontWeight: 800, color: "var(--faint)", flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontWeight: 700, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.nombre}</span>
+                  <div style={{ width: 56, height: 6, background: "var(--soft)", borderRadius: 999, overflow: "hidden", flexShrink: 0 }}>
+                    <div style={{ width: `${b.pctv}%`, height: "100%", background: pctFillG(b.pctv) }} />
+                  </div>
+                  <span style={{ width: 36, textAlign: "right", fontWeight: 800, color: pctColorG(b.pctv), flexShrink: 0 }}>{b.pctv}%</span>
+                  <span style={{ width: 74, textAlign: "right", fontSize: 12, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>$ {fmt(b.recaudado)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <GestionBloques bloques={porAdminFiltrado} modo="admin" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>
       )}
@@ -1646,6 +1877,18 @@ export default function ReportesView({ onNavigate }: Props) {
         const setTodas = (v: boolean) => setSecImpr(Object.fromEntries(SECCIONES.map(s => [s.key, v])));
         return (
         <div style={{ display: "grid", gap: 16 }}>
+          {/* Informe Gerencial en PDF (gráficos + estadísticas) */}
+          <div style={{ ...card, display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>📊 Informe Gerencial (PDF)</div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
+              Documento profesional con <b>gráficos y estadísticas</b>: estado de cartera (dona), recaudo por grupo, ranking y cumplimiento por cobrador, y la lista de “por convenir”.
+              Respeta el período <b style={{ color: "var(--text)" }}>{rangoLabel}</b>{filtroAdmin !== "todos" && porAdminFiltrado[0] ? <> · cobrador <b style={{ color: "var(--text)" }}>{porAdminFiltrado[0].nombre}</b></> : null}.
+            </p>
+            <button onClick={descargarInformePdf} disabled={generandoPdf}
+              style={{ padding: "13px 18px", borderRadius: 14, border: "none", cursor: generandoPdf ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: "var(--accent)", color: "var(--card)", opacity: generandoPdf ? 0.7 : 1 }}>
+              {generandoPdf ? "Generando PDF…" : "📊 Descargar Informe Gerencial (PDF)"}
+            </button>
+          </div>
           {/* Armador de impresión */}
           <div style={{ ...card, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>

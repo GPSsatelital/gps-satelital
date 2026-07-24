@@ -26,6 +26,7 @@ export type Moto = {
   color: string | null;
   observaciones: string | null;
   subadmin_id?: string | null;
+  subadmin_asignado_desde?: string | null; // desde cuándo el cobrador tiene esta moto (mig 058)
   // evidencia de entrega (wizard paso 6) — guardada en motos, no siempre tipada
   kilometraje_inicial?: number | null;
   fotos_entrega?: Record<string, string> | null;
@@ -125,7 +126,13 @@ export function useMotos() {
   }
 
   async function asignarSubadmin(motoId: string, subadminId: string | null) {
-    const { error } = await supabase.from("motos").update({ subadmin_id: subadminId, updated_at: new Date().toISOString() }).eq("id", motoId);
+    // Registrar DESDE CUÁNDO tiene la moto este cobrador (null si se desasigna) — mig 058.
+    // Es la base para que el informe de recaudo por cobrador sea justo hacia adelante.
+    const { error } = await supabase.from("motos").update({
+      subadmin_id: subadminId,
+      subadmin_asignado_desde: subadminId ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", motoId);
     return { error: error?.message ?? null };
   }
 

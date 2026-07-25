@@ -1,0 +1,648 @@
+[
+ {
+  "rol": "secretaria",
+  "titulo": "El día a día de ANGELA (secretaria) — paso a paso, momento por momento",
+  "proposito": "Esta sección le dice a la secretaria exactamente qué tocar en la app en cada momento del día: recibir la plata en efectivo, confirmar las transferencias y el efectivo que traen los cobradores, registrar clientes nuevos y cerrar la caja de cada grupo. Si sigue estos pasos, la plata del día cuadra sola y ningún cliente aparece \"en mora\" habiendo pagado.",
+  "bloques": [
+   {
+    "momento": "Al llegar en la mañana (antes de abrir la puerta al primer cliente)",
+    "objetivo": "Dejar la app al día y saber con qué se va a encontrar hoy: cuánta plata quedó sin confirmar de ayer y a cuántos les toca pagar hoy.",
+    "pantalla": "Cartera & Cobros (pestañas 🌎 Todos / 📋 Para hacer hoy / ⏳ Por confirmar / 🧾 Historial) + campana 🔔 del encabezado",
+    "pasos": [
+     "Abrir la app y entrar con su usuario (ANGELA).",
+     "Si aparece el aviso flotante \"🔄 Hay una versión nueva\", tocar Actualizar y esperar a que recargue. (Si no lo hace, más tarde al registrar un pago puede salir un error raro; si eso pasa, presione Ctrl + Shift + R.)",
+     "Tocar la campana 🔔 arriba a la derecha y leer las alertas. A usted le interesan sobre todo las de \"transferencia pendiente\".",
+     "Tocar 💳 Cartera (en el computador está en la barra de la izquierda; en el celular, en la barra de abajo).",
+     "Mirar los 4 recuadros de arriba: Pagan hoy · Recaudado hoy · En gabela · En mora. Son botones: si toca \"Pagan hoy\" le muestra la lista de esos clientes.",
+     "Tocar la pestaña \"⏳ Por confirmar\" (en celular dice \"⏳ Confirmar\") y anotar el número que trae al lado. Eso es plata que entró pero que TODAVÍA no está contada: transferencias de anoche y efectivo que trajeron los cobradores."
+    ],
+    "ejemplo": "Martes 7:30 a.m. Los recuadros muestran: Pagan hoy 38 · Recaudado hoy $0 · En gabela 4 · En mora 11. La pestaña dice \"⏳ Confirmar 5\": son 3 transferencias que mandaron anoche por WhatsApp y 2 cobros que hizo EMIRO ayer en la tarde y todavía no le entrega.",
+    "ojo": "No arranque el día sin mirar \"⏳ Por confirmar\". Mientras una transferencia esté sin confirmar, el sistema NO la cuenta: ese cliente sigue apareciendo en mora, y si el cobrador lo ve así, sale a perseguir a alguien que ya pagó. Ese es el error más común y el que más molesta al cliente."
+   },
+   {
+    "momento": "Cuando llega un cliente a la oficina a pagar en efectivo",
+    "objetivo": "Registrar la plata que recibe en la mano, en el contrato correcto y por el valor correcto, dejando ver de una vez a qué se le aplicó (cuota, deuda, convenio, ahorro).",
+    "pantalla": "Cartera & Cobros → botón redondo \"+\" (abajo a la derecha) → ventana \"Registrar pago\"",
+    "pasos": [
+     "Estando en 💳 Cartera, tocar el botón redondo azul \"+\" abajo a la derecha. Como usted no cobra en la calle, le abre directo la ventana \"Registrar pago\".",
+     "En el campo \"Cliente / contrato\" escribir el nombre o la placa (con 2 o 3 letras basta) y tocar el resultado de la lista.",
+     "Leer el recuadro que aparece: los tres cuadritos \"Cuota período · Pagado · Pendiente\", y abajo, si tiene, las franjas naranja \"Deuda: $\" y azul \"Convenio: $/período\".",
+     "Decirle en voz alta al cliente cuánto debe y recibir la plata CONTADA antes de teclear nada.",
+     "En \"Valor recibido\" escribir el monto que recibió.",
+     "Leer el renglón azul que dice \"Se aplicará: tarifa … · deuda … · convenio … · ahorro …\". Ese renglón es la prueba de que la plata va a donde debe ir.",
+     "En \"Método de pago\" dejar \"Efectivo (confirma automático)\".",
+     "Tocar \"Registrar pago\". Sale una ventana de confirmación con el nombre del cliente, la placa y el monto en grande.",
+     "Verificar que el nombre y el monto son los correctos y tocar \"Confirmar\"."
+    ],
+    "ejemplo": "ANDRY BREA (placa RLZ93H), contrato semanal de $202.000, día de pago miércoles. Le entrega $202.000 en billetes. En el renglón azul aparece: \"Se aplicará: tarifa $176.000 · ahorro $26.000\". Eso es correcto: $27.000 diarios de lunes a sábado + $14.000 el domingo son los $176.000 de la empresa, y los $4.000 diarios + $2.000 del domingo son los $26.000 de ahorro del cliente.",
+    "ojo": "Dos cosas. (1) Si la ventana de confirmación muestra el aviso amarillo de pago repetido (mismo cliente, mismo monto, el mismo día), PARE y revise primero la pestaña 🧾 Historial: casi siempre es el mismo pago que se está registrando dos veces, y eso descuadra la caja. (2) Nunca escoja \"Transferencia\" en esta ventana si no tiene la foto del comprobante a la mano — el sistema se la va a exigir y con razón: sin foto no hay cómo probar que el dinero entró."
+   },
+   {
+    "momento": "Justo después de registrar el pago (el cliente todavía está en frente)",
+    "objetivo": "Entregarle al cliente su comprobante impreso y mandárselo por WhatsApp, para que quede sin dudas de cuánto pagó y cuánto le falta.",
+    "pantalla": "Ventana \"🧾 Recibo de pago\" (se abre sola al confirmar un pago en efectivo)",
+    "pasos": [
+     "Al confirmar el efectivo, se abre sola la ventana \"🧾 Recibo de pago\" con el folio, el monto y el bloque \"Detalle de su cuenta\".",
+     "Leerle al cliente el renglón \"Le queda pendiente\" — ese es el número por el que después vuelve a preguntar.",
+     "Tocar \"🖨️ Imprimir recibo\": sale por la impresora térmica (la GA-E2001) y se le entrega el papel al cliente.",
+     "Tocar \"💬 Enviar por WhatsApp\" → tocar el botón del número registrado. Si el cliente da otro número, escribirlo en \"Otro número\" y tocar Enviar; si quiere que le llegue a los dos, tocar \"Enviar a los dos números\".",
+     "Cerrar la ventana con la ✕."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (placa RLT68H) solo pudo traer $100.000 de los $202.000 de la semana. El recibo dice: \"Debía en total $202.000 → A la cuota $100.000 → Le queda pendiente $102.000\", y el ahorro sale en $0. No es un error: primero se cubre la tarifa de la empresa y el ahorro solo se le abona cuando complete la semana.",
+    "ojo": "Si la impresora no sacó el papel, NO vuelva a registrar el pago. El pago ya quedó guardado. Vaya a Cartera → pestaña \"🧾 Historial\", busque el pago y toque el botón \"🧾 Recibo\" para imprimirlo de nuevo. Registrarlo dos veces infla la caja del día y después toca borrar el pago (y eso solo lo puede hacer FREDY)."
+   },
+   {
+    "momento": "Cuando llega un comprobante de transferencia por WhatsApp",
+    "objetivo": "Que la transferencia quede registrada con su foto y que solo se cuente como plata real cuando usted verifique en el banco que entró.",
+    "pantalla": "Cartera & Cobros → botón \"+\" → \"Registrar pago\" (método Transferencia) · y pestaña \"⏳ Por confirmar\" → bloque \"🏦 Transferencias por confirmar\"",
+    "pasos": [
+     "Guardar en el teléfono/computador la imagen del comprobante que mandó el cliente.",
+     "Cartera → botón \"+\" → buscar el cliente o la placa y seleccionarlo.",
+     "Escribir el valor en \"Valor recibido\".",
+     "En \"Método de pago\" escoger \"Transferencia (queda pendiente)\".",
+     "Aparece \"Foto del comprobante *\": tocar \"📷 Cámara\" si va a fotografiar la pantalla del cliente, o \"🖼 Galería\" si ya tiene la imagen guardada. Debe quedar el ✓ verde con el nombre del archivo.",
+     "Tocar \"Registrar pago\" → \"Confirmar\". Sale el aviso amarillo \"⏳ Transferencia registrada\". Ojo: todavía NO es plata contada.",
+     "Entrar al banco y verificar que el dinero sí llegó a la cuenta.",
+     "Volver a Cartera → pestaña \"⏳ Por confirmar\" → bloque \"🏦 Transferencias por confirmar\". Tocar la foto pequeña para ampliarla y comparar valor, fecha y cuenta.",
+     "Si todo cuadra, tocar \"✓ Confirmar recibido\": ahí sí se cuenta y se abre el recibo para enviárselo por WhatsApp. Si no aparece en el banco o la foto está alterada, tocar \"✕ Rechazar\"."
+    ],
+    "ejemplo": "ALEJANDRO NIETO manda a las 6:00 a.m. la foto de una transferencia de $195.000 (es de los de tarifa vieja: $26.000 la tarifa diaria y $13.000 el domingo). Usted la registra con la foto, queda \"⏳ Pendiente\". A las 9:00 a.m. revisa el banco, sí entró, toca \"✓ Confirmar recibido\" y le manda el recibo por WhatsApp.",
+    "ojo": "Confirmar SIN haber mirado el banco es el hueco más peligroso que hay: el sistema no valida nada con el banco, la única verificación es la que usted hace con sus ojos. Una foto vieja reenviada o un comprobante editado pasa derecho si usted confirma de una. Y al revés: una transferencia real que se queda días en \"pendiente\" hace que el cliente aparezca en mora y lo persigan sin deber."
+   },
+   {
+    "momento": "Cuando el cobrador (EMIRO) llega con el efectivo que recogió en la calle",
+    "objetivo": "Recibir, contar y confirmar el efectivo de campo, para que la plata deje de estar \"en poder del admin\" y entre a la caja.",
+    "pantalla": "Cartera & Cobros → pestaña \"⏳ Por confirmar\" → bloque \"💵 Efectivo de campo por confirmar\"",
+    "pasos": [
+     "Cartera → pestaña \"⏳ Por confirmar\" → bajar hasta el bloque \"💵 Efectivo de campo por confirmar\".",
+     "Usar los chips \"Todos / Por entregar / Entregado, falta confirmar\" para filtrar. Los que dicen \"Entregado a secretaria\" (verde) son los que EMIRO ya marcó como entregados; los que dicen \"En poder del admin\" (amarillo) todavía no.",
+     "Contar los billetes con EMIRO al frente, uno por uno contra la lista de la pantalla (cada tarjeta trae el nombre, la placa, el folio y el monto).",
+     "Si en la tarjeta hay foto del cobro, tocarla para ampliarla y verificarla.",
+     "Por cada cobro que cuadre, tocar \"✓ Confirmar recibido\". Ahí se abre el recibo y ya cuenta como plata de la caja del día.",
+     "Si un cobro no cuadra con el efectivo que le entregaron, NO lo confirme: déjelo pendiente y avísele a SERGIO o a FREDY.",
+     "Si un cobro sigue apareciendo \"En poder del admin\" pero EMIRO ya le dio la plata, pídale a él que toque primero \"📤 Entregué a secretaria\" en su celular; ese botón es de él, no suyo."
+    ],
+    "ejemplo": "EMIRO llega a las 5:00 p.m. con $471.000. En la lista aparecen 3 cobros: $202.000 (ANDRY BREA, RLZ93H), $195.000 (ALEJANDRO NIETO) y $74.000 (un abono). Suman $471.000, coincide con lo que trajo, y confirma los tres uno por uno.",
+    "ojo": "Confirmar los cobros sin haber contado la plata al frente del cobrador destruye el doble control: son dos personas justamente para que ninguna quede sola con la responsabilidad. Y ojo con lo otro: el resumen \"Recogiste hoy\" que ve el cobrador solo mira el día de HOY — si le quedó plata de ayer sin entregar, a él no le aparece. Revise usted la lista completa de \"Por entregar\", no solo lo de hoy."
+   },
+   {
+    "momento": "Cuando un cliente llega a pagar y no trae la cuota completa (o quiere ponerse al día de una deuda vieja)",
+    "objetivo": "Recibir lo que traiga sin que se pierda el registro, y si hay una deuda atrasada grande, dejarla organizada en un convenio con fecha y cuotas.",
+    "pantalla": "Cartera & Cobros → ventana \"Registrar pago\" · y, si aplica, el botón de Convenio desde el detalle del contrato",
+    "pasos": [
+     "Registrar el abono igual que un pago normal (botón \"+\" → buscar cliente → \"Valor recibido\" → Efectivo → Registrar pago → Confirmar). Nunca lo deje sin registrar por ser \"poquito\".",
+     "Leer el renglón azul \"Se aplicará\" y explicarle al cliente qué pasó con su plata: primero llena la semana más vieja que tenga pendiente, después la deuda, después la cuota del convenio.",
+     "Mostrarle en el recibo el renglón \"Le queda pendiente\" para que sepa con cuánto queda.",
+     "Si además arrastra una deuda vieja grande, abrir el contrato en la lista (pestaña 🌎 Todos → tocar el cliente) y usar el botón de Convenio para pactar cuánto va a abonar por período.",
+     "En el convenio: escribir la meta (lo que debe en total), escoger si se fija por número de cuotas o por valor de cuota, y guardar con el cliente presente y su firma.",
+     "Verificar en el chip \"🤝 Convenio\" de la pestaña 🌎 Todos que el cliente ya aparece ahí."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) debe $202.000 de la semana y trae $100.000. Se registra el abono: la app aplica los $100.000 a la semana más atrasada, el ahorro queda en $0 y el recibo muestra \"Le queda pendiente $102.000\". Como además arrastra $150.000 de semanas anteriores, se le arma un convenio de $50.000 por semana durante 3 semanas, encima de su cuota normal de $202.000.",
+    "ojo": "Tres advertencias. (1) El convenio NUNCA reemplaza la cuota de la semana: es plata ADICIONAL. Si se lo explica mal, el cliente cree que pagando el convenio ya cumplió y vuelve a caer en mora. (2) Solo puede haber UN convenio activo por contrato — si intenta crear otro, la app se lo va a impedir. (3) Nunca guarde un convenio sin la firma del cliente: sin firma no sirve como respaldo (ya pasó una vez y hubo que rehacerlo)."
+   },
+   {
+    "momento": "Cuando llega una persona nueva a pedir moto (registro de cliente nuevo)",
+    "objetivo": "Dejar el cliente creado con su plata inicial registrada, su autorización de datos firmada y sus documentos, para que pueda seguir el camino: visita → aprobación → contrato.",
+    "pantalla": "Clientes → botón \"+ Nuevo cliente\"",
+    "pasos": [
+     "Tocar 👥 Clientes en el menú → botón \"+ Nuevo cliente\" (arriba a la derecha en el computador; el botón redondo abajo en el celular).",
+     "Llenar nombre completo, cédula, dirección y teléfono. Estos cuatro son obligatorios: sin ellos no deja guardar.",
+     "Escoger la ruta del contrato: \"Diario\" (todavía está ahorrando la base de $510.000) o \"Tiempo definido\" (ya tiene la base y paga semanal/quincenal/mensual).",
+     "En \"Ingreso inicial\" escribir la plata que la persona está entregando hoy. El mínimo son $100.000; lo ideal son $280.500. El recuadro cambia de color solo para avisarle si está bajo.",
+     "Llenar los datos del acompañante. Si vive en la misma casa del cliente, marcar \"Sí\" en la pregunta de domicilio: así el sistema no le vuelve a pedir el recibo público, solo la cédula.",
+     "Subir los documentos con los botones 📷 Cámara o 🖼 Galería de cada uno (hoja de vida, cédula, recibo público, antecedentes; la licencia es opcional).",
+     "Bajar hasta \"Autorización de tratamiento de datos personales\", hacer firmar al cliente en la pantalla y, si el lector de huella está funcionando, tomarle la huella (la huella es opcional, la firma no debería saltarse).",
+     "Tocar Guardar. Como entregó plata, sale solo el recibo de la base inicial: imprimirlo y entregárselo."
+    ],
+    "ejemplo": "Llega un señor referido por ANDRY BREA. Trae $280.500 y quiere ruta \"Diario\". Se registra con cédula, dirección y teléfono, se marca que el acompañante vive con él (entonces solo se le pide la cédula de ella), se le hace firmar la autorización y se guarda. Sale el recibo de $280.500 y el cliente queda en estado \"En proceso\" hasta que le hagan la visita domiciliaria.",
+    "ojo": "El ingreso inicial que usted teclee aquí es el mismo que después aparece en el contrato como base: si lo escribe mal, el contrato nace mal y toca corregirlo con el admin. Y si la cédula está en lista negra, la app se lo va a bloquear con un aviso rojo — no intente rodearlo registrando la cédula con un dígito distinto; avísele a FREDY."
+   },
+   {
+    "momento": "Al final de la tarde — cierre de caja",
+    "objetivo": "Cuadrar la plata del día contra lo que hay físicamente en la caja, y cerrar el día grupo por grupo (cada grupo es una bolsa de dinero distinta).",
+    "pantalla": "Caja Diaria (menú COBROS & DINERO → 💰 Caja Diaria)",
+    "pasos": [
+     "ANTES de cerrar, volver a Cartera → \"⏳ Por confirmar\" y dejar ese número en cero: confirme o rechace todo lo que quedó pendiente. Lo que quede pendiente NO entra en el cierre de hoy.",
+     "Entrar a 💰 Caja Diaria. Arriba ve la fecha y los totales del día: Efectivo y Transferencias.",
+     "Mirar el bloque \"💵 Cobros en campo — efectivo a recibir por funcionario\": ahí ve cuánto le corresponde entregar a cada cobrador y qué falta.",
+     "Contar el efectivo físico de la caja y compararlo con el recuadro \"Efectivo\" de la pantalla.",
+     "Usar los chips de grupo de arriba (COSTA / PRADERA / RASTREADOR / USADAS) o bajar al cuadro por grupo. Cada grupo se cierra por separado.",
+     "En la tarjeta de cada grupo tocar el botón de cierre (dice, por ejemplo, \"Cerrar caja de COSTA — $1.212.000\") y confirmar.",
+     "Repetir con cada grupo que tuvo movimiento. Arriba aparece un contador \"X de Y grupos cerrados\": no se vaya hasta que diga, por ejemplo, \"3 de 3 grupos cerrados\"."
+    ],
+    "ejemplo": "Miércoles, día fuerte de pagos. COSTA recogió $1.212.000 (6 pagos de $202.000), PRADERA $585.000 y RASTREADOR $390.000. Usted cuenta el efectivo, cuadra, y cierra los tres por aparte. El contador de arriba pasa a \"3 de 3 grupos cerrados\".",
+    "ojo": "No mezcle los grupos ni cierre \"todo junto\": COSTA, PRADERA, RASTREADOR y USADAS son bolsas de plata de dueños distintos y cada una se le reporta a su socio por aparte. Y si el efectivo físico no cuadra con la pantalla, NO cierre: primero busque el descuadre (casi siempre es un pago registrado dos veces, un cobro de campo confirmado sin recibir la plata, o un pago en efectivo que nadie registró). Cerrar con descuadre deja el error congelado en el reporte."
+   },
+   {
+    "momento": "Antes de irse (revisión de 5 minutos)",
+    "objetivo": "Asegurarse de que nada quedó a medias y que mañana no arranca con problemas heredados de hoy.",
+    "pantalla": "Historial Pagos (menú COBROS & DINERO → 🧾 Historial Pagos)",
+    "pasos": [
+     "Entrar a 🧾 Historial Pagos.",
+     "Tocar el atajo de rango \"Hoy\".",
+     "Mirar los cuatro recuadros de arriba: Total confirmado · Efectivo · Transferencias · Pendiente.",
+     "Verificar que el recuadro \"Pendiente\" esté en $0. Si no, es plata sin confirmar: vuelva a Cartera → \"⏳ Por confirmar\" y resuélvala.",
+     "Revisar rápido la lista por si algún pago tiene un valor raro (un $2.020.000 en vez de $202.000, por ejemplo — un cero de más al teclear).",
+     "Si encuentra un pago mal registrado, NO lo intente arreglar usted: tome nota del nombre, la placa, el valor y la hora, y avísele a FREDY (borrar pagos es exclusivo de él y queda con rastro)."
+    ],
+    "ejemplo": "Al final del miércoles el resumen muestra: Total confirmado $2.187.000 · Efectivo (9) $1.815.000 · Transferencias (2) $372.000 · Pendiente (0) $0. Todo cuadra con lo que se cerró en Caja Diaria y se puede cerrar la oficina tranquila.",
+    "ojo": "Si deja el \"Pendiente\" en rojo al irse, mañana amanecen clientes marcados en mora habiendo pagado, y el cobrador sale a perseguirlos. Cinco minutos hoy le evitan una hora de reclamos mañana."
+   }
+  ]
+ },
+ {
+  "rol": "cobrador",
+  "titulo": "El día a día del cobrador (SUBADMIN) — la ruta de EMIRO, paso a paso",
+  "proposito": "Esta sección es para el cobrador de calle (rol SUBADMIN, como EMIRO): le dice qué abrir apenas llega, a quién cobrarle hoy, cómo registrar la plata que recoge en la calle, qué hacer con el que no paga y cómo entregar el efectivo sin que le quede faltando nada. El cobrador solo ve las motos que le asignaron — si una placa no le aparece, es porque no es suya, no porque el sistema esté malo.",
+  "bloques": [
+   {
+    "momento": "Al llegar en la mañana — ver a quién hay que cobrarle hoy",
+    "objetivo": "Saber en 30 segundos, sin llamar a nadie ni revisar cuadernos, cuáles de SUS motos deben plata hoy y en qué orden atacarlas.",
+    "pantalla": "Cartera → pestaña \"📋 Para hacer hoy\" (panel completo con los chips de arriba y la lista de tarjetas)",
+    "pasos": [
+     "Abre la app y entra con tu usuario (ej. EMIRO).",
+     "Toca abajo el ícono 💳 Cartera (en computador: menú izquierdo → OPERACIONES → Cartera & Cobros).",
+     "Como eres cobrador, la app te abre SOLA en la pestaña \"📋 Para hacer hoy\". Si tocaste otra pestaña, vuelve tocando \"📋 Para hacer hoy\" (el número al lado es cuántas tareas tienes).",
+     "Mira los chips de arriba y trabájalos de izquierda a derecha, que ya están en orden de urgencia: \"🚚 Recolec.\" → \"🔴 Mora\" → \"🟡 Gabela\" → \"🔵 Pagan hoy\". El chip \"Todos\" te los junta.",
+     "En cada tarjeta lees de un vistazo: NOMBRE del cliente, la placa amarilla, si dice \"3d sin pagar\" o \"Paga Miércoles\", el estado (Mora/Gabela/Al día) y abajo grande el \"Debe pagar $ …\".",
+     "Si buscas a alguien puntual, escribe el nombre o la placa en la casilla \"Buscar cliente o placa...\" (no tienes que bajar toda la lista).",
+     "Anota tu ruta del día en el orden que te queda mejor por barrio, pero SIN saltarte los de \"🚚 Recolec.\" y \"🔴 Mora\": esos son los que le están costando plata a la empresa."
+    ],
+    "ejemplo": "EMIRO abre Cartera y ve \"📋 Para hacer hoy (9)\". En \"🔴 Mora\" le aparece ANDRY BREA — RLZ93H — \"2d sin pagar\" — Debe pagar $ 222.000 (cuota $202.000 + deuda $20.000). En \"🔵 Pagan hoy\" le aparece MARTHA ALVAREZ — RLT68H — Debe pagar $ 195.000 (ella es de la tarifa vieja: $26.000 de tarifa + $4.000 de ahorro = $30.000 por día de lunes a sábado). Con eso ya sabe que arranca por ANDRY y de paso pasa donde MARTHA.",
+    "ojo": "Error común: quedarse trabajando en la pestaña \"🌎 Todos\" porque es la que muestra más gente. Ahí están TODOS sus contratos mezclados (incluidos los que están al día y no hay que molestar) y NO salen los botones de tarea. \"Para hacer hoy\" es la pestaña de trabajo; \"Todos\" es solo para consultar. Otro error: creer que la lista está incompleta porque no aparece una placa conocida — el cobrador solo ve las motos que tiene asignadas; si falta una, hay que pedirle a SERGIO o FREDY que se la asignen en Motos."
+   },
+   {
+    "momento": "Cuando el cliente le paga en la calle (cobro en campo)",
+    "objetivo": "Que la plata que recibe en la mano quede registrada al instante, con la prueba de dónde y a quién se la recibió, y que el cliente se vaya con su comprobante.",
+    "pantalla": "Cartera → \"📋 Para hacer hoy\" → ventana flotante \"Cobro en campo\" (la que muestra \"Debe pagar (referencia)\", Monto recuperado, 📍 Ubicación y Foto)",
+    "pasos": [
+     "En la tarjeta del cliente toca el botón verde \"💵 Cobrar\". (Si estás parado en la calle y no lo tienes en la lista, toca el botón redondo \"+\" y busca el cliente por nombre o placa.)",
+     "Apenas abre la ventana, el celular pide permiso de ubicación: dale PERMITIR. Al lado de \"📍 Ubicación:\" debe quedar \"✓ Capturada\". Si dice \"No disponible\", toca \"Capturar GPS\" otra vez.",
+     "Antes de recibir la plata, mírale al cliente el recuadro azul \"Debe pagar (referencia)\": ahí está el total y el desglose (cuota del período, deuda, convenio). Cóbrale sobre esa cifra.",
+     "Escribe en \"Monto recuperado\" lo que el cliente TE ENTREGÓ de verdad — no lo que debía. Si te dio menos, escribe lo que te dio.",
+     "Si quieres respaldo, toca \"📷 Cámara\" y tómale foto al billete/al cliente recibiendo. Es opcional pero recomendado cuando el monto es alto o el cliente es problemático.",
+     "En \"Nota (opcional)\" escribe algo útil para después: \"abonó, dice que completa el viernes\".",
+     "Toca \"Registrar cobro en campo\". Sale una ventana de confirmación con el nombre, la placa y el monto: revísala y toca Confirmar. Si el sistema te avisa en amarillo que ya hay un pago igual hoy, PARA y revisa antes de confirmar — puede ser que ya lo registraste.",
+     "Al confirmar se abre WhatsApp con el recibo provisional del cliente: dale enviar. Ese es su comprobante mientras ANGELA lo confirma en caja."
+    ],
+    "ejemplo": "EMIRO llega donde ANDRY BREA (RLZ93H). La ventana le muestra \"Debe pagar (referencia) $ 222.000 — Cuota período: $202.000 · Deuda: $20.000\". ANDRY solo le da $150.000. EMIRO escribe 150.000, verifica \"✓ Capturada\" en ubicación, le toma foto, pone la nota \"abona $150.000, completa el miércoles\" y registra. A ANDRY le llega por WhatsApp: \"Monto recibido: $150.000 — Pendiente de validación en caja\".",
+    "ojo": "Tres errores que cuestan plata: (1) escribir el monto que DEBÍA en vez del que recibió — la caja no le va a cuadrar a ANGELA y el descuadre queda a nombre de EMIRO; (2) registrar el cobro sin ubicación (\"No disponible\") — sin GPS no hay prueba de que fue a cobrar, y esa es la defensa del cobrador cuando el cliente dice \"a mí nadie me visitó\"; (3) recibir la plata y registrarla \"más tarde en la casa\" — se olvida, y ese pago queda invisible para todo el sistema (el cliente sigue apareciendo en mora y le siguen mandando mensajes de cobro)."
+   },
+   {
+    "momento": "Cuando el cliente no paga — primer y segundo intento (mensaje y llamada)",
+    "objetivo": "Dejar constancia de que sí se le persiguió, en orden, para poder escalar después. El sistema NO deja recolectar una moto si antes no quedaron registrados los intentos.",
+    "pantalla": "Cartera → \"📋 Para hacer hoy\" → botones de la tarjeta (Mensaje · Llamar · Sirena · Recolección)",
+    "pasos": [
+     "Ubica al cliente en el chip \"🟡 Gabela\" (día siguiente al de pago) o \"🔴 Mora\" (de ahí en adelante).",
+     "Toca \"Mensaje\": se abre WhatsApp con el texto ya escrito según su estado (día de pago / gabela / mora), con su nombre, su placa y lo que debe. Dale enviar. El botón queda \"✓ Mensaje\" — eso significa que ya quedó registrado hoy.",
+     "Si no contesta, toca \"Llamar\": el celular marca solo el número del cliente y la llamada queda registrada como gestión.",
+     "Si tampoco contesta, toca \"Sirena\" (queda el registro de que se activó, 3 segundos y solo con la moto detenida).",
+     "Los tres pasos se pueden hacer el MISMO día si el cliente no da la cara — no hay que esperar un día entre uno y otro.",
+     "Si el cliente sí contesta y te da una razón o una promesa, no te quedes solo con el WhatsApp: registra la gestión completa (bloque siguiente)."
+    ],
+    "ejemplo": "ALEJANDRO NIETO tiene un día de gabela y no ha pagado sus $202.000. EMIRO toca \"Mensaje\" a las 8 a.m. (queda ✓), no responde; a las 11 a.m. toca \"Llamar\" (no contesta); a las 3 p.m. toca \"Sirena\". A las 3 p.m. ya tiene los tres pasos hechos el mismo día, y el botón \"🔒 Recolección\" se le desbloquea.",
+    "ojo": "Error común: mandar el mensaje por WhatsApp desde el chat propio del celular, por fuera de la app. Se ve igual para el cliente, pero para el sistema ESE mensaje no existe: el botón de Recolección se queda con el candado \"🔒\" y al tocarlo el sistema le dice \"Antes de recolectar debe intentar: mensaje, llamada, sirena\". Siempre desde el botón de la tarjeta. Otro error: pensar que hay que esperar un día entre cada paso — no; los tres pueden ser el mismo día si no hay respuesta."
+   },
+   {
+    "momento": "Cuando el cliente pide chance — plazo extra o promesa de pago",
+    "objetivo": "Que el compromiso quede en el sistema con fecha, para que la app se lo recuerde sola y no dependa de la memoria del cobrador ni de un papelito.",
+    "pantalla": "Inmovilizaciones → pestaña \"🔴 En mora\" → botón \"📋 Gestión\" (ventana de registro de gestión, con Tipo y Resultado)",
+    "pasos": [
+     "Entra al módulo Inmovilizaciones (menú ☰ Más → SEGUIMIENTO → Inmovilizaciones) y quédate en la pestaña \"🔴 En mora\".",
+     "Busca al cliente y toca \"📋 Gestión\".",
+     "Si le vas a dar chance formal: en \"Tipo\" elige \"⏳ Plazo extra\", escribe 1 o 2 días (el máximo son 2) y escribe el MOTIVO — es obligatorio, sin motivo no guarda.",
+     "Si el cliente solo prometió pagar: deja el tipo que corresponda (📞 Llamada o 💬 Mensaje WhatsApp) y en \"Resultado\" elige \"Promesa de pago\"; el sistema te va a exigir la FECHA en que prometió pagar. Ponla exacta.",
+     "Guarda. Con el plazo extra el cliente sale del grupo \"🚚 Recolec.\" mientras el plazo esté vigente — no se le puede recolectar la moto en ese margen.",
+     "Al vencerse el plazo o la fecha prometida sin pago, el cliente vuelve solo a la cola y además te sale una alerta en la campana 🔔: \"Plazo extra vencido\" o \"Promesa de pago vencida\"."
+    ],
+    "ejemplo": "ALEJANDRO NIETO le dice a EMIRO el lunes: \"págame el miércoles que me pagan el flete\". EMIRO entra a Inmovilizaciones → En mora → 📋 Gestión → Tipo \"📞 Llamada telefónica\", Resultado \"Promesa de pago\", fecha 27/07. El miércoles 27, si ALEJANDRO no pagó, a EMIRO le suena la campana: \"Promesa de pago vencida — ALEJANDRO NIETO: prometió pagar el 27/07\".",
+    "ojo": "Error grave: dar el chance de palabra y no registrarlo. Pasan dos cosas malas: (1) otro compañero o el sistema lo mete a Recolección y le recogen la moto a un cliente al que ya le habían dado plazo (queda mal la empresa); (2) si el cliente incumple, no hay nada escrito que lo respalde. También: el plazo extra es máximo 2 días — si necesita más tiempo, eso ya no es plazo, es un CONVENIO y lo hace ANGELA o SERGIO."
+   },
+   {
+    "momento": "Cuando ya no hay con quién — recoger la moto (recolección)",
+    "objetivo": "Retirar la moto con toda la evidencia fotográfica y que el sistema haga solo lo demás: suspender el contrato, marcar la moto como Recuperada y cargar la multa de $20.000.",
+    "pantalla": "Cartera → \"📋 Para hacer hoy\" → chip \"🚚 Recolec.\" → ventana de Recolección (destino, fotos por ángulo, kilometraje, condición)",
+    "pasos": [
+     "El cliente aparece en \"🚚 Recolec.\" cuando lleva más de 3 días de mora real y no tiene plazo vigente. Verifica que el botón \"Recolección\" NO tenga el candado 🔒 (si lo tiene, faltan mensaje/llamada/sirena — ver bloque anterior).",
+     "Toca \"Recolección\". Se abre la ventana del acta.",
+     "Elige el destino de la moto: \"🏬 Bodega\", \"🏢 Oficina\" o \"🔧 Directo a taller (necesita ajuste)\".",
+     "Toma las 6 fotos que pide, una por una y en el ángulo que muestra el dibujito: delantera, lateral izquierdo, desde arriba, lateral derecho, trasera (con la placa legible) y la foto de la PERSONA al lado de la moto con la cara visible. Las 6 son obligatorias — sin ellas no guarda.",
+     "Escribe el kilometraje, marca la condición general y describe los daños si los hay.",
+     "Guarda. En un solo paso el sistema: registra el acta de recepción, suspende el contrato, pone la moto en \"Recuperada\" y le carga automáticamente la multa de $20.000 por recolección.",
+     "La moto queda en Inmovilizaciones → pestaña \"🔒 Retenidas\", con el reloj de 7 días corriendo."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) lleva 5 días sin pagar y ya tiene mensaje, llamada y sirena registrados. EMIRO recoge la moto, destino \"🏬 Bodega\", toma las 6 fotos, kilometraje 34.500, condición buena, daños \"espejo derecho rayado\". Al guardar, el contrato de ANDRY queda Suspendido, RLZ93H queda \"Recuperada\" y a ANDRY le queda una deuda nueva de $20.000 encima de lo que ya debía.",
+    "ojo": "Errores caros: (1) recoger la moto y \"registrarla después\" — mientras no se registre, el contrato sigue Activo, la cartera le sigue cobrando y el reloj de los 7 días para poder liquidar NUNCA arranca; (2) subir 4 o 5 fotos y saltarse la de la persona — esa foto es la prueba legal de a quién se le recibió la moto; (3) creer que la multa de $20.000 se cobra una sola vez de por vida — se cobra CADA vez que se recolecta. Y ojo: para devolverle la moto al cliente, lo mínimo obligatorio es que pague la MULTA; el resto atrasado se puede meter en convenio, pero eso lo autoriza ANGELA/SERGIO, no el cobrador."
+   },
+   {
+    "momento": "Al terminar la ruta — entregar el efectivo a la secretaria",
+    "objetivo": "Que la plata recogida en la calle pase formalmente a manos de ANGELA y quede el doble control: el cobrador declara que la entregó, la secretaria confirma que la recibió.",
+    "pantalla": "Cartera → pestaña \"⏳ Por confirmar\" (en celular se llama \"⏳ Confirmar\") → bloque \"Efectivo de campo por confirmar\"",
+    "pasos": [
+     "Antes de salir de la ruta, vuelve a \"📋 Para hacer hoy\" y mira el recuadro verde de arriba: \"💵 Recogiste hoy: $X en N cobro(s)\" y debajo, en amarillo, \"Pendiente entregar a caja: $Y\". Ese $Y es la plata que llevas encima.",
+     "Cuenta el efectivo físico y compáralo con ese número. Si no cuadra, revisa el bloque \"Efectivo de campo por confirmar\" pago por pago ANTES de entregar.",
+     "Entrégale el efectivo en la mano a ANGELA.",
+     "Toca la pestaña \"⏳ Por confirmar\" → busca cada uno de tus cobros del día → toca \"📤 Entregué a secretaria\". La etiqueta del pago cambia de \"En poder del admin\" a \"Entregado a secretaria\".",
+     "ANGELA revisa y confirma cada pago desde su pantalla. Ahí el pago pasa de Pendiente a Confirmado y recién entonces le baja la deuda al cliente.",
+     "Antes de irte, verifica que \"Pendiente entregar a caja\" te quedó en $0."
+    ],
+    "ejemplo": "EMIRO cierra el día con \"💵 Recogiste hoy: $ 547.000 en 4 cobro(s) — Pendiente entregar a caja: $ 547.000\". Cuenta los billetes: $547.000 exactos. Se los pasa a ANGELA, marca los 4 pagos con \"📤 Entregué a secretaria\" y el aviso amarillo desaparece. ANGELA los confirma y ahí sí le baja la deuda a ANDRY, MARTHA y los otros dos.",
+    "ojo": "Error #1: marcar \"📤 Entregué a secretaria\" sin haberle entregado la plata todavía. Eso es declarar algo falso en el sistema, y si el efectivo se pierde, el registro dice que ya lo había entregado. Se marca DESPUÉS de que la plata cambió de manos, nunca antes. Error #2: dejar plata de un día para otro — el recuadro \"Recogiste hoy\" solo mira el día de hoy, así que el efectivo de ayer sin entregar deja de aparecerle y se olvida fácil. Regla simple: la ruta no se cierra hasta que \"Pendiente entregar a caja\" quede en $0. Error #3: esperar que el cliente quede al día apenas se le recibió la plata — el pago de campo queda PENDIENTE hasta que ANGELA lo confirme; si el cliente reclama, muéstrele el recibo provisional del WhatsApp."
+   },
+   {
+    "momento": "Cuando le asignan una visita domiciliaria a un cliente nuevo",
+    "objetivo": "Ir a la casa del prospecto, verificar que sí vive ahí y dejar la evidencia (fotos + GPS) para que el admin pueda aprobarlo. Sin visita aprobada NO se le puede entregar moto a nadie.",
+    "pantalla": "Clientes → chip \"🏠 Para visita\" → ficha del cliente → ventana \"Registrar visita\"",
+    "pasos": [
+     "En \"📋 Para hacer hoy\" fíjate en el aviso azul de arriba: \"📋 Tienes N visitas domiciliarias pendientes\". Tócalo y te lleva directo (o entra por 👥 Clientes → chip \"🏠 Para visita\").",
+     "Solo te aparecen las visitas que TE asignaron a ti. Abre el cliente y toca \"Registrar visita\".",
+     "IMPORTANTE: llena el formulario PARADO EN LA CASA del cliente, no después en la oficina. El sistema captura el GPS del sitio donde estás en ese momento.",
+     "Llena la entrevista: ¿el cliente vive allí?, tiempo de residencia (ej. \"3 años\"), tipo de vivienda, composición familiar, estabilidad laboral y las dudas que hizo el cliente.",
+     "\"Observaciones del visitador\" es OBLIGATORIO (tiene asterisco rojo): escribe lo que viste con tus ojos, no un \"todo bien\".",
+     "Toma la \"Foto cliente + funcionario\" (los dos en la foto) y la \"Foto fachada\" (el frente de la casa).",
+     "Responde \"¿Va a guardar la moto aquí, en esta casa?\" y, si dice que no, escribe dónde la va a guardar. Ese dato después lo verifica el admin contra el GPS.",
+     "En \"Ubicación GPS\" verifica que salga el ✔ con las coordenadas. Si sale el aviso \"⚠️ Obligatoria\", toca \"🔄 Reintentar ubicación\" y dale permiso al celular. Sin ubicación el sistema NO deja guardar.",
+     "Guarda tu Recomendación y envía. El cliente pasa solo a \"Pendiente evaluación\" y SERGIO o FREDY deciden si lo aprueban."
+    ],
+    "ejemplo": "A EMIRO le asignan la visita de un prospecto en Olaya. Va a la casa, marca \"Sí vive allí\", tiempo de residencia \"4 años\", vivienda familiar, \"mototaxista independiente\", observaciones \"casa de material, patio cerrado con reja donde guardaría la moto; la señora confirmó que él vive ahí\", toma las dos fotos, marca que SÍ guarda la moto en esa casa, GPS ✔ 10.39xxx, -75.49xxx, y recomienda aprobar.",
+    "ojo": "Error común: llenar la visita desde la oficina o desde la casa propia \"porque ya fui\". El GPS queda en el sitio equivocado y la visita queda inservible como respaldo — si mañana ese cliente desaparece con la moto, la dirección que tiene la empresa es falsa. Otro error: olvidar que las visitas asignadas NO son opcionales — mientras esa visita no se registre, ese cliente se queda congelado y no puede recibir moto (la empresa deja de facturar por eso). Y ojo: el cobrador NO registra clientes nuevos ni aprueba la visita, solo la realiza; el registro lo hace ANGELA y la aprobación SERGIO/FREDY."
+   },
+   {
+    "momento": "Una vez al día (mañana y tarde) — revisar la campana de alertas",
+    "objetivo": "Enterarse de lo que no se ve en la lista de cobro: plazos vencidos, promesas incumplidas, SOAT/tecnomecánica por vencer y motos retenidas o demoradas en taller.",
+    "pantalla": "Campana 🔔 del encabezado (y módulo Alertas, en ☰ Más → SEGUIMIENTO → Alertas)",
+    "pasos": [
+     "Toca la campana 🔔 arriba a la derecha. Solo te muestra alertas de TUS motos y TUS clientes.",
+     "Revisa primero las de plata: \"Mora crítica\", \"En gabela\", \"Plazo extra vencido\", \"Promesa de pago vencida\". Cada alerta te lleva al módulo donde se resuelve.",
+     "Revisa las de papeles de la moto: \"SOAT vence\" y \"Tecnomecánica vence\" (avisan a 30, 15 y 5 días). Avísale a SERGIO apenas la veas — una moto sin SOAT no puede rodar y se para el ingreso.",
+     "Revisa las físicas: \"Moto retenida\", \"Moto demorada en taller\", \"Validar ubicación de la moto\".",
+     "Si necesitas buscar algo puntual en el momento (un cliente, una placa, un contrato), usa la lupa 🔍 del encabezado — escribe mínimo 2 letras.",
+     "Cierra el día repasando \"📋 Para hacer hoy\": lo que quedó con ✓ está gestionado; lo que quedó sin tocar arranca mañana en la misma lista."
+    ],
+    "ejemplo": "EMIRO abre la campana y ve tres cosas: \"Promesa de pago vencida — ALEJANDRO NIETO: prometió pagar el 27/07\", \"Mora crítica — ANDRY BREA\" y \"SOAT vence en 15 días — RLT68H\". Con eso arma la ruta de mañana: pasa donde ALEJANDRO, escala a ANDRY y le avisa a SERGIO del SOAT de la moto de MARTHA ALVAREZ.",
+    "ojo": "Error común: ignorar la campana porque \"lo de cobrar ya lo veo en Para hacer hoy\". Hay cosas que SOLO viven en la campana y no salen en la lista de cobro: SOAT y tecnomecánica por vencer, moto demorada en taller, promesa de pago vencida. Si nadie las mira, se vencen los papeles de una moto que está rodando o se queda una moto parada semanas en taller sin producir. Otro error: si una alerta le nombra una placa que no reconoce, no es error del sistema — revise si le reasignaron una moto."
+   }
+  ]
+ },
+ {
+  "rol": "admin",
+  "titulo": "El día a día del ADMINISTRADOR (SERGIO / FREDY) — MotoGestión",
+  "proposito": "Guía del administrador que ve TODO: qué revisar cada mañana, qué autorizar (plazos, convenios, entregas), cómo entregar una moto nueva, qué decidir con las motos retenidas, cómo cuadrar la plata por grupo y cómo dejar en firme los saldos viejos con el cliente presente. Cada momento del día con el clic exacto, un ejemplo real con placa y cifras, y el error que hay que evitar.",
+  "bloques": [
+   {
+    "momento": "Al llegar en la mañana (7:00–7:30 a.m.) — el barrido general antes de que llegue nadie",
+    "objetivo": "Saber en 5 minutos cómo amaneció el negocio: cuánta plata está en riesgo, cuántas motos están fuera de la calle y qué se venció anoche. Es la foto del día ANTES de que empiecen a llamar los cobradores.",
+    "pantalla": "Panel (Dashboard) + campana de alertas 🔔 del encabezado",
+    "pasos": [
+     "Entra a la app y toca **Panel** (en el celular es la primera pestaña de la barra de abajo; en el computador es el primer ítem del menú de la izquierda).",
+     "Mira primero la fila de tarjetas grandes de arriba: **Clientes activos · Motos en campo · En mora · Contratos activos · Por inmovilizar**. Esos 5 números son el semáforo del negocio.",
+     "Justo debajo hay unos botones de grupo: **Toda la flota · COSTA · PRADERA · RASTREADOR · USADAS**. Toca **COSTA** para ver solo ese portafolio, porque cada grupo es una inversión distinta y responden dueños distintos. Vuelve a **Toda la flota** cuando termines.",
+     "Baja al bloque de cartera del Panel y revisa los 4 números del día: **Pagan hoy · En gabela · En mora · Recuperadas (sem.)**.",
+     "Ahora toca la **campana 🔔** arriba a la derecha. Ahí sale lo que el sistema detectó solo: mora crítica, gabela, SOAT y tecnomecánica por vencer (avisa a 30, 15 y 5 días), transferencias que la secretaria no ha confirmado, contratos que quedaron sin activar, convenios por vencer, tercer convenio incumplido, moto demorada en el taller y traspasos próximos (avisa 2 meses antes).",
+     "Toca cada alerta: te lleva directo al módulo donde se resuelve. Las que no puedas resolver de una vez, repártelas por WhatsApp al que corresponde (EMIRO si es cobro de sus motos, ANGELA si es plata por confirmar)."
+    ],
+    "ejemplo": "Lunes, 7:10 a.m. El Panel muestra **En mora: 14** y **Por inmovilizar: 3**. Filtras por **COSTA** y ves que 11 de esos 14 son de COSTA (que tiene ~180 contratos activos). En la campana 🔔 hay 2 avisos de SOAT: **RLZ93H (ANDRY BREA) vence en 15 días** y otra vence en 5 días. Anotas: hoy hay que sacar el SOAT de la que vence en 5 días, y las 3 por inmovilizar se las mandas a EMIRO antes de las 8.",
+    "ojo": "El error más común es mirar solo el número grande de \"En mora\" y asustarse: ese número junta TODOS los grupos, y si no filtras terminas regañando al encargado de un grupo por la mora de otro. Segundo error: revisar el Panel y NO abrir la campana — el Panel no muestra SOAT, tecnomecánica ni transferencias pendientes; eso solo vive en la campana. Si no la abres, un SOAT se vence y la moto sale a rodar ilegal."
+   },
+   {
+    "momento": "Media mañana (8:00–10:00 a.m.) — revisar la cartera del día y que el equipo sí esté gestionando",
+    "objetivo": "Verificar cliente por cliente quién debe hoy, a quién ya le mandaron mensaje y quién lleva días sin que nadie lo toque. Es donde se detecta al cobrador que no está trabajando la mora.",
+    "pantalla": "Cartera & Cobros → pestañas \"📋 Para hacer hoy\" y \"🌎 Todos\"",
+    "pasos": [
+     "Toca **Cartera** (barra de abajo en el celular / menú izquierdo en el computador).",
+     "Arriba verás 4 números: **Pagan hoy · Recaudado hoy · En gabela · En mora**. Cada uno es un botón: al tocarlo te lleva a la lista ya filtrada, no tienes que buscar a mano.",
+     "Toca la pestaña **📋 Para hacer hoy**. Ahí están las tareas del día ordenadas por urgencia y sin repetir clientes: primero Recolección, luego Mora, luego Gabela, y de último los que pagan hoy.",
+     "En cada tarjeta ves el nombre, la placa, cuánto debe y los botones de tarea: **Mensaje · Llamar · Sirena · Recolección**. Cuando alguien ya hizo la tarea queda un chulito verde y la tarjeta baja al fondo en gris: así ves de un vistazo a quién NO han trabajado.",
+     "Para revisar un cliente puntual, toca la pestaña **🌎 Todos** y usa los filtros: **Todos · 🔴 Mora · 🟡 Gabela · 🟢 Al día · 🔵 Pagan hoy · 🤝 Convenio**. También hay buscador por nombre o placa.",
+     "Toca el cliente para abrir su detalle. Ahí ves el total exacto que debe, desglosado línea por línea (prorrateo + cada cuota vencida + multa/deuda + cuota del convenio), y abajo cuatro pestañas: **Gestiones · Deudas · Convenio · Historial**. La pestaña **Gestiones** te dice quién lo llamó, cuándo y qué contestó.",
+     "Si necesitas mandarle la cuenta al cliente, toca **📄 Estado de cuenta**: te lo imprime o te lo arma para enviar por WhatsApp."
+    ],
+    "ejemplo": "Abres **📋 Para hacer hoy** y hay 9 tarjetas. **MARTHA ALVAREZ (RLT68H)** aparece en 🔴 Mora con **Debe $202.000**, y en su pestaña Gestiones dice \"WhatsApp — 22/jul — No contestó\": tres días sin que nadie la vuelva a tocar. Llamas a EMIRO y le pides que hoy mismo pase de Mensaje a **Llamar**. En cambio **ANDRY BREA (RLZ93H)** aparece en 🔵 Pagan hoy con $202.000 y ya tiene el mensaje enviado con chulito verde: ese va bien.",
+    "ojo": "No confundas 🟡 Gabela con 🔴 Mora. La gabela es el día de gracia (un día después del día de pago) y todavía se maneja con mensaje; la mora es de ahí en adelante y ahí sí se escala. Si tratas a un cliente en gabela como moroso, lo quemas por nada. Otro punto: el sistema NO deja recolectar una moto si antes no quedaron registrados el mensaje, la llamada y la sirena. Si un cobrador te dice \"no me deja recolectar\", es porque se saltó pasos — no es una falla, es el candado funcionando."
+   },
+   {
+    "momento": "Cuando un cobrador llama pidiendo autorización: \"el cliente pide un plazo\" o \"quiere ponerse al día por cuotas\"",
+    "objetivo": "Decidir entre dar 1–2 días extra (caso chico: paga completo el jueves) o armar un convenio (caso grande: debe varias semanas). Son dos herramientas distintas y usarlas al revés es la fuente de los líos.",
+    "pantalla": "Inmovilizaciones → pestaña \"🔴 En mora\" (plazo extra) · Cartera → detalle del contrato → pestaña \"Convenio\" (convenio)",
+    "pasos": [
+     "**Para dar plazo extra (1 o 2 días):** entra a **Inmovilizaciones** → pestaña **🔴 En mora** → busca el cliente → abre el registro de gestión → en \"Tipo\" elige **⏳ Plazo extra**.",
+     "Escribe los **días (1 o 2, no más)** y el **motivo — es obligatorio**, el sistema no deja guardar sin él. Escribe algo real: \"le pagan el jueves en la obra\", no \"pidió plazo\".",
+     "Guarda. Mientras el plazo esté vigente el contrato SALE solo de la lista de recolección, y cuando se vence vuelve solo a la cola. No tienes que acordarte tú.",
+     "Solo ADMIN, ADMIN_PRINCIPAL y SUBADMIN pueden dar plazo extra — si alguien no ve la opción, es por su rol.",
+     "**Para autorizar un convenio:** entra a **Cartera** → busca el contrato → ábrelo → pestaña **Convenio** → crea el convenio.",
+     "Llena: **Motivo del convenio**, **Meta a pagar (total del convenio)** — viene precargada con lo que debe — y elige **Fijar por número de cuotas** o **Fijar por valor de la cuota**; el sistema calcula solo la otra parte. Pon la **Fecha del primer pago**.",
+     "Guarda con el cliente presente y con su firma. Regla clave: **el convenio va SIEMPRE encima del pago normal, nunca lo reemplaza** — el cliente sigue pagando su semana Y además la cuota del convenio.",
+     "Máximo **3 convenios por contrato**. Al tercero incumplido llega la alerta a la campana y ese contrato se va a liquidación."
+    ],
+    "ejemplo": "EMIRO llama: \"**ALEJANDRO NIETO** dice que le pagan el miércoles\". Debe una sola semana de $202.000 → eso es **plazo extra de 2 días**, no convenio. En cambio **MARTHA ALVAREZ (RLT68H)** debe 3 semanas ($606.000) y no las va a juntar de un tirón → eso sí es **convenio**: meta $606.000, 6 cuotas de $101.000, primer pago el lunes. Con eso Martha paga cada semana sus $202.000 normales MÁS $101.000 del convenio.",
+    "ojo": "Tres errores caros. (1) Dar plazo extra a alguien que debe 3 semanas: el plazo es para el que paga completo en 48 horas, no para tapar un hueco grande. (2) Guardar el convenio SIN la firma del cliente — luego no hay con qué respaldar el acuerdo (ya pasó con un convenio que tocó rehacer completo). (3) Creer que el convenio reemplaza la cuota de la semana: no la reemplaza, va encima, y la cuota del convenio también cuenta para la mora si no la paga."
+   },
+   {
+    "momento": "Entregar una moto a un cliente nuevo (el momento más delicado del día)",
+    "objetivo": "Dejar el contrato armado, firmado y con la moto entregada con evidencia fotográfica. Si algo queda a medias, después no hay cómo cobrar ni cómo reclamar un daño.",
+    "pantalla": "Contratos → botón \"+\" (Nuevo contrato) → asistente de 6 pasos",
+    "pasos": [
+     "Antes de empezar, confirma que el cliente esté en estado **Aprobado** (con visita domiciliaria hecha y aprobada). Si no está Aprobado, no lo deja seleccionar — y es a propósito.",
+     "Entra a **Contratos** → toca el botón **\"+\"** (Nuevo contrato).",
+     "**Paso 1 — Datos del contrato:** elige el cliente, la modalidad (Diario / Semanal / Quincenal / Mensual) y escribe los **4 valores directos**: tarifa L-S, tarifa domingo, ahorro L-S y ahorro domingo. El sistema calcula solo el valor de la semana, la quincena y el mes. Elige el día de pago (**Lunes o Miércoles** si es semanal; si es quincenal o mensual escoges las fechas del mes). Pon los meses y la fecha de entrega. La base inicial ya viene cargada con lo que el cliente pagó al registrarse y **no se puede editar ahí** (es a propósito). Toca **\"Guardar y continuar →\"**.",
+     "Si la base quedó incompleta, se abre un convenio OBLIGATORIO que hay que llenar antes de seguir: no se puede cerrar ni saltar.",
+     "**Paso 2 — Asignar moto:** busca la placa en la lista de Disponibles. Sale un aviso con la placa, marca/modelo y el nombre del cliente para que confirmes que no te equivocaste de moto. La moto queda \"Reservada\".",
+     "**Paso 3 — Firma del contrato de arrendamiento:** el cliente lee, se marca la casilla y firma en la pantalla (con el dedo o el lápiz). Toca **\"Confirmar firma →\"**.",
+     "**Paso 4 — Firma del pagaré y la carta:** lo mismo. **\"Confirmar firma →\"**.",
+     "**Paso 5 — Certificado de conocimiento:** foto del documento físico ya firmado en papel. **\"Subir y continuar →\"**.",
+     "**Paso 6 — Entrega de la moto:** escribe el kilometraje inicial y toma las **6 fotos guiadas** (delantera, lateral izquierdo, desde arriba, lateral derecho, trasera con la placa legible, y **la persona al lado de la moto con la cara visible**). Completa el checklist y toca **\"✅ Activar contrato\"**.",
+     "Con eso el contrato queda Activo, la moto pasa a \"Asignada\" y el cliente a \"Activo\". Solo ahí entrégale las llaves."
+    ],
+    "ejemplo": "Cliente nuevo con la tarifa actual: tarifa L-S **$27.000**, domingo **$14.000**, ahorro **$4.000** L-S y **$2.000** domingo → el sistema calcula solo **$202.000 la semana** (6 días × $31.000 + $16.000 del domingo). Base requerida: **$510.000** ($308.000 de ahorro + $202.000 de la semana adelantada). Si entregas un jueves y el día de pago es miércoles, el sistema cobra el prorrateo del viernes al miércoles día por día, contando el domingo aparte a $16.000 — no divide entre 7.",
+    "ojo": "Nunca calcules el domingo como \"la mitad de la tarifa\" ni la cuota diaria como \"el total dividido entre 7\": esas cifras no existen en el negocio y descuadran la cartera desde el primer día. Deja que el sistema calcule. Error grave: entregar la moto físicamente antes de terminar el paso 6 — si el contrato queda \"En proceso\", esa moto está en la calle sin contrato activo, sin fotos de entrega y sin nadie cobrándola. Y si a mitad del asistente sale un error raro tipo \"no se pudo cargar\", es que el navegador quedó con una versión vieja: presiona **Ctrl+Shift+R** y vuelve a entrar, no lo intentes 5 veces."
+   },
+   {
+    "momento": "Después del mediodía — decidir qué hacer con las motos retenidas e inmovilizadas",
+    "objetivo": "Que ninguna moto se quede quieta en el patio. El principio del negocio es uno solo: **la moto nunca debe dejar de producir**. Aquí decides si se devuelve, si se presta un reemplazo o si se liquida y se reasigna.",
+    "pantalla": "Inmovilizaciones → pestaña \"🔒 Retenidas\"",
+    "pasos": [
+     "Entra a **Inmovilizaciones**. Abre en la pestaña **🔒 Retenidas** (es la que más se consulta); al lado está **🔴 En mora**, que es la persecución previa.",
+     "Usa los filtros de arriba para separar por qué está retenida: **Todas · 🔴 Mora · 🅿️ Temporal · 🔧 Taller**.",
+     "**Si es por mora y el cliente vino a pagar:** como mínimo tiene que pagar la **multa de $20.000** (se genera sola cada vez que se recolecta). El resto atrasado puede quedar en convenio. Usa **💵 Cobrar** para la multa/deuda y **📝 Convenio** para lo demás. Cuando esté cubierto se habilita **\"✓ Entregar moto\"**, que pide las 6 fotos otra vez y reactiva el contrato.",
+     "**Si el cliente no aparece:** a los **7 días** de retenida se habilita **🔁 Liquidar y reasignar**. Ahí decides tú: se liquida el contrato, se libera la moto y se le entrega a otro cliente. El ahorro que traía se tiene en cuenta en la liquidación — no se le quita como castigo.",
+     "**Si la moto está varada en el taller pero el cliente está al día:** usa **🔄 Prestar reemplazo**. Le pasas otra moto del pool, se cobra **$27.000 por día de alquiler** con el botón **💵 Cobrar alquiler**, y cuando salga del taller usas **✓ Devolver (salió de taller)**.",
+     "Cuando devuelvas una moto que estuvo en Fiscalía, Tránsito, Garantía o Taller, el sistema te pregunta qué hacer con el tiempo parado: **cobrarlo** (queda como deuda) o **rodarlo** (se corre la fecha de fin del contrato). La prioridad del negocio es **cobrar**; rodar es la excepción y **exige subir el documento firmado por el cliente**."
+    ],
+    "ejemplo": "En **🔒 Retenidas** hay 3 motos. **RLT68H (MARTHA ALVAREZ)** lleva 4 días, filtro 🔴 Mora, debe $606.000 más la multa de $20.000. Martha aparece con $150.000: le cobras primero los **$20.000 de la multa** (el sistema aplica deuda-primero), el resto entra como abono y las 3 semanas quedan en convenio → se habilita **✓ Entregar moto**. La segunda lleva **9 días** sin que aparezca nadie: te sale **🔁 Liquidar y reasignar** y esa placa se le entrega a un cliente nuevo esta semana. La tercera es de un cliente al día con la moto en el taller: le prestas reemplazo a **$27.000/día**.",
+    "ojo": "El error que más plata cuesta es dejar una moto retenida \"esperando a ver si el cliente aparece\" durante 3 semanas: cada día quieta son ~$27.000 que el grupo deja de recibir. A los 7 días toma la decisión. Segundo error: dejar que un cliente se lleve la moto sin pagar al menos la multa — el sistema no te va a dejar marcar la entrega y el contrato queda en un limbo. Tercero: si el cliente lleva la moto a garantía o al taller y nadie lo registra en la app, el sistema lo sigue cobrando y lo marca en mora falsa con la moto parada en un patio. **Todo evento de la moto se registra el mismo día.**"
+   },
+   {
+    "momento": "Al cierre de la tarde (4:30–5:30 p.m.) — revisar la caja y el recaudo por grupo",
+    "objetivo": "Cuadrar que lo que entró en la app sea lo mismo que hay en efectivo, y que cada portafolio (COSTA, PRADERA, RASTREADOR, USADAS) tenga su cuenta separada. Cada grupo tiene dueño distinto y la plata no se mezcla.",
+    "pantalla": "Caja Diaria (menú → sección Cobros & Dinero)",
+    "pasos": [
+     "Entra a **Caja Diaria**. Verifica que la fecha de arriba sea la de hoy.",
+     "Usa los botones de grupo para ver cada portafolio por separado: **COSTA · PRADERA · RASTREADOR · USADAS**. En la vista \"Todos\" verás el cuadro con el desglose de cada grupo.",
+     "Revisa el resumen por funcionario: cuánto recogió cada uno, cuánto tiene **pendiente de entregar** y cuánto está **sin confirmar**. Ahí se ve si EMIRO recogió en la calle y todavía no le ha entregado a ANGELA.",
+     "Antes de cerrar, pásate a **Cartera → pestaña \"⏳ Por confirmar\"**: ahí quedan las transferencias con foto del comprobante y el efectivo de campo esperando que ANGELA los confirme. Si queda algo ahí, el cierre va a quedar corto.",
+     "El cierre lo hace la SECRETARIA (ANGELA) y **cada grupo se cierra por aparte**, desde la tarjeta de ese grupo: **\"Cerrar caja de COSTA — $X\"**. Tú confirmas que los números cuadren antes de que ella cierre.",
+     "Ten en cuenta: la semana adelantada que paga un cliente nuevo con su base **NO cuenta como recaudo del día** (es un movimiento interno, no plata que entró hoy). Si el número no cuadra por ese lado, es normal."
+    ],
+    "ejemplo": "5:00 p.m. En Caja Diaria, COSTA muestra **$3.240.000 confirmados** en 16 pagos. El resumen por funcionario dice: EMIRO recogió **$606.000** en campo y tiene **$404.000 pendientes de entregar**. Le escribes: \"pasa por la oficina antes de las 6\". PRADERA muestra **$1.170.000** (clientes de tarifa vieja, $195.000 la semana, $26.000 el día). Cuando EMIRO entrega y ANGELA confirma, se cierra COSTA por aparte y PRADERA por aparte.",
+    "ojo": "Nunca cierres la caja con pagos en \"⏳ Por confirmar\": esa plata queda por fuera del cierre y al otro día aparece un descuadre que nadie sabe de dónde salió. Y nunca cierres los grupos juntos: cada grupo es un portafolio con su propio dueño, y si mezclas el recaudo no hay forma de decirle a cada socio cuánto produjo lo suyo. Además, el resumen del cobrador solo mira HOY — si EMIRO trae efectivo de ayer sin entregar, no le sale en el resumen de hoy; pregúntaselo de frente."
+   },
+   {
+    "momento": "Cuando entra un funcionario nuevo, o alguien deja de hacer una tarea (usuarios y permisos)",
+    "objetivo": "Que cada persona vea y pueda hacer exactamente lo suyo, ni más ni menos. Es la protección contra que alguien registre plata que no le corresponde o vea clientes que no son suyos.",
+    "pantalla": "Usuarios (menú → sección Administración) — visible SOLO para el administrador principal (FREDY)",
+    "pasos": [
+     "Entra a **Usuarios**. Si no lo ves, es porque solo el **ADMIN_PRINCIPAL** lo tiene: SERGIO (ADMIN) no lo ve, y así debe ser.",
+     "Para crear un funcionario: llena nombre, correo, contraseña y elige el **rol**. Los roles son: **ADMIN_PRINCIPAL** (todo), **ADMIN** (toda la operación), **SUBADMIN** (solo sus motos asignadas), **SECRETARIA** (efectivo, confirmaciones, clientes), **MECÁNICO** (solo taller) y **SOCIO** (solo lee el tablero de su grupo).",
+     "Para ajustar a una persona: tócala en la lista → se abre el árbol de permisos. Arriba está cada **módulo** (la pantalla que ve) con su casilla, y anidadas debajo las **acciones** que puede hacer dentro: registrar pago en efectivo, confirmar/rechazar transferencia, eliminar pago, aplicar saldo a favor, editar deudas, crear convenio, cerrar caja, crear contrato, editar contrato, iniciar liquidación, recolectar/retener moto, cambiar el grupo de una moto, editar clientes, aprobar visitas, lista negra y editar configuración.",
+     "Lo que cambies queda marcado con la etiqueta **\"editado\"** y arriba te dice cuántos permisos personalizaste. Si te enredaste, toca **\"↺ volver a lo normal del rol\"** y queda como venía de fábrica.",
+     "Muy importante con el SUBADMIN: los permisos no bastan. Lo que define qué motos ve es la **asignación de motos**, que se hace en **Motos → seleccionar la moto → asignar sub-admin**. Las **visitas** se le asignan aparte desde **Clientes**. Si no le asignas motos, su Cartera sale vacía — no está dañada, es que no tiene nada asignado."
+    ],
+    "ejemplo": "Entra un cobrador nuevo para COSTA. Lo creas con rol **SUBADMIN**. Luego vas a **Motos**, filtras por grupo **COSTA** y le asignas las 40 placas que va a manejar. Cuando él entra, su Cartera muestra solo esas 40 y su pestaña **📋 Para hacer hoy** solo sus tareas. Por defecto un SUBADMIN puede recolectar moto e iniciar liquidación, pero **NO** puede registrar efectivo ni crear contratos — que es exactamente lo que queremos.",
+    "ojo": "Nunca subas a alguien a ADMIN \"por ahora, para que haga una cosita\": un ADMIN ve TODA la operación, todos los grupos y todos los clientes. Si necesitas que haga una sola cosa puntual, déjalo en su rol y actívale solo esa acción en el árbol de permisos. Otro punto: esconder un botón no es todo — el sistema también valida en la base de datos, así que si le quitaste el permiso y la persona insiste, le va a fallar igual, y está bien. Y el error más común: crear el SUBADMIN y olvidar asignarle las motos; después llama diciendo \"la app no me muestra nada\"."
+   },
+   {
+    "momento": "Cuando llega a pagar un cliente que venía del sistema viejo (empalme de COSTA y migrados)",
+    "objetivo": "Dejar en firme, con el cliente en frente y de acuerdo, cuánto ahorro traía y cuánto debía del sistema anterior. Es la única oportunidad de corregir esas cifras: una vez confirmadas, quedan selladas.",
+    "pantalla": "Cartera & Cobros → abrir el contrato → recuadro amarillo \"⚠️ Empalme pendiente\"",
+    "pasos": [
+     "Reconoce el caso: en la lista de Cartera y en **📋 Para hacer hoy** estos clientes salen con la marca **⚠️ Empalme**. Mientras el empalme esté abierto el cliente se cobra normal — no se frena nada.",
+     "Cóbrale primero lo del día como a cualquier cliente. El empalme se hace después, con él ahí presente.",
+     "Abre el contrato en **Cartera** y busca arriba el recuadro amarillo **\"⚠️ Empalme pendiente — cliente migrado sin revisar\"**. Muestra dos cifras: **AHORRO QUE TRAÍA** y **DEUDA QUE TRAE**.",
+     "Léele las dos cifras en voz alta y compáralas con lo que él tenga anotado. Si una está mala, corrígela ANTES de confirmar: el ahorro se edita en **Editar contrato** (campo \"Ahorro de apertura\") y la deuda en la pestaña **Deudas** del mismo contrato.",
+     "Marca la lista de chequeo del recuadro: **① deuda revisada · ② ahorro revisado · ③ teléfono y cédula verificados**. El punto ④ (autorización de datos con firma y huella) se marca solo cuando el cliente ya tiene esos datos cargados; si le faltan, captúraselos en **Clientes → editar cliente**.",
+     "Cuando los 4 puntos estén, toca **\"Confirmar migración\"**. Sale una advertencia de que las cifras viejas quedan selladas y que no se puede deshacer. Acepta solo si el cliente estuvo de acuerdo.",
+     "Listo: la marca ⚠️ desaparece y el ahorro de apertura pasa a ser parte del ahorro acumulado normal.",
+     "Si después de confirmar el cliente quedó con deuda y sin convenio, aparece la marca **\"📝 Falta convenio\"**: ese mismo día ármale el convenio con su firma."
+    ],
+    "ejemplo": "Llega **ANDRY BREA (RLZ93H)**, de COSTA, a pagar su semana de $202.000. Le registras el pago normal. Luego abres su contrato y el recuadro amarillo dice: **AHORRO QUE TRAÍA $1.240.000 · DEUDA QUE TRAE $404.000**. Se lo lees; él dice que el ahorro está bien pero que ya había abonado $100.000 de esa deuda. Vas a la pestaña **Deudas**, corriges a $304.000, marcas los tres chulos, verificas que tenga firma y huella, y tocas **Confirmar migración**. Desde ese momento Andry es un cliente normal del sistema, sin marca.",
+    "ojo": "La regla de oro es una sola: **nunca confirmes un empalme sin el cliente presente ni con la lista de chequeo a medias.** Si confirmas con una cifra mala, esa cifra queda sellada y arreglarla después es un lío que toca hacer por fuera del sistema. Segundo error: pensar que al cliente con ⚠️ Empalme no se le puede cobrar hasta hacerle el empalme — falso, se cobra normal desde el día uno; el empalme se hace cuando aparezca. Tercer error: confirmar y no armarle el convenio de la deuda vieja ese mismo día — el cliente se va, la deuda queda suelta y a la semana ya no hay con quién hablar."
+   }
+  ]
+ },
+ {
+  "rol": "casos",
+  "titulo": "¿Qué hago si...? — Catálogo de casos reales del día a día",
+  "proposito": "Es la guía de consulta rápida para los casos que de verdad pasan en el mostrador y en la calle: el cliente dice algo, el funcionario abre esta hoja y encuentra el paso a paso exacto en la app. No explica el sistema completo, resuelve situaciones concretas.",
+  "bloques": [
+   {
+    "momento": "\"El cliente dice que ya pagó y aquí no me aparece\"",
+    "objetivo": "Averiguar si el pago existe pero está sin confirmar, o si de verdad nunca se registró — sin cobrarle dos veces.",
+    "pasos": [
+     "Entra a Cartera → pestaña \"🌎 Todos\".",
+     "En el buscador escribe la placa (ej. RLZ93H) y toca la tarjeta del cliente para abrir su detalle.",
+     "Dentro del detalle, baja hasta la pestaña \"Historial\": ahí salen TODOS los pagos del contrato con fecha, método y monto.",
+     "Si el pago aparece con el sello amarillo \"Pendiente\": el pago SÍ está registrado, solo falta que la secretaria lo confirme. Eso pasa siempre con las transferencias y con el efectivo que recoge el cobrador en la calle. Dile al cliente que ya quedó y que se confirma el mismo día.",
+     "Si no aparece nada, pídele la foto del comprobante y mira la fecha. Si fue transferencia, ve a Cartera → pestaña \"⏳ Por confirmar\" → bloque \"Transferencias por confirmar\" y búscalo ahí.",
+     "Si tampoco está en ningún lado, el pago nunca se registró: regístralo con la FECHA REAL en que pagó (no la de hoy) y adjunta la foto del comprobante."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) llega diciendo que pagó $202.000 el lunes. En Historial aparece un pago de $202.000 del lunes en estado \"Pendiente\": EMIRO se lo cobró en la calle y todavía no le ha entregado el efectivo a ANGELA. No es un pago perdido, es el segundo paso del doble control que falta.",
+    "ojo": "NUNCA registres un segundo pago \"por si acaso\". Si lo haces, el sistema le abona dos semanas y el cliente queda al día debiendo plata. Cuando ya existe un pago igual del mismo día, la app saca un aviso amarillo — ese aviso avisa pero NO bloquea: si lo ves, detente y revisa el Historial primero.",
+    "pantalla": "Cartera → detalle del contrato → pestaña Historial"
+   },
+   {
+    "momento": "\"Me trae menos de lo que le toca — ¿le recibo?\"",
+    "objetivo": "Recibir el abono correctamente y que el cliente entienda que abonar no lo saca de mora.",
+    "pasos": [
+     "Sí se le recibe: todo peso que entre es bueno. Nunca lo devuelvas.",
+     "Cartera → \"🌎 Todos\" → busca la placa → abre el detalle → botón \"Registrar pago\" (ahí solo entra efectivo, a propósito).",
+     "Escribe el monto EXACTO que te entregó, sin redondear.",
+     "Sale la ventana de confirmación con el nombre, la placa y el monto: verifica que sea el cliente correcto y confirma.",
+     "Después del pago, mira en el detalle cuánto sigue debiendo y díselo en voz alta al cliente para que no se vaya creyendo que quedó al día."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) tiene cuota semanal de $202.000 y solo trae $120.000. Se le reciben los $120.000. Como de esa semana primero se paga la parte de la empresa ($176.000), esos $120.000 no le suman NADA de ahorro todavía, y la semana queda sin completar: sigue apareciendo en mora hasta que traiga los $82.000 que faltan.",
+    "ojo": "Un abono NO saca de la mora ni de la lista de recolección. Si le dices \"quedaste al día\", mañana el cobrador llega a buscar la moto y queda como mentira de la empresa. Tampoco le prometas \"eso lo cuadramos después\": lo que se registra es el monto exacto que entregó, ni un peso más.",
+    "pantalla": "Cartera → detalle del contrato → botón Registrar pago"
+   },
+   {
+    "momento": "\"Perdí la llave de la moto, necesito una copia\"",
+    "objetivo": "Entregar la copia de la llave dejando registrado quién la tiene y cuándo debe devolverla, para que no se pierda el control.",
+    "pasos": [
+     "Menú \"☰ Más\" → \"Tarjetas y Llaves\".",
+     "Botón \"📤 Prestar\" (arriba a la derecha).",
+     "En \"Moto\" escribe la placa y tócala en la lista — el nombre del cliente se llena SOLO con el del contrato.",
+     "En \"¿Qué se presta?\" elige \"🔑 Llave\".",
+     "Motivo: \"Copia de llave (perdió la suya)\".",
+     "En \"¿Qué día debe devolverla?\" pon la fecha real de compromiso — es obligatorio, sin eso el sistema no deja guardar.",
+     "Toma la evidencia con \"📷 Cámara\" (foto de la llave que se entrega).",
+     "Botón \"📤 Registrar préstamo\".",
+     "Cuando la traiga de vuelta: misma pantalla → chip \"📋 Prestadas ahora\" → botón \"✅ Devolver\"."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) perdió su llave. El jueves se le entrega la copia con devolución el sábado. Si llega el sábado y no la trajo, su tarjeta se pone en rojo con el texto \"⚠️ Debía devolverla el 25/07 — pedírsela\", y así nadie tiene que acordarse de memoria.",
+    "ojo": "El error clásico es anotarlo en un cuaderno o \"me acuerdo yo\". Si no queda en la app, en dos semanas nadie sabe quién tiene esa llave y la moto queda expuesta. También ojo con no poner fecha de devolución: sin fecha el sistema no puede avisarte.",
+    "pantalla": "Tarjetas y Llaves → formulario Prestar tarjeta o llave"
+   },
+   {
+    "momento": "\"Me piden la tarjeta de propiedad para un trámite\"",
+    "objetivo": "Prestar el documento más delicado de la empresa dejando foto, motivo y fecha de devolución.",
+    "pasos": [
+     "Menú \"☰ Más\" → \"Tarjetas y Llaves\" → botón \"📤 Prestar\".",
+     "Busca la placa y tócala: verifica que el nombre que aparece en \"Se le presta al cliente\" sea la persona que tienes al frente.",
+     "En \"¿Qué se presta?\" elige \"🪪 Tarjeta de propiedad\".",
+     "Motivo: \"Trámite legal\". En \"Detalles\" escribe para qué (ej. \"traspaso en Tránsito\").",
+     "Pon la fecha exacta en que debe devolverla.",
+     "\"📷 Cámara\": tómale foto a la tarjeta antes de entregarla — así queda constancia del estado y de que se entregó.",
+     "\"📤 Registrar préstamo\". Cuando la devuelva: chip \"📋 Prestadas ahora\" → \"✅ Devolver\"."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) necesita la tarjeta para un trámite en Tránsito. Se le presta el lunes con devolución el miércoles. Mientras no la devuelva, la moto queda marcada en la lista de prestadas y el miércoles el sistema la pone en rojo.",
+    "ojo": "La tarjeta es de la empresa (el propietario legal es FREDY MORA AVENDAÑO), no del cliente. Si al elegir la moto la app dice \"⚠️ Esta moto no tiene un contrato con cliente\", DETENTE y avisa al admin: no se presta una tarjeta a alguien que no sea el titular del contrato.",
+    "pantalla": "Tarjetas y Llaves → formulario Prestar tarjeta o llave"
+   },
+   {
+    "momento": "\"Se le varó la moto / hay que meterla al taller\"",
+    "objetivo": "Que quede registrado el día que entró y el día que salió, para poder decidir después si esos días se le cobran o se le corren al final del contrato.",
+    "pasos": [
+     "Entra a \"Taller\" → botón \"+ Nueva orden de taller\".",
+     "Elige la moto por placa, escribe la falla y toca \"Registrar ingreso\". La moto queda en estado Mantenimiento.",
+     "Avísale al cliente ese mismo día para que no siga circulando y para que sepa que esos días quedan registrados.",
+     "Cuando la moto sale: Taller → abre la orden → finalizarla. La app pregunta sola qué hacer con el tiempo que estuvo parada: cobrar esos días (queda como deuda) o rodarlos (se corre la fecha de fin del contrato). Rodar exige documento firmado por el cliente.",
+     "Si el cliente es de tiempo definido y va a quedar varios días sin moto: Inmovilizaciones → pestaña \"🔒 Retenidas\" → filtro \"🔧 Taller\" → botón \"🔄 Prestar reemplazo\" (alquiler de $27.000 por día)."
+    ],
+    "ejemplo": "La moto de ALEJANDRO NIETO entra el martes y sale el viernes: 3 días parados × $27.000 = $81.000. SERGIO decide si se los cobra como deuda o si le corre el contrato 3 días. La prioridad de la empresa es cobrar; rodar es la excepción.",
+    "ojo": "Este es el error que más plata y más peleas cuesta: si NADIE registra la entrada al taller, el sistema sigue cobrándole normal y lo saca en MORA con la moto parada en el patio. El sistema no adivina, hay que teclear el evento el mismo día que pasa.",
+    "pantalla": "Taller (nueva orden) e Inmovilizaciones → Retenidas → filtro Taller"
+   },
+   {
+    "momento": "\"No contesta el teléfono y no paga\"",
+    "objetivo": "Hacer la escalada completa dejando registro de cada intento, que es lo que después habilita recoger la moto.",
+    "pasos": [
+     "Cartera → pestaña \"📋 Para hacer hoy\".",
+     "Busca la tarjeta del cliente (están ordenadas por urgencia: Recolección, Mora, Gabela, Pagan hoy).",
+     "Toca \"Mensaje\": abre WhatsApp con el texto ya escrito Y deja la gestión registrada sola.",
+     "Si no responde, toca \"Llamar\": marca el número y registra la llamada.",
+     "Si sigue sin responder, toca \"Sirena\" (solo con la moto detenida, 3 segundos).",
+     "Cuando los 3 pasos quedaron registrados, aparece el botón \"Recolección\". Ese botón abre el formulario con las 6 fotos, el kilometraje y los daños.",
+     "Al confirmar la recolección: el contrato queda suspendido, la moto pasa a Recuperada y se le crea automáticamente la multa de $20.000."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) lleva 4 días sin pagar. EMIRO manda mensaje a las 8am, llama a las 11am y activa sirena a las 3pm — todo el mismo día. A las 4pm ya le aparece el botón Recolección habilitado.",
+    "ojo": "Los 3 pasos pueden hacerse el mismo día, no hay que esperar días entre uno y otro. Pero el botón de Recolección NO aparece si faltan pasos: no es un capricho del sistema, es el respaldo de la empresa de que sí se intentó contactar antes de quitarle la moto a alguien.",
+    "pantalla": "Cartera → pestaña 📋 Para hacer hoy (tarjetas con botones Mensaje / Llamar / Sirena / Recolección)"
+   },
+   {
+    "momento": "\"Me pide unos días más, dice que el viernes sí paga\"",
+    "objetivo": "Dejar el compromiso guardado en el sistema para que nadie le vaya a recoger la moto en ese margen, y para que reaparezca solo cuando venza.",
+    "pasos": [
+     "Cartera → busca la placa → abre el detalle del contrato → pestaña \"Gestiones\".",
+     "Registra una gestión nueva y en \"Tipo de gestión\" elige \"⏳ Plazo extra\".",
+     "Escribe cuántos días (solo 1 o 2, es el máximo) y el MOTIVO — el motivo es obligatorio y queda con tu nombre.",
+     "Toca \"Registrar gestión\". Desde ese momento el contrato sale de la cola de Recolección hasta que venza el plazo, y al vencer vuelve a la cola solo.",
+     "Si el cliente solo PROMETE pagar (no le estás dando un plazo formal): registra la gestión con Resultado \"Promesa de pago\" y pon la fecha en \"¿Para cuándo prometió pagar?\". El sistema te lo recuerda ese día."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) pide hasta el viernes porque le pagan ese día. SERGIO registra plazo extra de 2 días con motivo \"le pagan el viernes, cliente cumplidor\". Hasta el viernes, a MARTHA nadie le puede recoger la moto: desaparece de la cola de recolección.",
+    "ojo": "El plazo es máximo 2 días y lo dan ADMIN o el cobrador (SUBADMIN), no la secretaria. Y ojo con la diferencia: un PLAZO EXTRA lo saca de la cola de recolección; una PROMESA DE PAGO solo queda anotada con recordatorio, pero el cliente sigue en la cola. No son lo mismo.",
+    "pantalla": "Cartera → detalle del contrato → pestaña Gestiones → Registrar gestión"
+   },
+   {
+    "momento": "\"Quiere hacer un acuerdo para ponerse al día\"",
+    "objetivo": "Convertir lo atrasado en cuotas pactadas y firmadas, encima de la cuota normal.",
+    "pasos": [
+     "Cartera → busca la placa → abre el detalle → pestaña \"Convenio\".",
+     "La META viene precargada con lo que debe registrado. Verifícala con el cliente antes de seguir.",
+     "Elige cómo fijarlo: por número de cuotas (\"lo pago en 13 semanas\") o por valor de cuota (\"puedo dar $60.000 semanales\"). El otro dato lo calcula el sistema solo.",
+     "Captura la FIRMA del cliente en la pantalla — sin firma no se puede crear el convenio.",
+     "Botón \"Crear convenio\". Desde ahí, cada semana el cliente debe la cuota normal MÁS la cuota del convenio."
+    ],
+    "ejemplo": "ALEJANDRO NIETO debe $780.000 atrasados. Se pactan 13 cuotas de $60.000 encima de su cuota semanal de $202.000: durante 13 semanas paga $262.000 por semana. En el Panel Hoy su tarjeta le muestra al cobrador \"cuota $202.000 + conv. $60.000\".",
+    "ojo": "El convenio NUNCA reemplaza la cuota de la semana, va POR ENCIMA — si el cliente entiende que ahora solo paga $60.000, el convenio nace muerto. Máximo 3 convenios por contrato y solo uno activo a la vez. Al 3er convenio incumplido el sistema pide liquidar el contrato.",
+    "pantalla": "Cartera → detalle del contrato → pestaña Convenio"
+   },
+   {
+    "momento": "\"Se le recogió la moto y ahora viene a recuperarla\"",
+    "objetivo": "Cobrar el mínimo obligatorio, dejar el resto en convenio y entregar la moto con evidencia fotográfica.",
+    "pasos": [
+     "Entra a \"Inmovilizaciones\" → pestaña \"🔒 Retenidas\" → filtro \"🔴 Mora\" → busca la placa. Ahí sale exactamente cuánto falta para poder entregarla.",
+     "Botón \"💵 Cobrar\": el pago cubre PRIMERO la multa y las deudas (ese es el mínimo para llevarse la moto) y después lo atrasado.",
+     "Lo atrasado que no pueda pagar hoy: botón \"📝 Convenio\" — se pacta y se firma ahí mismo.",
+     "Cuando ya no falta nada (multa pagada y atrasos pagados o en convenio) se habilita el botón \"✓ Entregar moto\".",
+     "Ese botón pide las 6 fotos (incluida la de la persona al lado de la moto) y el kilometraje. Al guardar, el contrato se reactiva y la moto vuelve a estado Asignada."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) fue recogido el lunes: multa $20.000 + 2 semanas atrasadas $404.000. Llega con $150.000. Se le cobran: primero los $20.000 de multa, y los $130.000 restantes bajan lo atrasado. Lo que queda ($274.000) se deja en convenio → ya se le puede entregar la moto.",
+    "ojo": "El mínimo innegociable es la MULTA de $20.000; el resto puede quedar en convenio, pero pídele lo MÁXIMO que pueda dar hoy. Y nunca entregues la moto \"de palabra\" para registrar después: si no queda el pago y las 6 fotos, el contrato sigue suspendido, la moto sigue figurando retenida y la empresa se queda sin respaldo del estado en que salió.",
+    "pantalla": "Inmovilizaciones → pestaña 🔒 Retenidas → filtro 🔴 Mora"
+   },
+   {
+    "momento": "\"Está incapacitado y viene a entregar la moto por unos días\"",
+    "objetivo": "Guardar la moto sin tratarlo como moroso, y dejar registrado el tiempo para decidir después si se cobra o se rueda.",
+    "pasos": [
+     "Entra a \"Motos\" → busca la placa → botón \"🏍️ Registrar novedad\".",
+     "Elige la opción \"🤝 Entrega voluntaria del cliente\".",
+     "Indica cómo llegó la moto: la trajo el cliente (sin costo) o hubo que ir a buscarla (ahí sí se cobran $20.000).",
+     "Toma las 6 fotos y registra el kilometraje. Al guardar, el contrato queda suspendido.",
+     "La moto aparece en Inmovilizaciones → \"🔒 Retenidas\" → filtro \"🅿️ Temporal\" (NO en el filtro de mora).",
+     "Cuando el cliente vuelve: mismo filtro \"🅿️ Temporal\" → botón \"✓ Reactivar / entregar\" → fotos de entrega → y la app pregunta qué se hace con los días que estuvo guardada: cobrarlos o rodarlos."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) se accidenta y entrega la moto el día 5. Vuelve el día 12: son 7 días × $27.000 = $189.000. SERGIO decide en ese momento si se los cobra como deuda o si le corre el fin del contrato 7 días (con documento firmado).",
+    "ojo": "NO es lo mismo que una recolección por mora. Si lo registras como recolección le metes $20.000 de multa que no le corresponden y lo dejas marcado como moroso en todo el sistema. La entrega voluntaria es la puerta \"🤝\", no la \"🚚\".",
+    "pantalla": "Motos → 🏍️ Registrar novedad, e Inmovilizaciones → Retenidas → filtro 🅿️ Temporal"
+   },
+   {
+    "momento": "\"Registré un pago que estaba equivocado (cliente o monto)\"",
+    "objetivo": "Corregirlo por el camino correcto, sin inventar pagos ni descuadrar el ahorro del cliente.",
+    "pasos": [
+     "Primero mira el estado del pago: Cartera → detalle del contrato → pestaña \"Historial\".",
+     "SI ESTÁ \"PENDIENTE\" (transferencia o efectivo de campo sin confirmar): Cartera → pestaña \"⏳ Por confirmar\" → busca el pago → botón \"Rechazar\". Listo, es la vía limpia.",
+     "SI YA ESTÁ \"CONFIRMADO\": solo FREDY (admin principal) puede eliminarlo. Cartera → detalle del contrato → pestaña \"Historial\" → botón 🗑️ en ese pago → confirmar. El sistema deshace todo solo: devuelve la caja de esa semana, quita el ahorro que había sumado y revive la deuda que había bajado.",
+     "Después de eliminarlo, registra el pago otra vez en el contrato correcto y con la FECHA REAL en que el cliente pagó."
+    ],
+    "ejemplo": "ANGELA registró $202.000 en el contrato de ANDRY BREA (RLZ93H) cuando en realidad eran de MARTHA ALVAREZ (RLT68H). FREDY elimina el pago del contrato de ANDRY y ANGELA lo vuelve a registrar en el de MARTHA con la fecha del día en que pagó.",
+    "ojo": "Jamás \"arregles\" un error registrando un pago negativo, restándoselo a otro cliente o cobrando de menos la próxima vez. Eso descuadra el motor y el ahorro del cliente queda mal para siempre. Todo borrado deja rastro con tu nombre y la hora — está bien que así sea, es la protección de todos.",
+    "pantalla": "Cartera → pestaña ⏳ Por confirmar (Rechazar) y detalle del contrato → Historial (🗑️ eliminar)"
+   },
+   {
+    "momento": "\"¿Cuánto llevo ahorrado? ¿Cuánto me falta?\"",
+    "objetivo": "Darle la cifra exacta y dejársela por escrito, no de memoria.",
+    "pasos": [
+     "Cartera → \"🌎 Todos\" → busca la placa → abre el detalle del contrato.",
+     "Arriba está el recuadro \"Ahorro\": ese número ya suma lo que el cliente traía de antes más lo que ha ahorrado en el sistema.",
+     "Para que se lo lleve por escrito: botón \"📄 Estado de cuenta\" (lo imprime en la impresora del mostrador) o \"📱 Enviar por WhatsApp\".",
+     "Explícale con el papel en la mano: cuánto lleva, cuánto es la meta y cuánto le falta."
+    ],
+    "ejemplo": "ANDRY BREA (RLZ93H) lleva $412.000 ahorrados. La base completa es $510.000, así que le faltan $98.000. Como ahorra $4.000 de lunes a sábado y $2.000 el domingo ($26.000 por semana si paga completo), le faltan unas 4 semanas pagando bien.",
+    "ojo": "El ahorro SOLO sube cuando la semana queda completa: de cada pago primero se cubre la parte de la empresa y lo último es el ahorro. Por eso un cliente que abona a pedacitos puede haber entregado mucha plata y ver el ahorro quieto — hay que explicárselo con el estado de cuenta al frente. Y tranquilízalo: el ahorro no se le quita como castigo por atrasarse.",
+    "pantalla": "Cartera → detalle del contrato (recuadro Ahorro + botones 📄 Estado de cuenta / 📱 WhatsApp)"
+   },
+   {
+    "momento": "\"Reclama que le estamos cobrando de más\"",
+    "objetivo": "Mostrarle en pantalla, movimiento por movimiento, de dónde sale cada peso — y entregarle el papel.",
+    "pasos": [
+     "Entra a \"Clientes\" → busca al cliente → botón \"Ver ficha completa\".",
+     "Toca la pestaña \"🕘 Historial\": es la línea de tiempo, todo en orden de fecha (pagos, cuotas, deudas, entrada al taller, recolecciones, convenios).",
+     "Usa los chips para enfocar: \"💵 Pagos\" si el reclamo es de plata, \"🏍️ Moto\" si es por días que estuvo parada, \"📄 Contrato\" si es por el plazo.",
+     "Recórrela CON el cliente al lado, señalando la fecha y el monto de cada movimiento.",
+     "Imprímele la línea de tiempo desde esa misma pantalla — la versión que sale para el cliente va depurada, sin las notas internas de cobranza.",
+     "Si de verdad encontraron un error, no se arregla de palabra: se corrige el pago (ver el caso de pago equivocado) y se vuelve a imprimir."
+    ],
+    "ejemplo": "ALEJANDRO NIETO reclama que le están cobrando $262.000 cuando su cuota es $202.000. La línea de tiempo muestra el convenio que él mismo firmó el día 3 por 13 cuotas de $60.000: $202.000 de cuota + $60.000 del convenio = $262.000. Se le imprime y el reclamo se cierra ahí mismo.",
+    "ojo": "Nunca discutas de memoria ni digas \"déjame revisar y te aviso\". Eso alarga el conflicto y deja al cliente creyendo que hay algo raro. El sistema tiene el registro completo: ábrelo delante de él. La línea de tiempo también está en la ficha de la MOTO, por si el reclamo es por días de taller o por la recolección.",
+    "pantalla": "Clientes → Ver ficha completa → pestaña 🕘 Historial (línea de tiempo)"
+   },
+   {
+    "momento": "\"Me mandó el comprobante de la transferencia por WhatsApp\"",
+    "objetivo": "Registrar la transferencia con su evidencia y que quede confirmada solo después de verificarla.",
+    "pasos": [
+     "Guarda la imagen del comprobante en el celular o el PC.",
+     "Cartera → busca la placa → abre el detalle (o usa el botón \"💵 Cobrar\") → elige método Transferencia.",
+     "Adjunta la FOTO del comprobante — sin foto no se registra.",
+     "Registra: el pago queda en estado \"Pendiente\".",
+     "ANGELA (secretaria) entra a Cartera → pestaña \"⏳ Por confirmar\" → bloque \"Transferencias por confirmar\" → abre la foto, la cruza con el movimiento real de la cuenta y toca \"Confirmar\" (o \"Rechazar\" si no aparece)."
+    ],
+    "ejemplo": "MARTHA ALVAREZ (RLT68H) manda el comprobante de $202.000 el miércoles a las 7am. Queda registrado como Pendiente. ANGELA lo revisa contra la cuenta a las 10am y lo confirma: hasta ese momento el pago no cuenta en la caja del día.",
+    "ojo": "El sistema NO se comunica con el banco: la única verificación que existe es que ANGELA mire el comprobante y lo cruce con la cuenta. Confirmar sin mirar es abrirle la puerta a comprobantes falsos o repetidos. Y ojo con los comprobantes viejos reenviados: revisa siempre la FECHA de la imagen.",
+    "pantalla": "Cartera → detalle del contrato (método Transferencia) y pestaña ⏳ Por confirmar"
+   },
+   {
+    "momento": "\"Recogí plata en la calle, ¿ahora qué hago con ella?\"",
+    "objetivo": "Que el efectivo llegue a caja el mismo día y quede confirmado — es el punto donde más se pierde plata en cualquier empresa.",
+    "pasos": [
+     "Al cobrar en la calle usas el botón \"💵 Cobrar\" de la tarjeta del cliente en \"📋 Para hacer hoy\": la app toma el GPS, deja la foto opcional y manda un recibo provisional por WhatsApp.",
+     "Ese pago queda en estado \"Pendiente\" a propósito — todavía no cuenta en la caja.",
+     "En el panel \"📋 Para hacer hoy\" ves el resumen \"Recogiste hoy $X\" y cuánto tienes pendiente de entregar.",
+     "Cuando le entregas el efectivo a ANGELA, marca \"entregué a secretaria\" en cada pago.",
+     "ANGELA lo confirma en Caja Diaria (o en Cartera → \"⏳ Por confirmar\" → bloque \"Efectivo de campo por confirmar\"). Ahí sí entra a la caja del día."
+    ],
+    "ejemplo": "EMIRO recoge $202.000 de ANDRY BREA (RLZ93H) y $150.000 de otro cliente: su resumen del día dice \"Recogiste hoy $352.000\". Hasta que ANGELA no confirme esos dos pagos, ese dinero no aparece en la caja de COSTA.",
+    "ojo": "El resumen del cobrador solo mira lo de HOY: si te quedaste con efectivo de ayer sin entregar, NADIE te lo va a recordar. Entrega siempre el mismo día. Y nunca \"compenses\" plata de un cliente con la de otro: cada peso se registra en el contrato de quien lo pagó.",
+    "pantalla": "Cartera → 📋 Para hacer hoy (💵 Cobrar y resumen del día) y Caja Diaria"
+   }
+  ]
+ }
+]

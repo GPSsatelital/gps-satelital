@@ -1439,6 +1439,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   );
   const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
+  // Atrás cierra el overlay/modal abierto más reciente (LIFO) antes de cambiar de módulo.
+  useBackGuard(fotoAmpliada !== null, () => setFotoAmpliada(null));
+  useBackGuard(reciboData !== null, () => setReciboData(null));
+  useBackGuard(recoleccionModal !== null, () => setRecoleccionModal(null));
+  useBackGuard(confirmarModalOpen, () => setConfirmarModalOpen(false));
+  useBackGuard(confirmarCampoOpen, () => setConfirmarCampoOpen(false));
+  useBackGuard(modalListaAbierta, () => setModalListaAbierta(false));
+  useBackGuard(modalCampoAbierto, () => setModalCampoAbierto(false));
+  useBackGuard(modalPago, () => setModalPago(false));
+  useBackGuard(fabOpen, () => setFabOpen(false));
+
   // ── Historial filtrado ────────────────────────────────────────────────────
   const pagosFiltrados = useMemo(() => {
     const q = busquedaHistorial.toLowerCase().trim();

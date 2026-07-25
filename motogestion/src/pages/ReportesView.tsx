@@ -7,6 +7,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
+import { useBackGuard } from "../contexts/BackNav";
 import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
@@ -491,6 +492,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const [tab, setTab]     = useState<Tab>("resumen");
   const [grupoEnt, setGrupoEnt] = useState<string>("Todos");     // filtro de grupo en la pestaña Entregas
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
+  useBackGuard(fotosVer !== null, () => setFotosVer(null)); // atrás cierra el lightbox
   // Regeneración de documentos en blanco (bug histórico del PDF)
   const [regen, setRegen] = useState<{ estado: "idle" | "buscando" | "regenerando" | "hecho"; total: number; hechos: number; msg: string }>({ estado: "idle", total: 0, hechos: 0, msg: "" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);

@@ -142,6 +142,18 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [openNovedad, setOpenNovedad] = useState(false);
   const [recoleccionMoto, setRecoleccionMoto] = useState<Moto | null>(null);
   const [liquidacionMoto, setLiquidacionMoto] = useState<Moto | null>(null);
+
+  // Atrás cierra el modal/overlay abierto más reciente (LIFO) antes de cambiar de módulo.
+  useBackGuard(recoleccionMoto !== null, () => setRecoleccionMoto(null));
+  useBackGuard(liquidacionMoto !== null, () => setLiquidacionMoto(null));
+  useBackGuard(tiempoFueraModal !== null, () => setTiempoFueraModal(null));
+  useBackGuard(asignarMotoId !== null, () => setAsignarMotoId(null));
+  useBackGuard(openNovedad, () => setOpenNovedad(false));
+  useBackGuard(openRetencion, () => setOpenRetencion(false));
+  useBackGuard(openLiberarFiscalia, () => setOpenLiberarFiscalia(false));
+  useBackGuard(openUbicacion, () => setOpenUbicacion(false));
+  useBackGuard(openRecepcion, () => setOpenRecepcion(false));
+  useBackGuard(open, () => setOpen(false));
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [msgDetalle, setMsgDetalle] = useState<string | null>(null);

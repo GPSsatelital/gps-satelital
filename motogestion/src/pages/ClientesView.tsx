@@ -642,6 +642,11 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const [huellaActiva, setHuellaActiva] = useState<"cliente" | "acompanante">("cliente");
   // Recibo de base inicial: se abre automático al registrar y también desde la ficha.
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
+  // Atrás cierra el modal/formulario abierto más reciente antes de cambiar de módulo.
+  useBackGuard(reciboBase !== null, () => setReciboBase(null));
+  useBackGuard(editForm !== null, () => setEditForm(null));
+  useBackGuard(clienteVisitaId !== null, () => setClienteVisitaId(null));
+  useBackGuard(open, () => setOpen(false));
 
   const filtered = useMemo(() => {
     let list = clientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));

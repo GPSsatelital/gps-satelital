@@ -11,6 +11,7 @@ import { useMotos } from "../hooks/useMotos";
 import { formatDiaPago } from "../utils/cicloPago";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { useAuth } from "../contexts/AuthContext";
+import { useBackGuard } from "../contexts/BackNav";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -159,6 +160,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
   const { profile } = useAuth();
+  // Atrás cierra la foto ampliada / el recibo antes de salir de la ficha.
+  useBackGuard(imagenAmpliada !== null, () => setImagenAmpliada(null));
+  useBackGuard(reciboBase !== null, () => setReciboBase(null));
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 900);

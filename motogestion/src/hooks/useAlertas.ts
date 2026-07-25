@@ -240,24 +240,25 @@ export function useAlertas({
       });
     }
 
-    // ── 5c. PLAZO EXTRA / PROMESA DE PAGO VENCIDOS (compromisos con fecha) ────
-    // Antes dependían de la memoria del funcionario. Si el compromiso ya venció y NO hubo un
-    // pago en/después de esa fecha, se avisa. `gestiones` es opcional: sin pasarlo, no emite nada.
+    // ── 5c. PLAZO EXTRA / PROMESA DE PAGO VENCIDOS (recordatorio de compromisos) ────
+    // Antes dependían de la memoria del funcionario. Se RECUERDA el compromiso (plazo extra o
+    // promesa de pago) que venció en los últimos 15 días — ventana acotada para que no sea ruido
+    // eterno. NO se filtra por "pagó algo": un abono parcial o la cuota rutinaria del período
+    // NO significan que cumplió el compromiso (los abonos parciales son la norma). Se toma la
+    // gestión MÁS RECIENTE (gestiones ya vienen ordenadas created_at desc). `gestiones` opcional.
+    const hace15 = addDays(ahora, -15);
     for (const c of contratosActivos) {
       const gsC = gestiones.filter(g => g.contrato_id === c.id);
       if (gsC.length === 0) continue;
-      const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
       const nombre = (clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin nombre").toUpperCase();
       const base = { clienteId: c.cliente_id, contratoId: c.id, motoId: c.moto_id ?? undefined };
-      const plazoFL = gsC.filter(g => g.tipo === "plazo_extra" && g.plazo_extra_fecha_limite)
-        .sort((a, b) => (b.plazo_extra_fecha_limite || "").localeCompare(a.plazo_extra_fecha_limite || ""))[0]?.plazo_extra_fecha_limite;
-      if (plazoFL && plazoFL <= hoy && !pagosC.some(p => p.fecha >= plazoFL)) {
-        alertas.push({ id: `plazo-vence-${c.id}`, tipo: "plazo_extra_vence", nivel: "alerta", titulo: `Plazo extra vencido — ${nombre}`, detalle: `El plazo hasta ${plazoFL} venció sin pago — a cobrar o recolectar`, ...base });
+      const plazoFL = gsC.find(g => g.tipo === "plazo_extra" && g.plazo_extra_fecha_limite)?.plazo_extra_fecha_limite;
+      if (plazoFL && plazoFL <= hoy && plazoFL >= hace15) {
+        alertas.push({ id: `plazo-vence-${c.id}`, tipo: "plazo_extra_vence", nivel: "alerta", titulo: `Plazo extra vencido — ${nombre}`, detalle: `El plazo que le diste venció el ${plazoFL} — verifica si ya pagó o gestiona`, ...base });
       }
-      const promesaFC = gsC.filter(g => g.fecha_compromiso)
-        .sort((a, b) => (b.fecha_compromiso || "").localeCompare(a.fecha_compromiso || ""))[0]?.fecha_compromiso;
-      if (promesaFC && promesaFC <= hoy && !pagosC.some(p => p.fecha >= promesaFC)) {
-        alertas.push({ id: `promesa-vence-${c.id}`, tipo: "promesa_pago_vence", nivel: "alerta", titulo: `Promesa de pago vencida — ${nombre}`, detalle: `Prometió pagar el ${promesaFC} y aún no paga`, ...base });
+      const promesaFC = gsC.find(g => g.fecha_compromiso)?.fecha_compromiso;
+      if (promesaFC && promesaFC <= hoy && promesaFC >= hace15) {
+        alertas.push({ id: `promesa-vence-${c.id}`, tipo: "promesa_pago_vence", nivel: "alerta", titulo: `Promesa de pago vencida — ${nombre}`, detalle: `Prometió pagar el ${promesaFC} — verifica si ya pagó o gestiona`, ...base });
       }
     }
 

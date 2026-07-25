@@ -10,7 +10,7 @@ import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
 import { Badge } from "../components/atomos";
-import { esDiaDePago, calcularEstadoCartera } from "../utils/cicloPago";
+import { esDiaDePago, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias, hoyDate } from "../utils/fecha";
 import type { ViewKey } from "../App";
 
@@ -100,7 +100,13 @@ export default function DashboardView({ onNavigate }: {
     const contratosGabela = contratos.filter(c => {
       if (c.estado !== "Activo") return false;
       const pc = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor }));
-      return calcularEstadoCartera(c, pc, ahoraCartera) === "gabela";
+      // Misma fórmula que la cartera (CobrosView): la cuota del convenio cuenta para la mora y,
+      // si el convenio ya cubrió el período, ese período va al día. Sin esto el conteo del
+      // dashboard divergía del de Cartera para contratos con convenio.
+      const conv = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+      const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
+      const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
+      return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto) === "gabela";
     }).length;
     const clientesProceso   = clientes.filter(c => c.estado === "En proceso").length;
     const clientesVisita    = clientes.filter(c => c.estado === "Listo para visita").length;
@@ -178,7 +184,7 @@ export default function DashboardView({ onNavigate }: {
       prevMotosAsignadas, prevContratosActivos, prevClientesActivos, prevClientesMora,
       recuperadasSemana, paganHoy, motosInmovilizar,
     };
-  }, [loading, motos, clientes, contratos, pagos, taller]);
+  }, [loading, motos, clientes, contratos, pagos, taller, convenios]);
 
   // ── Recaudo filtrado por grupo ─────────────────────────────────────────────
   const recaudoFiltrado = useMemo(() => {

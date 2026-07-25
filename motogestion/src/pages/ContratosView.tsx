@@ -253,6 +253,10 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   <div style={{ height: 10, borderRadius: 999, background: "var(--line)", overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 999, width: `${pctAhorro}%`, background: alertaBase ? "var(--warn2)" : "var(--accent)", transition: "width 0.3s" }} />
                   </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
+                    <span>De inicio: $ {fmt(c.ahorro_apertura ?? 0)}</span>
+                    <span>Por pagos: $ {fmt(c.ahorro_acumulado ?? 0)}</span>
+                  </div>
                   {alertaBase && <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", fontWeight: 700 }}>⚠️ Falta poco — avisar al admin para tramitar cambio de contrato</div>}
                 </div>
               )}

@@ -548,6 +548,10 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                         transition: "width 0.5s",
                       }} />
                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--faint)", marginTop: 5 }}>
+                      <span>De inicio: ${fmt(c.ahorro_apertura ?? 0)}</span>
+                      <span>Por pagos: ${fmt(c.ahorro_acumulado ?? 0)}</span>
+                    </div>
                     {ahorro >= 510000 && (
                       <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 8, background: "var(--ok-soft)", fontSize: 12, fontWeight: 700, color: "var(--ok-ink)" }}>
                         Base completada — listo para cambio de contrato

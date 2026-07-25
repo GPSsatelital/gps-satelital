@@ -693,6 +693,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
   const [busquedaHistorial, setBusquedaHistorial] = useState("");
+  // El estado de cuenta impreso/compartido NO muestra el ahorro por defecto (decisión del cliente);
+  // este toggle permite incluirlo puntualmente. En pantalla el ahorro siempre se ve.
+  const [incluirAhorroDoc, setIncluirAhorroDoc] = useState(false);
 
   // Detail panel tabs
   const [detailTab, setDetailTab] = useState<"gestiones" | "deudas" | "convenios" | "historial">("gestiones");
@@ -1567,7 +1570,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
     function imprimirEstadoCuenta() {
       if (!clienteDetalle) return;
-      const html = generarHTMLEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta());
+      const html = generarHTMLEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc);
       const w = window.open("", "_blank", "width=420,height=640");
       if (!w) return;
       w.document.write(`<!DOCTYPE html><html><head><title>Estado de cuenta</title><style>*{print-color-adjust:exact;-webkit-print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
@@ -1578,7 +1581,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
     function enviarEstadoCuentaWhatsApp() {
       if (!clienteDetalle) return;
-      const texto = armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta());
+      const texto = armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc);
       const num = (clienteDetalle.whatsapp || clienteDetalle.telefono || "").replace(/\D/g, "");
       const full = num.length === 10 ? `57${num}` : num;
       if (full.length >= 11) window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
@@ -1631,6 +1634,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button onClick={imprimirEstadoCuenta} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📄 Estado de cuenta</button>
             <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "var(--ok-ink)" }}>📱 Enviar por WhatsApp</button>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted2)", cursor: "pointer" }} title="Si lo marcas, el ahorro sale en el impreso/compartido. Por defecto no se le muestra al cliente.">
+              <input type="checkbox" checked={incluirAhorroDoc} onChange={e => setIncluirAhorroDoc(e.target.checked)} style={{ cursor: "pointer" }} />
+              Incluir ahorro
+            </label>
           </div>
         </div>
 
@@ -1690,6 +1697,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               <div style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.1, fontVariantNumeric: "tabular-nums", color: enProrrateo ? "var(--accent)" : totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
                 {enProrrateo ? `$ ${fmt(cuotaPactada)}` : totalDebeAhora > 0 ? `$ ${fmt(totalDebeAhora)}` : "✓ Al día"}
               </div>
+            </div>
+          </div>
+
+          {/* Ahorro del cliente — SIEMPRE visible en pantalla (en el impreso/compartido es opcional).
+              De inicio = ahorro de apertura; Por pagos = ahorro ganado pagando. */}
+          <div style={{ marginTop: 12, background: "var(--soft2)", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Ahorro</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, flexWrap: "wrap" }}>
+              <span style={{ color: "var(--muted2)" }}>De inicio <strong style={{ color: "var(--text)" }}>$ {fmt(contratoDetalle.ahorro_apertura ?? 0)}</strong></span>
+              <span style={{ color: "var(--muted2)" }}>Por pagos <strong style={{ color: "var(--text)" }}>$ {fmt(contratoDetalle.ahorro_acumulado ?? 0)}</strong></span>
+              <span style={{ color: "var(--muted2)" }}>Total <strong style={{ color: "var(--ok-ink)" }}>$ {fmt((contratoDetalle.ahorro_apertura ?? 0) + (contratoDetalle.ahorro_acumulado ?? 0))}</strong></span>
             </div>
           </div>
 

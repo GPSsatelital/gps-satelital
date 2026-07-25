@@ -567,7 +567,7 @@ export type DatosEstadoCuenta = {
 
 // Compacto a propósito: imprime bien en la térmica de 80mm (GA-E2001) y se ve limpio
 // también en hoja carta o en pantalla.
-export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta): string {
+export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta, incluirAhorro = false): string {
   const linea = (l: string, v: string, fuerte = false) =>
     `<div style="display:flex;justify-content:space-between;gap:8px;${fuerte ? "font-weight:800" : ""}"><span>${l}</span><span style="text-align:right">${v}</span></div>`;
   const sep = `<div style="border-top:1px dashed #94a3b8;margin:8px 0"></div>`;
@@ -585,10 +585,11 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
       ${linea("Día de pago", d.diaPagoLabel)}
       ${linea("Estado", d.estadoLabel)}
       ${linea("DEBE HOY", `$ ${fmt(d.debeHoy)}`, true)}
-      ${sep}
-      ${linea("Ahorro total", `$ ${fmt(d.ahorroTotal)}`, true)}
-      ${d.apertura ? linea("· Traía (corte)", `$ ${fmt(d.apertura.viejo)}`) + linea("· Nuevo (sistema)", `$ ${fmt(d.apertura.nuevo)}`) : ""}
-      ${d.ahorroCiclos && d.ahorroCiclos.monto > 0 ? linea("· Ganado pagando", `$ ${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} compl.)`) : ""}
+      ${incluirAhorro ? sep
+        + linea("Ahorro total", `$ ${fmt(d.ahorroTotal)}`, true)
+        + (d.apertura ? linea("· De inicio (apertura)", `$ ${fmt(d.apertura.viejo)}`) + linea("· Por pagos", `$ ${fmt(d.apertura.nuevo)}`) : "")
+        + (d.ahorroCiclos && d.ahorroCiclos.monto > 0 ? linea("· Ganado pagando", `$ ${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} compl.)`) : "")
+        : ""}
       ${d.saldoFavor > 0 ? linea("Saldo a favor", `$ ${fmt(d.saldoFavor)}`) : ""}
       ${d.deudas.length > 0 ? sep + `<div style="font-weight:800">DEUDAS PENDIENTES</div>` +
         d.deudas.map(x => linea(LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto, `$ ${fmt(x.pendiente)}`)).join("") +
@@ -608,7 +609,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
 }
 
 // Versión texto plano del estado de cuenta, para enviar por WhatsApp.
-export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta): string {
+export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta, incluirAhorro = false): string {
   const l: string[] = [
     "📋 *ESTADO DE CUENTA — CLUB DE MOTEROS*",
     `Cliente: ${cliente.nombre}`,
@@ -621,9 +622,11 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
     `Estado: ${d.estadoLabel}`,
     `*Debe hoy: $${fmt(d.debeHoy)}*`,
     "",
-    `Ahorro total: $${fmt(d.ahorroTotal)}`,
   ];
-  if (d.ahorroCiclos && d.ahorroCiclos.monto > 0) l.push(`Ahorro ganado pagando: $${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} completos)`);
+  if (incluirAhorro) {
+    l.push(`Ahorro total: $${fmt(d.ahorroTotal)}`);
+    if (d.ahorroCiclos && d.ahorroCiclos.monto > 0) l.push(`Ahorro ganado pagando: $${fmt(d.ahorroCiclos.monto)} (${d.ahorroCiclos.ciclos} ciclo${d.ahorroCiclos.ciclos === 1 ? "" : "s"} completos)`);
+  }
   if (d.saldoFavor > 0) l.push(`Saldo a favor: $${fmt(d.saldoFavor)}`);
   if (d.deudas.length > 0) {
     l.push("", "*Deudas pendientes:*");

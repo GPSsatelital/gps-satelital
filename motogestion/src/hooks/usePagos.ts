@@ -60,6 +60,10 @@ export type Pago = {
   aplicado_convenio: number;
   aplicado_ahorro: number;
   aplicado_saldo_favor: number;
+  // Existen en la BD (mig 013 y 045) y el insert las escribe, pero faltaban en el tipo: sin
+  // ellas, un pago que fue al prorrateo (caja 0) o a la base inicial salía "sin desglose".
+  aplicado_prorrateo?: number | null;
+  aplicado_base_inicial?: number | null;
   convenio_id: string | null;
   entregado_caja: boolean;
   folio: string | null;

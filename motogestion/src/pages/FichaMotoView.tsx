@@ -7,6 +7,12 @@ import { useTaller } from "../hooks/useTaller";
 import { usePagos } from "../hooks/usePagos";
 import { usePrestamos } from "../hooks/usePrestamos";
 import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
+import LineaTiempo from "../components/LineaTiempo";
+import { useGestiones } from "../hooks/useGestiones";
+import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
+import { useVisitas } from "../hooks/useVisitas";
+import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -129,6 +135,11 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   const { taller } = useTaller();
   const { pagos } = usePagos();
   const { prestamos } = usePrestamos();
+  const { gestiones } = useGestiones();
+  const { deudas } = useDeudas();
+  const { convenios } = useConvenios();
+  const { visitas } = useVisitas();
+  const { prestamos: prestamosDoc } = usePrestamosDoc();
 
   // Préstamos donde esta moto participó (prestada a alguien, o reemplazada por otra).
   const prestamosMoto = useMemo(() =>
@@ -426,6 +437,16 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       {/* ── Tab: Historial ── */}
       {tab === "historial" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>🕘 Todo lo que ha pasado con esta moto</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>Entregas, talleres, cobros, recolecciones, tarjeta y llaves — de lo más nuevo a lo más viejo.</div>
+            <LineaTiempo
+              objetivo={{ motoId }}
+              fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos }}
+              titulo={moto.placa}
+              subtitulo={`${moto.marca} ${moto.modelo}`}
+            />
+          </Card>
           {prestamosMoto.length > 0 && (
             <Card>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>🔄 Préstamos de reemplazo</div>

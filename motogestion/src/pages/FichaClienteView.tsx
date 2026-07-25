@@ -8,6 +8,9 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useVisitas } from "../hooks/useVisitas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
+import { useTaller } from "../hooks/useTaller";
+import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import LineaTiempo from "../components/LineaTiempo";
 import { formatDiaPago } from "../utils/cicloPago";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { useAuth } from "../contexts/AuthContext";
@@ -72,7 +75,7 @@ const GESTION_COLORS: Record<string, { bg: string; color: string }> = {
   otro:       { bg: "var(--soft)", color: "var(--muted)" },
 };
 
-type Tab = "resumen" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
+type Tab = "resumen" | "historial" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
 
 const DOC_LABELS_ACOMPANANTE: Array<[keyof DocumentoFlags, string]> = [
   ["cedula",  "Cédula"],
@@ -188,6 +191,8 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const { visitas } = useVisitas();
   const { gestiones } = useGestiones();
   const { motos } = useMotos();
+  const { taller } = useTaller();
+  const { prestamos: prestamosDoc } = usePrestamosDoc();
 
   const cliente = clientes.find(c => c.id === clienteId);
 
@@ -245,6 +250,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
 
   const TABS: Array<{ key: Tab; label: string; count?: number }> = [
     { key: "resumen",    label: "Resumen" },
+    { key: "historial",  label: "🕘 Historial" },
     { key: "contrato",   label: "Contrato" },
     { key: "pagos",      label: "Pagos",      count: pagosCliente.length },
     { key: "visitas",    label: "Visitas",    count: visitasCliente.length },
@@ -362,6 +368,32 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           </button>
         ))}
       </div>
+
+      {/* ── Tab: Historial (línea de tiempo) ── */}
+      {tab === "historial" && (
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: isMobile ? "14px 12px" : 20 }}>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
+            Todo lo que ha pasado con este cliente, de lo más nuevo a lo más viejo. Cada pago dice a qué se aplicó.
+          </div>
+          <LineaTiempo
+            objetivo={{ clienteId }}
+            fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos }}
+            titulo={cliente.nombre}
+            subtitulo={`C.C. ${cliente.cedula}`}
+            resumen={(() => {
+              const ct = contratosCliente.find(c => c.estado === "Activo") ?? contratosCliente[0];
+              const pagosOk = pagosCliente.filter(p => p.estado === "Confirmado");
+              const recolecciones = gestionesCliente.filter(g => g.tipo === "recoleccion").length;
+              const r: { k: string; v: string; tono?: string }[] = [];
+              if (ct?.motor_v2 && (ct.total_cajas ?? 0) > 0) r.push({ k: "Va en la cuota", v: `${ct.cajas_pagadas ?? 0} de ${ct.total_cajas}` });
+              r.push({ k: "Pagos hechos", v: String(pagosOk.length) });
+              r.push({ k: "Ahorro", v: `$ ${Math.round(ct ? ahorroTotal(ct) : 0).toLocaleString("es-CO")}`, tono: "ok" });
+              r.push({ k: "Veces recogida la moto", v: String(recolecciones), tono: recolecciones > 0 ? "bad" : "ok" });
+              return r;
+            })()}
+          />
+        </div>
+      )}
 
       {/* ── Tab: Resumen ── */}
       {tab === "resumen" && (

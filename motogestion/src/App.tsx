@@ -430,7 +430,10 @@ function Shell() {
   // Acceso por defecto según el rol (cuando el usuario no tiene accesos a medida)
   function accesoPorRol(view: ViewKey): boolean {
     if (view === "importacion") return roleActual === "ADMIN_PRINCIPAL";
-    const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "liquidaciones", "usuarios", "historial_pagos"];
+    // Historial de pagos: admins y SECRETARIA por defecto (ella registra/confirma el dinero);
+    // otros roles (SUBADMIN, etc.) solo si se les activa el permiso a medida.
+    if (view === "historial_pagos") return esAdmin || roleActual === "SECRETARIA";
+    const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "liquidaciones", "usuarios"];
     if (adminViews.includes(view)) return esAdmin;
     return true; // clientes, motos, contratos, cobros, caja, taller
   }

@@ -31,7 +31,7 @@ export const ACCESOS_SUGERIDOS: Record<string, ViewKey[]> = {
   ADMIN_PRINCIPAL: MODULOS_ASIGNABLES.map(m => m.key),
   ADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "cobro_diario", "alertas", "inmovilizaciones", "historial_pagos", "reportes", "caja", "liquidaciones", "referidos"],
   SUBADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "cobro_diario", "alertas", "inmovilizaciones"],
-  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "caja", "cobro_diario"],
+  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "caja", "cobro_diario", "historial_pagos"],
   MECANICO: ["taller"],
   SOCIO: [],
 };

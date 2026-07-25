@@ -26,6 +26,7 @@ import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPa
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
+import ModalDocumentosMoto from "../components/ModalDocumentosMoto";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
@@ -140,6 +141,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [openLiberarFiscalia, setOpenLiberarFiscalia] = useState(false);
   // Router "Registrar novedad": una sola puerta que enruta al flujo correcto.
   const [openNovedad, setOpenNovedad] = useState(false);
+  const [openDocsMoto, setOpenDocsMoto] = useState(false);
   const [recoleccionMoto, setRecoleccionMoto] = useState<Moto | null>(null);
   const [liquidacionMoto, setLiquidacionMoto] = useState<Moto | null>(null);
 
@@ -153,6 +155,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   useBackGuard(openLiberarFiscalia, () => setOpenLiberarFiscalia(false));
   useBackGuard(openUbicacion, () => setOpenUbicacion(false));
   useBackGuard(openRecepcion, () => setOpenRecepcion(false));
+  useBackGuard(openDocsMoto, () => setOpenDocsMoto(false));
   useBackGuard(open, () => setOpen(false));
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -563,6 +566,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
+            <button onClick={() => { setOpenDocsMoto(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>🪪 Documentos</button>
             <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
             {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida. */}
             {selectedMoto.estado === "Fiscalia" && (
@@ -762,6 +766,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       >
         +
       </button>
+
+      {/* Modal documentos de la moto (tarjeta + SOAT) */}
+      {openDocsMoto && selectedMoto && <ModalDocumentosMoto moto={selectedMoto} onClose={() => setOpenDocsMoto(false)} />}
 
       {/* Modal cambiar ubicación */}
       {openUbicacion && selectedMoto && (

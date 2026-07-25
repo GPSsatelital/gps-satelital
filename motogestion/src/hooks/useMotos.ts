@@ -30,6 +30,8 @@ export type Moto = {
   // evidencia de entrega (wizard paso 6) — guardada en motos, no siempre tipada
   kilometraje_inicial?: number | null;
   fotos_entrega?: Record<string, string> | null;
+  // documentos escaneados de la moto (mig 063): tarjeta de propiedad (2 caras) + SOAT
+  documentos_moto?: { tarjeta_frente?: string; tarjeta_reverso?: string; soat?: string } | null;
   // campos de retención
   retencion_fecha?: string | null;
   retencion_numero_caso?: string | null;
@@ -111,5 +113,19 @@ export function useMotos() {
     return { error: error?.message ?? null };
   }
 
-  return { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin };
+  // Sube un documento escaneado de la moto (tarjeta frente/reverso o SOAT) a Storage y guarda
+  // su URL en documentos_moto. El upsert reusa el path; se añade ?t=… para evitar caché.
+  async function adjuntarDocumentoMoto(moto: Moto, tipo: "tarjeta_frente" | "tarjeta_reverso" | "soat", file: File) {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `motos/${moto.id}/${tipo}.${ext}`;
+    const { error: up } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
+    if (up) return { url: null as string | null, error: up.message };
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+    const url = `${data.publicUrl}?t=${Date.now()}`;
+    const nuevos = { ...(moto.documentos_moto ?? {}), [tipo]: url };
+    const { error } = await supabase.from("motos").update({ documentos_moto: nuevos }).eq("id", moto.id);
+    return { url: error ? null : url, error: error?.message ?? null };
+  }
+
+  return { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin, adjuntarDocumentoMoto };
 }

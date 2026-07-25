@@ -7,6 +7,7 @@ import type { Visita } from "../hooks/useVisitas";
 import type { Moto } from "../hooks/useMotos";
 import type { Cliente } from "../hooks/useClientes";
 import type { PrestamoDoc } from "../hooks/usePrestamosDoc";
+import { fechaISO } from "./fecha";
 
 // ── Línea de tiempo: todo lo que ha pasado con un cliente o una moto, en orden y
 // explicado en español simple para que el funcionario no se equivoque con el cliente.
@@ -14,7 +15,10 @@ import type { PrestamoDoc } from "../hooks/usePrestamosDoc";
 
 export type CategoriaEvento = "pago" | "cobranza" | "moto" | "contrato" | "cliente";
 
-export type LineaDetalle = { k: string; v: string; tono?: "ok" | "bad" | "warn" | "muted" };
+// `interno`: se ve en pantalla (el funcionario lo necesita) pero NO se imprime, porque el
+// impreso se le entrega al cliente. Cubre el ahorro (decisión de negocio: no mostrárselo) y
+// las notas de cobranza (sirena, recolección, plazos, GPS).
+export type LineaDetalle = { k: string; v: string; tono?: "ok" | "bad" | "warn" | "muted"; interno?: boolean };
 
 export type EventoLT = {
   id: string;
@@ -26,15 +30,28 @@ export type EventoLT = {
   detalle?: string;
   desglose?: LineaDetalle[];
   tono?: "ok" | "bad" | "warn" | "accent" | "neutral";
+  interno?: boolean;   // no se imprime (documento que recibe el cliente)
 };
 
 const fmt = (n: number) => `$ ${Math.round(n).toLocaleString("es-CO")}`;
-const soloFecha = (s?: string | null) => (s ? s.slice(0, 10) : "");
+
+/** Fecha del evento en hora de Colombia. Los timestamptz llegan en UTC: cortarlos con
+ *  slice(0,10) mandaba al día siguiente todo lo registrado después de las 7 pm. Las
+ *  columnas `date` (YYYY-MM-DD) ya vienen en fecha local y se dejan como están. */
+const soloFecha = (s?: string | null) => {
+  if (!s) return "";
+  if (!s.includes("T")) return s.slice(0, 10);
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? s.slice(0, 10) : fechaISO(d);
+};
 
 /** Cuánto de un pago fue a cada cosa. Lee las columnas nuevas y cae al jsonb viejo como
  *  respaldo (pagos antiguos). El ahorro NO usa `||`: $0 es un valor real con la regla
  *  tarifa-primero, y el `||` mostraría la cifra proporcional vieja ya corregida. */
 export function desglosarPago(p: Pago): LineaDetalle[] {
+  // El alquiler de la moto prestada NO se reparte a propósito (el motor lo excluye, mig 053):
+  // no es un "pago antiguo" sin datos, simplemente no toca el contrato.
+  if (p.tipo_registro === "alquiler_reemplazo") return [];
   const leg = (p.aplicado ?? {}) as Partial<Record<string, number>>;
   const cuota = (p.aplicado_tarifa ?? 0) || (leg.semana ?? 0);
   const deuda = (p.aplicado_deuda ?? 0) || (leg.deuda ?? 0);
@@ -52,8 +69,9 @@ export function desglosarPago(p: Pago): LineaDetalle[] {
   if (conv > 0) d.push({ k: "Abonó al acuerdo de pago", v: fmt(conv), tono: "warn" });
   if (saldo > 0) d.push({ k: "Quedó como saldo a favor", v: fmt(saldo), tono: "ok" });
   if (saldo < 0) d.push({ k: "Se usó de su saldo a favor", v: fmt(Math.abs(saldo)), tono: "muted" });
-  if (d.length === 0) return [{ k: "Sin desglose registrado", v: "pago antiguo", tono: "muted" }];
-  if (ahorro > 0) d.push({ k: "De la cuota, ahorro del cliente", v: fmt(ahorro), tono: "ok" });
+  if (d.length === 0) return [];
+  // El ahorro se ve en pantalla pero NO se imprime: misma decisión que el estado de cuenta.
+  if (ahorro > 0) d.push({ k: "De la cuota, ahorro del cliente", v: fmt(ahorro), tono: "ok", interno: true });
   return d;
 }
 
@@ -68,8 +86,21 @@ function tituloPago(p: Pago): { icono: string; titulo: string; detalle: string; 
       return { icono: "🛵", titulo: `Cobro en campo de ${v}`, detalle: pend ? "Recogido en la calle — pendiente de confirmar en caja." : "Confirmado en caja.", tono: pend ? "warn" : "ok" };
     case "adelanto_base":
       return { icono: "🎫", titulo: `Semana adelantada de ${v}`, detalle: "Ya venía pagada dentro de la base inicial (no entró plata ese día).", tono: "accent" };
-    case "saldo_favor":
-      return { icono: "♻️", titulo: `Se usó saldo a favor: ${v}`, detalle: "Crédito que ya tenía guardado — no entró plata nueva.", tono: "accent" };
+    case "saldo_favor": {
+      // `valor` es el crédito COMPLETO que se mandó a aplicar; el motor solo llena las cajas
+      // exigidas hoy y devuelve el resto al saldo. El consumo REAL queda en
+      // aplicado_saldo_favor (negativo): usar ese, o le diríamos al cliente que gastó un
+      // crédito que todavía tiene disponible.
+      const ap = p.aplicado_saldo_favor;
+      const usado = ap === null || ap === undefined ? p.valor : Math.abs(ap);
+      const sobro = Math.max(p.valor - usado, 0);
+      return {
+        icono: "♻️",
+        titulo: `Se usó saldo a favor: ${fmt(usado)}`,
+        detalle: `Crédito que ya tenía guardado — no entró plata nueva.${sobro > 0 ? ` Sobraron ${fmt(sobro)} y siguen como saldo a favor.` : ""}`,
+        tono: "accent",
+      };
+    }
     case "alquiler_reemplazo":
       return { icono: "🔄", titulo: `Alquiler de moto prestada: ${v}`, detalle: "Por usar una moto de reemplazo. No es cuota del contrato.", tono: "accent" };
     default:
@@ -123,6 +154,39 @@ export function construirLineaTiempo(
   );
   const placaDe = (id?: string | null) => f.motos.find(m => m.id === id)?.placa ?? "";
   const nombreDe = (id?: string | null) => f.clientes.find(c => c.id === id)?.nombre ?? "";
+  // En la línea de una MOTO conviven varios clientes: cada evento dice de quién es.
+  const deQuien = (clienteId?: string | null) =>
+    objetivo.motoId && clienteId ? nombreDe(clienteId) : "";
+  const conCliente = (txt: string | undefined, clienteId?: string | null) => {
+    const n = deQuien(clienteId);
+    return [txt, n ? `Cliente: ${n}` : ""].filter(Boolean).join(" · ") || undefined;
+  };
+  const clienteDeContrato = (contratoId: string) => contratos.find(c => c.id === contratoId)?.cliente_id ?? null;
+
+  // Ventana en que ESTE cliente tuvo cada moto: desde que se le entregó hasta que la recibió
+  // otra persona. Sin esto, el taller o la tarjeta prestada de un dueño anterior/posterior se
+  // le atribuían a este cliente.
+  const ventanas = new Map<string, { desde: string; hasta: string }[]>();
+  if (objetivo.clienteId) {
+    for (const c of contratos) {
+      if (!c.moto_id || !c.fecha_entrega) continue;
+      const desde = soloFecha(c.fecha_entrega);
+      const siguiente = f.contratos
+        .filter(o => o.moto_id === c.moto_id && o.id !== c.id && o.fecha_entrega && soloFecha(o.fecha_entrega) > desde)
+        .map(o => soloFecha(o.fecha_entrega))
+        .sort()[0];
+      const arr = ventanas.get(c.moto_id) ?? [];
+      arr.push({ desde, hasta: siguiente ?? "9999-12-31" });
+      ventanas.set(c.moto_id, arr);
+    }
+  }
+  const enVentana = (motoId: string | null | undefined, fecha: string) => {
+    if (!objetivo.clienteId) return true;         // línea de la moto: todo aplica
+    if (!motoId || !fecha) return false;
+    const arr = ventanas.get(motoId);
+    if (!arr || arr.length === 0) return false;
+    return arr.some(v => fecha >= v.desde && fecha < v.hasta);
+  };
 
   // ── Cliente ───────────────────────────────────────────────────────────────
   // Solo en la línea de tiempo DEL CLIENTE: en la de una moto, el registro y las visitas de
@@ -191,7 +255,7 @@ export function construirLineaTiempo(
     push({
       id: `pag-${p.id}`, fecha: soloFecha(p.fecha), orden: p.created_at ?? p.fecha,
       categoria: "pago", icono: t.icono, titulo: t.titulo,
-      detalle: [t.detalle, p.folio ? `Recibo ${p.folio}` : ""].filter(Boolean).join(" · ") || undefined,
+      detalle: conCliente([t.detalle, p.folio ? `Recibo ${p.folio}` : ""].filter(Boolean).join(" · ") || undefined, clienteDeContrato(p.contrato_id)),
       desglose: p.estado === "Confirmado" ? desglosarPago(p) : undefined,
       tono: t.tono,
     });
@@ -202,7 +266,7 @@ export function construirLineaTiempo(
     push({
       id: `deu-${d.id}`, fecha: soloFecha(d.created_at), orden: d.created_at,
       categoria: "pago", icono: "📌", titulo: `Se le cargó una deuda de ${fmt(d.monto)}`,
-      detalle: d.descripcion || d.concepto.replace(/_/g, " "),
+      detalle: conCliente(d.descripcion || d.concepto.replace(/_/g, " "), clienteDeContrato(d.contrato_id)),
       desglose: [
         { k: "Concepto", v: d.concepto.replace(/_/g, " ") },
         { k: "Le queda pendiente", v: fmt(d.monto_pendiente), tono: d.monto_pendiente > 0 ? "bad" : "ok" },
@@ -217,7 +281,7 @@ export function construirLineaTiempo(
     push({
       id: `cnv-${cv.id}`, fecha: soloFecha(cv.created_at), orden: cv.created_at,
       categoria: "pago", icono: "🤝", titulo: "Acuerdo de pago firmado",
-      detalle: (anyv.concepto as string) || undefined,
+      detalle: conCliente((anyv.concepto as string) || undefined, clienteDeContrato(cv.contrato_id)),
       desglose: [
         { k: "Debía", v: fmt(Number(anyv.deuda_total ?? 0)) },
         { k: "Cuota pactada", v: fmt(Number(anyv.cuota_por_periodo ?? 0)) },
@@ -228,7 +292,9 @@ export function construirLineaTiempo(
   }
 
   // ── Gestiones de cobro ────────────────────────────────────────────────────
-  for (const g of f.gestiones.filter(g => contratoIds.has(g.contrato_id))) {
+  // 'cobro_campo' se omite: al cobrar en campo se registra el pago Y una gestión que repite
+  // el mismo folio y monto — se veían dos eventos con la misma plata. El pago ya lo cuenta.
+  for (const g of f.gestiones.filter(g => contratoIds.has(g.contrato_id) && g.tipo !== "cobro_campo")) {
     const info = GESTION_INFO[g.tipo] ?? GESTION_INFO.otro;
     const extra: string[] = [];
     if (g.resultado) extra.push(g.resultado);
@@ -237,20 +303,21 @@ export function construirLineaTiempo(
     push({
       id: `ges-${g.id}`, fecha: soloFecha(g.fecha), orden: g.created_at ?? g.fecha,
       categoria: info.cat, icono: info.icono, titulo: info.titulo,
-      detalle: extra.join(" · ") || undefined, tono: info.tono,
+      detalle: conCliente(extra.join(" · ") || undefined, clienteDeContrato(g.contrato_id)), tono: info.tono,
+      interno: true, // gestión interna de cobranza: no va en el papel que recibe el cliente
     });
   }
 
   // ── Taller ────────────────────────────────────────────────────────────────
   for (const t of f.taller.filter(t => t.moto_id && motoIds.has(t.moto_id))) {
-    if (t.fecha_ingreso) {
+    if (t.fecha_ingreso && enVentana(t.moto_id, soloFecha(t.fecha_ingreso))) {
       push({
         id: `tal-in-${t.id}`, fecha: soloFecha(t.fecha_ingreso), orden: t.fecha_ingreso,
         categoria: "moto", icono: "🔧", titulo: "La moto entró al taller",
         detalle: t.detalle || undefined, tono: "warn",
       });
     }
-    if (t.fecha_salida) {
+    if (t.fecha_salida && enVentana(t.moto_id, soloFecha(t.fecha_salida))) {
       push({
         id: `tal-out-${t.id}`, fecha: soloFecha(t.fecha_salida), orden: t.fecha_salida,
         categoria: "moto", icono: "🔧", titulo: "La moto salió del taller",
@@ -260,7 +327,7 @@ export function construirLineaTiempo(
   }
 
   // ── Préstamo de tarjeta / llave ───────────────────────────────────────────
-  for (const p of f.prestamosDoc.filter(p => motoIds.has(p.moto_id))) {
+  for (const p of f.prestamosDoc.filter(p => motoIds.has(p.moto_id) && enVentana(p.moto_id, soloFecha(p.fecha_prestamo)))) {
     const que = p.tipo === "tarjeta" ? "la tarjeta de propiedad" : "una copia de la llave";
     push({
       id: `pdoc-${p.id}`, fecha: soloFecha(p.fecha_prestamo), orden: p.created_at ?? p.fecha_prestamo,

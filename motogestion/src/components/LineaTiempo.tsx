@@ -34,25 +34,36 @@ export default function LineaTiempo({
   const filtrados = useMemo(() => (cat === "todo" ? eventos : eventos.filter(e => e.categoria === cat)), [eventos, cat]);
   const grupos = useMemo(() => agruparPorMes(filtrados), [filtrados]);
 
+  // El impreso se le ENTREGA AL CLIENTE, así que sale una versión depurada: sin el ahorro
+  // (misma decisión que el estado de cuenta) y sin las gestiones internas de cobranza
+  // (sirena, recolección, plazos, notas del funcionario). Todo texto va escapado: son campos
+  // libres escritos por funcionarios y romperían el documento.
   function imprimir() {
+    const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, c => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string
+    ));
+    const paraCliente = filtrados.filter(e => !e.interno);
     const w = window.open("", "_blank", "width=760,height=900");
-    if (!w) return;
-    const filas = filtrados.map(e => `
+    if (!w) { alert("El navegador bloqueó la ventana de impresión. Habilita las ventanas emergentes para este sitio."); return; }
+    const filas = paraCliente.map(e => {
+      const des = (e.desglose ?? []).filter(d => !d.interno);
+      return `
       <tr>
-        <td style="white-space:nowrap;vertical-align:top;padding:4px 8px 4px 0;color:#555">${fmtFechaLarga(e.fecha)}</td>
+        <td style="white-space:nowrap;vertical-align:top;padding:4px 8px 4px 0;color:#555">${esc(fmtFechaLarga(e.fecha))}</td>
         <td style="padding:4px 0 8px;border-bottom:1px solid #eee">
-          <div style="font-weight:700">${e.titulo}</div>
-          ${e.detalle ? `<div style="color:#555;font-size:11px">${e.detalle}</div>` : ""}
-          ${e.desglose ? e.desglose.map(d => `<div style="font-size:11px;color:#333">· ${d.k}: <b>${d.v}</b></div>`).join("") : ""}
+          <div style="font-weight:700">${esc(e.titulo)}</div>
+          ${e.detalle ? `<div style="color:#555;font-size:11px">${esc(e.detalle)}</div>` : ""}
+          ${des.map(d => `<div style="font-size:11px;color:#333">· ${esc(d.k)}: <b>${esc(d.v)}</b></div>`).join("")}
         </td>
-      </tr>`).join("");
-    w.document.write(`<!DOCTYPE html><html><head><title>Historial — ${titulo}</title>
+      </tr>`;
+    }).join("");
+    const filtroTxt = cat === "todo" ? "todos los movimientos" : `filtro: ${CATS.find(c => c.key === cat)?.label ?? ""}`;
+    w.document.write(`<!DOCTYPE html><html><head><title>Historial — ${esc(titulo)}</title>
       <style>@page{margin:12mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111}
       h2{margin:0 0 2px;font-size:16px}.sub{color:#555;font-size:11px;margin-bottom:10px}
       table{width:100%;border-collapse:collapse}</style></head><body>
-      <h2>Historial — ${titulo}</h2>
-      <div class="sub">${subtitulo ?? ""} · Generado el ${new Date().toLocaleDateString("es-CO")}</div>
-      ${resumen ? `<div class="sub">${resumen.map(r => `${r.k}: <b>${r.v}</b>`).join(" · ")}</div>` : ""}
+      <h2>Historial — ${esc(titulo)}</h2>
+      <div class="sub">${esc(subtitulo ?? "")} · ${esc(filtroTxt)} · Generado el ${esc(new Date().toLocaleDateString("es-CO"))}</div>
       <table>${filas}</table>
       <div class="sub" style="margin-top:12px">Documento informativo · CLUB DE MOTEROS</div>
       </body></html>`);
@@ -120,7 +131,7 @@ function Fila({ e }: { e: EventoLT }) {
       <div style={{ fontSize: 11, color: "var(--faint)", fontVariantNumeric: "tabular-nums" }}>{fmtFechaLarga(e.fecha)}</div>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", marginTop: 1 }}>{e.titulo}</div>
       {e.detalle && <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 2, lineHeight: 1.45 }}>{e.detalle}</div>}
-      {e.desglose && (
+      {e.desglose && e.desglose.length > 0 && (
         <div style={{ marginTop: 6, background: "var(--soft2)", borderRadius: 8, padding: "8px 10px", display: "grid", gap: 3 }}>
           {e.desglose.map((d, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 11.5 }}>

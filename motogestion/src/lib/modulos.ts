@@ -10,6 +10,7 @@ export const MODULOS_ASIGNABLES: ModuloAsignable[] = [
   { key: "cobros",           label: "Cartera & Cobros",   icon: "💳", grupo: "Operaciones" },
   { key: "motos",            label: "Motos",              icon: "🏍️", grupo: "Flota" },
   { key: "taller",           label: "Taller",             icon: "🔧", grupo: "Flota" },
+  { key: "tarjetas_llaves",  label: "Tarjetas y Llaves",  icon: "🪪", grupo: "Flota" },
   { key: "cobro_diario",     label: "Cobro Diario",       icon: "📅", grupo: "Finanzas" },
   { key: "alertas",          label: "Alertas",            icon: "🔔", grupo: "Finanzas" },
   { key: "inmovilizaciones", label: "Inmovilizaciones",   icon: "🚨", grupo: "Finanzas" },
@@ -29,9 +30,9 @@ export const MODULOS_SIEMPRE: ViewKey[] = ["dashboard", "configuracion", "ficha_
 // Es solo una plantilla; el admin puede ajustar libremente.
 export const ACCESOS_SUGERIDOS: Record<string, ViewKey[]> = {
   ADMIN_PRINCIPAL: MODULOS_ASIGNABLES.map(m => m.key),
-  ADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "cobro_diario", "alertas", "inmovilizaciones", "historial_pagos", "reportes", "caja", "liquidaciones", "referidos"],
-  SUBADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "cobro_diario", "alertas", "inmovilizaciones"],
-  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "caja", "cobro_diario", "historial_pagos"],
+  ADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "cobro_diario", "alertas", "inmovilizaciones", "historial_pagos", "reportes", "caja", "liquidaciones", "referidos"],
+  SUBADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "cobro_diario", "alertas", "inmovilizaciones"],
+  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "caja", "cobro_diario", "historial_pagos"],
   MECANICO: ["taller"],
   SOCIO: [],
 };

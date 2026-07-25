@@ -35,12 +35,13 @@ const ImportacionView = lazy(() => import("./pages/ImportacionView"));
 const FichaClienteView = lazy(() => import("./pages/FichaClienteView"));
 const FichaMotoView = lazy(() => import("./pages/FichaMotoView"));
 const HistorialPagosView = lazy(() => import("./pages/HistorialPagosView"));
+const TarjetasLlavesView = lazy(() => import("./pages/TarjetasLlavesView"));
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
   | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion"
-  | "ficha_cliente" | "ficha_moto" | "historial_pagos";
+  | "ficha_cliente" | "ficha_moto" | "historial_pagos" | "tarjetas_llaves";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -120,6 +121,7 @@ const SIDE_GROUPS: SideGroup[] = [
         ],
       },
       { key: "taller", label: "Taller", icon: "🔧" },
+      { key: "tarjetas_llaves", label: "Tarjetas y Llaves", icon: "🪪" },
       { key: "liquidaciones", label: "Liquidaciones", icon: "📊" },
     ],
   },
@@ -149,6 +151,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
   alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
   ficha_cliente: "Ficha de Cliente", ficha_moto: "Ficha de Moto", historial_pagos: "Historial de Pagos",
+  tarjetas_llaves: "Tarjetas y Llaves",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -300,8 +303,9 @@ function MasSheet({
     {
       titulo: "FLOTA & TALLER",
       items: [
-        { key: "taller",        icon: "🔧", label: "Taller",        desc: "Órdenes de mantenimiento" },
-        { key: "liquidaciones", icon: "📊", label: "Liquidaciones", desc: "Cierre y liquidación de contratos" },
+        { key: "taller",          icon: "🔧", label: "Taller",           desc: "Órdenes de mantenimiento" },
+        { key: "tarjetas_llaves", icon: "🪪", label: "Tarjetas y Llaves", desc: "Préstamo y control de tarjetas y llaves" },
+        { key: "liquidaciones",   icon: "📊", label: "Liquidaciones",    desc: "Cierre y liquidación de contratos" },
       ],
     },
     {
@@ -598,6 +602,7 @@ function Shell() {
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
+      {ctx.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}
       </Suspense>
     </motion.div>
   );

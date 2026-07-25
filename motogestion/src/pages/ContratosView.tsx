@@ -4,6 +4,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useBackGuard } from "../contexts/BackNav";
 import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
@@ -116,6 +117,10 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalDocumentosAbierto, setModalDocumentosAbierto] = useState(false);
   const [modalLiquidacionAbierto, setModalLiquidacionAbierto] = useState(false);
+  // Atrás cierra el modal abierto antes de cambiar de módulo.
+  useBackGuard(modalEditarAbierto, () => setModalEditarAbierto(false));
+  useBackGuard(modalDocumentosAbierto, () => setModalDocumentosAbierto(false));
+  useBackGuard(modalLiquidacionAbierto, () => setModalLiquidacionAbierto(false));
 
   useEffect(() => { if (initialOpenForm && puedeCrear) setWizardOpen(true); }, [initialOpenForm, puedeCrear]);
 

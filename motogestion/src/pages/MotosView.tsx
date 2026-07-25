@@ -27,6 +27,7 @@ import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoF
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalDocumentosMoto from "../components/ModalDocumentosMoto";
+import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
@@ -562,6 +563,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <button onClick={abrirEdicion} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", cursor: "pointer", fontWeight: 700, fontSize: 13, textAlign: "left" as const }}>✏️ Editar datos</button>
           </>
         )}
+        {!editandoMoto && <AvisoPrestamosMoto motoId={selectedMoto.id} />}
         {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "var(--ok-soft)", color: "var(--ok)", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

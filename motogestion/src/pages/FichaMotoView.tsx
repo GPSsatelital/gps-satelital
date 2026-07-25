@@ -6,6 +6,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useTaller } from "../hooks/useTaller";
 import { usePagos } from "../hooks/usePagos";
 import { usePrestamos } from "../hooks/usePrestamos";
+import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
 import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -239,6 +240,11 @@ export default function FichaMotoView({ motoId, onNavigate }: {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Dónde están los documentos físicos de esta moto (tarjeta / copia de llave) */}
+      <div style={{ marginBottom: 20 }}>
+        <AvisoPrestamosMoto motoId={motoId} />
       </div>
 
       {/* Tabs */}

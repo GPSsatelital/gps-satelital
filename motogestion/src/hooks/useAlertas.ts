@@ -7,6 +7,7 @@ import type { Moto } from "./useMotos";
 import type { Pago } from "./usePagos";
 import type { Convenio } from "./useConvenios";
 import type { Gestion } from "./useGestiones";
+import type { PrestamoDoc } from "./usePrestamosDoc";
 
 export type AlertaTipo =
   | "mora_critica"
@@ -23,7 +24,8 @@ export type AlertaTipo =
   | "convenio_por_vencer"
   | "moto_taller_demorada"
   | "validar_ubicacion_moto"
-  | "promesa_pago_vence";
+  | "promesa_pago_vence"
+  | "prestamo_doc_vence";
 
 export type Alerta = {
   id: string;
@@ -55,6 +57,7 @@ export function useAlertas({
   pagos,
   convenios = [],
   gestiones = [],
+  prestamosDoc = [],
 }: {
   contratos: Contrato[];
   clientes: Cliente[];
@@ -62,6 +65,7 @@ export function useAlertas({
   pagos: Pago[];
   convenios?: Convenio[];
   gestiones?: Gestion[];
+  prestamosDoc?: PrestamoDoc[];
 }): Alerta[] {
   return useMemo(() => {
     const alertas: Alerta[] = [];
@@ -262,6 +266,23 @@ export function useAlertas({
       }
     }
 
+    // ── 5d. TARJETA/LLAVE PRESTADA SIN DEVOLVER ──────────────────────────────
+    // El préstamo se registra con la fecha en que el cliente debe devolverla; si esa fecha
+    // llegó y sigue "prestado", se avisa al funcionario para que se la pida. Persiste hasta
+    // que se marque devuelta.
+    for (const p of prestamosDoc.filter(x => x.estado === "prestado" && x.fecha_devolucion_esperada && x.fecha_devolucion_esperada <= hoy)) {
+      const moto = motos.find(m => m.id === p.moto_id);
+      const que = p.tipo === "tarjeta" ? "la tarjeta de propiedad" : "la copia de la llave";
+      alertas.push({
+        id: `prestamo-doc-${p.id}`,
+        tipo: "prestamo_doc_vence",
+        nivel: "alerta",
+        titulo: `Debe devolver ${que} — ${moto?.placa ?? ""}`,
+        detalle: `${p.prestado_a} debía devolverla el ${p.fecha_devolucion_esperada} — pedírsela`,
+        motoId: p.moto_id,
+      });
+    }
+
     // ── 6. MOTOS RETENIDAS (Fiscalía / Tránsito / Garantía) ──────────────────
     for (const m of motos.filter(mo => ["Fiscalia", "Transito", "Garantia"].includes(mo.estado))) {
       const contrato = contratosActivos.find(c => c.moto_id === m.id);
@@ -359,5 +380,5 @@ export function useAlertas({
     // Ordenar: crítico > alerta > info
     const orden = { critico: 0, alerta: 1, info: 2 };
     return alertas.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
-  }, [contratos, clientes, motos, pagos, convenios, gestiones]);
+  }, [contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc]);
 }

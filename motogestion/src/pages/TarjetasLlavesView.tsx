@@ -54,6 +54,9 @@ export default function TarjetasLlavesView() {
   const [prestadoA, setPrestadoA] = useState("");
   const [motivo, setMotivo] = useState(MOTIVOS[0]);
   const [motivoOtro, setMotivoOtro] = useState("");
+  const [detalles, setDetalles] = useState("");
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fechaDevolucion, setFechaDevolucion] = useState("");
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devolviendoId, setDevolviendoId] = useState<string | null>(null);
@@ -80,19 +83,23 @@ export default function TarjetasLlavesView() {
 
   function resetForm() {
     setMotoSel(null); setBuscaMoto(""); setTipo("tarjeta");
-    setPrestadoA(""); setMotivo(MOTIVOS[0]); setMotivoOtro(""); setError(null);
+    setPrestadoA(""); setMotivo(MOTIVOS[0]); setMotivoOtro("");
+    setDetalles(""); setFoto(null); setFechaDevolucion(""); setError(null);
   }
 
   async function guardar() {
     if (procesando) return;
     if (!motoSel) { setError("Elige la moto (busca por placa)."); return; }
     if (!prestadoA.trim()) { setError("Esta moto no tiene un cliente asignado; no se puede prestar."); return; }
+    if (!fechaDevolucion) { setError("Indica el día en que debe devolverla — el sistema te avisará si no la trae."); return; }
     const mot = motivo === "Otro" ? motivoOtro.trim() : motivo;
     setProcesando(true); setError(null);
     try {
       const { error } = await prestar({
         moto_id: motoSel.id, tipo, prestado_a: prestadoA.trim().toUpperCase(),
-        motivo: mot, registrado_por: profile?.id ?? null,
+        motivo: mot, detalles: detalles.trim() || undefined, foto,
+        fecha_devolucion_esperada: fechaDevolucion,
+        registrado_por: profile?.id ?? null,
       });
       if (error) { setError(error); return; }
       resetForm();
@@ -199,6 +206,42 @@ export default function TarjetasLlavesView() {
             )}
           </div>
 
+          {/* Detalles */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Detalles</label>
+            <textarea value={detalles} onChange={e => setDetalles(e.target.value)} placeholder="Ej. se llevó la tarjeta para el trámite del traspaso en Tránsito..." rows={2}
+              style={{ ...inputStyle, background: "var(--card)", resize: "vertical", fontFamily: "inherit" }} />
+          </div>
+
+          {/* Fecha de devolución — obligatoria: dispara la alerta si no la trae */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>¿Qué día debe devolverla?</label>
+            <input type="date" value={fechaDevolucion} min={new Date().toISOString().slice(0, 10)} onChange={e => setFechaDevolucion(e.target.value)}
+              style={{ ...inputStyle, background: "var(--card)" }} />
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Si no la trae ese día, el sistema te avisará para que se la pidas.</div>
+          </div>
+
+          {/* Evidencia fotográfica */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Evidencia fotográfica</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
+                📷 Cámara
+                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setFoto(e.target.files?.[0] ?? null)} />
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
+                🖼 Galería
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setFoto(e.target.files?.[0] ?? null)} />
+              </label>
+              {foto && (
+                <span style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  ✅ {foto.name.slice(0, 18)}
+                  <button onClick={() => setFoto(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--bad-ink)", fontWeight: 700 }}>✕</button>
+                </span>
+              )}
+            </div>
+          </div>
+
           {error && <div style={{ fontSize: 13, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>{error}</div>}
 
           <button onClick={guardar} disabled={procesando} style={{ ...primaryBtn, width: "100%", opacity: procesando ? 0.6 : 1 }}>
@@ -248,7 +291,14 @@ export default function TarjetasLlavesView() {
                   <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 6, textTransform: "uppercase" }}>Prestada a: <strong>{p.prestado_a}</strong></div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     {p.motivo ? `${p.motivo} · ` : ""}Desde {fmtFecha(p.fecha_prestamo)}
+                    {p.foto_url && <> · <a href={p.foto_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 700 }}>📷 Ver foto</a></>}
                   </div>
+                  {p.detalles && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{p.detalles}</div>}
+                  {!devuelta && p.fecha_devolucion_esperada && (
+                    p.fecha_devolucion_esperada <= new Date().toISOString().slice(0, 10)
+                      ? <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", marginTop: 4 }}>⚠️ Debía devolverla el {fmtFecha(p.fecha_devolucion_esperada)} — pedírsela</div>
+                      : <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>Debe devolverla el <strong>{fmtFecha(p.fecha_devolucion_esperada)}</strong></div>
+                  )}
                 </div>
               );
             })}

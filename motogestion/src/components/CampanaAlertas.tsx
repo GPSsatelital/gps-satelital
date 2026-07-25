@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
+import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
@@ -31,6 +32,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   moto_taller_demorada:   "🔧",
   validar_ubicacion_moto: "📍",
   promesa_pago_vence:     "🗓️",
+  prestamo_doc_vence:     "🪪",
 };
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
@@ -38,6 +40,7 @@ function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
   if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar") return "contratos";
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
+  if (tipo === "prestamo_doc_vence") return "tarjetas_llaves";
   if (tipo === "convenio_incumplido_3") return "liquidaciones";
   return "alertas";
 }
@@ -53,6 +56,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const { pagos: todosPagos } = usePagos();
   const { convenios: todosConvenios } = useConvenios();
   const { gestiones } = useGestiones();
+  const { prestamos: prestamosDoc } = usePrestamosDoc();
 
   const motos = filtrarMotos(todasMotos);
   const contratos = filtrarContratos(todosContratos);
@@ -61,7 +65,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const convenios = filtrarPorContrato(todosConvenios);
 
   // gestiones no se filtran: useAlertas solo las cruza contra contratos ya scopeados.
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones });
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc });
   const criticos = alertas.filter(a => a.nivel === "critico").length;
   const total = alertas.length;
 

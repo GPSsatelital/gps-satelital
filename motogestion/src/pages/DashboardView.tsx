@@ -6,6 +6,7 @@ import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
+import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
@@ -67,6 +68,7 @@ export default function DashboardView({ onNavigate }: {
   const { taller: todoTaller, loading: lT } = useTaller();
   const { convenios: todosConvenios } = useConvenios();
   const { gestiones } = useGestiones();
+  const { prestamos: prestamosDoc } = usePrestamosDoc();
 
   const motos = filtrarMotos(todasMotos);
   const clientes = filtrarPorCliente(todosClientes);
@@ -76,7 +78,7 @@ export default function DashboardView({ onNavigate }: {
   const convenios = filtrarPorContrato(todosConvenios);
 
   // Misma fuente de alertas que la campana y la vista de Alertas
-  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones });
+  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc });
 
   const loading = lM || lC || lCt || lP || lT;
 

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, Fragment } from "react";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
-import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
@@ -119,17 +119,17 @@ export default function DashboardView({ onNavigate }: {
 
     const hoyStr  = hoyISO();
     const recaudoHoy = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha === hoyStr && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === hoyStr && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
 
     const hace7dias = hoyMasDias(-7);
     const recaudoSemana = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha >= hace7dias && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= hace7dias && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
 
     const hace14dias = hoyMasDias(-14);
     const recaudoSemanaAnterior = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha >= hace14dias && p.fecha < hace7dias && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= hace14dias && fechaDeCaja(p) < hace7dias && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
 
     const tallerActivo = taller.filter(t => t.estado_tecnico !== "Finalizado").length;
@@ -203,13 +203,13 @@ export default function DashboardView({ onNavigate }: {
     const hace14dias = hoyMasDias(-14);
 
     const hoy = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha === hoyStr && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === hoyStr && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
     const semana = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha >= hace7dias && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= hace7dias && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
     const semanaAnterior = pagos
-      .filter(p => p.estado === "Confirmado" && p.fecha >= hace14dias && p.fecha < hace7dias && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
+      .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= hace14dias && fechaDeCaja(p) < hace7dias && contratoIds.has(p.contrato_id) && esPagoDeCaja(p))
       .reduce((acc, p) => acc + p.valor, 0);
 
     return { hoy, semana, semanaAnterior };
@@ -221,7 +221,7 @@ export default function DashboardView({ onNavigate }: {
     for (let i = chartDays - 1; i >= 0; i--) {
       const fechaStr = hoyMasDias(-i);
       const total = pagos
-        .filter(p => p.estado === "Confirmado" && p.fecha === fechaStr && esPagoDeCaja(p))
+        .filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === fechaStr && esPagoDeCaja(p))
         .reduce((acc, p) => acc + p.valor, 0);
       result.push({ fecha: fechaStr, total, esHoy: i === 0 });
     }

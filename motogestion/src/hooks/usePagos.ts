@@ -15,6 +15,17 @@ export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_
 // ¿Este pago cuenta para caja diaria / recaudo del día? (los internos no)
 // - adelanto_base: la semana adelantada de la base inicial (ya venía en la base, no es plata del día)
 // - saldo_favor: aplicar un saldo a favor existente a una cuota — es crédito viejo, NO entra plata nueva
+/**
+ * Fecha con la que un pago cuenta para la CAJA del día: el día en que se DIGITÓ.
+ * No usar `p.fecha` para caja — esa es la fecha en que el cliente pagó y puede ser anterior
+ * (transfirió el domingo, se digitó el lunes). Si la caja usara la fecha real, el dinero
+ * digitado hoy se iría a un día ya cerrado y el arqueo de hoy no cuadraría con la plata en mano.
+ * Los pagos viejos (antes de la mig 064) tienen fecha_registro = fecha, así que no cambian.
+ */
+export function fechaDeCaja(p: { fecha: string; fecha_registro?: string | null }): string {
+  return p.fecha_registro || p.fecha;
+}
+
 export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {
   return p.tipo_registro !== "adelanto_base" && p.tipo_registro !== "saldo_favor";
 }
@@ -68,7 +79,11 @@ export type Pago = {
   entregado_caja: boolean;
   folio: string | null;
   ubicacion: { lat: number; lng: number } | null;
+  referencia?: string | null;      // n° de la transferencia (mig 064)
+  /** Cuándo PAGÓ el cliente (puede ser anterior a hoy si reportó tarde). Manda para mora e historial. */
   fecha: string;
+  /** Cuándo se DIGITÓ el pago. Manda para la caja del día. (mig 064) */
+  fecha_registro?: string | null;
   created_at: string;
 };
 
@@ -170,7 +185,7 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null },
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null; fecha?: string; referencia?: string },
   ) {
     const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
     const estado: PagoEstado = (metodo === "Efectivo" && !opts?.forzarPendiente) ? "Confirmado" : "Pendiente";
@@ -200,9 +215,15 @@ export function usePagos() {
       convenio_id: opts?.convenioId ?? null,
       folio: opts?.folio ?? null,
       ubicacion: opts?.ubicacion ?? null,
-      // Fecha explícita en hora de Colombia — sin esto la BD usaba current_date (UTC)
-      // y los pagos hechos de noche caían en el día siguiente.
-      fecha: hoyISO(),
+      referencia: opts?.referencia ?? null,
+      // DOS fechas distintas (mig 064):
+      //  · `fecha` = cuándo PAGÓ el cliente. Puede ser anterior a hoy cuando reporta tarde
+      //    (transfirió el domingo y avisó el lunes). Manda para mora, historial y recibo.
+      //  · `fecha_registro` = cuándo se DIGITÓ. Manda para la caja del día, así el arqueo
+      //    cuadra con la plata que hoy está en la mano y ningún cierre anterior se descuadra.
+      // Ambas en hora de Colombia: con current_date (UTC) los pagos de noche caían al día siguiente.
+      fecha: opts?.fecha || hoyISO(),
+      fecha_registro: hoyISO(),
     });
     return { error: error?.message ?? null };
   }
@@ -305,6 +326,7 @@ export function usePagos() {
       aplicado_ahorro: 0, aplicado_saldo_favor: 0, aplicado_prorrateo: 0,
       convenio_id: opts?.convenioId ?? null,
       fecha: hoyISO(),
+      fecha_registro: hoyISO(),
     }).select("id").single();
     if (e1 || !ins) return { error: e1?.message ?? "No se pudo aplicar el saldo a favor." };
     // Releer el pago YA repartido por el motor (RETURNING no refleja los triggers AFTER).

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, fechaDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import type { Pago } from "../hooks/usePagos";
 import { hoyISO, hoyDate } from "../utils/fecha";
@@ -36,7 +36,7 @@ function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
     d.setDate(hoy.getDate() - (dias - 1 - i));
     const fecha = d.toISOString().slice(0, 10);
     const total = pagosGrupo
-      .filter(p => p.fecha === fecha && p.estado === "Confirmado")
+      .filter(p => fechaDeCaja(p) === fecha && p.estado === "Confirmado")
       .reduce((a, p) => a + p.valor, 0);
     return { fecha, dow: d.getDay(), total, esHoy: i === dias - 1, label: d.getDate().toString() };
   });
@@ -114,11 +114,11 @@ export default function SocioDashboard() {
   const pagosGrupo = useMemo(() => pagos.filter(p => idsContratos.has(p.contrato_id)), [pagos, idsContratos]);
 
   const recaudadoSemana = pagosGrupo
-    .filter(p => p.fecha >= inicioSemana && p.estado === "Confirmado")
+    .filter(p => fechaDeCaja(p) >= inicioSemana && p.estado === "Confirmado")
     .reduce((a, p) => a + p.valor, 0);
 
   const recaudadoMes = pagosGrupo
-    .filter(p => p.fecha >= inicioMes && p.estado === "Confirmado")
+    .filter(p => fechaDeCaja(p) >= inicioMes && p.estado === "Confirmado")
     .reduce((a, p) => a + p.valor, 0);
 
   const estadosPorContrato = useMemo(() => {

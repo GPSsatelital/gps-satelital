@@ -6,6 +6,7 @@ import {
   calcularCuotaDia,
   generarFolio,
   esPagoDeCaja,
+  fechaDeCaja,
   APLICADO_LO_REPARTE_LA_BD,
   type MetodoPago,
   type PagoEstado,
@@ -51,7 +52,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
-import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO, hoyMasDias } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
 
@@ -573,6 +574,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalListaAbierta, setModalListaAbierta] = useState(false);
   const [modalValor, setModalValor] = useState("");
   const [modalMetodo, setModalMetodo] = useState<MetodoPago>("Efectivo");
+  // Fecha REAL en que pagó el cliente (mig 064). Por defecto hoy; se puede mover hacia atrás
+  // cuando reporta tarde (transfirió el domingo y avisó el lunes). Nunca al futuro.
+  const [modalFechaPago, setModalFechaPago] = useState(hoyISO());
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -753,7 +757,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         .reduce((acc, p) => acc + p.valor, 0);
 
       const recaudadoHoy = confirmados
-        .filter(p => p.fecha === hoyISO() && esPagoDeCaja(p))
+        .filter(p => fechaDeCaja(p) === hoyISO() && esPagoDeCaja(p))
         .reduce((acc, p) => acc + p.valor, 0);
 
       // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora,
@@ -862,7 +866,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Conciliación: cobros en campo que YO registré hoy (efectivo a entregar a caja)
   const misCobrosCampoHoy = useMemo(() => {
     if (!profile) return { total: 0, count: 0, pendienteEntregar: 0 };
-    const mios = pagos.filter(p => p.tipo_registro === "campo" && p.fecha === hoyISOPanel && p.registrado_por === profile.id);
+    // Por fecha de CAJA: es la plata que este funcionario tiene que entregar hoy.
+    const mios = pagos.filter(p => p.tipo_registro === "campo" && fechaDeCaja(p) === hoyISOPanel && p.registrado_por === profile.id);
     const total = mios.reduce((acc, p) => acc + p.valor, 0);
     const pendienteEntregar = mios.filter(p => !p.entregado_caja).reduce((acc, p) => acc + p.valor, 0);
     return { total, count: mios.length, pendienteEntregar };
@@ -1134,7 +1139,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   function cerrarModalPago() {
     setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
-    setModalComprobante(null); setModalSubiendo(false);
+    setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO());
   }
 
   const modalResultados = resumenContratos.filter(c => {
@@ -1183,6 +1188,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       {
         folio,
         comprobanteUrl,
+        fecha: modalFechaPago,   // la fecha REAL en que pagó (puede ser anterior a hoy)
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
@@ -3225,6 +3231,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <option value="Efectivo">Efectivo (confirma automático)</option>
                 <option value="Transferencia">Transferencia (queda pendiente)</option>
               </select>
+            </div>
+
+            {/* Fecha real del pago — para el que reporta tarde (pagó el domingo, avisó el lunes) */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                ¿Cuándo pagó el cliente?
+              </label>
+              <input
+                type="date"
+                style={inputStyle}
+                value={modalFechaPago}
+                max={hoyISO()}
+                min={hoyMasDias(-60)}
+                onChange={e => setModalFechaPago(e.target.value)}
+              />
+              {modalFechaPago !== hoyISO() && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                  Se registrará con fecha <strong>{formatDate(modalFechaPago)}</strong>: así el cliente no aparece en mora
+                  por esos días y el recibo muestra la fecha correcta. La plata entra a la caja de <strong>hoy</strong>.
+                </div>
+              )}
             </div>
 
             {/* Foto del comprobante — obligatoria en transferencia */}

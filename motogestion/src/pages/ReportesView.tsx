@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -564,12 +564,12 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── Recaudado hoy ──────────────────────────────────────────────────────────
   const recaudadoHoy = useMemo(() =>
-    pagos.filter(p => p.estado === "Confirmado" && p.fecha === hoyStr && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0),
+    pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === hoyStr && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0),
     [pagos, hoyStr]);
 
   // ── Pagos en rango ─────────────────────────────────────────────────────────
   const pagosRango = useMemo(() =>
-    pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde && p.fecha <= hasta && esPagoDeCaja(p)),
+    pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= desde && fechaDeCaja(p) <= hasta && esPagoDeCaja(p)),
     [pagos, desde, hasta]);
 
   // ── INFORMES DE GESTIÓN ─────────────────────────────────────────────────────
@@ -671,7 +671,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // C1 — comparación vs período anterior (mismo set de motos filtradas; solo recaudo).
   const setContratosFiltrados = useMemo(() => new Set(baseFiltrada.map(r => r.contratoId)), [baseFiltrada]);
   const { desde: desdeAnt, hasta: hastaAnt } = useMemo(() => rango === "personalizado" ? rangoAnteriorDe(rangoCustom.desde, rangoCustom.hasta) : getRangoAnterior(rango), [rango, rangoCustom]);
-  const recaudoAnterior = useMemo(() => pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desdeAnt && p.fecha <= hastaAnt && esPagoDeCaja(p) && setContratosFiltrados.has(p.contrato_id)).reduce((a, p) => a + p.valor, 0), [pagos, desdeAnt, hastaAnt, setContratosFiltrados]);
+  const recaudoAnterior = useMemo(() => pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= desdeAnt && fechaDeCaja(p) <= hastaAnt && esPagoDeCaja(p) && setContratosFiltrados.has(p.contrato_id)).reduce((a, p) => a + p.valor, 0), [pagos, desdeAnt, hastaAnt, setContratosFiltrados]);
   const deltaRec = deltaRecaudo(gTotRec, recaudoAnterior);
 
   // C3 — ranking de cobradores por % al día (excluye "sin asignar").
@@ -982,7 +982,7 @@ export default function ReportesView({ onNavigate }: Props) {
     return Array.from({ length: 14 }, (_, i) => {
       const d = hoyDate(); d.setDate(d.getDate() - (13 - i));
       const fecha = d.toISOString().slice(0, 10);
-      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha === fecha && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
+      const total = pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === fecha && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
       const label = `${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]} ${d.getDate()}`;
       return { fecha, total, label };
     });
@@ -996,7 +996,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const ini = new Date(fin); ini.setDate(ini.getDate() - 6);
       const desde_ = ini.toISOString().slice(0, 10);
       const hasta_ = fin.toISOString().slice(0, 10);
-      const total = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= desde_ && p.fecha <= hasta_ && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
+      const total = pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= desde_ && fechaDeCaja(p) <= hasta_ && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
       return { label: i === 0 ? "Esta sem" : `Sem -${i}`, total };
     }).reverse();
   }, [pagos]);
@@ -1127,7 +1127,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const hoy = hoyDate();
     const i = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().slice(0, 10);
     const f = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
-    const totalAnt = pagos.filter(p => p.estado === "Confirmado" && p.fecha >= i && p.fecha <= f && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
+    const totalAnt = pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) >= i && fechaDeCaja(p) <= f && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
     const delta = totalAnt > 0 ? ((totalRecaudado - totalAnt) / totalAnt) * 100 : null;
     return { totalAnt, delta };
   }, [rango, pagos, totalRecaudado]);

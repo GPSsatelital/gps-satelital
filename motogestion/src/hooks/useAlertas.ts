@@ -6,6 +6,7 @@ import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
 import type { Pago } from "./usePagos";
 import type { Convenio } from "./useConvenios";
+import type { Gestion } from "./useGestiones";
 
 export type AlertaTipo =
   | "mora_critica"
@@ -21,7 +22,8 @@ export type AlertaTipo =
   | "convenio_incumplido_3"
   | "convenio_por_vencer"
   | "moto_taller_demorada"
-  | "validar_ubicacion_moto";
+  | "validar_ubicacion_moto"
+  | "promesa_pago_vence";
 
 export type Alerta = {
   id: string;
@@ -52,12 +54,14 @@ export function useAlertas({
   motos,
   pagos,
   convenios = [],
+  gestiones = [],
 }: {
   contratos: Contrato[];
   clientes: Cliente[];
   motos: Moto[];
   pagos: Pago[];
   convenios?: Convenio[];
+  gestiones?: Gestion[];
 }): Alerta[] {
   return useMemo(() => {
     const alertas: Alerta[] = [];
@@ -236,6 +240,27 @@ export function useAlertas({
       });
     }
 
+    // ── 5c. PLAZO EXTRA / PROMESA DE PAGO VENCIDOS (compromisos con fecha) ────
+    // Antes dependían de la memoria del funcionario. Si el compromiso ya venció y NO hubo un
+    // pago en/después de esa fecha, se avisa. `gestiones` es opcional: sin pasarlo, no emite nada.
+    for (const c of contratosActivos) {
+      const gsC = gestiones.filter(g => g.contrato_id === c.id);
+      if (gsC.length === 0) continue;
+      const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
+      const nombre = (clientes.find(cl => cl.id === c.cliente_id)?.nombre ?? "Sin nombre").toUpperCase();
+      const base = { clienteId: c.cliente_id, contratoId: c.id, motoId: c.moto_id ?? undefined };
+      const plazoFL = gsC.filter(g => g.tipo === "plazo_extra" && g.plazo_extra_fecha_limite)
+        .sort((a, b) => (b.plazo_extra_fecha_limite || "").localeCompare(a.plazo_extra_fecha_limite || ""))[0]?.plazo_extra_fecha_limite;
+      if (plazoFL && plazoFL <= hoy && !pagosC.some(p => p.fecha >= plazoFL)) {
+        alertas.push({ id: `plazo-vence-${c.id}`, tipo: "plazo_extra_vence", nivel: "alerta", titulo: `Plazo extra vencido — ${nombre}`, detalle: `El plazo hasta ${plazoFL} venció sin pago — a cobrar o recolectar`, ...base });
+      }
+      const promesaFC = gsC.filter(g => g.fecha_compromiso)
+        .sort((a, b) => (b.fecha_compromiso || "").localeCompare(a.fecha_compromiso || ""))[0]?.fecha_compromiso;
+      if (promesaFC && promesaFC <= hoy && !pagosC.some(p => p.fecha >= promesaFC)) {
+        alertas.push({ id: `promesa-vence-${c.id}`, tipo: "promesa_pago_vence", nivel: "alerta", titulo: `Promesa de pago vencida — ${nombre}`, detalle: `Prometió pagar el ${promesaFC} y aún no paga`, ...base });
+      }
+    }
+
     // ── 6. MOTOS RETENIDAS (Fiscalía / Tránsito / Garantía) ──────────────────
     for (const m of motos.filter(mo => ["Fiscalia", "Transito", "Garantia"].includes(mo.estado))) {
       const contrato = contratosActivos.find(c => c.moto_id === m.id);
@@ -333,5 +358,5 @@ export function useAlertas({
     // Ordenar: crítico > alerta > info
     const orden = { critico: 0, alerta: 1, info: 2 };
     return alertas.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
-  }, [contratos, clientes, motos, pagos, convenios]);
+  }, [contratos, clientes, motos, pagos, convenios, gestiones]);
 }

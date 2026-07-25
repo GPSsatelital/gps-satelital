@@ -554,7 +554,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("contratos");
+  // El cobrador (SUBADMIN) arranca en "Para hacer hoy" (sus tareas del día); el resto en la
+  // lista de contratos. Antes todos abrían en "Todos" y un cobrador podía no descubrir su panel.
+  const [activeTab, setActiveTab] = useState<TabKey>(profile?.role === "SUBADMIN" ? "hoy" : "contratos");
   const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
   const [filtroGrupoContratos, setFiltroGrupoContratos] = useState<"todos" | GrupoMoto>("todos");
   const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
@@ -2349,6 +2351,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
           { key: "pagan-hoy", label: "🔵 Pagan hoy", count: panelHoy.paganHoy.length },
         ];
 
+        // Visitas domiciliarias pendientes (prospectos "Listo para visita"). Para el SUBADMIN,
+        // solo las asignadas a él. Antes solo se veían en Clientes → fácil de olvidar para el cobrador.
+        const visitasPendientes = clientes.filter(c => c.estado === "Listo para visita" && (!esSubadmin || c.visita_asignada_a === profile?.id));
+
         return (
           <div style={{ marginTop: isMobile ? 8 : 20 }}>
             {/* Chips de filtro — igual que Contratos */}
@@ -2367,6 +2373,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 {misCobrosCampoHoy.pendienteEntregar > 0 && (
                   <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 2 }}>Pendiente entregar a caja: <strong>${fmt(misCobrosCampoHoy.pendienteEntregar)}</strong></div>
                 )}
+              </div>
+            )}
+
+            {/* Visitas domiciliarias pendientes — antes solo se veían en Clientes */}
+            {visitasPendientes.length > 0 && (
+              <div onClick={() => onNavigate?.("clientes", "Listo para visita")}
+                style={{ marginTop: 12, background: "var(--accent-soft)", border: "1px solid var(--accent-line)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 13, color: "var(--accent-ink)", fontWeight: 700 }}>📋 Tienes {visitasPendientes.length} visita{visitasPendientes.length !== 1 ? "s" : ""} domiciliaria{visitasPendientes.length !== 1 ? "s" : ""} pendiente{visitasPendientes.length !== 1 ? "s" : ""}</div>
+                <span style={{ fontSize: 12, color: "var(--accent-ink)", fontWeight: 700 }}>Ir a visitas →</span>
               </div>
             )}
 

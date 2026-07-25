@@ -5,12 +5,13 @@ import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks
 import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
+import { useGestiones } from "../hooks/useGestiones";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
 import { Badge } from "../components/atomos";
-import { esDiaDePago } from "../utils/cicloPago";
-import { hoyISO, hoyMasDias } from "../utils/fecha";
+import { esDiaDePago, calcularEstadoCartera } from "../utils/cicloPago";
+import { hoyISO, hoyMasDias, hoyDate } from "../utils/fecha";
 import type { ViewKey } from "../App";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -65,6 +66,7 @@ export default function DashboardView({ onNavigate }: {
   const { pagos: todosPagos, loading: lP } = usePagos();
   const { taller: todoTaller, loading: lT } = useTaller();
   const { convenios: todosConvenios } = useConvenios();
+  const { gestiones } = useGestiones();
 
   const motos = filtrarMotos(todasMotos);
   const clientes = filtrarPorCliente(todosClientes);
@@ -74,7 +76,7 @@ export default function DashboardView({ onNavigate }: {
   const convenios = filtrarPorContrato(todosConvenios);
 
   // Misma fuente de alertas que la campana y la vista de Alertas
-  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios });
+  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones });
 
   const loading = lM || lC || lCt || lP || lT;
 
@@ -92,6 +94,14 @@ export default function DashboardView({ onNavigate }: {
 
     const clientesActivos   = clientes.filter(c => c.estado === "Activo").length;
     const clientesMora      = clientes.filter(c => ["En mora","En riesgo"].includes(c.estado)).length;
+    // Conteo REAL de gabela desde la cartera (misma fuente que el Panel Hoy). Antes la tarjeta
+    // "En gabela" mostraba el número de mora (bug de etiqueta).
+    const ahoraCartera = hoyDate();
+    const contratosGabela = contratos.filter(c => {
+      if (c.estado !== "Activo") return false;
+      const pc = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor }));
+      return calcularEstadoCartera(c, pc, ahoraCartera) === "gabela";
+    }).length;
     const clientesProceso   = clientes.filter(c => c.estado === "En proceso").length;
     const clientesVisita    = clientes.filter(c => c.estado === "Listo para visita").length;
     const clientesPendEval  = clientes.filter(c => c.estado === "Pendiente evaluación").length;
@@ -161,7 +171,7 @@ export default function DashboardView({ onNavigate }: {
     return {
       motosAsignadas, motosDisponibles, motosTaller, motosRetencion,
       contratosActivos, contratosEnProceso,
-      clientesActivos, clientesMora, clientesProceso, clientesVisita,
+      clientesActivos, clientesMora, contratosGabela, clientesProceso, clientesVisita,
       clientesPendEval, clientesAprobados,
       pagosPendientes, recaudoHoy, recaudoSemana, recaudoSemanaAnterior,
       tallerActivo, porGrupo, porModalidad, alertasTotal,
@@ -588,7 +598,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
           },
           {
             label: "En gabela",
-            value: stats.clientesMora > 0 ? stats.clientesMora : 0,
+            value: stats.contratosGabela,
             icon: "⏳",
             color: "var(--warn-ink)", bg: "var(--warn-soft)",
             onClick: () => onNavigate("cobros"),

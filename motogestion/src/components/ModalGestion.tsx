@@ -71,6 +71,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
   const [observacion, setObservacion] = useState("");
   const [diasPlazo, setDiasPlazo] = useState("");
   const [motivoPlazo, setMotivoPlazo] = useState("");
+  const [fechaCompromiso, setFechaCompromiso] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,7 +79,7 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
   async function handleSubmit() {
     if (saving) return;
     if (!profile) { setError("Sesión no válida."); return; }
-    let extras: { plazo_extra_dias?: number; plazo_extra_motivo?: string; plazo_extra_fecha_limite?: string } | undefined;
+    let extras: { plazo_extra_dias?: number; plazo_extra_motivo?: string; plazo_extra_fecha_limite?: string; fecha_compromiso?: string } | undefined;
     if (tipo === "plazo_extra") {
       const dias = Number(diasPlazo);
       if (!diasPlazo || dias < 1 || dias > 2) {
@@ -94,6 +95,12 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         plazo_extra_motivo: motivoPlazo.trim(),
         plazo_extra_fecha_limite: hoyMasDias(dias),
       };
+    }
+    // Promesa de pago: guarda la fecha en que el cliente se comprometió a pagar, para que el
+    // sistema avise/reaparezca si llega esa fecha sin pago (en vez de depender de la memoria).
+    if (resultado === "Promesa de pago") {
+      if (!fechaCompromiso) { setError("Indica para cuándo prometió pagar el cliente."); return; }
+      extras = { ...(extras ?? {}), fecha_compromiso: fechaCompromiso };
     }
     setError(null);
     setSaving(true);
@@ -212,6 +219,15 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
             ))}
           </select>
         </div>
+
+        {/* Fecha de compromiso — solo si "Promesa de pago" */}
+        {resultado === "Promesa de pago" && (
+          <div>
+            <div style={labelStyle}>¿Para cuándo prometió pagar?</div>
+            <input type="date" style={inputStyle} value={fechaCompromiso} min={hoyMasDias(0)} onChange={e => setFechaCompromiso(e.target.value)} />
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>Si llega esa fecha sin pago, el sistema te lo recuerda solo.</div>
+          </div>
+        )}
 
         {/* Observación */}
         <div>

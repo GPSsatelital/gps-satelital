@@ -4,6 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
+import { useGestiones } from "../hooks/useGestiones";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
@@ -29,11 +30,12 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   convenio_por_vencer:    "📅",
   moto_taller_demorada:   "🔧",
   validar_ubicacion_moto: "📍",
+  promesa_pago_vence:     "🗓️",
 };
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
-  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto") return "cobros";
-  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto" || tipo === "plazo_extra_vence" || tipo === "promesa_pago_vence") return "cobros";
+  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar") return "contratos";
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
   if (tipo === "convenio_incumplido_3") return "liquidaciones";
@@ -50,6 +52,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const { clientes: todosClientes } = useClientes();
   const { pagos: todosPagos } = usePagos();
   const { convenios: todosConvenios } = useConvenios();
+  const { gestiones } = useGestiones();
 
   const motos = filtrarMotos(todasMotos);
   const contratos = filtrarContratos(todosContratos);
@@ -57,7 +60,8 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const pagos = filtrarPorContrato(todosPagos);
   const convenios = filtrarPorContrato(todosConvenios);
 
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
+  // gestiones no se filtran: useAlertas solo las cruza contra contratos ya scopeados.
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones });
   const criticos = alertas.filter(a => a.nivel === "critico").length;
   const total = alertas.length;
 

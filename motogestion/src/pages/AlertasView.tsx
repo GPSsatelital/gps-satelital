@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
+import { useGestiones } from "../hooks/useGestiones";
 import type { ViewKey } from "../App";
 
 interface Props {
@@ -39,6 +40,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   convenio_por_vencer:    "📅",
   moto_taller_demorada:   "🔧",
   validar_ubicacion_moto: "📍",
+  promesa_pago_vence:     "🗓️",
 };
 
 const TIPO_LABEL: Record<Alerta["tipo"], string> = {
@@ -56,6 +58,7 @@ const TIPO_LABEL: Record<Alerta["tipo"], string> = {
   convenio_por_vencer:    "Convenio",
   moto_taller_demorada:   "Taller",
   validar_ubicacion_moto: "Guardado moto",
+  promesa_pago_vence:     "Promesa",
 };
 
 // ── Category tab definitions ──────────────────────────────────────────────────
@@ -71,8 +74,8 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
-  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto") return "cobros";
-  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar" || tipo === "plazo_extra_vence") return "contratos";
+  if (tipo === "mora_critica" || tipo === "gabela" || tipo === "transferencia_pendiente" || tipo === "convenio_por_vencer" || tipo === "validar_ubicacion_moto" || tipo === "plazo_extra_vence" || tipo === "promesa_pago_vence") return "cobros";
+  if (tipo === "base_completada" || tipo === "traspaso_proximo" || tipo === "contrato_sin_activar") return "contratos";
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
   if (tipo === "convenio_incumplido_3") return "liquidaciones";
@@ -81,9 +84,9 @@ function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
 
 function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
   if (tab === "todas")     return true;
-  if (tab === "mora")      return a.tipo === "mora_critica" || a.tipo === "gabela";
+  if (tab === "mora")      return a.tipo === "mora_critica" || a.tipo === "gabela" || a.tipo === "plazo_extra_vence" || a.tipo === "promesa_pago_vence";
   if (tab === "soat_tecno")return a.tipo === "soat_vence"   || a.tipo === "tecno_vence";
-  if (tab === "contratos") return a.tipo === "base_completada" || a.tipo === "plazo_extra_vence"
+  if (tab === "contratos") return a.tipo === "base_completada"
                                || a.tipo === "transferencia_pendiente" || a.tipo === "contrato_sin_activar"
                                || a.tipo === "traspaso_proximo";
   if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada" || a.tipo === "validar_ubicacion_moto";
@@ -109,8 +112,9 @@ export default function AlertasView({ onNavegar }: Props) {
   const { motos,     loading: lM  } = useMotos();
   const { pagos,     loading: lP  } = usePagos();
   const { convenios } = useConvenios();
+  const { gestiones } = useGestiones();
   const cargando = lCt || lCl || lM || lP;
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios });
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones });
 
   const [tab, setTab]           = useState<TabKey>("todas");
   const [vistas, setVistas]     = useState<Set<string>>(new Set());

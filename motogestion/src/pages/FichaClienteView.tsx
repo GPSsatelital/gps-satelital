@@ -316,8 +316,10 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               </div>
               </div>
             </div>
-            {/* KPI mini cards */}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", flexShrink: 0 }}>
+            {/* KPI mini cards — `minWidth: 0` en vez de `flexShrink: 0`: con flexShrink el
+                bloque conservaba el ancho de los 4 KPIs en fila (476px) y se salía de la
+                pantalla a 375px en vez de dejar que envolvieran. */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
               <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: 72 }}>
                 <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)" }}>{diasActivo}</div>
                 <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
@@ -341,28 +343,30 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "2px solid var(--line)", marginBottom: 20, overflowX: "auto", scrollbarWidth: "none" }}>
+      {/* Tabs — chips que envuelven (sin scroll lateral: con 9 pestañas la mitad quedaba
+          escondida a la derecha y no se veía que existían). */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              padding: isMobile ? "9px 12px" : "10px 18px",
-              border: "none", background: "none", cursor: "pointer",
-              fontSize: isMobile ? 12 : 13, fontWeight: tab === t.key ? 700 : 500,
-              color: tab === t.key ? "var(--accent)" : "var(--muted)",
-              borderBottom: tab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
-              marginBottom: -2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5,
-              transition: "color 0.15s",
+              padding: isMobile ? "6px 10px" : "7px 13px",
+              borderRadius: 999, cursor: "pointer",
+              border: `1px solid ${tab === t.key ? "var(--accent)" : "var(--line)"}`,
+              background: tab === t.key ? "var(--accent)" : "var(--soft2)",
+              color: tab === t.key ? "var(--card)" : "var(--muted2)",
+              fontSize: isMobile ? 12 : 12.5, fontWeight: tab === t.key ? 700 : 600,
+              whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5,
+              transition: "background 0.15s, color 0.15s",
             }}
           >
             {t.label}
             {t.count !== undefined && t.count > 0 && (
               <span style={{
-                background: tab === t.key ? "var(--accent)" : "var(--line)",
+                background: tab === t.key ? "rgba(255,255,255,0.25)" : "var(--line)",
                 color: tab === t.key ? "var(--card)" : "var(--muted)",
-                borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700,
+                borderRadius: 999, padding: "0 6px", fontSize: 10, fontWeight: 700,
               }}>{t.count}</span>
             )}
           </button>

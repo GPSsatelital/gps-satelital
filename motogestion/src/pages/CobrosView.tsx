@@ -22,6 +22,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import { generarHTMLAcuerdoPago, generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
@@ -561,6 +562,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [filtroGrupoContratos, setFiltroGrupoContratos] = useState<"todos" | GrupoMoto>("todos");
   const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
+  // Atrás cierra el detalle del contrato en vez de saltar de módulo.
+  useBackGuard(contratoSeleccionadoId !== null, () => setContratoSeleccionadoId(null));
   const [busqueda, setBusqueda] = useState("");
 
   // Modal de registro rápido de pago (desde acción rápida del dashboard) — estado propio e independiente

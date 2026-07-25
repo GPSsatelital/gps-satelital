@@ -18,6 +18,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
@@ -628,6 +629,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     return map;
   }, [todosContratosGrupo, todasMotosGrupo]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Atrás cierra el detalle del cliente en vez de saltar de módulo.
+  useBackGuard(selectedId !== null, () => setSelectedId(null));
   const [excepcionMotivo, setExcepcionMotivo] = useState("");
   const [excepcionPlazo, setExcepcionPlazo] = useState("");
   const [guardando, setGuardando] = useState(false);

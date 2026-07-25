@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
+import { BackNavContext } from "./contexts/BackNav";
 import { useSubadminScope } from "./hooks/useSubadminScope";
 import { MODULOS_SIEMPRE } from "./lib/modulos";
 import { instalarFiltroLapiz } from "./utils/filtroLapiz";
@@ -413,7 +414,21 @@ function Shell() {
     } catch { /* ignore */ }
     return { view: "dashboard", filter: "" };
   });
-  const [_navStack, setNavStack] = useState<NavContext[]>([]);
+  // Historial de módulos + pila de capas cerrables (detalle/modal). La app es la fuente
+  // de verdad; el historial del navegador es una sola "trampa" que se re-arma en cada atrás.
+  const navStackRef = useRef<NavContext[]>([]);
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+  const guardsRef = useRef<Array<{ id: number; onBack: () => void }>>([]);
+  const guardCounter = useRef(0);
+  const registerGuard = useCallback((onBack: () => void) => {
+    const id = ++guardCounter.current;
+    guardsRef.current.push({ id, onBack });
+    return () => {
+      const idx = guardsRef.current.findIndex(g => g.id === id);
+      if (idx !== -1) guardsRef.current.splice(idx, 1);
+    };
+  }, []);
   const [collapsed, setCollapsed] = useState(false);
   const [masOpen, setMasOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -484,36 +499,43 @@ function Shell() {
   const reduceMotion = useReducedMotion();
 
   function navigate(v: ViewKey, f = "") {
+    if (v === ctx.view && f === ctx.filter) { setMasOpen(false); setUserMenuOpen(false); return; }
     contentScrollPos.current = 0; // nuevo módulo → empezar arriba
-    setNavStack(prev => [...prev, ctx]);
+    navStackRef.current.push(ctx); // apilar el módulo actual para poder volver
     setCtx({ view: v, filter: f });
     setMasOpen(false);
     setUserMenuOpen(false);
-    // Empujar estado al historial del navegador para interceptar el botón atrás del celular
-    window.history.pushState({ inApp: true }, "");
   }
 
-  // Interceptar botón atrás del celular/navegador
+  // Interceptar botón atrás del celular/navegador. Orden LIFO: primero cierra la capa
+  // abierta (detalle/modal), luego cambia de módulo, luego vuelve al panel.
   useEffect(() => {
     function handlePopState() {
+      // Re-armar la trampa SIEMPRE (mantiene el historial del navegador a profundidad fija
+      // y garantiza que el próximo atrás también se intercepte).
+      window.history.pushState({ inApp: true }, "");
+      // 1) ¿hay una capa abierta (detalle/modal/hoja)? cerrar la más reciente.
+      const g = guardsRef.current[guardsRef.current.length - 1];
+      if (g) { guardsRef.current.pop(); g.onBack(); return; }
       contentScrollPos.current = 0; // volver atrás → empezar arriba
-      setNavStack(prev => {
-        if (prev.length === 0) {
-          // No hay historial interno: volver al dashboard en vez de salir
-          setCtx({ view: "dashboard", filter: "" });
-          window.history.pushState({ inApp: true }, "");
-          return prev;
-        }
-        const anterior = prev[prev.length - 1];
-        setCtx(anterior);
-        return prev.slice(0, -1);
-      });
+      // 2) volver al módulo anterior.
+      if (navStackRef.current.length > 0) {
+        setCtx(navStackRef.current.pop()!);
+        return;
+      }
+      // 3) en la raíz: ir al panel si no estamos ahí (si ya, no hay a dónde volver).
+      if (ctxRef.current.view !== "dashboard") setCtx({ view: "dashboard", filter: "" });
     }
-    // Asegurar que el estado inicial esté en el historial del navegador
+    // Armar la trampa una vez al montar.
     window.history.replaceState({ inApp: true }, "");
+    window.history.pushState({ inApp: true }, "");
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  // Los overlays de App (hoja "Más" y búsqueda global) se cierran con el botón atrás.
+  useEffect(() => { if (masOpen) return registerGuard(() => setMasOpen(false)); }, [masOpen, registerGuard]);
+  useEffect(() => { if (busquedaOpen) return registerGuard(() => setBusquedaOpen(false)); }, [busquedaOpen, registerGuard]);
 
   if (loading) {
     return (
@@ -587,6 +609,7 @@ function Shell() {
       : BOTTOM_TABS.filter(t => t.key === "dashboard" || puedeVer(t.key));
 
     return (
+      <BackNavContext.Provider value={registerGuard}>
       <SubadminScopeProvider scope={scope}>
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--font-ui)", color: "var(--text)", background: "var(--bg)" }}>
         <InstallBanner />
@@ -690,11 +713,13 @@ function Shell() {
         {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
       </div>
       </SubadminScopeProvider>
+      </BackNavContext.Provider>
     );
   }
 
   // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
+    <BackNavContext.Provider value={registerGuard}>
     <SubadminScopeProvider scope={scope}>
     <div style={{ minHeight: "100vh", display: "flex", fontFamily: "var(--font-ui)", color: "var(--text)" }}>
       <InstallBanner />
@@ -758,6 +783,7 @@ function Shell() {
       {busquedaOpen && <BusquedaGlobal onClose={() => setBusquedaOpen(false)} onNavegar={(v, f) => { navigate(v, f); setBusquedaOpen(false); }} clientes={clientes} motos={motosScope} contratos={contratosScope} />}
     </div>
     </SubadminScopeProvider>
+    </BackNavContext.Provider>
   );
 }
 

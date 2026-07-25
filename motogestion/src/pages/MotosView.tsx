@@ -16,6 +16,7 @@ import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIng
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
+import { useBackGuard } from "../contexts/BackNav";
 import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useDeudas } from "../hooks/useDeudas";
@@ -130,6 +131,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   // Moto sobre la que se abre la hoja rápida de asignación de sub-admin (solo ADMIN/AP).
   const [asignarMotoId, setAsignarMotoId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Atrás cierra el detalle de la moto en vez de saltar de módulo.
+  useBackGuard(selectedId !== null, () => setSelectedId(null));
   const [open, setOpen] = useState(initialOpenForm);
   const [openRecepcion, setOpenRecepcion] = useState(false);
   const [openUbicacion, setOpenUbicacion] = useState(false);

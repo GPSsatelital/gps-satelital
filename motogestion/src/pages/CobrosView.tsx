@@ -532,7 +532,7 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CobrosView({ initialOpenForm = false, onNavigate }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
+export default function CobrosView({ initialOpenForm = false, onNavigate, puedeHistorial = true }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void; puedeHistorial?: boolean }) {
   const { profile, puede } = useAuth();
   const { filtrarContratos } = useScope();
 
@@ -689,6 +689,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   // Historial filter
   const [filtroPagos, setFiltroPagos] = useState<"todos" | "Pendiente" | "Confirmado" | "Rechazado">("todos");
+  const [busquedaHistorial, setBusquedaHistorial] = useState("");
 
   // Detail panel tabs
   const [detailTab, setDetailTab] = useState<"gestiones" | "deudas" | "convenios" | "historial">("gestiones");
@@ -1437,13 +1438,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
 
   // ── Historial filtrado ────────────────────────────────────────────────────
   const pagosFiltrados = useMemo(() => {
-    const base = filtroPagos === "todos" ? pagos : pagos.filter(p => p.estado === filtroPagos);
+    const q = busquedaHistorial.toLowerCase().trim();
+    const base = (filtroPagos === "todos" ? pagos : pagos.filter(p => p.estado === filtroPagos))
+      .filter(p => {
+        if (!q) return true;
+        const c = contratos.find(ct => ct.id === p.contrato_id);
+        const cl = c ? clientes.find(cl => cl.id === c.cliente_id) : null;
+        const m = c?.moto_id ? motos.find(mo => mo.id === c.moto_id) : null;
+        return (cl?.nombre ?? "").toLowerCase().includes(q)
+          || (cl?.cedula ?? "").includes(q)
+          || (m?.placa ?? "").toLowerCase().includes(q);
+      });
     return [...base].sort((a, b) => {
       if (a.estado === "Pendiente" && b.estado !== "Pendiente") return -1;
       if (b.estado === "Pendiente" && a.estado !== "Pendiente") return 1;
       return 0;
     });
-  }, [pagos, filtroPagos]);
+  }, [pagos, filtroPagos, busquedaHistorial, contratos, clientes, motos]);
 
   if (loadingPagos || loadingContratos) {
     return (
@@ -2201,7 +2212,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
   function irAContratos(filtro: FiltroContratos) { setActiveTab("contratos"); setFiltroContratos(filtro); setContratoSeleccionadoId(null); }
   const kpis: { label: string; value: string | number; sub?: string; color: string; bg: string; onClick: () => void }[] = [
     { label: "Pagan hoy", value: totalPaganHoy, color: "var(--accent)", bg: "var(--accent-soft2)", onClick: () => irAContratos("pagan-hoy") },
-    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "var(--ok-ink)", bg: "var(--ok-soft)", onClick: () => { setActiveTab("historial"); setContratoSeleccionadoId(null); } },
+    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "var(--ok-ink)", bg: "var(--ok-soft)", onClick: () => { if (puedeHistorial) { setActiveTab("historial"); setContratoSeleccionadoId(null); } } },
     { label: "En gabela", value: enGabela.length, color: "var(--warn-ink)", bg: "var(--warn-soft)", onClick: () => irAContratos("gabela") },
     { label: "En mora", value: enMora.length, color: "var(--bad-ink)", bg: "var(--bad-soft)", onClick: () => irAContratos("mora") },
   ];
@@ -2210,7 +2221,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
     { key: "contratos", label: "🌎 Todos", count: resumenContratos.length },
     { key: "hoy", label: "📋 Para hacer hoy", count: totalTareasHoy },
     { key: "dinero", label: isMobile ? "⏳ Confirmar" : "⏳ Por confirmar", count: pagosPendientes.length },
-    { key: "historial", label: "🧾 Historial" },
+    ...(puedeHistorial ? [{ key: "historial" as TabKey, label: "🧾 Historial" }] : []),
   ];
 
   const FILTROS_CONTRATOS: { key: FiltroContratos; label: string; count: number }[] = [
@@ -2700,7 +2711,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
       )}
 
       {/* Historial tab — full width */}
-      {activeTab === "historial" && (
+      {activeTab === "historial" && puedeHistorial && (
         <div style={{ ...card, marginTop: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 18 }}>Historial general de pagos</h3>
@@ -2711,6 +2722,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate }: { in
                 </Chip>
               ))}
             </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <input
+              value={busquedaHistorial}
+              onChange={e => setBusquedaHistorial(e.target.value)}
+              placeholder="Buscar cliente, cédula o placa..."
+              style={{ ...inputStyle, background: "var(--card)" }}
+            />
           </div>
           <div style={{ display: "grid", gap: 10, maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto", paddingRight: 2 }}>
             {pagosFiltrados.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin pagos registrados.</div>}

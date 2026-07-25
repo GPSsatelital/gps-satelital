@@ -555,7 +555,7 @@ function Shell() {
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
-      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
+      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
       {ctx.view === "caja"          && puedeVer("caja") && <CajaView />}
       {ctx.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
       {ctx.view === "cobro_diario"  && puedeVer("cobro_diario") && <CobroDiarioView onNavigate={navigate} />}
@@ -569,7 +569,7 @@ function Shell() {
       {ctx.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
-      {ctx.view === "historial_pagos" && esAdmin && <HistorialPagosView onNavigate={navigate} />}
+      {ctx.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
     </motion.div>
   );
 

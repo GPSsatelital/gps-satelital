@@ -12,4 +12,19 @@ export default defineConfig({
       WebSdk: fileURLToPath(new URL('./src/types/websdk-shim.ts', import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Vendors compartidos y estables en su propio chunk → se cachean entre
+        // despliegues y no se re-descargan al cambiar código de la app.
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'react-vendor';
+            if (id.includes('framer-motion')) return 'framer';
+            if (id.includes('@supabase')) return 'supabase';
+          }
+        },
+      },
+    },
+  },
 })

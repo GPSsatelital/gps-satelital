@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SubadminScopeProvider } from "./contexts/SubadminScopeContext";
@@ -11,27 +11,29 @@ import { useClientes } from "./hooks/useClientes";
 import { useMotos } from "./hooks/useMotos";
 import { useContratos } from "./hooks/useContratos";
 import Login from "./pages/Login";
-import MotosView from "./pages/MotosView";
-import ClientesView from "./pages/ClientesView";
-import ContratosView from "./pages/ContratosView";
-import CobrosView from "./pages/CobrosView";
-import TallerView from "./pages/TallerView";
 import DashboardView from "./pages/DashboardView";
-import UsuariosView from "./pages/UsuariosView";
-import LiquidacionesView from "./pages/LiquidacionesView";
-import ConfiguracionView from "./pages/ConfiguracionView";
-import CajaView from "./pages/CajaView";
-import ReportesView from "./pages/ReportesView";
-import SocioDashboard from "./pages/SocioDashboard";
 import CampanaAlertas from "./components/CampanaAlertas";
-import ReferidosView from "./pages/ReferidosView";
-import CobroDiarioView from "./pages/CobroDiarioView";
-import AlertasView from "./pages/AlertasView";
-import InmovilizacionesView from "./pages/InmovilizacionesView";
-import ImportacionView from "./pages/ImportacionView";
-import FichaClienteView from "./pages/FichaClienteView";
-import FichaMotoView from "./pages/FichaMotoView";
-import HistorialPagosView from "./pages/HistorialPagosView";
+// Vistas cargadas bajo demanda (code-splitting): el arranque solo baja Login + Dashboard,
+// las demás pantallas se descargan al navegar a ellas.
+const MotosView = lazy(() => import("./pages/MotosView"));
+const ClientesView = lazy(() => import("./pages/ClientesView"));
+const ContratosView = lazy(() => import("./pages/ContratosView"));
+const CobrosView = lazy(() => import("./pages/CobrosView"));
+const TallerView = lazy(() => import("./pages/TallerView"));
+const UsuariosView = lazy(() => import("./pages/UsuariosView"));
+const LiquidacionesView = lazy(() => import("./pages/LiquidacionesView"));
+const ConfiguracionView = lazy(() => import("./pages/ConfiguracionView"));
+const CajaView = lazy(() => import("./pages/CajaView"));
+const ReportesView = lazy(() => import("./pages/ReportesView"));
+const SocioDashboard = lazy(() => import("./pages/SocioDashboard"));
+const ReferidosView = lazy(() => import("./pages/ReferidosView"));
+const CobroDiarioView = lazy(() => import("./pages/CobroDiarioView"));
+const AlertasView = lazy(() => import("./pages/AlertasView"));
+const InmovilizacionesView = lazy(() => import("./pages/InmovilizacionesView"));
+const ImportacionView = lazy(() => import("./pages/ImportacionView"));
+const FichaClienteView = lazy(() => import("./pages/FichaClienteView"));
+const FichaMotoView = lazy(() => import("./pages/FichaMotoView"));
+const HistorialPagosView = lazy(() => import("./pages/HistorialPagosView"));
 
 export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
@@ -527,7 +529,7 @@ function Shell() {
   if (!session) return <Login />;
 
   // SOCIO: solo ve su dashboard de grupo, sin navegación completa
-  if (roleActual === "SOCIO") return <SocioDashboard />;
+  if (roleActual === "SOCIO") return <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}><SocioDashboard /></Suspense>;
 
   const currentTitle = VIEW_TITLE[ctx.view];
 
@@ -554,6 +556,7 @@ function Shell() {
       transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
       style={{ flex: 1, background: "var(--bg)", minHeight: 0 }}
     >
+      <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
@@ -573,6 +576,7 @@ function Shell() {
       {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
+      </Suspense>
     </motion.div>
   );
 

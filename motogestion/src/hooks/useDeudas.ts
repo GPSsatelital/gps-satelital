@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 
 export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "multa_recoleccion" | "otro";
 export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada";
@@ -16,25 +16,10 @@ export type Deuda = {
   created_at: string;
 };
 
+const deudasStore = createTableStore<Deuda>("deudas");
+
 export function useDeudas() {
-  const [deudas, setDeudas] = useState<Deuda[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchDeudas() {
-    const { data, error } = await supabase.from("deudas").select("*").order("created_at", { ascending: false });
-    if (error) setError(error.message);
-    else setDeudas((data ?? []) as Deuda[]);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchDeudas();
-    const channel = supabase.channel(`deudas-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "deudas" }, fetchDeudas)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  const { data: deudas, loading, error } = deudasStore.useStore();
 
   async function registrarDeuda(contratoId: string, concepto: ConceptoDeuda, descripcion: string, monto: number, registradoPor: string) {
     const { error } = await supabase.from("deudas").insert({

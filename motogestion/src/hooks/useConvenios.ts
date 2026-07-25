@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 
 export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado";
 
@@ -20,30 +20,14 @@ export type Convenio = {
   created_at: string;
 };
 
+// Al arrancar, marca como "incumplido" los convenios vencidos sin completar (función de BD,
+// mig 032). Fire-and-forget: si falla no bloquea. El realtime del store refresca al terminar.
+const conveniosStore = createTableStore<Convenio>("convenios", {
+  onStart: () => { supabase.rpc("marcar_convenios_vencidos").then(() => {}, () => {}); },
+});
+
 export function useConvenios() {
-  const [convenios, setConvenios] = useState<Convenio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchConvenios() {
-    const { data, error } = await supabase.from("convenios").select("*").order("created_at", { ascending: false });
-    if (error) setError(error.message);
-    else setConvenios((data ?? []) as Convenio[]);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    // Marca automáticamente como "incumplido" los convenios cuya fecha límite ya pasó
-    // sin completar las cuotas (función de BD, migración 032) — antes ningún convenio
-    // podía quedar incumplido porque nada lo marcaba. Fire-and-forget: si falla
-    // (ej. migración aún no corrida) no bloquea la carga.
-    supabase.rpc("marcar_convenios_vencidos").then(() => fetchConvenios(), () => {});
-    fetchConvenios();
-    const channel = supabase.channel(`convenios-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "convenios" }, fetchConvenios)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  const { data: convenios, loading, error } = conveniosStore.useStore();
 
   function convenioActivoDelContrato(contratoId: string): Convenio | null {
     return convenios.find(c => c.contrato_id === contratoId && c.estado === "activo") ?? null;
@@ -110,7 +94,7 @@ export function useConvenios() {
   // se controla en la UI). Sirve para corregir errores humanos — luego se recrea bien.
   async function eliminarConvenio(convenioId: string) {
     const { error } = await supabase.from("convenios").delete().eq("id", convenioId);
-    if (!error) fetchConvenios();
+    if (!error) conveniosStore.refetch();
     return { error: error?.message ?? null };
   }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createTableStore } from "./createTableStore";
 import { supabase } from "../lib/supabase";
 
 export type ClienteEstado =
@@ -115,40 +115,10 @@ export function documentosListos(doc: DocumentoFlags) {
   );
 }
 
+const clientesStore = createTableStore<Cliente>("clientes");
+
 export function useClientes() {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchClientes = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setClientes((data ?? []) as Cliente[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchClientes();
-
-    const channel = supabase
-      .channel(`clientes-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "clientes" }, () => {
-        fetchClientes();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchClientes]);
+  const { data: clientes, loading, error } = clientesStore.useStore();
 
   async function crearCliente(nuevo: NuevoCliente) {
     const { error } = await supabase.from("clientes").insert(nuevo);

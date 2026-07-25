@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 
 export type ContratoEstado = "En proceso" | "Activo" | "Finalizado" | "Cancelado" | "Suspendido";
 export type FormaPago = "Diario" | "Semanal" | "Quincenal" | "Mensual";
@@ -183,40 +183,10 @@ export type NuevoContrato = {
   base_inicial?: number;
 };
 
+const contratosStore = createTableStore<Contrato>("contratos");
+
 export function useContratos() {
-  const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchContratos = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("contratos")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setContratos((data ?? []) as Contrato[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchContratos();
-
-    const channel = supabase
-      .channel(`contratos-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "contratos" }, () => {
-        fetchContratos();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchContratos]);
+  const { data: contratos, loading, error } = contratosStore.useStore();
 
   async function crearContrato(nuevo: NuevoContrato): Promise<{ id: string | null; error: string | null }> {
     const { data, error } = await supabase.from("contratos").insert({

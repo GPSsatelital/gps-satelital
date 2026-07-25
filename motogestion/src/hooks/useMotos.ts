@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 
 // "En traspaso": el cliente cumplió su contrato y la moto pasa a ser suya — dejó la
 // flota para siempre. fecha_traspaso_completado marca cuándo terminó el trámite legal.
@@ -59,35 +59,10 @@ export async function estadoMotoTrasLiberar(motoId: string): Promise<"Asignada" 
   return (data && data.length > 0) ? "Asignada" : "Disponible";
 }
 
+const motosStore = createTableStore<Moto>("motos");
+
 export function useMotos() {
-  const [motos, setMotos] = useState<Moto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function cargarMotos() {
-    const { data, error } = await supabase.from("motos").select("*").order("created_at", { ascending: false });
-    if (error) {
-      setError(error.message);
-    } else {
-      setMotos(data as Moto[]);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    cargarMotos();
-
-    const channel = supabase
-      .channel(`motos-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "motos" }, () => {
-        cargarMotos();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const { data: motos, loading, error } = motosStore.useStore();
 
   async function crearMoto(nuevo: Omit<Moto, "id" | "created_at" | "updated_at">) {
     const { error } = await supabase.from("motos").insert(nuevo);

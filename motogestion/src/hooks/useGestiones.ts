@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
+import { createTableStore } from "./createTableStore";
 
 export type TipoGestion =
   | "mensaje_recordatorio"
@@ -27,23 +27,10 @@ export type Gestion = {
   created_at: string;
 };
 
+const gestionesStore = createTableStore<Gestion>("gestiones_cobro");
+
 export function useGestiones() {
-  const [gestiones, setGestiones] = useState<Gestion[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  async function fetchGestiones() {
-    const { data } = await supabase.from("gestiones_cobro").select("*").order("created_at", { ascending: false });
-    setGestiones((data ?? []) as Gestion[]);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchGestiones();
-    const channel = supabase.channel(`gestiones-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gestiones_cobro" }, fetchGestiones)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  const { data: gestiones, loading } = gestionesStore.useStore();
 
   async function registrarGestion(
     contratoId: string,

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 import { hoyISO } from "../utils/fecha";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
@@ -156,36 +156,10 @@ export function calcularResumenCobro(
   };
 }
 
+const pagosStore = createTableStore<Pago>("pagos");
+
 export function usePagos() {
-  const [pagos, setPagos] = useState<Pago[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPagos = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("pagos")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setPagos((data ?? []) as Pago[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchPagos();
-    const channel = supabase
-      .channel(`pagos-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pagos" }, () => {
-        fetchPagos();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchPagos]);
+  const { data: pagos, loading, error } = pagosStore.useStore();
 
   async function registrarPago(
     contratoId: string,

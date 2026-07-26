@@ -1188,7 +1188,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       {
         folio,
         comprobanteUrl,
-        fecha: modalFechaPago,   // la fecha REAL en que pagó (puede ser anterior a hoy)
+        // Fecha REAL en que pagó. Solo la transferencia puede llevar una fecha anterior;
+        // el efectivo se recibe en la mano en el momento, así que siempre es hoy.
+        fecha: modalMetodo === "Transferencia" ? modalFechaPago : hoyISO(),
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
@@ -3227,32 +3229,46 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             {/* Método */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>Método de pago</label>
-              <select style={inputStyle} value={modalMetodo} onChange={e => setModalMetodo(e.target.value as MetodoPago)}>
+              <select
+                style={inputStyle}
+                value={modalMetodo}
+                onChange={e => {
+                  const m = e.target.value as MetodoPago;
+                  setModalMetodo(m);
+                  // Volver a hoy al pasar a Efectivo: si no, una fecha vieja elegida para una
+                  // transferencia quedaría pegada en un pago en efectivo (el campo ya no se ve).
+                  if (m === "Efectivo") setModalFechaPago(hoyISO());
+                }}
+              >
                 <option value="Efectivo">Efectivo (confirma automático)</option>
                 <option value="Transferencia">Transferencia (queda pendiente)</option>
               </select>
             </div>
 
-            {/* Fecha real del pago — para el que reporta tarde (pagó el domingo, avisó el lunes) */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
-                ¿Cuándo pagó el cliente?
-              </label>
-              <input
-                type="date"
-                style={inputStyle}
-                value={modalFechaPago}
-                max={hoyISO()}
-                min={hoyMasDias(-60)}
-                onChange={e => setModalFechaPago(e.target.value)}
-              />
-              {modalFechaPago !== hoyISO() && (
-                <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                  Se registrará con fecha <strong>{formatDate(modalFechaPago)}</strong>: así el cliente no aparece en mora
-                  por esos días y el recibo muestra la fecha correcta. La plata entra a la caja de <strong>hoy</strong>.
-                </div>
-              )}
-            </div>
+            {/* Fecha real del pago — SOLO en transferencia. El efectivo se recibe en la mano
+                aquí y ahora: registrarlo con otra fecha no tiene sentido y abriría un hueco
+                de control (nadie puede "recordar" que le entregaron billetes hace 5 días). */}
+            {modalMetodo === "Transferencia" && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                  ¿Cuándo hizo la transferencia?
+                </label>
+                <input
+                  type="date"
+                  style={inputStyle}
+                  value={modalFechaPago}
+                  max={hoyISO()}
+                  min={hoyMasDias(-60)}
+                  onChange={e => setModalFechaPago(e.target.value)}
+                />
+                {modalFechaPago !== hoyISO() && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                    Se registrará con fecha <strong>{formatDate(modalFechaPago)}</strong>: así el cliente no aparece en mora
+                    por esos días y el recibo muestra la fecha correcta. La plata entra a la caja de <strong>hoy</strong>.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Foto del comprobante — obligatoria en transferencia */}
             {modalMetodo === "Transferencia" && (

@@ -16,7 +16,11 @@
 
 alter table public.convenios
   add column if not exists cajas_pagadas_previas integer,
-  add column if not exists caja_actual_pagado_previo numeric;
+  add column if not exists caja_actual_pagado_previo numeric,
+  -- Hasta dónde dejó el ledger ESTE convenio. Es lo que permite saber, al borrarlo, si el
+  -- valor actual sigue siendo el suyo (se deshace) o si alguien pagó de verdad después
+  -- (no se toca). Sin esto no hay forma de distinguir los dos casos.
+  add column if not exists cajas_pagadas_marcadas integer;
 
 comment on column public.convenios.cajas_pagadas_previas is
   'Valor de contratos.cajas_pagadas justo antes de que este convenio marcara las semanas '
@@ -59,7 +63,8 @@ begin
     -- deshacer la marca si el convenio se borra o se rehace.
     update public.convenios
        set cajas_pagadas_previas = coalesce(v_c.cajas_pagadas, 0),
-           caja_actual_pagado_previo = coalesce(v_c.caja_actual_pagado, 0)
+           caja_actual_pagado_previo = coalesce(v_c.caja_actual_pagado, 0),
+           cajas_pagadas_marcadas = v_cubrir
      where id = new.id;
 
     update public.contratos
@@ -78,13 +83,13 @@ create or replace function public.convenio_deshace_contemplado()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if old.cajas_pagadas_previas is not null then
+    -- Se deshace SOLO si el ledger sigue exactamente donde lo dejó este convenio. Si cambió
+    -- (el cliente pagó de verdad después), ese avance es legítimo y no se toca.
     update public.contratos
        set cajas_pagadas = old.cajas_pagadas_previas,
            caja_actual_pagado = coalesce(old.caja_actual_pagado_previo, 0)
      where id = old.contrato_id
-       -- Guarda: si otro proceso ya movió el ledger más allá, no lo pisamos hacia atrás.
-       and cajas_pagadas <= (select public.cajas_exigidas(c, current_date)
-                             from public.contratos c where c.id = old.contrato_id);
+       and cajas_pagadas = old.cajas_pagadas_marcadas;
   end if;
 
   update public.deudas

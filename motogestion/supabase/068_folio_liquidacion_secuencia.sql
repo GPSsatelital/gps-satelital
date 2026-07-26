@@ -10,15 +10,22 @@
 
 create sequence if not exists public.liquidaciones_numero_seq;
 
--- Arrancar por encima de lo que ya exista (idempotente: se puede correr varias veces).
-select setval(
-  'public.liquidaciones_numero_seq',
-  greatest(
-    coalesce((select max(substring(numero from 'LIQ-([0-9]+)')::int) from public.liquidaciones), 0),
-    coalesce((select last_value from public.liquidaciones_numero_seq), 0)
-  ),
-  true
-);
+-- Arrancar por encima de lo que ya exista, sin retroceder nunca. Idempotente.
+-- OJO con `last_value`: una secuencia recién creada lo reporta en 1 aunque no se haya usado
+-- (is_called = false). Leerlo sin mirar is_called hacía que el primer folio saliera LIQ-0002.
+do $$
+declare v_max int; v_cur int; v_called boolean;
+begin
+  select coalesce(max(substring(numero from 'LIQ-([0-9]+)')::int), 0)
+    into v_max from public.liquidaciones;
+  select last_value, is_called into v_cur, v_called from public.liquidaciones_numero_seq;
+  if not v_called then v_cur := 0; end if;      -- nunca se ha usado → no cuenta
+  if greatest(v_max, v_cur) = 0 then
+    perform setval('public.liquidaciones_numero_seq', 1, false);   -- el próximo será LIQ-0001
+  else
+    perform setval('public.liquidaciones_numero_seq', greatest(v_max, v_cur), true);
+  end if;
+end $$;
 
 -- La app pide el folio ANTES de insertar (lo necesita para el detalle de la orden de taller),
 -- así que se expone como función en vez de como default de la columna.

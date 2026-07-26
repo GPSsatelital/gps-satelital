@@ -19,6 +19,27 @@ export type PrestamoReemplazo = {
   moto_prestada_estado_previo: string | null;
 };
 
+/**
+ * A qué MOTO pertenece el dinero de un contrato, para efectos de portafolio (grupo).
+ *
+ * El grupo se deriva `contrato → moto → grupo`, y el préstamo cambia `contratos.moto_id` a la
+ * placa prestada. Sin esta función, mientras dura el préstamo TODOS los pagos del contrato —
+ * incluidos los de meses anteriores — se le acreditan al portafolio de la moto prestada:
+ * medido en prueba, un pago del 13-jul de un cliente de COSTA pasó a contar para PRADERA.
+ * Con 4 portafolios que rinden cuentas por separado, eso descuadra los informes de los socios.
+ *
+ * La plata siempre es del portafolio de la moto ORIGINAL: el préstamo es un favor temporal,
+ * no un traspaso de inversión. (El alquiler del reemplazo sí es ingreso aparte.)
+ */
+export function motoDelPortafolio(
+  contratoId: string,
+  motoIdActual: string | null,
+  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id">[],
+): string | null {
+  const activo = prestamos.find(p => p.contrato_id === contratoId && p.estado === "activo");
+  return activo?.moto_original_id ?? motoIdActual;
+}
+
 export function usePrestamos() {
   const [prestamos, setPrestamos] = useState<PrestamoReemplazo[]>([]);
   const [loading, setLoading] = useState(true);

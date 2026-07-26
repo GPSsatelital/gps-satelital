@@ -547,8 +547,13 @@ export default function TallerView() {
     return m ? `${m.placa} - ${m.marca} ${m.modelo}` : "Moto desconocida";
   }
 
+  // "Asignada" va incluida a propósito: el caso más común es que se dañe la moto de un cliente
+  // que la tiene en la calle. Sin esto no se le podía abrir orden de taller (había que cambiarle
+  // el estado a mano en Motos, sin dejar diagnóstico ni costo) y, como el préstamo de reemplazo
+  // exige que la moto esté en taller, todo ese flujo quedaba bloqueado desde el primer paso.
+  // Al crear la orden, useTaller la pasa a Mantenimiento; al cerrarla vuelve a Asignada sola.
   const motosParaTaller = motos
-    .filter((m) => ["Disponible", "Mantenimiento", "Recuperada", "Garantia"].includes(m.estado))
+    .filter((m) => ["Asignada", "Disponible", "Mantenimiento", "Recuperada", "Garantia"].includes(m.estado))
     .map((m) => ({ id: m.id, label: `${m.placa} - ${m.marca} ${m.modelo} (${m.estado})` }));
 
   async function handleActualizarOrden(id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string) {

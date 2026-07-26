@@ -39,8 +39,10 @@ export default function ModalPrestarReemplazo({ contratoId, motoOriginalId, clie
           ? { label: "Incapacidad", color: "var(--accent-ink)", bg: "var(--accent-soft)" }
           : { label: "Mora", color: "var(--bad-ink)", bg: "var(--bad-soft)" };
       const tipo = contSusp ? (contSusp.forma_pago === "Diario" ? "Diario" : "Tiempo definido") : "—";
-      // Seguridad de préstamo: disponible/mora = seguro; incapacidad tiempo-definido = riesgo (la querrá exacta).
-      const seguro = m.estado === "Disponible" || contSusp?.motivo_suspension !== "temporal";
+      // Orden de preferencia: primero las libres de verdad (Disponible, sin dueño esperando).
+      // Las de mora tienen dueño con 7 días para recuperarlas pagando, así que van después;
+      // las de incapacidad de tiempo definido son las peores (el dueño quiere ESA placa).
+      const seguro = m.estado === "Disponible";
       return { m, cat, tipo, seguro };
     })
     .filter(x => !busq.trim() || x.m.placa.toLowerCase().includes(busq.toLowerCase()))
@@ -68,7 +70,10 @@ export default function ModalPrestarReemplazo({ contratoId, motoOriginalId, clie
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>{clienteNombre} · su moto {placaOriginal} en taller</div>
         </div>
         <div style={{ fontSize: 12, color: "var(--muted)" }}>
-          Elige una moto del pool. Presta primero las <strong>disponibles</strong> o de <strong>mora</strong>; evita las de incapacidad de tiempo definido (el dueño las querrá exactas de vuelta).
+          Elige una moto del pool. Presta primero las <strong>disponibles</strong>. Las de{" "}
+          <strong>mora</strong> sirven, pero su dueño tiene 7 días para pagar y recuperarla: si
+          paga mientras está prestada, quedas comprometido con dos personas. Evita las de
+          incapacidad de tiempo definido (el dueño las querrá exactas de vuelta).
         </div>
         <input value={busq} onChange={e => setBusq(e.target.value)} placeholder="Buscar placa..." style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
 

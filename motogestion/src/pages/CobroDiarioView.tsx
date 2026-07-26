@@ -7,6 +7,7 @@ import { usePagos, calcularAplicacion, esPagoDeCaja, fechaDeCaja, APLICADO_LO_RE
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
+import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -153,6 +154,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { deudas } = useDeudas();
   const { convenioActivoDelContrato } = useConvenios();
   const { cerrarCaja, cajaDia } = useCaja();
+  const { prestamos } = usePrestamos();
 
   const filas: Fila[] = useMemo(() => {
     return contratos
@@ -807,7 +809,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         // Grupo de un pago: pago → contrato → moto → grupo (portafolio).
         const grupoDePagoCaja = (contratoId: string): GrupoMoto | null => {
           const c = contratos.find(x => x.id === contratoId);
-          const m = c ? motos.find(mo => mo.id === c.moto_id) : null;
+          if (!c) return null;
+          // Con un préstamo activo la plata sigue siendo del portafolio de la moto original.
+          const m = motos.find(mo => mo.id === motoDelPortafolio(contratoId, c.moto_id, prestamos));
           return (m?.grupo as GrupoMoto) ?? null;
         };
         // Desglose del día por grupo (cada portafolio se cierra por aparte).

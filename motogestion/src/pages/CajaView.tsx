@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
 import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
+import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hoyISO, hoyDate } from "../utils/fecha";
@@ -50,6 +51,7 @@ export default function CajaView() {
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { prestamos } = usePrestamos();
   const { cerrarCaja, cajaDia } = useCaja();
   const { pendientes: pendientesNI, registrar: registrarNI, eliminar: eliminarNI } = useIngresosNoIdentificados();
 
@@ -71,7 +73,11 @@ export default function CajaView() {
   // Grupo de un pago: pago → contrato → moto → grupo (portafolio del que entra la plata).
   function grupoDePago(contratoId: string): GrupoMoto | null {
     const c = contratos.find(ct => ct.id === contratoId);
-    const m = c ? motos.find(mo => mo.id === c.moto_id) : null;
+    if (!c) return null;
+    // Si hay un préstamo activo, la plata sigue siendo del portafolio de la moto ORIGINAL:
+    // el préstamo es temporal, no un traspaso de inversión entre socios.
+    const motoId = motoDelPortafolio(contratoId, c.moto_id, prestamos);
+    const m = motos.find(mo => mo.id === motoId);
     return (m?.grupo as GrupoMoto) ?? null;
   }
 

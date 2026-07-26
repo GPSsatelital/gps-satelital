@@ -8,13 +8,13 @@ import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados"
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hoyISO, hoyDate } from "../utils/fecha";
+import { COLOR_GRUPO } from "../styles/shared";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const GRUPOS: GrupoMoto[] = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"];
-const COLOR_GRUPO: Record<GrupoMoto, string> = { COSTA: "var(--accent-ink)", PRADERA: "var(--ok-ink)", RASTREADOR: "var(--warn-ink)", USADAS: "var(--violet)", OTRO: "var(--muted2)" };
 
 export default function CajaView() {
   const hoyDefault = hoyISO();

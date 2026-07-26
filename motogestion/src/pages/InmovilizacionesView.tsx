@@ -578,8 +578,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     {(f.marca || f.modelo) && (
                       <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 2 }}>{f.marca} {f.modelo}</div>
                     )}
+                    {/* Aquí es donde más se llama (persecución de mora): el número marca al tocarlo. */}
                     {f.clienteTel && (
-                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>📞 {f.clienteTel}</div>
+                      <div style={{ fontSize: 12, marginBottom: 6 }}>
+                        <a href={`tel:${f.clienteTel}`} onClick={e => e.stopPropagation()} style={{ color: "var(--accent-ink)", fontWeight: 700, textDecoration: "none", borderBottom: "1px solid var(--accent-ink)" }} title="Llamar">
+                          📞 {f.clienteTel}
+                        </a>
+                      </div>
                     )}
 
                     {/* Metrics row */}

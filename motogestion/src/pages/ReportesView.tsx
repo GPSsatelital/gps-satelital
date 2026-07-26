@@ -3,6 +3,7 @@ import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
+import { useSubadmins } from "../hooks/useSubadmins";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate } from "../utils/fecha";
@@ -497,7 +498,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const [regen, setRegen] = useState<{ estado: "idle" | "buscando" | "regenerando" | "hecho"; total: number; hechos: number; msg: string }>({ estado: "idle", total: 0, hechos: 0, msg: "" });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
-  const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
+  const { subadmins } = useSubadmins();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
   const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
@@ -513,14 +514,6 @@ export default function ReportesView({ onNavigate }: Props) {
     const h = () => setIsMobile(window.innerWidth < 900);
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
-  }, []);
-
-  useEffect(() => {
-    import("../lib/supabase").then(({ supabase }) => {
-      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
-        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
-      });
-    });
   }, []);
 
   const { profile }   = useAuth();

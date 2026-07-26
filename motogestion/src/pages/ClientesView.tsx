@@ -11,6 +11,7 @@ import {
   type NuevoCliente,
   type RutaContrato,
 } from "../hooks/useClientes";
+import { useSubadmins } from "../hooks/useSubadmins";
 import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
@@ -582,16 +583,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   }, []);
 
   const { clienteIdsPermitidos, filtrarVisitas, esSubadmin } = useScope();
-  const esAdminOSuperior = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
-  const [subadmins, setSubadmins] = useState<{ id: string; nombre: string }[]>([]);
-  useEffect(() => {
-    if (!esAdminOSuperior) return;
-    import("../lib/supabase").then(({ supabase }) => {
-      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
-        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
-      });
-    });
-  }, [esAdminOSuperior]);
+  const { subadmins } = useSubadmins();
   const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente } = useClientes();
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);

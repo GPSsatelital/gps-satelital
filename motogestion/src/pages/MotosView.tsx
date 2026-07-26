@@ -13,6 +13,7 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
 import { listaConScroll } from "../styles/shared";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
+import { useSubadmins } from "../hooks/useSubadmins";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -110,15 +111,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     const cliente = clientes.find(cl => cl.id === contratoActivo.cliente_id);
     setTiempoFueraModal({ contrato: contratoActivo, motoPlaca: moto.placa, clienteNombre: cliente?.nombre ?? "", motivo, fechaEntrada, fechaSalida });
   }
-  const [subadmins, setSubadmins] = React.useState<{ id: string; nombre: string }[]>([]);
-  React.useEffect(() => {
-    if (!esAdminOSuperior) return;
-    import("../lib/supabase").then(({ supabase }) => {
-      supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN").then(({ data }) => {
-        setSubadmins((data ?? []) as { id: string; nombre: string }[]);
-      });
-    });
-  }, [esAdminOSuperior]);
+  const { subadmins } = useSubadmins();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth < 900);

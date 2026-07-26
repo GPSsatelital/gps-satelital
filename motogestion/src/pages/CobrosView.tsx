@@ -21,6 +21,7 @@ import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
+import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -55,6 +56,7 @@ import {
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, fechaISO, hoyMasDias } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
+import { COLOR_GRUPO } from "../styles/shared";
 import { ItemLista } from "../components/ListaEstandar";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -538,6 +540,7 @@ function calcProtocoloStep(dias: number): ProtocoloStep {
 export default function CobrosView({ initialOpenForm = false, onNavigate, puedeHistorial = true }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void; puedeHistorial?: boolean }) {
   const { profile, puede } = useAuth();
   const { filtrarContratos } = useScope();
+  const { nombreSubadmin } = useSubadmins();
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
@@ -1700,13 +1703,34 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <Placa placa={motoDetalle.placa} size="lg" />
                   </button>
                 )}
-                {clienteDetalle?.telefono && <span style={{ color: "var(--muted2)" }}>📞 {clienteDetalle.telefono}</span>}
+                {/* Tocar el número marca desde el celular: es la pantalla donde se persigue el pago. */}
+                {clienteDetalle?.telefono && (
+                  <a href={`tel:${clienteDetalle.telefono}`} style={{ color: "var(--accent-ink)", fontWeight: 700, textDecoration: "none", borderBottom: "1px solid var(--accent-ink)" }} title="Llamar">
+                    📞 {clienteDetalle.telefono}
+                  </a>
+                )}
                 {clienteDetalle?.cedula && <span style={{ color: "var(--muted)" }}>CC {clienteDetalle.cedula}</span>}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
+              {/* De qué portafolio es la moto y quién responde por ella. Van en su propia fila:
+                  a 375px la línea de arriba ya se parte con la dirección. */}
+              {motoDetalle && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "var(--soft)", color: COLOR_GRUPO[motoDetalle.grupo] ?? "var(--muted2)" }}>
+                    {motoDetalle.grupo}
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, textTransform: "uppercase",
+                    background: motoDetalle.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",
+                    color: motoDetalle.subadmin_id ? "var(--indigo-ink)" : "var(--faint)",
+                  }}>
+                    👤 {motoDetalle.subadmin_id ? (nombreSubadmin(motoDetalle.subadmin_id) ?? "Asignada") : "Sin asignar"}
+                  </span>
+                </div>
+              )}
               {contratoDetalle.motor_v2 && (contratoDetalle.total_cajas ?? 0) > 0 && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-ink)", marginTop: 2 }}>
                   📦 Va {contratoDetalle.cajas_pagadas ?? 0} de {contratoDetalle.total_cajas} cuotas pagadas

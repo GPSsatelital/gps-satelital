@@ -33,10 +33,16 @@ export type Liquidacion = {
   updated_at: string;
 };
 
+// El folio lo asigna la BD con una secuencia (mig 068): es atómico y nunca repite. Contarlo
+// en el frontend (COUNT(*)+1) fallaba de dos formas: dos personas liquidando a la vez sacaban
+// el mismo número, y si se borraba una liquidación el contador retrocedía y reusaba un folio
+// ya impreso en un documento legal.
 async function generarNumero(): Promise<string> {
+  const { data, error } = await supabase.rpc("siguiente_numero_liquidacion");
+  if (!error && typeof data === "string") return data;
+  // Respaldo mientras la mig 068 no esté corrida: el UNIQUE de `numero` sigue siendo la red.
   const { count } = await supabase.from("liquidaciones").select("*", { count: "exact", head: true });
-  const n = (count ?? 0) + 1;
-  return `LIQ-${String(n).padStart(4, "0")}`;
+  return `LIQ-${String((count ?? 0) + 1).padStart(4, "0")}`;
 }
 
 export function useLiquidaciones() {

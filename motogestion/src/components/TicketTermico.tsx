@@ -73,6 +73,19 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
         <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: "#000" }}>{datos.titulo}</div>
       </div>
 
+      {/* La placa es lo primero que se busca en un recibo: identifica la moto de un vistazo,
+          sin leer nada más. Va grande, centrada y enmarcada como la placa física. */}
+      {datos.placa && (
+        <div style={{ textAlign: "center", margin: "6px 0 2px" }}>
+          <div style={{
+            display: "inline-block", border: "2px solid #000", borderRadius: 4,
+            padding: "3px 14px", fontSize: 30, fontWeight: 800, letterSpacing: 3, lineHeight: 1.15, color: "#000",
+          }}>
+            {datos.placa}
+          </div>
+        </div>
+      )}
+
       <div style={guion} />
 
       {/* Datos básicos */}
@@ -81,7 +94,6 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
         <div style={fila}><span>Fecha</span><span style={{ fontWeight: 700 }}>{fechaLarga(datos.fecha)}</span></div>
         <div style={{ ...fila, textTransform: "uppercase" }}><span style={{ textTransform: "none" }}>Cliente</span><span style={{ fontWeight: 700, textAlign: "right" }}>{datos.cliente}</span></div>
         {datos.cedula && <div style={fila}><span>Cédula</span><span style={{ fontWeight: 700 }}>{datos.cedula}</span></div>}
-        {datos.placa && <div style={fila}><span>Placa</span><span style={{ fontWeight: 700 }}>{datos.placa}</span></div>}
       </div>
 
       <div style={guion} />

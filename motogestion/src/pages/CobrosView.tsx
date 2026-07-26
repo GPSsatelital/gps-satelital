@@ -393,6 +393,12 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
             {datos.grupo && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{datos.grupo}</div>}
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>Comprobante de pago</div>
+            {/* Misma jerarquía que el ticket impreso: la placa manda. */}
+            {datos.placa && (
+              <div style={{ marginTop: 8 }}>
+                <Placa placa={datos.placa} size="lg" />
+              </div>
+            )}
           </div>
 
           <div style={{ background: "var(--soft2)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "grid", gap: 8 }}>
@@ -400,7 +406,6 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
               ["Folio",    datos.folio],
               ["Fecha",    new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO")],
               ["Cliente",  datos.clienteNombre],
-              ["Placa",    datos.placa || "—"],
               ["Monto",    `$${Math.round(datos.valor).toLocaleString("es-CO")}`],
               ["Método",   datos.metodo],
             ].map(([l, v]) => (
@@ -1697,11 +1702,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               <div style={{ fontWeight: 700, fontSize: isMobile ? 17 : 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.15 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 13 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10, marginTop: 6, fontSize: 13 }}>
                 {motoDetalle && (
-                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
-                    <Placa placa={motoDetalle.placa} size="lg" />
-                  </button>
+                  /* El grupo va pegado bajo la placa: es una propiedad de la moto, y ahí se lee
+                     de una sin buscarlo entre los demás datos del contrato. */
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
+                      <Placa placa={motoDetalle.placa} size="lg" />
+                    </button>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: COLOR_GRUPO[motoDetalle.grupo] ?? "var(--muted2)" }}>
+                      {motoDetalle.grupo}
+                    </span>
+                  </div>
                 )}
                 {/* Tocar el número marca desde el celular: es la pantalla donde se persigue el pago. */}
                 {clienteDetalle?.telefono && (
@@ -1715,13 +1727,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
-              {/* De qué portafolio es la moto y quién responde por ella. Van en su propia fila:
-                  a 375px la línea de arriba ya se parte con la dirección. */}
+              {/* Quién responde por esta moto. El grupo ya va bajo la placa. */}
               {motoDetalle && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "var(--soft)", color: COLOR_GRUPO[motoDetalle.grupo] ?? "var(--muted2)" }}>
-                    {motoDetalle.grupo}
-                  </span>
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, textTransform: "uppercase",
                     background: motoDetalle.subadmin_id ? "var(--indigo-soft)" : "var(--soft)",

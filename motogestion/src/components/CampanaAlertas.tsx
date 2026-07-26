@@ -6,6 +6,7 @@ import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
 import { useAlertas, type Alerta } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import type { ViewKey } from "../App";
@@ -33,6 +34,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   validar_ubicacion_moto: "📍",
   promesa_pago_vence:     "🗓️",
   prestamo_doc_vence:     "🪪",
+  dinero_sin_identificar: "💰",
 };
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
@@ -57,6 +59,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const { convenios: todosConvenios } = useConvenios();
   const { gestiones } = useGestiones();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
+  const { pendientes: ingresosNI } = useIngresosNoIdentificados();
 
   const motos = filtrarMotos(todasMotos);
   const contratos = filtrarContratos(todosContratos);
@@ -65,7 +68,7 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const convenios = filtrarPorContrato(todosConvenios);
 
   // gestiones no se filtran: useAlertas solo las cruza contra contratos ya scopeados.
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc });
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI });
   const criticos = alertas.filter(a => a.nivel === "critico").length;
   const total = alertas.length;
 

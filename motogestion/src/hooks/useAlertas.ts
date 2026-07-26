@@ -25,7 +25,8 @@ export type AlertaTipo =
   | "moto_taller_demorada"
   | "validar_ubicacion_moto"
   | "promesa_pago_vence"
-  | "prestamo_doc_vence";
+  | "prestamo_doc_vence"
+  | "dinero_sin_identificar";
 
 export type Alerta = {
   id: string;
@@ -58,6 +59,7 @@ export function useAlertas({
   convenios = [],
   gestiones = [],
   prestamosDoc = [],
+  ingresosNI = [],
 }: {
   contratos: Contrato[];
   clientes: Cliente[];
@@ -66,6 +68,8 @@ export function useAlertas({
   convenios?: Convenio[];
   gestiones?: Gestion[];
   prestamosDoc?: PrestamoDoc[];
+  /** Transferencias que entraron al banco y nadie ha reclamado (mig 064). */
+  ingresosNI?: { id: string; fecha_banco: string; monto: number; referencia: string; estado: string }[];
 }): Alerta[] {
   return useMemo(() => {
     const alertas: Alerta[] = [];
@@ -283,6 +287,20 @@ export function useAlertas({
       });
     }
 
+    // ── DINERO SIN IDENTIFICAR ───────────────────────────────────────────────
+    // Plata que entró al banco y nadie reclamó. Si lleva días ahí, o es de un cliente
+    // que no ha avisado o hubo un error al digitar: en ambos casos hay que resolverlo.
+    for (const i of ingresosNI.filter(x => x.estado === "pendiente" && diasEntre(x.fecha_banco, hoy) >= 3)) {
+      const dias = diasEntre(i.fecha_banco, hoy);
+      alertas.push({
+        id: `dinero-ni-${i.id}`,
+        tipo: "dinero_sin_identificar",
+        nivel: dias >= 8 ? "critico" : "alerta",
+        titulo: `Dinero sin identificar hace ${dias} días`,
+        detalle: `$${Math.round(i.monto).toLocaleString("es-CO")} entró el ${i.fecha_banco} (ref. ${i.referencia}) y nadie lo ha reclamado`,
+      });
+    }
+
     // ── 6. MOTOS RETENIDAS (Fiscalía / Tránsito / Garantía) ──────────────────
     for (const m of motos.filter(mo => ["Fiscalia", "Transito", "Garantia"].includes(mo.estado))) {
       const contrato = contratosActivos.find(c => c.moto_id === m.id);
@@ -380,5 +398,5 @@ export function useAlertas({
     // Ordenar: crítico > alerta > info
     const orden = { critico: 0, alerta: 1, info: 2 };
     return alertas.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
-  }, [contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc]);
+  }, [contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI]);
 }

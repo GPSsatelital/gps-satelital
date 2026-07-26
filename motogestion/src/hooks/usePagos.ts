@@ -197,7 +197,9 @@ export function usePagos() {
       saldo: aplicado.saldo,
     };
     const aplicadoBaseInicial = aplicado.baseInicial ?? 0;
-    const { error } = await supabase.from("pagos").insert({
+    // Devuelve el id del pago creado: quien registra una transferencia que cruzó con una
+    // partida de dinero sin dueño lo necesita para ligar esa partida a este pago.
+    const { data: creado, error } = await supabase.from("pagos").insert({
       contrato_id: contratoId,
       valor,
       metodo,
@@ -224,8 +226,8 @@ export function usePagos() {
       // Ambas en hora de Colombia: con current_date (UTC) los pagos de noche caían al día siguiente.
       fecha: opts?.fecha || hoyISO(),
       fecha_registro: hoyISO(),
-    });
-    return { error: error?.message ?? null };
+    }).select("id").single();
+    return { error: error?.message ?? null, id: creado?.id ?? null };
   }
 
   // Sube la foto del comprobante de transferencia al bucket "comprobantes"

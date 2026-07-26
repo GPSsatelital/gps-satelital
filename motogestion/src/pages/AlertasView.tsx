@@ -7,6 +7,7 @@ import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
 import type { ViewKey } from "../App";
 
 interface Props {
@@ -43,6 +44,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   validar_ubicacion_moto: "📍",
   promesa_pago_vence:     "🗓️",
   prestamo_doc_vence:     "🪪",
+  dinero_sin_identificar: "💰",
 };
 
 const TIPO_LABEL: Record<Alerta["tipo"], string> = {
@@ -62,6 +64,7 @@ const TIPO_LABEL: Record<Alerta["tipo"], string> = {
   validar_ubicacion_moto: "Guardado moto",
   promesa_pago_vence:     "Promesa",
   prestamo_doc_vence:     "Tarjeta/llave",
+  dinero_sin_identificar: "Sin identificar",
 };
 
 // ── Category tab definitions ──────────────────────────────────────────────────
@@ -82,6 +85,7 @@ function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
   if (tipo === "prestamo_doc_vence") return "tarjetas_llaves";
+  if (tipo === "dinero_sin_identificar") return "caja";
   if (tipo === "convenio_incumplido_3") return "liquidaciones";
   return "alertas";
 }
@@ -92,7 +96,7 @@ function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
   if (tab === "soat_tecno")return a.tipo === "soat_vence"   || a.tipo === "tecno_vence";
   if (tab === "contratos") return a.tipo === "base_completada"
                                || a.tipo === "transferencia_pendiente" || a.tipo === "contrato_sin_activar"
-                               || a.tipo === "traspaso_proximo";
+                               || a.tipo === "traspaso_proximo" || a.tipo === "dinero_sin_identificar";
   if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada" || a.tipo === "validar_ubicacion_moto" || a.tipo === "prestamo_doc_vence";
   if (tab === "convenios") return a.tipo === "convenio_incumplido_3" || a.tipo === "convenio_por_vencer";
   return false;
@@ -118,8 +122,9 @@ export default function AlertasView({ onNavegar }: Props) {
   const { convenios } = useConvenios();
   const { gestiones } = useGestiones();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
+  const { pendientes: ingresosNI } = useIngresosNoIdentificados();
   const cargando = lCt || lCl || lM || lP;
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc });
+  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI });
 
   const [tab, setTab]           = useState<TabKey>("todas");
   const [vistas, setVistas]     = useState<Set<string>>(new Set());

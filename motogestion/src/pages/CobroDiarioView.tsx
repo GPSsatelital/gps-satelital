@@ -128,6 +128,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrandoId, setCobrandoId] = useState<string | null>(null);
   const [cobrarValor, setCobrarValor] = useState("");
   const [cobrarMetodo, setCobrarMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
+  // N° de referencia: obligatorio en transferencia, es la prueba de que el dinero entró.
+  const [cobrarReferencia, setCobrarReferencia] = useState("");
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
   const [confirmarCobroOpen, setConfirmarCobroOpen] = useState(false);
@@ -257,6 +259,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     setCobrarError(null);
     setConfirmarCobroOpen(true);
   }
@@ -265,6 +268,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
+    if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
@@ -282,13 +286,14 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       contratoFila?.motor_v2 && contratoFila.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
       {
         registradoPor: profile?.id,
+        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim() } : {}),
         ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
       });
     setCobrandoLoading(false);
     if (error) { setCobrarError(error); return; }
     setConfirmarCobroOpen(false);
     setCobrandoId(null);
-    setCobrarValor("");
+    setCobrarValor(""); setCobrarReferencia("");
     setCobrarNota("");
   }
 
@@ -417,6 +422,20 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
               ))}
             </div>
             {!esSecretaria && <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 5, textAlign: "center" }}>Solo la secretaria registra efectivo</div>}
+            {/* Sin referencia no hay forma de comprobar después que el dinero entró. */}
+            {cobrarMetodo === "Transferencia" && (
+              <div style={{ marginTop: 10 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                  N° de referencia de la transferencia *
+                </label>
+                <input
+                  value={cobrarReferencia}
+                  onChange={e => setCobrarReferencia(e.target.value)}
+                  placeholder="El número que aparece en el comprobante"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14 }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Nota */}

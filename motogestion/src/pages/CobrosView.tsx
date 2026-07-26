@@ -20,6 +20,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
+import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -545,6 +546,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
+  const { buscarPorReferencia, asignarAPago } = useIngresosNoIdentificados();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   const { render: renderMsg } = useMensajesWhatsapp();
@@ -577,6 +579,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Fecha REAL en que pagó el cliente (mig 064). Por defecto hoy; se puede mover hacia atrás
   // cuando reporta tarde (transfirió el domingo y avisó el lunes). Nunca al futuro.
   const [modalFechaPago, setModalFechaPago] = useState(hoyISO());
+  // N° de referencia de la transferencia (obligatorio): es lo que permite comprobar que el
+  // dinero sí entró, cruzándolo contra las partidas que nadie reclamó.
+  const [modalReferencia, setModalReferencia] = useState("");
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -1139,7 +1144,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   function cerrarModalPago() {
     setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
-    setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO());
+    setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO()); setModalReferencia("");
   }
 
   const modalResultados = resumenContratos.filter(c => {
@@ -1160,6 +1165,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
+    if (modalMetodo === "Transferencia" && !modalReferencia.trim()) { setModalError("Escribe el N° de referencia de la transferencia."); return; }
     setModalError(null);
     setConfirmarModalOpen(true);
   }
@@ -1169,6 +1175,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
+    if (modalMetodo === "Transferencia" && !modalReferencia.trim()) { setModalError("Escribe el N° de referencia de la transferencia."); return; }
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;
@@ -1181,7 +1188,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     }
 
     const folio = generarFolio();
-    const { error } = await registrarPago(
+    // Si la referencia cruza con una partida sin dueño, se resuelve ANTES de registrar:
+    // el pago se guarda con la fecha comprobada del banco y la partida queda ligada a él.
+    const cruce = modalMetodo === "Transferencia" ? buscarPorReferencia(modalReferencia) : null;
+    const { error, id: pagoId } = await registrarPago(
       // Motor v2: el reparto lo hace la BD al confirmar; el desglose local es solo preview.
       modalContratoId, modalMonto, modalMetodo,
       modalContrato?.motor_v2 && modalContrato.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : modalDesglose,
@@ -1190,11 +1200,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         comprobanteUrl,
         // Fecha REAL en que pagó. Solo la transferencia puede llevar una fecha anterior;
         // el efectivo se recibe en la mano en el momento, así que siempre es hoy.
-        fecha: modalMetodo === "Transferencia" ? modalFechaPago : hoyISO(),
+        // Si cruzó con el banco, manda la fecha del extracto (está comprobada).
+        fecha: modalMetodo === "Transferencia" ? (cruce?.fecha_banco || modalFechaPago) : hoyISO(),
+        ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim() } : {}),
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
     if (error) { setModalError(error); return; }
+    // La partida deja de estar "sin dueño": ya se sabe de quién era.
+    if (cruce && pagoId) await asignarAPago(cruce.id, pagoId);
     setConfirmarModalOpen(false);
 
     const contrato = contratos.find(c => c.id === modalContratoId);
@@ -3248,6 +3262,49 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             {/* Fecha real del pago — SOLO en transferencia. El efectivo se recibe en la mano
                 aquí y ahora: registrarlo con otra fecha no tiene sentido y abriría un hueco
                 de control (nadie puede "recordar" que le entregaron billetes hace 5 días). */}
+            {/* N° de referencia — obligatorio: es la prueba de que el dinero entró. Al
+                escribirlo se cruza contra las transferencias que nadie reclamó. */}
+            {modalMetodo === "Transferencia" && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                  N° de referencia de la transferencia *
+                </label>
+                <input
+                  style={inputStyle}
+                  value={modalReferencia}
+                  onChange={e => {
+                    setModalReferencia(e.target.value);
+                    // Si esa referencia está en la bolsa de dinero sin dueño, se adopta su
+                    // fecha del banco: ahí la fecha deja de ser la palabra del cliente y pasa
+                    // a estar comprobada.
+                    const cruce = buscarPorReferencia(e.target.value);
+                    if (cruce) setModalFechaPago(cruce.fecha_banco);
+                  }}
+                  placeholder="El número que aparece en el comprobante"
+                />
+                {(() => {
+                  const cruce = buscarPorReferencia(modalReferencia);
+                  if (cruce) {
+                    return (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                        ✅ <strong>Esta transferencia sí entró</strong> el {formatDate(cruce.fecha_banco)} por $ {fmt(cruce.monto)}.
+                        Estaba sin identificar y se le asignará a este cliente.
+                      </div>
+                    );
+                  }
+                  if (normalizarRef(modalReferencia).length >= 3) {
+                    return (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                        ⚠️ No hay ninguna transferencia sin identificar con esa referencia. <strong>Verifica en el banco</strong> antes
+                        de confirmarla — si el dinero sí entró, puedes seguir.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
+
             {modalMetodo === "Transferencia" && (
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>

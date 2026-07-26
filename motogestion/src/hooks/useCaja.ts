@@ -46,6 +46,11 @@ export function useCaja() {
     detalle: { placa: string; nombre: string; valor: number; metodo: string; grupo?: string }[];
     cerradoPor: string | null;
     notas?: string;
+    // Arqueo (mig 064): contra qué se compara lo registrado. Opcionales — si no se llenan,
+    // el cierre se comporta como antes.
+    bancoReportado?: number | null;
+    efectivoContado?: number | null;
+    diferencia?: number | null;
   }) {
     const { error } = await supabase.from("caja_diaria").upsert(
       {
@@ -57,6 +62,9 @@ export function useCaja() {
         detalle: params.detalle,
         cerrado_por: params.cerradoPor,
         notas: params.notas ?? null,
+        banco_reportado: params.bancoReportado ?? null,
+        efectivo_contado: params.efectivoContado ?? null,
+        diferencia: params.diferencia ?? null,
       },
       { onConflict: "fecha,grupo" }
     );

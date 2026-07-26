@@ -4,9 +4,10 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
+import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
-import { hoyISO } from "../utils/fecha";
+import { hoyISO, hoyDate } from "../utils/fecha";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -21,6 +22,14 @@ export default function CajaView() {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [cerrando, setCerrando] = useState(false);
   const [notas, setNotas] = useState("");
+  // Arqueo del cierre (mig 064): la plata real contra la registrada.
+  const [efectivoContado, setEfectivoContado] = useState("");
+  const [bancoReportado, setBancoReportado] = useState("");
+  // Alta de una transferencia que entró al banco y nadie reclamó.
+  const [openNI, setOpenNI] = useState(false);
+  const [guardandoNI, setGuardandoNI] = useState(false);
+  const [errorNI, setErrorNI] = useState<string | null>(null);
+  const [formNI, setFormNI] = useState({ fecha_banco: "", monto: "", referencia: "", nota: "" });
   const [msgCierre, setMsgCierre] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
@@ -42,6 +51,7 @@ export default function CajaView() {
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { cerrarCaja, cajaDia } = useCaja();
+  const { pendientes: pendientesNI, registrar: registrarNI, eliminar: eliminarNI } = useIngresosNoIdentificados();
 
   const pagosDia = useMemo(() =>
     // esPagoDeCaja: los pagos internos (adelanto de base) NO entran a la caja diaria.
@@ -169,6 +179,13 @@ export default function CajaView() {
       detalle,
       cerradoPor: profile?.id ?? null,
       notas: notas.trim() || undefined,
+      // Arqueo: si no lo llenaron, se guarda null (el cierre queda como antes).
+      efectivoContado: efectivoContado === "" ? null : Number(efectivoContado),
+      bancoReportado: bancoReportado === "" ? null : Number(bancoReportado),
+      diferencia: (efectivoContado === "" && bancoReportado === "")
+        ? null
+        : ((efectivoContado === "" ? r.efectivo : Number(efectivoContado))
+          + (bancoReportado === "" ? r.transfer : Number(bancoReportado))) - r.total,
     });
     setCerrando(false);
     setShowModal(false);
@@ -176,7 +193,7 @@ export default function CajaView() {
       setMsgCierre(`Error: ${error}`);
     } else {
       setMsgCierre(`Caja de ${g} cerrada — $${fmt(r.total)}`);
-      setNotas("");
+      setNotas(""); setEfectivoContado(""); setBancoReportado("");
       setGrupoACerrar(null);
     }
   }
@@ -479,6 +496,54 @@ export default function CajaView() {
         </div>
       )}
 
+      {/* Dinero que entró al banco y nadie reportó como suyo */}
+      <div style={{ marginBottom: 20, background: "var(--card)", borderRadius: 16, padding: isMobile ? "14px 12px" : "18px 20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>💰 Dinero sin identificar</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+              Transferencias que entraron al banco y ningún cliente ha reclamado. Cuando aparezca el dueño, se cruza por su número de referencia.
+            </div>
+          </div>
+          {puedeCerrarCaja && (
+            <button onClick={() => { setFormNI({ fecha_banco: fecha, monto: "", referencia: "", nota: "" }); setErrorNI(null); setOpenNI(true); }}
+              style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--warn-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              + Registrar transferencia sin identificar
+            </button>
+          )}
+        </div>
+        {pendientesNI.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--faint)", padding: "10px 0" }}>No hay dinero sin identificar. ✓</div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {pendientesNI.map(i => {
+              const dias = Math.round((hoyDate().getTime() - new Date(i.fecha_banco + "T00:00:00").getTime()) / 86400000);
+              return (
+                <div key={i.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
+                  padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)" }}>${fmt(i.monto)} · ref. {i.referencia}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 2 }}>
+                      Entró el {new Date(i.fecha_banco + "T00:00:00").toLocaleDateString("es-CO")}
+                      {dias > 0 && ` · hace ${dias} día${dias === 1 ? "" : "s"}`}
+                      {i.nota ? ` · ${i.nota}` : ""}
+                    </div>
+                  </div>
+                  {puedeCerrarCaja && (
+                    <button onClick={async () => {
+                      if (!confirm("¿Eliminar esta partida? Úsalo solo si se registró por error.")) return;
+                      await eliminarNI(i.id);
+                    }} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Conciliación de cobros en campo por funcionario */}
       {seccionConciliacionCampo && (
         <div style={{ marginBottom: 20 }}>
@@ -546,6 +611,45 @@ export default function CajaView() {
                 Ojo: {grupoACerrar} tiene {rc.pendientes.length} pago(s) pendiente(s) sin confirmar (${fmt(rc.totalPendiente)}) que no entran en este cierre.
               </div>
             )}
+            {/* Arqueo: comparar lo registrado contra la plata real. Antes el cierre solo
+                sumaba lo que ya estaba en el sistema, así que un sobrante era invisible. */}
+            <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase", marginBottom: 10 }}>
+                Arqueo — compara con la plata real (opcional)
+              </div>
+              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Efectivo contado</label>
+                  <input inputMode="numeric" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value.replace(/\D/g, ""))}
+                    placeholder={String(Math.round(rc.efectivo))}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Según el banco</label>
+                  <input inputMode="numeric" value={bancoReportado} onChange={e => setBancoReportado(e.target.value.replace(/\D/g, ""))}
+                    placeholder={String(Math.round(rc.transfer))}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+                </div>
+              </div>
+              {(efectivoContado !== "" || bancoReportado !== "") && (() => {
+                const ef = efectivoContado === "" ? rc.efectivo : Number(efectivoContado);
+                const bc = bancoReportado === "" ? rc.transfer : Number(bancoReportado);
+                const dif = (ef + bc) - rc.total;
+                const sobra = dif > 0, falta = dif < 0;
+                return (
+                  <div style={{
+                    fontSize: 12, borderRadius: 8, padding: "8px 10px", fontWeight: 600,
+                    background: dif === 0 ? "var(--ok-soft)" : sobra ? "var(--warn-soft)" : "var(--bad-soft)",
+                    color: dif === 0 ? "var(--ok-ink)" : sobra ? "var(--warn-ink)" : "var(--bad-ink)",
+                  }}>
+                    {dif === 0 && <>✓ Cuadra exacto con lo registrado.</>}
+                    {sobra && <>Sobran <strong>${fmt(dif)}</strong> — hay plata que nadie reportó. Ciérrala y regístrala abajo en “Dinero sin identificar” con su referencia, para poder cruzarla cuando el cliente aparezca.</>}
+                    {falta && <>Faltan <strong>${fmt(Math.abs(dif))}</strong> — hay pagos registrados que no están en la plata real. Revisa antes de cerrar.</>}
+                  </div>
+                );
+              })()}
+            </div>
+
             <textarea
               value={notas}
               onChange={e => setNotas(e.target.value)}
@@ -566,6 +670,74 @@ export default function CajaView() {
         </div>
         );
       })()}
+
+      {/* Alta de una transferencia que entró al banco y nadie reclamó */}
+      {openNI && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setOpenNI(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderRadius: 20, padding: 24, maxWidth: 420, width: "100%", boxSizing: "border-box" }}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "var(--text)" }}>Transferencia sin identificar</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 12.5, color: "var(--muted)" }}>
+              Plata que aparece en el banco y ningún cliente ha reportado. Al guardarla con su referencia, cuando el dueño aparezca el sistema la reconoce sola.
+            </p>
+            <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>¿Qué día entró al banco?</label>
+                <input type="date" value={formNI.fecha_banco} max={hoyISO()}
+                  onChange={e => setFormNI(f => ({ ...f, fecha_banco: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Monto</label>
+                <input inputMode="numeric" value={formNI.monto} placeholder="$ 0"
+                  onChange={e => setFormNI(f => ({ ...f, monto: e.target.value.replace(/\D/g, "") }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>N° de referencia</label>
+                <input value={formNI.referencia} placeholder="El número de la transacción en el extracto"
+                  onChange={e => setFormNI(f => ({ ...f, referencia: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Nota (opcional)</label>
+                <input value={formNI.nota} placeholder="Ej. dice “JOSE P.” en el extracto"
+                  onChange={e => setFormNI(f => ({ ...f, nota: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
+              </div>
+            </div>
+            {errorNI && <div style={{ marginBottom: 12, fontSize: 12.5, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "8px 10px" }}>{errorNI}</div>}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setOpenNI(false)} style={{ flex: 1, padding: "11px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button
+                disabled={guardandoNI}
+                onClick={async () => {
+                  if (guardandoNI) return;
+                  const monto = Number(formNI.monto);
+                  if (!formNI.fecha_banco) { setErrorNI("Indica qué día entró al banco."); return; }
+                  if (!monto || monto <= 0) { setErrorNI("Escribe el monto."); return; }
+                  if (!formNI.referencia.trim()) { setErrorNI("Escribe el número de referencia — es lo que permite cruzarla después."); return; }
+                  setGuardandoNI(true); setErrorNI(null);
+                  try {
+                    const { error } = await registrarNI({
+                      fecha_banco: formNI.fecha_banco, monto, referencia: formNI.referencia,
+                      grupo: filtroGrupo === "todos" ? null : filtroGrupo,
+                      nota: formNI.nota.trim() || undefined,
+                      registrado_por: profile?.id ?? null,
+                    });
+                    if (error) { setErrorNI(error); return; }
+                    setOpenNI(false);
+                  } finally { setGuardandoNI(false); }
+                }}
+                style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: "var(--warn-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: guardandoNI ? "not-allowed" : "pointer", opacity: guardandoNI ? 0.6 : 1 }}>
+                {guardandoNI ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -195,6 +195,7 @@ export default function HistorialPagosView({ onNavigate }: {
         </div>
         <div style={{ fontSize: 12, color: "var(--faint)" }}>
           {pagoSeleccionado.fecha} · {pagoSeleccionado.created_at ? new Date(pagoSeleccionado.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : "—"} · {pagoSeleccionado.tipo_registro}
+          {pagoSeleccionado.referencia ? ` · Ref. ${pagoSeleccionado.referencia}` : ""}
         </div>
       </div>
     </div>

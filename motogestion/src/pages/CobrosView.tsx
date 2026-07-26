@@ -546,7 +546,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
-  const { buscarPorReferencia, asignarAPago } = useIngresosNoIdentificados();
+  const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   const { render: renderMsg } = useMensajesWhatsapp();
@@ -582,6 +582,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // N° de referencia de la transferencia (obligatorio): es lo que permite comprobar que el
   // dinero sí entró, cruzándolo contra las partidas que nadie reclamó.
   const [modalReferencia, setModalReferencia] = useState("");
+  // Fecha que vino COMPROBADA del banco (por el cruce), para poder devolverla a hoy si la
+  // referencia deja de cruzar — sin pisar una fecha que el funcionario haya puesto a mano.
+  const [modalFechaDelBanco, setModalFechaDelBanco] = useState<string | null>(null);
+  // El funcionario verificó en el extracto que esa referencia cubre a dos clientes distintos.
+  const [modalRefRepetidaOk, setModalRefRepetidaOk] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -1145,6 +1150,43 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
     setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO()); setModalReferencia("");
+    setModalFechaDelBanco(null); setModalRefRepetidaOk(false);
+  }
+
+  /** La referencia y la fecha del banco pertenecen a UN cliente: cambiar de cliente las invalida. */
+  function limpiarDatosTransferencia() {
+    setModalReferencia(""); setModalFechaPago(hoyISO()); setModalFechaDelBanco(null); setModalRefRepetidaOk(false);
+  }
+
+  /** Otro pago (no rechazado) ya usó esta misma referencia: el mismo dinero respaldando dos cobros. */
+  function pagoConMismaReferencia(ref: string) {
+    const r = normalizarRef(ref);
+    if (r.length < 3) return null;
+    return pagos.find(p => p.estado !== "Rechazado" && p.referencia && normalizarRef(p.referencia) === r) ?? null;
+  }
+
+  // Cruce vigente del modal: solo vale si la plata que entró alcanza para lo que se está
+  // registrando. Si el pago es MAYOR que lo que recibió el banco, no hay respaldo.
+  const modalCruce = modalMetodo === "Transferencia" ? buscarPorReferencia(modalReferencia) : null;
+  const modalCruceCubre = !!modalCruce && Math.round(modalMonto) <= Math.round(modalCruce.monto);
+  const modalFechaEfectiva = modalMetodo === "Transferencia"
+    ? (modalCruceCubre ? modalCruce!.fecha_banco : modalFechaPago)
+    : hoyISO();
+
+  /** Validaciones de la transferencia comunes a los dos botones (pedir confirmación y registrar). */
+  function errorTransferencia(): string | null {
+    if (modalMetodo !== "Transferencia") return null;
+    if (!modalComprobante) return "Sube la foto del comprobante de la transferencia.";
+    if (!modalReferencia.trim()) return "Escribe el N° de referencia de la transferencia.";
+    if (modalCruce && Math.round(modalMonto) > Math.round(modalCruce.monto))
+      return `El banco solo recibió $ ${fmt(modalCruce.monto)} con la referencia ${modalCruce.referencia}, y estás registrando $ ${fmt(modalMonto)}. `
+        + "Corrige el valor; si fueron dos transferencias distintas, regístralas por separado.";
+    const repetida = pagoConMismaReferencia(modalReferencia);
+    if (repetida && !modalRefRepetidaOk)
+      return "Esa referencia ya se usó en otro pago. Verifica en el extracto y marca la casilla si de verdad cubre a dos clientes.";
+    if (modalFechaEfectiva > hoyISO() || modalFechaEfectiva < hoyMasDias(-60))
+      return `La fecha del pago (${formatDate(modalFechaEfectiva)}) está fuera de rango: no puede ser futura ni de hace más de 60 días.`;
+    return null;
   }
 
   const modalResultados = resumenContratos.filter(c => {
@@ -1164,8 +1206,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   function pedirConfirmacionModal() {
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
-    if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
-    if (modalMetodo === "Transferencia" && !modalReferencia.trim()) { setModalError("Escribe el N° de referencia de la transferencia."); return; }
+    const errT = errorTransferencia();
+    if (errT) { setModalError(errT); return; }
     setModalError(null);
     setConfirmarModalOpen(true);
   }
@@ -1174,8 +1216,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (modalSubiendo) return;
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
-    if (modalMetodo === "Transferencia" && !modalComprobante) { setModalError("Sube la foto del comprobante de la transferencia."); return; }
-    if (modalMetodo === "Transferencia" && !modalReferencia.trim()) { setModalError("Escribe el N° de referencia de la transferencia."); return; }
+    // Se revalida todo aquí a propósito: este handler también se dispara desde la ventana
+    // de confirmación, sin volver a pasar por pedirConfirmacionModal.
+    const errT = errorTransferencia();
+    if (errT) { setModalError(errT); setConfirmarModalOpen(false); return; }
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;
@@ -1188,9 +1232,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     }
 
     const folio = generarFolio();
-    // Si la referencia cruza con una partida sin dueño, se resuelve ANTES de registrar:
-    // el pago se guarda con la fecha comprobada del banco y la partida queda ligada a él.
-    const cruce = modalMetodo === "Transferencia" ? buscarPorReferencia(modalReferencia) : null;
+    // Si la referencia cruza con una partida sin dueño Y el dinero alcanza, se resuelve ANTES
+    // de registrar: el pago se guarda con la fecha comprobada del banco y la partida queda
+    // ligada a él (completa o dejando el remanente en la bolsa).
+    const cruce = modalCruceCubre ? modalCruce : null;
+    const fechaPago = modalFechaEfectiva;
     const { error, id: pagoId } = await registrarPago(
       // Motor v2: el reparto lo hace la BD al confirmar; el desglose local es solo preview.
       modalContratoId, modalMonto, modalMetodo,
@@ -1201,21 +1247,36 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         // Fecha REAL en que pagó. Solo la transferencia puede llevar una fecha anterior;
         // el efectivo se recibe en la mano en el momento, así que siempre es hoy.
         // Si cruzó con el banco, manda la fecha del extracto (está comprobada).
-        fecha: modalMetodo === "Transferencia" ? (cruce?.fecha_banco || modalFechaPago) : hoyISO(),
+        fecha: fechaPago,
         ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim() } : {}),
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
     if (error) { setModalError(error); return; }
-    // La partida deja de estar "sin dueño": ya se sabe de quién era.
-    if (cruce && pagoId) await asignarAPago(cruce.id, pagoId);
+    // La partida deja de estar "sin dueño": ya se sabe de quién era. Si el pago no la cubre
+    // entera, el remanente queda en la bolsa. Si esto falla, el pago YA quedó registrado —
+    // hay que decirlo así para que nadie lo vuelva a registrar creyendo que se perdió.
+    if (cruce && pagoId) {
+      const { error: errAsig } = await consumirPorPago(cruce, pagoId, modalMonto);
+      if (errAsig) {
+        setConfirmarModalOpen(false);
+        setModalError(
+          `El pago SÍ quedó registrado — NO lo vuelvas a registrar. Lo que falló fue marcar la transferencia `
+          + `del banco (ref. ${cruce.referencia}) como ya reclamada: sigue en Caja → "Dinero sin identificar". `
+          + `Avísale a la secretaria. Detalle: ${errAsig}`,
+        );
+        return;
+      }
+    }
     setConfirmarModalOpen(false);
 
     const contrato = contratos.find(c => c.id === modalContratoId);
     const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
     const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
 
-    setModalValor(""); setModalComprobante(null);
+    // El modal queda abierto tras una transferencia: si no se limpian, la referencia y la
+    // fecha del banco del cliente anterior viajan al siguiente pago.
+    setModalValor(""); setModalComprobante(null); limpiarDatosTransferencia();
 
     if (modalMetodo === "Efectivo") {
       // Efectivo = confirmado al instante → mostrar recibo
@@ -1472,7 +1533,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   useBackGuard(confirmarCampoOpen, () => setConfirmarCampoOpen(false));
   useBackGuard(modalListaAbierta, () => setModalListaAbierta(false));
   useBackGuard(modalCampoAbierto, () => setModalCampoAbierto(false));
-  useBackGuard(modalPago, () => setModalPago(false));
+  useBackGuard(modalPago, cerrarModalPago);
   useBackGuard(fabOpen, () => setFabOpen(false));
 
   // ── Historial filtrado ────────────────────────────────────────────────────
@@ -2626,6 +2687,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", color: "var(--text)", fontSize: 11, fontWeight: 700 }}>
                       $ {fmt(p.valor)}
                     </span>
+                    {/* La referencia es lo que se cruza contra el extracto: quien confirma
+                        tiene que verla, y saber si otro pago ya la usó. */}
+                    {p.referencia && (() => {
+                      const dup = pagos.some(o => o.id !== p.id && o.estado !== "Rechazado" && o.referencia
+                        && normalizarRef(o.referencia) === normalizarRef(p.referencia!));
+                      return (
+                        <span style={{
+                          padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                          background: dup ? "var(--bad-soft)" : "var(--soft)", color: dup ? "var(--bad-ink)" : "var(--text)",
+                        }}>
+                          {dup ? "⚠️ Ref. YA USADA: " : "Ref. "}{p.referencia}
+                        </span>
+                      );
+                    })()}
                     {esCampo && (
                       <span style={{ padding: "3px 10px", borderRadius: 999, background: p.entregado_caja ? "var(--ok-soft)" : "var(--warn-soft)", color: p.entregado_caja ? "var(--ok-ink)" : "var(--warn-ink)", fontSize: 11, fontWeight: 700 }}>
                         {p.entregado_caja ? "Entregado a secretaria" : "En poder del admin"}
@@ -3124,11 +3199,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   value={modalBusqueda}
                   autoFocus
                   onFocus={() => setModalListaAbierta(true)}
-                  onChange={e => { setModalBusqueda(e.target.value); setModalListaAbierta(true); setModalContratoId(null); setModalError(null); setModalExito(false); }}
+                  onChange={e => { setModalBusqueda(e.target.value); setModalListaAbierta(true); setModalContratoId(null); setModalError(null); setModalExito(false); limpiarDatosTransferencia(); }}
                 />
                 {modalContratoId && (
                   <button
-                    onClick={() => { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(true); }}
+                    onClick={() => { setModalContratoId(null); setModalBusqueda(""); setModalListaAbierta(true); limpiarDatosTransferencia(); }}
                     style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--faint)" }}
                     title="Limpiar selección"
                   >✕</button>
@@ -3144,7 +3219,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     modalResultados.slice(0, 30).map(c => (
                       <button
                         key={c.id}
-                        onClick={() => { setModalContratoId(c.id); setModalBusqueda(etiquetaContrato(c)); setModalListaAbierta(false); setModalError(null); setModalExito(false); }}
+                        onClick={() => { setModalContratoId(c.id); setModalBusqueda(etiquetaContrato(c)); setModalListaAbierta(false); setModalError(null); setModalExito(false); limpiarDatosTransferencia(); }}
                         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", textAlign: "left", padding: "10px 14px", border: "none", borderBottom: "1px solid var(--soft)", background: "var(--card)", cursor: "pointer", fontSize: 13, color: "var(--text)" }}
                         onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "var(--soft2)"}
                         onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "var(--card)"}
@@ -3251,7 +3326,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   setModalMetodo(m);
                   // Volver a hoy al pasar a Efectivo: si no, una fecha vieja elegida para una
                   // transferencia quedaría pegada en un pago en efectivo (el campo ya no se ve).
-                  if (m === "Efectivo") setModalFechaPago(hoyISO());
+                  if (m === "Efectivo") { setModalFechaPago(hoyISO()); setModalFechaDelBanco(null); }
                 }}
               >
                 <option value="Efectivo">Efectivo (confirma automático)</option>
@@ -3273,34 +3348,66 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   style={inputStyle}
                   value={modalReferencia}
                   onChange={e => {
-                    setModalReferencia(e.target.value);
-                    // Si esa referencia está en la bolsa de dinero sin dueño, se adopta su
-                    // fecha del banco: ahí la fecha deja de ser la palabra del cliente y pasa
-                    // a estar comprobada.
-                    const cruce = buscarPorReferencia(e.target.value);
-                    if (cruce) setModalFechaPago(cruce.fecha_banco);
+                    const v = e.target.value;
+                    setModalReferencia(v);
+                    setModalRefRepetidaOk(false);
+                    // Si esa referencia está en la bolsa de dinero sin dueño Y la plata alcanza,
+                    // se adopta su fecha del banco: ahí la fecha deja de ser la palabra del
+                    // cliente y pasa a estar comprobada.
+                    const cruce = buscarPorReferencia(v);
+                    if (cruce && Math.round(modalMonto) <= Math.round(cruce.monto)) {
+                      setModalFechaPago(cruce.fecha_banco);
+                      setModalFechaDelBanco(cruce.fecha_banco);
+                    } else if (modalFechaDelBanco) {
+                      // El cruce dejó de aplicar: esa fecha ya no está respaldada por el banco.
+                      // Solo se revierte lo que puso el cruce, nunca una fecha escrita a mano.
+                      setModalFechaPago(hoyISO());
+                      setModalFechaDelBanco(null);
+                    }
                   }}
                   placeholder="El número que aparece en el comprobante"
                 />
                 {(() => {
-                  const cruce = buscarPorReferencia(modalReferencia);
-                  if (cruce) {
-                    return (
-                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                        ✅ <strong>Esta transferencia sí entró</strong> el {formatDate(cruce.fecha_banco)} por $ {fmt(cruce.monto)}.
-                        Estaba sin identificar y se le asignará a este cliente.
-                      </div>
-                    );
-                  }
-                  if (normalizarRef(modalReferencia).length >= 3) {
-                    return (
-                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                        ⚠️ No hay ninguna transferencia sin identificar con esa referencia. <strong>Verifica en el banco</strong> antes
-                        de confirmarla — si el dinero sí entró, puedes seguir.
-                      </div>
-                    );
-                  }
-                  return null;
+                  const repetida = pagoConMismaReferencia(modalReferencia);
+                  const cliRep = repetida
+                    ? clientes.find(cl => cl.id === contratos.find(c => c.id === repetida.contrato_id)?.cliente_id)
+                    : null;
+                  return (
+                    <>
+                      {modalCruce && modalCruceCubre && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                          ✅ <strong>Esta transferencia sí entró</strong> el {formatDate(modalCruce.fecha_banco)} por $ {fmt(modalCruce.monto)}.
+                          {Math.round(modalMonto) < Math.round(modalCruce.monto) && modalMonto > 0 ? (
+                            <> Como estás registrando $ {fmt(modalMonto)}, quedan <strong>$ {fmt(modalCruce.monto - modalMonto)}</strong> sin
+                            identificar: ese resto sigue en la bolsa hasta que aparezca su dueño.</>
+                          ) : <> Estaba sin identificar y se le asignará a este cliente.</>}
+                        </div>
+                      )}
+                      {modalCruce && !modalCruceCubre && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                          ⛔ <strong>El valor no cuadra.</strong> El banco recibió $ {fmt(modalCruce.monto)} con esa referencia
+                          y estás registrando $ {fmt(modalMonto)}. Corrige el valor; si fueron dos transferencias distintas,
+                          regístralas por separado.
+                        </div>
+                      )}
+                      {!modalCruce && normalizarRef(modalReferencia).length >= 3 && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                          ⚠️ No hay ninguna transferencia sin identificar con esa referencia. <strong>Verifica en el banco</strong> antes
+                          de confirmarla — si el dinero sí entró, puedes seguir.
+                        </div>
+                      )}
+                      {repetida && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                          ⛔ <strong>Esa referencia ya se usó</strong> en un pago de $ {fmt(repetida.valor)} del {formatDate(repetida.fecha)}
+                          {cliRep ? <> ({cliRep.nombre.toUpperCase()})</> : null}. La misma transferencia no puede respaldar dos cobros.
+                          <label style={{ display: "flex", gap: 6, alignItems: "flex-start", marginTop: 6, cursor: "pointer", fontWeight: 600 }}>
+                            <input type="checkbox" checked={modalRefRepetidaOk} onChange={e => setModalRefRepetidaOk(e.target.checked)} />
+                            <span>Verifiqué en el extracto: esa transferencia sí cubre a los dos clientes.</span>
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  );
                 })()}
               </div>
             )}
@@ -3312,13 +3419,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 </label>
                 <input
                   type="date"
-                  style={inputStyle}
-                  value={modalFechaPago}
+                  style={{ ...inputStyle, opacity: modalCruceCubre ? 0.6 : 1 }}
+                  value={modalFechaEfectiva}
+                  disabled={modalCruceCubre}
                   max={hoyISO()}
                   min={hoyMasDias(-60)}
-                  onChange={e => setModalFechaPago(e.target.value)}
+                  onChange={e => { setModalFechaPago(e.target.value); setModalFechaDelBanco(null); }}
                 />
-                {modalFechaPago !== hoyISO() && (
+                {modalCruceCubre ? (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
+                    Fecha tomada del extracto del banco ({formatDate(modalFechaEfectiva)}): está comprobada, por eso no se puede cambiar.
+                    La plata entra a la caja de <strong>hoy</strong>.
+                  </div>
+                ) : modalFechaPago !== hoyISO() && (
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
                     Se registrará con fecha <strong>{formatDate(modalFechaPago)}</strong>: así el cliente no aparece en mora
                     por esos días y el recibo muestra la fecha correcta. La plata entra a la caja de <strong>hoy</strong>.

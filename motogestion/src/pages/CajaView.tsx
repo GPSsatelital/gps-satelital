@@ -154,7 +154,28 @@ export default function CajaView() {
   function abrirCierre(grupo: GrupoMoto) {
     setGrupoACerrar(grupo);
     setMsgCierre(null);
+    // El arqueo es de ESTE grupo: si quedaron valores del cierre anterior (o de uno cancelado),
+    // el descuadre saldría calculado contra cifras de otra caja.
+    setEfectivoContado(""); setBancoReportado(""); setNotas("");
     setShowModal(true);
+  }
+
+  /**
+   * Arqueo: efectivo y banco se comparan CADA UNO POR SU LADO. Sumarlos antes de comparar
+   * dejaría que un faltante de efectivo se tape con un sobrante del banco y el día saldría
+   * "cuadrado" — justo lo que el arqueo existe para detectar.
+   * Un campo vacío significa "no se contó": ese lado no se da por bueno, se marca sin verificar.
+   */
+  function calcArqueo(efectivo: number, transfer: number) {
+    const hayEf = efectivoContado !== "";
+    const hayBc = bancoReportado !== "";
+    return {
+      hayEf, hayBc,
+      difEf: hayEf ? Number(efectivoContado) - efectivo : null,
+      difBc: hayBc ? Number(bancoReportado) - transfer : null,
+      verificado: hayEf || hayBc,
+      completo: hayEf && hayBc,
+    };
   }
 
   async function handleCerrarCaja() {
@@ -164,6 +185,7 @@ export default function CajaView() {
     setMsgCierre(null);
     // Cada grupo se cierra por aparte: solo los pagos de ese portafolio.
     const r = resumenDeGrupo(g);
+    const arq = calcArqueo(r.efectivo, r.transfer);
     const detalle = pagosDia
       .filter(p => p.estado === "Confirmado" && grupoDePago(p.contrato_id) === g)
       .map(p => {
@@ -178,14 +200,21 @@ export default function CajaView() {
       total: r.total,
       detalle,
       cerradoPor: profile?.id ?? null,
-      notas: notas.trim() || undefined,
+      // El detalle de los dos lados va en las notas para que quede rastro escrito; las cifras
+      // crudas (efectivo_contado/banco_reportado vs efectivo_total/transferencias_total)
+      // permiten recalcular ambas diferencias en cualquier informe futuro.
+      notas: [
+        notas.trim(),
+        arq.verificado
+          ? `Arqueo — efectivo: ${arq.hayEf ? `$${fmt(arq.difEf!)}` : "sin verificar"}; banco: ${arq.hayBc ? `$${fmt(arq.difBc!)}` : "sin verificar"}`
+          : "",
+      ].filter(Boolean).join(" | ") || undefined,
       // Arqueo: si no lo llenaron, se guarda null (el cierre queda como antes).
       efectivoContado: efectivoContado === "" ? null : Number(efectivoContado),
       bancoReportado: bancoReportado === "" ? null : Number(bancoReportado),
-      diferencia: (efectivoContado === "" && bancoReportado === "")
-        ? null
-        : ((efectivoContado === "" ? r.efectivo : Number(efectivoContado))
-          + (bancoReportado === "" ? r.transfer : Number(bancoReportado))) - r.total,
+      // `diferencia` = descuadre de la CAJA FÍSICA (el que señala plata faltante). Nunca la
+      // suma de los dos lados: eso neteaba un faltante contra un sobrante y daba 0.
+      diferencia: arq.difEf,
     });
     setCerrando(false);
     setShowModal(false);
@@ -631,20 +660,38 @@ export default function CajaView() {
                     style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
                 </div>
               </div>
-              {(efectivoContado !== "" || bancoReportado !== "") && (() => {
-                const ef = efectivoContado === "" ? rc.efectivo : Number(efectivoContado);
-                const bc = bancoReportado === "" ? rc.transfer : Number(bancoReportado);
-                const dif = (ef + bc) - rc.total;
-                const sobra = dif > 0, falta = dif < 0;
+              {/* La cuenta del banco es una sola para todos los grupos: si aquí se escribe el
+                  total del extracto, el mismo dinero se compararía otra vez en cada grupo. */}
+              <div style={{ fontSize: 11, color: "var(--faint)", marginTop: -4 }}>
+                Del banco, anota <strong>solo las transferencias de {grupoACerrar}</strong> — no el total del extracto del día.
+              </div>
+              {(() => {
+                const a = calcArqueo(rc.efectivo, rc.transfer);
+                if (!a.verificado) return null;
+                const faltaEfectivo = a.difEf !== null && a.difEf < 0;
+                const cuadraTodo = a.completo && a.difEf === 0 && a.difBc === 0;
                 return (
                   <div style={{
-                    fontSize: 12, borderRadius: 8, padding: "8px 10px", fontWeight: 600,
-                    background: dif === 0 ? "var(--ok-soft)" : sobra ? "var(--warn-soft)" : "var(--bad-soft)",
-                    color: dif === 0 ? "var(--ok-ink)" : sobra ? "var(--warn-ink)" : "var(--bad-ink)",
+                    fontSize: 12, borderRadius: 8, padding: "8px 10px", fontWeight: 600, display: "grid", gap: 4,
+                    background: cuadraTodo ? "var(--ok-soft)" : faltaEfectivo ? "var(--bad-soft)" : "var(--warn-soft)",
+                    color: cuadraTodo ? "var(--ok-ink)" : faltaEfectivo ? "var(--bad-ink)" : "var(--warn-ink)",
                   }}>
-                    {dif === 0 && <>✓ Cuadra exacto con lo registrado.</>}
-                    {sobra && <>Sobran <strong>${fmt(dif)}</strong> — hay plata que nadie reportó. Ciérrala y regístrala abajo en “Dinero sin identificar” con su referencia, para poder cruzarla cuando el cliente aparezca.</>}
-                    {falta && <>Faltan <strong>${fmt(Math.abs(dif))}</strong> — hay pagos registrados que no están en la plata real. Revisa antes de cerrar.</>}
+                    {cuadraTodo && <div>✓ Cuadra exacto: el efectivo y el banco, cada uno por su lado.</div>}
+                    {a.difEf !== null && a.difEf !== 0 && (
+                      <div>
+                        <strong>Efectivo:</strong> {a.difEf > 0 ? `sobran $${fmt(a.difEf)}` : `faltan $${fmt(Math.abs(a.difEf))}`}
+                        {a.difEf < 0 && " — hay pagos registrados que no están en la plata real. Revisa ANTES de cerrar."}
+                      </div>
+                    )}
+                    {a.difBc !== null && a.difBc !== 0 && (
+                      <div>
+                        <strong>Banco:</strong> {a.difBc > 0 ? `sobran $${fmt(a.difBc)}` : `faltan $${fmt(Math.abs(a.difBc))}`}
+                        {a.difBc > 0 && " — plata que nadie reportó: regístrala abajo en “Dinero sin identificar” con su referencia."}
+                      </div>
+                    )}
+                    {!a.completo && (
+                      <div>⚠️ <strong>{a.hayEf ? "El banco" : "El efectivo"} no se verificó</strong> — este cierre no confirma esa plata.</div>
+                    )}
                   </div>
                 );
               })()}
@@ -717,6 +764,8 @@ export default function CajaView() {
                   if (guardandoNI) return;
                   const monto = Number(formNI.monto);
                   if (!formNI.fecha_banco) { setErrorNI("Indica qué día entró al banco."); return; }
+                  // El `max` del input no bloquea una fecha escrita a mano.
+                  if (formNI.fecha_banco > hoyISO()) { setErrorNI("La fecha no puede ser futura — revisa el año en el extracto."); return; }
                   if (!monto || monto <= 0) { setErrorNI("Escribe el monto."); return; }
                   if (!formNI.referencia.trim()) { setErrorNI("Escribe el número de referencia — es lo que permite cruzarla después."); return; }
                   setGuardandoNI(true); setErrorNI(null);

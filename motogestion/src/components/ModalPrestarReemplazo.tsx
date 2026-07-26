@@ -6,11 +6,12 @@ import { useAuth } from "../contexts/AuthContext";
 import { card, secondaryBtn, primaryBtn } from "../styles/shared";
 
 // TEMA B F2: elegir una moto del pool para prestar como reemplazo a un cliente cuya moto
-// está varada en taller. Muestra tipo (diario/tiempo definido) + estado (mora/incapacidad/
+// está varada (taller, fiscalía, tránsito o garantía). Muestra tipo (diario/tiempo definido) + estado (mora/incapacidad/
 // disponible) para prestar primero las seguras (disponibles o de mora) y no comprometer la
 // de un cliente de tiempo definido que la querrá exacta de vuelta.
 interface Props {
-  contratoId: string;      // contrato del que pide (su moto está en taller)
+  contratoId: string;      // contrato del que pide (su moto está varada)
+  motivoVarada?: string;   // "en taller" | "en Fiscalía" | "en Tránsito" | "en Garantía"
   motoOriginalId: string | null; // la suya, varada
   clienteNombre: string;
   placaOriginal: string;
@@ -18,7 +19,7 @@ interface Props {
   onDone?: () => void;
 }
 
-export default function ModalPrestarReemplazo({ contratoId, motoOriginalId, clienteNombre, placaOriginal, onClose, onDone }: Props) {
+export default function ModalPrestarReemplazo({ contratoId, motivoVarada = "en taller", motoOriginalId, clienteNombre, placaOriginal, onClose, onDone }: Props) {
   const { motos } = useMotos();
   const { contratos } = useContratos();
   const { prestarReemplazo, prestamoActivoDeMoto } = usePrestamos();
@@ -50,7 +51,7 @@ export default function ModalPrestarReemplazo({ contratoId, motoOriginalId, clie
 
   async function handlePrestar() {
     if (guardando || !sel || !profile) return;
-    if (!confirm(`¿Prestar la moto ${motos.find(m => m.id === sel)?.placa} a ${clienteNombre} mientras su moto ${placaOriginal} está en taller?`)) return;
+    if (!confirm(`¿Prestar la moto ${motos.find(m => m.id === sel)?.placa} a ${clienteNombre} mientras su moto ${placaOriginal} está ${motivoVarada}?`)) return;
     setGuardando(true); setError(null);
     try {
       const { error } = await prestarReemplazo(contratoId, sel, motoOriginalId, profile.id);
@@ -67,7 +68,7 @@ export default function ModalPrestarReemplazo({ contratoId, motoOriginalId, clie
       <div style={{ ...card, position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(500px,96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto", zIndex: 401, display: "grid", gap: 12, boxSizing: "border-box" }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>🔄 Prestar moto de reemplazo</div>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>{clienteNombre} · su moto {placaOriginal} en taller</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, textTransform: "uppercase" }}>{clienteNombre} · su moto {placaOriginal} {motivoVarada}</div>
         </div>
         <div style={{ fontSize: 12, color: "var(--muted)" }}>
           Elige una moto del pool. Presta primero las <strong>disponibles</strong>. Las de{" "}

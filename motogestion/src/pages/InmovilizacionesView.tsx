@@ -247,7 +247,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     listaParaLiquidar: boolean;
     ahorroAcumulado: number;
     esTemporal: boolean; // guardada por incapacidad/entrega voluntaria (NO moroso)
-    enTaller: boolean;   // físicamente en taller (moto Mantenimiento)
+    enTaller: boolean;   // varada por causa ajena al pago: taller, fiscalía, tránsito o garantía
+    motivoVarada: string; // "en taller" | "en Fiscalía" | "en Tránsito" | "en Garantía"
     categoria: "mora" | "temporal" | "taller";
     soloInfoTaller: boolean; // varada con contrato Activo → solo info, sin acciones de recuperación
     formaPago: string;   // Diario / Semanal / Quincenal / Mensual — define préstamo vs liquidar+reasignar
@@ -260,13 +261,26 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       // en taller (varada). Así el panel es el "pool" de todo lo que no está produciendo.
       .filter(c => {
         if (c.estado === "Suspendido") return true;
-        if (c.estado === "Activo") return motos.find(m => m.id === c.moto_id)?.estado === "Mantenimiento";
+        // Las 4 causas de "moto parada con contrato vivo" valen igual: el reglamento trata
+        // fiscalía, tránsito y garantía como el taller (el tiempo fuera de servicio se cobra
+        // o se rueda). Antes solo entraba 'Mantenimiento', así que a un cliente con la moto
+        // en Fiscalía no se le podía prestar reemplazo — ni siquiera aparecía en esta lista.
+        if (c.estado === "Activo") {
+          const e = motos.find(m => m.id === c.moto_id)?.estado;
+          return e === "Mantenimiento" || e === "Fiscalia" || e === "Transito" || e === "Garantia";
+        }
         return false;
       })
       .map(c => {
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto = motos.find(m => m.id === c.moto_id);
-        const enTaller = moto?.estado === "Mantenimiento";
+        // "Varada" = parada por causa ajena al pago: taller, fiscalía, tránsito o garantía.
+        const varada = moto?.estado === "Mantenimiento" || moto?.estado === "Fiscalia"
+          || moto?.estado === "Transito" || moto?.estado === "Garantia";
+        const motivoVarada = moto?.estado === "Fiscalia" ? "en Fiscalía"
+          : moto?.estado === "Transito" ? "en Tránsito"
+          : moto?.estado === "Garantia" ? "en Garantía"
+          : "en taller";
         // Solo deuda EXIGIBLE (pendiente): la multa sí bloquea la entrega; lo 'en_convenio'
         // ya quedó financiado y se paga con la cuota del convenio (no se exige doble).
         const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente");
@@ -310,9 +324,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           listaParaLiquidar: diasRetenida >= 7,
           ahorroAcumulado: ahorroTotal(c),
           esTemporal: c.motivo_suspension === "temporal",
-          enTaller,
-          categoria: (enTaller ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
-          soloInfoTaller: enTaller && c.estado === "Activo",
+          enTaller: varada,
+          motivoVarada,
+          categoria: (varada ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
+          soloInfoTaller: varada && c.estado === "Activo",
           formaPago: c.forma_pago ?? "",
         };
       })
@@ -736,13 +751,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         </p>
       </div>
 
-      {/* Filtros: mora / temporal / taller / todas */}
+      {/* Filtros: mora / temporal / varadas (taller, fiscalía, tránsito, garantía) / todas */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {([
           { key: "todas",    label: "Todas",         count: motosRetenidas.length },
           { key: "mora",     label: "🔴 Mora",       count: motosRetenidas.filter(m => m.categoria === "mora").length },
           { key: "temporal", label: "🅿️ Temporal",   count: motosRetenidas.filter(m => m.categoria === "temporal").length },
-          { key: "taller",   label: "🔧 Taller",     count: motosRetenidas.filter(m => m.categoria === "taller").length },
+          { key: "taller",   label: "🔧 Varadas",    count: motosRetenidas.filter(m => m.categoria === "taller").length },
         ] as const).map(f => (
           <Chip key={f.key} activo={filtroRet === f.key} count={f.count} onClick={() => setFiltroRet(f.key)}>
             {f.label}
@@ -790,7 +805,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       )}
                       <div style={{ fontSize: 13, fontWeight: 700, color: m.soloInfoTaller ? "var(--violet)" : m.esTemporal ? "var(--accent-ink)" : entregable ? "var(--ok-ink)" : "var(--bad-ink)", marginTop: 2 }}>
                         {m.soloInfoTaller
-                          ? "🔧 En taller (varada) — se resuelve el tiempo al salir"
+                          ? `🔧 ${m.motivoVarada.charAt(0).toUpperCase() + m.motivoVarada.slice(1)} (varada) — se resuelve el tiempo al salir`
                           : m.esTemporal
                             ? "🅿️ Guardada temporal — resolver el tiempo al reactivar"
                             : entregable
@@ -801,7 +816,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                         {m.categoria === "taller"
-                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 En taller</span>
+                          ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 {m.motivoVarada.charAt(0).toUpperCase() + m.motivoVarada.slice(1)}</span>
                           : m.categoria === "temporal"
                             ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>🅿️ Guardada temporal (incapacidad)</span>
                             : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>🔴 Por mora / recolección</span>}
@@ -1007,6 +1022,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       {prestarRec && (
         <ModalPrestarReemplazo
           contratoId={prestarRec.contratoId}
+          motivoVarada={prestarRec.motivoVarada}
           motoOriginalId={prestarRec.motoId}
           clienteNombre={prestarRec.clienteNombre}
           placaOriginal={prestarRec.placa}

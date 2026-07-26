@@ -123,3 +123,51 @@ describe("calcularEstadoCartera — convenio que cubre el período NO cobra dobl
     expect(calcularEstadoCartera(ESMEIRO, [], D(22), 0, false)).toBe("mora");
   });
 });
+
+// Bug real encontrado el 26-jul con DIEGO LOCIN SOTO (XZI10H): sus cuotas estaban al día,
+// pero debía la cuota del convenio de $100.000 y el semáforo decía "Al día". La rama del
+// motor v2 ignoraba `cuotaConvenio` por completo, así que quien dejaba de pagar su convenio
+// nunca aparecía en mora ni en el panel del día — aunque la misma pantalla se lo cobrara.
+describe("calcularEstadoCartera — el convenio también cuenta para la mora (motor v2)", () => {
+  // Contrato con las cuotas al día: 2 cajas exigidas y 2 pagadas al mié 22.
+  const AL_DIA: ContratoCiclo = {
+    forma_pago: "Semanal",
+    dia_pago: "Miércoles",
+    fecha_entrega: "2026-07-01",
+    valor_semanal: 202000,
+    motor_v2: true,
+    total_cajas: 104,
+    cajas_pagadas: 4,
+    caja_actual_pagado: 0,
+    cajas_previas: 0,
+    prorrateo_total: 0,
+    prorrateo_pagado: 0,
+    fecha_inicio_cajas: "2026-07-01",
+  };
+
+  it("sin convenio → al día", () => {
+    expect(calcularEstadoCartera(AL_DIA, [], D(22))).toBe("al-dia");
+  });
+
+  it("con cuota de convenio SIN abonar → ya no dice 'al día'", () => {
+    expect(calcularEstadoCartera(AL_DIA, [], D(24), 100000)).toBe("mora");
+  });
+
+  it("con la cuota del convenio ABONADA en el período → al día", () => {
+    const pagos = [{ fecha: "2026-07-22", valor: 302000, aplicado_convenio: 100000 }];
+    expect(calcularEstadoCartera(AL_DIA, pagos, D(24), 100000)).toBe("al-dia");
+  });
+
+  it("abono parcial del convenio → sigue sin estar al día", () => {
+    const pagos = [{ fecha: "2026-07-22", valor: 252000, aplicado_convenio: 50000 }];
+    expect(calcularEstadoCartera(AL_DIA, pagos, D(24), 100000)).toBe("mora");
+  });
+
+  it("el mismo día de pago con el convenio pendiente → 'paga hoy', no mora", () => {
+    expect(calcularEstadoCartera(AL_DIA, [], D(22), 100000)).toBe("al-dia");
+  });
+
+  it("un día después → gabela", () => {
+    expect(calcularEstadoCartera(AL_DIA, [], D(23), 100000)).toBe("gabela");
+  });
+});

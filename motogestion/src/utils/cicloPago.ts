@@ -155,7 +155,9 @@ export function cuotaConvenioDelPeriodo(
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").
 export function calcularEstadoCartera(
   contrato: ContratoCiclo,
-  pagosConfirmados: Array<{ fecha: string; valor: number }>,
+  // aplicado_convenio es opcional: solo lo usa la rama del motor v2, para saber si la cuota
+  // del convenio de este período ya quedó abonada.
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null }>,
   hoy: Date,
   cuotaConvenio = 0,
   // periodoCubierto: al crear un convenio se puede meter la cuota de la semana actual DENTRO
@@ -166,13 +168,32 @@ export function calcularEstadoCartera(
   // MOTOR V2 (libro de cajas): el estado sale de los acumuladores del ledger —
   // en mora si existe una caja exigida sin llenar (FIFO estricto). Esta rama cubre
   // AUTOMÁTICAMENTE a todas las vistas que llaman esta función.
-  if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
-    if (periodoCubierto) return "al-dia";
-    return estadoCarteraV2(contrato, hoy);
-  }
-  if (periodoCubierto) return "al-dia";
   const hoyDia = new Date(hoy);
   hoyDia.setHours(0, 0, 0, 0);
+  if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
+    if (periodoCubierto) return "al-dia";
+    const estadoLedger = estadoCarteraV2(contrato, hoy);
+    if (estadoLedger !== "al-dia") return estadoLedger;
+    // El ledger de cuotas está al día — pero el convenio va ENCIMA de la cuota, no la
+    // reemplaza. Esta rama lo ignoraba por completo: quien dejaba de pagar su convenio
+    // nunca aparecía en mora ni en el panel del día, aunque la misma pantalla le dijera
+    // "DEBE PAGAR AHORA: cuota del convenio". (Caso real: DIEGO LOCIN SOTO, XZI10H.)
+    if (cuotaConvenio > 0) {
+      const desde = inicioVentanaPagosISO(contrato, hoyDia);
+      const abonadoConvenio = pagosConfirmados
+        .filter(p => p.fecha >= desde)
+        .reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+      if (abonadoConvenio < cuotaConvenio) {
+        const inicio = inicioPeriodoActual(contrato, hoyDia);
+        const dias = Math.floor((hoyDia.getTime() - inicio.getTime()) / 86400000);
+        if (dias <= 0) return "al-dia";   // le toca hoy: "paga hoy", no mora
+        if (dias === 1) return "gabela";
+        return "mora";
+      }
+    }
+    return "al-dia";
+  }
+  if (periodoCubierto) return "al-dia";
   const fechaEntrega = contrato.fecha_entrega ?? null;
   const totalPagadoPeriodo = totalPagadoPeriodoActual(contrato, pagosConfirmados, hoyDia);
   const exigidoPeriodo = valorPeriodoReal(contrato) + cuotaConvenio;

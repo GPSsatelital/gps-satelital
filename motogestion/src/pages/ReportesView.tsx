@@ -3,6 +3,7 @@ import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
+import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
@@ -499,6 +500,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const { subadmins } = useSubadmins();
+  const { prestamos } = usePrestamos();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
   const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
@@ -589,6 +591,10 @@ export default function ReportesView({ onNavigate }: Props) {
     contratos.filter(c => c.estado === "Activo" && c.moto_id).forEach(c => {
       const moto = motos.find(m => m.id === c.moto_id);
       if (!moto) return;
+      // Grupo y admin salen de la moto del PORTAFOLIO: si el cliente anda en una prestada,
+      // su recaudo sigue siendo del socio dueño de su moto real, no del socio que prestó.
+      // La placa sí es la que anda rodando (es la que está en la calle).
+      const motoPortafolio = motos.find(m => m.id === motoDelPortafolio(c.id, c.moto_id, prestamos)) ?? moto;
       const monto = recaudoPorContrato.get(c.id) ?? 0;
       const confirmados = confPorContrato.get(c.id) ?? [];
       // Mismo cálculo que Cartera: convenio activo cuenta para la mora (deuda programada).
@@ -609,21 +615,21 @@ export default function ReportesView({ onNavigate }: Props) {
         cliente: cli?.nombre ?? "Sin cliente",
         monto, estado, deudaPend: deudaP, tieneConvenio,
         debeSinConvenio: deudaP > 0 && !tieneConvenio,
-        grupo: moto.grupo ?? "OTRO",
-        adminId: moto.subadmin_id ?? "__none__",
-        adminNombre: nombreAdmin(moto.subadmin_id),
+        grupo: motoPortafolio.grupo ?? "OTRO",
+        adminId: motoPortafolio.subadmin_id ?? "__none__",
+        adminNombre: nombreAdmin(motoPortafolio.subadmin_id),
         formaPago: c.forma_pago ?? "—",
         diaPago: formatDiaPago(c as never),
         ultimaFechaPago,
         telefono: cli?.telefono ?? "",
-        asignadoDesde: moto.subadmin_asignado_desde ?? null,
+        asignadoDesde: motoPortafolio.subadmin_asignado_desde ?? null,
         contratoId: c.id,
         diasMora,
         cuotaCiclo: valorPeriodoReal(c as never),
       });
     });
     return rows;
-  }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, convenioActivoDelContrato]);
+  }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, prestamos, convenioActivoDelContrato]);
 
   // ── FILTROS COMBINABLES (multi-selección) — baseFiltrada es la fuente de TODO ──
   // Array vacío en una dimensión = "todos"; con valores = OR dentro, AND entre dimensiones.

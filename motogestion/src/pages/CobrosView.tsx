@@ -587,6 +587,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalFechaDelBanco, setModalFechaDelBanco] = useState<string | null>(null);
   // El funcionario verificó en el extracto que esa referencia cubre a dos clientes distintos.
   const [modalRefRepetidaOk, setModalRefRepetidaOk] = useState(false);
+  // El funcionario validó con la foto del comprobante un valor distinto al que muestra el banco.
+  const [modalDescuadreOk, setModalDescuadreOk] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -1150,12 +1152,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     setModalPago(false); setModalBusqueda(""); setModalContratoId(null); setModalListaAbierta(false);
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
     setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO()); setModalReferencia("");
-    setModalFechaDelBanco(null); setModalRefRepetidaOk(false);
+    setModalFechaDelBanco(null); setModalRefRepetidaOk(false); setModalDescuadreOk(false);
   }
 
   /** La referencia y la fecha del banco pertenecen a UN cliente: cambiar de cliente las invalida. */
   function limpiarDatosTransferencia() {
-    setModalReferencia(""); setModalFechaPago(hoyISO()); setModalFechaDelBanco(null); setModalRefRepetidaOk(false);
+    setModalReferencia(""); setModalFechaPago(hoyISO()); setModalFechaDelBanco(null);
+    setModalRefRepetidaOk(false); setModalDescuadreOk(false);
   }
 
   /** Otro pago (no rechazado) ya usó esta misma referencia: el mismo dinero respaldando dos cobros. */
@@ -1165,10 +1168,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     return pagos.find(p => p.estado !== "Rechazado" && p.referencia && normalizarRef(p.referencia) === r) ?? null;
   }
 
-  // Cruce vigente del modal: solo vale si la plata que entró alcanza para lo que se está
-  // registrando. Si el pago es MAYOR que lo que recibió el banco, no hay respaldo.
+  // Cruce vigente del modal. REGLA DEL NEGOCIO: una referencia va casada a UN solo valor —
+  // un movimiento del banco es uno solo, por un monto exacto. Si el valor que se registra no
+  // es idéntico al del extracto, ahí hay algo raro y el funcionario tiene que validarlo con
+  // la foto del comprobante antes de pasar (no es un "abono parcial" de esa transferencia).
   const modalCruce = modalMetodo === "Transferencia" ? buscarPorReferencia(modalReferencia) : null;
-  const modalCruceCubre = !!modalCruce && Math.round(modalMonto) <= Math.round(modalCruce.monto);
+  const modalCruceCalza = !!modalCruce && Math.round(modalMonto) === Math.round(modalCruce.monto);
+  // La fecha del banco solo se adopta si el valor calza, o si el funcionario ya validó el
+  // descuadre con el comprobante (ahí igual está comprobado que ESE dinero entró ese día).
+  const modalCruceCubre = !!modalCruce && (modalCruceCalza || modalDescuadreOk);
   const modalFechaEfectiva = modalMetodo === "Transferencia"
     ? (modalCruceCubre ? modalCruce!.fecha_banco : modalFechaPago)
     : hoyISO();
@@ -1178,9 +1186,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (modalMetodo !== "Transferencia") return null;
     if (!modalComprobante) return "Sube la foto del comprobante de la transferencia.";
     if (!modalReferencia.trim()) return "Escribe el N° de referencia de la transferencia.";
-    if (modalCruce && Math.round(modalMonto) > Math.round(modalCruce.monto))
-      return `El banco solo recibió $ ${fmt(modalCruce.monto)} con la referencia ${modalCruce.referencia}, y estás registrando $ ${fmt(modalMonto)}. `
-        + "Corrige el valor; si fueron dos transferencias distintas, regístralas por separado.";
+    if (modalCruce && !modalCruceCalza && !modalDescuadreOk)
+      return `El banco recibió $ ${fmt(modalCruce.monto)} con la referencia ${modalCruce.referencia}, y estás registrando $ ${fmt(modalMonto)}. `
+        + "Una referencia va casada a un solo valor: revisa la foto del comprobante y marca la casilla solo si de verdad corresponde.";
     const repetida = pagoConMismaReferencia(modalReferencia);
     if (repetida && !modalRefRepetidaOk)
       return "Esa referencia ya se usó en otro pago. Verifica en el extracto y marca la casilla si de verdad cubre a dos clientes.";
@@ -3300,7 +3308,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
             {/* Valor */}
             <div style={{ marginBottom: 14 }}>
-              <MoneyInput label="Valor recibido" value={modalValor} onChange={setModalValor} />
+              {/* Cambiar el valor invalida el visto bueno del descuadre: se dio para OTRO monto. */}
+              <MoneyInput label="Valor recibido" value={modalValor} onChange={v => { setModalValor(v); setModalDescuadreOk(false); }} />
             </div>
 
             {/* Desglose de aplicación */}
@@ -3350,7 +3359,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   onChange={e => {
                     const v = e.target.value;
                     setModalReferencia(v);
-                    setModalRefRepetidaOk(false);
+                    setModalRefRepetidaOk(false); setModalDescuadreOk(false);
                     // Si esa referencia está en la bolsa de dinero sin dueño Y la plata alcanza,
                     // se adopta su fecha del banco: ahí la fecha deja de ser la palabra del
                     // cliente y pasa a estar comprobada.
@@ -3374,20 +3383,27 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     : null;
                   return (
                     <>
-                      {modalCruce && modalCruceCubre && (
+                      {modalCruce && modalCruceCalza && (
                         <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
                           ✅ <strong>Esta transferencia sí entró</strong> el {formatDate(modalCruce.fecha_banco)} por $ {fmt(modalCruce.monto)}.
-                          {Math.round(modalMonto) < Math.round(modalCruce.monto) && modalMonto > 0 ? (
-                            <> Como estás registrando $ {fmt(modalMonto)}, quedan <strong>$ {fmt(modalCruce.monto - modalMonto)}</strong> sin
-                            identificar: ese resto sigue en la bolsa hasta que aparezca su dueño.</>
-                          ) : <> Estaba sin identificar y se le asignará a este cliente.</>}
+                          Estaba sin identificar y se le asignará a este cliente.
                         </div>
                       )}
-                      {modalCruce && !modalCruceCubre && (
+                      {modalCruce && !modalCruceCalza && (
                         <div style={{ marginTop: 6, fontSize: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                          ⛔ <strong>El valor no cuadra.</strong> El banco recibió $ {fmt(modalCruce.monto)} con esa referencia
-                          y estás registrando $ {fmt(modalMonto)}. Corrige el valor; si fueron dos transferencias distintas,
-                          regístralas por separado.
+                          ⛔ <strong>El valor no cuadra.</strong> El banco recibió <strong>$ {fmt(modalCruce.monto)}</strong> con esa
+                          referencia y estás registrando <strong>$ {fmt(modalMonto)}</strong>. Una referencia va casada a un solo valor:
+                          si fueron dos transferencias, cada una tiene su propia referencia y se registran por separado.
+                          <label style={{ display: "flex", gap: 6, alignItems: "flex-start", marginTop: 6, cursor: "pointer", fontWeight: 600 }}>
+                            <input type="checkbox" checked={modalDescuadreOk} onChange={e => setModalDescuadreOk(e.target.checked)} />
+                            <span>Revisé la foto del comprobante y el extracto: este valor sí corresponde a esta referencia.</span>
+                          </label>
+                          {modalDescuadreOk && Math.round(modalMonto) < Math.round(modalCruce.monto) && (
+                            <div style={{ marginTop: 6 }}>
+                              Quedarán <strong>$ {fmt(modalCruce.monto - modalMonto)}</strong> sin identificar: ese resto sigue en la
+                              bolsa hasta que aparezca su dueño.
+                            </div>
+                          )}
                         </div>
                       )}
                       {!modalCruce && normalizarRef(modalReferencia).length >= 3 && (

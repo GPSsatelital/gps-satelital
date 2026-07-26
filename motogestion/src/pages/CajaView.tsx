@@ -616,6 +616,10 @@ export default function CajaView() {
       {/* Modal confirmación cierre — por grupo */}
       {showModal && grupoACerrar && (() => {
         const rc = resumenDeGrupo(grupoACerrar);
+        // En efectivo NUNCA puede faltar (ni sobrar): se recibe en la mano y se confirma en el
+        // acto. Cualquier diferencia bloquea el cierre — hay que hallar el error antes.
+        const arqModal = calcArqueo(rc.efectivo, rc.transfer);
+        const efectivoDescuadrado = arqModal.difEf !== null && arqModal.difEf !== 0;
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%" }}>
@@ -679,8 +683,11 @@ export default function CajaView() {
                     {cuadraTodo && <div>✓ Cuadra exacto: el efectivo y el banco, cada uno por su lado.</div>}
                     {a.difEf !== null && a.difEf !== 0 && (
                       <div>
-                        <strong>Efectivo:</strong> {a.difEf > 0 ? `sobran $${fmt(a.difEf)}` : `faltan $${fmt(Math.abs(a.difEf))}`}
-                        {a.difEf < 0 && " — hay pagos registrados que no están en la plata real. Revisa ANTES de cerrar."}
+                        ⛔ <strong>Efectivo: {a.difEf > 0 ? `sobran $${fmt(a.difEf)}` : `faltan $${fmt(Math.abs(a.difEf))}`}</strong>
+                        {a.difEf < 0
+                          ? " — hay pagos registrados que no están en la plata real."
+                          : " — hay plata en la caja que no está registrada como pago."}
+                        {" "}El efectivo se recibe en la mano: tiene que cuadrar exacto. <strong>No se puede cerrar</strong> hasta hallar la diferencia.
                       </div>
                     )}
                     {a.difBc !== null && a.difBc !== 0 && (
@@ -708,9 +715,13 @@ export default function CajaView() {
               <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 Cancelar
               </button>
-              <button onClick={handleCerrarCaja} disabled={cerrando}
-                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "var(--ok-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: cerrando ? "not-allowed" : "pointer", opacity: cerrando ? 0.7 : 1 }}>
-                {cerrando ? "Cerrando..." : "Confirmar cierre"}
+              {/* El efectivo se recibe en la mano y se confirma en el acto: si no cuadra, no es
+                  una nota al pie, es una alarma. La caja no se cierra hasta encontrar el error
+                  (o el dinero). El banco sí deja cerrar: un sobrante ahí es plata por identificar. */}
+              <button onClick={handleCerrarCaja} disabled={cerrando || efectivoDescuadrado}
+                title={efectivoDescuadrado ? "El efectivo contado no cuadra con lo registrado" : undefined}
+                style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "var(--ok-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: (cerrando || efectivoDescuadrado) ? "not-allowed" : "pointer", opacity: (cerrando || efectivoDescuadrado) ? 0.5 : 1 }}>
+                {cerrando ? "Cerrando..." : efectivoDescuadrado ? "El efectivo no cuadra" : "Confirmar cierre"}
               </button>
             </div>
           </div>

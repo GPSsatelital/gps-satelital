@@ -72,6 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    // Recarga completa al salir: los stores de tablas (createTableStore) y demás cachés viven
+    // a nivel de módulo y NO se limpian con el cambio de sesión — sin esto, el siguiente
+    // usuario que entre en la misma pestaña ve los datos del anterior hasta recargar.
+    // (Pasó en la prueba del 26-jul: el SUBADMIN vio los KPIs de toda la operación.)
+    window.location.reload();
   }
 
   return (

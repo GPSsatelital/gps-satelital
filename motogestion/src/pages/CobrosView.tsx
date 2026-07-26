@@ -1191,6 +1191,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
   /** Validaciones de la transferencia comunes a los dos botones (pedir confirmación y registrar). */
   function errorTransferencia(): string | null {
+    // Defensa en profundidad: aunque la UI fuerce Transferencia, el handler lo revalida.
+    if (modalMetodo === "Efectivo" && !puedePagoNormal)
+      return "No tienes permiso para registrar efectivo — el efectivo lo registra la secretaria.";
     if (modalMetodo !== "Transferencia") return null;
     if (!modalComprobante) return "Sube la foto del comprobante de la transferencia.";
     if (!modalReferencia.trim()) return "Escribe el N° de referencia de la transferencia.";
@@ -1204,6 +1207,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       return `La fecha del pago (${formatDate(modalFechaEfectiva)}) está fuera de rango: no puede ser futura ni de hace más de 60 días.`;
     return null;
   }
+
+  // Sin permiso de efectivo, el modal nunca puede quedar parado en "Efectivo" — cubre
+  // TODAS las puertas de entrada (botón de la tarjeta, "+", reset del cierre).
+  useEffect(() => {
+    if (modalPago && !puedePagoNormal && modalMetodo === "Efectivo") setModalMetodo("Transferencia");
+  }, [modalPago, puedePagoNormal, modalMetodo]);
 
   const modalResultados = resumenContratos.filter(c => {
     const q = modalBusqueda.trim().toLowerCase();
@@ -3356,7 +3365,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               </div>
             )}
 
-            {/* Método */}
+            {/* Método — el efectivo solo para quien tiene el permiso registrar_efectivo
+                (el botón "Pagar" de cada tarjeta abre este modal para CUALQUIER rol,
+                porque reportar transferencias sí es de todos; el efectivo no). */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>Método de pago</label>
               <select
@@ -3364,15 +3375,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 value={modalMetodo}
                 onChange={e => {
                   const m = e.target.value as MetodoPago;
+                  if (m === "Efectivo" && !puedePagoNormal) return;
                   setModalMetodo(m);
                   // Volver a hoy al pasar a Efectivo: si no, una fecha vieja elegida para una
                   // transferencia quedaría pegada en un pago en efectivo (el campo ya no se ve).
                   if (m === "Efectivo") { setModalFechaPago(hoyISO()); setModalFechaDelBanco(null); }
                 }}
               >
-                <option value="Efectivo">Efectivo (confirma automático)</option>
+                <option value="Efectivo" disabled={!puedePagoNormal}>Efectivo (confirma automático)</option>
                 <option value="Transferencia">Transferencia (queda pendiente)</option>
               </select>
+              {!puedePagoNormal && (
+                <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 5 }}>Solo la secretaria registra efectivo</div>
+              )}
             </div>
 
             {/* Fecha real del pago — SOLO en transferencia. El efectivo se recibe en la mano

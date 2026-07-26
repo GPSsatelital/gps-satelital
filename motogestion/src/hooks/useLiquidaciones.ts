@@ -235,7 +235,14 @@ export function useLiquidaciones() {
       .limit(1);
     if (!otroActivo || otroActivo.length === 0) {
       const estadoCliente = liq.motivo === "cumplimiento" ? "Egresado" : "Retirado";
-      await supabase.from("clientes").update({ estado: estadoCliente }).eq("id", liq.cliente_id);
+      // El error se revisa: antes se descartaba y, como 'Egresado' no existía en el CHECK
+      // (corregido en la mig 067), el cierre por cumplimiento decía "listo" y dejaba al
+      // cliente Activo para siempre. Un fallo aquí no invalida el cierre, pero hay que verlo.
+      const { error: errCliente } = await supabase
+        .from("clientes").update({ estado: estadoCliente }).eq("id", liq.cliente_id);
+      if (errCliente) {
+        return { error: `La liquidación se cerró, pero el cliente no quedó como "${estadoCliente}": ${errCliente.message}. Avísale al administrador.` };
+      }
     }
 
     if (liq.saldo_final < 0) {

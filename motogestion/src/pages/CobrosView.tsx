@@ -765,9 +765,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // arranca desde la entrega (topado al corte de migración), no desde el sentinel 999 (reservado
       // para contratos genuinamente nuevos sin deuda). Evita que Recolección los ignore para siempre.
       const grupoMoto = motos.find(m => m.id === contrato.moto_id)?.grupo ?? null;
+      // Antes esto exigía además `deudaContrato > 0`, y por eso el cliente que recibe la moto
+      // y NUNCA paga una sola cuota (sin deuda registrada) quedaba en 999 para siempre: la
+      // lista de Contratos le ponía "P4: Recolección física" pero jamás entraba al grupo de
+      // Recolección, así que el botón no aparecía nunca. No hace falta esa condición para
+      // proteger a los contratos nuevos: quien filtra es `estadoCartera === "mora"`, que ya
+      // devuelve "al-dia" mientras el contrato esté en prorrateo o al corriente.
       const diasSinPago = ultimoPagoFecha
         ? Math.floor((Date.now() - new Date(ultimoPagoFecha + "T00:00:00").getTime()) / 86400000)
-        : (contrato.fecha_entrega && deudaContrato > 0)
+        : contrato.fecha_entrega
           ? (diasDesdeUltimoPago(null, contrato.fecha_entrega, corteMigracionGrupo(grupoMoto)) ?? 999)
           : 999;
       const ultimaGestion = gestiones.filter(g => g.contrato_id === contrato.id)[0] ?? null;

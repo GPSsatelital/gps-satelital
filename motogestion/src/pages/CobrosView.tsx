@@ -3406,10 +3406,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           )}
                         </div>
                       )}
+                      {/* Que no esté en la bolsa es lo NORMAL (la mayoría de clientes reportan
+                          su pago el mismo día). El aviso informa, no alarma — si alarmara en
+                          cada cobro, dejaría de leerse justo cuando importa. */}
                       {!modalCruce && normalizarRef(modalReferencia).length >= 3 && (
-                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                          ⚠️ No hay ninguna transferencia sin identificar con esa referencia. <strong>Verifica en el banco</strong> antes
-                          de confirmarla — si el dinero sí entró, puedes seguir.
+                        <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", background: "var(--soft)", borderRadius: 8, padding: "7px 10px" }}>
+                          Esta referencia no está en el dinero sin identificar — es lo normal cuando el cliente reporta su pago.
+                          La secretaria la verificará contra el extracto al confirmar.
                         </div>
                       )}
                       {repetida && (

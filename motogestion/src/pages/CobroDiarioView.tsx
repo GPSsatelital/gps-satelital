@@ -130,6 +130,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrarMetodo, setCobrarMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
   // N° de referencia: obligatorio en transferencia, es la prueba de que el dinero entró.
   const [cobrarReferencia, setCobrarReferencia] = useState("");
+  // Foto del comprobante: obligatoria en transferencia, igual que en Cartera. Sin ella, quien
+  // cobra en la calle podía registrar una transferencia sin ningún respaldo.
+  const [cobrarComprobante, setCobrarComprobante] = useState<File | null>(null);
+  const [cobrarSubiendo, setCobrarSubiendo] = useState(false);
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
   const [confirmarCobroOpen, setConfirmarCobroOpen] = useState(false);
@@ -145,7 +149,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
-  const { pagos, registrarPago } = usePagos();
+  const { pagos, registrarPago, subirComprobante } = usePagos();
   const { deudas } = useDeudas();
   const { convenioActivoDelContrato } = useConvenios();
   const { cerrarCaja, cajaDia } = useCaja();
@@ -260,6 +264,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
+    if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
     setCobrarError(null);
     setConfirmarCobroOpen(true);
   }
@@ -269,6 +274,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
+    if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;
@@ -280,20 +286,28 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       aplicado.ahorro = calcularAhorroAplicado(contratoFila, aplicado.tarifa, estaEnProrrateo(contratoFila, sinPagos),
         tarifaPagadaPeriodoActual(contratoFila, pagos.filter(p => p.contrato_id === contratoFila.id), new Date(hoy + "T00:00:00")));
     }
+    let comprobanteUrl: string | undefined;
+    if (cobrarMetodo === "Transferencia" && cobrarComprobante) {
+      setCobrarSubiendo(true);
+      const { url, error: upErr } = await subirComprobante(cobrarComprobante, f.contratoId);
+      setCobrarSubiendo(false);
+      if (upErr) { setCobrandoLoading(false); setCobrarError("Error subiendo comprobante: " + upErr); return; }
+      comprobanteUrl = url ?? undefined;
+    }
     const { error } = await registrarPago(
       f.contratoId, valor, cobrarMetodo,
       // Motor v2: la BD reparte al confirmar; el desglose local es solo preview.
       contratoFila?.motor_v2 && contratoFila.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
       {
         registradoPor: profile?.id,
-        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim() } : {}),
+        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim(), comprobanteUrl } : {}),
         ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
       });
     setCobrandoLoading(false);
     if (error) { setCobrarError(error); return; }
     setConfirmarCobroOpen(false);
     setCobrandoId(null);
-    setCobrarValor(""); setCobrarReferencia("");
+    setCobrarValor(""); setCobrarReferencia(""); setCobrarComprobante(null);
     setCobrarNota("");
   }
 
@@ -303,6 +317,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setCobrarMetodo(esSecretaria ? "Efectivo" : "Transferencia");
     setCobrarError(null);
     setCobrarNota("");
+    // La referencia y el comprobante son de UN cliente: nunca heredarlos del anterior.
+    setCobrarReferencia(""); setCobrarComprobante(null);
   }
 
   const q = busqueda.toLowerCase();
@@ -434,6 +450,22 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   placeholder="El número que aparece en el comprobante"
                   style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14 }}
                 />
+                {/* La foto SIEMPRE es obligatoria en transferencia (regla del negocio): es lo
+                    que permite validar el valor contra la referencia cuando algo no cuadra. */}
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", margin: "10px 0 6px" }}>
+                  Foto del comprobante *
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setCobrarComprobante(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
+                    🖼 Galería
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setCobrarComprobante(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+                {cobrarComprobante && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✓ {cobrarComprobante.name}</div>}
               </div>
             )}
           </div>
@@ -463,10 +495,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
             </button>
             <button
               onClick={pedirConfirmacionCobro}
-              disabled={cobrandoLoading}
-              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: cobrandoLoading ? "var(--faint)" : "var(--text)", color: "var(--card)", cursor: cobrandoLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
+              disabled={cobrandoLoading || cobrarSubiendo}
+              style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: (cobrandoLoading || cobrarSubiendo) ? "var(--faint)" : "var(--text)", color: "var(--card)", cursor: (cobrandoLoading || cobrarSubiendo) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14 }}
             >
-              {cobrandoLoading ? "Registrando..." : "✅ Confirmar pago"}
+              {cobrarSubiendo ? "Subiendo foto..." : cobrandoLoading ? "Registrando..." : "✅ Confirmar pago"}
             </button>
           </div>
         </div>

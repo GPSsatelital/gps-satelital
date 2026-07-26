@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
+import { normalizarRef } from "./useIngresosNoIdentificados";
 import { hoyISO } from "../utils/fecha";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
@@ -266,14 +267,50 @@ export function usePagos() {
     return { error: error?.message ?? null };
   }
 
+  /**
+   * Cruza el pago contra la bolsa de dinero sin dueño. Vive AQUÍ y no en cada pantalla porque
+   * confirmar es el único embudo por el que pasan TODAS las transferencias, sin importar dónde
+   * se registraron (Cartera, Cobro Diario, o cualquier punto futuro), y siempre lo opera
+   * SECRETARIA/ADMIN — que son los únicos con permiso RLS sobre esa tabla.
+   * Regla del negocio: una referencia va casada a UN valor exacto. Si el monto no es idéntico,
+   * NO se cruza — queda en la bolsa para que alguien lo valide, que es justo lo que se quiere.
+   */
+  async function cruzarConDineroSinDuenio(pagoId: string) {
+    const { data: pago } = await supabase.from("pagos").select("referencia, valor").eq("id", pagoId).single();
+    if (!pago?.referencia) return;
+    const ref = normalizarRef(pago.referencia);
+    if (ref.length < 3) return;
+    const { data: partidas } = await supabase
+      .from("ingresos_no_identificados").select("id, referencia, monto").eq("estado", "pendiente");
+    // La referencia se guarda cruda: se compara normalizada en memoria.
+    const match = (partidas ?? []).find(
+      p => normalizarRef(p.referencia) === ref && Math.round(p.monto) === Math.round(pago.valor),
+    );
+    if (!match) return;
+    await supabase.from("ingresos_no_identificados")
+      .update({ estado: "asignado", pago_id: pagoId })
+      .eq("id", match.id).eq("estado", "pendiente").is("pago_id", null);
+  }
+
+  /** Si un pago cruzado se cae, su plata vuelve a estar sin dueño (si no, quedaba invisible). */
+  async function liberarDineroSinDuenio(pagoId: string) {
+    await supabase.from("ingresos_no_identificados")
+      .update({ estado: "pendiente", pago_id: null })
+      .eq("pago_id", pagoId);
+  }
+
   async function confirmarPago(id: string) {
     const { error } = await supabase.from("pagos").update({ estado: "Confirmado" }).eq("id", id);
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    await cruzarConDineroSinDuenio(id);
+    return { error: null };
   }
 
   async function rechazarPago(id: string) {
     const { error } = await supabase.from("pagos").update({ estado: "Rechazado" }).eq("id", id);
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    await liberarDineroSinDuenio(id);
+    return { error: null };
   }
 
   // Borrado real de un pago mal ingresado — exclusivo ADMIN_PRINCIPAL (validado también
@@ -289,6 +326,7 @@ export function usePagos() {
       valor_nuevo: "(borrado)",
       editado_por: eliminadoPor,
     });
+    await liberarDineroSinDuenio(pago.id);
     const { error } = await supabase.from("pagos").delete().eq("id", pago.id);
     return { error: error?.message ?? null };
   }

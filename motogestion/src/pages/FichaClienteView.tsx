@@ -225,8 +225,11 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
     pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0),
     [pagosCliente]
   );
+  // Solo deuda EXIGIBLE: las 'en_convenio' ya están financiadas dentro del convenio y se cobran
+  // con su cuota. Sumarlas aquí le mostraba al cliente su deuda DOS VECES en su propia ficha
+  // (medido: 17 clientes, $8.047.100 de más — varios con deuda directa real de $0).
   const deudaActiva = useMemo(() =>
-    deudasCliente.filter(d => d.estado !== "pagada").reduce((s, d) => s + d.monto_pendiente, 0),
+    deudasCliente.filter(d => d.estado === "pendiente").reduce((s, d) => s + d.monto_pendiente, 0),
     [deudasCliente]
   );
 
@@ -929,7 +932,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     onClick={() => {
                       const contratoCv = contratosCliente.find(c => c.id === cv.contrato_id);
                       const moto = motos.find(m => m.id === contratoCv?.moto_id) ?? null;
-                      const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado !== "pagada");
+                      // El acuerdo de pago es un documento que el cliente FIRMA: solo puede
+                      // listar deuda exigible. Las 'en_convenio' ya las cubre este mismo convenio.
+                      const deudasContrato = deudasCliente.filter(d => d.contrato_id === cv.contrato_id && d.estado === "pendiente");
                       imprimirAcuerdoPago(cliente, moto, deudasContrato, cv, contratoCv ? infoFinContrato(contratoCv) : undefined);
                     }}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}

@@ -70,11 +70,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   useEffect(() => {
     if (metaFija != null) return;
     async function cargarDeuda() {
+      // Solo deuda EXIGIBLE. Con `neq('pagada')` entraban también las 'en_convenio': un
+      // convenio NUEVO nacía cubriendo plata que un convenio ANTERIOR ya financiaba, y el
+      // cliente terminaba pagándola dos veces. Es el mismo error que corrigió la mig 070,
+      // por otra puerta.
       const { data } = await supabase
         .from("deudas")
         .select("monto_pendiente")
         .eq("contrato_id", contratoId)
-        .neq("estado", "pagada");
+        .eq("estado", "pendiente");
       const total = (data ?? []).reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0);
       setMetaManual(String(total));
       setMetaCargada(true);

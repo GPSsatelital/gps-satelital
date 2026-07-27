@@ -1019,9 +1019,12 @@ export default function ReportesView({ onNavigate }: Props) {
   }).filter(e => e.diasSinPago > 2), [contratosActivos, pagos, motos]);
 
   // Deuda real por contrato (tabla deudas) — no estimada por días
+  // Mismo criterio que la línea 589 de este archivo (`=== "pendiente"`): antes había DOS
+  // verdades contradictorias en el mismo informe — esta inflaba la deuda con lo que ya está
+  // financiado dentro de un convenio.
   const deudaDelContrato = useMemo(() => {
     const map = new Map<string, number>();
-    deudas.filter(d => d.estado !== "pagada").forEach(d => {
+    deudas.filter(d => d.estado === "pendiente").forEach(d => {
       map.set(d.contrato_id, (map.get(d.contrato_id) ?? 0) + d.monto_pendiente);
     });
     return map;

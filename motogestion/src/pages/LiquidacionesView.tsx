@@ -3,6 +3,7 @@ import { useLiquidaciones, type Liquidacion, type DetalleDano, type DetalleDeuda
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type Moto } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
+import { useTaller, type TallerItem } from "../hooks/useTaller";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
@@ -77,6 +78,7 @@ export default function LiquidacionesView() {
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
+  const { taller } = useTaller();
   const motos = filtrarMotos(todasMotos);
 
   const [sel, setSel] = useState<Liquidacion | null>(null);
@@ -93,14 +95,39 @@ export default function LiquidacionesView() {
   const activas = liquidaciones.filter((l) => l.estado !== "cerrada");
   const cerradas = liquidaciones.filter((l) => l.estado === "cerrada");
 
+  /** La orden de taller que creó ESTA liquidación (se vincula en `taller_id` al iniciarla). */
+  function ordenDe(l: Liquidacion): TallerItem | null {
+    return l.taller_id ? (taller.find(t => t.id === l.taller_id) ?? null) : null;
+  }
+
   function seleccionar(l: Liquidacion) {
     setSel(l);
     setMsg(null);
-    setObsT(l.observaciones_taller ?? "");
-    setDanos(l.detalle_danos.length > 0 ? l.detalle_danos : [{ concepto: "", monto: 0 }]);
+    // Si la liquidación aún no tiene revisión escrita, se PRECARGA con lo que puso el mecánico
+    // en su orden de taller. Antes había que reescribir a mano lo mismo que él ya había
+    // registrado, y la liquidación se quedaba en "en taller" aunque la orden estuviera
+    // Finalizado — nadie entendía por qué. Se precarga, NO se da por hecho: el costo de daños
+    // se descuenta del ahorro del cliente, así que alguien lo confirma antes de calcular.
+    const orden = ordenDe(l);
+    const yaEscrita = !!l.observaciones_taller;
+    setObsT(l.observaciones_taller ?? (orden ? textoRevisionDe(orden) : ""));
+    setDanos(
+      l.detalle_danos.length > 0 ? l.detalle_danos
+      : (!yaEscrita && orden && orden.costo > 0)
+        ? [{ concepto: orden.repuestos?.trim() || "Reparación en taller", monto: orden.costo }]
+        : [{ concepto: "", monto: 0 }],
+    );
     setDeudas(l.detalle_deudas.length > 0 ? l.detalle_deudas : [{ concepto: "", monto: 0 }]);
     setNombreResp(l.nombre_responsable ?? "");
     setCargoResp(l.cargo_responsable ?? "");
+  }
+
+  /** Arma el texto de observaciones a partir de lo que registró el mecánico. */
+  function textoRevisionDe(o: TallerItem): string {
+    const partes = [o.detalle?.trim()];
+    if (o.repuestos?.trim()) partes.push(`Repuestos: ${o.repuestos.trim()}`);
+    if (o.costo > 0) partes.push(`Costo de taller: $${o.costo.toLocaleString("es-CO")}`);
+    return partes.filter(Boolean).join(" · ");
   }
 
   function clienteDe(liq: Liquidacion) {
@@ -269,6 +296,31 @@ export default function LiquidacionesView() {
             {(sel.estado === "iniciada" || sel.estado === "en_taller") && (
               <div style={card}>
                 <div style={{ fontWeight: 700, marginBottom: 12 }}>Revisión de taller</div>
+
+                {/* Estado REAL de la orden del mecánico. Sin esto, la liquidación decía
+                    "En taller" aunque él ya hubiera terminado, y nadie sabía qué faltaba. */}
+                {(() => {
+                  const o = ordenDe(sel);
+                  if (!o) return (
+                    <div style={{ fontSize: 12.5, background: "var(--soft)", color: "var(--muted2)", borderRadius: 10, padding: "9px 11px", marginBottom: 12 }}>
+                      Esta liquidación no tiene orden de taller vinculada. Escribe abajo lo que se revisó.
+                    </div>
+                  );
+                  const listo = o.estado_tecnico === "Finalizado";
+                  return (
+                    <div style={{ fontSize: 12.5, borderRadius: 10, padding: "9px 11px", marginBottom: 12,
+                      background: listo ? "var(--ok-soft)" : "var(--warn-soft)",
+                      color: listo ? "var(--ok-ink)" : "var(--warn-ink)" }}>
+                      {listo ? (
+                        <>✓ <strong>El mecánico ya terminó la revisión.</strong> Abajo está lo que registró —
+                        revísalo, ajústalo si hace falta y confirma para calcular el saldo.</>
+                      ) : (
+                        <>⏳ <strong>El mecánico aún no termina</strong> (va en «{o.estado_tecnico}»).
+                        Puedes esperar a que cierre su orden en Taller, o escribir la revisión aquí si ya la tienes.</>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <label style={label}>Observaciones</label>
                 <textarea value={obsT} onChange={(e) => setObsT(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical", marginBottom: 12 }} placeholder="Estado del vehículo, observaciones..." />

@@ -68,7 +68,7 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
     >
       {/* Encabezado */}
       <div style={{ textAlign: "center", marginBottom: 4 }}>
-        <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: 1, color: "#000" }}>CLUB DE MOTEROS</div>
+        <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: 1, color: "#000" }}>CLUB MOTEROS CARTAGENA</div>
         {datos.grupo && <div style={{ fontSize: 12, fontWeight: 700, color: "#000" }}>{datos.grupo}</div>}
         <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: "#000" }}>{datos.titulo}</div>
       </div>

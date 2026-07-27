@@ -390,7 +390,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
         {/* Ticket — esto es lo único que se imprime (ver #recibo-ticket / @media print más abajo) */}
         <div id="recibo-ticket">
           <div style={{ textAlign: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: 0.5 }}>CLUB DE MOTEROS</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: 0.5 }}>CLUB MOTEROS CARTAGENA</div>
             {datos.grupo && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{datos.grupo}</div>}
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>Comprobante de pago</div>
             {/* Misma jerarquía que el ticket impreso: la placa manda. */}

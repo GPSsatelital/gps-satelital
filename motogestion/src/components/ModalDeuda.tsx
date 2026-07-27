@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
 import MoneyInput from "./MoneyInput";
+import { useDeudas } from "../hooks/useDeudas";
+import { useAuth } from "../contexts/AuthContext";
 
 type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada";
 
@@ -36,6 +37,8 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
 ];
 
 export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props) {
+  const { registrarDeuda } = useDeudas();
+  const { profile } = useAuth();
   const [tipo, setTipo] = useState<TipoDeuda>("daño_vehiculo");
   const [valor, setValor] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -44,24 +47,30 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
   const [exito, setExito] = useState(false);
 
   async function handleGuardar() {
+    if (guardando) return;   // anti-doble-clic: esto inserta una deuda real
     if (!valor || Number(valor) <= 0) {
       setError("Ingresa un valor válido.");
       return;
     }
+    // La columna es NOT NULL en la BD: sin esto se mandaba null y reventaba con un error
+    // crudo de Postgres (23502) delante del cliente, sin decir qué faltaba.
+    if (!descripcion.trim()) {
+      setError("Escribe de qué es la deuda — queda en el estado de cuenta del cliente.");
+      return;
+    }
+    if (!profile) {
+      setError("No se pudo identificar tu usuario. Vuelve a entrar y reintenta.");
+      return;
+    }
     setError(null);
     setGuardando(true);
-    const { error: err } = await supabase.from("deudas").insert({
-      contrato_id: contratoId,
-      concepto: tipo,
-      descripcion: descripcion.trim() || null,
-      monto: Number(valor),
-      monto_pendiente: Number(valor),
-      estado: "pendiente",
-      registrado_por: null,
-    });
+    // Mismo hook que usa Cartera (useDeudas): una sola puerta para crear deudas, y así
+    // esta queda con su autor — antes se insertaba directo con registrado_por en null,
+    // dejando sin rastro quién le cargó la deuda al cliente.
+    const { error: err } = await registrarDeuda(contratoId, tipo, descripcion.trim(), Number(valor), profile.id);
     setGuardando(false);
     if (err) {
-      setError(err.message);
+      setError(err);
       return;
     }
     setExito(true);
@@ -101,13 +110,16 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
         <MoneyInput label="Valor" value={valor} onChange={setValor} />
 
         <div>
-          <div style={labelStyle}>Descripción (opcional)</div>
+          <div style={labelStyle}>¿De qué es la deuda?</div>
           <textarea
             style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
             value={descripcion}
             onChange={e => setDescripcion(e.target.value)}
-            placeholder="Detalle adicional..."
+            placeholder="Ej: farol delantero roto, repuesto prestado el 12 de julio..."
           />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            Esto es lo que el cliente va a leer en su estado de cuenta.
+          </div>
         </div>
 
         {error && (

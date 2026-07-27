@@ -735,7 +735,7 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [visitas, clientes, subadmins, desde, hasta]);
 
   const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
-  const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club de Moteros`;
+  const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club Moteros Cartagena`;
 
   // Celdas del Excel (SIN emojis: palabra + relleno de color suave; los montos son NÚMERO real).
   const xEstado = (m: MotoRowG): CeldaX => m.estado === "aldia"
@@ -946,7 +946,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const convenirHtml = porConvenir.length === 0 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:16px 0 6px">Por convenir — tarea de la semana</div>${porConvenir.map(b => `<div style="margin-bottom:8px"><div style="background:#fff7ed;color:#92400e;font-weight:bold;font-size:12px;padding:4px 8px;border-radius:5px">${esc(b.nombre.toUpperCase())} — ${b.motos.length} por convenir · debe $ ${fmt(b.motos.reduce((s, m) => s + m.deudaPend, 0))}</div><table style="width:100%;border-collapse:collapse">${b.motos.map(m => `<tr>${td(esc(m.cliente.toUpperCase()))}${td(m.placa, "center")}${td(m.telefono || "—", "center", "#185fa5")}${td(m.formaPago, "center")}${td("debe $ " + fmt(m.deudaPend), "right", "#991b1b", true)}</tr>`).join("")}</table></div>`).join("")}`;
     const titulo = filtrosActivos ? `Informe gerencial — ${esc(filtrosResumen)}` : "Informe gerencial de cartera";
     return `<div style="font-family:Arial,sans-serif;color:#0f172a;width:794px">`
-      + `<div style="background:#0f2740;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">${titulo}</div><div style="font-size:12px;color:#7fb2e6;margin-top:2px">Recaudo y gestión por cobrador</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB DE MOTEROS</div></div>`
+      + `<div style="background:#0f2740;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">${titulo}</div><div style="font-size:12px;color:#7fb2e6;margin-top:2px">Recaudo y gestión por cobrador</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB MOTEROS CARTAGENA</div></div>`
       + `<div style="padding:6px 18px;background:#f1f5f9;font-size:11px;color:#475569">del ${fmtFechaCorta(desde)} al ${fmtFechaCorta(hasta)} &nbsp;·&nbsp; generado ${fmtFechaCorta(hoyISO())}${filtrosActivos ? ` &nbsp;·&nbsp; filtros: ${esc(filtrosResumen)}` : ""}</div>`
       + `<div style="padding:8px 18px 18px">${portada}${spark}${graficos}${agingHtml}${tablaRanking}${matrizHtml}${metodoHtml}${convenirHtml}<div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#94a3b8;text-align:center">Al día = cubrió su período o convenio al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar · Cumplimiento $ = recaudado / cuota por ciclo. El recaudo se atribuye al cobrador que tiene la moto actualmente.<br>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div></div></div>`;
   }

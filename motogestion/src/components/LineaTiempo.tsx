@@ -65,7 +65,7 @@ export default function LineaTiempo({
       <h2>Historial — ${esc(titulo)}</h2>
       <div class="sub">${esc(subtitulo ?? "")} · ${esc(filtroTxt)} · Generado el ${esc(new Date().toLocaleDateString("es-CO"))}</div>
       <table>${filas}</table>
-      <div class="sub" style="margin-top:12px">Documento informativo · CLUB DE MOTEROS</div>
+      <div class="sub" style="margin-top:12px">Documento informativo · CLUB MOTEROS CARTAGENA</div>
       </body></html>`);
     w.document.close(); w.focus();
     setTimeout(() => w.print(), 400);

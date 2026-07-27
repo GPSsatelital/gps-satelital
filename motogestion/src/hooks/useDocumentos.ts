@@ -573,7 +573,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
   const sep = `<div style="border-top:1px dashed #94a3b8;margin:8px 0"></div>`;
   return `
     <div style="font-family:'Courier New',monospace;font-size:12px;color:#000;max-width:280px;margin:0 auto;padding:8px">
-      <div style="text-align:center;font-weight:800">CLUB DE MOTEROS</div>
+      <div style="text-align:center;font-weight:800">CLUB MOTEROS CARTAGENA</div>
       <div style="text-align:center;font-size:11px">ESTADO DE CUENTA · ${fmtFecha(hoyISO())}</div>
       ${sep}
       <div style="font-weight:800;text-transform:uppercase">${cliente.nombre}</div>
@@ -611,7 +611,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
 // Versión texto plano del estado de cuenta, para enviar por WhatsApp.
 export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta, incluirAhorro = false): string {
   const l: string[] = [
-    "📋 *ESTADO DE CUENTA — CLUB DE MOTEROS*",
+    "📋 *ESTADO DE CUENTA — CLUB MOTEROS CARTAGENA*",
     `Cliente: ${cliente.nombre}`,
     ...(moto ? [`Placa: ${moto.placa}`] : []),
     `Fecha: ${fmtFecha(hoyISO())}`,

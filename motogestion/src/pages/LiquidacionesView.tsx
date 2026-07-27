@@ -109,14 +109,13 @@ export default function LiquidacionesView() {
     // Finalizado — nadie entendía por qué. Se precarga, NO se da por hecho: el costo de daños
     // se descuenta del ahorro del cliente, así que alguien lo confirma antes de calcular.
     const orden = ordenDe(l);
-    const yaEscrita = !!l.observaciones_taller;
     setObsT(l.observaciones_taller ?? (orden ? textoRevisionDe(orden) : ""));
-    setDanos(
-      l.detalle_danos.length > 0 ? l.detalle_danos
-      : (!yaEscrita && orden && orden.costo > 0)
-        ? [{ concepto: orden.repuestos?.trim() || "Reparación en taller", monto: orden.costo }]
-        : [{ concepto: "", monto: 0 }],
-    );
+    // Los DAÑOS se dejan en blanco a propósito. NO son lo que gastó el taller: son lo que se
+    // le COBRA AL CLIENTE, y eso se le resta del ahorro (saldo = ahorro − deudas − daños).
+    // Un cambio de frenos o de aceite lo gasta el taller pero NO se le cobra: es desgaste
+    // normal del negocio. Solo se cobra lo que el cliente dañó (farol roto, abolladura).
+    // Precargar el costo del taller aquí le habría cobrado al cliente hasta el mantenimiento.
+    setDanos(l.detalle_danos.length > 0 ? l.detalle_danos : [{ concepto: "", monto: 0 }]);
     setDeudas(l.detalle_deudas.length > 0 ? l.detalle_deudas : [{ concepto: "", monto: 0 }]);
     setNombreResp(l.nombre_responsable ?? "");
     setCargoResp(l.cargo_responsable ?? "");
@@ -312,11 +311,17 @@ export default function LiquidacionesView() {
                       background: listo ? "var(--ok-soft)" : "var(--warn-soft)",
                       color: listo ? "var(--ok-ink)" : "var(--warn-ink)" }}>
                       {listo ? (
-                        <>✓ <strong>El mecánico ya terminó la revisión.</strong> Abajo está lo que registró —
-                        revísalo, ajústalo si hace falta y confirma para calcular el saldo.</>
+                        <>✓ <strong>El mecánico ya terminó la revisión.</strong> Sus observaciones están abajo.</>
                       ) : (
                         <>⏳ <strong>El mecánico aún no termina</strong> (va en «{o.estado_tecnico}»).
                         Puedes esperar a que cierre su orden en Taller, o escribir la revisión aquí si ya la tienes.</>
+                      )}
+                      {o.costo > 0 && (
+                        <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid currentColor", opacity: 0.9 }}>
+                          El taller gastó <strong>${o.costo.toLocaleString("es-CO")}</strong>
+                          {o.repuestos?.trim() ? ` (${o.repuestos.trim()})` : ""}. Eso es lo que le costó a la
+                          empresa — <strong>no</strong> es lo que se le cobra al cliente.
+                        </div>
                       )}
                     </div>
                   );
@@ -325,7 +330,12 @@ export default function LiquidacionesView() {
                 <label style={label}>Observaciones</label>
                 <textarea value={obsT} onChange={(e) => setObsT(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical", marginBottom: 12 }} placeholder="Estado del vehículo, observaciones..." />
 
-                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Daños (si aplica)</div>
+                <div style={{ fontWeight: 600, marginBottom: 2, fontSize: 13 }}>Daños que se le cobran al cliente</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8 }}>
+                  Solo lo que el cliente dañó (farol roto, abolladura). El desgaste normal —frenos,
+                  aceite, llantas— lo asume la empresa y va aquí en <strong>$0</strong>.
+                  Esto <strong>se le resta de su ahorro</strong>.
+                </div>
                 {danos.map((d, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <input style={{ ...inputStyle, flex: 2 }} placeholder="Concepto" value={d.concepto} onChange={(e) => setDanos(danos.map((x, j) => j === i ? { ...x, concepto: e.target.value } : x))} />

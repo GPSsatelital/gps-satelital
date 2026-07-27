@@ -1,4 +1,4 @@
-# Brief de diseño — MotoGestión / Club de Moteros
+# Brief de diseño — MotoGestión / Club Moteros Cartagena
 
 > **Para quién es este documento:** para una herramienta o diseñador que va a trabajar la
 > identidad de marca, piezas gráficas y propuestas de interfaz **fuera** del código del sistema.
@@ -11,7 +11,7 @@
 
 ## 1. La empresa
 
-**Club de Moteros** — Cartagena de Indias, Colombia. Arriendo de motos a conductores que
+**Club Moteros Cartagena** — Cartagena de Indias, Colombia. Arriendo de motos a conductores que
 trabajan con ellas (domicilios, mototaxi, mensajería). No es venta ni leasing: el cliente **paga
 por usar la moto** y, según la modalidad, va acumulando un ahorro que puede terminar en la
 propiedad del vehículo.
@@ -140,7 +140,7 @@ COSTA = cian · PRADERA = verde · RASTREADOR = ámbar · USADAS = violeta
 ## 5. Qué se necesita diseñar
 
 ### Prioridad 1 — Marca
-1. **Logo de Club de Moteros.** Hoy **no existe**. Debe funcionar en:
+1. **Logo de Club Moteros Cartagena.** Hoy **no existe**. Debe funcionar en:
    - la esquina superior de la app (espacio reducido, sobre navy oscuro)
    - los recibos impresos en papel térmico de 80 mm, **en blanco y negro puro**
    - documentos legales (contrato, pagaré, paz y salvo)

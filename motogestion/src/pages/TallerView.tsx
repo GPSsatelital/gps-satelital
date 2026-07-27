@@ -552,8 +552,16 @@ export default function TallerView() {
   // el estado a mano en Motos, sin dejar diagnóstico ni costo) y, como el préstamo de reemplazo
   // exige que la moto esté en taller, todo ese flujo quedaba bloqueado desde el primer paso.
   // Al crear la orden, useTaller la pasa a Mantenimiento; al cerrarla vuelve a Asignada sola.
+  //
+  // Las RETENIDAS (Fiscalía / Tránsito / Garantía) quedan FUERA a propósito. Si se le pudiera abrir
+  // orden directa a una moto retenida, pasaban dos cosas malas: se quedaba marcada como retenida
+  // para siempre (la ficha la mostraría en rojo aunque ya estuviera rodando), y los días entre que
+  // la retuvieron y que se abrió la orden no se le cobraban ni se le rodaban a nadie — el taller
+  // cuenta desde su fecha de ingreso, no desde la retención. Para llevarla a taller hay que darle
+  // primero a "✅ Salida de …" en Motos y elegir ahí "pasa a taller": eso la deja en Mantenimiento,
+  // resuelve el tiempo parado y entonces sí aparece en esta lista. Decisión del dueño, 27-jul-2026.
   const motosParaTaller = motos
-    .filter((m) => ["Asignada", "Disponible", "Mantenimiento", "Recuperada", "Garantia"].includes(m.estado))
+    .filter((m) => ["Asignada", "Disponible", "Mantenimiento", "Recuperada"].includes(m.estado))
     .map((m) => ({ id: m.id, label: `${m.placa} - ${m.marca} ${m.modelo} (${m.estado})` }));
 
   async function handleActualizarOrden(id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string) {

@@ -225,8 +225,29 @@ export function useLiquidaciones() {
     // cliente ("En traspaso" hasta completar el cambio de titularidad ante tránsito);
     // en los demás casos vuelve a la flota como Disponible.
     if (liq.moto_id) {
-      const estadoMoto = liq.motivo === "cumplimiento" ? "En traspaso" : "Disponible";
-      await supabase.from("motos").update({ estado: estadoMoto }).eq("id", liq.moto_id);
+      // La moto NO se libera si ya está comprometida con OTRO contrato: en la operación real
+      // el papeleo va detrás de la calle — el cliente entrega la moto, se le asigna a otro
+      // enseguida, y la liquidación se cierra días después. Sin esta guarda, ese cierre tardío
+      // pisaba la "Reservada" del contrato nuevo y dejaba la moto suelta para que un tercero
+      // la tomara. (Caso real 27-jul: RLT70H, liquidación de LUIS SANDON con la moto ya
+      // reservada para ADOLFO GAMEZ.)
+      const { data: otroContrato } = await supabase
+        .from("contratos")
+        .select("id")
+        .eq("moto_id", liq.moto_id)
+        .in("estado", ["En proceso", "Activo"])
+        .neq("id", liq.contrato_id)
+        .limit(1);
+      const comprometida = !!otroContrato && otroContrato.length > 0;
+      // En 'cumplimiento' la moto pasa a ser del cliente: eso manda SIEMPRE, aunque alguien la
+      // haya reservado por error (ahí el problema es la reserva, no el traspaso).
+      if (liq.motivo === "cumplimiento") {
+        await supabase.from("motos").update({ estado: "En traspaso" }).eq("id", liq.moto_id);
+      } else if (!comprometida) {
+        await supabase.from("motos").update({ estado: "Disponible" }).eq("id", liq.moto_id);
+      }
+      // Si está comprometida y no es cumplimiento, se deja como está (Reservada/Asignada):
+      // el contrato nuevo manda.
     }
 
     // El cliente pasa a "Egresado" si cumplió su contrato (caso feliz — se lleva su moto),

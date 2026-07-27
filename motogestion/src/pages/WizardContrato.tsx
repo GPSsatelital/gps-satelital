@@ -350,6 +350,34 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (guardando) return;
     setGuardando(true); setError(null);
     try {
+      // ¿Esta moto tiene una liquidación sin cerrar? En la operación real el papeleo va detrás
+      // de la calle (el cliente entrega, se reasigna enseguida, la liquidación se cierra días
+      // después), así que NO se bloquea — se avisa. La única excepción es 'cumplimiento': ahí
+      // la moto va a quedar del cliente anterior y entregarla a otro sería un problema serio.
+      const { data: liqAbierta } = await supabase
+        .from("liquidaciones")
+        .select("numero, motivo, estado, cliente_id")
+        .eq("moto_id", mId)
+        .neq("estado", "cerrada")
+        .limit(1);
+      if (liqAbierta && liqAbierta.length > 0) {
+        const lq = liqAbierta[0];
+        const duenoAnterior = clientes.find(c => c.id === lq.cliente_id)?.nombre ?? "otro cliente";
+        if (lq.motivo === "cumplimiento") {
+          setError(
+            `No se puede asignar: la liquidación ${lq.numero} de ${duenoAnterior} es por CUMPLIMIENTO, ` +
+            `así que esta moto va a quedar de su propiedad. Elige otra placa.`,
+          );
+          return;
+        }
+        const seguir = confirm(
+          `Ojo: esta moto tiene la liquidación ${lq.numero} de ${duenoAnterior} SIN CERRAR ` +
+          `(va en la etapa "${lq.estado}").\n\n` +
+          `Solo continúa si ${duenoAnterior} ya entregó la moto de verdad y lo que falta es el papeleo.\n\n` +
+          `¿Asignársela a este cliente?`,
+        );
+        if (!seguir) return;
+      }
       const { error: e1 } = await supabase.from("contratos").update({ moto_id: mId }).eq("id", contratoId);
       if (e1) { setError(e1.message); return; }
       const { error: e2 } = await supabase.from("motos").update({ estado: "Reservada" }).eq("id", mId);

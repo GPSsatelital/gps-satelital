@@ -41,6 +41,31 @@ export function motoDelPortafolio(
 }
 
 /**
+ * A qué GRUPO (portafolio del socio) le entra la plata de un pago: pago → contrato → moto → grupo,
+ * pasando siempre por `motoDelPortafolio` para no acreditarle el dinero al socio equivocado
+ * mientras dura un préstamo de reemplazo.
+ *
+ * Estaba escrita tres veces (CajaView, CobroDiarioView y resuelta a mano en ReportesView). Vive
+ * acá, pegada a `motoDelPortafolio`, para que sea UNA sola: si algún día cambia la regla del
+ * portafolio, se edita en un solo lugar y no se queda una pantalla contando distinto que la caja.
+ *
+ * Devuelve null cuando no se puede determinar: contrato inexistente, contrato sin moto asignada o
+ * moto borrada. Quien filtre por grupo debe decidir qué hace con esos — no darlos por perdidos en
+ * silencio, o la suma de los grupos no va a dar el total.
+ */
+export function grupoDePago(
+  contratoId: string,
+  contratos: { id: string; moto_id: string | null }[],
+  motos: { id: string; grupo: string }[],
+  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id">[],
+): string | null {
+  const c = contratos.find(ct => ct.id === contratoId);
+  if (!c) return null;
+  const motoId = motoDelPortafolio(contratoId, c.moto_id, prestamos);
+  return motos.find(mo => mo.id === motoId)?.grupo ?? null;
+}
+
+/**
  * Deja constancia en `contratos_auditoria` de que la placa del contrato cambió por un préstamo.
  *
  * `contratos.moto_id` es el dato del que cuelga TODO (placa, grupo/portafolio, GPS, a qué socio

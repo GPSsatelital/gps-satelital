@@ -7,7 +7,7 @@ import { usePagos, calcularAplicacion, esPagoDeCaja, fechaDeCaja, APLICADO_LO_RE
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
-import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
+import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -806,14 +806,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const transHoy = pagosHoy.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
         const totalHoy = efectivoHoy + transHoy;
 
-        // Grupo de un pago: pago → contrato → moto → grupo (portafolio).
-        const grupoDePagoCaja = (contratoId: string): GrupoMoto | null => {
-          const c = contratos.find(x => x.id === contratoId);
-          if (!c) return null;
-          // Con un préstamo activo la plata sigue siendo del portafolio de la moto original.
-          const m = motos.find(mo => mo.id === motoDelPortafolio(contratoId, c.moto_id, prestamos));
-          return (m?.grupo as GrupoMoto) ?? null;
-        };
+        // Grupo de un pago: fuente única en usePrestamos (pasa por la moto del PORTAFOLIO, no por
+        // la que está rodando, para no acreditarle la plata al socio equivocado en un préstamo).
+        const grupoDePagoCaja = (contratoId: string): GrupoMoto | null =>
+          grupoDePagoCompartido(contratoId, contratos, motos, prestamos) as GrupoMoto | null;
         // Desglose del día por grupo (cada portafolio se cierra por aparte).
         const porGrupoCaja = GRUPOS_CAJA.map(g => {
           const lista = pagosHoy.filter(p => grupoDePagoCaja(p.contrato_id) === g);

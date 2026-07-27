@@ -5,7 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
-import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
+import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hoyISO, hoyDate } from "../utils/fecha";
@@ -74,15 +74,9 @@ export default function CajaView() {
     return { nombre: cl?.nombre ?? "—", placa: m?.placa ?? "—" };
   }
 
-  // Grupo de un pago: pago → contrato → moto → grupo (portafolio del que entra la plata).
+  // Grupo de un pago: fuente única en usePrestamos (pago → contrato → moto del PORTAFOLIO → grupo).
   function grupoDePago(contratoId: string): GrupoMoto | null {
-    const c = contratos.find(ct => ct.id === contratoId);
-    if (!c) return null;
-    // Si hay un préstamo activo, la plata sigue siendo del portafolio de la moto ORIGINAL:
-    // el préstamo es temporal, no un traspaso de inversión entre socios.
-    const motoId = motoDelPortafolio(contratoId, c.moto_id, prestamos);
-    const m = motos.find(mo => mo.id === motoId);
-    return (m?.grupo as GrupoMoto) ?? null;
+    return grupoDePagoCompartido(contratoId, contratos, motos, prestamos) as GrupoMoto | null;
   }
 
   // Vista filtrada por el chip de grupo (para los KPIs y las listas). El CIERRE siempre

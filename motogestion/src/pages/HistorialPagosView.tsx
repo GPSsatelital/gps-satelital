@@ -4,8 +4,21 @@ import { usePagos, type Pago } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { usePrestamos, grupoDePago } from "../hooks/usePrestamos";
+import { useScope } from "../contexts/SubadminScopeContext";
 import { hoyISO, hoyDate } from "../utils/fecha";
-import { Badge, type BadgeTone } from "../components/atomos";
+import { Badge, Chip, type BadgeTone } from "../components/atomos";
+import { listaConScroll } from "../styles/shared";
+
+// "sin" agrupa lo que no cae en ningún portafolio: grupo OTRO, contratos sin moto asignada y
+// pagos cuyo contrato/moto ya no existe. Va explícito para que la suma de los chips dé SIEMPRE
+// el total — si se ocultaran, el dueño sumaría los 4 grupos y le faltaría plata sin saber por qué.
+const GRUPOS_FILTRO = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS", "sin"] as const;
+type FiltroGrupo = typeof GRUPOS_FILTRO[number];
+const ETIQUETA_GRUPO: Record<FiltroGrupo, string> = {
+  todos: "Todos", COSTA: "COSTA", PRADERA: "PRADERA",
+  RASTREADOR: "RASTREADOR", USADAS: "USADAS", sin: "Sin grupo",
+};
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -31,6 +44,7 @@ export default function HistorialPagosView({ onNavigate }: {
   const [busqueda, setBusqueda] = useState("");
   const [metodo, setMetodo] = useState<"todos" | "Efectivo" | "Transferencia">("todos");
   const [estadoFiltro, setEstadoFiltro] = useState<"todos" | "Confirmado" | "Pendiente" | "Rechazado">("todos");
+  const [filtroGrupo, setFiltroGrupo] = useState<FiltroGrupo>("todos");
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
@@ -40,10 +54,17 @@ export default function HistorialPagosView({ onNavigate }: {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { pagos } = usePagos();
+  const { pagos: pagosTodos } = usePagos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  const { prestamos } = usePrestamos();
+  const { filtrarPorContrato } = useScope();
+
+  // Esta pantalla era la ÚNICA de dinero que no filtraba por cobrador: un SUBADMIN con acceso al
+  // módulo veía TODOS los pagos del sistema, no solo los de sus motos. Para los demás roles
+  // (admins, secretaria) devuelve la lista completa, así que no cambia nada de lo que se ve hoy.
+  const pagos = useMemo(() => filtrarPorContrato(pagosTodos), [pagosTodos, filtrarPorContrato]);
 
   function getInfo(p: Pago) {
     const c = contratos.find(ct => ct.id === p.contrato_id);
@@ -58,6 +79,14 @@ export default function HistorialPagosView({ onNavigate }: {
       if (p.fecha < desde || p.fecha > hasta) return false;
       if (metodo !== "todos" && p.metodo !== metodo) return false;
       if (estadoFiltro !== "todos" && p.estado !== estadoFiltro) return false;
+      if (filtroGrupo !== "todos") {
+        const g = grupoDePago(p.contrato_id, contratos, motos, prestamos);
+        // "sin" recoge también los grupos raros (OTRO) para que nada quede fuera de los chips.
+        const cae = filtroGrupo === "sin"
+          ? !g || !GRUPOS_FILTRO.includes(g as FiltroGrupo)
+          : g === filtroGrupo;
+        if (!cae) return false;
+      }
       if (q) {
         const c = contratos.find(ct => ct.id === p.contrato_id);
         const cl = clientes.find(cl => cl.id === c?.cliente_id);
@@ -71,7 +100,25 @@ export default function HistorialPagosView({ onNavigate }: {
       if (dc !== 0) return dc;
       return b.created_at.localeCompare(a.created_at);
     });
-  }, [pagos, contratos, clientes, motos, desde, hasta, metodo, estadoFiltro, busqueda]);
+  }, [pagos, contratos, clientes, motos, prestamos, desde, hasta, metodo, estadoFiltro, busqueda, filtroGrupo]);
+
+  // Conteo por chip: se calcula sobre los MISMOS pagos que ya pasaron fecha/método/estado/búsqueda,
+  // para que el número del chip sea lo que de verdad va a quedar al tocarlo.
+  const conteoPorGrupo = useMemo(() => {
+    const base = pagos.filter(p => {
+      if (p.fecha < desde || p.fecha > hasta) return false;
+      if (metodo !== "todos" && p.metodo !== metodo) return false;
+      if (estadoFiltro !== "todos" && p.estado !== estadoFiltro) return false;
+      return true;
+    });
+    const cuenta: Record<string, number> = { todos: base.length };
+    for (const p of base) {
+      const g = grupoDePago(p.contrato_id, contratos, motos, prestamos);
+      const clave = g && GRUPOS_FILTRO.includes(g as FiltroGrupo) ? g : "sin";
+      cuenta[clave] = (cuenta[clave] ?? 0) + 1;
+    }
+    return cuenta;
+  }, [pagos, contratos, motos, prestamos, desde, hasta, metodo, estadoFiltro]);
 
   const stats = useMemo(() => {
     const conf = pagosFiltrados.filter(p => p.estado === "Confirmado");
@@ -252,6 +299,17 @@ export default function HistorialPagosView({ onNavigate }: {
             </button>
           ))}
         </div>
+
+        {/* Chips de portafolio. Van en su propia fila (width 100%) porque son el filtro que más se
+            usa cuando se le rinde cuentas a un socio, y a 375px no deben quedar apretujados contra
+            los selectores de arriba. Mismo átomo Chip que Motos / Clientes / Contratos. */}
+        <div style={{ width: "100%", display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+          {GRUPOS_FILTRO.map(g => (
+            <Chip key={g} activo={filtroGrupo === g} count={conteoPorGrupo[g] ?? 0} onClick={() => setFiltroGrupo(g)}>
+              {ETIQUETA_GRUPO[g]}
+            </Chip>
+          ))}
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -277,7 +335,7 @@ export default function HistorialPagosView({ onNavigate }: {
         </div>
       ) : isMobile ? (
         <div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={listaConScroll(isMobile)}>
             {pagosFiltrados.map(p => <PagoCard key={p.id} p={p} />)}
           </div>
           {pagoSeleccionado && (
@@ -290,7 +348,7 @@ export default function HistorialPagosView({ onNavigate }: {
         </div>
       ) : (
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ ...listaConScroll(isMobile), flex: 1, minWidth: 0 }}>
             {pagosFiltrados.map(p => <PagoCard key={p.id} p={p} />)}
           </div>
           {pagoSeleccionado && (

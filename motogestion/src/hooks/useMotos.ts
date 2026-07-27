@@ -46,6 +46,11 @@ export type RetencionData = {
   detalle?: string;
 };
 
+// Qué pasa con la moto cuando sale de una retención: pasa a revisión de taller, o vuelve
+// directo a operar (con su cliente si el contrato sigue activo, disponible si no).
+// Lo elige el funcionario al liberarla — decisión del dueño, 27-jul-2026.
+export type DestinoLiberacion = "taller" | "operacion";
+
 // Cuando una moto sale de un estado temporal (taller, fiscalía, tránsito, garantía),
 // NO siempre vuelve a "Disponible": si todavía tiene un contrato Activo esperándola,
 // vuelve a "Asignada" (el cliente la sigue esperando). Solo si no hay contrato activo
@@ -86,15 +91,19 @@ export function useMotos() {
     return { error: error?.message ?? null };
   }
 
-  async function liberarRetencion(id: string) {
-    const estado = await estadoMotoTrasLiberar(id);
+  // `destino` es obligatorio a propósito: antes esta función decidía sola el estado y pisaba el
+  // "En taller" que el flujo de salida de Fiscalía acababa de poner (dos updates seguidos, el
+  // segundo ganaba). Al exigirlo, el compilador obliga a que cada sitio diga qué pasa con la moto
+  // y se resuelve todo en UN solo update: o va a revisión, o vuelve a operar.
+  async function liberarRetencion(id: string, destino: DestinoLiberacion) {
+    const estado: MotoStatus = destino === "taller" ? "Mantenimiento" : await estadoMotoTrasLiberar(id);
     const { error } = await supabase.from("motos").update({
       estado,
       retencion_fecha: null,
       retencion_numero_caso: null,
       retencion_detalle: null,
     }).eq("id", id);
-    return { error: error?.message ?? null };
+    return { error: error?.message ?? null, estado };
   }
 
   async function actualizarMoto(id: string, cambios: Partial<Omit<Moto, "id" | "created_at" | "updated_at">>) {

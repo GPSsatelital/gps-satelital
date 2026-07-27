@@ -12,7 +12,7 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
 }
 import { listaConScroll } from "../styles/shared";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
-import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData } from "../hooks/useMotos";
+import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData, type DestinoLiberacion } from "../hooks/useMotos";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -70,6 +70,14 @@ const ESTADO_LABEL: Record<MotoStatus, string> = {
   Transito: "Tránsito",
   Garantia: "Garantía",
   "En traspaso": "En traspaso",
+};
+
+// De dónde venía físicamente la moto según el motivo de la retención — solo para dejar el rastro
+// correcto en el historial de ubicaciones al registrar la salida.
+const ORIGEN_RETENCION: Partial<Record<MotoStatus, UbicacionFisica>> = {
+  Fiscalia: "fiscalia",
+  Transito: "patios_transito",
+  Garantia: "taller",
 };
 
 function StatusBadge({ status }: { status: MotoStatus }) {
@@ -132,7 +140,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [openRecepcion, setOpenRecepcion] = useState(false);
   const [openUbicacion, setOpenUbicacion] = useState(false);
   const [openRetencion, setOpenRetencion] = useState(false);
-  const [openLiberarFiscalia, setOpenLiberarFiscalia] = useState(false);
+  const [openLiberarRetencion, setOpenLiberarRetencion] = useState(false);
   // Router "Registrar novedad": una sola puerta que enruta al flujo correcto.
   const [openNovedad, setOpenNovedad] = useState(false);
   const [openDocsMoto, setOpenDocsMoto] = useState(false);
@@ -146,7 +154,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   useBackGuard(asignarMotoId !== null, () => setAsignarMotoId(null));
   useBackGuard(openNovedad, () => setOpenNovedad(false));
   useBackGuard(openRetencion, () => setOpenRetencion(false));
-  useBackGuard(openLiberarFiscalia, () => setOpenLiberarFiscalia(false));
+  useBackGuard(openLiberarRetencion, () => setOpenLiberarRetencion(false));
   useBackGuard(openUbicacion, () => setOpenUbicacion(false));
   useBackGuard(openRecepcion, () => setOpenRecepcion(false));
   useBackGuard(openDocsMoto, () => setOpenDocsMoto(false));
@@ -166,7 +174,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     detalle: string;
   }>({ tipo: "Fiscalia", fecha: "", numero_caso: "", detalle: "" });
 
-  const [ubicacionSalidaFiscalia, setUbicacionSalidaFiscalia] = useState<UbicacionFisica>("bodega");
+  const [ubicacionSalidaRetencion, setUbicacionSalidaRetencion] = useState<UbicacionFisica>("bodega");
+  const [destinoLiberar, setDestinoLiberar] = useState<DestinoLiberacion>("taller");
 
   const [formRec, setFormRec] = useState({
     motivo: "nuevo_registro" as MotivoRecepcion,
@@ -298,7 +307,17 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (!selectedMoto) return;
     setEditGuardando(true);
     setEditError(null);
-    const { error } = await actualizarMoto(selectedMoto.id, editForm);
+    // SOAT y tecnomecánica son columnas `date`: una cadena vacía las hace reventar (22007) y
+    // Postgres pierde el UPDATE COMPLETO, no solo la fecha — el funcionario escribía marca, modelo
+    // y color, guardaba, y se le perdía todo con un error técnico. Pasa con cualquier moto que no
+    // tenga esas fechas cargadas (las migradas por SQL), aunque él ni las toque: abrirEdicion las
+    // convierte a "" al llenar el formulario. Al CREAR ya se normalizaba así; al editar no.
+    const cambios = {
+      ...editForm,
+      fecha_seguro: editForm.fecha_seguro || null,
+      fecha_tecnomecanica: editForm.fecha_tecnomecanica || null,
+    };
+    const { error } = await actualizarMoto(selectedMoto.id, cambios);
     setEditGuardando(false);
     if (error) { setEditError(error); return; }
     setEditandoMoto(false);
@@ -406,35 +425,42 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     setOpenRetencion(false);
   }
 
-  async function handleLiberarFiscalia() {
-    if (!selectedMoto || !profile) return;
-    if (!confirm(`¿Liberar la moto ${selectedMoto.placa} de Fiscalía? Pasará a taller para revisión.`)) return;
-    setGuardando(true);
-    const fechaEntrada = selectedMoto.retencion_fecha;
-    // 1. Registrar cambio de ubicación al lugar físico elegido
-    await cambiarUbicacion(selectedMoto.id, "fiscalia" as UbicacionFisica, ubicacionSalidaFiscalia, "", "Salida de Fiscalía — ingresa a revisión de taller", profile.id);
-    // 2. Marcar moto como En taller (Mantenimiento) y limpiar retención
-    const { error } = await cambiarEstadoMoto(selectedMoto.id, "Mantenimiento");
-    await liberarRetencion(selectedMoto.id);
-    setGuardando(false);
-    if (error) { setMsgDetalle(error); return; }
-    abrirResolverTiempoSiAplica(selectedMoto, "Fiscalía", fechaEntrada);
-    setMsgDetalle("Moto liberada de Fiscalía. Pasa a taller para revisión antes de operar.");
-    setOpenLiberarFiscalia(false);
-  }
-
+  // Salida de una retención (Fiscalía / Tránsito / Garantía). Antes eran dos caminos distintos que
+  // se comportaban diferente: Fiscalía mandaba a taller y los otros dos devolvían la moto directo.
+  // Ahora es uno solo y el funcionario elige el destino, porque depende del caso (una moto que
+  // volvió de patios necesita revisión; una que volvió de garantía ya viene del taller del fabricante).
   async function handleLiberarRetencion() {
-    if (!selectedMoto) return;
-    const motivoLbl = selectedMoto.estado === "Garantia" ? "Garantía" : "Tránsito";
-    if (!confirm(`¿Liberar la moto ${selectedMoto.placa} de ${motivoLbl}?`)) return;
+    if (!selectedMoto || !profile) return;
+    if (guardando) return;
+    const motivoLbl = ESTADO_LABEL[selectedMoto.estado] ?? "retención";
+    const aTaller = destinoLiberar === "taller";
+    if (!confirm(`¿Liberar la moto ${selectedMoto.placa} de ${motivoLbl}?\n\n${aTaller ? "Pasará a taller para revisión antes de volver a operar." : "Vuelve a operar de inmediato, sin pasar por taller."}`)) return;
     setGuardando(true);
-    const fechaEntrada = selectedMoto.retencion_fecha;
-    const motivo = motivoLbl;
-    const { error } = await liberarRetencion(selectedMoto.id);
-    setGuardando(false);
-    if (error) { setMsgDetalle(error); return; }
-    abrirResolverTiempoSiAplica(selectedMoto, motivo, fechaEntrada);
-    setMsgDetalle("Retención liberada. Moto disponible.");
+    try {
+      const fechaEntrada = selectedMoto.retencion_fecha;
+      // 1. Dejar rastro de dónde queda físicamente la moto ahora.
+      await cambiarUbicacion(
+        selectedMoto.id,
+        ORIGEN_RETENCION[selectedMoto.estado] ?? null,
+        ubicacionSalidaRetencion,
+        "",
+        `Salida de ${motivoLbl}${aTaller ? " — ingresa a revisión de taller" : ""}`,
+        profile.id,
+      );
+      // 2. Limpiar la retención y fijar el estado destino en UN solo update (ver useMotos.liberarRetencion).
+      const { error, estado } = await liberarRetencion(selectedMoto.id, destinoLiberar);
+      if (error) { setMsgDetalle(error); return; }
+      // 3. El tiempo que estuvo parada se le cobra o se le rueda al cliente — se resuelve aparte.
+      abrirResolverTiempoSiAplica(selectedMoto, motivoLbl, fechaEntrada);
+      setMsgDetalle(
+        aTaller
+          ? `Moto liberada de ${motivoLbl}. Pasa a taller para revisión antes de operar.`
+          : `Moto liberada de ${motivoLbl}. Queda ${estado === "Asignada" ? "con su cliente" : "disponible"}.`,
+      );
+      setOpenLiberarRetencion(false);
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function handleGuardar() {
@@ -563,12 +589,16 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
             <button onClick={() => { setOpenDocsMoto(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>🪪 Documentos</button>
             <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
-            {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida. */}
-            {selectedMoto.estado === "Fiscalia" && (
-              <button onClick={() => { setOpenLiberarFiscalia(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}>✅ Salida Fiscalía</button>
-            )}
-            {["Transito","Garantia"].includes(selectedMoto.estado) && (
-              <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}>✅ Liberar retención</button>
+            {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida.
+                Los 3 motivos (Fiscalía/Tránsito/Garantía) abren la MISMA ventana — antes Fiscalía
+                tenía la suya y los otros dos un confirm() suelto que se comportaba distinto. */}
+            {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
+              <button
+                onClick={() => { setDestinoLiberar("taller"); setUbicacionSalidaRetencion("bodega"); setOpenLiberarRetencion(true); setMsgDetalle(null); }}
+                style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}
+              >
+                ✅ Salida de {ESTADO_LABEL[selectedMoto.estado]}
+              </button>
             )}
           </div>
         )}
@@ -999,29 +1029,68 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         </div>
       )}
 
-      {/* ── Modal Salida de Fiscalía ── */}
-      {openLiberarFiscalia && selectedMoto && (
+      {/* ── Modal Salida de retención (Fiscalía / Tránsito / Garantía) ── */}
+      {openLiberarRetencion && selectedMoto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420 }}>
-            <h3 style={{ margin: "0 0 8px" }}>Registrar salida de Fiscalía</h3>
+          <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420, maxHeight: "90dvh", overflowY: "auto" }}>
+            <h3 style={{ margin: "0 0 8px" }}>Registrar salida de {ESTADO_LABEL[selectedMoto.estado]}</h3>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 16px" }}>
-              La moto {selectedMoto.placa} sale de Fiscalía y queda en poder de la empresa. Pasará a taller automáticamente para revisión antes de operar.
+              La moto {selectedMoto.placa} sale de {ESTADO_LABEL[selectedMoto.estado]} y vuelve a poder de la empresa.
             </p>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Ubicación física donde queda la moto">
-                <select style={inputStyle} value={ubicacionSalidaFiscalia} onChange={e => setUbicacionSalidaFiscalia(e.target.value as UbicacionFisica)}>
+                <select style={inputStyle} value={ubicacionSalidaRetencion} onChange={e => setUbicacionSalidaRetencion(e.target.value as UbicacionFisica)}>
                   {Object.entries(UBICACION_LABEL).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
               </Field>
-              <div style={{ padding: "8px 12px", background: "var(--ok-soft)", borderRadius: 10, fontSize: 13, color: "var(--ok-ink)" }}>
-                Estado → <strong>En taller</strong>. Debe pasar revisión antes de volver a operar.
-              </div>
+
+              <Field label="¿Qué se hace con la moto ahora?">
+                <div style={{ display: "grid", gap: 8 }}>
+                  {([
+                    { v: "taller" as DestinoLiberacion, t: "🔧 Pasa a taller para revisión", d: "Queda En taller. No vuelve a la calle hasta que el mecánico la libere." },
+                    { v: "operacion" as DestinoLiberacion, t: "🏍️ Vuelve a operar de una vez", d: "Si su contrato sigue activo queda con el cliente; si no, disponible." },
+                  ]).map(o => {
+                    const activo = destinoLiberar === o.v;
+                    return (
+                      <button
+                        key={o.v}
+                        onClick={() => setDestinoLiberar(o.v)}
+                        style={{
+                          textAlign: "left", cursor: "pointer", borderRadius: 12, padding: "10px 12px",
+                          border: `1px solid ${activo ? "var(--ok-ink)" : "var(--line2)"}`,
+                          background: activo ? "var(--ok-soft)" : "transparent",
+                          minWidth: 0, boxSizing: "border-box",
+                        }}
+                      >
+                        <div style={{ fontSize: 14, fontWeight: 700, color: activo ? "var(--ok-ink)" : "var(--text)" }}>{o.t}</div>
+                        {/* La descripción también conmuta: --muted sobre --ok-soft queda en 3.2:1 en
+                            modo noche y es justo la línea que explica la consecuencia. */}
+                        <div style={{ fontSize: 12, color: activo ? "var(--ok-ink)" : "var(--muted)", marginTop: 2 }}>{o.d}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              {/* El aviso tiene que decir la verdad de lo que va a pasar: la pregunta de cobrar/rodar
+                  solo aparece si quien confirma es ADMIN y si hay fecha de retención con la cual
+                  calcular los días (ver abrirResolverTiempoSiAplica). Prometerla siempre haría que
+                  una secretaria confirmara creyendo que quedó resuelto, y ese tiempo se pierde. */}
+              {contratos.some(c => c.moto_id === selectedMoto.id && c.estado === "Activo") && (
+                <div style={{ padding: "8px 12px", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, fontSize: 13, color: "var(--warn-ink)" }}>
+                  {!selectedMoto.retencion_fecha
+                    ? <>Esta moto tiene contrato activo, pero <strong>no tiene registrada la fecha en que la retuvieron</strong>, así que el sistema no puede calcular los días parados. Si hay que cobrarlos o rodarlos, hay que hacerlo a mano.</>
+                    : esAdminOSuperior
+                      ? <>Esta moto tiene contrato activo. Al confirmar se te va a preguntar si el tiempo que estuvo parada <strong>se le cobra</strong> al cliente o <strong>se le rueda</strong> al final.</>
+                      : <>Esta moto tiene contrato activo. El tiempo que estuvo parada <strong>queda pendiente</strong>: lo tiene que resolver un administrador (cobrarlo o rodarlo).</>}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setOpenLiberarFiscalia(false)} style={secondaryBtn}>Cancelar</button>
-              <button onClick={handleLiberarFiscalia} disabled={guardando} style={{ ...primaryBtn, background: "var(--ok-ink)" }}>
+              <button onClick={() => setOpenLiberarRetencion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "var(--ok-ink)", opacity: guardando ? 0.6 : 1 }}>
                 {guardando ? "Registrando..." : "Confirmar salida"}
               </button>
             </div>

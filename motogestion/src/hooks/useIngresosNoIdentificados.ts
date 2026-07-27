@@ -17,6 +17,7 @@ export type IngresoNoIdentificado = {
   pago_id: string | null;     // a qué pago se le asignó al aparecer el dueño
   registrado_por: string | null;
   nota: string | null;
+  comprobante_url: string | null;  // foto del extracto donde aparece (mig 072) — obligatoria
   created_at: string;
 };
 
@@ -46,6 +47,7 @@ export function useIngresosNoIdentificados() {
     grupo?: string | null;
     nota?: string;
     registrado_por?: string | null;
+    comprobante_url?: string | null;
   }) {
     const { error } = await supabase.from("ingresos_no_identificados").insert({
       fecha_banco: datos.fecha_banco,
@@ -54,6 +56,7 @@ export function useIngresosNoIdentificados() {
       grupo: datos.grupo ?? null,
       nota: datos.nota ?? null,
       registrado_por: datos.registrado_por ?? null,
+      comprobante_url: datos.comprobante_url ?? null,
       estado: "pendiente",
     });
     // 23505 = índice único parcial: esa referencia ya está esperando dueño.

@@ -4,7 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja } from "../hooks/useCaja";
-import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
+import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
 import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -31,6 +31,10 @@ export default function CajaView() {
   const [guardandoNI, setGuardandoNI] = useState(false);
   const [errorNI, setErrorNI] = useState<string | null>(null);
   const [formNI, setFormNI] = useState({ fecha_banco: "", monto: "", referencia: "", nota: "" });
+  // Foto del extracto: obligatoria, igual que en cualquier transferencia. Es la prueba de que
+  // esa plata entró, para el día que aparezca el dueño meses después.
+  const [comprobanteNI, setComprobanteNI] = useState<File | null>(null);
+  const [fotoAmpliadaNI, setFotoAmpliadaNI] = useState<string | null>(null);
   const [msgCierre, setMsgCierre] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
@@ -47,7 +51,7 @@ export default function CajaView() {
   // Permiso por persona (default = SECRETARIA, igual que antes "solo la secretaria cierra caja").
   const puedeCerrarCaja = puede("cerrar_caja");
 
-  const { pagos, confirmarPago } = usePagos();
+  const { pagos, confirmarPago, subirComprobante } = usePagos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -564,14 +568,21 @@ export default function CajaView() {
                       {i.nota ? ` · ${i.nota}` : ""}
                     </div>
                   </div>
-                  {puedeCerrarCaja && (
-                    <button onClick={async () => {
-                      if (!confirm("¿Eliminar esta partida? Úsalo solo si se registró por error.")) return;
-                      await eliminarNI(i.id);
-                    }} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                      Eliminar
-                    </button>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    {i.comprobante_url && (
+                      <img src={i.comprobante_url} onClick={() => setFotoAmpliadaNI(i.comprobante_url)}
+                        title="Ver el extracto del banco"
+                        style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: "1px solid var(--warn-line)" }} />
+                    )}
+                    {puedeCerrarCaja && (
+                      <button onClick={async () => {
+                        if (!confirm("¿Eliminar esta partida? Úsalo solo si se registró por error.")) return;
+                        await eliminarNI(i.id);
+                      }} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -736,6 +747,14 @@ export default function CajaView() {
       })()}
 
       {/* Alta de una transferencia que entró al banco y nadie reclamó */}
+      {/* Visor del extracto guardado (clic en la miniatura de una partida) */}
+      {fotoAmpliadaNI && (
+        <div onClick={() => setFotoAmpliadaNI(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.85)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, cursor: "zoom-out" }}>
+          <img src={fotoAmpliadaNI} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+        </div>
+      )}
+
       {openNI && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setOpenNI(false)}>
@@ -764,6 +783,25 @@ export default function CajaView() {
                   style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
               </div>
               <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Foto del extracto del banco *</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
+                    📷 Cámara
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                      onChange={e => setComprobanteNI(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>
+                    🖼 Galería
+                    <input type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => setComprobanteNI(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+                {comprobanteNI && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✓ {comprobanteNI.name}</div>}
+                <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>
+                  Es la prueba de que ese dinero entró. Cuando aparezca el dueño —quizá meses después— la referencia sola no basta.
+                </div>
+              </div>
+              <div>
                 <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Nota (opcional)</label>
                 <input value={formNI.nota} placeholder="Ej. dice “JOSE P.” en el extracto"
                   onChange={e => setFormNI(f => ({ ...f, nota: e.target.value }))}
@@ -785,16 +823,25 @@ export default function CajaView() {
                   if (formNI.fecha_banco > hoyISO()) { setErrorNI("La fecha no puede ser futura — revisa el año en el extracto."); return; }
                   if (!monto || monto <= 0) { setErrorNI("Escribe el monto."); return; }
                   if (!formNI.referencia.trim()) { setErrorNI("Escribe el número de referencia — es lo que permite cruzarla después."); return; }
+                  if (!comprobanteNI) { setErrorNI("Sube la foto del extracto donde aparece esta transferencia."); return; }
                   setGuardandoNI(true); setErrorNI(null);
                   try {
+                    // Se guarda bajo la referencia normalizada: así la carpeta es rastreable
+                    // cuando aparezca el dueño (no hay contrato al que colgarla todavía).
+                    const { url, error: upErr } = await subirComprobante(
+                      comprobanteNI, `sin-identificar/${normalizarRef(formNI.referencia)}`,
+                    );
+                    if (upErr) { setErrorNI("Error subiendo la foto: " + upErr); return; }
                     const { error } = await registrarNI({
                       fecha_banco: formNI.fecha_banco, monto, referencia: formNI.referencia,
                       grupo: filtroGrupo === "todos" ? null : filtroGrupo,
                       nota: formNI.nota.trim() || undefined,
                       registrado_por: profile?.id ?? null,
+                      comprobante_url: url,
                     });
                     if (error) { setErrorNI(error); return; }
                     setOpenNI(false);
+                    setComprobanteNI(null);
                   } finally { setGuardandoNI(false); }
                 }}
                 style={{ flex: 2, padding: "11px", borderRadius: 10, border: "none", background: "var(--warn-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: guardandoNI ? "not-allowed" : "pointer", opacity: guardandoNI ? 0.6 : 1 }}>

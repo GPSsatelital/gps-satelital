@@ -18,6 +18,7 @@ import {
   exportarCSV, descargarExcel, GRUPO_HEX,
   type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
 } from "../utils/exportar";
+import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../components/ModalDescargar";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -437,6 +438,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // Un archivo descargado se sale del control de la app (queda en el celular, se reenvía por
   // WhatsApp, sobrevive a que la persona se vaya). Por eso descargar es una acción aparte de ver.
   const puedeExportar = puede("exportar_datos");
+  const [descarga, setDescarga] = useState<"admin" | "grupo" | null>(null);
   const esAdmin       = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const { pagos }     = usePagos();
   const { contratos } = useContratos();
@@ -671,10 +673,6 @@ export default function ReportesView({ onNavigate }: Props) {
   const xUltPago = (m: MotoRowG): CeldaX => ({ v: m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos", align: "center", color: m.ultimaFechaPago ? undefined : "#94a3b8" });
   const xTelefono = (m: MotoRowG): CeldaX => ({ v: m.telefono || "—", align: "center" });
   const xDiasMora = (m: MotoRowG): CeldaX => m.diasMora > 0 ? { v: String(m.diasMora), align: "center", color: m.diasMora > 15 ? "#991b1b" : m.diasMora > 7 ? "#b45309" : "#92400e" } : { v: "—", align: "center" };
-  const xTitulo = (b: BloqueG, prefijo: string) => `${prefijo}${b.nombre === b.key ? b.key : b.nombre.toUpperCase()}   —   ${b.total} motos · ${b.alDia} al día · ${b.parcial} parcial · ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""} · recaudado $ ${fmt(b.recaudado)}`;
-  // Fila total (12 columnas de Por admin / Por grupo): TOTAL en col 0, estados en Estado, recaudado en Pagó.
-  const xTotal = (tot: { motos: number; ald: number; par: number; no: number; sc: number; rec: number }): CeldaX[] =>
-    [{ v: "TOTAL GENERAL", bold: true }, "", "", "", "", { v: `${tot.ald} al día · ${tot.par} parcial · ${tot.no} no pagó`, align: "center", bold: true }, { num: tot.rec, bold: true }, "", "", "", "", tot.sc > 0 ? { v: `${tot.sc} sin conv.`, align: "center", bold: true } : ""];
   const xLeyenda = "Estados: Al día = pagó lo que debía o su convenio está al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar. 'Días mora' = antigüedad de la mora. Los montos están en pesos.";
 
   // 12 columnas (col 0 = etiqueta cruzada). Mismas para Por admin (Grupo) y Por grupo (Administrador).
@@ -684,10 +682,6 @@ export default function ReportesView({ onNavigate }: Props) {
     { label: "Estado", align: "center", ancho: 80 }, { label: "Pagó período ($)", align: "right", ancho: 105 },
     { label: "Le falta ($)", align: "right", ancho: 95 }, { label: "Días mora", align: "center", ancho: 75 }, { label: "Últ. pago", align: "center", ancho: 90 },
     { label: "Teléfono", align: "center", ancho: 105 }, { label: "Convenio", align: "center", ancho: 75 },
-  ];
-  const filaGestion = (m: MotoRowG, cross: "grupo" | "admin"): CeldaX[] => [
-    cross === "grupo" ? m.grupo : m.adminNombre.toUpperCase(), m.placa, m.cliente.toUpperCase(),
-    xModalidad(m), xDiaPago(m), xEstado(m), xPagado(m), xFalta(m), xDiasMora(m), xUltPago(m), xTelefono(m), xConvenio(m),
   ];
 
   // Hoja "Resumen": ranking de cobradores + por grupo + comparación de recaudo.
@@ -771,38 +765,32 @@ export default function ReportesView({ onNavigate }: Props) {
     return { titulo: "Matriz cobrador × grupo (recaudado)", periodo: periodoTxt, leyenda: "Cuánto recaudó cada cobrador en cada grupo. Celda = $ recaudado.", columnas: cols, secciones: [{ titulo: "Recaudado por celda", color: "#0f2740", filas }], totalGeneral };
   }
 
-  const gTot = { motos: gTotMotos, ald: gAlDia, par: gParcial, no: gNoPago, sc: gDebenSinConv, rec: gTotRec };
-  const hojasGestion = () => [
-    { nombre: "Resumen", ...hojaResumen() },
-    { nombre: "Aging mora", ...hojaAging() },
-    { nombre: "Matriz", ...hojaMatriz() },
-    { nombre: "Metodo", ...hojaMetodo() },
-    { nombre: "Por convenir", ...hojaConvenir() },
+
+  // Las 5 hojas de análisis. Antes se anexaban SIEMPRE (la queja del "coloca casi todo");
+  // ahora son casillas dentro de la ventana de descarga y arrancan desmarcadas.
+  const hojasOpcionales: HojaExtra[] = [
+    { nombre: "Resumen", etiqueta: "ranking de cobradores y recaudo por grupo", construir: hojaResumen },
+    { nombre: "Aging mora", etiqueta: "la deuda repartida por antigüedad", construir: hojaAging },
+    { nombre: "Matriz", etiqueta: "cruce de cobradores contra grupos", construir: hojaMatriz },
+    { nombre: "Metodo", etiqueta: "cuánto entró en efectivo y cuánto por transferencia", construir: hojaMetodo },
+    { nombre: "Por convenir", etiqueta: "los que deben y no tienen convenio", construir: hojaConvenir },
   ];
 
-  function exportarPorAdmin() {
-    const secciones: SeccionX[] = porAdminData.map(b => ({
-      titulo: xTitulo(b, ""), color: "#334155", filas: b.motos.map(m => filaGestion(m, "grupo")),
+  // Las 12 columnas de gestión, ahora como casillas. Cada una saca su celda RICA (con color) de
+  // la fila que ya se calculaba: el estado sigue saliendo verde/ámbar/rojo dentro del Excel.
+  const columnasGestion = (cross: "grupo" | "admin"): ColumnaDescarga<MotoRowG>[] => {
+    const cols = colsGestion(cross === "grupo" ? "Grupo" : "Administrador");
+    const campos: ((m: MotoRowG) => CeldaX)[] = [
+      m => cross === "grupo" ? m.grupo : m.adminNombre.toUpperCase(),
+      m => m.placa, m => m.cliente.toUpperCase(),
+      xModalidad, xDiaPago, xEstado, xPagado, xFalta, xDiasMora, xUltPago, xTelefono, xConvenio,
+    ];
+    return cols.map((c, i) => ({
+      key: `c${i}`, rotulo: c.label, align: c.align, ancho: c.ancho,
+      porDefecto: i <= 7,   // hasta "Le falta ($)": lo que se necesita para cobrar
+      valor: campos[i],
     }));
-    descargarExcel({
-      archivo: `por_admin${filtrosSlug ? "_" + filtrosSlug : ""}_${desde}_a_${hasta}`,
-      titulo: filtrosActivos ? `Gestión por administrador — ${filtrosResumen}` : "Gestión por administrador",
-      periodo: periodoTxt, leyenda: xLeyenda, columnas: colsGestion("Grupo"), secciones, totalGeneral: xTotal(gTot),
-      hojasExtra: hojasGestion(),
-    });
-  }
-
-  function exportarPorGrupo() {
-    const secciones: SeccionX[] = porGrupoData.map(b => ({
-      titulo: xTitulo(b, ""), color: GRUPO_HEX[b.key] ?? "#334155", filas: b.motos.map(m => filaGestion(m, "admin")),
-    }));
-    descargarExcel({
-      archivo: `por_grupo${filtrosSlug ? "_" + filtrosSlug : ""}_${desde}_a_${hasta}`,
-      titulo: filtrosActivos ? `Recaudo por grupo — ${filtrosResumen}` : "Recaudo por grupo",
-      periodo: periodoTxt, leyenda: xLeyenda, columnas: colsGestion("Administrador"), secciones, totalGeneral: xTotal(gTot),
-      hojasExtra: hojasGestion(),
-    });
-  }
+  };
 
   function exportarVisitas() {
     const cols: ColX[] = [
@@ -1435,7 +1423,7 @@ export default function ReportesView({ onNavigate }: Props) {
           {/* Filtros combinables (grupo · cobrador · modalidad · estado) */}
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
           <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={puedeExportar ? exportarPorAdmin : undefined} />
+            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={puedeExportar ? () => setDescarga("admin") : undefined} />
           {/* C1 — comparación de recaudo vs período anterior */}
           <div style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12.5 }}>
             <span style={{ color: "var(--muted)" }}>Recaudo del período: <b style={{ color: "var(--text)" }}>$ {fmt(gTotRec)}</b> <span style={{ color: "var(--faint)" }}>· anterior $ {fmt(recaudoAnterior)}</span></span>
@@ -1467,7 +1455,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
           <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={puedeExportar ? exportarPorGrupo : undefined} />
+            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={puedeExportar ? () => setDescarga("grupo") : undefined} />
           <GestionBloques bloques={porGrupoData} modo="grupo" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>
       )}
@@ -2070,6 +2058,37 @@ export default function ReportesView({ onNavigate }: Props) {
             ))}
           </div>
         </div>
+        );
+      })()}
+
+      {descarga && (() => {
+        const porAdmin = descarga === "admin";
+        // Se aplana a filas de moto: el modal agrupa solo, con el mismo criterio que la pantalla
+        // (por cobrador en "Por admin", por portafolio en "Por grupo").
+        const filas = (porAdmin ? porAdminData : porGrupoData).flatMap(b => b.motos);
+        return (
+          <ModalDescargar<MotoRowG>
+            titulo={porAdmin ? "Descargar gestión por admin" : "Descargar recaudo por grupo"}
+            nombreArchivo={porAdmin ? "por_admin" : "por_grupo"}
+            tituloDocumento={porAdmin
+              ? (filtrosActivos ? `Gestión por administrador — ${filtrosResumen}` : "Gestión por administrador")
+              : (filtrosActivos ? `Recaudo por grupo — ${filtrosResumen}` : "Recaudo por grupo")}
+            periodo={periodoTxt}
+            resumenFiltro={filtrosActivos ? filtrosResumen : `${desde} al ${hasta}`}
+            nota={xLeyenda}
+            columnas={columnasGestion(porAdmin ? "grupo" : "admin")}
+            filas={filas}
+            filtros={[
+              { titulo: "Grupos", de: m => m.grupo },
+              { titulo: "Cobrador", de: m => m.adminNombre.toUpperCase() },
+              { titulo: "Estado de pago", de: m => m.estado === "aldia" ? "Al día" : m.estado === "parcial" ? "Parcial" : "No pagó" },
+              { titulo: "Modalidad", de: m => m.formaPago },
+            ]}
+            agrupar={m => porAdmin ? m.adminNombre.toUpperCase() : m.grupo}
+            colorSeccion={n => porAdmin ? "#334155" : (GRUPO_HEX[n] ?? "#334155")}
+            hojasExtra={hojasOpcionales}
+            onCerrar={() => setDescarga(null)}
+          />
         );
       })()}
     </div>

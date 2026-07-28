@@ -11,7 +11,7 @@
 //    por WhatsApp abre sin sesión para quien lo reciba.
 
 import { useMemo, useState } from "react";
-import { descargarExcel, GRUPO_HEX, type CeldaX, type SeccionX } from "../utils/exportar";
+import { descargarExcel, GRUPO_HEX, type CeldaX, type SeccionX, type SeccionesOpts } from "../utils/exportar";
 import { primaryBtn, secondaryBtn } from "../styles/shared";
 import { hoyISO } from "../utils/fecha";
 
@@ -36,7 +36,21 @@ export type ColumnaDescarga<T> = {
   sensible?: boolean;
   align?: "left" | "center" | "right";
   ancho?: number;
-  valor: (fila: T) => string | number | null | undefined;
+  /**
+   * Texto o número simple, o una celda rica (`CeldaX`) cuando el color importa: en los informes
+   * de gestión el estado sale verde/ámbar/rojo y lo que falta en rojo — eso no es adorno, es lo
+   * que hace el archivo legible de un vistazo.
+   */
+  valor: (fila: T) => string | number | null | undefined | CeldaX;
+};
+
+/** Hoja de análisis opcional que se puede anexar al libro. Arranca DESMARCADA. */
+export type HojaExtra = {
+  nombre: string;
+  /** Cómo se le explica al usuario para qué sirve. */
+  etiqueta: string;
+  /** Se construye solo si se marca — así no se calcula lo que nadie pidió. */
+  construir: () => SeccionesOpts;
 };
 
 type Props<T> = {
@@ -48,6 +62,8 @@ type Props<T> = {
   periodo: string;
   /** Frase corta que le recuerda al usuario qué está filtrado. */
   resumenFiltro: string;
+  /** Explicación fija que se imprime en el archivo (ej. qué significa cada estado). */
+  nota?: string;
   columnas: ColumnaDescarga<T>[];
   /** Lo que se ve en pantalla ahora mismo. Es lo que se baja por defecto. */
   filas: T[];
@@ -58,6 +74,12 @@ type Props<T> = {
   etiquetaTodas?: string;
   /** Nombre de la sección (bloque con título de color) de cada fila. */
   agrupar?: (fila: T) => string;
+  /** Color de cada sección. Si no se pasa, usa el del portafolio (GRUPO_HEX). */
+  colorSeccion?: (nombre: string) => string | undefined;
+  /** Fila de total al pie de la hoja principal. */
+  totalGeneral?: CeldaX[];
+  /** Hojas de análisis que el usuario puede anexar. Todas arrancan desmarcadas. */
+  hojasExtra?: HojaExtra[];
   onCerrar: () => void;
 };
 
@@ -66,9 +88,11 @@ type Props<T> = {
 const FILAS_PESADO = 2000;
 
 export default function ModalDescargar<T>({
-  titulo, nombreArchivo, tituloDocumento, periodo, resumenFiltro,
-  columnas, filas, filtros, filasTodas, etiquetaTodas, agrupar, onCerrar,
+  titulo, nombreArchivo, tituloDocumento, periodo, resumenFiltro, nota,
+  columnas, filas, filtros, filasTodas, etiquetaTodas, agrupar,
+  colorSeccion, totalGeneral, hojasExtra, onCerrar,
 }: Props<T>) {
+  const [hojasMarcadas, setHojasMarcadas] = useState<Set<string>>(new Set());
   const [marcadas, setMarcadas] = useState<Set<string>>(
     () => new Set(columnas.filter(c => c.porDefecto && !c.sensible).map(c => c.key)),
   );
@@ -110,6 +134,7 @@ export default function ModalDescargar<T>({
     const celda = (c: ColumnaDescarga<T>, f: T): CeldaX => {
       const v = c.valor(f);
       if (v === null || v === undefined || v === "") return "";
+      if (typeof v === "object") return v;              // celda rica: conserva color y negrita
       return typeof v === "number" ? { num: v } : String(v);
     };
     const fila = (f: T) => elegidas.map(c => celda(c, f));
@@ -125,10 +150,10 @@ export default function ModalDescargar<T>({
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([g, lista]) => ({
         titulo: `${g} — ${lista.length} registro${lista.length !== 1 ? "s" : ""}`,
-        color: GRUPO_HEX[g] ?? GRUPO_HEX.OTRO,
+        color: colorSeccion?.(g) ?? GRUPO_HEX[g] ?? GRUPO_HEX.OTRO,
         filas: lista.map(fila),
       }));
-  }, [aBajar, elegidas, agrupar]);
+  }, [aBajar, elegidas, agrupar, colorSeccion]);
 
   function alternar(key: string) {
     setMarcadas(prev => {
@@ -162,9 +187,16 @@ export default function ModalDescargar<T>({
             const sel = activos(f.titulo);
             return sel.size === ops.length ? null : `${f.titulo}: ${[...sel].join(", ") || "ninguno"}`;
           }).filter(Boolean),
-        ].join(" · "),
+          nota,
+        ].filter(Boolean).join(" · "),
         columnas: elegidas.map(c => ({ label: c.rotulo, align: c.align, ancho: c.ancho })),
         secciones,
+        totalGeneral,
+        // Solo se construyen las hojas que el usuario marcó: antes se anexaban las 5 siempre,
+        // que es justo el "coloca casi todo" del que se quejó.
+        hojasExtra: (hojasExtra ?? [])
+          .filter(h => hojasMarcadas.has(h.nombre))
+          .map(h => ({ nombre: h.nombre, ...h.construir() })),
       });
       onCerrar();
     } catch (e) {
@@ -266,6 +298,31 @@ export default function ModalDescargar<T>({
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))", gap: "7px 12px" }}>
               {sensibles.map(casilla)}
+            </div>
+          </div>
+        )}
+
+        {hojasExtra && hojasExtra.length > 0 && (
+          <div style={{ borderTop: "1px solid var(--line)", paddingTop: 10, marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>Hojas extra</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+              Análisis aparte, cada uno en su propia pestaña del archivo. Marca solo los que necesites.
+            </div>
+            <div style={{ display: "grid", gap: 7 }}>
+              {hojasExtra.map(h => (
+                <label key={h.nombre} style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 13, color: "var(--text)", cursor: "pointer", minWidth: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={hojasMarcadas.has(h.nombre)}
+                    onChange={() => setHojasMarcadas(prev => { const s = new Set(prev); if (s.has(h.nombre)) s.delete(h.nombre); else s.add(h.nombre); return s; })}
+                    style={{ flexShrink: 0, marginTop: 2 }}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: 600 }}>{h.nombre}</span>
+                    <span style={{ color: "var(--muted)" }}> — {h.etiqueta}</span>
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
         )}

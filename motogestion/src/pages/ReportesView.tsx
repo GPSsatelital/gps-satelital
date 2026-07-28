@@ -14,7 +14,10 @@ import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
-import * as XLSX from "xlsx-js-style";
+import {
+  exportarCSV, descargarExcel, GRUPO_HEX,
+  type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
+} from "../utils/exportar";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -174,100 +177,8 @@ function KPI({ label, value, sub, color, bg }: { label: string; value: string; s
   );
 }
 
-function exportarCSV(filas: string[][], encabezado: string[], nombreArchivo: string) {
-  const contenido = [encabezado, ...filas].map(row => row.join(",")).join("\n");
-  const blob = new Blob(["﻿" + contenido], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = nombreArchivo; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── Excel REAL (.xlsx) con estilo (xlsx-js-style) — abre limpio en Excel / Sheets / celular,
-//    con encabezados de color, filas cebra, bordes, montos con formato y autofiltro. Montos =
-//    NÚMERO de verdad. Multi-hoja (Informe / Resumen / Por convenir). ──
-type CeldaX = string | { v?: string; num?: number; color?: string; bold?: boolean; align?: "left" | "center" | "right"; fill?: string };
-type ColX = { label: string; align?: "left" | "center" | "right"; ancho?: number };
-type SeccionX = { titulo: string; color?: string; filas: CeldaX[][] };
-type SeccionesOpts = { titulo: string; periodo: string; leyenda?: string; columnas: ColX[]; secciones: SeccionX[]; totalGeneral?: CeldaX[] };
-
-const XLC = { navy: "0F2740", cyan: "0891B2", sec: "334155", zebra: "F3F6FA", white: "FFFFFF", line: "E2E8F0", gray: "64748B", grayL: "94A3B8", ink: "1F2937" };
-const hexNo = (h?: string) => (h || "").replace("#", "");
-const bordeF = { style: "thin", color: { rgb: XLC.line } };
-const bordeAll = { top: bordeF, bottom: bordeF, left: bordeF, right: bordeF };
-
-// Construye una hoja de cálculo ESTILIZADA a partir de título/período/leyenda/columnas/secciones.
-function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {
-  const n = opts.columnas.length;
-  const val = (c: CeldaX): string | number => (c !== null && typeof c === "object") ? (typeof c.num === "number" ? c.num : (c.v ?? "")) : (c ?? "");
-  type RK = { k: "title" | "period" | "leyenda" | "blank" | "header" | "section" | "data" | "total"; sec?: string; cells?: CeldaX[]; zebra?: boolean };
-  const aoa: (string | number)[][] = [];
-  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-  const kinds: RK[] = [];
-  let r = 0;
-  const fullRow = (txt: string, k: RK["k"], sec?: string) => { aoa.push([txt]); merges.push({ s: { r, c: 0 }, e: { r, c: n - 1 } }); kinds.push({ k, sec }); r++; };
-  fullRow(opts.titulo, "title");
-  fullRow(opts.periodo, "period");
-  if (opts.leyenda) fullRow(opts.leyenda, "leyenda");
-  aoa.push([]); kinds.push({ k: "blank" }); r++;
-  aoa.push(opts.columnas.map(c => c.label)); kinds.push({ k: "header" }); r++;
-  opts.secciones.forEach(sec => {
-    fullRow(sec.titulo, "section", sec.color);
-    let di = 0;
-    sec.filas.forEach(fila => { aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); kinds.push({ k: "data", cells: fila, zebra: di % 2 === 1 }); di++; r++; });
-  });
-  if (opts.totalGeneral) { const tg = opts.totalGeneral; aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); kinds.push({ k: "total" }); r++; }
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!merges"] = merges as XLSX.Range[];
-  ws["!cols"] = opts.columnas.map(c => ({ wch: Math.max(9, Math.round((c.ancho ?? 120) / 6.5)) }));
-  const headerRow = kinds.findIndex(k => k.k === "header");
-  if (headerRow >= 0) ws["!autofilter"] = { ref: `${XLSX.utils.encode_cell({ r: headerRow, c: 0 })}:${XLSX.utils.encode_cell({ r: headerRow, c: n - 1 })}` };
-
-  const put = (addr: string, s: object) => { if (!ws[addr]) ws[addr] = { t: "s", v: "" }; (ws[addr] as { s?: object }).s = s; };
-  kinds.forEach((rk, ri) => {
-    if (rk.k === "blank") return;
-    for (let c = 0; c < n; c++) {
-      const addr = XLSX.utils.encode_cell({ r: ri, c });
-      const cell = ws[addr] as { t?: string } | undefined;
-      const numeric = cell?.t === "n";
-      const col = opts.columnas[c];
-      if (rk.k === "title") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 14, bold: true, color: { rgb: XLC.white } } });
-      else if (rk.k === "period") put(addr, { font: { name: "Arial", sz: 10, color: { rgb: XLC.gray } } });
-      else if (rk.k === "leyenda") put(addr, { font: { name: "Arial", sz: 9, italic: true, color: { rgb: XLC.grayL } } });
-      else if (rk.k === "header") put(addr, { fill: { fgColor: { rgb: XLC.cyan } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? "left", vertical: "center" }, border: bordeAll });
-      else if (rk.k === "section") put(addr, { fill: { fgColor: { rgb: hexNo(rk.sec) || XLC.sec } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } } });
-      else if (rk.k === "total") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? (numeric ? "right" : "left") }, border: bordeAll, ...(numeric ? { numFmt: "#,##0" } : {}) });
-      else {
-        const cx = rk.cells?.[c];
-        const cxo = (cx !== null && typeof cx === "object") ? cx : undefined;
-        put(addr, {
-          fill: { fgColor: { rgb: cxo?.fill ? hexNo(cxo.fill) : (rk.zebra ? XLC.zebra : XLC.white) } },
-          font: { name: "Arial", sz: 10, bold: !!cxo?.bold, color: { rgb: cxo?.color ? hexNo(cxo.color) : XLC.ink } },
-          alignment: { horizontal: cxo?.align ?? col.align ?? (numeric ? "right" : "left") },
-          border: bordeAll, ...(numeric ? { numFmt: "#,##0" } : {}),
-        });
-      }
-    }
-  });
-  return ws;
-}
-
-function descargarLibro(archivo: string, hojas: { nombre: string; ws: XLSX.WorkSheet }[]) {
-  const wb = XLSX.utils.book_new();
-  hojas.forEach(h => XLSX.utils.book_append_sheet(wb, h.ws, h.nombre.slice(0, 31)));
-  XLSX.writeFile(wb, archivo.endsWith(".xlsx") ? archivo : archivo + ".xlsx");
-}
-const GRUPO_HEX: Record<string, string> = {
-  RASTREADOR: "#0891b2", COSTA: "#0e7490", PRADERA: "#b45309", USADAS: "#c2410c", OTRO: "#475569",
-};
-function descargarExcel(opts: SeccionesOpts & { archivo: string; hoja?: string; hojasExtra?: (SeccionesOpts & { nombre: string })[] }) {
-  const hojas = [
-    { nombre: opts.hoja ?? "Informe", ws: estilarSeccionesWS(opts) },
-    ...(opts.hojasExtra ?? []).map(h => ({ nombre: h.nombre, ws: estilarSeccionesWS(h) })),
-  ];
-  descargarLibro(opts.archivo, hojas);
-}
+// El motor de descargas (Excel estilizado + CSV) vive en src/utils/exportar.ts — fuente unica
+// para que toda pantalla con boton de descargar saque el mismo formato. Ver los imports arriba.
 
 // ── Gráficos del PDF (SVG inline con hex — html2canvas los rasteriza bien) ──
 function donutSVG(al: number, par: number, no: number, total: number): string {
@@ -458,7 +369,7 @@ function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: 
   );
 }
 
-function CabeceraGestion({ totMotos, alDia, parcial, noPago, debenSinConvenio, totRec, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; totRec: number; rangoLabel: string; desde: string; hasta: string; nota: string; onExport: () => void }) {
+function CabeceraGestion({ totMotos, alDia, parcial, noPago, debenSinConvenio, totRec, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; totRec: number; rangoLabel: string; desde: string; hasta: string; nota: string; onExport?: () => void }) {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
@@ -474,7 +385,11 @@ function CabeceraGestion({ totMotos, alDia, parcial, noPago, debenSinConvenio, t
           <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · {nota}
           {debenSinConvenio > 0 && <span style={{ color: "var(--warn-ink)", fontWeight: 700 }}> · ⚠️ {debenSinConvenio} deben sin convenio</span>}
         </div>
-        <button onClick={onExport} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+        {/* Sin permiso de descarga el botón no se dibuja: el informe se puede MIRAR, pero no
+            llevárselo en un archivo (ver acción exportar_datos en src/lib/acciones.ts). */}
+        {onExport && (
+          <button onClick={onExport} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+        )}
       </div>
     </>
   );
@@ -518,7 +433,10 @@ export default function ReportesView({ onNavigate }: Props) {
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  const { profile }   = useAuth();
+  const { profile, puede } = useAuth();
+  // Un archivo descargado se sale del control de la app (queda en el celular, se reenvía por
+  // WhatsApp, sobrevive a que la persona se vaya). Por eso descargar es una acción aparte de ver.
+  const puedeExportar = puede("exportar_datos");
   const esAdmin       = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const { pagos }     = usePagos();
   const { contratos } = useContratos();
@@ -1387,7 +1305,7 @@ export default function ReportesView({ onNavigate }: Props) {
       {/* Tabs */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-          {TABS.map(t => (
+          {TABS.filter(t => t.key !== "exportar" || puedeExportar).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "7px 3px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: tab === t.key ? "var(--text)" : "transparent", color: tab === t.key ? "var(--card)" : "var(--muted)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, minWidth: 0, lineHeight: 1.1 }}>
               <span style={{ fontSize: 15 }}>{t.icon}</span><span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{t.label}</span>
             </button>
@@ -1517,7 +1435,7 @@ export default function ReportesView({ onNavigate }: Props) {
           {/* Filtros combinables (grupo · cobrador · modalidad · estado) */}
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
           <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={exportarPorAdmin} />
+            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={puedeExportar ? exportarPorAdmin : undefined} />
           {/* C1 — comparación de recaudo vs período anterior */}
           <div style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12.5 }}>
             <span style={{ color: "var(--muted)" }}>Recaudo del período: <b style={{ color: "var(--text)" }}>$ {fmt(gTotRec)}</b> <span style={{ color: "var(--faint)" }}>· anterior $ {fmt(recaudoAnterior)}</span></span>
@@ -1549,7 +1467,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
           <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={exportarPorGrupo} />
+            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={puedeExportar ? exportarPorGrupo : undefined} />
           <GestionBloques bloques={porGrupoData} modo="grupo" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>
       )}
@@ -1576,7 +1494,9 @@ export default function ReportesView({ onNavigate }: Props) {
                 Período: <b style={{ color: "var(--text)" }}>{rangoLabel}</b>
                 <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · visitas por administrador
               </div>
-              <button onClick={exportarVisitas} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+              {puedeExportar && (
+                <button onClick={exportarVisitas} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
+              )}
             </div>
             {visitasData.length === 0 && <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay visitas registradas en este período.</div>}
             {visitasData.map(a => {
@@ -2038,7 +1958,9 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── TAB EXPORTAR ── */}
-      {tab === "exportar" && (() => {
+      {/* El `puedeExportar` va también acá y no solo en la pestaña: si alguien ya estaba parado en
+          Exportar cuando le quitan el permiso, el contenido tiene que desaparecer igual. */}
+      {tab === "exportar" && puedeExportar && (() => {
         const SECCIONES: { key: string; label: string; desc: string }[] = [
           { key: "kpis",        label: "KPIs de recaudo",           desc: "Total, efectivo, transferencias, activos, mora" },
           { key: "recaudoGrupo",label: "Recaudo por grupo",         desc: "Tabla por COSTA/PRADERA/RASTREADOR/USADAS" },
@@ -2116,7 +2038,7 @@ export default function ReportesView({ onNavigate }: Props) {
                     const c  = contratos.find(ct => ct.id === p.contrato_id);
                     const cl = c ? clientes.find(cl => cl.id === c.cliente_id) : null;
                     const m  = c?.moto_id ? motos.find(mo => mo.id === c.moto_id) : null;
-                    return [p.fecha, (cl?.nombre ?? "—").replace(/,/g," "), m?.placa ?? "—", p.metodo, p.tipo_registro ?? "", String(p.valor)];
+                    return [p.fecha, cl?.nombre ?? "—", m?.placa ?? "—", p.metodo, p.tipo_registro ?? "", String(p.valor)];
                   });
                   exportarCSV(filas, ["Fecha","Cliente","Placa","Metodo","Tipo","Valor"], `pagos-${desde}-${hasta}.csv`);
                 },
@@ -2125,7 +2047,7 @@ export default function ReportesView({ onNavigate }: Props) {
                 label: "⬇️ CSV — Mora actual",
                 desc: `${moraDetallada.length} contratos en mora · Cliente, Placa, Días, Deuda pendiente, Último pago`,
                 onClick: () => {
-                  const filas = moraDetallada.map(m => [m.cliente.replace(/,/g," "), m.placa, String(m.diasSinPago), String(m.deudaPendiente), m.ultimoPago ?? "Sin pagos"]);
+                  const filas = moraDetallada.map(m => [m.cliente, m.placa, String(m.diasSinPago), String(m.deudaPendiente), m.ultimoPago ?? "Sin pagos"]);
                   exportarCSV(filas, ["Cliente","Placa","Dias sin pago","Deuda pendiente","Ultimo pago"], `mora-${hoyStr}.csv`);
                 },
               },

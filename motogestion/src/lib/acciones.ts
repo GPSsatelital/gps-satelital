@@ -43,6 +43,11 @@ export const ACCIONES: AccionDef[] = [
   { key: "lista_negra",            label: "Poner / quitar lista negra",         modulo: "clientes" },
   // Configuración (módulo siempre visible)
   { key: "editar_configuracion",   label: "Editar configuración / mensajes",    modulo: "configuracion" },
+  // Salida de datos. Va en "reportes" pero controla TODOS los botones de descarga del sistema
+  // (informes, historial de pagos, listado de motos). Un archivo descargado se sale del control
+  // de la app: queda en el celular, se reenvía por WhatsApp y sobrevive a que la persona se vaya
+  // de la empresa — por eso es más delicado que verlo en pantalla. Default ADMIN+AP, 27-jul-2026.
+  { key: "exportar_datos",         label: "Descargar datos (Excel / CSV)",      modulo: "reportes" },
 ];
 
 export const ACCION_KEYS = ACCIONES.map(a => a.key);
@@ -68,6 +73,7 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
+    "exportar_datos",
   ],
   SECRETARIA: [
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",

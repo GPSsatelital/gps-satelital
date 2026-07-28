@@ -15,6 +15,18 @@ import { descargarExcel, GRUPO_HEX, type CeldaX, type SeccionX } from "../utils/
 import { primaryBtn, secondaryBtn } from "../styles/shared";
 import { hoyISO } from "../utils/fecha";
 
+/**
+ * Filtro desplegable DENTRO de la ventana de descarga. Sirve para afinar sin tener que salir a
+ * cambiar la pantalla: "quiero solo COSTA", "solo las que están en taller", "solo efectivo".
+ * Arranca con todo marcado (= lo que se ve) y el conteo de arriba se actualiza en vivo.
+ */
+export type FiltroDescarga<T> = {
+  titulo: string;
+  /** Se calculan solas a partir de las filas si no se pasan. */
+  opciones?: { valor: string; etiqueta: string }[];
+  de: (fila: T) => string;
+};
+
 export type ColumnaDescarga<T> = {
   key: string;
   rotulo: string;
@@ -39,6 +51,8 @@ type Props<T> = {
   columnas: ColumnaDescarga<T>[];
   /** Lo que se ve en pantalla ahora mismo. Es lo que se baja por defecto. */
   filas: T[];
+  /** Bloques desplegables para afinar sin salir de la ventana (grupo, estado, método...). */
+  filtros?: FiltroDescarga<T>[];
   /** Todo, sin los filtros de pantalla. Si no se pasa, no aparece la casilla. */
   filasTodas?: T[];
   etiquetaTodas?: string;
@@ -53,7 +67,7 @@ const FILAS_PESADO = 2000;
 
 export default function ModalDescargar<T>({
   titulo, nombreArchivo, tituloDocumento, periodo, resumenFiltro,
-  columnas, filas, filasTodas, etiquetaTodas, agrupar, onCerrar,
+  columnas, filas, filtros, filasTodas, etiquetaTodas, agrupar, onCerrar,
 }: Props<T>) {
   const [marcadas, setMarcadas] = useState<Set<string>>(
     () => new Set(columnas.filter(c => c.porDefecto && !c.sensible).map(c => c.key)),
@@ -61,10 +75,35 @@ export default function ModalDescargar<T>({
   const [todas, setTodas] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [desplegado, setDesplegado] = useState<string | null>(null);
 
   const normales = columnas.filter(c => !c.sensible);
   const sensibles = columnas.filter(c => c.sensible);
-  const aBajar = todas && filasTodas ? filasTodas : filas;
+  const base = todas && filasTodas ? filasTodas : filas;
+
+  // Opciones reales de cada filtro: se calculan de las filas para no ofrecer nunca un valor que
+  // no existe (ej. "Fiscalía" cuando ninguna moto está retenida — marcarlo daría cero filas).
+  const opcionesPorFiltro = useMemo(() => {
+    const m = new Map<string, { valor: string; etiqueta: string }[]>();
+    for (const f of filtros ?? []) {
+      if (f.opciones) { m.set(f.titulo, f.opciones); continue; }
+      const vistos = new Set<string>();
+      for (const fila of base) vistos.add(f.de(fila) || "—");
+      m.set(f.titulo, [...vistos].sort().map(v => ({ valor: v, etiqueta: v })));
+    }
+    return m;
+  }, [filtros, base]);
+
+  // Arranca todo marcado = exactamente lo que se ve. Afinar es una decisión del usuario.
+  const [selFiltros, setSelFiltros] = useState<Record<string, Set<string>>>({});
+  const activos = (titulo: string) => selFiltros[titulo] ?? new Set((opcionesPorFiltro.get(titulo) ?? []).map(o => o.valor));
+
+  const aBajar = useMemo(() => {
+    if (!filtros || filtros.length === 0) return base;
+    return base.filter(fila => filtros.every(f => activos(f.titulo).has(f.de(fila) || "—")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, filtros, selFiltros, opcionesPorFiltro]);
+
   const elegidas = columnas.filter(c => marcadas.has(c.key));
 
   const secciones = useMemo<SeccionX[]>(() => {
@@ -113,7 +152,17 @@ export default function ModalDescargar<T>({
         archivo: `${nombreArchivo}-${hoyISO()}`,
         titulo: tituloDocumento,
         periodo,
-        leyenda: todas ? "Todos los registros, sin los filtros de pantalla" : `Filtrado: ${resumenFiltro}`,
+        // La leyenda tiene que describir lo que REALMENTE trae el archivo, incluidos los filtros
+        // que se marcaron acá dentro. Si dijera "toda la flota" trayendo solo USADAS, quien lo
+        // reciba sacaría conclusiones equivocadas de un archivo incompleto.
+        leyenda: [
+          todas ? "Todos los registros, sin los filtros de pantalla" : `Filtrado: ${resumenFiltro}`,
+          ...(filtros ?? []).map(f => {
+            const ops = opcionesPorFiltro.get(f.titulo) ?? [];
+            const sel = activos(f.titulo);
+            return sel.size === ops.length ? null : `${f.titulo}: ${[...sel].join(", ") || "ninguno"}`;
+          }).filter(Boolean),
+        ].join(" · "),
         columnas: elegidas.map(c => ({ label: c.rotulo, align: c.align, ancho: c.ancho })),
         secciones,
       });
@@ -162,7 +211,50 @@ export default function ModalDescargar<T>({
           </div>
         )}
 
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>¿Qué datos quieres?</div>
+        {/* Filtros desplegables: cada uno arranca cerrado mostrando qué está seleccionado, y se
+            abre para marcar/desmarcar. El conteo de arriba se mueve en vivo. */}
+        {(filtros ?? []).map(f => {
+          const ops = opcionesPorFiltro.get(f.titulo) ?? [];
+          const sel = activos(f.titulo);
+          const abierto = desplegado === f.titulo;
+          const resumen = sel.size === ops.length ? "Todos" : sel.size === 0 ? "Ninguno" : [...sel].join(", ");
+          const poner = (nuevo: Set<string>) => setSelFiltros(prev => ({ ...prev, [f.titulo]: nuevo }));
+          return (
+            <div key={f.titulo} style={{ border: "1px solid var(--line)", borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+              <button
+                onClick={() => setDesplegado(abierto ? null : f.titulo)}
+                style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, background: "transparent", border: "none", padding: "10px 12px", cursor: "pointer", textAlign: "left", minWidth: 0 }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", flexShrink: 0 }}>{f.titulo}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1, textAlign: "right" }}>{resumen}</span>
+                <span style={{ fontSize: 12, color: "var(--muted)", flexShrink: 0 }}>{abierto ? "▲" : "▼"}</span>
+              </button>
+              {abierto && (
+                <div style={{ padding: "0 12px 10px" }}>
+                  <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                    <button onClick={() => poner(new Set(ops.map(o => o.valor)))} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--accent-ink)" }}>Marcar todos</button>
+                    <button onClick={() => poner(new Set())} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Ninguno</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))", gap: "7px 12px" }}>
+                    {ops.map(o => (
+                      <label key={o.valor} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--text)", cursor: "pointer", minWidth: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={sel.has(o.valor)}
+                          onChange={() => { const n = new Set(sel); if (n.has(o.valor)) n.delete(o.valor); else n.add(o.valor); poner(n); }}
+                          style={{ flexShrink: 0 }}
+                        />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.etiqueta}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 8, marginTop: 12 }}>¿Qué datos quieres?</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))", gap: "7px 12px", marginBottom: 12 }}>
           {normales.map(casilla)}
         </div>

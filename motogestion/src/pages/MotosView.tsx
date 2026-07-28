@@ -1094,6 +1094,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           ].filter(Boolean).join(" · ") || "toda la flota visible"}
           columnas={COLUMNAS_MOTOS}
           filas={filtered}
+          filtros={[
+            { titulo: "Grupos", de: m => m.grupo },
+            { titulo: "Estados", de: m => ESTADO_LABEL[m.estado] ?? m.estado },
+            { titulo: "Encargado", de: m => m.subadmin_id ? (subadmins.find(s => s.id === m.subadmin_id)?.nombre ?? "Sin asignar") : "Sin asignar" },
+          ]}
           filasTodas={filtrarMotos(motos)}
           etiquetaTodas="toda la flota"
           // Sección = grupo · estado, que es como el dueño lee la flota: primero de qué socio es,

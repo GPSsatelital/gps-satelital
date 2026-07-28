@@ -420,6 +420,12 @@ export default function HistorialPagosView({ onNavigate }: {
           ].filter(Boolean).join(" · ")}
           columnas={COLUMNAS_PAGOS}
           filas={pagosFiltrados}
+          filtros={[
+            { titulo: "Grupos", de: p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "Sin grupo" },
+            { titulo: "Método", de: p => p.metodo },
+            { titulo: "Estado", de: p => p.estado },
+            { titulo: "Tipo de registro", de: p => p.tipo_registro ?? "normal" },
+          ]}
           filasTodas={pagos}
           etiquetaTodas="todo el histórico"
           agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "OTRO"}

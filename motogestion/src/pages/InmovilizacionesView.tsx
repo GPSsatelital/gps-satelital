@@ -456,6 +456,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       alert(`Para entregar la moto ${m.placa}: primero se debe pagar la multa/deudas ($${fmt(m.totalPendiente)}) y las cuotas atrasadas o dejarlas en un convenio. Usa "💵 Cobrar" o "📝 Convenio".`);
       return;
     }
+    // La guardada temporal se entrega siempre (el cliente no incumplió), pero si debe plata hay
+    // que decirlo en la cara antes de soltar la moto — no bloquea, avisa: quien entrega decide.
+    const debeTemporal = m.esTemporal ? m.totalPendiente + m.cuotasAtrasadas : 0;
+    if (debeTemporal > 0) {
+      const conv = m.convenioId != null ? "\n\nYa tiene un convenio activo." : "\n\nLo normal es cobrarle o dejarle un convenio antes de entregársela.";
+      if (!confirm(`${m.clienteNombre.toUpperCase()} debe $${fmt(debeTemporal)}.${conv}\n\n¿Entregarle igual la moto ${m.placa}?`)) return;
+    }
     setEntregaRec(m);
   }
 
@@ -861,6 +868,22 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                                 ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
                                 : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
                       </div>
+                      {/* Una moto guardada temporal se puede entregar SIEMPRE (el cliente no
+                          incumplió: la dejó él mismo). Pero si además debe plata, esa deuda no
+                          puede quedar escondida detrás del botón verde: se avisa con el monto y
+                          quien entrega decide si le cobra, le deja convenio, o se la entrega igual.
+                          Decisión del dueño, 28-jul-2026: avisar, no bloquear. */}
+                      {m.esTemporal && (m.totalPendiente > 0 || m.cuotasAtrasadas > 0) && (
+                        <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>
+                          ⚠️ Este cliente debe <strong>${fmt(m.totalPendiente + m.cuotasAtrasadas)}</strong>
+                          {m.totalPendiente > 0 && m.cuotasAtrasadas > 0
+                            ? ` (deudas $${fmt(m.totalPendiente)} + cuotas atrasadas $${fmt(m.cuotasAtrasadas)})`
+                            : m.totalPendiente > 0 ? " en deudas registradas" : " en cuotas atrasadas"}.
+                          {m.convenioId == null
+                            ? " Cóbrale o déjale un convenio antes de entregarle la moto."
+                            : " Ya tiene un convenio activo."}
+                        </div>
+                      )}
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                         {m.categoria === "taller"
                           ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--indigo-soft)", color: "var(--violet)" }}>🔧 {m.motivoVarada.charAt(0).toUpperCase() + m.motivoVarada.slice(1)}</span>

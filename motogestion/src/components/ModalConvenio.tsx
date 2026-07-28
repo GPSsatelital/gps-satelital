@@ -37,6 +37,11 @@ const labelStyle: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
+// Tope de cuotas de un convenio. Si no se paga en 12, el cliente necesita otra cosa (liquidación),
+// no un plazo más largo. Sirve además de red contra el error de dedo de escribir el VALOR de la
+// cuota en la casilla del NÚMERO de cuotas — que ya pasó (ver la validación en handleGuardar).
+const MAX_CUOTAS = 12;
+
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   const [incluirSemana, setIncluirSemana] = useState(false);
@@ -102,6 +107,19 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
     if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
     if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
+    // Tope de cuotas (decisión del dueño, 28-jul-2026): un convenio que no se paga en 12 cuotas
+    // ya no es un convenio, es otra conversación (liquidación).
+    // Esto además ataja el error de dedo que sí pasó: en el convenio de XZN20H alguien escribió
+    // 60000 en la casilla del NÚMERO DE CUOTAS pensando que era el valor, y el sistema obedeció:
+    // $505.000 ÷ 60.000 = cuotas de $9 durante 60.000 semanas, con fecha límite en el año 3176.
+    if (cuotasCalc > MAX_CUOTAS) {
+      setError(
+        modoFijar === "cuotas"
+          ? `${cuotasCalc} cuotas es demasiado (el máximo es ${MAX_CUOTAS}). ¿Escribiste ahí el VALOR de la cuota? Para eso usa el botón "Fijar por valor de cuota".`
+          : `Con una cuota de $${fmt(Number(cuotaInput))} saldrían ${cuotasCalc} cuotas, y el máximo es ${MAX_CUOTAS}. Sube el valor de la cuota.`,
+      );
+      return;
+    }
     if (!primerPago) { setError("Selecciona la fecha del primer pago."); return; }
     if (totalConvenios !== null && totalConvenios >= 3) { setError("Este contrato ya tiene 3 convenios (máximo permitido)."); return; }
 
@@ -269,6 +287,23 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 {meta > 0 && totalCalculado > meta && (
                   <span style={{ fontWeight: 400, fontSize: 12 }}> (redondeado, meta $ {fmt(meta)})</span>
                 )}
+                {/* La frase en cristiano es la que de verdad ataja el error: leer "$9 cada semana
+                    durante 60.000 semanas" salta a la vista mucho antes que ver un 60000 en una
+                    casilla. Va debajo del total, que es donde el ojo ya está mirando. */}
+                <div style={{ fontWeight: 400, fontSize: 13, marginTop: 4, color: "var(--accent-ink)" }}>
+                  El cliente paga <strong>$ {fmt(cuotaCalc)}</strong> cada período, <strong>{cuotasCalc}</strong> {cuotasCalc === 1 ? "vez" : "veces"}.
+                </div>
+              </div>
+            )}
+
+            {/* Aviso ANTES de intentar guardar: el error de handleGuardar solo aparece al tocar el
+                botón, y para entonces ya se escribió todo. */}
+            {cuotasCalc > MAX_CUOTAS && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
+                ⛔ Son <strong>{fmt(cuotasCalc)} cuotas</strong> y el máximo es {MAX_CUOTAS}.
+                {modoFijar === "cuotas"
+                  ? <> ¿Querías escribir el <strong>valor</strong> de la cuota? Usa el botón “Fijar por valor de cuota”.</>
+                  : <> Sube el valor de la cuota para que quepan en {MAX_CUOTAS} o menos.</>}
               </div>
             )}
 

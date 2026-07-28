@@ -2087,6 +2087,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           <option value="prestamo_repuesto">Préstamo repuestos</option>
                           <option value="prestamo_eventualidad">Préstamo eventualidad</option>
                           <option value="fotomulta">Fotomulta</option>
+                          {/* Faltaba acá aunque sí existía en el formulario de EDITAR: quien
+                              necesitaba cargar a mano la multa de una recolección tenía que
+                              disfrazarla de "Otro". */}
+                          <option value="multa_recoleccion">Multa por recolección / inmovilización</option>
                           <option value="otro">Otro</option>
                         </select>
                       </div>
@@ -3460,12 +3464,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         </div>
                       )}
                       {/* Que no esté en la bolsa es lo NORMAL (la mayoría de clientes reportan
-                          su pago el mismo día). El aviso informa, no alarma — si alarmara en
-                          cada cobro, dejaría de leerse justo cuando importa. */}
+                          su pago el mismo día). El aviso informa, no alarma.
+                          OJO CON LA REDACCIÓN: antes empezaba con "Esta referencia NO está en el
+                          dinero sin identificar" y el operador de afán leía "no está" = "no se
+                          puede" y no registraba el pago. Pasó de verdad (ref. M18871421, 28-jul).
+                          Ahora arranca diciendo que SÍ puede continuar. */}
                       {!modalCruce && normalizarRef(modalReferencia).length >= 3 && (
                         <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", background: "var(--soft)", borderRadius: 8, padding: "7px 10px" }}>
-                          Esta referencia no está en el dinero sin identificar — es lo normal cuando el cliente reporta su pago.
-                          La secretaria la verificará contra el extracto al confirmar.
+                          ✓ Puedes registrar el pago normal. Esta referencia todavía no aparece en el dinero sin
+                          identificar, que es lo normal cuando el cliente reporta su pago el mismo día —
+                          la secretaria la verificará contra el extracto al confirmar.
                         </div>
                       )}
                       {repetida && (

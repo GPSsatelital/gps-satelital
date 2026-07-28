@@ -24,6 +24,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL } from "../utils/inmovilizacion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
@@ -107,7 +108,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { filtrarMotos } = useScope();
   const { contratos, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
-  const { registrarDeuda } = useDeudas();
+  const { deudas, registrarDeuda } = useDeudas();
   const { pagos } = usePagos();
   const { convenios } = useConvenios();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
@@ -326,15 +327,23 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     () => contratoMoto ? clientes.find(cl => cl.id === contratoMoto.cliente_id) ?? null : null,
     [contratoMoto, clientes],
   );
-  const contratoMotoEnMora = useMemo(() => {
-    if (!contratoMoto || contratoMoto.estado !== "Activo") return false;
+  // ¿Se le puede inmovilizar la moto a este contrato, y POR QUÉ? Antes esto solo miraba si estaba
+  // en mora, y dejaba fuera dos casos reales: el que apenas se le venció el día de gracia (gabela)
+  // y el que debe plata registrada pero paga su cuota al día. Ver src/utils/inmovilizacion.ts.
+  const razonInmovilizarMoto = useMemo(() => {
+    if (!contratoMoto || contratoMoto.estado !== "Activo") return null;
     const hoyD = hoyDateFn();
     const pagosC = pagos.filter(p => p.contrato_id === contratoMoto.id && p.estado === "Confirmado");
     const conv = convenios.find(cv => cv.contrato_id === contratoMoto.id && cv.estado === "activo") ?? null;
     const cuotaConv = cuotaConvenioDelPeriodo(conv, contratoMoto, hoyD);
     const cubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
-    return calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto) === "mora";
-  }, [contratoMoto, pagos, convenios]);
+    const estado = calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto);
+    // Solo deuda EXIGIBLE: las 'en_convenio' se cobran por la cuota del convenio, no quitando la moto.
+    const deudaPend = deudas
+      .filter(d => d.contrato_id === contratoMoto.id && d.estado === "pendiente")
+      .reduce((acc, d) => acc + d.monto_pendiente, 0);
+    return { razon: razonParaInmovilizar(estado, deudaPend), estado, deudaPend };
+  }, [contratoMoto, pagos, convenios, deudas]);
 
   function abrirEdicion() {
     if (!selectedMoto) return;
@@ -880,7 +889,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               <Field label="Motivo de ingreso">
                 <select style={inputStyle} value={formRec.motivo} onChange={(e) => setFormRec((p) => ({ ...p, motivo: e.target.value as MotivoRecepcion }))}>
                   <option value="nuevo_registro">Nuevo registro de moto</option>
-                  <option value="retencion_mora">Retención por mora</option>
+                  {/* "Retención por mora" se quitó: el handler solo reacciona a entrega_voluntaria,
+                      así que elegirla dejaba un REGISTRO FANTASMA — decía "Recepción registrada" en
+                      verde y el contrato seguía Activo, la moto Asignada, sin multa y sin aparecer
+                      en Inmovilizaciones. Ese caso va por "Registrar novedad" → "Inmovilizar por
+                      incumplimiento", que sí suspende, cobra la multa y deja la gestión. */}
                   <option value="entrega_voluntaria">Entrega voluntaria del cliente</option>
                   <option value="liquidacion">Liquidación de contrato</option>
                   <option value="otro">Otro motivo</option>
@@ -1242,9 +1255,14 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         const contratoActivo = contratoMoto?.estado === "Activo";
         const opciones: { icono: string; titulo: string; desc: string; enabled: boolean; motivoOff?: string; onClick: () => void }[] = [
           {
-            icono: "🚚", titulo: "Recolección por mora", enabled: puedeRecolectar && !!contratoActivo && contratoMotoEnMora,
-            desc: "El cliente no pagó. Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.",
-            motivoOff: !puedeRecolectar ? "No tienes permiso para recolectar motos" : !contratoActivo ? "La moto no tiene un contrato activo" : "El contrato no está en mora",
+            icono: "🚚", titulo: "Inmovilizar por incumplimiento",
+            enabled: puedeRecolectar && !!contratoActivo && !!razonInmovilizarMoto?.razon,
+            desc: razonInmovilizarMoto?.razon
+              ? `El cliente está ${RAZON_INMOVILIZAR_LABEL[razonInmovilizarMoto.razon]}. Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.`
+              : "Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.",
+            motivoOff: !puedeRecolectar ? "No tienes permiso para recolectar motos"
+              : !contratoActivo ? "La moto no tiene un contrato activo"
+              : motivoNoInmovilizable(razonInmovilizarMoto?.estado ?? "al-dia", razonInmovilizarMoto?.deudaPend ?? 0),
             onClick: () => { setRecoleccionMoto(selectedMoto); setOpenNovedad(false); },
           },
           {

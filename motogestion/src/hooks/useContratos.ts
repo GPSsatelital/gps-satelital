@@ -120,6 +120,9 @@ export const FECHA_CORTE_MIGRACION = "2026-07-01"; // default (grupos sin corte 
 const CORTE_POR_GRUPO: Record<string, string> = {
   PRADERA: "2026-07-01",
   RASTREADOR: "2026-07-06",
+  // COSTA faltaba: le caía el default del 1-jul cuando su corte real fue el 27-jul, así que a un
+  // cliente que llevaba UN día el sistema le mostraba "27d sin pagar". ~180 contratos afectados.
+  COSTA: "2026-07-27",
 };
 export function corteMigracionGrupo(grupo?: string | null): string {
   return (grupo && CORTE_POR_GRUPO[grupo]) || FECHA_CORTE_MIGRACION;

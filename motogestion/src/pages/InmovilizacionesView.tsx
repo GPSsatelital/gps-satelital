@@ -10,6 +10,7 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
+import { razonParaInmovilizar, RAZON_INMOVILIZAR_LABEL } from "../utils/inmovilizacion";
 import {
   calcularEstadoCartera,
   cuotaConvenioDelPeriodo,
@@ -53,6 +54,8 @@ type Fila = {
   marca: string;
   modelo: string;
   diasMora: number;
+  /** Por qué se puede inmovilizar: mora, gabela o deuda pendiente. */
+  razonInmov: import("../utils/inmovilizacion").RazonInmovilizar;
   deudaReal: number;
   tarifa: number;
   ultimoPago: string | null;
@@ -69,7 +72,10 @@ const PRIO: Record<Prioridad, { bg: string; color: string; border: string; label
   media:   { bg: "var(--orange-soft)", color: "var(--orange)", border: "var(--orange-soft)", label: "Media",    icon: "🟡" },
 };
 
-type FiltroP = "todos" | "criticos" | "en_proceso" | Prioridad;
+// "mora" / "gabela" / "deuda" filtran por la RAZÓN por la que se puede inmovilizar. Existen desde
+// que gabela y deuda también habilitan: sin ellos, la lista de persecución pasaba de ~35 a ~195 de
+// un día para otro y el KPI "mora crítica +3d" quedaba contando gente con 0 días de atraso.
+type FiltroP = "todos" | "criticos" | "en_proceso" | "mora" | "gabela" | "deuda" | Prioridad;
 
 // Protocolo actual: mensaje → llamada → apagado/recolección, disponibles el mismo día en
 // que el contrato entra en mora (el funcionario escala según si hay respuesta o no).
@@ -104,7 +110,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [gestionNombre, setGestionNombre] = useState("");
   const [gestionPasosPrevios, setGestionPasosPrevios] = useState<{ mensaje: boolean; llamada: boolean; sirena: boolean } | undefined>(undefined);
   const [busqueda, setBusqueda]       = useState("");
-  const [filtro, setFiltro]           = useState<FiltroP>("todos");
+  // Arranca en "mora" y NO en "todos": esta pantalla es la lista de a quién perseguir, y así la
+  // vista por defecto sigue siendo exactamente la de siempre. Los de gabela y los que solo deben
+  // están a un toque, pero no inflan la lista de trabajo del día sin que nadie lo decida.
+  const [filtro, setFiltro]           = useState<FiltroP>("mora");
   const [expandido, setExpandido]     = useState<string | null>(null);
   // El procesamiento real vive en cada modal (cobro/entrega); aquí solo se lee para deshabilitar.
   const [procesandoId] = useState<string | null>(null);
@@ -128,15 +137,22 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
           .sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-        // Mismo criterio de mora real que usa Cartera — solo entran los que de verdad
-        // están en mora, sin importar la modalidad (evita el falso positivo de contar
-        // "días sin pago" en bruto para semanal/quincenal/mensual). La cuota del
-        // convenio activo cuenta como parte de lo exigido del período.
+        // Entran los que se pueden inmovilizar: en mora, en gabela, o con deuda pendiente.
+        // Antes solo entraban los de mora, y por eso un cliente al que ya le habían retenido la
+        // moto no aparecía acá para poder registrarlo (caso ISMAEL / RLZ94H, 28-jul).
+        // La cuota del convenio activo cuenta como parte de lo exigido del período.
         const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
         const cuotaConvenio = cuotaConvenioDelPeriodo(convenioAct, c, hoyDate);
         const periodoCubierto = !!(convenioAct?.cubre_periodo_hasta && convenioAct.cubre_periodo_hasta >= hoyISOStr);
-        if (calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto) !== "mora") return [];
-        const dias = diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto);
+        const estadoCart = calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto);
+        const deudaPendCalc = deudas
+          .filter(d => d.contrato_id === c.id && d.estado === "pendiente")
+          .reduce((acc, d) => acc + d.monto_pendiente, 0);
+        const razonInmov = razonParaInmovilizar(estadoCart, deudaPendCalc);
+        if (!razonInmov) return [];
+        // Los días de mora solo tienen sentido si de verdad está en mora; si entró por gabela o
+        // por deuda, el contador va en 0 y la tarjeta lo dice por la razón, no por los días.
+        const dias = estadoCart === "mora" ? diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto) : 0;
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);
@@ -177,6 +193,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
         return [{
           contratoId: c.id,
+          razonInmov,
           clienteId: c.cliente_id,
           clienteNombre: cliente?.nombre ?? "Sin nombre",
           clienteTel: cliente?.whatsapp ?? cliente?.telefono ?? "",
@@ -205,17 +222,24 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     ).length;
   }, [gestiones, inicioSemana]);
 
+  // Los KPI de arriba hablan de MORA, así que cuentan solo mora real. Si contaran también gabela
+  // y deuda, "mora crítica (+3d)" incluiría gente con 0 días de atraso y el número dejaría de
+  // significar lo que dice.
+  const soloMora = useMemo(() => filas.filter(f => f.razonInmov === "mora"), [filas]);
   const resumen = useMemo(() => ({
-    total:       filas.length,
-    critica:     filas.filter(f => f.prioridad === "critica").length,
-    alta:        filas.filter(f => f.prioridad === "alta").length,
-    media:       filas.filter(f => f.prioridad === "media").length,
-    deudaTotal:  filas.reduce((a, f) => a + f.deudaReal, 0),
-    recoleccion: filas.filter(f => f.recoleccionOrdenada).length,
-  }), [filas]);
+    total:       soloMora.length,
+    critica:     soloMora.filter(f => f.prioridad === "critica").length,
+    alta:        soloMora.filter(f => f.prioridad === "alta").length,
+    media:       soloMora.filter(f => f.prioridad === "media").length,
+    deudaTotal:  soloMora.reduce((a, f) => a + f.deudaReal, 0),
+    recoleccion: soloMora.filter(f => f.recoleccionOrdenada).length,
+  }), [soloMora]);
 
   const filtradas = useMemo(() => {
     let lista = filas;
+    if (filtro === "mora")       lista = lista.filter(f => f.razonInmov === "mora");
+    if (filtro === "gabela")     lista = lista.filter(f => f.razonInmov === "gabela");
+    if (filtro === "deuda")      lista = lista.filter(f => f.razonInmov === "deuda");
     if (filtro === "criticos")   lista = lista.filter(f => f.prioridad === "critica");
     if (filtro === "critica")    lista = lista.filter(f => f.prioridad === "critica");
     if (filtro === "alta")       lista = lista.filter(f => f.prioridad === "alta");
@@ -454,9 +478,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [
-    { key: "todos",      label: "Todos",       count: filas.length },
+    { key: "mora",       label: "🔴 En mora",  count: filas.filter(f => f.razonInmov === "mora").length },
+    { key: "gabela",     label: "🟡 Gabela",   count: filas.filter(f => f.razonInmov === "gabela").length },
+    { key: "deuda",      label: "💰 Deben",    count: filas.filter(f => f.razonInmov === "deuda").length },
     { key: "criticos",   label: "Críticos",    count: resumen.critica },
     { key: "en_proceso", label: "En proceso",  count: resumen.recoleccion },
+    { key: "todos",      label: "Todos",       count: filas.length },
   ];
 
   return (
@@ -491,7 +518,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         <div style={{ background: "var(--bad-soft)", borderRadius: 14, padding: isMobile ? "9px 12px" : "14px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.05)" }}>
           <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4 }}>Deuda real total</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--bad-ink)", lineHeight: 1.1, marginTop: isMobile ? 2 : 6 }}>${fmt(resumen.deudaTotal)}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{filas.length} contratos</div>
+          {/* Va con soloMora: el monto de arriba (resumen.deudaTotal) también, así el número de
+              contratos y la plata que muestra corresponden al mismo conjunto. */}
+          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, marginTop: 2 }}>{soloMora.length} contratos en mora</div>
         </div>
       </div>
 
@@ -499,7 +528,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         {([
           { key: "retenidas", label: "🔒 Retenidas", count: motosRetenidas.length },
-          { key: "en_mora",   label: "🔴 En mora",   count: filas.length },
+          // Ya no son solo los de mora: agrupa a todo el que se puede inmovilizar (mora, gabela o
+          // deuda). El contador muestra el total; los chips de adentro lo separan por razón, con
+          // "En mora" preseleccionado para que la vista por defecto siga siendo la de siempre.
+          { key: "en_mora",   label: "⚠️ Por cobrar", count: filas.length },
         ] as const).map(t => (
           <button
             key={t.key}
@@ -604,12 +636,26 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
                     {/* Metrics row */}
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
-                      <div>
-                        <div style={{ fontSize: 34, fontWeight: 700, color: s.color, lineHeight: 1 }}>
-                          {f.diasMora}
+                      {/* Los días solo se muestran si de verdad está en mora. Si entró por gabela
+                          o por deuda, el contador sería 0 y "0 días de mora" haría creer que la
+                          tarjeta está mal — mejor decir la razón real por la que aparece. */}
+                      {f.razonInmov === "mora" ? (
+                        <div>
+                          <div style={{ fontSize: 34, fontWeight: 700, color: s.color, lineHeight: 1 }}>
+                            {f.diasMora}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
                         </div>
-                        <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días de mora</div>
-                      </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: s.color, lineHeight: 1.2, textTransform: "uppercase" }}>
+                            {f.razonInmov === "gabela" ? "Gabela" : "Debe"}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
+                            {RAZON_INMOVILIZAR_LABEL[f.razonInmov]}
+                          </div>
+                        </div>
+                      )}
                       <div style={{ borderLeft: `2px solid ${s.border}`, paddingLeft: 14 }}>
                         <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>${fmt(f.deudaReal)}</div>
                         <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>deuda real</div>
@@ -637,8 +683,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       )}
                     </div>
 
-                    {/* Urgency bar */}
-                    <div style={{ marginTop: 10 }}>
+                    {/* Urgency bar — solo para mora real: en gabela o deuda diría "0 / 14 días en
+                        mora", que hace dudar de la tarjeta entera. */}
+                    {f.razonInmov === "mora" && <div style={{ marginTop: 10 }}>
                       <div style={{ height: 5, borderRadius: 999, background: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
                         <div style={{
                           height: "100%", borderRadius: 999,
@@ -649,7 +696,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 2, textAlign: "right" }}>
                         {`${f.diasMora} / 14 días en mora`}
                       </div>
-                    </div>
+                    </div>}
                   </div>
 
                   {/* Action buttons */}

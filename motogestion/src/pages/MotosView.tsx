@@ -28,6 +28,7 @@ import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoF
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalDocumentosMoto from "../components/ModalDocumentosMoto";
+import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
 import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
@@ -101,6 +102,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const puedeRecolectar = puede("recolectar_moto");
   const puedeLiquidar = puede("iniciar_liquidacion");
   const puedeCambiarGrupo = puede("cambiar_grupo_moto");
+  const puedeExportar = puede("exportar_datos");
+  const [abrirDescarga, setAbrirDescarga] = useState(false);
   const { filtrarMotos } = useScope();
   const { contratos, suspenderContrato } = useContratos();
   const { clientes } = useClientes();
@@ -244,6 +247,49 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     savedScroll.current = null;
   }, [motos]);
 
+  // Columnas ofrecidas en la descarga. Marcadas por defecto solo las que sirven para identificar
+  // la moto de un vistazo; el resto se marca a mano. Nunca se ofrecen enlaces a Storage (fotos,
+  // tarjeta de propiedad): un link dentro de un Excel reenviado abre sin sesión — solo "Sí / No".
+  const COLUMNAS_MOTOS = useMemo<ColumnaDescarga<Moto>[]>(() => {
+    const contratoDe = (m: Moto) => contratos.find(c => c.moto_id === m.id && (c.estado === "Activo" || c.estado === "Suspendido"));
+    const clienteDe = (m: Moto) => { const c = contratoDe(m); return c ? clientes.find(cl => cl.id === c.cliente_id) : undefined; };
+    return [
+      { key: "placa", rotulo: "Placa", porDefecto: true, ancho: 90, valor: m => m.placa },
+      { key: "grupo", rotulo: "Grupo", porDefecto: true, ancho: 110, valor: m => m.grupo },
+      { key: "estado", rotulo: "Estado", porDefecto: true, ancho: 110, valor: m => ESTADO_LABEL[m.estado] ?? m.estado },
+      { key: "marca", rotulo: "Marca", porDefecto: true, ancho: 110, valor: m => m.marca },
+      { key: "modelo", rotulo: "Modelo (año)", porDefecto: true, ancho: 100, valor: m => m.modelo },
+      { key: "color", rotulo: "Color", ancho: 110, valor: m => m.color ?? "" },
+      { key: "cilindraje", rotulo: "Cilindraje", ancho: 100, valor: m => m.cilindraje ?? "" },
+      { key: "cliente", rotulo: "Cliente actual", porDefecto: true, ancho: 220, valor: m => clienteDe(m)?.nombre ?? "" },
+      { key: "encargado", rotulo: "Encargado", ancho: 150, valor: m => m.subadmin_id ? (subadmins.find(s => s.id === m.subadmin_id)?.nombre ?? "") : "Sin asignar" },
+      { key: "numero_motor", rotulo: "N° de motor", ancho: 150, valor: m => m.numero_motor ?? "" },
+      { key: "numero_chasis", rotulo: "N° de chasis", ancho: 150, valor: m => m.numero_chasis ?? "" },
+      { key: "numero_serie", rotulo: "N° de serie", ancho: 150, valor: m => m.numero_serie ?? "" },
+      { key: "lugar_matricula", rotulo: "Lugar de matrícula", ancho: 150, valor: m => m.lugar_matricula ?? "" },
+      { key: "propietario", rotulo: "Propietario", ancho: 180, valor: m => m.propietario ?? "" },
+      { key: "fecha_seguro", rotulo: "SOAT vence", ancho: 110, valor: m => m.fecha_seguro ?? "" },
+      { key: "fecha_tecnomecanica", rotulo: "Tecnomecánica vence", ancho: 140, valor: m => m.fecha_tecnomecanica ?? "" },
+      { key: "condicion_ingreso", rotulo: "Condición de ingreso", ancho: 140, valor: m => m.condicion_ingreso ?? "" },
+      { key: "ubicacion", rotulo: "Ubicación física", ancho: 140, valor: m => { const u = (m as { ubicacion_fisica?: string }).ubicacion_fisica; return u ? (UBICACION_LABEL[u as UbicacionFisica] ?? u) : ""; } },
+      { key: "kilometraje_inicial", rotulo: "Kilometraje inicial", align: "right", ancho: 120, valor: m => m.kilometraje_inicial ?? "" },
+      { key: "retencion_fecha", rotulo: "Retenida desde", ancho: 120, valor: m => m.retencion_fecha ?? "" },
+      { key: "retencion_caso", rotulo: "N° de caso", ancho: 130, valor: m => m.retencion_numero_caso ?? "" },
+      { key: "observaciones", rotulo: "Observaciones", ancho: 260, valor: m => m.observaciones ?? "" },
+      { key: "documentos", rotulo: "¿Documentos escaneados?", ancho: 160, valor: m => { const d = (m as { documentos_moto?: Record<string, unknown> }).documentos_moto; return d && Object.keys(d).length > 0 ? "Sí" : "No"; } },
+      { key: "created_at", rotulo: "Registrada el", ancho: 110, valor: m => (m.created_at ?? "").slice(0, 10) },
+      { key: "contrato_estado", rotulo: "Estado del contrato", ancho: 130, valor: m => contratoDe(m)?.estado ?? "" },
+      { key: "forma_pago", rotulo: "Modalidad de pago", ancho: 130, valor: m => contratoDe(m)?.forma_pago ?? "" },
+      { key: "dia_pago", rotulo: "Día de pago", ancho: 110, valor: m => contratoDe(m)?.dia_pago ?? "" },
+      { key: "valor_semanal", rotulo: "Valor semanal", align: "right", ancho: 120, valor: m => contratoDe(m)?.valor_semanal ?? "" },
+      { key: "fecha_entrega", rotulo: "Entregada el", ancho: 110, valor: m => contratoDe(m)?.fecha_entrega ?? "" },
+      { key: "fecha_fin", rotulo: "Fin de contrato", ancho: 110, valor: m => contratoDe(m)?.fecha_fin_contrato ?? "" },
+      { key: "cedula", rotulo: "Cédula del cliente", sensible: true, ancho: 120, valor: m => clienteDe(m)?.cedula ?? "" },
+      { key: "telefono", rotulo: "Teléfono del cliente", sensible: true, ancho: 120, valor: m => clienteDe(m)?.telefono ?? "" },
+      { key: "direccion", rotulo: "Dirección del cliente", sensible: true, ancho: 260, valor: m => clienteDe(m)?.direccion ?? "" },
+    ];
+  }, [contratos, clientes, subadmins]);
+
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
     return (
@@ -257,6 +303,12 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <Chip activo={soloSinAsignar} onClick={() => setSoloSinAsignar(v => !v)}>
             👤 Sin asignar
           </Chip>
+        )}
+        {/* Va acá dentro y no en el encabezado porque ChipsGrupo se dibuja en las DOS ramas
+            (lista móvil y lista de escritorio): puesto en una sola, el botón desaparecería
+            según el ancho de la pantalla. */}
+        {puedeExportar && (
+          <Chip activo={false} onClick={() => setAbrirDescarga(true)}>⬇️ Descargar</Chip>
         )}
       </div>
     );
@@ -1027,6 +1079,28 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             </div>
           </div>
         </div>
+      )}
+
+      {abrirDescarga && (
+        <ModalDescargar<Moto>
+          titulo="Descargar motos"
+          nombreArchivo="motos"
+          tituloDocumento="Listado de motos"
+          periodo={`Generado el ${hoyISO()}`}
+          resumenFiltro={[
+            filtroGrupo !== "todos" ? filtroGrupo : null,
+            soloSinAsignar ? "sin encargado" : null,
+            query.trim() ? `"${query.trim()}"` : null,
+          ].filter(Boolean).join(" · ") || "toda la flota visible"}
+          columnas={COLUMNAS_MOTOS}
+          filas={filtered}
+          filasTodas={filtrarMotos(motos)}
+          etiquetaTodas="toda la flota"
+          // Sección = grupo · estado, que es como el dueño lee la flota: primero de qué socio es,
+          // y dentro, cuáles están rodando y cuáles no.
+          agrupar={m => `${m.grupo} · ${ESTADO_LABEL[m.estado] ?? m.estado}`}
+          onCerrar={() => setAbrirDescarga(false)}
+        />
       )}
 
       {/* ── Modal Salida de retención (Fiscalía / Tránsito / Garantía) ── */}

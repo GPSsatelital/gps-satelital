@@ -9,6 +9,8 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { hoyISO, hoyDate } from "../utils/fecha";
 import { Badge, Chip, type BadgeTone } from "../components/atomos";
 import { listaConScroll } from "../styles/shared";
+import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
+import { useAuth } from "../contexts/AuthContext";
 
 // "sin" agrupa lo que no cae en ningún portafolio: grupo OTRO, contratos sin moto asignada y
 // pagos cuyo contrato/moto ya no existe. Va explícito para que la suma de los chips dé SIEMPRE
@@ -60,6 +62,8 @@ export default function HistorialPagosView({ onNavigate }: {
   const { motos } = useMotos();
   const { prestamos } = usePrestamos();
   const { filtrarPorContrato } = useScope();
+  const { puede } = useAuth();
+  const [abrirDescarga, setAbrirDescarga] = useState(false);
 
   // Esta pantalla era la ÚNICA de dinero que no filtraba por cobrador: un SUBADMIN con acceso al
   // módulo veía TODOS los pagos del sistema, no solo los de sus motos. Para los demás roles
@@ -132,6 +136,38 @@ export default function HistorialPagosView({ onNavigate }: {
       pend: { count: pend.length, val: pend.reduce((s, p) => s + p.valor, 0) },
     };
   }, [pagosFiltrados]);
+
+  // Columnas ofrecidas en la descarga. Las marcadas por defecto son las que un cobro necesita leer
+  // de un vistazo; el resto se marca si se necesita. Las DOS fechas se ofrecen a propósito: el
+  // historial trabaja con el día en que PAGÓ el cliente y la caja con el día en que se DIGITÓ — si
+  // el archivo llevara solo una, no cuadraría contra Caja Diaria y parecería que está malo.
+  const COLUMNAS_PAGOS = useMemo<ColumnaDescarga<Pago>[]>(() => {
+    const cliente = (p: Pago) => getInfo(p).cliente;
+    return [
+      { key: "fecha", rotulo: "Fecha que pagó", porDefecto: true, ancho: 100, valor: p => p.fecha },
+      { key: "fecha_registro", rotulo: "Fecha que se digitó", ancho: 110, valor: p => p.fecha_registro ?? p.fecha },
+      { key: "cliente", rotulo: "Cliente", porDefecto: true, ancho: 220, valor: p => cliente(p)?.nombre ?? "" },
+      { key: "placa", rotulo: "Placa", porDefecto: true, ancho: 90, valor: p => getInfo(p).moto?.placa ?? "" },
+      { key: "grupo", rotulo: "Grupo", porDefecto: true, ancho: 110, valor: p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "Sin grupo" },
+      { key: "valor", rotulo: "Valor", porDefecto: true, align: "right", ancho: 110, valor: p => p.valor },
+      { key: "metodo", rotulo: "Método", porDefecto: true, ancho: 110, valor: p => p.metodo },
+      { key: "estado", rotulo: "Estado", porDefecto: true, ancho: 100, valor: p => p.estado },
+      { key: "tipo_registro", rotulo: "Tipo de registro", ancho: 130, valor: p => p.tipo_registro ?? "" },
+      { key: "referencia", rotulo: "N° de referencia", ancho: 130, valor: p => p.referencia ?? "" },
+      { key: "folio", rotulo: "Folio del recibo", ancho: 120, valor: p => p.folio ?? "" },
+      { key: "entregado_caja", rotulo: "¿Entregado a caja?", ancho: 130, valor: p => p.entregado_caja ? "Sí" : "No" },
+      { key: "comprobante", rotulo: "¿Tiene comprobante?", ancho: 140, valor: p => p.comprobante_url ? "Sí" : "No" },
+      { key: "aplicado_tarifa", rotulo: "Aplicado a cuota", align: "right", ancho: 120, valor: p => p.aplicado_tarifa ?? 0 },
+      { key: "aplicado_deuda", rotulo: "Aplicado a deuda", align: "right", ancho: 120, valor: p => p.aplicado_deuda ?? 0 },
+      { key: "aplicado_convenio", rotulo: "Aplicado a convenio", align: "right", ancho: 130, valor: p => p.aplicado_convenio ?? 0 },
+      { key: "aplicado_ahorro", rotulo: "De eso, ahorro", align: "right", ancho: 120, valor: p => p.aplicado_ahorro ?? 0 },
+      { key: "aplicado_saldo_favor", rotulo: "Quedó a favor", align: "right", ancho: 120, valor: p => p.aplicado_saldo_favor ?? 0 },
+      { key: "cedula", rotulo: "Cédula", sensible: true, ancho: 110, valor: p => cliente(p)?.cedula ?? "" },
+      { key: "telefono", rotulo: "Teléfono", sensible: true, ancho: 110, valor: p => cliente(p)?.telefono ?? "" },
+    ];
+    // getInfo depende de contratos/clientes/motos, que ya están en las dependencias.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratos, clientes, motos, prestamos]);
 
   const pagoSeleccionado = seleccionado ? pagosFiltrados.find(p => p.id === seleccionado) ?? null : null;
   const infoSeleccionado = pagoSeleccionado ? getInfo(pagoSeleccionado) : null;
@@ -251,8 +287,18 @@ export default function HistorialPagosView({ onNavigate }: {
   return (
     <div style={{ paddingBottom: 32 }}>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Historial de Pagos</h2>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>{pagosFiltrados.length} registro{pagosFiltrados.length !== 1 ? "s" : ""} encontrado{pagosFiltrados.length !== 1 ? "s" : ""}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Historial de Pagos</h2>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>{pagosFiltrados.length} registro{pagosFiltrados.length !== 1 ? "s" : ""} encontrado{pagosFiltrados.length !== 1 ? "s" : ""}</div>
+          </div>
+          {puede("exportar_datos") && (
+            <button onClick={() => setAbrirDescarga(true)}
+              style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap", flexShrink: 0 }}>
+              ⬇️ Descargar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -357,6 +403,28 @@ export default function HistorialPagosView({ onNavigate }: {
             </div>
           )}
         </div>
+      )}
+
+      {abrirDescarga && (
+        <ModalDescargar<Pago>
+          titulo="Descargar pagos"
+          nombreArchivo="pagos"
+          tituloDocumento="Historial de pagos"
+          periodo={`Del ${desde} al ${hasta}`}
+          resumenFiltro={[
+            filtroGrupo !== "todos" ? ETIQUETA_GRUPO[filtroGrupo] : null,
+            metodo !== "todos" ? metodo : null,
+            estadoFiltro !== "todos" ? estadoFiltro : null,
+            busqueda.trim() ? `"${busqueda.trim()}"` : null,
+            `${desde} al ${hasta}`,
+          ].filter(Boolean).join(" · ")}
+          columnas={COLUMNAS_PAGOS}
+          filas={pagosFiltrados}
+          filasTodas={pagos}
+          etiquetaTodas="todo el histórico"
+          agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "OTRO"}
+          onCerrar={() => setAbrirDescarga(false)}
+        />
       )}
     </div>
   );

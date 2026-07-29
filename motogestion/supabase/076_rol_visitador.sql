@@ -15,6 +15,29 @@
 -- son de gente de confianza — y eso es justo lo que va a cambiar al contratar gente por horas.
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 0) EL ROL Y SU FUNCIÓN DE SCOPE
+--
+-- Van PRIMERO porque las políticas de más abajo los referencian, y Postgres valida la
+-- referencia en el momento de crear la política (no al usarla).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('ADMIN_PRINCIPAL','ADMIN','SUBADMIN','SECRETARIA','MECANICO','SOCIO','VISITADOR'));
+
+-- Scope del visitador: SOLO por visitas. Sin la rama de contratos que sí tiene el subadmin —
+-- un visitador no gestiona motos.
+create or replace function public.mis_clientes_visitador()
+returns setof uuid language sql stable security definer
+set search_path = public as $$
+  select id from public.clientes where visita_asignada_a = auth.uid()
+  union
+  select cliente_id from public.visitas where asignada_a = auth.uid();
+$$;
+revoke all on function public.mis_clientes_visitador() from public;
+grant execute on function public.mis_clientes_visitador() to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 1) SEGURIDAD: Storage abierto a cualquier autenticado
 --
 -- La 071 dejó `select` sobre los 5 buckets a TODO `authenticated`, sin mirar rol ni dueño del
@@ -70,24 +93,8 @@ create policy "Visitas: registro con scope"
   );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3) EL ROL
+-- 3) DEFAULTS DE ACCIONES DEL ROL NUEVO
 -- ─────────────────────────────────────────────────────────────────────────────
-
-alter table public.profiles drop constraint if exists profiles_role_check;
-alter table public.profiles add constraint profiles_role_check
-  check (role in ('ADMIN_PRINCIPAL','ADMIN','SUBADMIN','SECRETARIA','MECANICO','SOCIO','VISITADOR'));
-
--- Scope del visitador: SOLO por visitas. Sin la rama de contratos que sí tiene el subadmin —
--- un visitador no gestiona motos.
-create or replace function public.mis_clientes_visitador()
-returns setof uuid language sql stable security definer
-set search_path = public as $$
-  select id from public.clientes where visita_asignada_a = auth.uid()
-  union
-  select cliente_id from public.visitas where asignada_a = auth.uid();
-$$;
-revoke all on function public.mis_clientes_visitador() from public;
-grant execute on function public.mis_clientes_visitador() to authenticated;
 
 -- Defaults de acciones: el visitador NO tiene ninguna (no aprueba, no cobra, no liquida).
 -- De paso se sincroniza `exportar_datos`, que está en src/lib/acciones.ts desde el 27-jul

@@ -230,8 +230,10 @@ export function usePagos() {
       // caja del DÍA EN QUE EL BANCO LA RECIBIÓ, no a la de hoy. El arqueo de cada día se compara
       // contra el extracto de ESE día: si una plata que entró el 27 se cuenta el 28, el 28 sobra
       // contra su extracto y el 27 queda corto para siempre. Esto solo aplica cuando la fecha está
-      // COMPROBADA contra el banco — un pago que el cliente dice haber hecho ayer sigue entrando a
-      // la caja de hoy, porque ahí la única prueba es su palabra.
+      // COMPROBADA contra NUESTRA cuenta. Cuando no cruza, el respaldo es la foto del comprobante
+      // —que es prueba y por eso es obligatoria— pero la aporta el cliente y todavía no está
+      // verificada contra el extracto: por eso el pago queda Pendiente y su plata espera en la
+      // caja de hoy en vez de moverse al arqueo de un día que quizás ya se cerró.
       fecha: opts?.fecha || hoyISO(),
       fecha_registro: opts?.fechaCaja || hoyISO(),
     }).select("id").single();

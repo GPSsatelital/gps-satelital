@@ -1396,6 +1396,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (!convDeudaTotal || convCuotaCalc <= 0 || convCuotasCalc <= 0 || !convFechaLimite || !convConcepto.trim()) {
       setConvError("Completa el monto, la cuota o número de cuotas, la fecha y el concepto."); return;
     }
+    // Sin huella no hay convenio: un compromiso de pago sin firma NI huella no sirve de respaldo
+    // si el cliente después dice que nunca lo aceptó. La huella es opcional al registrar al
+    // cliente, por eso hay que exigirla acá. Misma regla en ModalConvenio (las otras 4 puertas).
+    if (!clienteDetalle?.autorizacion_datos_huella_url) {
+      setConvError(`${(clienteDetalle?.nombre ?? "El cliente").toUpperCase()} no tiene la huella registrada. Regístrasela en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
+      return;
+    }
     if (!convFirma) { setConvError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
     if (!confirm(`¿Crear el convenio por $${fmt(Number(convDeudaTotal))} en ${convCuotasCalc} cuota(s) de $${fmt(convCuotaCalc)}?`)) return;
     setConvError(null);
@@ -2228,12 +2235,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                             dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }, infoFinContrato(contratoDetalle)) }} />
                         )}
                         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)" }}>Firma del cliente (obligatoria para crear el convenio):</div>
+                        {!clienteDetalle?.autorizacion_datos_huella_url && (
+                          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)", marginBottom: 10 }}>
+                            ⛔ <strong>{(clienteDetalle?.nombre ?? "El cliente").toUpperCase()} no tiene la huella registrada.</strong> Sin
+                            huella no se puede crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá.
+                          </div>
+                        )}
                         <CanvasFirma key="firma-acuerdo" label="Firma del cliente" modal opcional={false} onChange={setConvFirma} />
                       </div>
 
                       {convError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
                       {convExito && <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
-                      <button onClick={handleCrearConvenio} disabled={procesando || !convFirma} style={{ ...primaryBtn, opacity: procesando || !convFirma ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
+                      <button onClick={handleCrearConvenio} disabled={procesando || !convFirma || !clienteDetalle?.autorizacion_datos_huella_url} style={{ ...primaryBtn, opacity: (procesando || !convFirma || !clienteDetalle?.autorizacion_datos_huella_url) ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
                     </div>
                   )}
                 </div>
@@ -3422,9 +3435,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     const v = e.target.value;
                     setModalReferencia(v);
                     setModalRefRepetidaOk(false); setModalDescuadreOk(false);
-                    // Si esa referencia está en la bolsa de dinero sin dueño Y la plata alcanza,
-                    // se adopta su fecha del banco: ahí la fecha deja de ser la palabra del
-                    // cliente y pasa a estar comprobada.
+                    // Si esa referencia está en la bolsa de dinero sin dueño Y la plata alcanza, se
+                    // adopta su fecha del banco: pasa de ser la fecha que trae el comprobante del
+                    // cliente a estar verificada contra el extracto de nuestra propia cuenta.
                     const cruce = buscarPorReferencia(v);
                     if (cruce && Math.round(modalMonto) <= Math.round(cruce.monto)) {
                       setModalFechaPago(cruce.fecha_banco);

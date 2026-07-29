@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import MoneyInput from "./MoneyInput";
+import CanvasFirma from "./CanvasFirma";
+import { useClientes } from "../hooks/useClientes";
+import { useContratos } from "../hooks/useContratos";
 
 interface Props {
   contratoId: string;
@@ -51,10 +54,25 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [cuotasInput, setCuotasInput] = useState("");
   const [cuotaInput, setCuotaInput] = useState("");
   const [primerPago, setPrimerPago] = useState("");
+  const [firma, setFirma] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
   const [totalConvenios, setTotalConvenios] = useState<number | null>(null);
+
+  // Un convenio es un compromiso de pago: sin firma y sin huella no sirve como respaldo si el
+  // cliente después dice que nunca lo aceptó. La huella se captura al registrar el cliente
+  // (ClientesView), donde es OPCIONAL — por eso hay clientes sin ella y hay que exigirla acá.
+  // Decisión del dueño, 28-jul-2026: las dos, en las cinco puertas que crean convenios.
+  const { contratos } = useContratos();
+  const { clientes } = useClientes();
+  const clienteDelContrato = (() => {
+    const c = contratos.find(x => x.id === contratoId);
+    return c ? clientes.find(cl => cl.id === c.cliente_id) ?? null : null;
+  })();
+  const tieneHuella = !!clienteDelContrato?.autorizacion_datos_huella_url;
+  // Mientras los hooks cargan no se sabe: no se bloquea por un dato que aún no llegó.
+  const huellaResuelta = !!clienteDelContrato;
   const [verificando, setVerificando] = useState(true);
 
   useEffect(() => {
@@ -121,6 +139,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       return;
     }
     if (!primerPago) { setError("Selecciona la fecha del primer pago."); return; }
+    if (huellaResuelta && !tieneHuella) {
+      setError(`${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
+      return;
+    }
+    if (!firma) { setError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
     if (totalConvenios !== null && totalConvenios >= 3) { setError("Este contrato ya tiene 3 convenios (máximo permitido)."); return; }
 
     setError(null);
@@ -148,6 +171,14 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
     const count = (countData ?? []).length;
 
+    // La firma va a Storage antes del insert: si falla la subida, el convenio no se crea —
+    // preferible a dejar un convenio sin su respaldo. Mismo bucket y ruta que usa Cartera.
+    const path = `convenios/${contratoId}/acuerdo_${Date.now()}.png`;
+    const blob = await (await fetch(firma)).blob();
+    const { error: errSub } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/png", upsert: true });
+    if (errSub) { setError("No se pudo subir la firma: " + errSub.message); setGuardando(false); return; }
+    const firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
+
     const { error: err } = await supabase.from("convenios").insert({
       contrato_id: contratoId,
       numero_convenio: count + 1,
@@ -160,6 +191,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       concepto: motivo.trim(),
       aprobado_por: null,
       cubre_periodo_hasta: cuotaSemana > 0 ? (finPeriodoISO ?? null) : null,
+      firma_url: firmaUrl,
     });
 
     setGuardando(false);
@@ -317,6 +349,24 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               />
             </div>
 
+            {/* La huella no se puede capturar desde acá (necesita el lector conectado y el
+                formulario del cliente): se avisa temprano y se dice a dónde ir, en vez de dejar
+                que llene todo el formulario y descubra el bloqueo al final. */}
+            {huellaResuelta && !tieneHuella && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
+                ⛔ <strong>{clienteNombre.toUpperCase()} no tiene la huella registrada.</strong> Sin huella no se puede
+                crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá.
+              </div>
+            )}
+
+            <div>
+              <div style={labelStyle}>Firma del cliente</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                El cliente firma aceptando el acuerdo de pago. Sin firma no se crea el convenio.
+              </div>
+              <CanvasFirma key="firma-convenio" label="Firma del cliente" modal opcional={false} onChange={setFirma} />
+            </div>
+
             {error && (
               <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>
             )}
@@ -335,8 +385,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               )}
               <button
                 onClick={handleGuardar}
-                disabled={guardando || exito}
-                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: guardando ? 0.7 : 1 }}
+                disabled={guardando || exito || !firma || (huellaResuelta && !tieneHuella)}
+                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !firma || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
               >
                 {guardando ? "Guardando..." : "Crear convenio"}
               </button>

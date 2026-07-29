@@ -14,6 +14,27 @@
 -- Se resuelve con una RPC acotada, no abriéndole la tabla.
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 0) LA COLUMNA `realizada_por` NO EXISTE EN LA BASE
+--
+-- La migración 010 la declara (`add column if not exists realizada_por`) pero esa parte nunca
+-- llegó a correrse: en la base viva la columna no está. Mismo desfase repo↔BD de las migs 073 y
+-- 074. Se detectó porque esta misma migración la usa y reventó con 42703.
+--
+-- URGENTE: el código ya la escribe (ModalVisita.tsx:160, desplegado), así que mientras esta
+-- columna no exista, REGISTRAR UNA VISITA FALLA — el insert entero lo rechaza Postgres.
+--
+-- Para qué sirve: guardar QUIÉN hizo la visita. Hasta ahora solo se guardaba a quién se le
+-- ENCARGÓ (`asignada_a`), así que si uno cubría a otro el pago se le acreditaba al equivocado.
+-- Ahora se paga por visita, así que el dato importa.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+alter table public.visitas
+  add column if not exists realizada_por uuid references public.profiles(id);
+
+comment on column public.visitas.realizada_por is
+  'Quién registró la visita de verdad. Distinto de asignada_a, que es a quién se le encargó.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 1) Subir también las fotos del lugar de guardado
 -- ─────────────────────────────────────────────────────────────────────────────
 

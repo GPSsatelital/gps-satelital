@@ -23,7 +23,7 @@ export function useSubadmins() {
       let lista = (data ?? []) as Subadmin[];
       // Respaldo mientras la mig 065 no esté corrida: con ADMIN/AP la consulta directa sí pasa.
       if (error) {
-        const { data: d2 } = await supabase.from("profiles").select("id, nombre").eq("role", "SUBADMIN");
+        const { data: d2 } = await supabase.from("profiles").select("id, nombre").in("role", ["SUBADMIN", "VISITADOR"]);
         lista = (d2 ?? []) as Subadmin[];
       }
       if (!vivo) return;

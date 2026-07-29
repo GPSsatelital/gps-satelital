@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useClientes } from "../hooks/useClientes";
 import { useVisitas } from "../hooks/useVisitas";
+import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 
 interface Props {
@@ -9,6 +10,13 @@ interface Props {
   clienteNombre: string;
   onClose: () => void;
   onGuardada: () => void;
+  /**
+   * A quién se le encargó la visita. Se pasa directo desde "Mis visitas" porque el VISITADOR no
+   * tiene lectura sobre `clientes` (mig 076) y `useClientes` le devuelve vacío: sin esto la visita
+   * quedaría con `asignada_a` en null y, por RLS, él mismo dejaría de verla apenas la guarda.
+   * Desde Clientes no se pasa y se sigue leyendo del cliente, como siempre.
+   */
+  asignadaA?: string | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -37,7 +45,8 @@ const sectionTitle: React.CSSProperties = {
   borderBottom: "1px solid var(--line)",
 };
 
-export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuardada }: Props) {
+export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuardada, asignadaA }: Props) {
+  const { profile } = useAuth();
   const { actualizarCliente, clientes } = useClientes();
   const { subirFotoVisita } = useVisitas();
 
@@ -144,7 +153,11 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
       ubicacion: ubicacion ?? null,
       fecha: hoyISO(),
       fotos: { clienteFuncionario: urlCliente, fachada: urlFachada },
-      asignada_a: clienteActual?.visita_asignada_a ?? null,
+      asignada_a: asignadaA ?? clienteActual?.visita_asignada_a ?? null,
+      // QUIÉN la hizo de verdad. La columna existe desde la mig 010 pero NUNCA se escribía, así
+      // que el informe agrupaba por `asignada_a` — o sea por a quién se le encargó. Si uno cubre
+      // a otro, el pago se le acreditaba al equivocado. Ahora se paga por visita, así que importa.
+      realizada_por: profile?.id ?? null,
     });
 
     if (insErr) {

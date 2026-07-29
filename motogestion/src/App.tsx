@@ -18,6 +18,7 @@ import CampanaAlertas from "./components/CampanaAlertas";
 // las demás pantallas se descargan al navegar a ellas.
 const MotosView = lazy(() => import("./pages/MotosView"));
 const ClientesView = lazy(() => import("./pages/ClientesView"));
+const MisVisitasView = lazy(() => import("./pages/MisVisitasView"));
 const ContratosView = lazy(() => import("./pages/ContratosView"));
 const CobrosView = lazy(() => import("./pages/CobrosView"));
 const TallerView = lazy(() => import("./pages/TallerView"));
@@ -41,7 +42,8 @@ export type ViewKey =
   | "dashboard" | "clientes" | "motos" | "contratos"
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
   | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion"
-  | "ficha_cliente" | "ficha_moto" | "historial_pagos" | "tarjetas_llaves";
+  | "ficha_cliente" | "ficha_moto" | "historial_pagos" | "tarjetas_llaves"
+  | "mis_visitas";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -58,6 +60,10 @@ function useIsMobile() {
 // ─── Bottom Tab (mobile) ─────────────────────────────────────────────────────
 const BOTTOM_TABS: Array<{ key: ViewKey; icon: string; label: string }> = [
   { key: "dashboard", icon: "🏠", label: "Panel" },
+  // Solo la ve el VISITADOR: la barra se filtra por puedeVer, y para los demás roles
+  // "mis_visitas" devuelve false. Sin esto, en el celular no tendría cómo llegar a su
+  // pantalla — que es justo donde trabaja, en la calle.
+  { key: "mis_visitas", icon: "🏠", label: "Visitas" },
   { key: "clientes",  icon: "👥", label: "Clientes" },
   { key: "cobros",    icon: "💳", label: "Cartera" },
   { key: "motos",     icon: "🏍️", label: "Motos" },
@@ -73,6 +79,9 @@ const SIDE_GROUPS: SideGroup[] = [
   {
     label: "OPERACIONES",
     items: [
+      // Pantalla del VISITADOR. Los demás roles no la ven (puedeVer la cierra): ellos gestionan
+      // las visitas desde el módulo Clientes, que es donde viven junto al resto del expediente.
+      { key: "mis_visitas", label: "Mis Visitas", icon: "🏠" },
       {
         key: "clientes", label: "Clientes", icon: "👥",
         sub: [
@@ -151,7 +160,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
   alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
   ficha_cliente: "Ficha de Cliente", ficha_moto: "Ficha de Moto", historial_pagos: "Historial de Pagos",
-  tarjetas_llaves: "Tarjetas y Llaves",
+  tarjetas_llaves: "Tarjetas y Llaves", mis_visitas: "Mis Visitas",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -456,6 +465,12 @@ function Shell() {
     if (view === "historial_pagos") return esAdmin || roleActual === "SECRETARIA";
     const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "liquidaciones", "usuarios"];
     if (adminViews.includes(view)) return esAdmin;
+    // El VISITADOR va antes del `return true` de abajo A PROPÓSITO: ese `true` abre clientes,
+    // motos, contratos, cobros, caja y taller a cualquier rol sin lista de permisos a medida.
+    // Sin este corte, un visitador creado sin permisos los vería TODOS.
+    if (roleActual === "VISITADOR") return view === "mis_visitas";
+    // "Mis visitas" es la pantalla del visitador; los demás roles gestionan visitas desde Clientes.
+    if (view === "mis_visitas") return false;
     return true; // clientes, motos, contratos, cobros, caja, taller
   }
 
@@ -584,6 +599,7 @@ function Shell() {
     >
       <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
+      {ctx.view === "mis_visitas"   && puedeVer("mis_visitas") && <MisVisitasView />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}

@@ -3,7 +3,9 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { calcularPuede, type AccionesUsuario } from "../lib/acciones";
 
-export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO";
+// VISITADOR: personas contratadas SOLO para hacer visitas domiciliarias. No ve la ficha del
+// cliente — una función de la BD le devuelve solo nombre, dirección y teléfono (mig 076).
+export type Role = "ADMIN" | "ADMIN_PRINCIPAL" | "SECRETARIA" | "MECANICO" | "SUBADMIN" | "SOCIO" | "VISITADOR";
 export type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
 export type Profile = {

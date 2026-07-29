@@ -44,6 +44,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN",          label: "Administrador" },
   { value: "ADMIN_PRINCIPAL",label: "Administrador Principal" },
   { value: "SOCIO",          label: "Socio (solo lectura)" },
+  { value: "VISITADOR",      label: "Visitador (solo visitas domiciliarias)" },
 ];
 
 function roleLabel(role: Role) {
@@ -58,6 +59,7 @@ function roleBadge(role: Role) {
     MECANICO:        { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
     SUBADMIN:        { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
     SOCIO:           { bg: "var(--soft)", color: "var(--muted2)" },
+    VISITADOR:       { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
   };
   return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
@@ -220,11 +222,15 @@ function RoadmapItem({ icon, label, desc, status }: { icon: string; label: strin
   );
 }
 
+// Estaba incompleto: le faltaban SUBADMIN y SOCIO, que salían como el string crudo de la BD.
 const ROLE_LABEL: Record<string, string> = {
   ADMIN_PRINCIPAL: "Administrador principal",
   ADMIN: "Administrador",
+  SUBADMIN: "Subadministrador",
   SECRETARIA: "Secretaria",
   MECANICO: "Mecánico",
+  SOCIO: "Socio",
+  VISITADOR: "Visitador",
 };
 
 // ── Vista principal ────────────────────────────────────────────────────────────

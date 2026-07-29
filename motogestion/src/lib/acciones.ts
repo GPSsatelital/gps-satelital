@@ -80,6 +80,8 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "aplicar_saldo_favor", "crear_convenio", "editar_cliente",
   ],
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
+  // El visitador no aprueba, no cobra y no liquida: solo registra la visita que le asignaron.
+  VISITADOR: [],
   MECANICO: [],
   SOCIO: [],
 };

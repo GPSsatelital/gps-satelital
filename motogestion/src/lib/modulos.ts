@@ -6,6 +6,7 @@ export type ModuloAsignable = { key: ViewKey; label: string; icon: string; grupo
 
 export const MODULOS_ASIGNABLES: ModuloAsignable[] = [
   { key: "clientes",         label: "Clientes",           icon: "👥", grupo: "Operaciones" },
+  { key: "mis_visitas",      label: "Mis Visitas",        icon: "🏠", grupo: "Operaciones" },
   { key: "contratos",        label: "Contratos",          icon: "📄", grupo: "Operaciones" },
   { key: "cobros",           label: "Cartera & Cobros",   icon: "💳", grupo: "Operaciones" },
   { key: "motos",            label: "Motos",              icon: "🏍️", grupo: "Flota" },
@@ -34,5 +35,9 @@ export const ACCESOS_SUGERIDOS: Record<string, ViewKey[]> = {
   SUBADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "cobro_diario", "alertas", "inmovilizaciones"],
   SECRETARIA: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "caja", "cobro_diario", "historial_pagos"],
   MECANICO: ["taller"],
+  // El visitador NO lleva "clientes": no debe ver la ficha de nadie. Su pantalla propia se
+  // alimenta de la función mis_visitas_asignadas() (mig 076), que solo devuelve nombre,
+  // dirección y teléfono del titular y del acompañante.
+  VISITADOR: ["mis_visitas"],
   SOCIO: [],
 };

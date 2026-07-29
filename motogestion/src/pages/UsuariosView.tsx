@@ -20,6 +20,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN", label: "Administrador" },
   { value: "ADMIN_PRINCIPAL", label: "Administrador Principal" },
   { value: "SOCIO", label: "Socio (solo lectura)" },
+  { value: "VISITADOR", label: "Visitador (solo visitas domiciliarias)" },
 ];
 
 function roleLabel(role: Role) {
@@ -34,6 +35,7 @@ function roleBadge(role: Role) {
     MECANICO: { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
     SUBADMIN: { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
     SOCIO: { bg: "var(--soft)", color: "var(--muted2)" },
+    VISITADOR: { bg: "var(--orange-soft)", color: "var(--orange-ink)" },
   };
   return map[role] ?? { bg: "var(--line)", color: "var(--muted2)" };
 }
@@ -118,7 +120,7 @@ export default function UsuariosView() {
   // ── Editar ──
   const [editando, setEditando] = useState<PerfilUsuario | null>(null);
 
-  const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "SOCIO", "MECANICO"];
+  const ROLE_ORDER: Role[] = ["ADMIN_PRINCIPAL", "ADMIN", "SUBADMIN", "SECRETARIA", "VISITADOR", "SOCIO", "MECANICO"];
 
   async function cargarUsuarios(reintento = false) {
     const { error, data } = await invocar({ action: "list" });

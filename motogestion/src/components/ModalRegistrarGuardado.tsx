@@ -24,6 +24,10 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
   const [capturandoGPS, setCapturandoGPS] = useState(false);
   const [direccion, setDireccion] = useState("");
   const [condiciones, setCondiciones] = useState("");
+  // Quién responde por el lugar. El dueño lo pidió para poder ir a preguntar SIN el cliente:
+  // si la moto duerme en la casa de un tercero, hay que saber a quién tocarle la puerta.
+  const [encargadoNombre, setEncargadoNombre] = useState("");
+  const [encargadoTel, setEncargadoTel] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,11 +65,18 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
         if (up) { setError("No se pudo subir la foto: " + up.message); return; }
         fotoUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
       }
-      const { error: errGuardar } = await registrarGuardadoMoto(
-        contratoId,
-        { lat: ubicacion.lat, lng: ubicacion.lng, direccion: direccion.trim(), condiciones: condiciones.trim(), foto_url: fotoUrl },
-        profile.id,
-      );
+      const datos = {
+        lat: ubicacion.lat, lng: ubicacion.lng,
+        direccion: direccion.trim(), condiciones: condiciones.trim(), foto_url: fotoUrl,
+        encargado_nombre: encargadoNombre.trim(), encargado_telefono: encargadoTel.trim(),
+      };
+      // El VISITADOR no tiene UPDATE sobre `contratos` (mig 076) — a propósito: no debe poder
+      // tocar un contrato. Va por una función acotada (mig 077) que valida que él haya hecho
+      // esa visita y que solo escribe `guardado_lugar`. Los demás roles siguen por el camino
+      // de siempre.
+      const errGuardar = profile.role === "VISITADOR"
+        ? (await supabase.rpc("registrar_guardado_visitador", { p_contrato_id: contratoId, p_datos: datos })).error?.message ?? null
+        : (await registrarGuardadoMoto(contratoId, datos, profile.id)).error;
       if (errGuardar) { setError("Error al guardar: " + errGuardar); return; }
       setExito(true);
       setTimeout(() => { onDone?.(); onClose(); }, 1100);
@@ -113,6 +124,17 @@ export default function ModalRegistrarGuardado({ contratoId, clienteNombre, plac
         <div>
           <div style={labelStyle}>Dirección / referencia del lugar</div>
           <input style={inputStyle} placeholder="Ej. Casa de la mamá, barrio Olaya, calle 30 #..." value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+          <div style={labelStyle}>¿Quién responde por el lugar?</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+            Para poder ir a preguntar sin depender del cliente.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <input style={inputStyle} placeholder="Nombre (ej. la mamá, doña Rosa)" value={encargadoNombre} onChange={(e) => setEncargadoNombre(e.target.value)} />
+            <input style={inputStyle} inputMode="tel" placeholder="Teléfono" value={encargadoTel} onChange={(e) => setEncargadoTel(e.target.value)} />
+          </div>
         </div>
 
         <div>

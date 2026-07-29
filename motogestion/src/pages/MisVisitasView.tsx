@@ -16,7 +16,23 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import ModalVisita from "../components/ModalVisita";
+import ModalRegistrarGuardado from "../components/ModalRegistrarGuardado";
 import { card, listaConScroll } from "../styles/shared";
+
+// Cuando el admin valida contra el GPS y la moto NO duerme donde el visitador reportó, le rebota
+// a él: llamar al cliente, ir al lugar real y documentarlo. Se le paga por dejar el dato cierto,
+// así que esta lista es literalmente su trabajo pendiente de cobrar.
+type Reverificacion = {
+  contrato_id: string;
+  cliente_id: string;
+  nombre: string;
+  direccion: string | null;
+  telefono: string | null;
+  acompanante_nombre: string | null;
+  acompanante_telefono: string | null;
+  placa: string | null;
+  ya_documentado: boolean;
+};
 
 type VisitaAsignada = {
   cliente_id: string;
@@ -36,6 +52,8 @@ export default function MisVisitasView() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visitando, setVisitando] = useState<VisitaAsignada | null>(null);
+  const [reverif, setReverif] = useState<Reverificacion[]>([]);
+  const [documentando, setDocumentando] = useState<Reverificacion | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -46,9 +64,15 @@ export default function MisVisitasView() {
 
   const cargar = useCallback(async () => {
     setCargando(true);
-    const { data, error: err } = await supabase.rpc("mis_visitas_asignadas");
-    if (err) setError(err.message);
-    else { setError(null); setFilas((data ?? []) as VisitaAsignada[]); }
+    const [asignadas, rev] = await Promise.all([
+      supabase.rpc("mis_visitas_asignadas"),
+      supabase.rpc("mis_reverificaciones"),
+    ]);
+    if (asignadas.error) setError(asignadas.error.message);
+    else { setError(null); setFilas((asignadas.data ?? []) as VisitaAsignada[]); }
+    // Si la 077 aún no está corrida, la lista de re-verificaciones simplemente no aparece:
+    // no debe tumbar la pantalla ni tapar las visitas asignadas, que es lo principal.
+    if (!rev.error) setReverif((rev.data ?? []) as Reverificacion[]);
     setCargando(false);
   }, []);
 
@@ -141,6 +165,53 @@ export default function MisVisitasView() {
         </div>
       )}
 
+      {/* Va ARRIBA de todo: es trabajo que ya se hizo pero que no se le paga hasta resolverlo,
+          así que es lo más urgente que tiene esta persona. */}
+      {reverif.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", textTransform: "uppercase", marginBottom: 8 }}>
+            ⚠️ Por verificar de nuevo
+          </div>
+          <div style={{ ...card, padding: "10px 14px", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", marginBottom: 10 }}>
+            La moto no está durmiendo donde se reportó. Llama al cliente, ve hasta el lugar donde
+            de verdad la guarda y registra las evidencias. Hasta entonces esa visita no se paga.
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {reverif.map(r => {
+              const mapa = r.direccion ? `https://www.google.com/maps/search/${encodeURIComponent(r.direccion)}` : null;
+              return (
+                <div key={r.contrato_id} style={{ ...card, padding: "14px 16px", display: "grid", gap: 10, border: "1px solid var(--bad-line)" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", textTransform: "uppercase" }}>{r.nombre}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{r.placa ?? "Sin placa"}</div>
+                    {r.direccion && <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 3 }}>📍 {r.direccion}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {r.telefono && <a href={`tel:${linkTel(r.telefono)}`} style={chip("var(--ok-soft)", "var(--ok-ink)")}>📞 {r.telefono}</a>}
+                    {r.acompanante_telefono && (
+                      <a href={`tel:${linkTel(r.acompanante_telefono)}`} style={chip("var(--soft)", "var(--muted2)")}>
+                        📞 {r.acompanante_nombre ?? "Acompañante"}
+                      </a>
+                    )}
+                    {mapa && <a href={mapa} target="_blank" rel="noreferrer" style={chip("var(--accent-soft3)", "var(--accent-ink)")}>🗺️ Cómo llegar</a>}
+                  </div>
+                  {r.ya_documentado ? (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}>✅ Lugar registrado — pendiente de que lo revisen</div>
+                  ) : (
+                    <button
+                      onClick={() => setDocumentando(r)}
+                      style={{ background: "var(--warn-ink)", color: "var(--on-ink)", border: "none", borderRadius: 12, padding: "12px 16px", fontWeight: 700, fontSize: 15, cursor: "pointer", width: "100%" }}
+                    >
+                      📍 Registrar dónde guarda la moto
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {pendientes.length > 0 && (
         <>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", marginBottom: 8 }}>Por hacer</div>
@@ -157,6 +228,16 @@ export default function MisVisitasView() {
             {hechas.map(f => <Tarjeta key={f.cliente_id} f={f} />)}
           </div>
         </>
+      )}
+
+      {documentando && (
+        <ModalRegistrarGuardado
+          contratoId={documentando.contrato_id}
+          clienteNombre={documentando.nombre}
+          placa={documentando.placa ?? ""}
+          onClose={() => setDocumentando(null)}
+          onDone={() => { setDocumentando(null); cargar(); }}
+        />
       )}
 
       {visitando && (

@@ -67,6 +67,9 @@ export type Contrato = {
   guardado_lugar?: {
     lat?: number; lng?: number; direccion?: string; condiciones?: string;
     foto_url?: string | null; fecha?: string; por?: string;
+    // Quién responde por el lugar: para poder ir a preguntar sin depender del cliente
+    // (decisión del dueño, 28-jul-2026). Va dentro del jsonb, no necesita columnas nuevas.
+    encargado_nombre?: string; encargado_telefono?: string;
   } | null;
   created_at: string;
 };
@@ -306,7 +309,8 @@ export function useContratos() {
   // Fase 3: registra el lugar de guardado de la moto con su propio GPS (yendo al sitio).
   async function registrarGuardadoMoto(
     id: string,
-    datos: { lat: number; lng: number; direccion: string; condiciones: string; foto_url: string | null },
+    datos: { lat: number; lng: number; direccion: string; condiciones: string; foto_url: string | null;
+             encargado_nombre?: string; encargado_telefono?: string },
     por: string,
   ) {
     const { error } = await supabase.from("contratos").update({

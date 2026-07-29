@@ -186,7 +186,7 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null; fecha?: string; referencia?: string },
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null; fecha?: string; fechaCaja?: string; referencia?: string },
   ) {
     const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
     const estado: PagoEstado = (metodo === "Efectivo" && !opts?.forzarPendiente) ? "Confirmado" : "Pendiente";
@@ -225,8 +225,15 @@ export function usePagos() {
       //  · `fecha_registro` = cuándo se DIGITÓ. Manda para la caja del día, así el arqueo
       //    cuadra con la plata que hoy está en la mano y ningún cierre anterior se descuadra.
       // Ambas en hora de Colombia: con current_date (UTC) los pagos de noche caían al día siguiente.
+      //
+      // EXCEPCIÓN (`fechaCaja`): una transferencia que cruzó con el extracto del banco entra a la
+      // caja del DÍA EN QUE EL BANCO LA RECIBIÓ, no a la de hoy. El arqueo de cada día se compara
+      // contra el extracto de ESE día: si una plata que entró el 27 se cuenta el 28, el 28 sobra
+      // contra su extracto y el 27 queda corto para siempre. Esto solo aplica cuando la fecha está
+      // COMPROBADA contra el banco — un pago que el cliente dice haber hecho ayer sigue entrando a
+      // la caja de hoy, porque ahí la única prueba es su palabra.
       fecha: opts?.fecha || hoyISO(),
-      fecha_registro: hoyISO(),
+      fecha_registro: opts?.fechaCaja || hoyISO(),
     }).select("id").single();
     return { error: error?.message ?? null, id: creado?.id ?? null };
   }
@@ -281,15 +288,26 @@ export function usePagos() {
     const ref = normalizarRef(pago.referencia);
     if (ref.length < 3) return;
     const { data: partidas } = await supabase
-      .from("ingresos_no_identificados").select("id, referencia, monto").eq("estado", "pendiente");
+      .from("ingresos_no_identificados").select("id, referencia, monto, fecha_banco").eq("estado", "pendiente");
     // La referencia se guarda cruda: se compara normalizada en memoria.
     const match = (partidas ?? []).find(
       p => normalizarRef(p.referencia) === ref && Math.round(p.monto) === Math.round(pago.valor),
     );
     if (!match) return;
-    await supabase.from("ingresos_no_identificados")
+    const { error: errAsig } = await supabase.from("ingresos_no_identificados")
       .update({ estado: "asignado", pago_id: pagoId })
       .eq("id", match.id).eq("estado", "pendiente").is("pago_id", null);
+    if (errAsig) return;
+    // Al quedar comprobado contra el extracto, las dos fechas pasan a ser la del banco: la plata
+    // entró ESE día y a la caja de ESE día pertenece. Sin esto, un pago registrado desde Cobro
+    // Diario (donde el cruce solo ocurre acá, al confirmar) quedaba contado en la caja del día en
+    // que se digitó, dejándola sobrando contra su extracto y al día real corto para siempre.
+    // No afecta el reparto a cuota/deuda/convenio: el motor de cajas reparte por `created_at`.
+    if (match.fecha_banco) {
+      await supabase.from("pagos")
+        .update({ fecha: match.fecha_banco, fecha_registro: match.fecha_banco })
+        .eq("id", pagoId);
+    }
   }
 
   /** Si un pago cruzado se cae, su plata vuelve a estar sin dueño (si no, quedaba invisible). */

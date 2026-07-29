@@ -1279,6 +1279,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         // el efectivo se recibe en la mano en el momento, así que siempre es hoy.
         // Si cruzó con el banco, manda la fecha del extracto (está comprobada).
         fecha: fechaPago,
+        // Y si está COMPROBADA contra el extracto, esa plata también entra a la caja de ESE día:
+        // el arqueo de cada día se compara contra el extracto de ese día. Contarla hoy dejaría
+        // hoy sobrando y aquel día corto para siempre. Sin cruce no se pasa nada y la caja sigue
+        // siendo la de hoy, porque ahí la fecha es solo lo que dice el cliente.
+        ...(cruce ? { fechaCaja: cruce.fecha_banco } : {}),
         ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim() } : {}),
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
@@ -3509,7 +3514,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 {modalCruceCubre ? (
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "7px 10px" }}>
                     Fecha tomada del extracto del banco ({formatDate(modalFechaEfectiva)}): está comprobada, por eso no se puede cambiar.
-                    La plata entra a la caja de <strong>hoy</strong>.
+                    La plata entra a la caja del <strong>{formatDate(modalFechaEfectiva)}</strong>, que es el día en que el banco la recibió.
                   </div>
                 ) : modalFechaPago !== hoyISO() && (
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>

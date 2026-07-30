@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useBackGuard } from "../contexts/BackNav";
 import { card, inputStyle, labelStyle, primaryBtn, secondaryBtn, listaConScroll } from "../styles/shared";
 import Placa from "../components/Placa";
+import { hoyISO } from "../utils/fecha";
 
 const MOTIVOS = ["Copia de llave (perdió la suya)", "Trámite legal", "Otro"];
 
@@ -216,7 +217,7 @@ export default function TarjetasLlavesView() {
           {/* Fecha de devolución — obligatoria: dispara la alerta si no la trae */}
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>¿Qué día debe devolverla?</label>
-            <input type="date" value={fechaDevolucion} min={new Date().toISOString().slice(0, 10)} onChange={e => setFechaDevolucion(e.target.value)}
+            <input type="date" value={fechaDevolucion} min={hoyISO()} onChange={e => setFechaDevolucion(e.target.value)}
               style={{ ...inputStyle, background: "var(--card)" }} />
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Si no la trae ese día, el sistema te avisará para que se la pidas.</div>
           </div>
@@ -295,7 +296,7 @@ export default function TarjetasLlavesView() {
                   </div>
                   {p.detalles && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{p.detalles}</div>}
                   {!devuelta && p.fecha_devolucion_esperada && (
-                    p.fecha_devolucion_esperada <= new Date().toISOString().slice(0, 10)
+                    p.fecha_devolucion_esperada <= hoyISO()
                       ? <div style={{ fontSize: 12, fontWeight: 700, color: "var(--bad-ink)", marginTop: 4 }}>⚠️ Debía devolverla el {fmtFecha(p.fecha_devolucion_esperada)} — pedírsela</div>
                       : <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>Debe devolverla el <strong>{fmtFecha(p.fecha_devolucion_esperada)}</strong></div>
                   )}

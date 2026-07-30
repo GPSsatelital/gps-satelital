@@ -6,7 +6,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePrestamos, grupoDePago } from "../hooks/usePrestamos";
 import { useScope } from "../contexts/SubadminScopeContext";
-import { hoyISO, hoyDate } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 import { Badge, Chip, type BadgeTone } from "../components/atomos";
 import { listaConScroll } from "../styles/shared";
 import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
@@ -31,10 +31,17 @@ function estadoTone(estado: string): BadgeTone {
   return "neutral";
 }
 
+// Mes actual en Colombia, "YYYY-MM". Dos trampas que esta función tenía:
+// 1) toISOString() pasa a UTC: el día 31 después de las 7pm ya era el mes SIGUIENTE, así que
+//    `desde` (día 1 del mes que viene) quedaba por delante de `hasta` (hoy) y la pantalla de
+//    Historial de Pagos se veía VACÍA para todos, una noche por mes.
+// 2) setMonth sobre el día 31 se pasa de mes (31 de junio no existe y rueda a julio); se ancla
+//    al día 1 antes de mover el mes.
 function isoMes(offset = 0) {
-  const d = new Date();
+  const d = hoyDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + offset);
-  return d.toISOString().slice(0, 7);
+  return fechaISO(d).slice(0, 7);
 }
 
 export default function HistorialPagosView({ onNavigate }: {
@@ -186,7 +193,7 @@ export default function HistorialPagosView({ onNavigate }: {
 
   const quickRanges = [
     { label: "Hoy", from: hoyISO(), to: hoyISO() },
-    { label: "Esta semana", from: (() => { const d = hoyDate(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toISOString().slice(0, 10); })(), to: hoyISO() },
+    { label: "Esta semana", from: (() => { const d = hoyDate(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return fechaISO(d); })(), to: hoyISO() },
     { label: "Este mes", from: `${mesActual}-01`, to: hoyISO() },
   ];
 

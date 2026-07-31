@@ -673,10 +673,28 @@ tránsito):
    que pague ahora o después no cambia cuánto debe en total. Pero **la meta siempre es que pague de
    una y extender el contrato lo menos posible** — rodar es la última opción.
 
-⚠️ **CONSECUENCIA A REVISAR (sin resolver):** si el contrato sigue corriendo, las cajas de esos días
-ya se le están exigiendo por el ledger. Entonces `ModalResolverTiempoFueraServicio` (que al devolver
-el reemplazo ofrece "cobrar ahora" creando una deuda `tarifa_atrasada` por días × tarifa) estaría
-**cobrando dos veces los mismos días**. Verificar antes de usar esa opción en un préstamo.
+### Cobro del alquiler de la prestada (regla del dueño, 30-jul-2026)
+- **Se cobra ENSEGUIDA, todos los días** — como todo en la empresa. Es gestión del funcionario: si
+  cobra bien cada día, el cliente nunca se atrasa.
+- Si igual se atrasa, **queda como deuda** y el funcionario **le hace un convenio**. No se pierde.
+- **No bloquea la devolución** de su moto propia: esa es la de su contrato y la sigue pagando.
+- **La cuenta de la prestada NUNCA se mezcla con la del contrato original.** El ingreso del alquiler
+  pertenece al portafolio de la moto PRESTADA (es la que se desgasta), no al de la original.
+
+### Recuperar la moto propia después de estar guardada (regla del dueño, 30-jul-2026)
+1. Se le cobra **lo que debía de ANTES de guardarla**. Eso no se rueda nunca.
+2. **Lo ÚNICO que se puede ofrecer rodar al final es el tiempo que la moto estuvo guardada.**
+3. 🔴 **Rodar SOLO por períodos COMPLETOS.** Nunca días sueltos: *"rodar 3 días de una semana
+   descuadra muchas lógicas y cuentas"*. Si estuvo guardada 3 días, no se rueda nada.
+
+⚠️ **ESTADO REAL DEL CÓDIGO (verificado 30-jul, NO resuelto):** `ModalResolverTiempoFueraServicio`
+tiene las dos opciones rotas bajo el motor de cajas:
+- **"Rodar" no hace nada real**: solo mueve `fecha_fin_contrato`, que es informativa (el contrato
+  termina al llenar la caja N, no por fecha). Las cajas se le siguen exigiendo igual. Y permite
+  días sueltos, contra la regla 3. Lo que el spec pide (punto 7: "el rango queda exonerado de
+  EXIGENCIA pero las cajas NO se perdonan") **no está implementado**.
+- **"Cobrar" cobra dos veces**: crea una deuda `tarifa_atrasada` de días × tarifa, cuando el
+  contrato siguió corriendo y esas cajas ya se exigieron por el ledger.
 
 ### Fiscalía/Tránsito/Garantía — tiempo fuera de servicio
 - El tiempo que la moto está fuera de servicio (fiscalía, tránsito, garantía, taller) **por defecto se COBRA** al cliente — el tiempo retenido queda como deuda. Existe la opción de **rodar** ese tiempo (extender la fecha de fin del contrato) en vez de cobrarlo, decisión del ADMIN caso por caso, pero **la prioridad es siempre cobrar** (rodar alarga el contrato, la empresa deja de ganar ese período y genera gastos de gestión extra).

@@ -317,7 +317,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           </div>
         )}
 
-        {(puedeCrear || puedeDocumentos) && (
+        {/* Cada botón depende de SU permiso (no de puedeCrear): así "Editar contrato"
+            funciona para quien tenga esa acción activada, sin importar el rol. */}
+        {(puedeEditar || puedeDocumentos) && (
           <div style={{ ...card, display: "grid", gap: 8 }}>
             {/* Migrados: entraron por SQL sin sus documentos físicos — recordatorio no
                 bloqueante hasta que se suban con el botón de abajo. Los del wizard nunca

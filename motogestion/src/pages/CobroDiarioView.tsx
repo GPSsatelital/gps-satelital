@@ -136,9 +136,13 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [notasCaja, setNotasCaja] = useState("");
   const [msgCaja, setMsgCaja] = useState<string | null>(null);
 
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const { render: renderMsg } = useMensajesWhatsapp();
-  const esSecretaria = profile?.role === "SECRETARIA" || profile?.role === "ADMIN_PRINCIPAL";
+  // Permisos por persona (rol = techo). Antes esta pantalla usaba un chequeo de rol
+  // quemado, así que activar/quitar "registrar efectivo" a alguien no tenía efecto aquí.
+  const esSecretaria = puede("registrar_efectivo");
+  const puedeEditarDeuda = puede("editar_deuda");
+  const puedeCrearConvenio = puede("crear_convenio");
 
   const { contratos } = useContratos();
   const { clientes } = useClientes();
@@ -325,7 +329,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           </>
         )}
         <button onClick={() => { setGestionId(f.contratoId); setGestionNombre(f.clienteNombre); }} style={{ ...s, background: "var(--warn-soft)", color: "var(--warn-ink)" }} title="Registrar gestión">📋</button>
-        <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "var(--bad-soft)", color: "var(--bad-ink)" }} title="Ver deuda">⚠️</button>
+        {puedeEditarDeuda && (
+          <button onClick={() => setDeudaId(f.contratoId)} style={{ ...s, background: "var(--bad-soft)", color: "var(--bad-ink)" }} title="Ver / editar deuda">⚠️</button>
+        )}
         {onNavigate && (
           <button onClick={() => onNavigate("ficha_cliente", f.clienteId)} style={{ ...s, background: "var(--accent-soft2)", color: "var(--accent)" }} title="Ver ficha cliente">👤</button>
         )}
@@ -960,7 +966,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       })()}
       {gestionId && <ModalGestion contratoId={gestionId} clienteNombre={gestionNombre} onClose={() => setGestionId(null)} />}
       {deudaId && <ModalDeuda contratoId={deudaId} clienteNombre={filas.find(f => f.contratoId === deudaId)?.clienteNombre ?? ""} onClose={() => setDeudaId(null)} />}
-      {convenioId && <ModalConvenio contratoId={convenioId} clienteNombre={filas.find(f => f.contratoId === convenioId)?.clienteNombre ?? ""} onClose={() => setConvenioId(null)} />}
+      {convenioId && puedeCrearConvenio && <ModalConvenio contratoId={convenioId} clienteNombre={filas.find(f => f.contratoId === convenioId)?.clienteNombre ?? ""} onClose={() => setConvenioId(null)} />}
     </div>
   );
 }

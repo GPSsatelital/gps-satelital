@@ -91,6 +91,31 @@ describe("cajasExigidasHasta — cuántas cajas se exigen a una fecha", () => {
   });
 });
 
+// RODAR TIEMPO (mig 078). Antes "rodar" solo movía `fecha_fin_contrato`, que es informativa:
+// las cajas se le seguían exigiendo igual, o sea que el botón NO HACÍA NADA. Ahora se exoneran
+// cajas enteras de la exigencia — se corren al final, no se perdonan.
+describe("cajasExigidasHasta — rodar tiempo al final (cajas_exoneradas)", () => {
+  it("sin rodar nada → el resultado no cambia (los contratos vivos siguen igual)", () => {
+    expect(cajasExigidasHasta({ ...ESMEIRO, cajas_exoneradas: 0 }, D(27))).toBe(2);
+  });
+  it("con 1 período rodado → hoy se le exige una caja MENOS", () => {
+    expect(cajasExigidasHasta({ ...ESMEIRO, cajas_exoneradas: 1 }, D(27))).toBe(1);
+  });
+  it("NO se perdonan: una semana más tarde vuelve al mismo número (se corrió, no se borró)", () => {
+    const rodado: ContratoCiclo = { ...ESMEIRO, cajas_exoneradas: 1 };
+    expect(cajasExigidasHasta(rodado, new Date("2026-08-03T00:00:00"))).toBe(2);
+  });
+  it("nunca da negativo aunque se ruede de más", () => {
+    expect(cajasExigidasHasta({ ...ESMEIRO, cajas_exoneradas: 99 }, D(27))).toBe(0);
+  });
+  // EL CASO QUE PROTEGE EL DISEÑO: la resta va ANTES del tope de total_cajas. Si fuera después,
+  // las exigidas nunca pasarían de (104 − 2) y el contrato NUNCA podría terminar.
+  it("el contrato IGUAL puede completarse: a 2 años vista llega a las 104 cajas", () => {
+    const rodado: ContratoCiclo = { ...ESMEIRO, cajas_exoneradas: 2 };
+    expect(cajasExigidasHasta(rodado, new Date("2028-12-31T00:00:00"))).toBe(104);
+  });
+});
+
 describe("huecoCuotasHoy — cuánto debe de CUOTAS hoy (prorrateo + cajas)", () => {
   it("ESMEIRO antes del primer pago → $0 (al día)", () => {
     expect(huecoCuotasHoy(ESMEIRO, D(15))).toBe(0);

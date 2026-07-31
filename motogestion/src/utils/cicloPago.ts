@@ -20,6 +20,7 @@ export type ContratoCiclo = {
   cajas_pagadas?: number;
   caja_actual_pagado?: number;
   cajas_previas?: number; // cuotas pagadas ANTES del corte (migrados) + financiadas por convenio
+  cajas_exoneradas?: number; // períodos completos rodados al final por tiempo fuera de servicio (mig 078)
   prorrateo_total?: number;
   prorrateo_pagado?: number;
   prorrateo_ahorro?: number;
@@ -383,10 +384,16 @@ export function totalCajasContrato(forma_pago: string, meses: number): number {
 // la caja 1. Espejo exacto de public.cajas_exigidas() de la mig 045.
 export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
   const previas = contrato.cajas_previas ?? 0;
+  // Cajas RODADAS al final por tiempo fuera de servicio (mig 078): se restan de la exigencia
+  // pero NO se perdonan. La resta va ANTES del tope de total_cajas — si fuera después, las
+  // exigidas nunca pasarían de (total − exoneradas) y el contrato jamás podría terminar.
+  // Restando antes, la curva de exigencia se corre N períodos y con el tiempo vuelve a alcanzar
+  // total_cajas: el cliente paga las mismas cajas, N períodos más tarde.
+  const exoneradas = contrato.cajas_exoneradas ?? 0;
   const inicio = contrato.fecha_inicio_cajas;
-  if (!inicio) return Math.min(previas, contrato.total_cajas ?? previas);
+  if (!inicio) return Math.max(Math.min(previas, contrato.total_cajas ?? previas) - exoneradas, 0);
   const hoyISO = fechaAISO(hoy);
-  if (hoyISO < inicio) return Math.min(previas, contrato.total_cajas ?? previas);
+  if (hoyISO < inicio) return Math.max(Math.min(previas, contrato.total_cajas ?? previas) - exoneradas, 0);
   let n = 0;
   if (contrato.forma_pago === "Semanal") {
     const dIni = new Date(inicio + "T00:00:00");
@@ -408,6 +415,7 @@ export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
     return 0; // Diario fuera del libro
   }
   n += previas;
+  n -= exoneradas;
   if (contrato.total_cajas != null) n = Math.min(n, contrato.total_cajas);
   return Math.max(n, 0);
 }

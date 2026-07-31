@@ -84,7 +84,23 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
       if (decision === "cobrar_ahora") {
         await registrarDeuda(contrato.id, "tarifa_atrasada", `${motivo} — ${dias} días sin producir (${fechaEntrada} a ${fechaSalida})`, valorTotal, profile.id);
       } else {
-        await editarContrato(contrato, { fecha_fin_contrato: fechaFinExtendida }, profile.id);
+        // RODAR DE VERDAD (mig 078): se exoneran N cajas de la EXIGENCIA. No se perdonan — la
+        // curva de exigencia se corre N períodos y el cliente las paga al final. Antes esto solo
+        // movía `fecha_fin_contrato`, que es informativa: las cajas se le seguían exigiendo igual
+        // y el admin creía tener una herramienta que no existía.
+        // La fecha de fin igual se mueve, para que los documentos impresos digan lo mismo.
+        const { error: errRodar } = await editarContrato(contrato, {
+          cajas_exoneradas: (contrato.cajas_exoneradas ?? 0) + periodosCompletos,
+          fecha_fin_contrato: fechaFinExtendida,
+        }, profile.id);
+        if (errRodar) {
+          setError(
+            errRodar.includes("cajas_exoneradas")
+              ? "Falta correr la migración 078 en Supabase: sin ella no se puede rodar tiempo."
+              : errRodar,
+          );
+          return;
+        }
       }
 
       setExito(true);
@@ -133,22 +149,36 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                 se le carga además ${fmt(valorTotal)}, se le estaría cobrando dos veces lo mismo.
               </div>
             </div>
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 4 }}>
-                📅 ¿Y rodar el tiempo al final?
+            {periodosCompletos >= 1 ? (
+              <button
+                onClick={() => setDecision("rodar_al_final")}
+                style={{
+                  padding: "14px 16px", borderRadius: 12, textAlign: "left", cursor: "pointer", width: "100%",
+                  border: decision === "rodar_al_final" ? "2px solid var(--accent)" : "1px solid var(--line)",
+                  background: decision === "rodar_al_final" ? "var(--accent-soft2)" : "var(--card)",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--accent-ink)" }}>
+                  📅 Rodar {periodosCompletos} período{periodosCompletos !== 1 ? "s" : ""} al final
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3, lineHeight: 1.5 }}>
+                  Esa{periodosCompletos !== 1 ? "s" : ""} {periodosCompletos} cuota{periodosCompletos !== 1 ? "s" : ""} dejan
+                  de exigírsele <strong>ahora</strong> y las paga <strong>al final</strong>. No se le perdonan:
+                  el contrato termina {diasARodar} días más tarde.
+                  <br />
+                  Es la excepción — la prioridad de la empresa siempre es cobrar de una.
+                </div>
+              </button>
+            ) : (
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--soft)", border: "1px dashed var(--line)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>📅 Rodar al final — no se puede</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Estuvo {dias} día{dias !== 1 ? "s" : ""} y no alcanza a completar un período
+                  de {diasPeriodo || "—"} días. Rodar días sueltos descuadra las cuentas.
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.5 }}>
-                {periodosCompletos < 1
-                  ? <>No se puede: estuvo {dias} día{dias !== 1 ? "s" : ""} y no alcanza a completar
-                      un período de {diasPeriodo || "—"}. Rodar días sueltos descuadra las cuentas.</>
-                  : <>Serían {periodosCompletos} período{periodosCompletos !== 1 ? "s" : ""} completo{periodosCompletos !== 1 ? "s" : ""}.</>}
-                <br /><br />
-                Pero <strong>hoy el sistema todavía no sabe rodar de verdad</strong>: movería la fecha
-                de fin, que es solo informativa, y las semanas se le seguirían exigiendo igual.
-                Está pendiente de construir.
-              </div>
-            </div>
-            <button onClick={onClose} style={{ ...primaryBtn, width: "100%" }}>Entendido</button>
+            )}
+            {!decision && <button onClick={onClose} style={{ ...secondaryBtn, width: "100%" }}>Cerrar sin rodar</button>}
           </div>
         ) : (
         <div>

@@ -49,6 +49,7 @@ export type Contrato = {
   cajas_pagadas?: number;
   caja_actual_pagado?: number;
   cajas_previas?: number;
+  cajas_exoneradas?: number;   // períodos completos rodados al final (mig 078)
   prorrateo_total?: number;
   prorrateo_pagado?: number;
   prorrateo_ahorro?: number;
@@ -355,11 +356,12 @@ export function useContratos() {
     ahorro_apertura: "Ahorro de apertura (empalme)",
     fecha_fin_contrato: "Fecha fin de contrato",
     dias_pago_mes: "Días de pago (mes)",
+    cajas_exoneradas: "Períodos rodados al final",
   };
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "fecha_fin_contrato">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "fecha_fin_contrato" | "cajas_exoneradas">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(

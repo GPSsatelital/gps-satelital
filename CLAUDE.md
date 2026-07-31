@@ -687,14 +687,23 @@ tránsito):
 3. 🔴 **Rodar SOLO por períodos COMPLETOS.** Nunca días sueltos: *"rodar 3 días de una semana
    descuadra muchas lógicas y cuentas"*. Si estuvo guardada 3 días, no se rueda nada.
 
-⚠️ **ESTADO REAL DEL CÓDIGO (verificado 30-jul, NO resuelto):** `ModalResolverTiempoFueraServicio`
-tiene las dos opciones rotas bajo el motor de cajas:
-- **"Rodar" no hace nada real**: solo mueve `fecha_fin_contrato`, que es informativa (el contrato
-  termina al llenar la caja N, no por fecha). Las cajas se le siguen exigiendo igual. Y permite
-  días sueltos, contra la regla 3. Lo que el spec pide (punto 7: "el rango queda exonerado de
-  EXIGENCIA pero las cajas NO se perdonan") **no está implementado**.
-- **"Cobrar" cobra dos veces**: crea una deuda `tarifa_atrasada` de días × tarifa, cuando el
-  contrato siguió corriendo y esas cajas ya se exigieron por el ledger.
+✅ **RESUELTO 31-jul (mig 078 `cajas_exoneradas`).** Antes las dos opciones estaban rotas:
+"rodar" solo movía `fecha_fin_contrato` — que es informativa — así que **el botón no hacía nada**
+y las cajas se seguían exigiendo; y "cobrar" creaba una deuda de días × tarifa **encima** de las
+cajas que el contrato ya venía exigiendo (doble cobro).
+
+Ahora:
+- **Rodar exonera CAJAS de verdad**: `contratos.cajas_exoneradas` se resta de `cajas_exigidas()`.
+  Se resta **ANTES del tope de `total_cajas`** — si fuera después, las exigidas nunca pasarían de
+  (total − exoneradas) y **el contrato jamás podría terminar**. Restando antes, la curva de
+  exigencia se corre N períodos y con el tiempo vuelve a alcanzar `total_cajas`: el cliente paga
+  las mismas cajas, N períodos más tarde. Hay prueba automática que lo protege.
+- **Solo períodos completos**, según la regla 3. Si no completa uno, la opción no aparece.
+- **"Cobrar" ya no se ofrece** en contratos con motor: la ventana explica que esas semanas ya
+  están exigidas y que cobrarlas aparte sería cobrar dos veces. Los contratos v1 conservan el
+  flujo viejo.
+- `cajas_exigidas()` (SQL) y `cajasExigidasHasta()` (TS) son espejo exacto: **si se toca una hay
+  que tocar la otra**, o la pantalla dirá una cosa y el motor de reparto otra.
 
 ### Fiscalía/Tránsito/Garantía — tiempo fuera de servicio
 - El tiempo que la moto está fuera de servicio (fiscalía, tránsito, garantía, taller) **por defecto se COBRA** al cliente — el tiempo retenido queda como deuda. Existe la opción de **rodar** ese tiempo (extender la fecha de fin del contrato) en vez de cobrarlo, decisión del ADMIN caso por caso, pero **la prioridad es siempre cobrar** (rodar alarga el contrato, la empresa deja de ganar ese período y genera gastos de gestión extra).

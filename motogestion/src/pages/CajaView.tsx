@@ -75,14 +75,16 @@ export default function CajaView() {
   }
 
   // Grupo de un pago: fuente única en usePrestamos (pago → contrato → moto del PORTAFOLIO → grupo).
-  function grupoDePago(contratoId: string): GrupoMoto | null {
-    return grupoDePagoCompartido(contratoId, contratos, motos, prestamos) as GrupoMoto | null;
+  // Recibe el pago entero, no solo el contrato, porque el alquiler de una moto prestada le entra al
+  // portafolio de ESA moto y no al del contrato (ver motoDelPortafolio).
+  function grupoDePago(p: { contrato_id: string; tipo_registro?: string | null }): GrupoMoto | null {
+    return grupoDePagoCompartido(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) as GrupoMoto | null;
   }
 
   // Vista filtrada por el chip de grupo (para los KPIs y las listas). El CIERRE siempre
   // usa el día completo, sin importar el filtro (ver resumenDia más abajo).
   const pagosDiaVista = useMemo(() =>
-    filtroGrupo === "todos" ? pagosDia : pagosDia.filter(p => grupoDePago(p.contrato_id) === filtroGrupo),
+    filtroGrupo === "todos" ? pagosDia : pagosDia.filter(p => grupoDePago(p) === filtroGrupo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pagosDia, filtroGrupo, contratos, motos]
   );
@@ -100,17 +102,17 @@ export default function CajaView() {
   const resumenDia = useMemo(() => calcResumen(pagosDia), [pagosDia]);
 
   function resumenDeGrupo(grupo: GrupoMoto) {
-    return calcResumen(pagosDia.filter(p => grupoDePago(p.contrato_id) === grupo));
+    return calcResumen(pagosDia.filter(p => grupoDePago(p) === grupo));
   }
   // Cuántos grupos (con dinero) ya están cerrados hoy.
   const gruposConDinero = resumenPorGrupoSafe();
-  function resumenPorGrupoSafe() { return GRUPOS.filter(g => pagosDia.some(p => grupoDePago(p.contrato_id) === g && p.estado === "Confirmado")); }
+  function resumenPorGrupoSafe() { return GRUPOS.filter(g => pagosDia.some(p => grupoDePago(p) === g && p.estado === "Confirmado")); }
   const gruposCerrados = gruposConDinero.filter(g => cajaDia(fecha, g));
 
   // Desglose por cada grupo (siempre del día completo — es el cuadro nuevo por portafolio).
   const resumenPorGrupo = useMemo(() => {
     return GRUPOS.map(g => {
-      const lista = pagosDia.filter(p => grupoDePago(p.contrato_id) === g);
+      const lista = pagosDia.filter(p => grupoDePago(p) === g);
       const r = calcResumen(lista);
       return { grupo: g, ...r, count: r.confirmados };
     }).filter(x => x.total > 0 || x.pendientes.length > 0);
@@ -191,7 +193,7 @@ export default function CajaView() {
     const r = resumenDeGrupo(g);
     const arq = calcArqueo(r.efectivo, r.transfer);
     const detalle = pagosDia
-      .filter(p => p.estado === "Confirmado" && grupoDePago(p.contrato_id) === g)
+      .filter(p => p.estado === "Confirmado" && grupoDePago(p) === g)
       .map(p => {
         const { nombre, placa } = getInfo(p.contrato_id);
         return { placa, nombre, valor: p.valor, metodo: p.metodo, grupo: g };

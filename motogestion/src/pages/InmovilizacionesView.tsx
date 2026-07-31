@@ -94,7 +94,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { motos }     = useMotos();
   const { pagos, registrarPago } = usePagos();
   const { gestiones } = useGestiones();
-  const { deudas }    = useDeudas();
+  const { deudas, registrarDeuda } = useDeudas();
   const { convenios } = useConvenios();
   const { recepciones } = useUbicaciones();
   const { prestamos, devolverReemplazo } = usePrestamos();
@@ -384,14 +384,46 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     } finally { setPrestamoProc(null); }
   }
 
+  // Cuenta del alquiler de una prestada: lo generado hasta hoy menos lo que ya pagó.
+  // El panel solo mostraba "$X/día" como texto fijo — nadie llevaba el saldo, así que al devolver
+  // la moto el alquiler no cobrado desaparecía sin quedar como deuda de nadie.
+  function cuentaAlquiler(p: { contrato_id: string; fecha_inicio: string; fecha_fin: string | null; tarifa_dia: number }) {
+    const hasta = p.fecha_fin ?? hoyISO();
+    const dias = Math.max(1, Math.round(
+      (new Date(hasta + "T00:00:00").getTime() - new Date(p.fecha_inicio + "T00:00:00").getTime()) / 86400000,
+    ));
+    const generado = dias * p.tarifa_dia;
+    const pagado = pagos
+      .filter(x => x.contrato_id === p.contrato_id && x.tipo_registro === "alquiler_reemplazo"
+        && x.estado !== "Rechazado" && x.fecha >= p.fecha_inicio)
+      .reduce((s, x) => s + x.valor, 0);
+    return { dias, generado, pagado, saldo: Math.max(generado - pagado, 0) };
+  }
+
   async function handleDevolverPrestamo(prestamoId: string) {
     if (prestamoProc) return;
     if (!confirm("¿La moto propia ya salió del taller? Se devuelve la prestada al pool y el contrato vuelve a su placa original.")) return;
     setPrestamoProc(prestamoId);
     try {
       const p = prestamos.find(x => x.id === prestamoId);
+      // Se calcula ANTES de cerrar el préstamo, con los datos que todavía están en memoria.
+      const cuenta = p ? cuentaAlquiler(p) : null;
       const { error } = await devolverReemplazo(prestamoId);
       if (error) { alert("Error al devolver el préstamo: " + error); return; }
+
+      // El alquiler que quede sin pagar NO se pierde: queda como deuda para que el funcionario le
+      // haga el convenio (regla del dueño). La moto propia se le entrega igual — esa es la de su
+      // contrato y la sigue pagando. Se usa el concepto 'otro' porque `deudas_concepto_check` no
+      // tiene uno de alquiler; la descripción deja claro de qué placa y cuántos días es.
+      if (p && cuenta && cuenta.saldo > 0 && profile) {
+        const placaPrest = motos.find(m => m.id === p.moto_prestada_id)?.placa ?? "";
+        await registrarDeuda(
+          p.contrato_id, "otro",
+          `Alquiler moto de reemplazo ${placaPrest} — ${cuenta.dias} día(s) × $${fmt(p.tarifa_dia)} (ya pagó $${fmt(cuenta.pagado)})`,
+          cuenta.saldo, profile.id,
+        );
+        alert(`Quedó una deuda de $${fmt(cuenta.saldo)} por el alquiler de ${placaPrest}.\n\nCóbrasela o hacele un convenio.`);
+      }
       // F4: resolver el tiempo que su moto estuvo en taller (cobrar / rodar con doc firmado).
       // Como pagó alquiler mientras trabajaba en la prestada, lo normal es rodar; decide el admin.
       if (esAdmin && p) {
@@ -992,7 +1024,21 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       Anda en <strong>{motoP?.placa ?? "?"}</strong> (prestada) · su moto <strong>{motoO?.placa ?? "?"}</strong> en taller · desde {p.fecha_inicio}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--violet)", fontWeight: 700, marginTop: 2 }}>Alquiler: ${fmt(p.tarifa_dia)}/día</div>
+                    {(() => {
+                      const cta = cuentaAlquiler(p);
+                      return (
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: "var(--violet)", fontWeight: 700 }}>
+                            Alquiler: ${fmt(p.tarifa_dia)}/día · {cta.dias} día{cta.dias !== 1 ? "s" : ""} = ${fmt(cta.generado)}
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2, color: cta.saldo > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
+                            {cta.saldo > 0
+                              ? `Debe $${fmt(cta.saldo)} de alquiler (pagó $${fmt(cta.pagado)})`
+                              : `✓ Alquiler al día (pagó $${fmt(cta.pagado)})`}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                     <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}

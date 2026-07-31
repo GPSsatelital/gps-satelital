@@ -28,6 +28,21 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
   const tarifa = contrato.tarifa_diaria ?? 27000;
   const valorTotal = dias * tarifa;
 
+  // RODAR SOLO POR PERÍODOS COMPLETOS (regla del dueño, 30-jul-2026): "rodar 3 días de una semana
+  // descuadra muchas lógicas y cuentas". Antes se rodaban los días crudos.
+  const DIAS_PERIODO: Record<string, number> = { Semanal: 7, Quincenal: 15, Mensual: 30 };
+  const diasPeriodo = DIAS_PERIODO[contrato.forma_pago ?? ""] ?? 0;
+  const periodosCompletos = diasPeriodo > 0 ? Math.floor(dias / diasPeriodo) : 0;
+  const diasARodar = periodosCompletos * diasPeriodo;
+
+  // Con el motor de cajas el contrato NUNCA se pausa: esas cajas ya se le exigieron por el ledger.
+  //   · "Cobrar ahora" crearía una deuda de días × tarifa ENCIMA de eso → cobra dos veces.
+  //   · "Rodar" solo mueve `fecha_fin_contrato`, que es informativa (el contrato termina al llenar
+  //     la caja N, no por fecha) → no le quita ni una caja exigida, no hace nada real.
+  // Mientras la exoneración de cajas del spec (punto 7) no exista, lo honesto es no ofrecer
+  // botones que hacen daño o nada. Los contratos v1 (sin motor) conservan el flujo de siempre.
+  const motorV2 = contrato.motor_v2 === true && contrato.forma_pago !== "Diario";
+
   const [decision, setDecision] = useState<DecisionTiempo | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [observaciones, setObservaciones] = useState("");
@@ -46,7 +61,7 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
         ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : fechaSalida);
       const fechaFinExtendida = (() => {
         const d = new Date(baseActual + "T00:00:00");
-        d.setDate(d.getDate() + dias);
+        d.setDate(d.getDate() + diasARodar);   // períodos COMPLETOS, no los días crudos
         return d.toISOString().slice(0, 10);
       })();
 
@@ -104,6 +119,38 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{dias} días × $ {fmt(tarifa)}/día (tarifa diaria)</div>
         </div>
 
+        {motorV2 ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line, var(--line))" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 6 }}>
+                ✅ Estos días ya están cobrados
+              </div>
+              <div style={{ fontSize: 13, color: "var(--ok-ink)", lineHeight: 1.5 }}>
+                El contrato de {clienteNombre} <strong>nunca se detuvo</strong>: sus cuotas siguieron
+                corriendo mientras la moto estaba por {motivo}. Esas semanas ya están en su cuenta.
+                <br /><br />
+                <strong>No hay que cobrarle nada aparte por estos {dias} día{dias !== 1 ? "s" : ""}.</strong> Si
+                se le carga además ${fmt(valorTotal)}, se le estaría cobrando dos veces lo mismo.
+              </div>
+            </div>
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 4 }}>
+                📅 ¿Y rodar el tiempo al final?
+              </div>
+              <div style={{ fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                {periodosCompletos < 1
+                  ? <>No se puede: estuvo {dias} día{dias !== 1 ? "s" : ""} y no alcanza a completar
+                      un período de {diasPeriodo || "—"}. Rodar días sueltos descuadra las cuentas.</>
+                  : <>Serían {periodosCompletos} período{periodosCompletos !== 1 ? "s" : ""} completo{periodosCompletos !== 1 ? "s" : ""}.</>}
+                <br /><br />
+                Pero <strong>hoy el sistema todavía no sabe rodar de verdad</strong>: movería la fecha
+                de fin, que es solo informativa, y las semanas se le seguirían exigiendo igual.
+                Está pendiente de construir.
+              </div>
+            </div>
+            <button onClick={onClose} style={{ ...primaryBtn, width: "100%" }}>Entendido</button>
+          </div>
+        ) : (
         <div>
           <div style={labelStyle}>¿Cómo se resuelve?</div>
           <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
@@ -118,19 +165,34 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
               <div style={{ fontWeight: 700, fontSize: 14, color: "var(--bad-ink)" }}>💰 Cobrar ahora</div>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>Se registra como deuda de $ {fmt(valorTotal)}. El contrato NO se extiende.</div>
             </button>
-            <button
-              onClick={() => setDecision("rodar_al_final")}
-              style={{
-                padding: "12px 14px", borderRadius: 12, textAlign: "left", cursor: "pointer",
-                border: decision === "rodar_al_final" ? "2px solid var(--ok-ink)" : "1px solid var(--line)",
-                background: decision === "rodar_al_final" ? "var(--ok-soft)" : "var(--card)",
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ok-ink)" }}>📅 Rodar al final</div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>No se cobra nada. El contrato termina {dias} día{dias !== 1 ? "s" : ""} más tarde.</div>
-            </button>
+            {/* Rodar solo si el tiempo guardado completa al menos UN período entero. */}
+            {periodosCompletos >= 1 ? (
+              <button
+                onClick={() => setDecision("rodar_al_final")}
+                style={{
+                  padding: "12px 14px", borderRadius: 12, textAlign: "left", cursor: "pointer",
+                  border: decision === "rodar_al_final" ? "2px solid var(--ok-ink)" : "1px solid var(--line)",
+                  background: decision === "rodar_al_final" ? "var(--ok-soft)" : "var(--card)",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ok-ink)" }}>📅 Rodar al final</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                  No se cobra nada. El contrato termina {diasARodar} días más tarde
+                  ({periodosCompletos} período{periodosCompletos !== 1 ? "s" : ""} completo{periodosCompletos !== 1 ? "s" : ""}).
+                </div>
+              </button>
+            ) : (
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--soft)", border: "1px dashed var(--line)" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "var(--muted2)" }}>📅 Rodar al final — no disponible</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Estuvo {dias} día{dias !== 1 ? "s" : ""} y no completa un período de {diasPeriodo || "—"}.
+                  Rodar días sueltos descuadra las cuentas.
+                </div>
+              </div>
+            )}
           </div>
         </div>
+        )}
 
         {decision && (
           <>
@@ -144,7 +206,7 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                 📄 Documento firmado por el cliente (obligatorio)
               </div>
               <div style={{ fontSize: 12, color: "var(--warn-ink)", marginBottom: 10 }}>
-                Debe quedar claro que el cliente entiende que su contrato {decision === "rodar_al_final" ? `termina ${dias} día(s) después de lo previsto` : `debe $${fmt(valorTotal)} adicionales`}.
+                Debe quedar claro que el cliente entiende que su contrato {decision === "rodar_al_final" ? `termina ${diasARodar} día(s) después de lo previsto` : `debe $${fmt(valorTotal)} adicionales`}.
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>

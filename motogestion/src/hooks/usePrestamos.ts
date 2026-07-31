@@ -28,16 +28,24 @@ export type PrestamoReemplazo = {
  * medido en prueba, un pago del 13-jul de un cliente de COSTA pasó a contar para PRADERA.
  * Con 4 portafolios que rinden cuentas por separado, eso descuadra los informes de los socios.
  *
- * La plata siempre es del portafolio de la moto ORIGINAL: el préstamo es un favor temporal,
- * no un traspaso de inversión. (El alquiler del reemplazo sí es ingreso aparte.)
+ * La plata del CONTRATO siempre es del portafolio de la moto ORIGINAL: el préstamo es un favor
+ * temporal, no un traspaso de inversión.
+ *
+ * EXCEPCIÓN — el alquiler de la prestada (regla del dueño, 30-jul-2026: "nunca se pueden mezclar
+ * las cuentas"). Ese ingreso es de la moto PRESTADA: es la que se está usando y desgastando, y su
+ * portafolio es el que la puso. Antes caía en el portafolio de la moto original, así que el socio
+ * prestaba la moto y el ingreso se lo llevaba otro.
  */
 export function motoDelPortafolio(
   contratoId: string,
   motoIdActual: string | null,
-  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id">[],
+  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id" | "moto_prestada_id">[],
+  tipoRegistro?: string | null,
 ): string | null {
   const activo = prestamos.find(p => p.contrato_id === contratoId && p.estado === "activo");
-  return activo?.moto_original_id ?? motoIdActual;
+  if (!activo) return motoIdActual;
+  if (tipoRegistro === "alquiler_reemplazo") return activo.moto_prestada_id ?? motoIdActual;
+  return activo.moto_original_id ?? motoIdActual;
 }
 
 /**
@@ -57,11 +65,12 @@ export function grupoDePago(
   contratoId: string,
   contratos: { id: string; moto_id: string | null }[],
   motos: { id: string; grupo: string }[],
-  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id">[],
+  prestamos: Pick<PrestamoReemplazo, "contrato_id" | "estado" | "moto_original_id" | "moto_prestada_id">[],
+  tipoRegistro?: string | null,
 ): string | null {
   const c = contratos.find(ct => ct.id === contratoId);
   if (!c) return null;
-  const motoId = motoDelPortafolio(contratoId, c.moto_id, prestamos);
+  const motoId = motoDelPortafolio(contratoId, c.moto_id, prestamos, tipoRegistro);
   return motos.find(mo => mo.id === motoId)?.grupo ?? null;
 }
 

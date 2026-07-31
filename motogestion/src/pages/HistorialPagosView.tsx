@@ -91,7 +91,7 @@ export default function HistorialPagosView({ onNavigate }: {
       if (metodo !== "todos" && p.metodo !== metodo) return false;
       if (estadoFiltro !== "todos" && p.estado !== estadoFiltro) return false;
       if (filtroGrupo !== "todos") {
-        const g = grupoDePago(p.contrato_id, contratos, motos, prestamos);
+        const g = grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro);
         // "sin" recoge también los grupos raros (OTRO) para que nada quede fuera de los chips.
         const cae = filtroGrupo === "sin"
           ? !g || !GRUPOS_FILTRO.includes(g as FiltroGrupo)
@@ -124,7 +124,7 @@ export default function HistorialPagosView({ onNavigate }: {
     });
     const cuenta: Record<string, number> = { todos: base.length };
     for (const p of base) {
-      const g = grupoDePago(p.contrato_id, contratos, motos, prestamos);
+      const g = grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro);
       const clave = g && GRUPOS_FILTRO.includes(g as FiltroGrupo) ? g : "sin";
       cuenta[clave] = (cuenta[clave] ?? 0) + 1;
     }
@@ -155,7 +155,7 @@ export default function HistorialPagosView({ onNavigate }: {
       { key: "fecha_registro", rotulo: "Fecha que se digitó", ancho: 110, valor: p => p.fecha_registro ?? p.fecha },
       { key: "cliente", rotulo: "Cliente", porDefecto: true, ancho: 220, valor: p => cliente(p)?.nombre ?? "" },
       { key: "placa", rotulo: "Placa", porDefecto: true, ancho: 90, valor: p => getInfo(p).moto?.placa ?? "" },
-      { key: "grupo", rotulo: "Grupo", porDefecto: true, ancho: 110, valor: p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "Sin grupo" },
+      { key: "grupo", rotulo: "Grupo", porDefecto: true, ancho: 110, valor: p => grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) ?? "Sin grupo" },
       { key: "valor", rotulo: "Valor", porDefecto: true, align: "right", ancho: 110, valor: p => p.valor },
       { key: "metodo", rotulo: "Método", porDefecto: true, ancho: 110, valor: p => p.metodo },
       { key: "estado", rotulo: "Estado", porDefecto: true, ancho: 100, valor: p => p.estado },
@@ -437,14 +437,14 @@ export default function HistorialPagosView({ onNavigate }: {
           columnas={COLUMNAS_PAGOS}
           filas={pagosFiltrados}
           filtros={[
-            { titulo: "Grupos", de: p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "Sin grupo" },
+            { titulo: "Grupos", de: p => grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) ?? "Sin grupo" },
             { titulo: "Método", de: p => p.metodo },
             { titulo: "Estado", de: p => p.estado },
             { titulo: "Tipo de registro", de: p => p.tipo_registro ?? "normal" },
           ]}
           filasTodas={pagos}
           etiquetaTodas="todo el histórico"
-          agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos) ?? "OTRO"}
+          agrupar={p => grupoDePago(p.contrato_id, contratos, motos, prestamos, p.tipo_registro) ?? "OTRO"}
           onCerrar={() => setAbrirDescarga(false)}
         />
       )}

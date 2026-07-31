@@ -2284,10 +2284,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDate(p.fecha)} · {p.metodo}</div>
+                      {/* Los movimientos INTERNOS no son plata que entró: mostrar "Efectivo" ahí
+                          hacía que aplicar un saldo se viera idéntico a un pago nuevo (caso RMB51H,
+                          31-jul: el dueño creyó que se había contado dos veces). No entran a la caja. */}
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                        {formatDate(p.fecha)} · {esPagoDeCaja(p) ? p.metodo : "movimiento interno"}
+                      </div>
                       {p.tipo_registro === "adelanto_base" && (
                         <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "1px 8px" }}>
                           🎫 Primera semana adelantada (base inicial)
+                        </span>
+                      )}
+                      {p.tipo_registro === "saldo_favor" && (
+                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "1px 8px" }}>
+                          🔄 Se usó el saldo a favor del cliente — NO es plata nueva, no entra a la caja
                         </span>
                       )}
                     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
-import { usePagos, type Pago } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja, type Pago } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -228,6 +228,13 @@ export default function HistorialPagosView({ onNavigate }: {
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               <Badge tone={p.metodo === "Efectivo" ? "ok" : "accent"}>{mb.label}</Badge>
               <Badge tone={estadoTone(p.estado)}>{p.estado}</Badge>
+              {/* Movimiento interno: no es plata que entró y NO cuenta en la caja. Sin esta marca
+                  se veía igual que un pago real (el dueño creyó que se contaba dos veces). */}
+              {!esPagoDeCaja(p) && (
+                <Badge tone="indigo">
+                  {p.tipo_registro === "saldo_favor" ? "🔄 Usó su saldo a favor · no es plata nueva" : "🎫 Semana adelantada · no es plata nueva"}
+                </Badge>
+              )}
             </div>
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: p.estado === "Rechazado" ? "var(--faint)" : "var(--text)", flexShrink: 0, textDecoration: p.estado === "Rechazado" ? "line-through" : "none" }}>

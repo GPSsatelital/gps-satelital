@@ -796,7 +796,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
-      const saldoAFavor = confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
+      // Saldo a favor = lo que YA TRAÍA de las cuentas viejas (migrados, mig 079) + lo que fue
+      // quedando de los pagos del sistema. Al usarlo, el movimiento de "Aplicar" registra un
+      // aplicado_saldo_favor NEGATIVO, así que el total baja solo.
+      const saldoAFavor = (contrato.saldo_favor_apertura ?? 0)
+        + confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
       const sinPagosNunca = confirmados.length === 0;
 
       return {
@@ -1976,6 +1980,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   : <> Para usarla hay que tocar «Aplicar». <b>No registres un pago nuevo</b> con este monto: ese dinero
                       ya entró y se contaría dos veces. Si no ves el botón, pídeselo a quien tenga el permiso.</>}
               </div>
+              {/* De dónde viene. Importa distinguirlo: el de apertura NO pasó por ninguna caja del
+                  sistema (es de las cuentas viejas), así que la frase de arriba no aplica a esa parte. */}
+              {(contratoDetalle.saldo_favor_apertura ?? 0) > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--accent-line)", fontSize: 11.5, lineHeight: 1.5, color: "var(--accent-ink)" }}>
+                  De ese total, <b>$ {fmt(contratoDetalle.saldo_favor_apertura ?? 0)}</b> los traía <b>de las cuentas
+                  viejas</b>, de antes de entrar al sistema. Esa parte nunca pasó por una caja de acá.
+                </div>
+              )}
             </div>
           )}
           {saldoExito && (

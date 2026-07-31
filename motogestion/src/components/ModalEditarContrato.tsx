@@ -42,6 +42,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   // Empalme abierto: el ahorro que traía de antes se cuadra aquí, separado del nuevo.
   const empalmeAbierto = !!contrato.es_migrado && !contrato.empalme_cerrado;
   const [ahorroApertura, setAhorroApertura] = useState(String(Math.round(contrato.ahorro_apertura ?? 0)));
+  // El saldo a favor que traía de las cuentas viejas (mig 079). Faltaba: el arqueo capturaba
+  // deuda y ahorro, pero al que traía saldo a favor no había dónde ponérselo.
+  const [saldoFavorApertura, setSaldoFavorApertura] = useState(String(Math.round(contrato.saldo_favor_apertura ?? 0)));
   const [fechaFinContrato, setFechaFinContrato] = useState(
     contrato.fecha_fin_contrato ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : "")
   );
@@ -98,7 +101,10 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           ahorro_inicial: Number(ahorroInicial) || 0,
           fecha_entrega: fechaEntrega || null,
           ahorro_acumulado: Number(ahorroAcumulado) || 0,
-          ...(empalmeAbierto ? { ahorro_apertura: Number(ahorroApertura) || 0 } : {}),
+          ...(empalmeAbierto ? {
+            ahorro_apertura: Number(ahorroApertura) || 0,
+            saldo_favor_apertura: Number(saldoFavorApertura) || 0,
+          } : {}),
           fecha_fin_contrato: esDiario ? null : (fechaFinContrato || null),
         },
         profile.id,
@@ -214,6 +220,14 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
             <MoneyInput label="Ahorro de apertura (lo que traía de antes — empalme)" value={ahorroApertura} onChange={setAhorroApertura} />
             <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 4 }}>
               Editable solo mientras el empalme esté abierto. Al confirmar la migración se consolida con el ahorro nuevo y queda sellado.
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <MoneyInput label="Saldo a favor de apertura (lo que traía a su favor)" value={saldoFavorApertura} onChange={setSaldoFavorApertura} />
+              <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 4 }}>
+                Plata que el cliente ya tenía a favor en las cuentas viejas. Se suma a su saldo a
+                favor y se le puede aplicar a lo que deba. <strong>No registres un pago nuevo para
+                esto</strong> — ese dinero no entró hoy y inflaría la caja del día.
+              </div>
             </div>
           </div>
         )}

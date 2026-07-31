@@ -38,6 +38,9 @@ export type Contrato = {
   // ahorro_apertura (editable) hasta que se confirma la migración; ahí se consolida
   // en ahorro_acumulado y empalme_cerrado queda true.
   ahorro_apertura?: number;
+  // El saldo a favor que YA TRAÍA de las cuentas viejas al migrar (mig 079). Mismo trato que
+  // ahorro_apertura: editable mientras el empalme esté abierto.
+  saldo_favor_apertura?: number;
   empalme_cerrado?: boolean;
   empalme_cerrado_por?: string | null;
   empalme_cerrado_fecha?: string | null;
@@ -354,6 +357,7 @@ export function useContratos() {
     fecha_entrega: "Fecha entrega",
     ahorro_acumulado: "Ahorro acumulado",
     ahorro_apertura: "Ahorro de apertura (empalme)",
+    saldo_favor_apertura: "Saldo a favor de apertura (empalme)",
     fecha_fin_contrato: "Fecha fin de contrato",
     dias_pago_mes: "Días de pago (mes)",
     cajas_exoneradas: "Períodos rodados al final",
@@ -361,7 +365,7 @@ export function useContratos() {
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "fecha_fin_contrato" | "cajas_exoneradas">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "saldo_favor_apertura" | "fecha_fin_contrato" | "cajas_exoneradas">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(

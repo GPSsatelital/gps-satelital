@@ -191,7 +191,10 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
     if (error) alert("No se pudo eliminar: " + error);
   }
   const { visitas } = useVisitas();
-  const { gestiones } = useGestiones();
+  const { gestiones, cargarHistorialCompleto } = useGestiones();
+  // La ficha muestra TODA la historia de gestiones. El store solo trae los últimos 120 días para
+  // que las pantallas del día a día no carguen con la historia entera; acá se pide el resto.
+  useEffect(() => { cargarHistorialCompleto(); }, [cargarHistorialCompleto]);
   const { motos } = useMotos();
   const { taller } = useTaller();
   const { prestamos: prestamosDoc } = usePrestamosDoc();

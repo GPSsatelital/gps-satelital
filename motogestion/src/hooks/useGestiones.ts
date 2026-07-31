@@ -27,7 +27,12 @@ export type Gestion = {
   created_at: string;
 };
 
-const gestionesStore = createTableStore<Gestion>("gestiones_cobro");
+// VENTANA DE 120 DÍAS. `gestiones_cobro` es la tabla que más crece (~36.000 filas al año con
+// 1.000 motos, contra ~20.000 de `pagos`) y cinco de las siete pantallas que la usan solo miran
+// lo de hoy: campana, alertas, cartera, panel e inmovilizaciones. Las dos que SÍ necesitan la
+// historia completa —ficha del cliente y ficha de la moto— llaman `cargarHistorialCompleto()`.
+// 120 días cubre de sobra el protocolo de mora, los plazos extra y los convenios en curso.
+const gestionesStore = createTableStore<Gestion>("gestiones_cobro", { ventanaDias: 120 });
 
 export function useGestiones() {
   const { data: gestiones, loading } = gestionesStore.useStore();
@@ -53,5 +58,7 @@ export function useGestiones() {
     return { error: error?.message ?? null };
   }
 
-  return { gestiones, loading, registrarGestion };
+  // Las fichas (cliente y moto) muestran TODA la historia de gestiones, no solo la ventana.
+  // Llamarla al montar; es idempotente y en el resto de pantallas no hace falta.
+  return { gestiones, loading, registrarGestion, cargarHistorialCompleto: gestionesStore.cargarTodo };
 }

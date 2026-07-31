@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { supabase } from "../lib/supabase";
+import { hoyMasDias } from "../utils/fecha";
 
 // Store compartido por tabla: UNA sola carga inicial + UN solo canal realtime para toda
 // la app, con caché que sobrevive a la navegación. Antes cada hook (useMotos, useContratos,
@@ -75,12 +76,31 @@ const AGRUPAR_REFETCH_MS = 300;
 
 export function createTableStore<T>(
   table: string,
-  opts?: { orderBy?: string; ascending?: boolean; onStart?: () => void },
+  opts?: {
+    orderBy?: string;
+    ascending?: boolean;
+    onStart?: () => void;
+    // VENTANA DE FECHAS (31-jul-2026). Tablas que crecen sin techo: `gestiones_cobro` va a ~36.000
+    // filas al año con 1.000 motos. La app las usa casi siempre para "¿qué pasó estos días?", así
+    // que de arranque se bajan solo las recientes. Las pantallas que SÍ necesitan la historia
+    // completa (ficha del cliente, ficha de la moto, línea de tiempo) llaman `cargarTodo()` al
+    // montarse y reciben el resto.
+    //
+    // ⚠️ NO poner ventana en una tabla cuyos totales se sumen sobre todo el historial sin pedir
+    // el resto: el número saldría corto y NADIE se daría cuenta. Es la razón por la que `pagos`
+    // se dejó completa — de ahí salen el ahorro acumulado, el estado de cuenta y los reportes.
+    ventanaDias?: number;
+    campoFecha?: string;
+  },
 ) {
   const orderBy = opts?.orderBy ?? "created_at";
   const ascending = opts?.ascending ?? false;
+  const campoFecha = opts?.campoFecha ?? "created_at";
 
   let snapshot: Snapshot<T> = { data: [], loading: true, error: null };
+  let completo = !opts?.ventanaDias;   // sin ventana, siempre está todo
+  let fetchEnCurso = false;
+  let secuencia = 0;
   let started = false;
   let ultimoFetch = 0;
   let timerRefetch: ReturnType<typeof setTimeout> | null = null;
@@ -105,13 +125,40 @@ export function createTableStore<T>(
     });
   }
 
-  async function fetchAll() {
-    const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
+  async function fetchAll(forzar = false) {
+    // Sin este candado, al volver a la app se pedía CADA TABLA DOS VECES: `focus` y
+    // `visibilitychange` disparan los dos y ninguno sabía del otro, y como `ultimoFetch` recién
+    // se actualiza cuando la respuesta llega, el segundo pasaba el chequeo de "caché vieja".
+    // Medido en el navegador: 20 consultas en vez de 10.
+    // `forzar` es para `cargarTodo()`: pedir la historia completa NO se puede saltar aunque
+    // justo haya una consulta en curso, o la ficha se quedaría sin su historial.
+    if (fetchEnCurso && !forzar) return;
+    const miTurno = ++secuencia;
+    fetchEnCurso = true;
+    let q = supabase.from(table).select("*").order(orderBy, { ascending });
+    // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
+    // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
+    if (!completo && opts?.ventanaDias) {
+      q = q.gte(campoFecha, hoyMasDias(-opts.ventanaDias));
+    }
+    const { data, error } = await q;
+    // Si mientras esperábamos salió otra consulta (típico: la ventana de 120 días seguía en
+    // vuelo y la ficha pidió la historia completa), esta respuesta ya está vieja. Descartarla,
+    // o pisaría los datos buenos con los recortados.
+    if (miTurno !== secuencia) return;
+    fetchEnCurso = false;
     ultimoFetch = Date.now();
     snapshot = error
       ? { data: snapshot.data, loading: false, error: error.message }
       : { data: (data ?? []) as T[], loading: false, error: null };
     emit();
+  }
+
+  /** Traer la historia completa (para fichas e informes). Idempotente. */
+  async function cargarTodo() {
+    if (completo) return;
+    completo = true;
+    await fetchAll(true);
   }
 
   // Varios cambios seguidos (confirmar 5 pagos, un insert que dispara triggers) se agrupan en
@@ -188,5 +235,10 @@ export function createTableStore<T>(
     },
     /** Forzar recarga (las mutaciones ya se refrescan solas por realtime; esto es un respaldo). */
     refetch: fetchAll,
+    /**
+     * Traer la historia completa de una tabla con ventana. Lo llaman las pantallas que muestran
+     * historial viejo (fichas, línea de tiempo). En tablas sin ventana no hace nada.
+     */
+    cargarTodo,
   };
 }

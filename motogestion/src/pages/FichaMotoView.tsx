@@ -135,7 +135,9 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   const { taller } = useTaller();
   const { pagos } = usePagos();
   const { prestamos } = usePrestamos();
-  const { gestiones } = useGestiones();
+  const { gestiones, cargarHistorialCompleto } = useGestiones();
+  // Igual que la ficha del cliente: acá se ve la historia completa, no solo la ventana de 120 días.
+  useEffect(() => { cargarHistorialCompleto(); }, [cargarHistorialCompleto]);
   const { deudas } = useDeudas();
   const { convenios } = useConvenios();
   const { visitas } = useVisitas();

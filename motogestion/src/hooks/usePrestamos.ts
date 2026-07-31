@@ -152,10 +152,20 @@ export function usePrestamos() {
     // 3. La prestada queda Asignada (en uso por el que pide).
     const { error: errM } = await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoPrestadaId);
     if (errM) return { error: errM.message };
-    // 4. La suya (original) va/queda en Mantenimiento (taller).
+    // 4. La suya (original) queda fuera de servicio. Si YA estaba retenida por una causa propia
+    //    (Fiscalía / Tránsito / Garantía) se RESPETA ese estado: pisarlo con "Mantenimiento"
+    //    disparaba el candado de la mig 075 (`limpiar_retencion_al_salir`), que borra
+    //    retencion_fecha, retencion_numero_caso y retencion_detalle al dejar de estar retenida.
+    //    O sea: marcar la moto en Garantía con su número de caso y después prestar un reemplazo
+    //    hacía desaparecer ese número de la ficha, y la moto pasaba a verse como "En taller".
+    //    Solo se manda a taller la que no traía una causa propia (ej. se varó estando Asignada).
     if (motoOriginalId) {
-      const { error: errO } = await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoOriginalId);
-      if (errO) return { error: errO.message };
+      const { data: orig } = await supabase.from("motos").select("estado").eq("id", motoOriginalId).single();
+      const yaRetenida = ["Fiscalia", "Transito", "Garantia"].includes(orig?.estado ?? "");
+      if (!yaRetenida) {
+        const { error: errO } = await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", motoOriginalId);
+        if (errO) return { error: errO.message };
+      }
     }
     return { error: null };
   }

@@ -659,6 +659,25 @@ Si `saldo_final < 0` → `clientes.lista_negra = true` automáticamente (reversi
 ### Principio rector
 **La moto nunca debe dejar de producir.**
 
+### Moto guardada + préstamo de reemplazo — REGLA DEL DUEÑO (30-jul-2026)
+Aplica **en TODOS los casos en que la moto del cliente queda guardada** (garantía, taller, fiscalía,
+tránsito):
+1. **El contrato original NO se pausa: sigue contando normal.** El cliente sigue debiendo su cuota
+   del período como cualquier otro. No hay suspensión ni congelamiento.
+2. **La moto prestada se cobra APARTE**, a su tarifa normal de **$27.000/día**. El préstamo es una
+   oportunidad para que no quede sin trabajar, no un reemplazo gratis de su contrato.
+3. O sea: durante el préstamo el cliente paga **las dos cosas** — su cuota del contrato + el
+   alquiler diario de la prestada. Se registra como `tipo_registro='alquiler_reemplazo'`: entra a
+   la caja pero NO toca el ledger de cajas (no le adelanta semanas).
+4. **El contrato es por PAGOS COMPLETADOS, no por tiempo transcurrido** (spec del libro de cajas):
+   que pague ahora o después no cambia cuánto debe en total. Pero **la meta siempre es que pague de
+   una y extender el contrato lo menos posible** — rodar es la última opción.
+
+⚠️ **CONSECUENCIA A REVISAR (sin resolver):** si el contrato sigue corriendo, las cajas de esos días
+ya se le están exigiendo por el ledger. Entonces `ModalResolverTiempoFueraServicio` (que al devolver
+el reemplazo ofrece "cobrar ahora" creando una deuda `tarifa_atrasada` por días × tarifa) estaría
+**cobrando dos veces los mismos días**. Verificar antes de usar esa opción en un préstamo.
+
 ### Fiscalía/Tránsito/Garantía — tiempo fuera de servicio
 - El tiempo que la moto está fuera de servicio (fiscalía, tránsito, garantía, taller) **por defecto se COBRA** al cliente — el tiempo retenido queda como deuda. Existe la opción de **rodar** ese tiempo (extender la fecha de fin del contrato) en vez de cobrarlo, decisión del ADMIN caso por caso, pero **la prioridad es siempre cobrar** (rodar alarga el contrato, la empresa deja de ganar ese período y genera gastos de gestión extra).
 - **Garantía se trata igual que Fiscalía/Tránsito** (corrección: antes decía "NO genera deuda por ser culpa del fabricante" — ya no aplica). El contrato es por tiempo transcurrido/pagos; sin importar de quién sea la culpa de la falla, el tiempo parado se cobra o se rueda como cualquier otro.

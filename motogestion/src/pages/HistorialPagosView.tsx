@@ -131,16 +131,24 @@ export default function HistorialPagosView({ onNavigate }: {
     return cuenta;
   }, [pagos, contratos, motos, prestamos, desde, hasta, metodo, estadoFiltro]);
 
+  // Los totales cuentan SOLO plata que entró de verdad. Los movimientos internos (aplicar un saldo
+  // a favor, la semana adelantada de la base) se insertan con metodo "Efectivo", así que sin este
+  // filtro inflaban justo el renglón de efectivo: esta pantalla declaraba más plata de la que
+  // entró, y no coincidía con la Caja Diaria, que sí los excluye. Siguen APARECIENDO en la lista
+  // (con su etiqueta "no entró dinero") y se muestran sumados aparte, para que la cuenta cierre.
   const stats = useMemo(() => {
-    const conf = pagosFiltrados.filter(p => p.estado === "Confirmado");
+    const reales = pagosFiltrados.filter(esPagoDeCaja);
+    const conf = reales.filter(p => p.estado === "Confirmado");
     const ef = conf.filter(p => p.metodo === "Efectivo");
     const tr = conf.filter(p => p.metodo === "Transferencia");
-    const pend = pagosFiltrados.filter(p => p.estado === "Pendiente");
+    const pend = reales.filter(p => p.estado === "Pendiente");
+    const internos = pagosFiltrados.filter(p => !esPagoDeCaja(p) && p.estado === "Confirmado");
     return {
       total: conf.reduce((s, p) => s + p.valor, 0),
       ef: { count: ef.length, val: ef.reduce((s, p) => s + p.valor, 0) },
       tr: { count: tr.length, val: tr.reduce((s, p) => s + p.valor, 0) },
       pend: { count: pend.length, val: pend.reduce((s, p) => s + p.valor, 0) },
+      internos: { count: internos.length, val: internos.reduce((s, p) => s + p.valor, 0) },
     };
   }, [pagosFiltrados]);
 
@@ -381,6 +389,11 @@ export default function HistorialPagosView({ onNavigate }: {
           { label: `Efectivo (${stats.ef.count})`, val: stats.ef.val, bg: "var(--ok-soft)", color: "var(--ok-ink)" },
           { label: `Transferencias (${stats.tr.count})`, val: stats.tr.val, bg: "var(--accent-soft2)", color: "var(--accent-ink)" },
           { label: `Pendiente (${stats.pend.count})`, val: stats.pend.val, bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+          // Se muestra aparte, y solo si hay: así el que suma los renglones de la lista y no le da
+          // el total sabe exactamente por qué, en vez de quedarse pensando que falta plata.
+          ...(stats.internos.count > 0
+            ? [{ label: `🔄 Interno · no entró (${stats.internos.count})`, val: stats.internos.val, bg: "var(--soft)", color: "var(--muted2)" }]
+            : []),
         ].map(kpi => (
           <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 12, padding: "12px 16px", flex: 1, minWidth: 120 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: kpi.color, textTransform: "uppercase" }}>{kpi.label}</div>

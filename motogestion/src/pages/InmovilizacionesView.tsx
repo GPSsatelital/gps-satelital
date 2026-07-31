@@ -954,7 +954,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         {procesandoEsta ? "Procesando..." : m.esTemporal ? "✓ Reactivar / entregar" : "✓ Entregar moto"}
                       </button>
                     )}
-                    {esAdmin && puedeLiquidar && (
+                    {/* Solo el permiso manda (antes exigía además rol ADMIN, así que darle
+                        "iniciar liquidación" a un SUBADMIN no servía aquí — sí en Motos). */}
+                    {puedeLiquidar && (
                       <button
                         onClick={() => setLiquidacionModal(m)}
                         disabled={procesandoEsta || !m.listaParaLiquidar}

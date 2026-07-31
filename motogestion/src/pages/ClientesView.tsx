@@ -1526,7 +1526,6 @@ function miniBtn2(bg: string, color: string): React.CSSProperties {
 
 function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente }: DetalleProps) {
   const { puede } = useAuth();
-  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const esPrincipal = role === "ADMIN_PRINCIPAL";
   // Aprobar/repetir visita y la decisión final usan el permiso por persona (igual que
   // PanelAprobacion), no el rol quemado — un override tipo LUMAR debe funcionar aquí también.
@@ -1710,7 +1709,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
         {selectedCliente.estado === "Listo para visita" && (
           <button onClick={onVisita} style={miniBtn2("var(--accent-soft3)", "var(--accent-ink)")}>Registrar visita</button>
         )}
-        {esAdmin && selectedCliente.estado === "Listo para visita" && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
+        {puedeAprobarVisita && selectedCliente.estado === "Listo para visita" && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Asignar a:</span>
             <select
@@ -1723,7 +1722,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             </select>
           </div>
         )}
-        {esAdmin && (
+        {puedeAprobarVisita && (
           <>
             {/* "Activar cliente" manual ELIMINADO (caso SERAFIN): ponía Activo a un cliente
                 sin contrato — estado mentiroso que además bloqueaba el wizard (exige Aprobado).

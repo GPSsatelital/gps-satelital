@@ -162,7 +162,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   // Atrás cierra la foto ampliada / el recibo antes de salir de la ficha.
   useBackGuard(imagenAmpliada !== null, () => setImagenAmpliada(null));
   useBackGuard(reciboBase !== null, () => setReciboBase(null));
@@ -178,7 +178,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const { pagos } = usePagos();
   const { deudas } = useDeudas();
   const { convenios, eliminarConvenio } = useConvenios();
-  const puedeEliminarConvenio = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  // Gestionar convenios (borrar uno mal hecho) usa el mismo permiso que crearlos —
+  // antes era rol quemado, así que el override por persona no aplicaba aquí.
+  const puedeEliminarConvenio = puede("crear_convenio");
   const [borrandoConvenio, setBorrandoConvenio] = useState<string | null>(null);
   async function handleEliminarConvenio(id: string, num: number) {
     if (borrandoConvenio) return;

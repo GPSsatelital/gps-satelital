@@ -2850,8 +2850,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
         return (
           <div style={{ marginTop: 12, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: "flex-start" }}>
-            {/* Transferencias — solo staff de oficina, SUBADMIN no confirma transferencias */}
-            {(esSecretaria || esAdmin) && (
+            {/* Transferencias — según el permiso "confirmar transferencia" (rol = techo),
+                no por rol quemado: así el override por persona también aplica aquí. */}
+            {puedeConfirmarPago && (
               <div style={{ ...card, flex: 1, minWidth: 0, width: isMobile ? "100%" : undefined }}>
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>🏦 Transferencias por confirmar</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Comprobantes de transferencia esperando verificación.</div>

@@ -373,11 +373,54 @@ export function usePagos() {
   //   2) DESCUENTA ese saldo del acumulado (aplicado_saldo_favor negativo), restando el excedente
   //      que el motor haya devuelto a saldo si sobró. No re-dispara el motor (no toca `estado`).
   // Así el saldo baja de verdad y la caja del día no se infla con plata que no entró.
+  //
+  // DEUDA PRIMERO (30-jul-2026, decisión del dueño). El motor reparte en su orden fijo
+  // (prorrateo → cajas → deuda → convenio), así que el crédito guardado tapaba la SEMANA en
+  // curso y la deuda vieja quedaba intacta. Caso real: los pagos que la secretaria digitó con
+  // fecha anterior al corte de migración del 27-jul quedaron 100% en saldo a favor, y al
+  // aplicarlos cubrían una semana que el cliente todavía no había pagado.
+  // El crédito viejo debe saldar primero lo viejo. Se resuelve SIN tocar el motor: la mig 045
+  // solo re-reparte cuando TODOS los aplicado_* vienen en cero, y su rama de reparto explícito
+  // (líneas 264-293) igual baja las deudas de la más antigua a la más nueva.
   async function aplicarSaldoFavor(contratoId: string, saldo: number, opts?: { convenioId?: string }) {
     if (saldo <= 0) return { error: "No hay saldo a favor para aplicar." };
+
+    // Con convenioId el funcionario está dirigiendo el crédito a un convenio puntual: ahí manda
+    // su decisión, no la regla general.
+    let restante = saldo;
+    if (!opts?.convenioId) {
+      const { data: deudasPend } = await supabase.from("deudas")
+        .select("monto_pendiente")
+        .eq("contrato_id", contratoId)
+        .neq("estado", "pagada")
+        .gt("monto_pendiente", 0);
+      const deudaTotal = (deudasPend ?? []).reduce((s, d) => s + Number(d.monto_pendiente ?? 0), 0);
+      const aDeuda = Math.min(saldo, deudaTotal);
+      if (aDeuda > 0) {
+        // Reparto EXPLÍCITO: el motor no lo recalcula y baja las deudas él mismo. No toca cajas.
+        const { error: eD } = await supabase.from("pagos").insert({
+          contrato_id: contratoId,
+          valor: aDeuda,
+          metodo: "Efectivo",
+          estado: "Confirmado",
+          tipo_registro: "saldo_favor",
+          aplicado: { deuda: aDeuda, semana: 0, ahorro: 0, convenio: 0, saldo: -aDeuda },
+          aplicado_tarifa: 0, aplicado_base_inicial: 0, aplicado_deuda: aDeuda, aplicado_convenio: 0,
+          aplicado_ahorro: 0, aplicado_saldo_favor: -aDeuda, aplicado_prorrateo: 0,
+          convenio_id: null,
+          fecha: hoyISO(),
+          fecha_registro: hoyISO(),
+        });
+        if (eD) return { error: eD.message };
+        restante = saldo - aDeuda;
+      }
+    }
+    if (restante <= 0) return { error: null };
+
+    // Lo que sobra sigue el camino de siempre: el motor lo reparte (cajas → convenio → saldo).
     const { data: ins, error: e1 } = await supabase.from("pagos").insert({
       contrato_id: contratoId,
-      valor: saldo,
+      valor: restante,
       metodo: "Efectivo",
       estado: "Confirmado",
       tipo_registro: "saldo_favor",
@@ -393,7 +436,8 @@ export function usePagos() {
     const { data: post } = await supabase.from("pagos")
       .select("aplicado, aplicado_saldo_favor").eq("id", ins.id).single();
     const excedente = post?.aplicado_saldo_favor ?? 0;   // lo que el motor devolvió a saldo si sobró
-    const nuevoSaldo = excedente - saldo;                 // consumo neto del crédito
+    const nuevoSaldo = excedente - restante;              // consumo neto del crédito (solo este tramo:
+                                                          // lo que fue a la deuda ya se descontó arriba)
     const legacy = { ...(post?.aplicado ?? { deuda: 0, semana: 0, ahorro: 0, convenio: 0, saldo: 0 }), saldo: nuevoSaldo };
     const { error: e2 } = await supabase.from("pagos")
       .update({ aplicado_saldo_favor: nuevoSaldo, aplicado: legacy }).eq("id", ins.id);

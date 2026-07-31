@@ -8,8 +8,70 @@ import { supabase } from "../lib/supabase";
 // vive en memoria a nivel de módulo: al volver a una pantalla se usa la caché (instantáneo) y
 // el realtime la mantiene fresca. La firma pública de cada hook queda idéntica → cero cambios
 // en las vistas.
+//
+// ── 31-jul-2026: los tres arreglos de FLUIDEZ ────────────────────────────────────────────────
+// La queja del dueño: "no se actualiza sola o demora cuando queda mucho tiempo abierta; no hay
+// fluidez entre lo que se hace y lo que se refleja". Eran tres cosas distintas:
+//
+// 1. CADA aviso del servidor re-descargaba la TABLA COMPLETA. Medido: confirmar cinco pagos
+//    seguidos bajaba 5 × 359 KB para ver cinco renglones. Ahora el cambio se aplica en memoria
+//    con lo que ya viene en el aviso (insert/update/delete) — cero viajes.
+// 2. NADA refrescaba al volver a la app. Verificado: cero `visibilitychange`/`focus` en todo
+//    `src/`. Si el celular se bloqueaba o el PC se suspendía, el canal se moría y la caché
+//    quedaba vieja PARA SIEMPRE hasta recargar a mano.
+// 3. supabase-js RECONECTA el canal pero NO reproduce lo que se perdió mientras estuvo caído.
+//    Así que al reconectar hay que re-sincronizar sí o sí, o faltan cambios en silencio.
+//
+// Red de seguridad: ante cualquier duda (aviso raro, fila sin id, error) se cae al refetch
+// completo. Preferir quedar lento antes que quedar mostrando datos falsos — es plata.
 
 type Snapshot<T> = { data: T[]; loading: boolean; error: string | null };
+export type FilaConId = { id?: string | number };
+
+/**
+ * Aplica UN cambio del realtime sobre la lista que ya está en memoria, sin volver a pedir la
+ * tabla. Devuelve la lista nueva, o `null` cuando no se puede aplicar con certeza — en ese caso
+ * el llamador pide la tabla completa. Ante la duda se prefiere quedar lento antes que mostrar
+ * datos falsos: acá se ven pagos y contratos, es plata.
+ *
+ * Pura y exportada a propósito: es la parte que puede mostrar un dato equivocado en pantalla, y
+ * así queda cubierta por `npm test` sin tener que tocar la base de producción para probarla.
+ */
+export function aplicarCambioALista<T extends FilaConId>(
+  filas: T[],
+  evento: string,
+  nueva: FilaConId | null,
+  vieja: FilaConId | null,
+  ordenar: (f: T[]) => T[],
+): T[] | null {
+  if (evento === "INSERT") {
+    if (!nueva?.id) return null;
+    if (filas.some(f => f.id === nueva.id)) return filas;   // doble aviso: ya estaba
+    return ordenar([...filas, nueva as T]);
+  }
+  if (evento === "UPDATE") {
+    if (!nueva?.id) return null;
+    const i = filas.findIndex(f => f.id === nueva.id);
+    // No la teníamos: puede ser una fila que recién entra en lo que este usuario puede VER (RLS).
+    // Se pide la tabla en vez de inventarla.
+    if (i === -1) return null;
+    const copia = [...filas];
+    copia[i] = nueva as T;
+    return ordenar(copia);
+  }
+  if (evento === "DELETE") {
+    // En un DELETE Postgres solo manda la clave primaria (sin REPLICA IDENTITY FULL).
+    if (!vieja?.id) return null;
+    return filas.filter(f => f.id !== vieja.id);
+  }
+  return null;
+}
+
+// Cuánto tiempo tiene que llevar la caché sin refrescarse para que valga la pena re-sincronizar
+// al volver a la app. Sin este tope, cada vez que el usuario cambia de app y vuelve se bajarían
+// las 10 tablas (1,7 MB) — carísimo con datos móviles, que es como trabajan los cobradores.
+const CACHE_VIEJA_MS = 60_000;
+const AGRUPAR_REFETCH_MS = 300;
 
 export function createTableStore<T>(
   table: string,
@@ -20,18 +82,54 @@ export function createTableStore<T>(
 
   let snapshot: Snapshot<T> = { data: [], loading: true, error: null };
   let started = false;
+  let ultimoFetch = 0;
+  let timerRefetch: ReturnType<typeof setTimeout> | null = null;
+  let estuvoCaido = false;
   const listeners = new Set<() => void>();
 
   function emit() {
     for (const l of listeners) l();
   }
 
+  function ordenar(filas: T[]): T[] {
+    return [...filas].sort((a, b) => {
+      const va = (a as Record<string, unknown>)[orderBy];
+      const vb = (b as Record<string, unknown>)[orderBy];
+      if (va == null && vb == null) return 0;
+      if (va == null) return ascending ? -1 : 1;
+      if (vb == null) return ascending ? 1 : -1;
+      const cmp = typeof va === "number" && typeof vb === "number"
+        ? va - vb
+        : String(va).localeCompare(String(vb));
+      return ascending ? cmp : -cmp;
+    });
+  }
+
   async function fetchAll() {
     const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
+    ultimoFetch = Date.now();
     snapshot = error
       ? { data: snapshot.data, loading: false, error: error.message }
       : { data: (data ?? []) as T[], loading: false, error: null };
     emit();
+  }
+
+  // Varios cambios seguidos (confirmar 5 pagos, un insert que dispara triggers) se agrupan en
+  // UN solo refetch en vez de uno por evento.
+  function refetchAgrupado() {
+    if (timerRefetch) clearTimeout(timerRefetch);
+    timerRefetch = setTimeout(() => { timerRefetch = null; fetchAll(); }, AGRUPAR_REFETCH_MS);
+  }
+
+  function aplicarCambio(evento: string, nueva: FilaConId | null, vieja: FilaConId | null): boolean {
+    const lista = aplicarCambioALista<T & FilaConId>(
+      snapshot.data as (T & FilaConId)[],
+      evento, nueva, vieja,
+      ordenar as (f: (T & FilaConId)[]) => (T & FilaConId)[],
+    );
+    if (lista === null) return false;
+    snapshot = { ...snapshot, data: lista as T[] };
+    return true;
   }
 
   function ensureStarted() {
@@ -43,9 +141,37 @@ export function createTableStore<T>(
     // mantiene la caché fresca y hace que los remontajes sean instantáneos.
     supabase
       .channel(`${table}-store`)
-      .on("postgres_changes", { event: "*", schema: "public", table }, () => { fetchAll(); })
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
+        const ok = aplicarCambio(
+          payload.eventType,
+          (payload.new ?? null) as FilaConId | null,
+          (payload.old ?? null) as FilaConId | null,
+        );
+        if (ok) { ultimoFetch = Date.now(); emit(); }
+        else refetchAgrupado();   // no se pudo aplicar con certeza → pedir la tabla
+      })
+      .subscribe((status) => {
+        // supabase-js reconecta solo, pero NO reproduce lo que pasó mientras estuvo caído: al
+        // volver a quedar suscrito hay que re-sincronizar o faltan cambios sin que nadie se entere.
+        if (status === "SUBSCRIBED") {
+          if (estuvoCaido) { estuvoCaido = false; fetchAll(); }
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          estuvoCaido = true;
+        }
+      });
     fetchAll();
+
+    // Al volver a la app (desbloquear el celular, volver a la pestaña) se re-sincroniza SOLO si
+    // la caché ya está vieja. Sin el tope, cada cambio de app bajaría las 10 tablas.
+    if (typeof document !== "undefined") {
+      const alVolver = () => {
+        if (document.visibilityState !== "visible") return;
+        if (Date.now() - ultimoFetch < CACHE_VIEJA_MS) return;
+        fetchAll();
+      };
+      document.addEventListener("visibilitychange", alVolver);
+      window.addEventListener("focus", alVolver);
+    }
   }
 
   function subscribe(listener: () => void) {

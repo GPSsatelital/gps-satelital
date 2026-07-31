@@ -1952,21 +1952,35 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           ) : null}
 
           {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
-            <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--accent-soft2)", borderRadius: 10, padding: "8px 12px" }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase" }}>Saldo a favor</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
+            // Recuadro explicado: en época de adaptación el funcionario tiene que entender qué es
+            // esta plata y qué pasa al tocar "Aplicar" — sin eso, la salida natural es registrar
+            // un pago nuevo "para cuadrar", que infla la caja con dinero ya contado.
+            <div style={{ marginTop: 10, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase" }}>Saldo a favor</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
+                </div>
+                {puedeAplicarSaldo && (
+                  <button onClick={handleAplicarSaldo} style={{ background: "var(--accent)", color: "#0f172a", border: "none", borderRadius: 10, padding: "9px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    Aplicar a lo que debe
+                  </button>
+                )}
               </div>
-              {puedeAplicarSaldo && (
-                <button onClick={handleAplicarSaldo} style={{ background: "var(--accent)", color: "var(--card)", border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  Aplicar
-                </button>
-              )}
+              <div style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5, color: "var(--accent-ink)" }}>
+                Plata que el cliente <b>ya pagó</b> y quedó guardada a su favor (esa plata <b>ya está contada
+                en la caja</b> del día en que la entregó).
+                {puedeAplicarSaldo
+                  ? <> Al tocar <b>«Aplicar a lo que debe»</b> se descuenta de su cuota o su deuda. <b>No cobres otra vez
+                      ni registres un pago nuevo</b> — ese dinero ya entró.</>
+                  : <> Para usarla hay que tocar «Aplicar». <b>No registres un pago nuevo</b> con este monto: ese dinero
+                      ya entró y se contaría dos veces. Si no ves el botón, pídeselo a quien tenga el permiso.</>}
+              </div>
             </div>
           )}
           {saldoExito && (
-            <div style={{ marginTop: 6, padding: "6px 10px", background: "var(--ok-soft)", borderRadius: 8, color: "var(--ok-ink)", fontWeight: 700, fontSize: 12 }}>
-              ✅ Saldo aplicado.
+            <div style={{ marginTop: 6, padding: "8px 10px", background: "var(--ok-soft)", borderRadius: 8, color: "var(--ok-ink)", fontWeight: 700, fontSize: 12, lineHeight: 1.45 }}>
+              ✅ Listo. Se usó el saldo del cliente para cubrir lo que debía. No entró dinero nuevo, así que la caja de hoy no cambia.
             </div>
           )}
         </div>
@@ -2288,17 +2302,30 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           hacía que aplicar un saldo se viera idéntico a un pago nuevo (caso RMB51H,
                           31-jul: el dueño creyó que se había contado dos veces). No entran a la caja. */}
                       <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                        {formatDate(p.fecha)} · {esPagoDeCaja(p) ? p.metodo : "movimiento interno"}
+                        {formatDate(p.fecha)} · {esPagoDeCaja(p) ? p.metodo : "No entró dinero"}
                       </div>
+                      {/* Avisos en palabras simples (época de adaptación): el funcionario debe entender
+                          de un vistazo por qué ve dos renglones del mismo monto y cuál de los dos es
+                          plata de verdad. Antes decía "Efectivo" en ambos y parecía cobro doble. */}
                       {p.tipo_registro === "adelanto_base" && (
-                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "1px 8px" }}>
-                          🎫 Primera semana adelantada (base inicial)
-                        </span>
+                        <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "6px 9px" }}>
+                          <b>🎫 Primera semana adelantada.</b> No es plata de hoy: se pagó con la base inicial
+                          cuando se le entregó la moto. Por eso no aparece en la caja.
+                        </div>
                       )}
                       {p.tipo_registro === "saldo_favor" && (
-                        <span style={{ display: "inline-block", marginTop: 4, fontSize: 10.5, fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "1px 8px" }}>
-                          🔄 Se usó el saldo a favor del cliente — NO es plata nueva, no entra a la caja
-                        </span>
+                        <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "6px 9px" }}>
+                          <b>🔄 No es un pago nuevo.</b> Aquí se usó la plata que el cliente <b>ya había abonado antes</b>{" "}
+                          (su saldo a favor) para cubrir esta cuota. <b>No entró dinero hoy</b>, por eso no suma en la caja del día.
+                        </div>
+                      )}
+                      {/* La plata que se quedó guardada: explica POR QUÉ no bajó la deuda. */}
+                      {esPagoDeCaja(p) && p.estado === "Confirmado" && saldoAp > 0 && saldoAp >= p.valor && (
+                        <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "6px 9px" }}>
+                          <b>💡 Esta plata quedó guardada como saldo a favor.</b> El cliente sí pagó y el dinero está
+                          contado en la caja, pero en esa fecha no había cuota que cobrarle todavía.
+                          Queda a su favor hasta que alguien toque <b>«Aplicar»</b> en el recuadro de saldo a favor.
+                        </div>
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

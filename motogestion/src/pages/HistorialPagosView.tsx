@@ -232,7 +232,9 @@ export default function HistorialPagosView({ onNavigate }: {
                   se veía igual que un pago real (el dueño creyó que se contaba dos veces). */}
               {!esPagoDeCaja(p) && (
                 <Badge tone="indigo">
-                  {p.tipo_registro === "saldo_favor" ? "🔄 Usó su saldo a favor · no es plata nueva" : "🎫 Semana adelantada · no es plata nueva"}
+                  {p.tipo_registro === "saldo_favor"
+                    ? "🔄 No entró dinero · usó su saldo a favor"
+                    : "🎫 No entró dinero · semana adelantada"}
                 </Badge>
               )}
             </div>

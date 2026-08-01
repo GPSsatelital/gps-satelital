@@ -4,7 +4,10 @@ import MoneyInput from "./MoneyInput";
 import CanvasFirma from "./CanvasFirma";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useClientes } from "../hooks/useClientes";
-import { useContratos } from "../hooks/useContratos";
+import { useContratos, infoFinContrato } from "../hooks/useContratos";
+import { useMotos } from "../hooks/useMotos";
+import { useDeudas } from "../hooks/useDeudas";
+import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy } from "../utils/cicloPago";
 import { hoyDate, fechaISO } from "../utils/fecha";
 
@@ -63,6 +66,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [cuotaInput, setCuotaInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
   const [firma, setFirma] = useState<string | null>(null);
+  const [verAcuerdo, setVerAcuerdo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
@@ -74,6 +78,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // Decisión del dueño, 28-jul-2026: las dos, en las cinco puertas que crean convenios.
   const { contratos } = useContratos();
   const { clientes } = useClientes();
+  const { motos } = useMotos();
+  const { deudas } = useDeudas();
   const clienteDelContrato = (() => {
     const c = contratos.find(x => x.id === contratoId);
     return c ? clientes.find(cl => cl.id === c.cliente_id) ?? null : null;
@@ -436,6 +442,25 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá.
               </div>
             )}
+
+            {/* El cliente tiene que poder LEER lo que está firmando. Esto solo existía en Cartera;
+                al unificar habría desaparecido de las otras tres puertas. */}
+            <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "grid", gap: 10 }}>
+              <button type="button" onClick={() => setVerAcuerdo(v => !v)}
+                style={{ background: "var(--soft)", color: "var(--muted2)", border: "none", borderRadius: 12, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                {verAcuerdo ? "Ocultar acuerdo" : "👁 Ver acuerdo de pago (para que el cliente lo lea)"}
+              </button>
+              {verAcuerdo && clienteDelContrato && contratoActual && (
+                <div style={{ border: "1px solid var(--line)", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "var(--card)" }}
+                  dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(
+                    clienteDelContrato,
+                    (contratoActual.moto_id ? motos.find(m => m.id === contratoActual.moto_id) : null) ?? null,
+                    deudas.filter(d => d.contrato_id === contratoId && d.estado !== "pagada"),
+                    { deuda_total: meta, cuota_por_periodo: cuotaCalc, numero_cuotas: cuotasCalc, firma_url: firma },
+                    infoFinContrato(contratoActual),
+                  ) }} />
+              )}
+            </div>
 
             <div>
               <div style={labelStyle}>Firma del cliente</div>

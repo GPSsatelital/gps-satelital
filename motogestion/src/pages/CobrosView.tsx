@@ -27,9 +27,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
-import CanvasFirma from "../components/CanvasFirma";
-import { generarHTMLAcuerdoPago, generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
-import { supabase } from "../lib/supabase";
+import ModalConvenio from "../components/ModalConvenio";
+import { generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import Placa from "../components/Placa";
@@ -54,7 +53,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
-import { hoyISO, hoyDate, fechaISO, hoyMasDias } from "../utils/fecha";
+import { hoyISO, hoyDate, hoyMasDias } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { COLOR_GRUPO } from "../styles/shared";
 import { ItemLista } from "../components/ListaEstandar";
@@ -555,7 +554,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { motos } = useMotos();
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
-  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio } = useConvenios();
+  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   const { render: renderMsg } = useMensajesWhatsapp();
 
@@ -628,21 +627,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [deudaError, setDeudaError] = useState<string | null>(null);
   const [deudaExito, setDeudaExito] = useState(false);
 
-  // Convenio form state
-  const [convDeudaTotal, setConvDeudaTotal] = useState("");
-  const [convCuota, setConvCuota] = useState("");
-  const [convCuotas, setConvCuotas] = useState("");
-  const [convFechaLimite, setConvFechaLimite] = useState("");
-  const [convConcepto, setConvConcepto] = useState("");
-  const [convError, setConvError] = useState<string | null>(null);
-  const [convExito, setConvExito] = useState(false);
-  const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
-  const [convFinanciarN, setConvFinanciarN] = useState(0); // cuántas cuotas de arriendo se financian al crear el convenio (0/1/2)
-  // Se fija UNO (cuota o número de cuotas) y el otro se calcula solo.
-  const [convModoFijar, setConvModoFijar] = useState<"cuotas" | "cuota">("cuotas");
-  const [convFirma, setConvFirma] = useState<string | null>(null); // firma del acuerdo (obligatoria)
-  const [verPreviewAcuerdo, setVerPreviewAcuerdo] = useState(false);
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
+  // Abre la ventana COMPARTIDA de convenio (ModalConvenio), la misma que usan Inmovilizaciones,
+  // Cobro Diario y el wizard. Antes acá vivía un formulario propio, con otro aspecto y sin el
+  // tope de 12 cuotas.
+  const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
 
   // Edición inline de deuda existente
   const [deudaEditandoId, setDeudaEditandoId] = useState<string | null>(null);
@@ -1085,50 +1074,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const desg = contratoDetalle?.motor_v2 && contratoDetalle.forma_pago !== "Diario"
     ? desgloseExigible(contratoDetalle, hoyDate()) : null;
 
-  // Financiar N cuotas de arriendo en el convenio: esas N semanas el cliente paga $0
-  // (se las metemos al convenio) y su próximo pago normal avanza N semanas.
-  // La primera cuota financiada = lo que FALTA del período actual (cuotaPendiente); las
-  // demás = cuota completa (valorPeriodoReal). El día de reanudación (cubre_periodo_hasta)
-  // = el día de pago siguiente al último período financiado.
-  const convEsPeriodico = !!contratoDetalle && contratoDetalle.forma_pago !== "Diario";
-  const valorCuotaConv = contratoDetalle ? valorPeriodoReal(contratoDetalle) : 0;
-  // ¿Debe el período actual (no está al día)? → la primera cuota financiada es lo pendiente.
-  const convDebeActual = contratoDetalle ? contratoDetalle.estadoCartera !== "al-dia" : false;
-  const convPrimerCuotaFin = convDebeActual ? cuotaPendiente : valorCuotaConv;
-  const convMontoFinanciado = convEsPeriodico && convFinanciarN >= 1
-    ? convPrimerCuotaFin + (convFinanciarN - 1) * valorCuotaConv
-    : 0;
-  const convTotal = (Number(convDeudaTotal) || 0) + convMontoFinanciado;
-  // Fecha en que reanuda pagos normales (si se financian semanas).
-  const convCubreHasta = (() => {
-    if (!contratoDetalle || !convEsPeriodico || convFinanciarN < 1) return null;
-    const ancla = convDebeActual
-      ? inicioPeriodoActual(contratoDetalle, hoyDate())
-      : proximoDiaPago(contratoDetalle, hoyDate());
-    let d = ancla;
-    for (let i = 0; i < convFinanciarN; i++) d = proximoDiaPago(contratoDetalle, d);
-    return fechaISO(d);
-  })();
-  const convCuotasCalc = convModoFijar === "cuotas"
-    ? (Number(convCuotas) || 0)
-    : (convTotal > 0 && Number(convCuota) > 0 ? Math.ceil(convTotal / Number(convCuota)) : 0);
-  const convCuotaCalc = convModoFijar === "cuota"
-    ? (Number(convCuota) || 0)
-    : (convCuotasCalc > 0 ? Math.ceil(convTotal / convCuotasCalc) : 0);
-  const convUltimaCuota = convCuotasCalc > 0 ? Math.max(convTotal - convCuotaCalc * (convCuotasCalc - 1), 0) : 0;
-
-  // Fecha límite automática: día de pago de la última cuota pactada (avanza N períodos desde
-  // hoy). Editable — se recalcula cuando cambia el número de cuotas resultante.
-  useEffect(() => {
-    if (!mostrarFormConvenio || convCuotasCalc <= 0) return;
-    const contratoSel = contratos.find(c => c.id === contratoSeleccionadoId);
-    if (!contratoSel) return;
-    let d = hoyDate();
-    for (let i = 0; i < convCuotasCalc; i++) d = proximoDiaPago(contratoSel, d);
-    setConvFechaLimite(fechaISO(d));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convCuotasCalc, mostrarFormConvenio, contratoSeleccionadoId]);
-
   // ── Modal de pago: cálculos independientes ────────────────────────────────
   const modalContrato = modalContratoId
     ? resumenContratos.find(c => c.id === modalContratoId) ?? null
@@ -1389,46 +1334,6 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       setDeudaMonto(""); setDeudaDescripcion("");
       setDeudaExito(true); setMostrarFormDeuda(false);
       setTimeout(() => setDeudaExito(false), 3000);
-    } finally {
-      setProcesando(false);
-    }
-  }
-
-  async function handleCrearConvenio() {
-    if (procesando) return;
-    if (!contratoSeleccionadoId || !profile) return;
-    if (!convDeudaTotal || convCuotaCalc <= 0 || convCuotasCalc <= 0 || !convFechaLimite || !convConcepto.trim()) {
-      setConvError("Completa el monto, la cuota o número de cuotas, la fecha y el concepto."); return;
-    }
-    // Sin huella no hay convenio: un compromiso de pago sin firma NI huella no sirve de respaldo
-    // si el cliente después dice que nunca lo aceptó. La huella es opcional al registrar al
-    // cliente, por eso hay que exigirla acá. Misma regla en ModalConvenio (las otras 4 puertas).
-    if (!clienteDetalle?.autorizacion_datos_huella_url) {
-      setConvError(`${(clienteDetalle?.nombre ?? "El cliente").toUpperCase()} no tiene la huella registrada. Regístrasela en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
-      return;
-    }
-    if (!convFirma) { setConvError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
-    if (!confirm(`¿Crear el convenio por $${fmt(Number(convDeudaTotal))} en ${convCuotasCalc} cuota(s) de $${fmt(convCuotaCalc)}?`)) return;
-    setConvError(null);
-    setProcesando(true);
-    try {
-      // El total ya incluye las cuotas de arriendo financiadas (convTotal). convCubreHasta
-      // marca hasta cuándo el cliente paga $0 (esas semanas quedan financiadas, sin mora).
-      const cubrePeriodoHasta = convCubreHasta;
-      // Sube la firma del acuerdo a Storage (bucket documentos).
-      const path = `convenios/${contratoSeleccionadoId}/acuerdo_${Date.now()}.png`;
-      const blob = await (await fetch(convFirma)).blob();
-      const { error: errSub } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/png", upsert: true });
-      if (errSub) { setConvError("No se pudo subir la firma: " + errSub.message); return; }
-      const firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
-      const { error } = await crearConvenio(
-        contratoSeleccionadoId, convTotal, convCuotaCalc,
-        convCuotasCalc, convFechaLimite, convConcepto, profile.id, cubrePeriodoHasta, firmaUrl
-      );
-      if (error) { setConvError(error); return; }
-      setConvDeudaTotal(""); setConvCuota(""); setConvCuotas(""); setConvFechaLimite(""); setConvConcepto(""); setConvFinanciarN(0); setConvModoFijar("cuotas"); setConvFirma(null); setVerPreviewAcuerdo(false);
-      setConvExito(true); setMostrarFormConvenio(false);
-      setTimeout(() => setConvExito(false), 3000);
     } finally {
       setProcesando(false);
     }
@@ -2176,104 +2081,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               ) : (
                 <div>
                   <button
-                    onClick={() => {
-                      const abrir = !mostrarFormConvenio;
-                      // Al abrir, precarga el monto con la deuda pendiente (lo normal — editable para descuentos/acuerdos parciales).
-                      if (abrir) setConvDeudaTotal(String(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0)));
-                      setMostrarFormConvenio(abrir);
-                    }}
+                    onClick={() => setMostrarFormConvenio(true)}
                     style={miniBtn("var(--accent-soft2)", "var(--accent-ink)")}
                   >
-                    {mostrarFormConvenio ? "Cancelar" : "+ Crear convenio"}
+                    + Crear convenio
                   </button>
-                  {mostrarFormConvenio && (
-                    <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
-                      <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                        Deuda pendiente: <strong style={{ color: "var(--bad-ink)" }}>$ {fmt(deudasContrato.reduce((a, d) => a + d.monto_pendiente, 0))}</strong>
-                      </div>
-                      <MoneyInput label="Monto total a diferir" value={convDeudaTotal} onChange={setConvDeudaTotal} />
-                      {convEsPeriodico && (
-                        <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted2)", marginBottom: 6 }}>
-                            ¿Cuántas semanas de cuota le financias ahora? (se las metes al convenio, no las paga aparte)
-                          </div>
-                          <div style={{ display: "flex", gap: 8, marginBottom: convFinanciarN >= 1 ? 6 : 0 }}>
-                            {[0, 1, 2].map(n => (
-                              <button key={n} type="button" onClick={() => setConvFinanciarN(n)}
-                                style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convFinanciarN === n ? "var(--accent)" : "var(--line)"}`, background: convFinanciarN === n ? "var(--accent-soft2)" : "var(--card)", color: convFinanciarN === n ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                                {n}
-                              </button>
-                            ))}
-                          </div>
-                          {convFinanciarN >= 1 && (
-                            <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                              Se financian <strong>{convFinanciarN}</strong> semana{convFinanciarN > 1 ? "s" : ""} = <strong>$ {fmt(convMontoFinanciado)}</strong> al convenio. El cliente paga $0 hasta el <strong>{convCubreHasta ? fmtFecha(convCubreHasta) : ""}</strong>. Total a diferir: <strong>$ {fmt(convTotal)}</strong>.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div>
-                        <div style={labelStyle}>Fijar por</div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button type="button" onClick={() => setConvModoFijar("cuotas")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuotas" ? "var(--accent)" : "var(--line)"}`, background: convModoFijar === "cuotas" ? "var(--accent-soft2)" : "var(--card)", color: convModoFijar === "cuotas" ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>N° de cuotas</button>
-                          <button type="button" onClick={() => setConvModoFijar("cuota")} style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `2px solid ${convModoFijar === "cuota" ? "var(--accent)" : "var(--line)"}`, background: convModoFijar === "cuota" ? "var(--accent-soft2)" : "var(--card)", color: convModoFijar === "cuota" ? "var(--accent)" : "var(--muted)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Valor de la cuota</button>
-                        </div>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        {convModoFijar === "cuotas" ? (
-                          <div>
-                            <div style={labelStyle}>Número de cuotas</div>
-                            <input type="number" min="1" style={inputStyle} value={convCuotas} onChange={e => setConvCuotas(e.target.value)} placeholder="Ej. 30" />
-                          </div>
-                        ) : (
-                          <MoneyInput label="Valor de la cuota" value={convCuota} onChange={setConvCuota} placeholder="$ 100.000" />
-                        )}
-                        <div>
-                          <div style={labelStyle}>{convModoFijar === "cuotas" ? "Cuota (calculada)" : "N° de cuotas (calculado)"}</div>
-                          <div style={{ ...inputStyle, background: "var(--soft)", color: "var(--muted2)", fontWeight: 700 }}>
-                            {convModoFijar === "cuotas" ? (convCuotaCalc > 0 ? `$ ${fmt(convCuotaCalc)}` : "—") : (convCuotasCalc > 0 ? convCuotasCalc : "—")}
-                          </div>
-                        </div>
-                      </div>
-                      {convCuotasCalc > 0 && convCuotaCalc > 0 && (
-                        <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--accent-soft3)", border: "1px solid var(--accent-line)", fontSize: 12.5, fontWeight: 700, color: "var(--accent-ink)" }}>
-                          {convCuotasCalc} cuota{convCuotasCalc > 1 ? "s" : ""} de $ {fmt(convCuotaCalc)}
-                          {convUltimaCuota !== convCuotaCalc && convCuotasCalc > 1 && <> · última: $ {fmt(convUltimaCuota)}</>}
-                          <span style={{ fontWeight: 400 }}> · Total: $ {fmt(convTotal)}</span>
-                        </div>
-                      )}
-                      <div>
-                        <div style={labelStyle}>Fecha límite <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 12 }}>(automática — editable)</span></div>
-                        <input type="date" style={inputStyle} value={convFechaLimite} onChange={e => setConvFechaLimite(e.target.value)} />
-                      </div>
-                      <div>
-                        <div style={labelStyle}>Concepto / Motivo</div>
-                        <input style={inputStyle} value={convConcepto} onChange={e => setConvConcepto(e.target.value)} placeholder="Descripción del convenio..." />
-                      </div>
-
-                      {/* Previsualización del acuerdo + firma obligatoria del cliente */}
-                      <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-                        <button type="button" onClick={() => setVerPreviewAcuerdo(v => !v)} style={miniBtn("var(--soft)", "var(--muted2)")}>
-                          {verPreviewAcuerdo ? "Ocultar acuerdo" : "👁 Ver acuerdo de pago (para que el cliente lo lea)"}
-                        </button>
-                        {verPreviewAcuerdo && clienteDetalle && (
-                          <div style={{ border: "1px solid var(--line)", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "var(--card)" }}
-                            dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(clienteDetalle, motoDetalle ?? null, deudasContrato, { deuda_total: convTotal, cuota_por_periodo: convCuotaCalc, numero_cuotas: convCuotasCalc, firma_url: convFirma }, infoFinContrato(contratoDetalle)) }} />
-                        )}
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)" }}>Firma del cliente (obligatoria para crear el convenio):</div>
-                        {!clienteDetalle?.autorizacion_datos_huella_url && (
-                          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)", marginBottom: 10 }}>
-                            ⛔ <strong>{(clienteDetalle?.nombre ?? "El cliente").toUpperCase()} no tiene la huella registrada.</strong> Sin
-                            huella no se puede crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá.
-                          </div>
-                        )}
-                        <CanvasFirma key="firma-acuerdo" label="Firma del cliente" modal opcional={false} onChange={setConvFirma} />
-                      </div>
-
-                      {convError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{convError}</div>}
-                      {convExito && <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700 }}>Convenio creado.</div>}
-                      <button onClick={handleCrearConvenio} disabled={procesando || !convFirma || !clienteDetalle?.autorizacion_datos_huella_url} style={{ ...primaryBtn, opacity: (procesando || !convFirma || !clienteDetalle?.autorizacion_datos_huella_url) ? 0.6 : 1 }}>{procesando ? "Creando..." : "Crear convenio"}</button>
-                    </div>
+                  {/* Cartera tenía su PROPIO formulario de convenio escrito acá adentro: se veía y se
+                      comportaba distinto del de las otras tres puertas (Inmovilizaciones, Cobro Diario y
+                      el wizard), y además se saltaba el tope de 12 cuotas. Ahora las cuatro usan el mismo
+                      componente. Decisión del dueño, 31-jul: "un convenio es un convenio". */}
+                  {mostrarFormConvenio && contratoDetalle && (
+                    <ModalConvenio
+                      contratoId={contratoDetalle.id}
+                      clienteNombre={clienteDetalle?.nombre ?? ""}
+                      onClose={() => setMostrarFormConvenio(false)}
+                    />
                   )}
                 </div>
               )}

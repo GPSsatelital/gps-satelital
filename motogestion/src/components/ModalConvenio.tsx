@@ -5,6 +5,8 @@ import CanvasFirma from "./CanvasFirma";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
+import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy } from "../utils/cicloPago";
+import { hoyDate, fechaISO } from "../utils/fecha";
 
 interface Props {
   contratoId: string;
@@ -49,13 +51,17 @@ const MAX_CUOTAS = 12;
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
-  const [incluirSemana, setIncluirSemana] = useState(false);
+  // Cuántas cuotas del arriendo se le financian DENTRO del convenio (0, 1 o 2). Antes acá era un
+  // sí/no y en Cartera un selector de 0/1/2: el mismo convenio se comportaba distinto según la
+  // puerta por la que entraras. Unificado — decisión del dueño, 31-jul: "un convenio es un
+  // convenio, no veo por qué habría alguna diferencia".
+  const [financiarN, setFinanciarN] = useState(0);
   const [metaManual, setMetaManual] = useState("");
   const [metaCargada, setMetaCargada] = useState(false);
   const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
   const [cuotasInput, setCuotasInput] = useState("");
   const [cuotaInput, setCuotaInput] = useState("");
-  const [primerPago, setPrimerPago] = useState("");
+  const [fechaLimite, setFechaLimite] = useState("");
   const [firma, setFirma] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +99,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // Si no hay meta fija (caso general, no el de base inicial), se precarga con la
   // deuda pendiente ya registrada del contrato — el funcionario puede ajustarla.
   useEffect(() => {
-    if (metaFija != null) return;
+    // `metaFija` (recuperar moto retenida, base inicial del wizard) ya NO bloquea el monto: viene
+    // PRECARGADO y editable, igual que en Cartera. Antes lo dejaba de solo lectura y además
+    // escondía la opción de financiar semanas — el mismo convenio se comportaba distinto según
+    // por dónde entraras. Decisión del dueño, 31-jul: "un convenio es un convenio".
+    if (metaFija != null) { setMetaManual(String(Math.round(metaFija))); setMetaCargada(true); return; }
     async function cargarDeuda() {
       // Solo deuda EXIGIBLE. Con `neq('pagada')` entraban también las 'en_convenio': un
       // convenio NUEVO nacía cubriendo plata que un convenio ANTERIOR ya financiaba, y el
@@ -111,16 +121,55 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     cargarDeuda();
   }, [contratoId, metaFija]);
 
-  // Opción de meter la cuota del período actual dentro del convenio (alivio único).
-  const puedeIncluirSemana = metaFija == null && !!cuotaPeriodo && cuotaPeriodo > 0 && !!finPeriodoISO;
-  const cuotaSemana = incluirSemana && puedeIncluirSemana ? (cuotaPeriodo ?? 0) : 0;
-  const metaBase = metaFija ?? (Number(metaManual) || 0);
+  // ── Financiar cuotas del arriendo dentro del convenio (alivio único) ──────────────────────
+  // Todo se calcula ACÁ, desde el contrato. Antes dependía de que cada pantalla pasara
+  // `cuotaPeriodo` y `finPeriodoISO`: la que se olvidaba (Inmovilizaciones) simplemente no
+  // mostraba la opción, y nadie se enteraba. Calculándolo adentro, las cuatro puertas ofrecen
+  // lo mismo sin que haya que acordarse de nada. Los props quedan como override.
+  const contratoActual = contratos.find(x => x.id === contratoId) ?? null;
+  const esPeriodico = !!contratoActual && contratoActual.forma_pago !== "Diario";
+  const cuotaDelPeriodo = cuotaPeriodo ?? (contratoActual ? valorPeriodoReal(contratoActual) : 0);
+  // Si YA debe el período en curso, la primera semana financiada es lo que le falta de ese
+  // período (parcial), no una cuota entera — si no, se le financiaría plata que ya abonó.
+  const huecoHoy = contratoActual ? huecoCuotasHoy(contratoActual, hoyDate()) : 0;
+  const primeraFinanciada = huecoHoy > 0 ? Math.min(huecoHoy, cuotaDelPeriodo) : cuotaDelPeriodo;
+
+  const puedeFinanciar = esPeriodico && cuotaDelPeriodo > 0;
+  const nFinanciadas = puedeFinanciar ? financiarN : 0;
+  const cuotaSemana = nFinanciadas >= 1
+    ? primeraFinanciada + (nFinanciadas - 1) * cuotaDelPeriodo
+    : 0;
+
+  // Hasta qué día queda cubierto: se avanza N días de pago desde hoy. Es lo que se guarda en
+  // `cubre_periodo_hasta` y lo que hace que esos períodos no cuenten como mora.
+  const cubreHasta = (() => {
+    if (finPeriodoISO && nFinanciadas >= 1) return finPeriodoISO;
+    if (!contratoActual || nFinanciadas < 1) return null;
+    let d = hoyDate();
+    for (let i = 0; i < nFinanciadas; i++) d = proximoDiaPago(contratoActual, d);
+    return fechaISO(d);
+  })();
+
+  const metaBase = Number(metaManual) || 0;
   const meta = metaBase + cuotaSemana;
   const cuotasCalc = modoFijar === "cuotas"
     ? Number(cuotasInput) || 0
     : (meta > 0 && Number(cuotaInput) > 0 ? Math.ceil(meta / Number(cuotaInput)) : 0);
   const cuotaCalc = cuotasCalc > 0 ? Math.ceil(meta / cuotasCalc) : 0;
   const totalCalculado = cuotaCalc * cuotasCalc;
+
+  // La fecha límite se calcula sola: el día de pago de la ÚLTIMA cuota pactada, avanzando tantos
+  // días de pago como cuotas tenga el convenio. Antes había que escribirla a mano acá (y el campo
+  // decía "primer pago", que es otra cosa). De ese dato depende que `marcar_convenios_vencidos()`
+  // decida si un convenio se venció: con la fecha del PRIMER pago, un convenio de 6 cuotas nacía
+  // vencido a la semana. Queda editable por si acordaron otra fecha.
+  useEffect(() => {
+    if (!contratoActual || cuotasCalc <= 0) return;
+    let d = hoyDate();
+    for (let i = 0; i < cuotasCalc; i++) d = proximoDiaPago(contratoActual, d);
+    setFechaLimite(fechaISO(d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cuotasCalc, contratoId]);
 
   async function handleGuardar() {
     if (guardando) return;
@@ -140,7 +189,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       );
       return;
     }
-    if (!primerPago) { setError("Selecciona la fecha del primer pago."); return; }
+    if (!fechaLimite) { setError("Selecciona la fecha del primer pago."); return; }
     if (huellaResuelta && !tieneHuella) {
       setError(`${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
       return;
@@ -188,11 +237,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       cuota_por_periodo: cuotaCalc,
       numero_cuotas: cuotasCalc,
       cuotas_pagadas: 0,
-      fecha_limite: primerPago,
+      fecha_limite: fechaLimite,
       estado: "activo",
       concepto: motivo.trim(),
       aprobado_por: null,
-      cubre_periodo_hasta: cuotaSemana > 0 ? (finPeriodoISO ?? null) : null,
+      cubre_periodo_hasta: cuotaSemana > 0 ? cubreHasta : null,
       firma_url: firmaUrl,
     });
 
@@ -260,25 +309,45 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
             <div>
               <div style={labelStyle}>Meta a pagar (total del convenio)</div>
-              {metaFija != null ? (
-                <div style={{ ...inputStyle, background: "var(--soft)", fontWeight: 700, color: "var(--text)" }}>
-                  $ {fmt(metaFija)}
+              {metaFija != null && (
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                  Sugerido: <strong>$ {fmt(metaFija)}</strong> — lo que tiene atrasado. Podés ajustarlo.
                 </div>
-              ) : (
-                <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
               )}
+              <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
             </div>
 
-            {puedeIncluirSemana && (
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 12, background: incluirSemana ? "var(--accent-soft2)" : "var(--soft2)", border: `1px solid ${incluirSemana ? "var(--accent-line)" : "var(--line)"}`, cursor: "pointer" }}>
-                <input type="checkbox" checked={incluirSemana} onChange={e => setIncluirSemana(e.target.checked)} style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--accent)", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: "var(--muted2)", fontWeight: 600 }}>
-                  Incluir la cuota de esta semana (<strong>$ {fmt(cuotaPeriodo ?? 0)}</strong>) dentro del convenio.
+            {puedeFinanciar && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>
+                  ¿Cuántas semanas de cuota le financias ahora?
                   <span style={{ display: "block", fontWeight: 400, color: "var(--muted)", marginTop: 2 }}>
-                    Esta semana no la paga aparte ni cuenta mora; queda financiada en el convenio y arranca normal la próxima.
+                    Se las metes al convenio: no las paga aparte y no cuentan mora.
                   </span>
-                </span>
-              </label>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[0, 1, 2].map(n => (
+                    <button key={n} type="button" onClick={() => setFinanciarN(n)}
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 14,
+                        border: `2px solid ${financiarN === n ? "var(--accent)" : "var(--line)"}`,
+                        background: financiarN === n ? "var(--accent-soft2)" : "var(--card)",
+                        color: financiarN === n ? "var(--accent)" : "var(--muted)" }}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {nFinanciadas >= 1 && (
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
+                    Se financian <strong>{nFinanciadas}</strong> semana{nFinanciadas > 1 ? "s" : ""} = <strong>$ {fmt(cuotaSemana)}</strong> al
+                    convenio. El cliente paga <strong>$0 de arriendo</strong> hasta el <strong>{cubreHasta ?? "—"}</strong>.
+                    {huecoHoy > 0 && huecoHoy < cuotaDelPeriodo && (
+                      <span style={{ display: "block", marginTop: 2 }}>
+                        La primera va por <strong>$ {fmt(primeraFinanciada)}</strong>, que es lo que le falta del período en curso — el resto ya lo abonó.
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             <div>
@@ -345,12 +414,16 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             )}
 
             <div>
-              <div style={labelStyle}>Fecha del primer pago</div>
+              <div style={labelStyle}>Fecha límite (última cuota)</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                Se calcula sola avanzando {cuotasCalc > 0 ? cuotasCalc : "N"} día{cuotasCalc === 1 ? "" : "s"} de pago
+                desde hoy. Podés cambiarla si acordaron otra.
+              </div>
               <input
                 type="date"
                 style={inputStyle}
-                value={primerPago}
-                onChange={e => setPrimerPago(e.target.value)}
+                value={fechaLimite}
+                onChange={e => setFechaLimite(e.target.value)}
               />
             </div>
 

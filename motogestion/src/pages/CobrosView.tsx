@@ -630,7 +630,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [mostrarFormDeuda, setMostrarFormDeuda] = useState(false);
   // Abre la ventana COMPARTIDA de convenio (ModalConvenio), la misma que usan Inmovilizaciones,
   // Cobro Diario y el wizard. Antes acá vivía un formulario propio, con otro aspecto y sin el
-  // tope de 12 cuotas.
+  // tope de cuotas.
   const [mostrarFormConvenio, setMostrarFormConvenio] = useState(false);
 
   // Edición inline de deuda existente
@@ -2088,7 +2088,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   </button>
                   {/* Cartera tenía su PROPIO formulario de convenio escrito acá adentro: se veía y se
                       comportaba distinto del de las otras tres puertas (Inmovilizaciones, Cobro Diario y
-                      el wizard), y además se saltaba el tope de 12 cuotas. Ahora las cuatro usan el mismo
+                      el wizard), y además se saltaba el tope de cuotas. Ahora las cuatro usan el mismo
                       componente. Decisión del dueño, 31-jul: "un convenio es un convenio". */}
                   {mostrarFormConvenio && contratoDetalle && (
                     <ModalConvenio

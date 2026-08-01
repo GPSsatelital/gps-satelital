@@ -46,10 +46,14 @@ const labelStyle: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-// Tope de cuotas de un convenio. Si no se paga en 12, el cliente necesita otra cosa (liquidación),
-// no un plazo más largo. Sirve además de red contra el error de dedo de escribir el VALOR de la
-// cuota en la casilla del NÚMERO de cuotas — que ya pasó (ver la validación en handleGuardar).
-const MAX_CUOTAS = 12;
+// Tope de cuotas de un convenio. Nació en 12 el 28-jul-2026, y el dueño lo subió a 24 el
+// 1-ago-2026: los clientes MIGRADOS traen deudas de apertura altas, y con 12 cuotas la cuota
+// semanal quedaba impagable — el tope terminaba empujando a partir la deuda en varios convenios,
+// que es peor. Con 24 hay margen sin que deje de ser un plazo con final.
+// Sigue cumpliendo su otra función, que es la que de verdad ataja errores: es la red contra el
+// error de dedo de escribir el VALOR de la cuota en la casilla del NÚMERO de cuotas — pasó de
+// verdad (XZN20H: 60.000 en el número de cuotas → cuotas de $9 durante 60.000 semanas).
+const MAX_CUOTAS = 24;
 
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
@@ -182,7 +186,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
     if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
     if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
-    // Tope de cuotas (decisión del dueño, 28-jul-2026): un convenio que no se paga en 12 cuotas
+    // Tope de cuotas (28-jul-2026, subido a 24 el 1-ago): un convenio que no se paga en 24 cuotas
     // ya no es un convenio, es otra conversación (liquidación).
     // Esto además ataja el error de dedo que sí pasó: en el convenio de XZN20H alguien escribió
     // 60000 en la casilla del NÚMERO DE CUOTAS pensando que era el valor, y el sistema obedeció:

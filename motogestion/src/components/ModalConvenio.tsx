@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import MoneyInput from "./MoneyInput";
 import CanvasFirma from "./CanvasFirma";
+import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
 
@@ -46,6 +47,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 const MAX_CUOTAS = 12;
 
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
+  useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   const [incluirSemana, setIncluirSemana] = useState(false);
   const [metaManual, setMetaManual] = useState("");
@@ -213,7 +215,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 500, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16 }}
+        style={{ width: "100%", maxWidth: 500, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16,
+          // La ventana debe scrollear POR DENTRO. Sin esto se salía de la pantalla y el gesto se
+          // lo llevaba la página de atrás: la ventana quedaba quieta y el fondo corría por debajo.
+          maxHeight: "calc(100dvh - 32px)", overflowY: "auto", boxSizing: "border-box" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>

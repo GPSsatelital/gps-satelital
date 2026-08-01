@@ -1,5 +1,6 @@
 import { useState } from "react";
 import MoneyInput from "./MoneyInput";
+import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useDeudas } from "../hooks/useDeudas";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -37,6 +38,7 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
 ];
 
 export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props) {
+  useBloquearScrollFondo();
   const { registrarDeuda } = useDeudas();
   const { profile } = useAuth();
   const [tipo, setTipo] = useState<TipoDeuda>("daño_vehiculo");
@@ -84,7 +86,8 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 480, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16 }}
+        style={{ width: "100%", maxWidth: 480, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16,
+          maxHeight: "calc(100dvh - 32px)", overflowY: "auto", boxSizing: "border-box" }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>

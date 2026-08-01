@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useLiquidaciones, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
@@ -29,6 +30,7 @@ const MOTIVOS: { value: MotivoLiquidacion; label: string; desc: string }[] = [
 ];
 
 export default function ModalIniciarLiquidacion({ contratoId, clienteId, clienteNombre, motoId, placa, ahorroAcumulado, motivoInicial, onClose, onDone }: Props) {
+  useBloquearScrollFondo();
   const { iniciarLiquidacion } = useLiquidaciones();
   const { profile } = useAuth();
 
@@ -61,6 +63,7 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "min(480px, 96vw)", background: "var(--card)", borderRadius: 20, padding: 24,
         zIndex: 401, boxShadow: "0 20px 60px rgba(15,23,42,0.22)", display: "grid", gap: 14, boxSizing: "border-box",
+        maxHeight: "calc(100dvh - 32px)", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>

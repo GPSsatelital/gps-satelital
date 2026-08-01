@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyMasDias } from "../utils/fecha";
@@ -52,6 +53,7 @@ const RESULTADOS: ResultadoGestion[] = [
 ];
 
 export default function ModalGestion({ contratoId, clienteNombre, onClose, pasosPrevios }: Props) {
+  useBloquearScrollFondo();
   const { registrarGestion } = useGestiones();
   const { profile } = useAuth();
   const puedeDarPlazoExtra = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL" || profile?.role === "SUBADMIN";
@@ -139,6 +141,9 @@ export default function ModalGestion({ contratoId, clienteNombre, onClose, pasos
         boxShadow: "0 20px 60px rgba(15,23,42,0.22)",
         display: "grid",
         gap: 18,
+        maxHeight: "calc(100dvh - 32px)",
+        overflowY: "auto",
+        boxSizing: "border-box",
       }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

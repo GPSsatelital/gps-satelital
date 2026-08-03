@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import MoneyInput from "./MoneyInput";
 import CanvasFirma from "./CanvasFirma";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
+import { useAuth } from "../contexts/AuthContext";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
@@ -55,6 +56,40 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 // verdad (XZN20H: 60.000 en el número de cuotas → cuotas de $9 durante 60.000 semanas).
 const MAX_CUOTAS = 24;
 
+/**
+ * Cómo se reparte un convenio en cuotas. **REGLA DEL DUEÑO, y es la que manda:**
+ *
+ *   "El cliente debía 345.000 y se le coloca que pague de a 55.000 en cada pago.
+ *    6 cuotas × 55k dan 330 y ya en la última solo tiene que pagar el restante."
+ *
+ * O sea: **la cuota que escribe el funcionario se respeta TAL CUAL**, y la ÚLTIMA absorbe el
+ * resto. Nunca un promedio.
+ *
+ * 🔴 ESTO SE ROMPIÓ UNA VEZ (1-ago-2026) y no puede volver a pasar. Al unificar el convenio de
+ * Cartera con el compartido, el compartido recalculaba la cuota dividiendo (345.000 ÷ 7 = 49.286)
+ * y salían montos ponderados por todos lados. La causa de fondo: se comparó lo que se VEÍA de los
+ * dos formularios (financiar semanas, fecha límite, previsualización) y NO los cálculos; después
+ * el compilador dio verde porque avisa de referencias rotas, no de comportamiento perdido.
+ * Por eso esta lógica vive acá, suelta y con pruebas: para que un cambio futuro la rompa en
+ * `npm test` y no en la cara del funcionario.
+ */
+export function repartirConvenio(
+  meta: number,
+  modo: "cuotas" | "cuota",
+  valor: number,
+): { cuotas: number; cuota: number; ultima: number; total: number } {
+  const vacio = { cuotas: 0, cuota: 0, ultima: 0, total: 0 };
+  if (meta <= 0 || valor <= 0) return vacio;
+  const cuotas = modo === "cuota" ? Math.ceil(meta / valor) : Math.floor(valor);
+  if (cuotas <= 0) return vacio;
+  // Con una sola cuota no hay "resto": paga todo de una.
+  if (cuotas === 1) return { cuotas: 1, cuota: meta, ultima: meta, total: meta };
+  // Fijando la CUOTA se respeta el valor tecleado; fijando el NÚMERO se reparte parejo.
+  const cuota = modo === "cuota" ? valor : Math.ceil(meta / cuotas);
+  const ultima = Math.max(meta - cuota * (cuotas - 1), 0);
+  return { cuotas, cuota, ultima, total: cuota * (cuotas - 1) + ultima };
+}
+
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
@@ -84,6 +119,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { deudas } = useDeudas();
+  const { profile } = useAuth();
   const clienteDelContrato = (() => {
     const c = contratos.find(x => x.id === contratoId);
     return c ? clientes.find(cl => cl.id === c.cliente_id) ?? null : null;
@@ -162,11 +198,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
   const metaBase = Number(metaManual) || 0;
   const meta = metaBase + cuotaSemana;
-  const cuotasCalc = modoFijar === "cuotas"
-    ? Number(cuotasInput) || 0
-    : (meta > 0 && Number(cuotaInput) > 0 ? Math.ceil(meta / Number(cuotaInput)) : 0);
-  const cuotaCalc = cuotasCalc > 0 ? Math.ceil(meta / cuotasCalc) : 0;
-  const totalCalculado = cuotaCalc * cuotasCalc;
+  const { cuotas: cuotasCalc, cuota: cuotaCalc, ultima: ultimaCuota, total: totalCalculado } =
+    repartirConvenio(meta, modoFijar, modoFijar === "cuotas" ? Number(cuotasInput) || 0 : Number(cuotaInput) || 0);
 
   // La fecha límite se calcula sola: el día de pago de la ÚLTIMA cuota pactada, avanzando tantos
   // días de pago como cuotas tenga el convenio. Antes había que escribirla a mano acá (y el campo
@@ -250,7 +283,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       fecha_limite: fechaLimite,
       estado: "activo",
       concepto: motivo.trim(),
-      aprobado_por: null,
+      // QUIÉN LO HIZO (no quién lo autorizó — aclaración del dueño): el funcionario que se sentó
+      // con el cliente y armó el acuerdo. La columna se llama `aprobado_por` por historia, pero
+      // lo que guarda es el autor. La ventana insertaba `null` porque no pasaba por el hook
+      // `crearConvenio`, que sí lo guardaba, y se perdía el rastro de quién lo hizo.
+      aprobado_por: profile?.id ?? null,
       cubre_periodo_hasta: cuotaSemana > 0 ? cubreHasta : null,
       firma_url: firmaUrl,
     });
@@ -400,14 +437,20 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             {totalCalculado > 0 && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft3)", border: "1px solid var(--accent-line)", fontSize: 14, fontWeight: 700, color: "var(--accent-ink)" }}>
                 Total del convenio: $ {fmt(totalCalculado)}
-                {meta > 0 && totalCalculado > meta && (
-                  <span style={{ fontWeight: 400, fontSize: 12 }}> (redondeado, meta $ {fmt(meta)})</span>
-                )}
                 {/* La frase en cristiano es la que de verdad ataja el error: leer "$9 cada semana
                     durante 60.000 semanas" salta a la vista mucho antes que ver un 60000 en una
-                    casilla. Va debajo del total, que es donde el ojo ya está mirando. */}
+                    casilla. Va debajo del total, que es donde el ojo ya está mirando.
+                    Y dice la ÚLTIMA aparte, porque esa es la regla del dueño: la cuota se respeta
+                    tal cual y la última se lleva el resto. */}
                 <div style={{ fontWeight: 400, fontSize: 13, marginTop: 4, color: "var(--accent-ink)" }}>
-                  El cliente paga <strong>$ {fmt(cuotaCalc)}</strong> cada período, <strong>{cuotasCalc}</strong> {cuotasCalc === 1 ? "vez" : "veces"}.
+                  {ultimaCuota !== cuotaCalc && cuotasCalc > 1 ? (
+                    <>
+                      El cliente paga <strong>$ {fmt(cuotaCalc)}</strong> cada período, <strong>{cuotasCalc - 1}</strong> {cuotasCalc - 1 === 1 ? "vez" : "veces"},
+                      y la <strong>última de $ {fmt(ultimaCuota)}</strong>.
+                    </>
+                  ) : (
+                    <>El cliente paga <strong>$ {fmt(cuotaCalc)}</strong> cada período, <strong>{cuotasCalc}</strong> {cuotasCalc === 1 ? "vez" : "veces"}.</>
+                  )}
                 </div>
               </div>
             )}

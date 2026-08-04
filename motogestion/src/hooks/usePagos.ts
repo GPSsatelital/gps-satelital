@@ -17,13 +17,30 @@ export type TipoRegistroPago = "normal" | "campo" | "transferencia" | "adelanto_
 // - adelanto_base: la semana adelantada de la base inicial (ya venía en la base, no es plata del día)
 // - saldo_favor: aplicar un saldo a favor existente a una cuota — es crédito viejo, NO entra plata nueva
 /**
- * Fecha con la que un pago cuenta para la CAJA del día: el día en que se DIGITÓ.
- * No usar `p.fecha` para caja — esa es la fecha en que el cliente pagó y puede ser anterior
- * (transfirió el domingo, se digitó el lunes). Si la caja usara la fecha real, el dinero
- * digitado hoy se iría a un día ya cerrado y el arqueo de hoy no cuadraría con la plata en mano.
- * Los pagos viejos (antes de la mig 064) tienen fecha_registro = fecha, así que no cambian.
+ * Fecha con la que un pago cuenta para la CAJA del día. Las dos formas de pago se comportan
+ * distinto porque son dinero distinto (regla del dueño, 4-ago-2026):
+ *
+ * · EFECTIVO → el día en que se DIGITÓ (`fecha_registro`). Llega a la mano y se cuenta ese mismo
+ *   día: el arqueo de hoy tiene que cuadrar contra los billetes que hoy están en el cajón.
+ * · TRANSFERENCIA → el día en que EL BANCO la recibió (`fecha`). Tiene fecha propia y verificable
+ *   —comprobante y extracto—, independiente de cuándo alguien se sentó a digitarla.
+ *
+ * Por qué la transferencia no puede ir por el día de digitación: el arqueo compararía la plata
+ * tecleada hoy contra el extracto de hoy, que son dos conjuntos distintos, y ningún día podría
+ * cuadrar nunca. Medido el 4-ago-2026: 31 transferencias del lunes 3 ($5.983.000) caían en la
+ * caja del martes, dejándola con el 97% de su plata prestada del día anterior.
+ * El sistema ya hacía esto para las que cruzaban con el dinero sin dueño (ver
+ * `cruzarConDineroSinDuenio`): esto extiende esa misma regla a todas.
+ *
+ * CONSECUENCIA ACEPTADA: una transferencia reportada tarde entra a un día que quizás ya se cerró.
+ * Por eso el cierre debe poder recalcularse — nunca volver a la regla vieja para "proteger" un
+ * cierre, porque eso es lo que descuadra el arqueo de todos los días.
+ *
+ * Los pagos viejos (antes de la mig 064) tienen fecha_registro = fecha, así que no se mueven.
+ * Protegida por `fechaDeCaja.test.ts`.
  */
-export function fechaDeCaja(p: { fecha: string; fecha_registro?: string | null }): string {
+export function fechaDeCaja(p: { fecha: string; fecha_registro?: string | null; metodo: MetodoPago }): string {
+  if (p.metodo === "Transferencia") return p.fecha;
   return p.fecha_registro || p.fecha;
 }
 

@@ -11,8 +11,37 @@ export type CajaDiaria = {
   detalle: unknown[];
   cerrado_por: string | null;
   notas: string | null;
+  // Arqueo del cierre (mig 064). null = ese lado no se contó.
+  efectivo_contado: number | null;
+  banco_reportado: number | null;
+  diferencia: number | null;
   created_at: string;
 };
+
+/**
+ * ¿El cierre que se firmó ya no dice lo mismo que la caja real de ese día?
+ *
+ * Pasa cuando entra plata con fecha de un día YA CERRADO. Es la contracara de la regla de
+ * `fechaDeCaja`: una transferencia cuenta en el día en que el banco la recibió, así que una que
+ * se reporta tarde aterriza en un día que quizás ya se cerró. Eso es lo correcto para el arqueo
+ * —el día cuadra contra SU extracto— pero deja el cierre guardado viejo, y sin aviso nadie se
+ * entera: la pantalla seguiría mostrando "✓ Cerrada" con una cifra que ya no es.
+ *
+ * Devuelve null si el cierre sigue al día. Si no, cuánto cambió cada lado (positivo = entró más).
+ * Protegida por `useCaja.test.ts`.
+ */
+export function cierreDesactualizado(
+  cerrada: { efectivo_total: number; transferencias_total: number; total: number } | null,
+  actual: { efectivo: number; transfer: number; total: number },
+): { efectivo: number; transfer: number; total: number } | null {
+  if (!cerrada) return null;
+  const dif = {
+    efectivo: Math.round(actual.efectivo) - Math.round(cerrada.efectivo_total),
+    transfer: Math.round(actual.transfer) - Math.round(cerrada.transferencias_total),
+    total: Math.round(actual.total) - Math.round(cerrada.total),
+  };
+  return dif.efectivo === 0 && dif.transfer === 0 && dif.total === 0 ? null : dif;
+}
 
 export function useCaja() {
   const [cajas, setCajas] = useState<CajaDiaria[]>([]);

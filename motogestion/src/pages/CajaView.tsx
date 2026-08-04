@@ -3,7 +3,7 @@ import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
-import { useCaja } from "../hooks/useCaja";
+import { useCaja, cierreDesactualizado } from "../hooks/useCaja";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
@@ -160,9 +160,15 @@ export default function CajaView() {
   function abrirCierre(grupo: GrupoMoto) {
     setGrupoACerrar(grupo);
     setMsgCierre(null);
-    // El arqueo es de ESTE grupo: si quedaron valores del cierre anterior (o de uno cancelado),
+    // El arqueo es de ESTE grupo: si quedaran valores del cierre anterior (o de uno cancelado),
     // el descuadre saldría calculado contra cifras de otra caja.
-    setEfectivoContado(""); setBancoReportado(""); setNotas("");
+    // Si el día YA se cerró y se está actualizando, se traen sus cifras de arqueo: el guardado
+    // es un upsert, así que dejarlas vacías las pisaría con null y se perdería el conteo que
+    // ya se había hecho con la plata en la mano.
+    const previo = cajaDia(fecha, grupo);
+    setEfectivoContado(previo?.efectivo_contado != null ? String(Math.round(previo.efectivo_contado)) : "");
+    setBancoReportado(previo?.banco_reportado != null ? String(Math.round(previo.banco_reportado)) : "");
+    setNotas("");
     setShowModal(true);
   }
 
@@ -191,6 +197,9 @@ export default function CajaView() {
     setMsgCierre(null);
     // Cada grupo se cierra por aparte: solo los pagos de ese portafolio.
     const r = resumenDeGrupo(g);
+    // Si ya estaba cerrado, esto es una ACTUALIZACIÓN: queda escrito de cuánto a cuánto se movió,
+    // porque el upsert pisa la cifra vieja y si no se anota nadie sabría que cambió.
+    const previo = cajaDia(fecha, g);
     const arq = calcArqueo(r.efectivo, r.transfer);
     const detalle = pagosDia
       .filter(p => p.estado === "Confirmado" && grupoDePago(p) === g)
@@ -211,6 +220,7 @@ export default function CajaView() {
       // permiten recalcular ambas diferencias en cualquier informe futuro.
       notas: [
         notas.trim(),
+        previo ? `Actualizado: se había cerrado en $${fmt(previo.total)} y ahora son $${fmt(r.total)}` : "",
         arq.verificado
           ? `Arqueo — efectivo: ${arq.hayEf ? `$${fmt(arq.difEf!)}` : "sin verificar"}; banco: ${arq.hayBc ? `$${fmt(arq.difBc!)}` : "sin verificar"}`
           : "",
@@ -227,7 +237,7 @@ export default function CajaView() {
     if (error) {
       setMsgCierre(`Error: ${error}`);
     } else {
-      setMsgCierre(`Caja de ${g} cerrada — $${fmt(r.total)}`);
+      setMsgCierre(previo ? `Caja de ${g} actualizada — $${fmt(r.total)}` : `Caja de ${g} cerrada — $${fmt(r.total)}`);
       setNotas(""); setEfectivoContado(""); setBancoReportado("");
       setGrupoACerrar(null);
     }
@@ -382,6 +392,8 @@ export default function CajaView() {
   // tarjeta de cada grupo; en una vista filtrada, este botón cierra ese grupo.
   const grupoEnVista = filtroGrupo === "todos" ? null : filtroGrupo;
   const cajaGrupoVista = grupoEnVista ? cajaDia(fecha, grupoEnVista) : null;
+  // Mismo aviso que en la tarjeta del grupo: el cierre firmado ya no coincide con la caja real.
+  const difCierreVista = cierreDesactualizado(cajaGrupoVista, resumen);
   const botonCerrar = puedeCerrarCaja && (
     <div>
       {msgCierre && (
@@ -391,9 +403,30 @@ export default function CajaView() {
       )}
       {grupoEnVista ? (
         cajaGrupoVista ? (
-          <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 700, color: "var(--ok-ink)", textAlign: "center" }}>
-            ✓ Caja de {grupoEnVista} cerrada — ${fmt(cajaGrupoVista.total)}
-          </div>
+          difCierreVista ? (
+            <div>
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12.5, color: "var(--warn-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ Este cierre cambió</div>
+                Se firmó en <strong>${fmt(cajaGrupoVista.total)}</strong> y hoy el día tiene <strong>${fmt(resumen.total)}</strong>.
+                {" "}{difCierreVista.total > 0
+                  ? `Entraron $${fmt(difCierreVista.total)} más después de cerrarlo`
+                  : difCierreVista.total < 0
+                    ? `Salieron $${fmt(Math.abs(difCierreVista.total))} después de cerrarlo`
+                    : "Cambió el reparto entre efectivo y transferencias"}
+                : casi siempre es una transferencia que el banco recibió este día y alguien digitó después.
+              </div>
+              <button
+                onClick={() => abrirCierre(grupoEnVista)}
+                style={{ marginTop: 10, width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: "var(--warn-ink)", color: "var(--card)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+              >
+                Actualizar cierre — ${fmt(resumen.total)}
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 700, color: "var(--ok-ink)", textAlign: "center" }}>
+              ✓ Caja de {grupoEnVista} cerrada — ${fmt(cajaGrupoVista.total)}
+            </div>
+          )
         ) : (
           <button
             onClick={() => abrirCierre(grupoEnVista)}
@@ -489,6 +522,8 @@ export default function CajaView() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             {resumenPorGrupo.map(g => {
               const cerrada = cajaDia(fecha, g.grupo);
+              // Entró (o salió) plata de este día DESPUÉS de haberlo cerrado.
+              const difCierre = cierreDesactualizado(cerrada, g);
               return (
                 <div
                   key={g.grupo}
@@ -497,7 +532,10 @@ export default function CajaView() {
                   <div onClick={() => setFiltroGrupo(g.grupo)} style={{ cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: COLOR_GRUPO[g.grupo], textTransform: "uppercase" }}>{g.grupo}</span>
-                      {cerrada && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>}
+                      {cerrada && (difCierre
+                        ? <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", padding: "2px 8px", borderRadius: 999 }}>⚠️ El cierre cambió</span>
+                        : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "2px 8px", borderRadius: 999 }}>✓ Cerrada</span>
+                      )}
                     </div>
                     <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>${fmt(g.total)}</div>
                     <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
@@ -505,12 +543,24 @@ export default function CajaView() {
                       <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
                     </div>
                   </div>
-                  {puedeCerrarCaja && !cerrada && g.total > 0 && (
+                  {difCierre && (
+                    <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 11.5, color: "var(--warn-ink)", fontWeight: 600, lineHeight: 1.45 }}>
+                      Se cerró en <strong>${fmt(cerrada!.total)}</strong> y hoy este día tiene <strong>${fmt(g.total)}</strong>.
+                      {" "}{difCierre.total > 0
+                        ? `Entraron $${fmt(difCierre.total)} más después de cerrarlo`
+                        : difCierre.total < 0
+                          ? `Salieron $${fmt(Math.abs(difCierre.total))} después de cerrarlo`
+                          : "Cambió el reparto entre efectivo y transferencias"}
+                      {" "}— casi siempre es una transferencia que el banco recibió este día y se digitó después.
+                      {" "}Vuelve a cerrarlo para que la cifra firmada sea la de verdad.
+                    </div>
+                  )}
+                  {puedeCerrarCaja && (!cerrada ? g.total > 0 : !!difCierre) && (
                     <button
                       onClick={() => abrirCierre(g.grupo)}
-                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: COLOR_GRUPO[g.grupo], color: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                      style={{ marginTop: 10, width: "100%", padding: "8px 12px", borderRadius: 8, border: "none", background: cerrada ? "var(--warn-ink)" : COLOR_GRUPO[g.grupo], color: "var(--card)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                     >
-                      Cerrar caja de {g.grupo}
+                      {cerrada ? `Actualizar cierre de ${g.grupo}` : `Cerrar caja de ${g.grupo}`}
                     </button>
                   )}
                 </div>
@@ -633,11 +683,27 @@ export default function CajaView() {
         // acto. Cualquier diferencia bloquea el cierre — hay que hallar el error antes.
         const arqModal = calcArqueo(rc.efectivo, rc.transfer);
         const efectivoDescuadrado = arqModal.difEf !== null && arqModal.difEf !== 0;
+        // Este día ya se había cerrado: no es un cierre nuevo, es corregir la cifra firmada.
+        const previoModal = cajaDia(fecha, grupoACerrar);
+        const difModal = cierreDesactualizado(previoModal, rc);
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--card)", borderRadius: 20, padding: 28, maxWidth: 420, width: "100%" }}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: COLOR_GRUPO[grupoACerrar] }}>Cerrar caja de {grupoACerrar}</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: COLOR_GRUPO[grupoACerrar] }}>
+              {previoModal ? `Actualizar cierre de ${grupoACerrar}` : `Cerrar caja de ${grupoACerrar}`}
+            </h3>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>{fechaDisplay}</p>
+            {previoModal && (
+              <div style={{ marginBottom: 16, padding: "11px 13px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12.5, color: "var(--warn-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+                Este día ya se había cerrado en <strong>${fmt(previoModal.total)}</strong>.
+                {difModal
+                  ? <> Ahora son <strong>${fmt(rc.total)}</strong>: al confirmar, esa pasa a ser la cifra del día y queda anotado el cambio.</>
+                  : <> Las cifras no cambiaron; puedes volver a guardarlo si solo quieres corregir el arqueo.</>}
+                {(previoModal.efectivo_contado != null || previoModal.banco_reportado != null) && (
+                  <> Los valores del arqueo vienen del cierre anterior — revísalos antes de confirmar.</>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
               <div style={{ flex: 1, background: "var(--ok-soft)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "var(--ok-ink)", textTransform: "uppercase" }}>Efectivo</div>
@@ -649,7 +715,7 @@ export default function CajaView() {
               </div>
             </div>
             <div style={{ background: COLOR_GRUPO[grupoACerrar], borderRadius: 12, padding: "12px 14px", marginBottom: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Total a cerrar — {grupoACerrar}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>{previoModal ? "Nuevo total del día" : "Total a cerrar"} — {grupoACerrar}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: "#ffffff" }}>${fmt(rc.total)}</div>
             </div>
             {rc.pendientes.length > 0 && (
@@ -734,7 +800,7 @@ export default function CajaView() {
               <button onClick={handleCerrarCaja} disabled={cerrando || efectivoDescuadrado}
                 title={efectivoDescuadrado ? "El efectivo contado no cuadra con lo registrado" : undefined}
                 style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "var(--ok-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: (cerrando || efectivoDescuadrado) ? "not-allowed" : "pointer", opacity: (cerrando || efectivoDescuadrado) ? 0.5 : 1 }}>
-                {cerrando ? "Cerrando..." : efectivoDescuadrado ? "El efectivo no cuadra" : "Confirmar cierre"}
+                {cerrando ? "Guardando..." : efectivoDescuadrado ? "El efectivo no cuadra" : previoModal ? "Actualizar cierre" : "Confirmar cierre"}
               </button>
             </div>
           </div>

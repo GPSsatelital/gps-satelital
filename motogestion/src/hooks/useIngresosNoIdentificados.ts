@@ -28,6 +28,29 @@ export function normalizarRef(ref: string): string {
   return String(ref || "").replace(/[\s\-.]/g, "").toUpperCase();
 }
 
+/**
+ * ¿Esta partida de la bolsa ya está registrada como un pago de alguien?
+ *
+ * Si la respuesta es sí, el cruce automático debió ocurrir y no ocurrió — casi siempre porque
+ * el pago se registró ANTES de que alguien anotara la partida, y el cruce solo mira hacia
+ * adelante (al registrar y al confirmar). Esa plata NO se está contando dos veces en la caja
+ * (la bolsa no suma en ningún total), pero la partida queda ahí figurando como sin dueño,
+ * disparando alertas y ensuciando el arqueo contra el banco.
+ *
+ * Se compara SOLO por referencia, nunca por monto: un lunes hay once transferencias de $202.000
+ * y avisar por monto igual daría once falsas alarmas. Un aviso que sale siempre deja de leerse.
+ * Se ignoran los pagos Rechazados: ese dinero nunca entró.
+ * Protegida por `useIngresosNoIdentificados.test.ts`.
+ */
+export function pagoQueYaLaReclama<T extends { referencia?: string | null; estado?: string }>(
+  partida: { referencia: string },
+  pagos: T[],
+): T | null {
+  const ref = normalizarRef(partida.referencia);
+  if (ref.length < 3) return null;
+  return pagos.find(p => p.estado !== "Rechazado" && p.referencia && normalizarRef(p.referencia) === ref) ?? null;
+}
+
 export function useIngresosNoIdentificados() {
   const { data: ingresos, loading } = store.useStore();
 

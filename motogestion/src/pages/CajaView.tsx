@@ -4,7 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja, cierreDesactualizado } from "../hooks/useCaja";
-import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
+import { useIngresosNoIdentificados, normalizarRef, pagoQueYaLaReclama } from "../hooks/useIngresosNoIdentificados";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -603,9 +603,15 @@ export default function CajaView() {
           <div style={{ display: "grid", gap: 8 }}>
             {pendientesNI.map(i => {
               const dias = Math.round((hoyDate().getTime() - new Date(i.fecha_banco + "T00:00:00").getTime()) / 86400000);
+              // El cruce automático solo mira hacia adelante. Si el pago se registró ANTES de
+              // que se anotara esta partida, nadie las junta nunca y queda figurando sin dueño.
+              const yaPagado = pagoQueYaLaReclama(i, pagos);
+              const infoPago = yaPagado ? getInfo(yaPagado.contrato_id) : null;
               return (
                 <div key={i.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
-                  padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
+                  padding: "10px 12px", borderRadius: 10,
+                  background: yaPagado ? "var(--bad-soft)" : "var(--warn-soft)",
+                  border: `1px solid ${yaPagado ? "var(--bad-line)" : "var(--warn-line)"}` }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)" }}>${fmt(i.monto)} · ref. {i.referencia}</div>
                     <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 2 }}>
@@ -629,6 +635,16 @@ export default function CajaView() {
                       </button>
                     )}
                   </div>
+                  {yaPagado && infoPago && (
+                    <div style={{ flexBasis: "100%", minWidth: 0, boxSizing: "border-box", padding: "9px 11px", borderRadius: 9, background: "var(--card)", border: "1px solid var(--bad-line)", fontSize: 11.5, color: "var(--bad-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+                      ⚠️ Esta misma referencia ya está registrada como pago de{" "}
+                      <strong style={{ textTransform: "uppercase" }}>{infoPago.nombre}</strong>
+                      {infoPago.placa !== "—" ? ` (${infoPago.placa})` : ""} por <strong>${fmt(yaPagado.valor)}</strong>
+                      {yaPagado.estado === "Pendiente" ? ", pendiente de confirmar" : ""}.
+                      {" "}Si es la misma plata, esta partida sobra y se puede eliminar.
+                      {" "}No se está cobrando dos veces —esto no suma en la caja— pero mientras siga aquí figura como dinero sin dueño y sigue alertando.
+                    </div>
+                  )}
                 </div>
               );
             })}

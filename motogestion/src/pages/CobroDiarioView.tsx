@@ -21,7 +21,7 @@ import {
   inicioVentanaPagosISO,
   formatDiaPago,
 } from "../utils/cicloPago";
-import { hoyISO } from "../utils/fecha";
+import { hoyISO, hoyMasDias } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
@@ -134,6 +134,11 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   // Foto del comprobante: obligatoria en transferencia, igual que en Cartera. Sin ella, quien
   // cobra en la calle podía registrar una transferencia sin ningún respaldo.
   const [cobrarComprobante, setCobrarComprobante] = useState<File | null>(null);
+  // Qué día entró la transferencia al banco. Antes esta pantalla no lo preguntaba y toda
+  // transferencia se guardaba con la fecha de hoy: como la plata cuenta en la caja del día del
+  // banco (ver `fechaDeCaja`), una del viernes digitada el lunes se iba a la caja del lunes y
+  // ese día quedaba sobrando contra su extracto. El efectivo no lo necesita: es de hoy siempre.
+  const [cobrarFecha, setCobrarFecha] = useState(hoyISO());
   const [cobrarSubiendo, setCobrarSubiendo] = useState(false);
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
@@ -306,7 +311,9 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       contratoFila?.motor_v2 && contratoFila.forma_pago !== "Diario" ? APLICADO_LO_REPARTE_LA_BD : aplicado,
       {
         registradoPor: profile?.id,
-        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim(), comprobanteUrl } : {}),
+        // El día del banco manda: `fecha` decide en qué caja entra esta plata. Si al confirmar
+        // cruza con una partida del extracto, ese cruce la corrige y gana la fecha comprobada.
+        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim(), comprobanteUrl, fecha: cobrarFecha } : {}),
         ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
       });
     setCobrandoLoading(false);
@@ -314,6 +321,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setConfirmarCobroOpen(false);
     setCobrandoId(null);
     setCobrarValor(""); setCobrarReferencia(""); setCobrarComprobante(null);
+    // La fecha vuelve a hoy: si no, la del cliente anterior viaja al siguiente cobro.
+    setCobrarFecha(hoyISO());
     setCobrarNota("");
   }
 
@@ -474,6 +483,25 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   </label>
                 </div>
                 {cobrarComprobante && <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 4 }}>✓ {cobrarComprobante.name}</div>}
+                {/* La transferencia entra a la caja del día en que el banco la recibió, no a la
+                    de hoy: si se digita al día siguiente y esta fecha queda mal, ese día sobra
+                    contra su extracto y el día real queda corto. */}
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", margin: "12px 0 6px" }}>
+                  ¿Qué día entró al banco? *
+                </label>
+                <input
+                  type="date"
+                  value={cobrarFecha}
+                  max={hoyISO()}
+                  min={hoyMasDias(-60)}
+                  onChange={e => setCobrarFecha(e.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 14 }}
+                />
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 5, lineHeight: 1.45 }}>
+                  {cobrarFecha === hoyISO()
+                    ? "Es la fecha que aparece en el comprobante. Si el cliente transfirió otro día, cámbiala."
+                    : <>Esta plata va a la caja del <strong>{cobrarFecha}</strong>, que es el día en que el banco la recibió — no a la de hoy.</>}
+                </div>
               </div>
             )}
           </div>

@@ -1,7 +1,26 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 // Cuántos segundos se queda visible antes de taparse sola.
 const SEGUNDOS_VISIBLE = 5;
+
+// Estado compartido: varios montos de la MISMA tarjeta se muestran y se tapan juntos.
+// Sin esto, "Recaudado hoy" y "Semana" eran dos botones sueltos y había que tocar cada uno.
+const GrupoCtx = createContext<{ visible: boolean; alternar: () => void } | null>(null);
+
+/** Envuelve varios <MontoOculto> para que un solo toque los muestre a todos. */
+export function GrupoMontoOculto({ children }: { children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => setVisible(false), SEGUNDOS_VISIBLE * 1000);
+    return () => clearTimeout(t);
+  }, [visible]);
+  return (
+    <GrupoCtx.Provider value={{ visible, alternar: () => setVisible(v => !v) }}>
+      {children}
+    </GrupoCtx.Provider>
+  );
+}
 
 // Monto tapado (pedido del dueño, 5-ago-2026).
 //
@@ -30,22 +49,27 @@ export default function MontoOculto({
   estilo?: React.CSSProperties;
   prefijo?: string;
 }) {
-  const [visible, setVisible] = useState(false);
+  // Si está dentro de un GrupoMontoOculto, manda el estado del grupo (se muestran todos juntos).
+  // Suelto, cada monto tiene el suyo y su propio temporizador.
+  const grupo = useContext(GrupoCtx);
+  const [propio, setPropio] = useState(false);
+  const visible = grupo ? grupo.visible : propio;
+  const alternar = grupo ? grupo.alternar : () => setPropio(v => !v);
 
   useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => setVisible(false), SEGUNDOS_VISIBLE * 1000);
+    if (grupo || !propio) return;
+    const t = setTimeout(() => setPropio(false), SEGUNDOS_VISIBLE * 1000);
     return () => clearTimeout(t);
-  }, [visible]);
+  }, [grupo, propio]);
 
   return (
     <span
       role="button"
       tabIndex={0}
       title={visible ? "Toca para ocultar" : "Toca para ver"}
-      onClick={e => { e.stopPropagation(); setVisible(v => !v); }}
+      onClick={e => { e.stopPropagation(); alternar(); }}
       onKeyDown={e => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setVisible(v => !v); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); alternar(); }
       }}
       onContextMenu={e => e.preventDefault()}
       style={{

@@ -11,7 +11,7 @@ import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados"
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
-import MontoOculto from "../components/MontoOculto";
+import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
 import { Badge } from "../components/atomos";
 import { esDiaDePago, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias, hoyDate } from "../utils/fecha";
@@ -397,26 +397,30 @@ const grupoActualStats = grupoSeleccionado === "todos"
             </span>
           )}
         </div>
-        {/* Tapado hasta que se mantenga presionado: es el número más grande de la app y el que
-            cualquiera que pase por al lado alcanza a leer. Ver MontoOculto. */}
-        <MontoOculto
-          valor={recaudoFiltrado.hoy}
-          estilo={{ display: "block", fontSize: isMobile ? 36 : 48, fontWeight: 700, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em" }}
-        />
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13, color: "var(--faint)" }}>
-            Semana:&nbsp;
-            <MontoOculto valor={recaudoFiltrado.semana} estilo={{ color: "var(--ok2)", fontWeight: 700 }} />
-            &nbsp;en pagos confirmados
+        {/* Tapado: es el número más grande de la app y el que cualquiera que pase por al lado
+            alcanza a leer. Un toque lo muestra, otro lo tapa, y a los 5 segundos se tapa solo.
+            El GRUPO hace que el del día y el de la semana se muestren con un SOLO toque. */}
+        <GrupoMontoOculto>
+          <MontoOculto
+            valor={recaudoFiltrado.hoy}
+            estilo={{ display: "block", fontSize: isMobile ? 36 : 48, fontWeight: 700, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em" }}
+          />
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--faint)" }}>
+              Semana:&nbsp;
+              <MontoOculto valor={recaudoFiltrado.semana} estilo={{ color: "var(--ok2)", fontWeight: 700 }} />
+              &nbsp;en pagos confirmados
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 4 }}>
-            <span style={{ color: "var(--accent-hi)", fontWeight: 700 }}>{grupoActualStats.asignadas}</span>
-            {" en campo · "}
-            <span style={{ color: "var(--ok2)", fontWeight: 700 }}>{grupoActualStats.disponibles}</span>
-            {" disponibles · "}
-            <span style={{ color: "var(--accent-line)", fontWeight: 700 }}>{grupoActualStats.pct}%</span>
-            {" asignado"}
-          </div>
+        </GrupoMontoOculto>
+        {/* Conteo de motos: NO es plata, se ve siempre. */}
+        <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 4 }}>
+          <span style={{ color: "var(--accent-hi)", fontWeight: 700 }}>{grupoActualStats.asignadas}</span>
+          {" en campo · "}
+          <span style={{ color: "var(--ok2)", fontWeight: 700 }}>{grupoActualStats.disponibles}</span>
+          {" disponibles · "}
+          <span style={{ color: "var(--accent-line)", fontWeight: 700 }}>{grupoActualStats.pct}%</span>
+          {" asignado"}
         </div>
 
         {/* Selector de grupo dentro del panel */}

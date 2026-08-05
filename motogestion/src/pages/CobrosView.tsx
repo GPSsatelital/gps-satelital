@@ -58,7 +58,7 @@ import {
 import { hoyISO, hoyDate, hoyMasDias, fechaISO } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
-import MontoOculto from "../components/MontoOculto";
+import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -2361,7 +2361,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Cada KPI lleva a Contratos con el filtro puesto (o a Historial)
   function irAContratos(filtro: FiltroContratos) { setActiveTab("contratos"); setFiltroContratos(filtro); setContratoSeleccionadoId(null); }
   // El recaudo va TAPADO: el cliente ve la pantalla del funcionario y la plata del día no es
-  // asunto suyo. Se destapa solo mientras se mantiene presionado (ver MontoOculto).
+  // asunto suyo. Un toque lo muestra y a los 5 segundos se tapa solo (ver MontoOculto).
   const kpis: { label: string; value: React.ReactNode; sub?: React.ReactNode; color: string; bg: string; onClick: () => void }[] = [
     { label: "Pagan hoy", value: totalPaganHoy, color: "var(--accent)", bg: "var(--accent-soft2)", onClick: () => irAContratos("pagan-hoy") },
     {
@@ -2431,13 +2431,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               textAlign: "left",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
-            </div>
-            {k.sub && (
-              <div style={{ fontSize: 10, color: k.color, opacity: 0.8, marginTop: 1, textAlign: "right" }}>{k.sub}</div>
-            )}
+            {/* El grupo hace que el monto y su "Semana" se muestren y se tapen con UN solo toque,
+                en vez de ser dos botones sueltos. En los KPI sin montos tapados no hace nada. */}
+            <GrupoMontoOculto>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: k.color, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{k.value}</span>
+              </div>
+              {k.sub && (
+                <div style={{ fontSize: 10, color: k.color, opacity: 0.8, marginTop: 1, textAlign: "right" }}>{k.sub}</div>
+              )}
+            </GrupoMontoOculto>
           </button>
         ))}
       </div>

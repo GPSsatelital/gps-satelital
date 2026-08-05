@@ -58,6 +58,7 @@ import {
 import { hoyISO, hoyDate, hoyMasDias, fechaISO } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
+import MontoOculto from "../components/MontoOculto";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -2359,9 +2360,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // ── KPI cards ─────────────────────────────────────────────────────────────
   // Cada KPI lleva a Contratos con el filtro puesto (o a Historial)
   function irAContratos(filtro: FiltroContratos) { setActiveTab("contratos"); setFiltroContratos(filtro); setContratoSeleccionadoId(null); }
-  const kpis: { label: string; value: string | number; sub?: string; color: string; bg: string; onClick: () => void }[] = [
+  // El recaudo va TAPADO: el cliente ve la pantalla del funcionario y la plata del día no es
+  // asunto suyo. Se destapa solo mientras se mantiene presionado (ver MontoOculto).
+  const kpis: { label: string; value: React.ReactNode; sub?: React.ReactNode; color: string; bg: string; onClick: () => void }[] = [
     { label: "Pagan hoy", value: totalPaganHoy, color: "var(--accent)", bg: "var(--accent-soft2)", onClick: () => irAContratos("pagan-hoy") },
-    { label: "Recaudado hoy", value: `$${fmt(recaudadoHoyTotal)}`, sub: `Semana: $${fmt(recaudadoSemanaTotal)}`, color: "var(--ok-ink)", bg: "var(--ok-soft)", onClick: () => { if (puedeHistorial) { setActiveTab("historial"); setContratoSeleccionadoId(null); } } },
+    {
+      label: "Recaudado hoy",
+      value: <MontoOculto valor={recaudadoHoyTotal} />,
+      sub: <>Semana: <MontoOculto valor={recaudadoSemanaTotal} /></>,
+      color: "var(--ok-ink)", bg: "var(--ok-soft)",
+      onClick: () => { if (puedeHistorial) { setActiveTab("historial"); setContratoSeleccionadoId(null); } },
+    },
     { label: "En gabela", value: enGabela.length, color: "var(--warn-ink)", bg: "var(--warn-soft)", onClick: () => irAContratos("gabela") },
     { label: "En mora", value: enMora.length, color: "var(--bad-ink)", bg: "var(--bad-soft)", onClick: () => irAContratos("mora") },
   ];

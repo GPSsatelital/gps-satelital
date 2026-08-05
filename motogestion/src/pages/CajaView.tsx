@@ -539,6 +539,16 @@ export default function CajaView() {
             <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "var(--on-ink)", marginTop: 4 }}>${fmt(resumen.total)}</div>
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{resumen.confirmados} confirmados{filtroGrupo !== "todos" ? ` · ${filtroGrupo}` : ""}</div>
           </div>
+          {/* El total DE VERDAD que llegó al banco. Estaba solo en el Resumen del día, abajo, y
+              el número que todo el mundo mira es este de arriba: había que bajar la pantalla para
+              enterarse de que además entró plata sin dueño. Solo aparece cuando la hay. */}
+          {niDelDiaVista > 0 && (
+            <div style={{ flex: 1, minWidth: 120, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--warn-ink)", textTransform: "uppercase" }}>Llegó al banco</div>
+              <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "var(--warn-ink)", marginTop: 4 }}>${fmt(resumen.total + niDelDiaVista)}</div>
+              <div style={{ fontSize: 11, color: "var(--warn-ink)", opacity: 0.85, marginTop: 2 }}>+ ${fmt(niDelDiaVista)} sin dueño</div>
+            </div>
+          )}
         </div>
       </div>
 

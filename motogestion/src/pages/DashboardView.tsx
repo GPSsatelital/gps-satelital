@@ -11,6 +11,7 @@ import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados"
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
+import MontoOculto from "../components/MontoOculto";
 import { Badge } from "../components/atomos";
 import { esDiaDePago, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias, hoyDate } from "../utils/fecha";
@@ -396,13 +397,16 @@ const grupoActualStats = grupoSeleccionado === "todos"
             </span>
           )}
         </div>
-        <div style={{ fontSize: isMobile ? 36 : 48, fontWeight: 700, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
-          ${fmt(recaudoFiltrado.hoy)}
-        </div>
+        {/* Tapado hasta que se mantenga presionado: es el número más grande de la app y el que
+            cualquiera que pase por al lado alcanza a leer. Ver MontoOculto. */}
+        <MontoOculto
+          valor={recaudoFiltrado.hoy}
+          estilo={{ display: "block", fontSize: isMobile ? 36 : 48, fontWeight: 700, color: "var(--on-ink)", lineHeight: 1, letterSpacing: "-0.02em" }}
+        />
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 13, color: "var(--faint)" }}>
             Semana:&nbsp;
-            <span style={{ color: "var(--ok2)", fontWeight: 700 }}>${fmt(recaudoFiltrado.semana)}</span>
+            <MontoOculto valor={recaudoFiltrado.semana} estilo={{ color: "var(--ok2)", fontWeight: 700 }} />
             &nbsp;en pagos confirmados
           </div>
           <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 4 }}>

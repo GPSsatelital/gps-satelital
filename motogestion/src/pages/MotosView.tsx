@@ -578,7 +578,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1 }}>
             <div><Placa placa={selectedMoto.placa} grupo={selectedMoto.grupo} size="lg" /></div>
-            <div style={{ fontSize: 14, color: "var(--muted)" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
+            {/* El grupo ya lo pinta la Placa de arriba — acá salía repetido. */}
+            <div style={{ fontSize: 14, color: "var(--muted)" }}>{selectedMoto.marca} {selectedMoto.modelo}</div>
           </div>
           <StatusBadge status={selectedMoto.estado} />
         </div>

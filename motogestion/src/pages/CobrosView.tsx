@@ -56,7 +56,6 @@ import {
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, hoyMasDias } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
-import { COLOR_GRUPO } from "../styles/shared";
 import { ItemLista } from "../components/ListaEstandar";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -1683,16 +1682,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10, marginTop: 6, fontSize: 13 }}>
                 {motoDetalle && (
-                  /* El grupo va pegado bajo la placa: es una propiedad de la moto, y ahí se lee
-                     de una sin buscarlo entre los demás datos del contrato. */
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
-                      <Placa placa={motoDetalle.placa} grupo={motoDetalle.grupo} size="lg" />
-                    </button>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: COLOR_GRUPO[motoDetalle.grupo] ?? "var(--muted2)" }}>
-                      {motoDetalle.grupo}
-                    </span>
-                  </div>
+                  /* El grupo lo pinta el propio componente Placa (misma línea en toda la app).
+                     Acá había además una etiqueta de color aparte y salía repetido. */
+                  <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
+                    <Placa placa={motoDetalle.placa} grupo={motoDetalle.grupo} size="lg" />
+                  </button>
                 )}
                 {/* Tocar el número marca desde el celular: es la pantalla donde se persigue el pago. */}
                 {clienteDetalle?.telefono && (

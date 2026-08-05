@@ -69,6 +69,7 @@ export default function TarjetasLlavesView() {
     return cl?.nombre ?? "";
   }
   function placaDe(motoId: string) { return motos.find(m => m.id === motoId)?.placa ?? "—"; }
+  function grupoDe(motoId: string) { return motos.find(m => m.id === motoId)?.grupo ?? null; }
 
   const motosFiltradas = useMemo(() => {
     const q = buscaMoto.toLowerCase().trim();
@@ -146,7 +147,7 @@ export default function TarjetasLlavesView() {
             <label style={labelStyle}>Moto</label>
             {motoSel ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--soft2)", borderRadius: 10, padding: "8px 12px", boxSizing: "border-box" }}>
-                <Placa placa={motoSel.placa} size="sm" />
+                <Placa placa={motoSel.placa} grupo={motoSel.grupo} size="sm" />
                 <span style={{ fontSize: 13, color: "var(--muted2)", flex: 1, minWidth: 0 }}>{clienteDeMoto(motoSel.id) || "sin cliente"}</span>
                 <button onClick={() => { setMotoSel(null); setPrestadoA(""); }} style={{ ...secondaryBtn, fontSize: 12, padding: "4px 10px" }}>Cambiar</button>
               </div>
@@ -157,7 +158,7 @@ export default function TarjetasLlavesView() {
                   <div style={{ marginTop: 6, ...listaConScroll(isMobile), maxHeight: "30vh" }}>
                     {motosFiltradas.map(m => (
                       <div key={m.id} onClick={() => elegirMoto(m)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", cursor: "pointer", borderRadius: 8 }}>
-                        <Placa placa={m.placa} size="sm" />
+                        <Placa placa={m.placa} grupo={m.grupo} size="sm" />
                         <span style={{ fontSize: 13, color: "var(--muted2)" }}>{clienteDeMoto(m.id) || "sin cliente"}</span>
                       </div>
                     ))}
@@ -278,7 +279,7 @@ export default function TarjetasLlavesView() {
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
-                      <Placa placa={placaDe(p.moto_id)} size="sm" />
+                      <Placa placa={placaDe(p.moto_id)} grupo={grupoDe(p.moto_id)} size="sm" />
                       <span style={{ fontSize: 14, fontWeight: 700 }}>{ti.emoji} {ti.label}</span>
                     </div>
                     {devuelta ? (

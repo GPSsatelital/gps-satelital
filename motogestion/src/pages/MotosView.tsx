@@ -577,7 +577,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {/* Header moto */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ flex: 1 }}>
-            <div><Placa placa={selectedMoto.placa} size="lg" /></div>
+            <div><Placa placa={selectedMoto.placa} grupo={selectedMoto.grupo} size="lg" /></div>
             <div style={{ fontSize: 14, color: "var(--muted)" }}>{selectedMoto.marca} {selectedMoto.modelo} · {selectedMoto.grupo}</div>
           </div>
           <StatusBadge status={selectedMoto.estado} />
@@ -747,6 +747,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                       <ItemLista
                         key={moto.id}
                         placa={moto.placa}
+                        grupo={moto.grupo}
                         titulo={`${moto.marca} ${moto.modelo} · ${moto.grupo}`}
                         subtitulo={esAdminOSuperior ? (
                           <button
@@ -787,6 +788,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   <ItemLista
                     key={moto.id}
                     placa={moto.placa}
+                    grupo={moto.grupo}
                     titulo={`${moto.marca} ${moto.modelo} · ${moto.grupo}`}
                     subtitulo={esAdminOSuperior ? (
                       <button

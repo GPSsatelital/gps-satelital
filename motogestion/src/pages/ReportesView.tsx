@@ -302,7 +302,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                   const em = EST_META[m.estado];
                   return (
                     <div key={m.placa + i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" }}>
-                      <Placa placa={m.placa} size="sm" />
+                      <Placa placa={m.placa} grupo={m.grupo} size="sm" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</div>
                         <div style={{ fontSize: 10, fontWeight: 700, marginTop: 1, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>

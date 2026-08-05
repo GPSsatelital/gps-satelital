@@ -878,7 +878,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
                 >
                   <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                      {motoItem && <Placa placa={motoItem.placa} size="sm" />}
+                      {motoItem && <Placa placa={motoItem.placa} grupo={motoItem.grupo} size="sm" />}
                       <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
                         {clienteItem?.nombre ?? "Sin cliente"}
                       </span>

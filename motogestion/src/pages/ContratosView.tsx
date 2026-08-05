@@ -214,7 +214,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>CC {clienteDetalle.cedula}{clienteDetalle.telefono && ` · 📞 ${clienteDetalle.telefono}`}</div>
               {motoDetalle && (
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <Placa placa={motoDetalle.placa} size="lg" />
+                  <Placa placa={motoDetalle.placa} grupo={motoDetalle.grupo} size="lg" />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted2)" }}>{motoDetalle.marca} {motoDetalle.modelo}</span>
                 </div>
               )}
@@ -481,6 +481,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   <ItemLista
                     key={c.id}
                     placa={moto?.placa}
+                    grupo={moto?.grupo}
                     titulo={cliente?.nombre ?? "Sin cliente"}
                     subtitulo={`${moto ? "" : "Sin moto · "}${esDiario ? "Diario" : `${c.forma_pago} · Paga ${formatDiaPago(c)}`} · $ ${fmt(c.valor_semanal)}`}
                     right={<><ContractBadge estado={c.estado} /><VencimientoBadge contrato={c} /></>}

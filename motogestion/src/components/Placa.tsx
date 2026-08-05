@@ -4,7 +4,10 @@
 // calle. El amarillo es fijo (no cambia con el tema) — es el punto cálido
 // que guía el ojo también en modo noche.
 
-export default function Placa({ placa, size = "md" }: { placa: string; size?: "sm" | "md" | "lg" }) {
+// `grupo`: el portafolio al que pertenece la moto (COSTA/PRADERA/RASTREADOR/USADAS). Va DEBAJO
+// de la placa, chiquito, porque saber de qué bolsillo es la moto importa en casi toda pantalla y
+// antes había que abrir la ficha para averiguarlo. Si no se pasa, la placa se ve igual que antes.
+export default function Placa({ placa, size = "md", grupo }: { placa: string; size?: "sm" | "md" | "lg"; grupo?: string | null }) {
   // Letras grandes y gruesas que llenan el recuadro: font alto + padding chico
   // (el recuadro amarillo casi no crece, lo que crece son las letras).
   // minWidth = ancho fijo del recuadro por tamaño → las placas angostas (con I/1)
@@ -14,7 +17,7 @@ export default function Placa({ placa, size = "md" }: { placa: string; size?: "s
     : size === "lg"
       ? { fontSize: 19, padding: "5px 10px 4px", letterSpacing: 1.2, borderRadius: 8, minWidth: 92 }
       : { fontSize: 16, padding: "4px 8px 3px", letterSpacing: 1, borderRadius: 7, minWidth: 76 };
-  return (
+  const chapa = (
     <span
       style={{
         background: "#FFD100",
@@ -33,6 +36,29 @@ export default function Placa({ placa, size = "md" }: { placa: string; size?: "s
       }}
     >
       {placa}
+    </span>
+  );
+
+  if (!grupo) return chapa;
+
+  // Columna centrada del ancho de la chapa: el grupo no ensancha la fila ni descuadra las
+  // listas, solo agrega una línea debajo.
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1, verticalAlign: "middle" }}>
+      {chapa}
+      <span
+        style={{
+          fontSize: size === "lg" ? 10 : 9,
+          fontWeight: 700,
+          letterSpacing: 0.4,
+          lineHeight: 1,
+          color: "var(--muted)",
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {grupo}
+      </span>
     </span>
   );
 }

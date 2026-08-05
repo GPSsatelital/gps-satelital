@@ -396,7 +396,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
             {/* Misma jerarquía que el ticket impreso: la placa manda. */}
             {datos.placa && (
               <div style={{ marginTop: 8 }}>
-                <Placa placa={datos.placa} size="lg" />
+                <Placa placa={datos.placa} grupo={datos.grupo} size="lg" />
               </div>
             )}
           </div>
@@ -1687,7 +1687,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                      de una sin buscarlo entre los demás datos del contrato. */
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
                     <button onClick={() => onNavigate?.("ficha_moto", motoDetalle.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }} title="Ver ficha de la moto">
-                      <Placa placa={motoDetalle.placa} size="lg" />
+                      <Placa placa={motoDetalle.placa} grupo={motoDetalle.grupo} size="lg" />
                     </button>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: COLOR_GRUPO[motoDetalle.grupo] ?? "var(--muted2)" }}>
                       {motoDetalle.grupo}
@@ -2267,6 +2267,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             <ItemLista
               key={c.id}
               placa={moto?.placa}
+              grupo={moto?.grupo}
               titulo={cliente?.nombre || "Sin cliente"}
               subtitulo={<>
                 {c.suspendido && <span style={{ color: "var(--muted2)", fontWeight: 700 }}>🔒 Moto retenida · </span>}
@@ -2582,7 +2583,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                             {cliente?.nombre ?? "Sin cliente"}
                           </div>
                           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                            {moto && <><Placa placa={moto.placa} size="sm" /><span> · </span></>}
+                            {moto && <><Placa placa={moto.placa} grupo={moto.grupo} size="sm" /><span> · </span></>}
                             {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
                               ? <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
                               : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}</span>
@@ -2682,7 +2683,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                    {moto && <Placa placa={moto.placa} size="sm" />}
+                    {moto && <Placa placa={moto.placa} grupo={moto.grupo} size="sm" />}
                     <span>{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}</span>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
@@ -2876,7 +2877,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <div key={p.id} style={{ padding: "12px 14px", borderRadius: 14, background: p.estado === "Pendiente" ? "var(--warn-soft2)" : "var(--soft2)", border: p.estado === "Pendiente" ? "1px solid var(--warn-line)" : "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flexWrap: "wrap" }}>
-                      {moto && <Placa placa={moto.placa} size="sm" />}
+                      {moto && <Placa placa={moto.placa} grupo={moto.grupo} size="sm" />}
                       <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</span>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
@@ -2998,7 +2999,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         >
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                            {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} size="sm" /></div>}
+                            {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} grupo={moto.grupo} size="sm" /></div>}
                           </div>
                           <EstadoBadge estado={r.estadoCartera} />
                         </div>
@@ -3027,7 +3028,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <div style={{ display: "grid", gap: 12 }}>
                       <div style={{ padding: "10px 14px", background: "var(--soft2)", borderRadius: 12, border: "1px solid var(--line)" }}>
                         <div style={{ fontWeight: 700, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</div>
-                        {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} size="sm" /></div>}
+                        {moto && <div style={{ marginTop: 3 }}><Placa placa={moto.placa} grupo={moto.grupo} size="sm" /></div>}
                       </div>
 
                       {/* Referencia: cuánto debe pagar */}
@@ -3249,7 +3250,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   <EstadoBadge estado={modalContrato.estadoCartera as EstadoCartera} />
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
-                  {modalMoto && <Placa placa={modalMoto.placa} size="sm" />}
+                  {modalMoto && <Placa placa={modalMoto.placa} grupo={modalMoto.grupo} size="sm" />}
                   <span>
                     {modalContrato.forma_pago === "Diario" ? "Contrato diario" : "Pago semanal"}
                     {modalContrato.diasSinPago < 999 ? ` · ${modalContrato.diasSinPago} días sin pago` : ""}

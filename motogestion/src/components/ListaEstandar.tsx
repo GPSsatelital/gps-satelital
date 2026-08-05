@@ -42,9 +42,11 @@ export function ListBox({ isMobile, children, maxHeightVh, scrollRef }: {
 //  · extra    → contenido debajo, a todo el ancho (barra de progreso, botones…)
 //  · rielColor→ color del riel izquierdo (estado); si no, transparente
 export function ItemLista({
-  placa, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick,
+  placa, grupo, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick,
 }: {
   placa?: string;
+  // Portafolio de la moto: se pinta debajo de la placa (ver Placa.tsx).
+  grupo?: string | null;
   titulo: ReactNode;
   subtitulo?: ReactNode;
   right?: ReactNode;
@@ -71,7 +73,7 @@ export function ItemLista({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {placa && <Placa placa={placa} size="sm" />}
+        {placa && <Placa placa={placa} size="sm" grupo={grupo} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {titulo}

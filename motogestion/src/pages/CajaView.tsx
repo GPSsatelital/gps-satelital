@@ -522,7 +522,10 @@ export default function CajaView() {
             <div style={{ fontSize: 11, color: "var(--accent-ink)", opacity: 0.7, marginTop: 2 }}>{pagosTransfer.length} pagos</div>
           </div>
           <div style={{ flex: 1, minWidth: 120, background: "var(--ink)", borderRadius: 12, padding: "14px 16px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase" }}>Total general</div>
+            {/* "Cobrado a clientes", no "Total general": desde que se muestra aparte la plata que
+                entró al banco sin dueño, esta cifra ya no es el total de nada. Mismo nombre que
+                en el Resumen del día — dos nombres para el mismo número confunden. */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase" }}>Cobrado a clientes</div>
             <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "var(--on-ink)", marginTop: 4 }}>${fmt(resumen.total)}</div>
             <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{resumen.confirmados} confirmados{filtroGrupo !== "todos" ? ` · ${filtroGrupo}` : ""}</div>
           </div>
@@ -606,7 +609,7 @@ export default function CajaView() {
             })}
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>Total general del día</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>Cobrado a clientes — todos los grupos</span>
             <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(resumenDia.total)}</span>
           </div>
         </div>

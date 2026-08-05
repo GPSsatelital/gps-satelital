@@ -21,6 +21,7 @@ import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
+import { useCuentasBancarias, cuentasDelGrupo, textoCuentas } from "../hooks/useCuentasBancarias";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
@@ -554,6 +555,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { motos } = useMotos();
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
+  const { cuentas: cuentasBancarias } = useCuentasBancarias();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   const { render: renderMsg } = useMensajesWhatsapp();
@@ -1614,13 +1616,35 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       w.print();
     }
 
-    function enviarEstadoCuentaWhatsApp() {
+    function abrirWhatsApp(texto: string) {
       if (!clienteDetalle) return;
-      const texto = armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc);
       const num = (clienteDetalle.whatsapp || clienteDetalle.telefono || "").replace(/\D/g, "");
       const full = num.length === 10 ? `57${num}` : num;
       if (full.length >= 11) window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
       else alert("El cliente no tiene un número de WhatsApp válido registrado.");
+    }
+
+    function enviarEstadoCuentaWhatsApp() {
+      if (!clienteDetalle) return;
+      abrirWhatsApp(armarTextoEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc));
+    }
+
+    // Las cuentas de pago SIEMPRE salen del grupo de SU moto: mandarle las de otro portafolio
+    // haría que su plata cayera en el bolsillo equivocado y nadie sabría de quién es.
+    const cuentasDelCliente = cuentasDelGrupo(cuentasBancarias, motoDetalle?.grupo);
+    function enviarCuentasWhatsApp() {
+      if (!clienteDetalle) return;
+      if (cuentasDelCliente.length === 0) {
+        alert(motoDetalle?.grupo
+          ? `No hay cuentas registradas para el grupo ${motoDetalle.grupo}. Agrégalas en Configuración → Cuentas bancarias.`
+          : "Este contrato no tiene moto asignada, así que no se sabe a qué grupo pertenece.");
+        return;
+      }
+      abrirWhatsApp(renderMsg("cuentas_pago", {
+        nombre: clienteDetalle.nombre,
+        placa: motoDetalle?.placa ?? "",
+        cuentas: textoCuentas(cuentasDelCliente),
+      }));
     }
 
     return (
@@ -1693,6 +1717,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button onClick={imprimirEstadoCuenta} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📄 Estado de cuenta</button>
             <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "var(--ok-ink)" }}>📱 Enviar por WhatsApp</button>
+            <button onClick={enviarCuentasWhatsApp}
+              title={cuentasDelCliente.length > 0
+                ? `Le manda las ${cuentasDelCliente.length} cuenta(s) de ${motoDetalle?.grupo}`
+                : "No hay cuentas registradas para el grupo de esta moto"}
+              style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "var(--accent-ink)" }}>
+              🏦 Cuentas para pagar
+            </button>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted2)", cursor: "pointer" }} title="Si lo marcas, el ahorro sale en el impreso/compartido. Por defecto no se le muestra al cliente.">
               <input type="checkbox" checked={incluirAhorroDoc} onChange={e => setIncluirAhorroDoc(e.target.checked)} style={{ cursor: "pointer" }} />
               Incluir ahorro

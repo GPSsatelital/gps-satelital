@@ -41,6 +41,13 @@ export function cuentasDelGrupo(cuentas: CuentaBancaria[], grupo: string | null 
     .sort((a, b) => a.orden - b.orden || a.banco.localeCompare(b.banco));
 }
 
+/** Las cuentas listas para pegar en un mensaje de WhatsApp, una por línea. */
+export function textoCuentas(cuentas: CuentaBancaria[]): string {
+  return cuentas
+    .map(c => `• ${c.banco}${c.tipo ? ` (${c.tipo})` : ""}: ${c.numero}${c.titular ? ` — ${c.titular}` : ""}`)
+    .join("\n");
+}
+
 export function useCuentasBancarias() {
   const { data: cuentas, loading } = store.useStore();
   const activas = cuentas.filter(c => c.activa).sort((a, b) => a.orden - b.orden || a.banco.localeCompare(b.banco));

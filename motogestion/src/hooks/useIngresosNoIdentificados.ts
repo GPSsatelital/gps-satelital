@@ -18,6 +18,9 @@ export type IngresoNoIdentificado = {
   registrado_por: string | null;
   nota: string | null;
   comprobante_url: string | null;  // foto del extracto donde aparece (mig 072) — obligatoria
+  // A qué cuenta de la empresa cayó (mig 081). Es el HECHO que se lee del extracto; el `grupo`
+  // de arriba es la deducción, y solo se puede hacer si esa cuenta es de un único portafolio.
+  cuenta_id: string | null;
   created_at: string;
 };
 
@@ -68,6 +71,7 @@ export function useIngresosNoIdentificados() {
     monto: number;
     referencia: string;
     grupo?: string | null;
+    cuenta_id?: string | null;
     nota?: string;
     registrado_por?: string | null;
     comprobante_url?: string | null;
@@ -77,6 +81,7 @@ export function useIngresosNoIdentificados() {
       monto: datos.monto,
       referencia: datos.referencia.trim(),
       grupo: datos.grupo ?? null,
+      cuenta_id: datos.cuenta_id ?? null,
       nota: datos.nota ?? null,
       registrado_por: datos.registrado_por ?? null,
       comprobante_url: datos.comprobante_url ?? null,

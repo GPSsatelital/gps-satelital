@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase";
 // en la tabla mensajes_whatsapp. Comodines: {nombre} {placa} {dias} {valor}
 // (y {folio} {fecha} {detalle} en el recibo).
 
-export type ClaveMensaje = "dia_pago" | "gabela" | "mora" | "recoleccion" | "recibo";
+export type ClaveMensaje = "dia_pago" | "gabela" | "mora" | "recoleccion" | "recibo" | "cuentas_pago";
 
 export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: string; comodines: string[] }[] = [
   { clave: "dia_pago",    label: "Día de pago",  descripcion: "Recordatorio el día que le toca pagar.", comodines: ["{nombre}", "{placa}", "{valor}"] },
@@ -14,6 +14,7 @@ export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: s
   { clave: "mora",        label: "Mora",         descripcion: "Cuando ya está en mora (después de la gabela).", comodines: ["{nombre}", "{placa}", "{dias}", "{valor}"] },
   { clave: "recoleccion", label: "Recolección",  descripcion: "Último aviso antes de recoger la moto.", comodines: ["{nombre}", "{placa}", "{dias}", "{valor}"] },
   { clave: "recibo",      label: "Recibo de pago", descripcion: "Comprobante que se envía tras registrar un pago. {detalle} inserta el desglose automático.", comodines: ["{nombre}", "{valor}", "{folio}", "{fecha}", "{detalle}"] },
+  { clave: "cuentas_pago", label: "Cuentas para pagar", descripcion: "Le dice al cliente a qué cuentas puede transferir. {cuentas} las inserta solas, según el grupo de SU moto — nunca las de otro portafolio.", comodines: ["{nombre}", "{placa}", "{cuentas}"] },
 ];
 
 // Texto por defecto — respaldo si la tabla aún no tiene el mensaje (o antes de correr la mig 039).
@@ -23,6 +24,7 @@ export const MENSAJES_DEFAULT: Record<ClaveMensaje, string> = {
   mora:        "Hola {nombre}, lleva {dias} días de mora. Por favor comuníquese urgente con nosotros para regularizar su pago. GPS Satelital ⚠️",
   recoleccion: "Hola {nombre}, su moto de placa {placa} presenta {dias} días de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. GPS Satelital ⚠️",
   recibo:      "🧾 *GPS SATELITAL — Comprobante de pago*{detalle}",
+  cuentas_pago: "Hola {nombre}, estas son las cuentas donde puede hacer el pago de su moto {placa}:\n\n{cuentas}\n\nCuando transfiera, envíenos la foto del comprobante con el número de referencia para poder acreditarle el pago. GPS Satelital 🏍️",
 };
 
 // Reemplaza los comodines {x} por sus valores reales.

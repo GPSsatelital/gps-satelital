@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja, cierreDesactualizado } from "../hooks/useCaja";
 import { useIngresosNoIdentificados, normalizarRef, pagoQueYaLaReclama } from "../hooks/useIngresosNoIdentificados";
+import { useCuentasBancarias, grupoDeCuenta } from "../hooks/useCuentasBancarias";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -30,7 +31,9 @@ export default function CajaView() {
   const [openNI, setOpenNI] = useState(false);
   const [guardandoNI, setGuardandoNI] = useState(false);
   const [errorNI, setErrorNI] = useState<string | null>(null);
-  const [formNI, setFormNI] = useState({ fecha_banco: "", monto: "", referencia: "", nota: "" });
+  // `cuenta_id` = a qué cuenta cayó, que es lo que la secretaria está leyendo del extracto.
+  // El grupo ya NO se hereda del filtro de la pantalla: se deduce de la cuenta cuando se puede.
+  const [formNI, setFormNI] = useState({ fecha_banco: "", monto: "", referencia: "", nota: "", cuenta_id: "" });
   // Foto del extracto: obligatoria, igual que en cualquier transferencia. Es la prueba de que
   // esa plata entró, para el día que aparezca el dueño meses después.
   const [comprobanteNI, setComprobanteNI] = useState<File | null>(null);
@@ -58,6 +61,7 @@ export default function CajaView() {
   const { prestamos } = usePrestamos();
   const { cerrarCaja, cajaDia } = useCaja();
   const { pendientes: pendientesNI, registrar: registrarNI, eliminar: eliminarNI } = useIngresosNoIdentificados();
+  const { activas: cuentasActivas } = useCuentasBancarias();
 
   const pagosDia = useMemo(() =>
     // esPagoDeCaja: los pagos internos (adelanto de base) NO entran a la caja diaria.
@@ -591,7 +595,7 @@ export default function CajaView() {
             </div>
           </div>
           {puedeCerrarCaja && (
-            <button onClick={() => { setFormNI({ fecha_banco: fecha, monto: "", referencia: "", nota: "" }); setErrorNI(null); setOpenNI(true); }}
+            <button onClick={() => { setFormNI({ fecha_banco: fecha, monto: "", referencia: "", nota: "", cuenta_id: "" }); setErrorNI(null); setOpenNI(true); }}
               style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "var(--warn-ink)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
               + Registrar transferencia sin identificar
             </button>
@@ -617,6 +621,7 @@ export default function CajaView() {
                     <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 2 }}>
                       Entró el {new Date(i.fecha_banco + "T00:00:00").toLocaleDateString("es-CO")}
                       {dias > 0 && ` · hace ${dias} día${dias === 1 ? "" : "s"}`}
+                      {i.grupo ? ` · ${i.grupo}` : " · sin grupo"}
                       {i.nota ? ` · ${i.nota}` : ""}
                     </div>
                   </div>
@@ -879,6 +884,46 @@ export default function CajaView() {
                   Es la prueba de que ese dinero entró. Cuando aparezca el dueño —quizá meses después— la referencia sola no basta.
                 </div>
               </div>
+              {/* El hecho que se lee del extracto es la CUENTA. El grupo es una deducción y el
+                  sistema la hace solo cuando esa cuenta pertenece a un único portafolio. */}
+              <div>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>¿A cuál cuenta entró?</label>
+                <select value={formNI.cuenta_id}
+                  onChange={e => setFormNI(f => ({ ...f, cuenta_id: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, background: "var(--card)", color: "var(--text)" }}>
+                  <option value="">No sé / no aparece en la lista</option>
+                  {cuentasActivas.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.banco}{c.tipo ? ` ${c.tipo}` : ""} · {c.numero} — {c.grupos.join(" · ")}
+                    </option>
+                  ))}
+                </select>
+                {(() => {
+                  const cta = cuentasActivas.find(c => c.id === formNI.cuenta_id);
+                  const g = grupoDeCuenta(cta);
+                  if (!cta) {
+                    return cuentasActivas.length === 0 ? (
+                      <div style={{ fontSize: 11, color: "var(--warn-ink)", marginTop: 4 }}>
+                        Todavía no hay cuentas registradas — se agregan en Configuración → Cuentas bancarias.
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>
+                        Si no lo marcas, la partida queda sin grupo hasta que aparezca el dueño.
+                      </div>
+                    );
+                  }
+                  return g ? (
+                    <div style={{ fontSize: 11.5, color: "var(--ok-ink)", marginTop: 4, fontWeight: 600 }}>
+                      Esa cuenta es solo de <strong>{g}</strong>: la partida queda marcada de ese grupo.
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: "var(--warn-ink)", marginTop: 4, fontWeight: 600, lineHeight: 1.45 }}>
+                      Esa cuenta la comparten {cta.grupos.join(" y ")}: no se puede saber de cuál es
+                      esta plata hasta que el cliente la reclame. Queda sin grupo, que es la verdad.
+                    </div>
+                  );
+                })()}
+              </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Nota (opcional)</label>
                 <input value={formNI.nota} placeholder="Ej. dice “JOSE P.” en el extracto"
@@ -910,9 +955,14 @@ export default function CajaView() {
                       comprobanteNI, `sin-identificar/${normalizarRef(formNI.referencia)}`,
                     );
                     if (upErr) { setErrorNI("Error subiendo la foto: " + upErr); return; }
+                    // El grupo sale de la CUENTA, no del filtro que la pantalla tenga puesto:
+                    // antes una plata de PRADERA quedaba marcada COSTA solo porque la secretaria
+                    // estaba mirando COSTA. Si la cuenta es compartida, queda null a propósito.
+                    const cuentaSel = cuentasActivas.find(c => c.id === formNI.cuenta_id) ?? null;
                     const { error } = await registrarNI({
                       fecha_banco: formNI.fecha_banco, monto, referencia: formNI.referencia,
-                      grupo: filtroGrupo === "todos" ? null : filtroGrupo,
+                      grupo: grupoDeCuenta(cuentaSel),
+                      cuenta_id: cuentaSel?.id ?? null,
                       nota: formNI.nota.trim() || undefined,
                       registrado_por: profile?.id ?? null,
                       comprobante_url: url,

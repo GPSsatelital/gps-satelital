@@ -5,6 +5,7 @@ import type { Role } from "../contexts/AuthContext";
 import type { ViewKey } from "../App";
 import { MODULOS_ASIGNABLES, ACCESOS_SUGERIDOS } from "../lib/modulos";
 import { useMensajesWhatsapp, MENSAJES_META, type ClaveMensaje } from "../hooks/useMensajesWhatsapp";
+import { useCuentasBancarias, type CuentaBancaria } from "../hooks/useCuentasBancarias";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../lib/theme";
 
 // ── Estilos compartidos ────────────────────────────────────────────────────────
@@ -558,6 +559,9 @@ export default function ConfiguracionView() {
         )}
       </div>
 
+      {/* ── Cuentas bancarias (solo admins) ── */}
+      {puedeEditarConfig && <SeccionCuentasBancarias />}
+
       {/* ── Mensajes de WhatsApp (solo admins) ── */}
       {puedeEditarConfig && <SeccionMensajesWhatsapp />}
 
@@ -619,6 +623,187 @@ function SeccionApariencia() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Sección: cuentas bancarias de la empresa (mig 080) ─────────────────────────
+// Antes solo vivían en la cabeza de la gente. Guardarlas permite saber a qué portafolio
+// pertenece una transferencia (cuando la cuenta es de un solo grupo) y, más adelante,
+// decirle al cliente por WhatsApp a dónde pagar.
+const GRUPOS_CUENTA = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"] as const;
+
+const FORM_VACIO = { banco: "", tipo: "Nequi", numero: "", titular: "", grupos: [] as string[], orden: 0 };
+
+function SeccionCuentasBancarias() {
+  const { cuentas, loading, crear, actualizar, desactivar } = useCuentasBancarias();
+  const [form, setForm] = useState(FORM_VACIO);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [abierto, setAbierto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const ordenadas = [...cuentas].sort((a, b) =>
+    Number(b.activa) - Number(a.activa) || a.orden - b.orden || a.banco.localeCompare(b.banco));
+
+  function abrirNueva() {
+    setForm(FORM_VACIO); setEditandoId(null); setError(null); setAbierto(true);
+  }
+
+  function abrirEdicion(c: CuentaBancaria) {
+    setForm({ banco: c.banco, tipo: c.tipo ?? "", numero: c.numero, titular: c.titular ?? "", grupos: c.grupos, orden: c.orden });
+    setEditandoId(c.id); setError(null); setAbierto(true);
+  }
+
+  function toggleGrupo(g: string) {
+    setForm(f => ({ ...f, grupos: f.grupos.includes(g) ? f.grupos.filter(x => x !== g) : [...f.grupos, g] }));
+  }
+
+  async function guardar() {
+    if (guardando) return;
+    if (!form.banco.trim()) { setError("Escribe el banco (Bancolombia, Nequi...)."); return; }
+    if (!form.numero.trim()) { setError("Escribe el número de la cuenta."); return; }
+    // Sin grupo la cuenta no sirve para nada de lo que se construyó alrededor.
+    if (form.grupos.length === 0) { setError("Marca al menos un grupo que reciba plata en esta cuenta."); return; }
+    setGuardando(true); setError(null);
+    try {
+      const datos = {
+        banco: form.banco.trim(), tipo: form.tipo.trim() || null, numero: form.numero.trim(),
+        titular: form.titular.trim() || null, grupos: form.grupos, activa: true, orden: Number(form.orden) || 0,
+      };
+      const { error: err } = editandoId ? await actualizar(editandoId, datos) : await crear(datos);
+      if (err) { setError(err); return; }
+      setAbierto(false); setForm(FORM_VACIO); setEditandoId(null);
+    } finally { setGuardando(false); }
+  }
+
+  return (
+    <div style={card}>
+      <div style={sectionTitle}>🏦 Cuentas bancarias</div>
+      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
+        Las cuentas a las que los clientes transfieren. Marca qué grupos reciben en cada una:
+        cuando una cuenta es de <strong>un solo grupo</strong>, el sistema sabe de qué portafolio
+        es la plata con solo ver dónde cayó. Si dos grupos comparten cuenta, márcalos a los dos —
+        ahí no se puede saber hasta que el cliente reclame.
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: 13, color: "var(--faint)" }}>Cargando...</div>
+      ) : ordenadas.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--faint)", padding: "10px 0" }}>Todavía no hay cuentas registradas.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+          {ordenadas.map(c => (
+            <div key={c.id} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
+              padding: "11px 13px", borderRadius: 12, border: "1px solid var(--line)",
+              background: c.activa ? "var(--soft2)" : "transparent", opacity: c.activa ? 1 : 0.55,
+            }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                  {c.banco}{c.tipo ? ` · ${c.tipo}` : ""} — {c.numero}
+                  {!c.activa && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)" }}> (inactiva)</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+                  {c.titular ? `${c.titular} · ` : ""}
+                  {c.grupos.length === 1
+                    ? <>Recibe de <strong>{c.grupos[0]}</strong></>
+                    : <>Compartida: <strong>{c.grupos.join(" · ")}</strong></>}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <button onClick={() => abrirEdicion(c)}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  Editar
+                </button>
+                {c.activa && (
+                  <button onClick={async () => {
+                    if (!confirm(`¿Desactivar ${c.banco} ${c.numero}? Deja de ofrecerse, pero no se borra: los registros viejos la siguen nombrando.`)) return;
+                    await desactivar(c.id);
+                  }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    Desactivar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!abierto ? (
+        <button onClick={abrirNueva}
+          style={{ padding: "9px 16px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--card)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          + Agregar cuenta
+        </button>
+      ) : (
+        <div style={{ padding: "14px 15px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--soft2)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>
+            {editandoId ? "Editar cuenta" : "Nueva cuenta"}
+          </div>
+          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 130 }}>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Banco</label>
+                <input value={form.banco} placeholder="Bancolombia / Nequi"
+                  onChange={e => setForm(f => ({ ...f, banco: e.target.value }))} style={inputStyle} />
+              </div>
+              <div style={{ flex: 1, minWidth: 130 }}>
+                <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Tipo</label>
+                <input value={form.tipo} placeholder="Ahorros / Nequi"
+                  onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} style={inputStyle} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Número de la cuenta</label>
+              <input value={form.numero} placeholder="El que se le da al cliente"
+                onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>A nombre de (opcional)</label>
+              <input value={form.titular} placeholder="Titular de la cuenta"
+                onChange={e => setForm(f => ({ ...f, titular: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 6 }}>
+                ¿Qué grupos reciben plata en esta cuenta?
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {GRUPOS_CUENTA.map(g => {
+                  const activo = form.grupos.includes(g);
+                  return (
+                    <button key={g} onClick={() => toggleGrupo(g)}
+                      style={{
+                        padding: "7px 14px", borderRadius: 999, cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+                        border: activo ? "2px solid var(--accent)" : "1.5px solid var(--line)",
+                        background: activo ? "var(--accent-soft)" : "var(--card)",
+                        color: activo ? "var(--accent-ink)" : "var(--muted2)",
+                      }}>
+                      {activo ? "✓ " : ""}{g}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.grupos.length > 1 && (
+                <div style={{ fontSize: 11.5, color: "var(--warn-ink)", marginTop: 7, lineHeight: 1.45 }}>
+                  Cuenta compartida: cuando entre plata aquí sin que nadie la reclame, el sistema
+                  no podrá saber de cuál de estos grupos es — quedará como "todavía no se sabe".
+                </div>
+              )}
+            </div>
+          </div>
+          {error && <div style={{ marginBottom: 10, fontSize: 12.5, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "8px 10px" }}>{error}</div>}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { setAbierto(false); setError(null); }}
+              style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--muted2)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              Cancelar
+            </button>
+            <button onClick={guardar} disabled={guardando}
+              style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13, cursor: guardando ? "not-allowed" : "pointer", opacity: guardando ? 0.6 : 1 }}>
+              {guardando ? "Guardando..." : editandoId ? "Guardar cambios" : "Agregar cuenta"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

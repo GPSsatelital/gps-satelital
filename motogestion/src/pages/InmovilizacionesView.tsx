@@ -262,9 +262,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     marca: string;
     modelo: string;
     deudasPendientes: { id: string; concepto: string; descripcion: string; monto_pendiente: number }[];
-    totalPendiente: number;      // solo deudas registradas (multa, etc.)
+    totalPendiente: number;      // TODAS las deudas registradas (multa + las demás)
+    // La multa por ir a buscar la moto es lo ÚNICO obligatorio en efectivo para llevársela
+    // (regla del dueño). Todo lo demás —deudas viejas y cuotas atrasadas— se puede conveniar.
+    multaPendiente: number;
+    otrasDeudas: number;         // deudas registradas que NO son la multa → van al convenio
     cuotasAtrasadas: number;     // cuotas del período sin pagar (ledger FIFO)
     totalRecuperar: number;      // deudas + cuotas atrasadas → lo que debe para recuperar la moto
+    conveniable: number;         // otras deudas + cuotas atrasadas → la meta del convenio
     motorV2: boolean;
     convenioId: string | null;
     diasRetenida: number;
@@ -317,6 +322,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           ? Math.floor((hoyMs - new Date(recoleccionG.fecha + "T00:00:00").getTime()) / 86400000)
           : 0;
         const totalDeudas = deudasC.reduce((acc, d) => acc + d.monto_pendiente, 0);
+        // La multa aparte: es lo único que se exige en EFECTIVO para llevarse la moto. El resto
+        // de deudas se financia en el convenio, igual que las cuotas atrasadas.
+        const multaDeuda = deudasC
+          .filter(d => d.concepto === "multa_recoleccion")
+          .reduce((acc, d) => acc + d.monto_pendiente, 0);
         // Cuotas atrasadas: para recuperar la moto debe ponerse al día con las cuotas (el
         // tiempo retenido se cobra igual) + la multa. Motor v2 → hueco del ledger FIFO;
         // los pocos sin motor → cuota del período menos lo pagado.
@@ -340,8 +350,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           modelo: moto?.modelo ?? "",
           deudasPendientes: deudasC.map(d => ({ id: d.id, concepto: d.concepto, descripcion: d.descripcion, monto_pendiente: d.monto_pendiente })),
           totalPendiente: totalDeudas,
+          multaPendiente: multaDeuda,
+          otrasDeudas: totalDeudas - multaDeuda,
           cuotasAtrasadas,
           totalRecuperar: totalDeudas + cuotasAtrasadas,
+          conveniable: (totalDeudas - multaDeuda) + cuotasAtrasadas,
           motorV2,
           convenioId: convenioAct?.id ?? null,
           diasRetenida,
@@ -444,12 +457,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return rec ? rec.created_at.slice(0, 10) : hoyISO();
   };
 
-  // Puede entregarse la moto cuando: la MULTA (y deudas registradas) está paga Y las
-  // cuotas atrasadas están pagas O financiadas por un convenio activo. La multa es el
-  // mínimo obligatorio; lo atrasado puede quedar en convenio. Las TEMPORAL no son morosas:
-  // se pueden reactivar siempre (el tiempo guardado se resuelve aparte con cobrar/rodar).
+  // Puede entregarse la moto cuando: la MULTA está paga en efectivo Y lo demás (deudas viejas
+  // + cuotas atrasadas) está pago O financiado por un convenio activo.
+  // Antes se exigían TODAS las deudas en efectivo, y eso dejaba sin salida a un cliente con una
+  // deuda vieja grande: nadie va a pagar $880.000 de contado para llevarse la moto, y el botón
+  // de convenio tampoco aparecía. La regla del dueño siempre fue: la multa es el mínimo
+  // obligatorio, el resto se convenía. Las TEMPORAL no son morosas: se reactivan siempre.
   const puedeEntregar = (m: MotoRetenida) =>
-    m.esTemporal || (m.totalPendiente <= 0 && (m.cuotasAtrasadas <= 0 || m.convenioId != null));
+    m.esTemporal || (m.multaPendiente <= 0 && (m.conveniable <= 0 || m.convenioId != null));
 
   async function handleCobrarRecuperar() {
     if (!cobroRec || cobroProc || !profile) return;
@@ -860,12 +875,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         <div style={{ display: "grid", gap: 10, marginBottom: isMobile ? 16 : 28 }}>
           {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
             const entregable = puedeEntregar(m);
-            const faltaMulta = m.totalPendiente > 0;
-            // La multa (y cualquier deuda pendiente) es el mínimo obligatorio EN EFECTIVO para
-            // recuperar la moto — se cobra ANTES de conveniar. Si se dejara conveniar con la multa
-            // pendiente, el trigger 054 la marcaría 'en_convenio' pero la meta del convenio solo
-            // cubre las cuotas atrasadas (no la multa) → la multa se perdería. Por eso: multa primero.
-            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.cuotasAtrasadas > 0 && m.convenioId == null && !faltaMulta;
+            // Solo la MULTA se exige en efectivo — es lo que cuesta haber ido a buscar la moto.
+            // Se cobra ANTES de conveniar: si se conveniara con la multa pendiente, el trigger
+            // 054 la marcaría 'en_convenio' pero no está dentro de la meta → se perdería.
+            // Las demás deudas SÍ entran al convenio (van en `conveniable`), que es lo que
+            // permite entregarle la moto a alguien que arrastra una deuda vieja grande.
+            const faltaMulta = m.multaPendiente > 0;
+            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.conveniable > 0 && m.convenioId == null && !faltaMulta;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
@@ -897,8 +913,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                             : entregable
                               ? "✓ Listo para entregar"
                               : faltaMulta
-                                ? `Mínimo para recuperar (multa/deudas): $${fmt(m.totalPendiente)}`
-                                : `Faltan cuotas atrasadas: $${fmt(m.cuotasAtrasadas)} — págalas o deja un convenio`}
+                                ? `Primero la multa, en efectivo: $${fmt(m.multaPendiente)}`
+                                : `Falta $${fmt(m.conveniable)} — págalo o déjalo en un convenio`}
                       </div>
                       {/* Una moto guardada temporal se puede entregar SIEMPRE (el cliente no
                           incumplió: la dejó él mismo). Pero si además debe plata, esa deuda no
@@ -959,7 +975,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     )}
                     {!m.soloInfoTaller && !entregable && (
                       <button
-                        onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.totalPendiente : m.totalRecuperar)); setCobroErr(null); }}
+                        /* Si falta la multa, propone SOLO la multa: es el mínimo para llevarse la
+                           moto y lo demás puede ir al convenio. Si ya está paga, propone todo lo
+                           que debe, por si el cliente quiere ponerse al día de una. */
+                        onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.multaPendiente : m.totalRecuperar)); setCobroErr(null); }}
                         disabled={procesandoEsta}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)" }}
                       >
@@ -1112,15 +1131,19 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         </>
       )}
 
-      {/* Convenio para financiar las cuotas atrasadas de una moto retenida */}
+      {/* Convenio para recuperar una moto retenida.
+          `conveniable` = cuotas atrasadas + deudas viejas. La MULTA no entra: esa se paga en
+          efectivo antes y sin ella no aparece este botón. Antes la meta traía solo las cuotas
+          atrasadas, así que una deuda vieja quedaba FUERA del monto pero el trigger 054 la
+          marcaba 'en_convenio' igual — y esa plata se perdía. */}
       {convenioRec && (
         <ModalConvenio
           contratoId={convenioRec.contratoId}
           clienteNombre={convenioRec.clienteNombre}
-          metaFija={convenioRec.cuotasAtrasadas}
+          metaFija={convenioRec.conveniable}
           // Acá SÍ se ajusta a propósito: la regla del dueño es que el mínimo obligatorio es la
           // multa y el resto se financia pidiéndole lo máximo que pueda dar.
-          metaNota="lo que tiene atrasado"
+          metaNota="lo que tiene atrasado más sus deudas"
           motivoInicial="Convenio para recuperar moto retenida"
           onClose={() => setConvenioRec(null)}
         />

@@ -18,6 +18,19 @@
 
 import type { EstadoCartera } from "./cicloPago";
 
+/**
+ * Lo que se le cobra al cliente cuando hay que ir a buscar la moto (recolección o retención).
+ * Es el costo del movimiento de personal, y se cobra CADA VEZ que se recoge — no una sola vez.
+ *
+ * Vive acá, en un solo lugar, porque antes estaba escrito a mano en dos inserciones y en tres
+ * textos de pantalla: cambiar el valor obligaba a acordarse de los cinco, y el día que a alguien
+ * se le escapara uno, la pantalla diría un precio y la deuda tendría otro.
+ *
+ * Subió de $20.000 a $30.000 el 5-ago-2026 (decisión del dueño). Las multas ya creadas conservan
+ * el valor que tenían: esto solo aplica a las nuevas.
+ */
+export const MULTA_RECOLECCION = 30000;
+
 export type RazonInmovilizar = "mora" | "gabela" | "deuda";
 
 /** Rótulo corto para mostrar POR QUÉ se habilitó (queda en pantalla y en la gestión). */

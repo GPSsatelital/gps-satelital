@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useUbicaciones, type UbicacionFisica, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useContratos } from "../hooks/useContratos";
+import { MULTA_RECOLECCION } from "../utils/inmovilizacion";
 import { useDeudas } from "../hooks/useDeudas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,7 +13,7 @@ import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "./FotosAngulos";
 // Formulario combinado de recolección por mora: UN solo guardado encadena todo —
 // registra la recepción del vehículo (fotos, condición, km, destino), suspende el
 // contrato, marca la moto Recuperada (o Mantenimiento si entra directo a taller),
-// crea la multa de $20.000 y deja la gestión tipo "recoleccion" registrada.
+// crea la multa de recolección (ver MULTA_RECOLECCION) y deja la gestión tipo "recoleccion".
 // Reemplaza el confirm() simple que hacía todo sin evidencia.
 
 interface Props {
@@ -113,7 +114,7 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
 
       // 4. Multa de recolección (se cobra cada vez que se recolecta)
       const { error: errDeuda } = await registrarDeuda(
-        contratoId, "multa_recoleccion", "Multa por recolección/inmovilización", 20000, profile.id,
+        contratoId, "multa_recoleccion", "Multa por recolección/inmovilización", MULTA_RECOLECCION, profile.id,
       );
       if (errDeuda) { setError("Error al registrar la multa: " + errDeuda); return; }
 
@@ -144,7 +145,7 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
         </div>
 
         <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>
-          Al guardar: el contrato queda Suspendido, la moto Recuperada, y se crea la multa de $20.000 — todo en un solo paso.
+          Al guardar: el contrato queda Suspendido, la moto Recuperada, y se crea la multa de ${MULTA_RECOLECCION.toLocaleString("es-CO")} — todo en un solo paso.
         </div>
 
         <div>

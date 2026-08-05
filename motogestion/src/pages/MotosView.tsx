@@ -24,7 +24,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
-import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL } from "../utils/inmovilizacion";
+import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL, MULTA_RECOLECCION } from "../utils/inmovilizacion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
@@ -435,8 +435,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         const { error: errSusp } = await suspenderContrato(contratoActivo.id, selectedMoto.id, "temporal");
         if (errSusp) { setGuardando(false); setMsgDetalle("Recepción registrada, pero falló suspender el contrato: " + errSusp); return; }
         if (recFueBuscada) {
-          await registrarDeuda(contratoActivo.id, "multa_recoleccion", "Costo por movimiento de personal (recolección)", 20000, profile.id);
-          msgFinal = "Entrega registrada, contrato suspendido y costo de $20.000 aplicado (se fue a buscar).";
+          await registrarDeuda(contratoActivo.id, "multa_recoleccion", "Costo por movimiento de personal (recolección)", MULTA_RECOLECCION, profile.id);
+          msgFinal = `Entrega registrada, contrato suspendido y costo de $${MULTA_RECOLECCION.toLocaleString("es-CO")} aplicado (se fue a buscar).`;
         } else {
           msgFinal = "Entrega registrada y contrato suspendido — sin costo (la trajo el cliente).";
         }
@@ -1261,8 +1261,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             icono: "🚚", titulo: "Inmovilizar por incumplimiento",
             enabled: puedeRecolectar && !!contratoActivo && !!razonInmovilizarMoto?.razon,
             desc: razonInmovilizarMoto?.razon
-              ? `El cliente está ${RAZON_INMOVILIZAR_LABEL[razonInmovilizarMoto.razon]}. Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.`
-              : "Suspende el contrato, crea la multa de $20.000 y pide 6 fotos.",
+              ? `El cliente está ${RAZON_INMOVILIZAR_LABEL[razonInmovilizarMoto.razon]}. Suspende el contrato, crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`
+              : `Suspende el contrato, crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`,
             motivoOff: !puedeRecolectar ? "No tienes permiso para recolectar motos"
               : !contratoActivo ? "La moto no tiene un contrato activo"
               : motivoNoInmovilizable(razonInmovilizarMoto?.estado ?? "al-dia", razonInmovilizarMoto?.deudaPend ?? 0),

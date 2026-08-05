@@ -44,6 +44,7 @@ import {
   ahorroPeriodoExacto,
   huecoCuotasHoy,
   desgloseExigible,
+  cajasExigidasHasta,
   estaEnProrrateo,
   esDiaDePago,
   inicioPeriodoActual,
@@ -54,7 +55,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
-import { hoyISO, hoyDate, hoyMasDias } from "../utils/fecha";
+import { hoyISO, hoyDate, hoyMasDias, fechaISO } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
 
@@ -1712,7 +1713,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   </span>
                 </div>
               )}
-              {contratoDetalle.motor_v2 && (contratoDetalle.total_cajas ?? 0) > 0 && (
+              {/* Solo en los que nacieron en el sistema. En un MIGRADO el contador arranca en el
+                  día del corte, no en el primer día del contrato: decir "va 2 de 104" cuando el
+                  cliente lleva año y medio pagando es mentira, y confunde más de lo que informa.
+                  Decisión del dueño, 5-ago. */}
+              {contratoDetalle.motor_v2 && !contratoDetalle.es_migrado && (contratoDetalle.total_cajas ?? 0) > 0 && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-ink)", marginTop: 2 }}>
                   📦 Va {contratoDetalle.cajas_pagadas ?? 0} de {contratoDetalle.total_cajas} cuotas pagadas
                 </div>
@@ -1831,15 +1836,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <span>Prorrateo inicial</span><strong>$ {fmt(prorrateoDebe)}</strong>
                   </div>
                 )}
-                {periodosDebe.map((p, i) => (
-                  <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)", fontWeight: i === 0 ? 700 : 400 }}>
-                    <span style={{ minWidth: 0 }}>
-                      Cuota {fmtFecha(p.fecha)}{p.parcial ? " (parcial)" : ""}
-                      <span style={{ color: p.diasVencida > 0 ? "var(--bad-ink)" : "var(--orange)", fontWeight: 700 }}> · {p.diasVencida > 0 ? `${p.diasVencida}d vencida` : "vence hoy"}</span>
-                    </span>
-                    <strong style={{ flexShrink: 0 }}>$ {fmt(p.monto)}</strong>
-                  </div>
-                ))}
+                {/* RANGO, no una fecha suelta. Decía "Cuota Lun 3 ago": el funcionario leía
+                    "3 de agosto", el cliente respondía "yo pagué el 3 de agosto" y los dos tenían
+                    razón — ese pago tapó la semana ANTERIOR. La fecha sola confunde; el rango
+                    deja claro que es el período que arranca ese día, no el día del pago. */}
+                {periodosDebe.map((p, i) => {
+                  const fin = proximoDiaPago(contratoDetalle, new Date(p.fecha + "T00:00:00"));
+                  fin.setDate(fin.getDate() - 1);
+                  return (
+                    <div key={p.fecha} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)", fontWeight: i === 0 ? 700 : 400 }}>
+                      <span style={{ minWidth: 0 }}>
+                        {contratoDetalle.forma_pago === "Diario"
+                          ? `Cuota ${fmtFecha(p.fecha)}`
+                          : `Del ${fmtFecha(p.fecha)} al ${fmtFecha(fechaISO(fin))}`}
+                        {p.parcial ? " (parcial)" : ""}
+                        <span style={{ color: p.diasVencida > 0 ? "var(--bad-ink)" : "var(--orange)", fontWeight: 700 }}> · {p.diasVencida > 0 ? `${p.diasVencida}d vencida` : "vence hoy"}</span>
+                      </span>
+                      <strong style={{ flexShrink: 0 }}>$ {fmt(p.monto)}</strong>
+                    </div>
+                  );
+                })}
                 {contratoDetalle.deudaContrato > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
                     <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
@@ -1861,6 +1877,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   {cuotaConvActiva > 0 && <span> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
                 </div>
               )}
+              {/* La pregunta que el funcionario hace todos los días: "pero si el cliente ha estado
+                  pagando, ¿por qué debe?". Casi siempre la respuesta es que va corrido desde el
+                  arranque: cada pago tapa el hueco anterior y nunca el del día. Dicho acá, se
+                  contesta sola. Solo en los que nacieron en el sistema: en un migrado el contador
+                  arranca en el corte y la cuenta no significa lo mismo. */}
+              {(() => {
+                if (!contratoDetalle.motor_v2 || contratoDetalle.es_migrado) return null;
+                const exigidas = cajasExigidasHasta(contratoDetalle, hoyDate());
+                const pagadas = contratoDetalle.cajas_pagadas ?? 0;
+                const atras = exigidas - pagadas;
+                if (atras < 1 || pagadas < 1) return null;
+                return (
+                  <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9, background: "var(--soft2)", border: "1px solid var(--line)", fontSize: 11.5, color: "var(--muted2)", lineHeight: 1.5 }}>
+                    📌 Lleva <strong>{pagadas}</strong> de <strong>{exigidas}</strong> cuotas corridas desde que arrancó:
+                    va <strong>{atras}</strong> {atras === 1 ? "atrás" : "atrasos"}. Cada pago que hace tapa el hueco
+                    anterior, así que puede estar pagando completo y aun así aparecer debiendo.
+                  </div>
+                );
+              })()}
             </div>
           )}
 

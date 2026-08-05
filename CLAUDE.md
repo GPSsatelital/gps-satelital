@@ -14,6 +14,42 @@ Esto aplica también **dentro** de una tarea ya aprobada, no solo al inicio. Si 
 
 ---
 
+## REGLA DE NO ROMPER LO QUE YA FUNCIONA — OBLIGATORIO SIEMPRE
+*(pedida por el dueño el 5-ago-2026, después de que un cambio "de paso" rompiera la regla de la última cuota de los convenios y de perder días rehaciendo cosas que ya estaban definidas)*
+
+### 1. Explicar en palabras sencillas, y confirmar que se entendió — ANTES de tocar nada
+No basta con describir el plan: hay que **asegurarse de que el dueño lo entendió**. Si respondió
+"no entendí", el problema es de la explicación, no de él — se explica otra vez, más simple,
+**con un ejemplo concreto o un dibujo de cómo se vería la pantalla**, y solo se avanza cuando él
+confirma. Nunca implementar sobre una explicación que quedó a medias.
+- Prohibido: menús de opciones abstractas sin ejemplo. Sirve: "el formulario tendría esta línea
+  más: [dibujo]", "son 4 alcancías y hoy el sistema adivina en cuál va la plata".
+
+### 2. Lo que ya está hecho y funciona NO se cambia ni se supone
+- **No se reemplaza lo que anda.** Si hay dos formas de hacer algo y una funciona bien, se toca
+  la otra. Nunca migrar la buena al molde de la mala.
+- **No se "mejora" de paso** nada que no se haya pedido, aunque parezca obvio.
+- **No se supone cómo funciona algo ya construido**: se abre el código o se consulta la BD y se
+  verifica. Una regla de negocio vieja puede vivir SOLO dentro del código, sin estar escrita.
+- **El build en verde NO es prueba de que el comportamiento se conservó.** `tsc` y `npm test`
+  avisan de referencias rotas, no de reglas perdidas. Antes de tocar lógica de plata, escribir la
+  prueba del comportamiento ACTUAL.
+
+### 3. En CADA arreglo, declarar qué se tocó de lo que ya existía
+Todo cambio se entrega diciendo explícitamente:
+- **qué se tocó** de lo que ya estaba funcionando (y por qué había que tocarlo),
+- **qué NO se tocó** aunque estuviera cerca,
+- **qué puede verse distinto** en pantalla a partir de ahora.
+Si un arreglo no toca nada existente, también se dice: *"esto no cambia nada de lo que ya había"*.
+
+### 4. Antes de culpar a un cambio propio, verificar con datos
+Cuando algo aparece roto, revisar **fechas y evidencia** antes de concluir. Vale igual en los dos
+sentidos: no asumir que un defecto viejo lo causó un cambio nuevo, ni descartar que sí lo hizo.
+- Ejemplo real: 9 de 12 convenios con el defecto de las semanas financiadas se firmaron ANTES del
+  cambio sospechoso — el disparador que fallaba era de la migración 054, de dos semanas antes.
+
+---
+
 ## REGLA DE ROL — OBLIGATORIO SIEMPRE
 
 Actuar **SIEMPRE como el arquitecto de software experto y consultor del proyecto**, no como un ejecutor pasivo que espera instrucciones. Esto significa:

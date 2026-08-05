@@ -2,10 +2,10 @@ import { useMemo, useState, useEffect } from "react";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos, fechaDeCaja } from "../hooks/usePagos";
+import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import type { Pago } from "../hooks/usePagos";
-import { hoyISO, hoyDate } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 
 type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
@@ -34,9 +34,14 @@ function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
   const barras = Array.from({ length: dias }, (_, i) => {
     const d = new Date(hoy);
     d.setDate(hoy.getDate() - (dias - 1 - i));
-    const fecha = d.toISOString().slice(0, 10);
+    // fechaISO (hora de Colombia), no toISOString: este pasa a UTC y después de las 7pm
+    // las barras se corrían un día — el socio veía el recaudo de hoy bajo la fecha de mañana.
+    const fecha = fechaISO(d);
+    // esPagoDeCaja: la semana adelantada de la base y los saldos a favor aplicados son
+    // movimientos internos, no plata que entró ese día. Sin este filtro el socio veía
+    // ingresos inflados en su propio panel.
     const total = pagosGrupo
-      .filter(p => fechaDeCaja(p) === fecha && p.estado === "Confirmado")
+      .filter(p => fechaDeCaja(p) === fecha && p.estado === "Confirmado" && esPagoDeCaja(p))
       .reduce((a, p) => a + p.valor, 0);
     return { fecha, dow: d.getDay(), total, esHoy: i === dias - 1, label: d.getDate().toString() };
   });
@@ -113,12 +118,16 @@ export default function SocioDashboard() {
   const idsContratos = useMemo(() => new Set(contratosActivos.map(c => c.id)), [contratosActivos]);
   const pagosGrupo = useMemo(() => pagos.filter(p => idsContratos.has(p.contrato_id)), [pagos, idsContratos]);
 
+  // Recaudo = plata que ENTRÓ. `esPagoDeCaja` deja fuera los movimientos internos (la semana
+  // adelantada que ya venía en la base inicial y los saldos a favor aplicados a una cuota):
+  // esa plata ya se contó cuando entró de verdad, sumarla otra vez le muestra al socio un
+  // ingreso que nadie trajo. Mismo criterio que Caja Diaria e Historial de Pagos.
   const recaudadoSemana = pagosGrupo
-    .filter(p => fechaDeCaja(p) >= inicioSemana && p.estado === "Confirmado")
+    .filter(p => fechaDeCaja(p) >= inicioSemana && p.estado === "Confirmado" && esPagoDeCaja(p))
     .reduce((a, p) => a + p.valor, 0);
 
   const recaudadoMes = pagosGrupo
-    .filter(p => fechaDeCaja(p) >= inicioMes && p.estado === "Confirmado")
+    .filter(p => fechaDeCaja(p) >= inicioMes && p.estado === "Confirmado" && esPagoDeCaja(p))
     .reduce((a, p) => a + p.valor, 0);
 
   const estadosPorContrato = useMemo(() => {

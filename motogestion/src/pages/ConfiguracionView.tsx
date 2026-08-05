@@ -473,7 +473,7 @@ export default function ConfiguracionView() {
       <div style={card}>
         <div style={sectionTitle}>🏢 Empresa</div>
         {[
-          { label: "Razón social",  value: "GPS Satelital Cartagena" },
+          { label: "Razón social",  value: "Club Moteros Cartagena" },
           { label: "Ciudad",        value: "Cartagena de Indias" },
           { label: "Plataforma",    value: "MotoGestión v1.0" },
           { label: "Base de datos", value: "Supabase · jvfkprkjysjffhzjitgl" },
@@ -576,7 +576,7 @@ export default function ConfiguracionView() {
         ].map(r => (
           <div key={r.label} style={rowStyle}><span style={labelCol}>{r.label}</span><span style={valueCol}>{r.value}</span></div>
         ))}
-        <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "var(--line2)" }}>© 2026 GPS Satelital Cartagena · Todos los derechos reservados</div>
+        <div style={{ marginTop: 14, textAlign: "center", fontSize: 12, color: "var(--line2)" }}>© 2026 Club Moteros Cartagena · Todos los derechos reservados</div>
       </div>
 
       {editando && (

@@ -47,7 +47,7 @@ export function generarDocumentoLiquidacion(
 </head>
 <body>
 <div class="numero-liq">${liq.numero} · ${new Date(liq.created_at).toLocaleDateString("es-CO")}</div>
-<h1>GPS Satelital</h1>
+<h1>Club Moteros Cartagena</h1>
 <p class="subtitulo">DOCUMENTO DE LIQUIDACIÓN DE CONTRATO</p>
 
 <div class="seccion">
@@ -86,7 +86,7 @@ ${moto ? `<div class="seccion">
 <div class="firmas">
   <div class="firma-box">
     <p>${liq.nombre_responsable ?? "________________________"}</p>
-    <p>${liq.cargo_responsable ?? "Responsable GPS Satelital"}</p>
+    <p>${liq.cargo_responsable ?? "Responsable Club Moteros Cartagena"}</p>
     <p style="margin-top:4px;color:var(--muted)">Por la empresa</p>
   </div>
   <div class="firma-box">

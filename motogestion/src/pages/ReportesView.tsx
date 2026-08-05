@@ -854,7 +854,7 @@ export default function ReportesView({ onNavigate }: Props) {
     return `<div style="font-family:Arial,sans-serif;color:#0f172a;width:794px">`
       + `<div style="background:#0f2740;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">${titulo}</div><div style="font-size:12px;color:#7fb2e6;margin-top:2px">Recaudo y gestión por cobrador</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB MOTEROS CARTAGENA</div></div>`
       + `<div style="padding:6px 18px;background:#f1f5f9;font-size:11px;color:#475569">del ${fmtFechaCorta(desde)} al ${fmtFechaCorta(hasta)} &nbsp;·&nbsp; generado ${fmtFechaCorta(hoyISO())}${filtrosActivos ? ` &nbsp;·&nbsp; filtros: ${esc(filtrosResumen)}` : ""}</div>`
-      + `<div style="padding:8px 18px 18px">${portada}${spark}${graficos}${agingHtml}${tablaRanking}${matrizHtml}${metodoHtml}${convenirHtml}<div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#94a3b8;text-align:center">Al día = cubrió su período o convenio al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar · Cumplimiento $ = recaudado / cuota por ciclo. El recaudo se atribuye al cobrador que tiene la moto actualmente.<br>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div></div></div>`;
+      + `<div style="padding:8px 18px 18px">${portada}${spark}${graficos}${agingHtml}${tablaRanking}${matrizHtml}${metodoHtml}${convenirHtml}<div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#94a3b8;text-align:center">Al día = cubrió su período o convenio al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar · Cumplimiento $ = recaudado / cuota por ciclo. El recaudo se atribuye al cobrador que tiene la moto actualmente.<br>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div></div></div>`;
   }
 
   async function descargarInformePdf() {
@@ -1132,7 +1132,7 @@ export default function ReportesView({ onNavigate }: Props) {
         <div class="kpi"><div class="kpi-val" style="color:var(--accent);">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
       </div>
       ${entregas.length === 0 ? "<p style='color:var(--muted);margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
-      <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
+      <footer>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 500);
@@ -1228,10 +1228,10 @@ export default function ReportesView({ onNavigate }: Props) {
       footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}
       @media print{h2{page-break-after:avoid;} tr{page-break-inside:avoid;}}
     </style></head><body>
-      <h1>Reporte MotoGestión — GPS Satelital Cartagena</h1>
+      <h1>Reporte MotoGestión — Club Moteros Cartagena</h1>
       <p class="sub">Período: <strong>${rangoLbl}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy} · ${det ? "con detalle" : "resumen"}</p>
       ${parts.join("\n")}
-      <footer>GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
+      <footer>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
     </body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 500);

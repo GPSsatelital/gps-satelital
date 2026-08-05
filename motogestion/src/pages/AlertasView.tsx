@@ -156,7 +156,7 @@ export default function AlertasView({ onNavegar }: Props) {
     const tel = getTel(clienteId);
     if (!tel) return;
     const n = nombre.split(" ")[0];
-    const msg = `Hola ${n}, le contactamos del equipo GPS Satelital. ${detalle}. Por favor comuníquese con nosotros.`;
+    const msg = `Hola ${n}, le contactamos del equipo Club Moteros Cartagena. ${detalle}. Por favor comuníquese con nosotros.`;
     const num = tel.replace(/\D/g, "");
     window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(msg)}`, "_blank");
   }

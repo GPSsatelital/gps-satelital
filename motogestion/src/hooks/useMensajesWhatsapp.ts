@@ -19,12 +19,12 @@ export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: s
 
 // Texto por defecto — respaldo si la tabla aún no tiene el mensaje (o antes de correr la mig 039).
 export const MENSAJES_DEFAULT: Record<ClaveMensaje, string> = {
-  dia_pago:    "Hola {nombre}, le recordamos su pago de hoy en GPS Satelital. Cualquier duda estamos atentos. ¡Gracias! 🏍️",
-  gabela:      "Hola {nombre}, su pago venció y está en día de gracia. Por favor póngase al día hoy para evitar la mora. GPS Satelital 🏍️",
-  mora:        "Hola {nombre}, lleva {dias} días de mora. Por favor comuníquese urgente con nosotros para regularizar su pago. GPS Satelital ⚠️",
-  recoleccion: "Hola {nombre}, su moto de placa {placa} presenta {dias} días de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. GPS Satelital ⚠️",
-  recibo:      "🧾 *GPS SATELITAL — Comprobante de pago*{detalle}",
-  cuentas_pago: "Hola {nombre}, estas son las cuentas donde puede hacer el pago de su moto {placa}:\n\n{cuentas}\n\nCuando transfiera, envíenos la foto del comprobante con el número de referencia para poder acreditarle el pago. GPS Satelital 🏍️",
+  dia_pago:    "Hola {nombre}, le recordamos su pago de hoy en Club Moteros Cartagena. Cualquier duda estamos atentos. ¡Gracias! 🏍️",
+  gabela:      "Hola {nombre}, su pago venció y está en día de gracia. Por favor póngase al día hoy para evitar la mora. Club Moteros Cartagena 🏍️",
+  mora:        "Hola {nombre}, lleva {dias} días de mora. Por favor comuníquese urgente con nosotros para regularizar su pago. Club Moteros Cartagena ⚠️",
+  recoleccion: "Hola {nombre}, su moto de placa {placa} presenta {dias} días de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. Club Moteros Cartagena ⚠️",
+  recibo:      "🧾 *CLUB MOTEROS CARTAGENA — Comprobante de pago*{detalle}",
+  cuentas_pago: "Hola {nombre}, estas son las cuentas donde puede hacer el pago de su moto {placa}:\n\n{cuentas}\n\nCuando transfiera, envíenos la foto del comprobante con el número de referencia para poder acreditarle el pago. Club Moteros Cartagena 🏍️",
 };
 
 // Reemplaza los comodines {x} por sus valores reales.

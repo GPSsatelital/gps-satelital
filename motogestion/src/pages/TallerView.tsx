@@ -485,7 +485,7 @@ function imprimirOrden(item: TallerItem, motoLabel: string) {
 </head>
 <body>
 <h1>Orden de Taller</h1>
-<div class="sub">GPS Satelital Cartagena - ${new Date().toLocaleDateString("es-CO")}</div>
+<div class="sub">Club Moteros Cartagena - ${new Date().toLocaleDateString("es-CO")}</div>
 <div class="grid">
   <div class="field"><div class="label">Moto</div><div class="value">${motoLabel}</div></div>
   <div class="field"><div class="label">Estado</div><div class="value">${item.estado_tecnico}</div></div>

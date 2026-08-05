@@ -238,7 +238,7 @@ export function generarHTMLCertificado(contrato: Contrato, cliente: Cliente): st
   return `
     <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
       <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">GPS Satelital Cartagena</div>
+        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Club Moteros Cartagena</div>
         <div style="font-size:14px;font-weight:700;margin-top:6px">CERTIFICADO DE CONOCIMIENTO DEL CONTRATO</div>
         <div style="font-size:11px;color:#64748b;margin-top:4px">Cartagena de Indias, ${hoy}</div>
       </div>
@@ -393,13 +393,13 @@ export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto:
   return `
     <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
       <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">GPS Satelital Cartagena</div>
+        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Club Moteros Cartagena</div>
         <div style="font-size:14px;font-weight:700;margin-top:6px">PAZ Y SALVO — CUMPLIMIENTO DE CONTRATO</div>
         <div style="font-size:11px;color:#64748b;margin-top:4px">Cartagena de Indias, ${hoy}</div>
       </div>
 
       <div style="margin-bottom:16px;line-height:1.8">
-        <strong>GPS Satelital Cartagena</strong> (arrendador: FREDY MORA AVENDAÑO, C.C. 1.047.393.901) hace constar que
+        <strong>Club Moteros Cartagena</strong> (arrendador: FREDY MORA AVENDAÑO, C.C. 1.047.393.901) hace constar que
         <strong>${cliente.nombre.toUpperCase()}</strong>, identificado(a) con C.C. <strong>${cliente.cedula}</strong>,
         cumplió a cabalidad su contrato de arrendamiento con opción de adquisición
         ${contrato.fecha_entrega ? `iniciado el ${fmtFecha(contrato.fecha_entrega)}` : ""}, y se encuentra
@@ -604,7 +604,7 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
       ${d.finContrato?.fecha ? sep + linea("Fin de contrato (aprox.)", fmtFecha(d.finContrato.fecha)) +
         (d.finContrato.modificada ? `<div style="font-size:10px">* fecha ajustada durante el contrato</div>` : "") : ""}
       ${sep}
-      <div style="text-align:center;font-size:10px">Documento informativo · GPS Satelital Cartagena</div>
+      <div style="text-align:center;font-size:10px">Documento informativo · Club Moteros Cartagena</div>
     </div>`;
 }
 
@@ -634,7 +634,7 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
   }
   if (d.convenio) l.push("", `Acuerdo de pago: $${fmt(d.convenio.total)} en cuotas de $${fmt(d.convenio.cuota)} (va ${d.convenio.pagadas}/${d.convenio.numero})`);
   if (d.finContrato?.fecha) l.push("", `Fin de contrato (aprox.): ${fmtFecha(d.finContrato.fecha)}`);
-  l.push("", "GPS Satelital Cartagena");
+  l.push("", "Club Moteros Cartagena");
   return l.join("\n");
 }
 
@@ -663,7 +663,7 @@ export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
   return `
     <div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:32px;max-width:680px;margin:auto">
       <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">GPS Satelital Cartagena</div>
+        <div style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Club Moteros Cartagena</div>
         <div style="font-size:14px;font-weight:700;margin-top:6px">AUTORIZACIÓN DE TRATAMIENTO DE DATOS PERSONALES</div>
         <div style="font-size:11px;color:#64748b;margin-top:4px">Cartagena de Indias, ${fechaAutorizacion}</div>
       </div>
@@ -671,7 +671,7 @@ export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
       <div style="margin-bottom:16px;line-height:1.7">
         De acuerdo con la Ley 1581 de 2012 y el Decreto 1377 de 2013, yo, <strong>${cliente.nombre.toUpperCase()}</strong>,
         identificado(a) con C.C. <strong>${cliente.cedula}</strong>, domiciliado(a) en ${cliente.direccion ?? "—"},
-        autorizo de manera libre, previa, expresa e informada a <strong>GPS Satelital Cartagena</strong> (arrendador: FREDY MORA
+        autorizo de manera libre, previa, expresa e informada a <strong>Club Moteros Cartagena</strong> (arrendador: FREDY MORA
         AVENDAÑO, C.C. 1.047.393.901) a recolectar, almacenar, usar y tratar mis datos personales, con la finalidad
         de gestionar mi contrato de arrendamiento de vehículo, verificar mi identidad y gestionar el cobro de cartera.
       </div>
@@ -685,7 +685,7 @@ export function generarHTMLAutorizacionDatos(cliente: Cliente): string {
 
       <div style="margin-bottom:24px;line-height:1.7;font-size:11px;color:#334155">
         Entiendo que puedo conocer, actualizar, rectificar y solicitar la supresión de mis datos personales en
-        cualquier momento, de conformidad con la ley, dirigiéndome directamente a GPS Satelital Cartagena.
+        cualquier momento, de conformidad con la ley, dirigiéndome directamente a Club Moteros Cartagena.
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
@@ -743,7 +743,7 @@ export function generarHTMLResumenEntrega(
     <div style="font-family:Arial,sans-serif;color:#0f172a;max-width:760px;margin:0 auto;padding:20px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:10px;margin-bottom:14px">
         <div>
-          <div style="font-size:18px;font-weight:900;letter-spacing:.5px">GPS SATELITAL CARTAGENA</div>
+          <div style="font-size:18px;font-weight:900;letter-spacing:.5px">CLUB MOTEROS CARTAGENA</div>
           <div style="font-size:13px;font-weight:700;color:#334155;margin-top:2px">Resumen de entrega de motocicleta</div>
         </div>
         <div style="text-align:right">
@@ -798,7 +798,7 @@ export function generarHTMLResumenEntrega(
       </div>` : ""}
 
       <div style="margin-top:18px;font-size:9px;color:#94a3b8;text-align:center">
-        GPS Satelital Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901 · Documento informativo de entrega
+        Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901 · Documento informativo de entrega
       </div>
     </div>
   `;

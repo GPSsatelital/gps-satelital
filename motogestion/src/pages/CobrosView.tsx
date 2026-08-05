@@ -1401,7 +1401,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
     const num = tel.startsWith("57") ? tel : `57${tel}`;
     const lineas = [
-      "🧾 *GPS SATELITAL — Recibo provisional (cobro en campo)*",
+      "🧾 *CLUB MOTEROS CARTAGENA — Recibo provisional (cobro en campo)*",
       `Folio: ${folio}`,
       `Fecha: ${new Date().toLocaleDateString("es-CO")}`,
       `Cliente: ${(cliente?.nombre ?? "").toUpperCase()}`,

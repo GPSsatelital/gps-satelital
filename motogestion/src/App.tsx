@@ -213,7 +213,7 @@ function Sidebar({
         {!collapsed && (
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: "var(--card)" }}>MotoGestión</div>
-            <div style={{ fontSize: 10, color: "var(--muted3)" }}>GPS Satelital · Cartagena</div>
+            <div style={{ fontSize: 10, color: "var(--muted3)" }}>Club Moteros Cartagena</div>
           </div>
         )}
       </div>

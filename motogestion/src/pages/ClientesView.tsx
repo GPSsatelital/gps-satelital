@@ -1116,7 +1116,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         <div style={{ padding: 16, borderRadius: 16, background: "#fef9f2", border: "2px solid var(--warn2)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 8 }}>Autorización de tratamiento de datos personales</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12, lineHeight: 1.5 }}>
-            De acuerdo con la Ley 1581 de 2012, el cliente autoriza a GPS Satelital Cartagena a recolectar, almacenar y tratar sus datos personales
+            De acuerdo con la Ley 1581 de 2012, el cliente autoriza a Club Moteros Cartagena a recolectar, almacenar y tratar sus datos personales
             con fines de identificación, gestión del contrato de arrendamiento y cobro de cartera.
             La firma y huella son opcionales — pueden completarse después.
           </div>

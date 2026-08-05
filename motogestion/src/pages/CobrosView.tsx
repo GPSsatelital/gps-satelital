@@ -531,7 +531,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
 }
 
 type TabKey = "hoy" | "contratos" | "dinero" | "historial";
-type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio";
+type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio" | "retenidos";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 function calcProtocoloStep(dias: number): ProtocoloStep {
@@ -729,7 +729,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [filtroCampoConfirmar, setFiltroCampoConfirmar] = useState<"todos" | "por-entregar" | "entregado">("todos");
   const [campoFoto, setCampoFoto] = useState<File | null>(null);
 
-  const contratosActivos = contratos.filter(c => c.estado === "Activo");
+  // Cartera trabaja con los Activos Y con los Suspendidos (moto retenida). Antes solo miraba los
+  // Activos, así que al inmovilizar una moto el contrato DESAPARECÍA de Cartera: no se le podía
+  // registrar un pago, ni una deuda, ni un convenio — justo cuando más hay que ajustarle las
+  // cuentas, porque de eso depende que recupere la moto. Los suspendidos quedan marcados y NO
+  // entran a las listas de trabajo del día (ver `operativos`): a quien ya le quitaron la moto no
+  // se le sale a cobrar.
+  const contratosActivos = contratos.filter(c => c.estado === "Activo" || c.estado === "Suspendido");
 
   // ── Resumen por contrato ──────────────────────────────────────────────────
   const resumenContratos = useMemo(() => {
@@ -808,6 +814,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         ultimaGestion,
         saldoAFavor,
         sinPagosNunca,
+        // Moto retenida: se le pueden seguir ajustando las cuentas, pero no entra a la gestión
+        // del día ni a los contadores de estado (ver `operativos`).
+        suspendido: contrato.estado === "Suspendido",
       };
     });
   }, [contratosActivos, pagos, deudas, convenios]);
@@ -839,22 +848,29 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       .reduce((acc, p) => acc + (p.aplicado_convenio ?? 0), 0);
   }
 
-  const enMora = resumenContratos.filter(r => r.estadoCartera === "mora");
-  const enGabela = resumenContratos.filter(r => r.estadoCartera === "gabela");
-  const alDia = resumenContratos.filter(r => r.estadoCartera === "al-dia");
-  const conConvenio = resumenContratos.filter(r => r.convenioActivo);
+  // Los que están en la calle: sobre estos se hace la gestión diaria y se cuentan los estados.
+  // Un contrato suspendido no puede estar "en mora" ni "paga hoy" — ya no tiene la moto.
+  const operativos = useMemo(() => resumenContratos.filter(r => !r.suspendido), [resumenContratos]);
+  const retenidos = useMemo(() => resumenContratos.filter(r => r.suspendido), [resumenContratos]);
+
+  const enMora = operativos.filter(r => r.estadoCartera === "mora");
+  const enGabela = operativos.filter(r => r.estadoCartera === "gabela");
+  const alDia = operativos.filter(r => r.estadoCartera === "al-dia");
+  const conConvenio = operativos.filter(r => r.convenioActivo);
+  // La plata SÍ cuenta aunque la moto esté retenida: si el cliente abonó para recuperarla, eso
+  // entró a la caja igual y el recaudo del día tiene que reflejarlo.
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
   const recaudadoSemanaTotal = resumenContratos.reduce((acc, r) => acc + r.pagadoEstaSemana, 0);
   // ── Pagan Hoy ─────────────────────────────────────────────────────────────
   const paganHoyDiario = useMemo(() =>
-    resumenContratos.filter(c => c.forma_pago === "Diario"),
-    [resumenContratos]);
+    operativos.filter(c => c.forma_pago === "Diario"),
+    [operativos]);
 
   const paganHoyPeriodico = useMemo(() =>
-    resumenContratos.filter(c => {
+    operativos.filter(c => {
       if (c.forma_pago === "Diario") return false;
       return esDiaDePago(c, new Date());
-    }), [resumenContratos]);
+    }), [operativos]);
 
   const totalPaganHoy = paganHoyDiario.length + paganHoyPeriodico.length;
 
@@ -917,7 +933,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     const mora: typeof resumenContratos = [];
     const gabela: typeof resumenContratos = [];
     const paganHoy: typeof resumenContratos = [];
-    resumenContratos.forEach(c => {
+    // `operativos`, no `resumenContratos`: al que ya le retuvieron la moto no se le sale a cobrar
+    // ni se le manda a recolectar de nuevo. Su cuenta se ajusta desde la pestaña Contratos.
+    operativos.forEach(c => {
       // Recolección: solo mora real con >3 días (estadoCartera ya descarta contratos nuevos/prorrateo)
       // Si tiene un plazo extra vigente, se queda en Mora — no se puede recolectar durante ese margen.
       if (c.estadoCartera === "mora" && c.diasSinPago > 3 && c.diasSinPago < 999 && !contratosConPlazoVigente.has(c.id)) recoleccion.push(c);
@@ -926,7 +944,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       else if (idsPaganHoy.has(c.id)) paganHoy.push(c);
     });
     return { recoleccion, mora, gabela, paganHoy };
-  }, [resumenContratos, paganHoyDiario, paganHoyPeriodico, contratosConPlazoVigente]);
+  }, [operativos, paganHoyDiario, paganHoyPeriodico, contratosConPlazoVigente]);
 
   const totalTareasHoy = panelHoy.recoleccion.length + panelHoy.mora.length + panelHoy.gabela.length + panelHoy.paganHoy.length;
 
@@ -987,7 +1005,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     else if (filtroContratos === "al-dia") base = alDia;
     else if (filtroContratos === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
     else if (filtroContratos === "convenio") base = conConvenio;
-    else base = resumenContratos;
+    else if (filtroContratos === "retenidos") base = retenidos;
+    else base = resumenContratos;  // "Todos" SÍ los incluye: no se pueden esconder, hay que poder ajustarles la cuenta
 
     if (filtroGrupoContratos !== "todos") {
       base = base.filter(c => motos.find(m => m.id === c.moto_id)?.grupo === filtroGrupoContratos);
@@ -1003,7 +1022,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         (moto?.placa ?? "").toLowerCase().includes(q)
       );
     });
-  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -2239,7 +2258,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
           // Monto = héroe: color por estado (prorrateo=próximo pago en cyan, deuda en rojo, al día en verde)
           const montoColor = pendiente > 0 ? (enProrrateoLista ? "var(--accent)" : "var(--bad-ink)") : "var(--ok-ink)";
-          const rielColor = c.estadoCartera === "mora" ? "var(--bad)" : c.estadoCartera === "gabela" ? "var(--warn2)" : "var(--ok2)";
+          // El retenido se ve distinto a simple vista: su riel es gris y lleva 🔒. No está en mora
+          // ni al día — está fuera de la calle, y su badge de cartera no significa nada útil.
+          const rielColor = c.suspendido ? "var(--muted3)"
+            : c.estadoCartera === "mora" ? "var(--bad)" : c.estadoCartera === "gabela" ? "var(--warn2)" : "var(--ok2)";
 
           return (
             <ItemLista
@@ -2247,8 +2269,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               placa={moto?.placa}
               titulo={cliente?.nombre || "Sin cliente"}
               subtitulo={<>
+                {c.suspendido && <span style={{ color: "var(--muted2)", fontWeight: 700 }}>🔒 Moto retenida · </span>}
                 {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
-                {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
+                {!c.suspendido && c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
                   <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}> · {c.diasSinPago}d sin pagar</span>
                 )}
               </>}
@@ -2256,7 +2279,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <div style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: montoColor, whiteSpace: "nowrap", lineHeight: 1.1 }}>
                   {pendiente > 0 ? `$${fmt(pendiente)}` : "✓ Al día"}
                 </div>
-                <EstadoBadge estado={c.estadoCartera} />
+                {c.suspendido
+                  ? <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", background: "var(--soft)", borderRadius: 999, padding: "2px 8px" }}>🔒 Retenida</span>
+                  : <EstadoBadge estado={c.estadoCartera} />}
               </>}
               rielColor={rielColor}
               seleccionado={seleccionado}
@@ -2325,6 +2350,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     { key: "al-dia", label: "🟢 Al día", count: alDia.length },
     { key: "pagan-hoy", label: "🔵 Pagan hoy", count: totalPaganHoy },
     { key: "convenio", label: "🤝 Convenio", count: conConvenio.length },
+    { key: "retenidos", label: "🔒 Retenidos", count: retenidos.length },
   ];
 
   return (

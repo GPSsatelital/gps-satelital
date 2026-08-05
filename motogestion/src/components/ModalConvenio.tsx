@@ -20,6 +20,14 @@ interface Props {
   // contrato) — si no viene, la meta se precarga con la deuda pendiente del contrato.
   metaFija?: number;
   motivoInicial?: string;
+  // Qué ES el monto sugerido, en palabras del funcionario. No es lo mismo "lo que tiene atrasado"
+  // (moto retenida) que "lo que le falta de la base inicial" (cliente nuevo del wizard): decirle
+  // "atrasado" a un cliente que apenas está entrando es falso.
+  metaNota?: string;
+  // El monto NO se puede editar. Se usa cuando la cifra la calcula el sistema y no es negociable
+  // (la base inicial faltante del wizard). Al unificar la ventana quedó editable por descuido y
+  // así se podía bajar la base que el cliente realmente debe.
+  metaBloqueada?: boolean;
   // Oculta cerrar/cancelar — obliga a guardar el convenio antes de continuar.
   obligatorio?: boolean;
   // Cuota del período actual (para poder ofrecer meterla dentro del convenio como alivio).
@@ -85,12 +93,30 @@ export function repartirConvenio(
   // Con una sola cuota no hay "resto": paga todo de una.
   if (cuotas === 1) return { cuotas: 1, cuota: meta, ultima: meta, total: meta };
   // Fijando la CUOTA se respeta el valor tecleado; fijando el NÚMERO se reparte parejo.
-  const cuota = modo === "cuota" ? valor : Math.ceil(meta / cuotas);
+  const cuota = modo === "cuota" ? valor : cuotaRedonda(meta, cuotas);
   const ultima = Math.max(meta - cuota * (cuotas - 1), 0);
   return { cuotas, cuota, ultima, total: cuota * (cuotas - 1) + ultima };
 }
 
-export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
+/**
+ * Al fijar el NÚMERO de cuotas, la división cruda saca cifras que nadie cobra en la calle:
+ * 433.000 ÷ 8 = $54.125, 1.525.000 ÷ 16 = $95.313. El dueño lo reportó como "lo de los
+ * decimales". Cuando la división deja pesos sueltos, la cuota sube al millar y la ÚLTIMA absorbe
+ * el resto — el mismo principio del otro modo.
+ *
+ * Solo se toca cuando hace falta: si la división ya da una cifra de a $500 ($33.500, $42.500,
+ * $48.000) se deja igual, para no cambiar convenios que estaban bien.
+ * Y si redondear dejara la última cuota en cero o negativa, se vuelve a la división exacta:
+ * antes una cuota fea que un convenio cuyas cuotas no suman la deuda.
+ */
+function cuotaRedonda(meta: number, cuotas: number): number {
+  const exacta = Math.ceil(meta / cuotas);
+  if (exacta % 500 === 0) return exacta;
+  const redonda = Math.ceil(exacta / 1000) * 1000;
+  return redonda * (cuotas - 1) < meta ? redonda : exacta;
+}
+
+export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   // Cuántas cuotas del arriendo se le financian DENTRO del convenio (0, 1 o 2). Antes acá era un
@@ -358,10 +384,18 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               <div style={labelStyle}>Meta a pagar (total del convenio)</div>
               {metaFija != null && (
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                  Sugerido: <strong>$ {fmt(metaFija)}</strong> — lo que tiene atrasado. Podés ajustarlo.
+                  {metaBloqueada
+                    ? <>Son <strong>$ {fmt(metaFija)}</strong> — {metaNota ?? "lo que tiene pendiente"}. Lo calcula el sistema y no se puede cambiar.</>
+                    : <>Sugerido: <strong>$ {fmt(metaFija)}</strong> — {metaNota ?? "lo que tiene pendiente"}. Puedes ajustarlo.</>}
                 </div>
               )}
-              <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
+              {metaBloqueada ? (
+                <div style={{ padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--soft2)", fontSize: 17, fontWeight: 700, color: "var(--text)" }}>
+                  $ {fmt(metaBase)}
+                </div>
+              ) : (
+                <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
+              )}
             </div>
 
             {puedeFinanciar && (

@@ -39,11 +39,49 @@ describe("repartirConvenio — fijando el VALOR de la cuota (la regla del dueño
 });
 
 describe("repartirConvenio — fijando el NÚMERO de cuotas", () => {
+  // Reportado por el dueño el 4-ago como "lo de los decimales": al fijar el número, la división
+  // cruda sacaba cifras que nadie cobra en la calle. Ahora sube al millar y la última absorbe.
+  it("433.000 en 8 cuotas → $55.000, no $54.125 (caso HOLMAN, YAT46H)", () => {
+    const r = repartirConvenio(433000, "cuotas", 8);
+    expect(r.cuota).toBe(55000);
+    expect(r.ultima).toBe(48000);   // 433.000 − (55.000 × 7)
+    expect(r.total).toBe(433000);
+  });
+
+  it("1.525.000 en 16 cuotas → $96.000, no $95.313 (caso ANDRY, RLZ93H)", () => {
+    const r = repartirConvenio(1525000, "cuotas", 16);
+    expect(r.cuota).toBe(96000);
+    expect(r.ultima).toBe(85000);
+    expect(r.total).toBe(1525000);
+  });
+
+  it("1.016.000 en 11 cuotas → $93.000, no $92.364 (caso ANDRES, DQL84I)", () => {
+    const r = repartirConvenio(1016000, "cuotas", 11);
+    expect(r.cuota).toBe(93000);
+    expect(r.ultima).toBe(86000);
+    expect(r.total).toBe(1016000);
+  });
+
+  it("si la división YA da una cifra de a $500, no se toca", () => {
+    // Estos estaban bien y deben seguir igual: cambiarlos sería romper lo que funciona.
+    expect(repartirConvenio(737000, "cuotas", 22).cuota).toBe(33500);  // DANIEL, RLT87H
+    expect(repartirConvenio(510000, "cuotas", 12).cuota).toBe(42500);  // LUIS ALFONSO, RMZ59H
+    expect(repartirConvenio(480000, "cuotas", 10).cuota).toBe(48000);  // YULIETH, XZI17H
+  });
+
+  it("no redondea si eso dejaría la última cuota en cero o negativa", () => {
+    // 10.500 en 10 → exacta 1.050; redondear a 2.000 daría 18.000 > 10.500 y la última negativa.
+    const r = repartirConvenio(10500, "cuotas", 10);
+    expect(r.cuota).toBe(1050);
+    expect(r.total).toBe(10500);
+    expect(r.ultima).toBeGreaterThan(0);
+  });
+
   it("reparte parejo y la última absorbe el redondeo", () => {
     const r = repartirConvenio(100000, "cuotas", 3);
     expect(r.cuotas).toBe(3);
-    expect(r.cuota).toBe(33334);   // hacia arriba, para no quedar corto
-    expect(r.ultima).toBe(33332);  // 100.000 − (33.334 × 2)
+    expect(r.cuota).toBe(34000);   // 33.334 sube al millar
+    expect(r.ultima).toBe(32000);  // 100.000 − (34.000 × 2)
     expect(r.total).toBe(100000);
   });
 

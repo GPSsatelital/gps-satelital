@@ -1118,6 +1118,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           contratoId={convenioRec.contratoId}
           clienteNombre={convenioRec.clienteNombre}
           metaFija={convenioRec.cuotasAtrasadas}
+          // Acá SÍ se ajusta a propósito: la regla del dueño es que el mínimo obligatorio es la
+          // multa y el resto se financia pidiéndole lo máximo que pueda dar.
+          metaNota="lo que tiene atrasado"
           motivoInicial="Convenio para recuperar moto retenida"
           onClose={() => setConvenioRec(null)}
         />

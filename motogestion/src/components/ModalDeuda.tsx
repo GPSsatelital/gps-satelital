@@ -2,7 +2,12 @@ import { useState } from "react";
 import MoneyInput from "./MoneyInput";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useDeudas } from "../hooks/useDeudas";
+import { useContratos } from "../hooks/useContratos";
+import { huecoCuotasHoy } from "../utils/cicloPago";
+import { hoyDate } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
+
+function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada";
 
@@ -40,7 +45,12 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
 export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props) {
   useBloquearScrollFondo();
   const { registrarDeuda } = useDeudas();
+  const { contratos } = useContratos();
   const { profile } = useAuth();
+  // Cuánto le exige HOY el motor de cajas por cuotas de arriendo sin llenar. Si es > 0, registrar
+  // esa misma plata como deuda la cobraría dos veces.
+  const contrato = contratos.find(c => c.id === contratoId) ?? null;
+  const huecoCuotas = contrato ? huecoCuotasHoy(contrato, hoyDate()) : 0;
   const [tipo, setTipo] = useState<TipoDeuda>("daño_vehiculo");
   const [valor, setValor] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -111,6 +121,30 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
         </div>
 
         <MoneyInput label="Valor" value={valor} onChange={setValor} />
+
+        {/* EL ERROR QUE ESTO EVITA (4-ago-2026): la cuota atrasada NO es una deuda — es una caja
+            sin llenar, otro cuaderno. Como en Cartera no aparece bajo "deudas", el funcionario la
+            registraba acá a mano para poder meterla en un convenio... y desde ese momento se
+            cobraba dos veces: el motor la seguía exigiendo como cuota Y la deuda también.
+            Caso real: JORGE BELLO (RLT88H), $190.000 cobrados doble. */}
+        {huecoCuotas > 0 && (
+          <div style={{ padding: "11px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 12.5, color: "var(--bad-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+            ⚠️ El sistema ya le está cobrando <strong>$ {fmt(huecoCuotas)}</strong> de cuotas de
+            arriendo atrasadas. Eso no es una deuda aparte: es su arriendo, y ya aparece en
+            «Debe pagar ahora».
+            <div style={{ marginTop: 6 }}>
+              Si lo registras también acá, <strong>se le cobra dos veces</strong>. Para financiarle
+              esas semanas, usa el convenio y su opción «¿cuántas semanas de cuota le financias?»
+              — ahí el sistema deja de exigirlas por separado.
+            </div>
+            {tipo === "tarifa_atrasada" && (
+              <div style={{ marginTop: 6 }}>
+                Registra «Tarifa atrasada» solo si es de un tiempo que el sistema NO está contando
+                (por ejemplo, lo que quedó debiendo antes de entrar al sistema).
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <div style={labelStyle}>¿De qué es la deuda?</div>

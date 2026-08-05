@@ -1034,6 +1034,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           contratoId={convenioPendiente.contratoId}
           clienteNombre={clienteActual?.nombre ?? ""}
           metaFija={convenioPendiente.falta}
+          // La cifra la calcula el sistema (base requerida − lo que entregó) y NO es negociable:
+          // si se pudiera bajar, el cliente quedaría debiendo menos base de la que debe.
+          metaBloqueada
+          metaNota="lo que le falta para completar la base inicial"
           motivoInicial="Base inicial incompleta al crear el contrato"
           obligatorio
           onClose={() => { setConvenioPendiente(null); setStep(2); }}

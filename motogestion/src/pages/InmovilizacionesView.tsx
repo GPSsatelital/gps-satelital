@@ -313,13 +313,26 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         // Solo deuda EXIGIBLE (pendiente): la multa sí bloquea la entrega; lo 'en_convenio'
         // ya quedó financiado y se paga con la cuota del convenio (no se exige doble).
         const deudasC = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente");
-        // Días retenida: desde la última gestión de recolección registrada.
-        // A los 7 días sin pago se habilita liquidar (decisión del ADMIN, no automática).
+        // Días retenida: desde que la moto está guardada. A los 7 días se habilita liquidar
+        // (decisión del ADMIN, no automática).
+        //
+        // Antes contaba SOLO desde la gestión de "recolección", y esa gestión la crea únicamente
+        // el flujo de Registrar recolección. Las motos que entraron por otro camino —recepción
+        // desde Motos, entrega voluntaria— no tenían gestión y el reloj se quedaba en 0 para
+        // siempre: 12 de 28 contratos suspendidos (5-ago-2026), o sea que no se podían liquidar
+        // por mucho que llevaran guardadas. Mismo patrón de siempre: el resultado dependía de por
+        // cuál puerta entró el funcionario.
+        // Ahora, si no hay gestión, se usa la última RECEPCIÓN del vehículo — ese registro sí lo
+        // crean todos los caminos, con sus fotos y su fecha.
         const recoleccionG = gestiones
           .filter(g => g.contrato_id === c.id && g.tipo === "recoleccion")
           .sort((a, b) => b.fecha.localeCompare(a.fecha))[0] ?? null;
-        const diasRetenida = recoleccionG
-          ? Math.floor((hoyMs - new Date(recoleccionG.fecha + "T00:00:00").getTime()) / 86400000)
+        const recepcionFecha = recoleccionG ? null : (recepciones
+          .filter(r => r.contrato_id === c.id)
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.created_at.slice(0, 10) ?? null);
+        const desdeISO = recoleccionG?.fecha ?? recepcionFecha;
+        const diasRetenida = desdeISO
+          ? Math.floor((hoyMs - new Date(desdeISO + "T00:00:00").getTime()) / 86400000)
           : 0;
         const totalDeudas = deudasC.reduce((acc, d) => acc + d.monto_pendiente, 0);
         // La multa aparte: es lo único que se exige en EFECTIVO para llevarse la moto. El resto

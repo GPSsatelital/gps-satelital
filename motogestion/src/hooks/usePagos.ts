@@ -86,6 +86,9 @@ export type Pago = {
   aplicado: Aplicado;
   aplicado_tarifa: number;
   aplicado_deuda: number;
+  // De lo que fue a deudas, cuánto era una multa de recolección (mig 085). Solo para informar:
+  // la caja lo muestra aparte porque no es plata del arriendo, es el costo de ir a buscar la moto.
+  aplicado_multa?: number | null;
   aplicado_convenio: number;
   aplicado_ahorro: number;
   aplicado_saldo_favor: number;

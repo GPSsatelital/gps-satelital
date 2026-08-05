@@ -98,7 +98,10 @@ export default function CajaView() {
     const efectivo = conf.filter(p => p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0);
     const transfer = conf.filter(p => p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0);
     const pend = lista.filter(p => p.estado === "Pendiente");
-    return { efectivo, transfer, total: efectivo + transfer, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
+    // Multas de recolección cobradas (mig 085): va DENTRO del total —es plata que entró igual—
+    // pero se muestra aparte porque no es del arriendo: es el costo de ir a buscar la moto.
+    const multas = conf.reduce((s, p) => s + (p.aplicado_multa ?? 0), 0);
+    return { efectivo, transfer, total: efectivo + transfer, multas, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
   }
 
   // resumen = lo que se muestra (filtrado por grupo). resumenDia = día completo (referencia).
@@ -390,6 +393,13 @@ export default function CajaView() {
         <div style={{ flex: 1, minWidth: 120 }}>
           <div style={{ fontSize: 11, color: "var(--faint)" }}>Cobrado a clientes</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total)}</div>
+          {/* Va DENTRO del cobrado, no aparte: esa plata sí entró. Se destaca porque no es
+              arriendo — es lo que costó ir a buscar la moto, y el dueño quiere verlo solo. */}
+          {resumen.multas > 0 && (
+            <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, marginTop: 4 }}>
+              🔒 De eso, multas de recolección: ${fmt(resumen.multas)}
+            </div>
+          )}
         </div>
       </div>
       {/* Plata que SÍ entró al banco ese día y todavía no tiene dueño. Va en su propio renglón,

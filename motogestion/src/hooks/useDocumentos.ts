@@ -772,10 +772,24 @@ export function generarHTMLResumenEntrega(
         ${dato("Cuota del período", `$ ${fmt(cuota)}`)}
         ${dato("Tarifa L-S", contrato.tarifa_diaria ? `$ ${fmt(contrato.tarifa_diaria)}` : "—")}
         ${dato("Plazo", contrato.meses ? `${contrato.meses} meses` : "—")}
-        ${dato("Entregó al iniciar", contrato.base_inicial ? `$ ${fmt(contrato.base_inicial)}` : "—")}
-        ${dato("Base de ahorro", `$ ${fmt(Math.max((contrato.base_inicial ?? 0) - cuota, 0))}`)}
+        ${/* `base_inicial` es lo REQUERIDO (lo escribe el wizard como 308.000 + la cuota);
+             lo que el cliente entregó de verdad es `ahorro_inicial`. Este documento decía
+             "Entregó al iniciar" mostrando lo requerido: a un cliente que dio $100.000 le
+             imprimía $510.000, en un papel que él se lleva. (Caso real: FRAIRON, IEW54I.) */""}
+        ${dato("Entregó al iniciar", contrato.ahorro_inicial != null ? `$ ${fmt(contrato.ahorro_inicial)}` : "—")}
+        ${dato("Base requerida", contrato.base_inicial ? `$ ${fmt(contrato.base_inicial)}` : "—")}
         ${dato("Km de entrega", moto?.kilometraje_inicial != null ? `${fmt(moto.kilometraje_inicial)} km` : "—")}
       </div>
+      ${(() => {
+        // Si entregó menos de lo requerido, el documento lo dice: es la cifra que quedó
+        // financiada en el convenio obligatorio del wizard, y el cliente debe verla escrita.
+        const falta = Math.max((contrato.base_inicial ?? 0) - (contrato.ahorro_inicial ?? 0), 0);
+        return falta > 0
+          ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:9px 12px;margin-bottom:16px;font-size:11px;color:#92400e">
+               <b>Base pendiente: $ ${fmt(falta)}</b> — es la diferencia entre la base requerida y lo entregado. Queda financiada en el acuerdo de pago.
+             </div>`
+          : "";
+      })()}
 
       ${fotos.length > 0 ? `
       <div style="font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;margin-bottom:6px">Fotos de la entrega</div>

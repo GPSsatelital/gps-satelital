@@ -1,18 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-// Monto tapado hasta que se mantiene presionado (pedido del dueño, 5-ago-2026).
+// Cuántos segundos se queda visible antes de taparse sola.
+const SEGUNDOS_VISIBLE = 5;
+
+// Monto tapado (pedido del dueño, 5-ago-2026).
 //
 // POR QUÉ: en la calle y en el mostrador el cliente ve la pantalla del funcionario. El total
-// recaudado del día no es asunto suyo, y verlo invita a comentarios y a preguntas incómodas.
-// Se tapa por defecto y solo se ve MIENTRAS se mantiene el dedo encima: al soltar, se tapa sola.
-// Nada de un botón de "mostrar/ocultar" que alguien deje prendido y se olvide.
+// recaudado del día no es asunto suyo, y verlo invita a comentarios y preguntas incómodas.
 //
-// Detalles que importan en el celular:
-//  · `userSelect/touchCallout: none` + `onContextMenu` → mantener presionado NO abre el menú de
-//    "copiar/seleccionar" de Android, que tapaba el número justo cuando se quería ver.
+// CÓMO: un toque lo muestra, otro lo tapa. Y si a alguien se le olvida taparlo, **se tapa solo a
+// los 5 segundos** — que es la protección que de verdad sirve: cambiar de pantalla ya lo tapa
+// gratis (el componente se destruye y vuelve a nacer tapado), pero el caso peligroso es quedarse
+// en la MISMA pantalla mostrándole algo al cliente, y ahí solo el reloj salva.
+// Se descartó "mantener presionado": en el celular el long-press pelea con el menú de copiar de
+// Android y se siente incómodo. Y se descartó un botón fijo de mostrar/ocultar, porque alguien lo
+// deja prendido y se olvida — ahí el mirón ve todo igual.
+//
+// Detalles que importan:
 //  · `stopPropagation` → estos montos viven dentro de tarjetas que navegan al tocarlas; sin esto,
-//    intentar ver el valor te sacaba a otra pantalla.
-//  · `onPointerLeave/Cancel` → si el dedo se corre fuera del número, se tapa igual.
+//    tocar el valor te sacaba a otra pantalla en vez de mostrarlo.
+//  · `userSelect/touchCallout: none` → un toque un poco largo en el celular no selecciona el texto
+//    ni abre el menú de copiar encima del número.
 export default function MontoOculto({
   valor,
   estilo,
@@ -23,19 +31,22 @@ export default function MontoOculto({
   prefijo?: string;
 }) {
   const [visible, setVisible] = useState(false);
-  const mostrar = (e: React.SyntheticEvent) => { e.stopPropagation(); setVisible(true); };
-  const tapar = (e: React.SyntheticEvent) => { e.stopPropagation(); setVisible(false); };
+
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => setVisible(false), SEGUNDOS_VISIBLE * 1000);
+    return () => clearTimeout(t);
+  }, [visible]);
 
   return (
     <span
       role="button"
-      tabIndex={-1}
-      title={visible ? undefined : "Mantén presionado para ver"}
-      onPointerDown={mostrar}
-      onPointerUp={tapar}
-      onPointerLeave={tapar}
-      onPointerCancel={tapar}
-      onClick={e => e.stopPropagation()}
+      tabIndex={0}
+      title={visible ? "Toca para ocultar" : "Toca para ver"}
+      onClick={e => { e.stopPropagation(); setVisible(v => !v); }}
+      onKeyDown={e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setVisible(v => !v); }
+      }}
       onContextMenu={e => e.preventDefault()}
       style={{
         cursor: "pointer",
@@ -43,8 +54,8 @@ export default function MontoOculto({
         WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
         touchAction: "manipulation",
-        // Sin ancho fijo la tarjeta "salta" al pasar de •••• al número. `tabular-nums` mantiene
-        // los dígitos del mismo ancho y el letterSpacing empareja los puntos con las cifras.
+        // `tabular-nums` + el letterSpacing de los puntos evitan que la tarjeta "salte" de ancho
+        // al pasar de •••••• al número.
         fontVariantNumeric: "tabular-nums",
         letterSpacing: visible ? undefined : 2,
         ...estilo,

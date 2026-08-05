@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizarRef, pagoQueYaLaReclama } from "./useIngresosNoIdentificados";
+import { normalizarRef, pagoQueYaLaReclama, sinIdentificarDelDia, sinIdentificarSinGrupoDelDia } from "./useIngresosNoIdentificados";
 
 // La bolsa de "dinero sin identificar" es plata que entró al banco y nadie reclamó. El cruce
 // automático solo mira hacia adelante: al registrar un pago y al confirmarlo. Si el pago se
@@ -52,6 +52,48 @@ describe("pagoQueYaLaReclama — cuándo NO debe avisar", () => {
 
   it("nunca empareja contra un pago sin referencia", () => {
     expect(pagoQueYaLaReclama({ referencia: "M12345678" }, [{ id: "x", referencia: null }])).toBeNull();
+  });
+});
+
+// Esa plata SÍ entró a la empresa: está en la cuenta del banco. Lo que no entró es a la cuenta
+// de un cliente. Por eso se muestra aparte del recaudo y nunca sumada a él: el día que aparezca
+// el dueño se registra como pago y entra al recaudo de ESE MISMO día (la transferencia cuenta
+// en el día del banco). Si ya estuviera dentro, quedaría contada dos veces.
+const BOLSA = [
+  { fecha_banco: "2026-08-03", monto: 202000, grupo: "COSTA" },
+  { fecha_banco: "2026-08-03", monto: 100000, grupo: "COSTA" },
+  { fecha_banco: "2026-08-03", monto: 60000, grupo: null },
+  { fecha_banco: "2026-08-03", monto: 95000, grupo: "PRADERA" },
+  { fecha_banco: "2026-07-25", monto: 102000, grupo: null },
+];
+
+describe("sinIdentificarDelDia", () => {
+  it("suma toda la plata sin dueño que entró ese día, sin importar el grupo", () => {
+    expect(sinIdentificarDelDia(BOLSA, "2026-08-03")).toBe(457000);
+  });
+
+  it("no se lleva la de otros días", () => {
+    expect(sinIdentificarDelDia(BOLSA, "2026-07-25")).toBe(102000);
+  });
+
+  it("un día sin plata en espera da cero, no undefined", () => {
+    expect(sinIdentificarDelDia(BOLSA, "2026-08-04")).toBe(0);
+  });
+
+  it("por grupo suma solo la de ese portafolio", () => {
+    expect(sinIdentificarDelDia(BOLSA, "2026-08-03", "COSTA")).toBe(302000);
+    expect(sinIdentificarDelDia(BOLSA, "2026-08-03", "PRADERA")).toBe(95000);
+  });
+
+  it("la que no tiene grupo NO se le cuela a ningún portafolio", () => {
+    // Es la clave: el cierre es por grupo. Sumarle plata de dueño desconocido a COSTA sería
+    // meterle al bolsillo de un socio una plata que quizá es de otro.
+    const porGrupo = ["COSTA", "PRADERA", "RASTREADOR", "USADAS"]
+      .reduce((s, g) => s + sinIdentificarDelDia(BOLSA, "2026-08-03", g), 0);
+    expect(porGrupo).toBe(397000);
+    expect(sinIdentificarDelDia(BOLSA, "2026-08-03")).toBe(457000);
+    // Los $60.000 de diferencia son justamente la que no se le puede atribuir a nadie.
+    expect(sinIdentificarSinGrupoDelDia(BOLSA, "2026-08-03")).toBe(60000);
   });
 });
 

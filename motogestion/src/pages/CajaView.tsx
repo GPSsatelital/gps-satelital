@@ -4,7 +4,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja, cierreDesactualizado } from "../hooks/useCaja";
-import { useIngresosNoIdentificados, normalizarRef, pagoQueYaLaReclama } from "../hooks/useIngresosNoIdentificados";
+import { useIngresosNoIdentificados, normalizarRef, pagoQueYaLaReclama, sinIdentificarDelDia, sinIdentificarSinGrupoDelDia } from "../hooks/useIngresosNoIdentificados";
 import { useCuentasBancarias, grupoDeCuenta } from "../hooks/useCuentasBancarias";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
@@ -105,6 +105,13 @@ export default function CajaView() {
   const resumen = useMemo(() => calcResumen(pagosDiaVista), [pagosDiaVista]);
   const resumenDia = useMemo(() => calcResumen(pagosDia), [pagosDia]);
 
+  // Cada grupo se cierra por aparte; en la vista "Todos" no hay ninguno seleccionado.
+  const grupoEnVista = filtroGrupo === "todos" ? null : filtroGrupo;
+  // Plata que SÍ entró al banco este día y todavía no tiene dueño. Se muestra aparte del
+  // recaudo, nunca dentro: al aparecer el dueño se registra como pago y entra a ESTE mismo día.
+  const niDelDiaVista = sinIdentificarDelDia(pendientesNI, fecha, grupoEnVista);
+  const niSinGrupoDelDia = sinIdentificarSinGrupoDelDia(pendientesNI, fecha);
+
   function resumenDeGrupo(grupo: GrupoMoto) {
     return calcResumen(pagosDia.filter(p => grupoDePago(p) === grupo));
   }
@@ -182,13 +189,16 @@ export default function CajaView() {
    * "cuadrado" — justo lo que el arqueo existe para detectar.
    * Un campo vacío significa "no se contó": ese lado no se da por bueno, se marca sin verificar.
    */
-  function calcArqueo(efectivo: number, transfer: number) {
+  // `sinDueno`: la plata que entró al banco ese día y nadie ha reclamado. El extracto SÍ la
+  // trae, así que hay que sumarla a lo esperado; si no, el arqueo la reporta como sobrante
+  // todos los días aunque ya esté anotada, y esa alarma permanente deja de leerse.
+  function calcArqueo(efectivo: number, transfer: number, sinDueno = 0) {
     const hayEf = efectivoContado !== "";
     const hayBc = bancoReportado !== "";
     return {
       hayEf, hayBc,
       difEf: hayEf ? Number(efectivoContado) - efectivo : null,
-      difBc: hayBc ? Number(bancoReportado) - transfer : null,
+      difBc: hayBc ? Number(bancoReportado) - (transfer + sinDueno) : null,
       verificado: hayEf || hayBc,
       completo: hayEf && hayBc,
     };
@@ -204,7 +214,7 @@ export default function CajaView() {
     // Si ya estaba cerrado, esto es una ACTUALIZACIÓN: queda escrito de cuánto a cuánto se movió,
     // porque el upsert pisa la cifra vieja y si no se anota nadie sabría que cambió.
     const previo = cajaDia(fecha, g);
-    const arq = calcArqueo(r.efectivo, r.transfer);
+    const arq = calcArqueo(r.efectivo, r.transfer, sinIdentificarDelDia(pendientesNI, fecha, g));
     const detalle = pagosDia
       .filter(p => p.estado === "Confirmado" && grupoDePago(p) === g)
       .map(p => {
@@ -378,10 +388,30 @@ export default function CajaView() {
           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent-line)", marginTop: 2 }}>${fmt(resumen.transfer)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 120 }}>
-          <div style={{ fontSize: 11, color: "var(--faint)" }}>Total general</div>
+          <div style={{ fontSize: 11, color: "var(--faint)" }}>Cobrado a clientes</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total)}</div>
         </div>
       </div>
+      {/* Plata que SÍ entró al banco ese día y todavía no tiene dueño. Va en su propio renglón,
+          nunca dentro del cobrado: el día que el cliente la reclame se registra como pago y entra
+          al recaudo de este mismo día. Si estuviera arriba, quedaría contada dos veces. */}
+      {niDelDiaVista > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px dashed rgba(255,255,255,0.15)", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <div style={{ fontSize: 11, color: "var(--faint)" }}>+ Entró al banco sin dueño</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#fbbf24", marginTop: 2 }}>${fmt(niDelDiaVista)}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <div style={{ fontSize: 11, color: "var(--faint)" }}>Total que llegó al banco</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--on-ink)", marginTop: 2 }}>${fmt(resumen.total + niDelDiaVista)}</div>
+          </div>
+          <div style={{ flexBasis: "100%", fontSize: 11.5, color: "var(--faint)", lineHeight: 1.45 }}>
+            Esa plata está en la cuenta pero nadie la ha reclamado, así que no está abonada a ningún
+            cliente. Cuando aparezca el dueño se registra como pago y pasa arriba, a este mismo día.
+            {grupoEnVista == null && niSinGrupoDelDia > 0 && ` De ella, $${fmt(niSinGrupoDelDia)} todavía no se sabe de cuál grupo es.`}
+          </div>
+        </div>
+      )}
       {resumen.pendientes.length > 0 && (
         <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)" }}>
           <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 700 }}>
@@ -394,7 +424,6 @@ export default function CajaView() {
 
   // Cada grupo se cierra por aparte. En la vista "Todos" el cierre se hace desde la
   // tarjeta de cada grupo; en una vista filtrada, este botón cierra ese grupo.
-  const grupoEnVista = filtroGrupo === "todos" ? null : filtroGrupo;
   const cajaGrupoVista = grupoEnVista ? cajaDia(fecha, grupoEnVista) : null;
   // Mismo aviso que en la tarjeta del grupo: el cierre firmado ya no coincide con la caja real.
   const difCierreVista = cierreDesactualizado(cajaGrupoVista, resumen);
@@ -546,6 +575,11 @@ export default function CajaView() {
                       Efectivo ${fmt(g.efectivo)} · Transf. ${fmt(g.transfer)}
                       <br />{g.count} pago{g.count !== 1 ? "s" : ""}{g.pendientes.length > 0 ? ` · ${g.pendientes.length} pend.` : ""}
                     </div>
+                    {sinIdentificarDelDia(pendientesNI, fecha, g.grupo) > 0 && (
+                      <div style={{ fontSize: 11.5, color: "var(--warn-ink)", fontWeight: 700, marginTop: 4 }}>
+                        + ${fmt(sinIdentificarDelDia(pendientesNI, fecha, g.grupo))} entró al banco sin dueño
+                      </div>
+                    )}
                   </div>
                   {difCierre && (
                     <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 11.5, color: "var(--warn-ink)", fontWeight: 600, lineHeight: 1.45 }}>
@@ -702,7 +736,10 @@ export default function CajaView() {
         const rc = resumenDeGrupo(grupoACerrar);
         // En efectivo NUNCA puede faltar (ni sobrar): se recibe en la mano y se confirma en el
         // acto. Cualquier diferencia bloquea el cierre — hay que hallar el error antes.
-        const arqModal = calcArqueo(rc.efectivo, rc.transfer);
+        // El extracto del banco trae también la plata sin dueño de ese día: sin sumarla, el
+        // arqueo la reportaría como sobrante aunque ya esté anotada en la bolsa.
+        const niGrupoModal = sinIdentificarDelDia(pendientesNI, fecha, grupoACerrar);
+        const arqModal = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal);
         const efectivoDescuadrado = arqModal.difEf !== null && arqModal.difEf !== 0;
         // Este día ya se había cerrado: no es un cierre nuevo, es corregir la cifra firmada.
         const previoModal = cajaDia(fecha, grupoACerrar);
@@ -760,17 +797,20 @@ export default function CajaView() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Según el banco</label>
                   <input inputMode="numeric" value={bancoReportado} onChange={e => setBancoReportado(e.target.value.replace(/\D/g, ""))}
-                    placeholder={String(Math.round(rc.transfer))}
+                    placeholder={String(Math.round(rc.transfer + niGrupoModal))}
                     style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
                 </div>
               </div>
               {/* La cuenta del banco es una sola para todos los grupos: si aquí se escribe el
                   total del extracto, el mismo dinero se compararía otra vez en cada grupo. */}
-              <div style={{ fontSize: 11, color: "var(--faint)", marginTop: -4 }}>
+              <div style={{ fontSize: 11, color: "var(--faint)", marginTop: -4, lineHeight: 1.45 }}>
                 Del banco, anota <strong>solo las transferencias de {grupoACerrar}</strong> — no el total del extracto del día.
+                {niGrupoModal > 0 && (
+                  <> Incluye los <strong>${fmt(niGrupoModal)}</strong> que entraron sin dueño: el sistema ya los tiene en cuenta y no te los va a marcar como sobrante.</>
+                )}
               </div>
               {(() => {
-                const a = calcArqueo(rc.efectivo, rc.transfer);
+                const a = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal);
                 if (!a.verificado) return null;
                 const faltaEfectivo = a.difEf !== null && a.difEf < 0;
                 const cuadraTodo = a.completo && a.difEf === 0 && a.difBc === 0;

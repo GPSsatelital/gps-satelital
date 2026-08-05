@@ -54,6 +54,42 @@ export function pagoQueYaLaReclama<T extends { referencia?: string | null; estad
   return pagos.find(p => p.estado !== "Rechazado" && p.referencia && normalizarRef(p.referencia) === ref) ?? null;
 }
 
+/**
+ * La plata que ENTRÓ AL BANCO ese día y todavía no tiene dueño.
+ *
+ * Es dinero real de la empresa —está en la cuenta— pero no es recaudo: nadie lo reclamó, así
+ * que no está abonado a la cuota de ningún cliente. Por eso se muestra en su propio renglón y
+ * JAMÁS sumado al recaudo: el día que el cliente aparezca, esa plata se registra como pago y
+ * entra al recaudo de ese mismo día (la transferencia cuenta en el día del banco). Si ya
+ * estuviera dentro, quedaría contada dos veces.
+ *
+ * Vale la identidad: lo que el banco recibió ese día = transferencias registradas + esto.
+ * A medida que aparecen los dueños, la plata pasa de un lado al otro y el total no se mueve.
+ *
+ * `grupo`: el cierre es por portafolio. Una partida sin grupo no se le puede sumar a ninguno
+ * —no se sabe de quién es— así que solo entra en el total del día completo.
+ * Protegida por `useIngresosNoIdentificados.test.ts`.
+ */
+export function sinIdentificarDelDia(
+  pendientes: { fecha_banco: string; monto: number; grupo?: string | null }[],
+  fecha: string,
+  grupo?: string | null,
+): number {
+  return pendientes
+    .filter(i => i.fecha_banco === fecha && (grupo == null || i.grupo === grupo))
+    .reduce((s, i) => s + i.monto, 0);
+}
+
+/** De la plata sin dueño de ese día, cuánta no se le puede atribuir a ningún portafolio. */
+export function sinIdentificarSinGrupoDelDia(
+  pendientes: { fecha_banco: string; monto: number; grupo?: string | null }[],
+  fecha: string,
+): number {
+  return pendientes
+    .filter(i => i.fecha_banco === fecha && !i.grupo)
+    .reduce((s, i) => s + i.monto, 0);
+}
+
 export function useIngresosNoIdentificados() {
   const { data: ingresos, loading } = store.useStore();
 

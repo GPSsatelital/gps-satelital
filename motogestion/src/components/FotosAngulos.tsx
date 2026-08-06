@@ -57,3 +57,63 @@ export function IconoAngulo({ angulo }: { angulo: AnguloFoto }) {
     </svg>
   );
 }
+
+// Parrilla de captura de las 6 fotos. Nace acá porque `ModalRecoleccion`, el paso 6 del
+// wizard y `ModalEntregaDevolucion` ya la traían copiada cada uno por su lado, y estaba a
+// punto de aparecer una cuarta copia: mismo dibujo, cuatro sitios donde arreglarlo.
+// Dos botones separados (📷 cámara / 🖼 galería) porque Android no permite ambos en un
+// solo input. Las fotos viajan como dataURL; quien la usa decide cuándo subirlas.
+export function GridFotosAngulos({
+  fotos,
+  onChange,
+}: {
+  fotos: Partial<Record<AnguloFoto, string>>;
+  onChange: (f: Partial<Record<AnguloFoto, string>>) => void;
+}) {
+  function leer(key: AnguloFoto, file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => onChange({ ...fotos, [key]: ev.target?.result as string });
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 8 }}>
+      {ANGULOS_FOTO.map(({ key, label }) => {
+        const dataUrl = fotos[key];
+        return (
+          <div key={key} style={{ borderRadius: 12, border: `1px solid ${dataUrl ? "var(--ok-line)" : "var(--line)"}`, background: dataUrl ? "var(--ok-soft)" : "var(--soft2)", padding: 8, textAlign: "center" }}>
+            {dataUrl ? (
+              <div style={{ position: "relative" }}>
+                <img src={dataUrl} alt={label} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 8 }} />
+                <button type="button" onClick={() => { const n = { ...fotos }; delete n[key]; onChange(n); }} style={{
+                  position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%",
+                  background: "var(--bad)", border: "none", color: "var(--card)", fontSize: 10, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>✕</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}>
+                <IconoAngulo angulo={key} />
+              </div>
+            )}
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", marginTop: 4, marginBottom: 6 }}>{label}</div>
+            {!dataUrl && (
+              <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent)" }} title="Cámara">
+                  📷
+                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                    onChange={e => { leer(key, e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+                <label style={{ cursor: "pointer", fontSize: 14, padding: "4px 6px", borderRadius: 6, background: "var(--accent-soft)" }} title="Galería">
+                  🖼
+                  <input type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => { leer(key, e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

@@ -194,7 +194,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   // 6 fotos guiadas por ángulo (incl. la persona) — misma evidencia que la recolección,
   // exigida en toda recepción/entrega para respaldo legal de a quién se recibió/entregó.
   const [fotosRec, setFotosRec] = useState<Partial<Record<AnguloFoto, string>>>({});
-  // Entrega voluntaria: ¿la trajo el cliente (sin costo) o hubo que ir a buscarla (+$20.000)?
+  // Entrega voluntaria: ¿la trajo el cliente (sin costo) o hubo que ir a buscarla (MULTA_RECOLECCION)?
   const [recFueBuscada, setRecFueBuscada] = useState(false);
 
   const [formUbic, setFormUbic] = useState({
@@ -426,7 +426,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (error) { setGuardando(false); setMsgDetalle(error); return; }
 
     // Entrega voluntaria: el contrato se suspende y la moto queda guardada (reloj de 7 días).
-    // El costo de $20.000 SOLO aplica si hubo que ir a buscarla (movimiento de personal);
+    // El costo (MULTA_RECOLECCION) SOLO aplica si hubo que ir a buscarla (movimiento de personal);
     // si el cliente la trajo, no se cobra nada.
     let msgFinal = "Recepción registrada.";
     if (formRec.motivo === "entrega_voluntaria") {
@@ -904,7 +904,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
               </Field>
 
               {/* Entrega voluntaria con contrato activo: suspende el contrato. El costo de
-                  $20.000 solo aplica si hubo que ir a buscarla (no si la trajo el cliente). */}
+                  (MULTA_RECOLECCION) solo aplica si hubo que ir a buscarla (no si la trajo el cliente). */}
               {formRec.motivo === "entrega_voluntaria" && contratos.some(c => c.moto_id === selectedMoto.id && c.estado === "Activo") && (
                 <div style={{ background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", borderRadius: 12, padding: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-ink)", marginBottom: 4 }}>
@@ -912,7 +912,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted2)", marginBottom: 10 }}>¿Cómo llegó la moto?</div>
                   <div style={{ display: "grid", gap: 8 }}>
-                    {([[false, "🙋 La trajo el cliente", "Sin costo"], [true, "🚚 Se fue a buscar", "+ $20.000 por movimiento de personal"]] as [boolean, string, string][]).map(([val, label, sub]) => (
+                    {([[false, "🙋 La trajo el cliente", "Sin costo"], [true, "🚚 Se fue a buscar", `+ $${MULTA_RECOLECCION.toLocaleString("es-CO")} por movimiento de personal`]] as [boolean, string, string][]).map(([val, label, sub]) => (
                       <button
                         key={String(val)}
                         type="button"

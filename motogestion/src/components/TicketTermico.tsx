@@ -24,6 +24,13 @@ export type TicketData = {
   lineas?: LineaTicket[];  // detalle opcional (desglose de la cuenta)
   nota?: string;           // concepto / mensaje de pie
   recibidoPor?: string;
+  // Firma del cliente, para el recibo de DEVOLUCIÓN de la base: es la prueba de que recibió su
+  // plata. Solo la firma — trazo grueso y negro sobre blanco, que es lo único que una térmica de
+  // 203 dpi reproduce legible. La HUELLA no va acá a propósito: son crestas finas y en blanco y
+  // negro puro sale un manchón imposible de comparar. Se guarda en el sistema, que es donde de
+  // verdad sirve (y donde no se borra: el papel térmico se desvanece con los años).
+  firmaUrl?: string | null;
+  firmaLabel?: string;
 };
 
 // Recibo de la base inicial que el cliente entrega al registrarse (mismo formato de ticket).
@@ -40,6 +47,29 @@ export function buildTicketBaseInicial(nombre: string, cedula: string, monto: nu
     monto,
     nota: "Entrega de base inicial para inicio de proceso",
     recibidoPor,
+  };
+}
+
+// Recibo de DEVOLUCIÓN de la base, cuando el cliente se retira antes de recibir moto.
+// Mismo formato de siempre — lo único distinto es que dice RECIBIÓ en vez de ENTREGÓ y que lleva
+// la firma del cliente al pie, que es la prueba de que la plata sí se le entregó.
+export function buildTicketDevolucionBase(
+  nombre: string, cedula: string, monto: number, entregadoPor: string,
+  firmaUrl?: string | null, fecha?: string,
+): TicketData {
+  const f = fecha ?? hoyISO();
+  return {
+    titulo: "RECIBO DE DEVOLUCIÓN",
+    folio: `DEV-${f.slice(2).replace(/-/g, "")}-${cedula.slice(-4)}`,
+    fecha: f,
+    cliente: nombre,
+    cedula,
+    montoLabel: "RECIBIÓ",
+    monto,
+    nota: "Devolución de la base inicial — el cliente se retira del proceso",
+    recibidoPor: entregadoPor,
+    firmaUrl: firmaUrl ?? null,
+    firmaLabel: "Firma del cliente que recibe",
   };
 }
 
@@ -123,6 +153,14 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
       {/* Nota / concepto */}
       {datos.nota && <div style={{ fontSize: 12, textAlign: "center", color: "#000", margin: "4px 0" }}>{datos.nota}</div>}
       {datos.recibidoPor && <div style={{ fontSize: 12, textAlign: "center", color: "#000" }}>Recibido por: {datos.recibidoPor}</div>}
+
+      {datos.firmaUrl && (
+        <div style={{ marginTop: 8, textAlign: "center" }}>
+          <img src={datos.firmaUrl} alt="Firma" style={{ maxWidth: "58mm", maxHeight: "18mm", objectFit: "contain" }} />
+          <div style={{ borderTop: "1px solid #000", margin: "2px auto 0", width: "58mm" }} />
+          <div style={{ fontSize: 11, color: "#000", marginTop: 2 }}>{datos.firmaLabel ?? "Firma de quien recibe"}</div>
+        </div>
+      )}
 
       <div style={{ fontSize: 11, textAlign: "center", marginTop: 6, color: "#000" }}>¡Gracias!</div>
     </div>

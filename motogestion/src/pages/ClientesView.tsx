@@ -18,6 +18,7 @@ import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
+import ModalDevolucionBase from "../components/ModalDevolucionBase";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
@@ -1537,6 +1538,10 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
   const { alcanzados, siguiente } = calcularPremioReferidos(selectedCliente.referidos_confirmados ?? 0);
   const [verAnteriores, setVerAnteriores] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  // Devolver la base a quien se retira antes de recibir moto (mig 091). No aplica a quien ya
+  // tiene contrato: esa salida es por Liquidación, que además cierra contrato y libera la moto.
+  const [devolviendoBase, setDevolviendoBase] = useState(false);
+  const baseEntregada = selectedCliente.ingreso_inicial ?? 0;
   const visitasVisibles = verAnteriores ? visitas : visitas.slice(0, 1);
 
   return (
@@ -1745,6 +1750,13 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
             )}
           </>
         )}
+        {/* Se retira Y le devuelven su plata: un solo paso que además deja la firma como prueba.
+            "Retirar" a secas sigue existiendo para quien no entregó base o no la reclama. */}
+        {!conContrato && baseEntregada > 0 && puede("devolver_base") && (
+          <button onClick={() => setDevolviendoBase(true)} style={miniBtn2("var(--warn-soft)", "var(--warn-ink)")}>
+            ↩️ Devolver base $ {Math.round(baseEntregada).toLocaleString("es-CO")}
+          </button>
+        )}
         {esPrincipal && onEliminar && !conContrato && (
           <button
             onClick={() => setEliminando(true)}
@@ -1754,6 +1766,16 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
           </button>
         )}
       </div>
+
+      {devolviendoBase && (
+        <ModalDevolucionBase
+          clienteId={selectedCliente.id}
+          nombre={selectedCliente.nombre}
+          cedula={selectedCliente.cedula ?? ""}
+          montoEntregado={baseEntregada}
+          onClose={() => setDevolviendoBase(false)}
+        />
+      )}
 
       {eliminando && (
         <>

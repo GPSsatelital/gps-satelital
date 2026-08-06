@@ -12,6 +12,7 @@ import { useTaller } from "../hooks/useTaller";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import LineaTiempo from "../components/LineaTiempo";
 import { formatDiaPago } from "../utils/cicloPago";
+import { fmtFechaLarga } from "../utils/fecha";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { useAuth } from "../contexts/AuthContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -662,7 +663,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 return (
                   <div key={p.id} style={{ background: "var(--card)", borderRadius: 14, padding: "13px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", boxShadow: "0 1px 4px rgba(15,23,42,0.06)" }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{fmtFecha(p.fecha)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{fmtFechaLarga(p.fecha)}</div>
                       {moto && (
                         <button onClick={() => onNavigate("ficha_moto", moto.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 600, fontSize: 12, padding: 0 }}>
                           {moto.placa}

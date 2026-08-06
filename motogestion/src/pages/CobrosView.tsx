@@ -55,7 +55,7 @@ import {
   valorPeriodoReal,
   type ContratoCiclo,
 } from "../utils/cicloPago";
-import { hoyISO, hoyDate, hoyMasDias, fechaISO } from "../utils/fecha";
+import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
 import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
@@ -697,7 +697,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   async function handleEliminarPago(p: typeof pagos[number]) {
     if (eliminandoPagoId) return;
     if (!profile || !puedeEliminarPago) return;
-    if (!confirm(`¿Eliminar este pago de $${fmt(p.valor)} (${p.metodo}, ${formatDate(p.fecha)})? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar este pago de $${fmt(p.valor)} (${p.metodo}, ${fmtFechaLarga(p.fecha)})? Esta acción no se puede deshacer.`)) return;
     setEliminandoPagoId(p.id);
     try {
       await eliminarPago(p, profile.id);
@@ -2216,7 +2216,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           hacía que aplicar un saldo se viera idéntico a un pago nuevo (caso RMB51H,
                           31-jul: el dueño creyó que se había contado dos veces). No entran a la caja. */}
                       <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                        {formatDate(p.fecha)} · {esPagoDeCaja(p) ? p.metodo : "No entró dinero"}
+                        {fmtFechaLarga(p.fecha)} · {esPagoDeCaja(p) ? p.metodo : "No entró dinero"}
                       </div>
                       {/* Avisos en palabras simples (época de adaptación): el funcionario debe entender
                           de un vistazo por qué ve dos renglones del mismo monto y cuál de los dos es
@@ -2726,7 +2726,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   <div style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 15 }}>{cliente?.nombre || "Sin cliente"}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                     {moto && <Placa placa={moto.placa} grupo={moto.grupo} size="sm" />}
-                    <span>{formatDate(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}</span>
+                    <span>{fmtFechaLarga(p.fecha)}{p.folio ? ` · ${p.folio}` : ""}</span>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                     <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft3)", color: "var(--accent-ink)", fontSize: 11, fontWeight: 700 }}>
@@ -2923,7 +2923,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       <span style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase" }}>{cliente?.nombre || "Sin cliente"}</span>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
-                      {formatDate(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}
+                      {fmtFechaLarga(p.fecha)} · {p.metodo} · $ {fmt(p.valor)}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>
                       Cuota ${fmt(p.aplicado_tarifa ?? 0)}

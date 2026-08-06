@@ -5,7 +5,7 @@ import { useMotos } from "../hooks/useMotos";
 import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import type { Pago } from "../hooks/usePagos";
-import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 
 type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
 
@@ -412,7 +412,7 @@ export default function SocioDashboard() {
                   </div>
                   <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
                     {contrato.tipo_ruta ?? contrato.forma_pago ?? "Contrato"}
-                    {ultimoPago ? ` · Último pago: ${new Date(ultimoPago.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin pagos"}
+                    {ultimoPago ? ` · Último pago: ${fmtFechaLarga(ultimoPago.fecha)}` : " · Sin pagos"}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>

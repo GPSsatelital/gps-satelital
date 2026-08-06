@@ -6,7 +6,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePrestamos, grupoDePago } from "../hooks/usePrestamos";
 import { useScope } from "../contexts/SubadminScopeContext";
-import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Badge, Chip, type BadgeTone } from "../components/atomos";
 import { listaConScroll } from "../styles/shared";
 import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
@@ -231,7 +231,7 @@ export default function HistorialPagosView({ onNavigate }: {
               {cliente?.nombre ?? "—"}
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-              {p.fecha} · {hora}{moto ? ` · ${moto.placa}` : ""}
+              {fmtFechaLarga(p.fecha)} · {hora}{moto ? ` · ${moto.placa}` : ""}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
               <Badge tone={p.metodo === "Efectivo" ? "ok" : "accent"}>{mb.label}</Badge>
@@ -301,7 +301,7 @@ export default function HistorialPagosView({ onNavigate }: {
           ))}
         </div>
         <div style={{ fontSize: 12, color: "var(--faint)" }}>
-          {pagoSeleccionado.fecha} · {pagoSeleccionado.created_at ? new Date(pagoSeleccionado.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : "—"} · {pagoSeleccionado.tipo_registro}
+          {fmtFechaLarga(pagoSeleccionado.fecha)} · {pagoSeleccionado.created_at ? new Date(pagoSeleccionado.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : "—"} · {pagoSeleccionado.tipo_registro}
           {pagoSeleccionado.referencia ? ` · Ref. ${pagoSeleccionado.referencia}` : ""}
         </div>
       </div>

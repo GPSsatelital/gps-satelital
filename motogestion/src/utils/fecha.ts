@@ -33,3 +33,24 @@ export function hoyMasDias(n: number): string {
   d.setDate(d.getDate() + n);
   return fechaISO(d);
 }
+
+// "Martes 4 de agosto de 2026" — para las fechas de PAGO en pantalla.
+//
+// El día de la semana no es adorno: los días de pago son lunes o miércoles, así que
+// verlo dice de una si el cliente pagó cuando le tocaba o se corrió. Con "4/8/2026"
+// había que sacar la cuenta a mano.
+//
+// Vive acá y no en cada pantalla porque la fecha del pago sale en cinco sitios, y ya
+// pasó una vez que cambiar una regla dejara pantallas diciendo cosas distintas.
+//
+// NO se usa en la descarga a Excel (ahí manda "2026-08-04", que es lo que Excel sabe
+// ordenar y filtrar como fecha) ni en el recibo impreso de 80mm (se partiría en dos
+// líneas). Decisión del dueño, 6-ago-2026.
+export function fmtFechaLarga(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);
+  if (isNaN(d.getTime())) return "—";
+  const s = d.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  // es-CO devuelve "martes, 4 de agosto de 2026": va con mayúscula inicial y sin esa coma.
+  return (s.charAt(0).toUpperCase() + s.slice(1)).replace(",", "");
+}

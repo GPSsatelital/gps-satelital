@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
-import { useAbonosBase } from "../hooks/useAbonosBase";
+import { useAbonosBase, COSTO_VISITA_DOMICILIARIA } from "../hooks/useAbonosBase";
 import { useClientes } from "../hooks/useClientes";
+import { useVisitas } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 import { labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
@@ -15,9 +16,10 @@ import TicketTermico, { buildTicketDevolucionBase, type TicketData } from "./Tic
 // llegó a tener moto. La plata se devolvía a mano y no quedaba rastro de nada — si el cliente
 // volvía diciendo "nunca me devolvieron", lo único que existía era el recibo de cuando PAGÓ.
 //
-// REGLA DEL DUEÑO (6-ago-2026): se devuelve TODO, sin descontar nada. Por eso el monto no se
-// puede editar — sale de lo que el cliente entregó y punto. Si algún día se retiene algo, se
-// cambia acá y en un solo lugar.
+// REGLAS DEL DUEÑO (6-ago-2026): se le descuenta lo que la empresa ya le pagó al visitador que
+// fue a su casa — monto FIJO, una sola vez aunque le hayan hecho varias visitas. Y si se retira
+// ANTES de la visita se le devuelve TODO: si nadie fue, la empresa no gastó nada.
+// Por eso el monto no se teclea: lo calcula el sistema, que es quien sabe si la visita se hizo.
 //
 // LA FIRMA ES OBLIGATORIA: es el motivo entero de este flujo. Sin ella se repetiría el problema
 // que lo originó — plata que sale sin prueba de que llegó a su dueño. La huella es opcional
@@ -36,7 +38,15 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
   useBloquearScrollFondo();
   const { registrar, subirEvidencia } = useAbonosBase();
   const { actualizarCliente } = useClientes();
+  const { visitas } = useVisitas();
   const { profile } = useAuth();
+
+  // El descuento sale de un hecho, no de una opinión: ¿alguien fue de verdad a visitarlo?
+  const tieneVisitaRealizada = visitas.some(v => v.cliente_id === clienteId && v.estado === "Realizada");
+  // Nunca se retiene más de lo que entregó: si dejó menos que el costo de la visita, se queda
+  // en cero y no sale un "recibe -$5.000" que nadie sabría cómo entregar.
+  const retencion = tieneVisitaRealizada ? Math.min(COSTO_VISITA_DOMICILIARIA, montoEntregado) : 0;
+  const aDevolver = montoEntregado - retencion;
 
   const [firma, setFirma] = useState<string | null>(null);
   const [huella, setHuella] = useState<string | null>(null);
@@ -67,20 +77,34 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
         huellaUrl = r.url;   // si falla, se sigue: la huella es opcional y la firma ya quedó
       }
 
-      // 2. El movimiento de plata, con su rastro completo.
-      const { error: errMov } = await registrar({
+      // 2. Los movimientos de plata. Son DOS hechos distintos y por eso van separados: lo que
+      //    sale a las manos del cliente, y lo que se queda la empresa por la visita ya pagada.
+      //    Si fuera una sola devolución neta, el saldo del cliente quedaría en $40.000 y
+      //    parecería que todavía tiene plata adentro cuando no tiene nada.
+      const base = {
         cliente_id: clienteId,
-        tipo: "devolucion",
-        monto: montoEntregado,
-        metodo: "Efectivo",
+        metodo: "Efectivo" as const,
         fecha: hoyISO(),
         fecha_registro: hoyISO(),
         registrado_por: profile.id,
-        firma_url: firmaUrl,
-        huella_url: huellaUrl,
-        nota: nota.trim() || "El cliente se retira del proceso",
-      });
-      if (errMov) { setError("Error al registrar la devolución: " + errMov); return; }
+      };
+      if (aDevolver > 0) {
+        const { error: errMov } = await registrar({
+          ...base, tipo: "devolucion", monto: aDevolver,
+          firma_url: firmaUrl, huella_url: huellaUrl,
+          nota: nota.trim() || "El cliente se retira del proceso",
+        });
+        if (errMov) { setError("Error al registrar la devolución: " + errMov); return; }
+      }
+      if (retencion > 0) {
+        const { error: errRet } = await registrar({
+          ...base, tipo: "retencion", monto: retencion,
+          nota: "Visita domiciliaria ya realizada — pago al visitador",
+        });
+        // La devolución ya quedó y el cliente ya tiene su plata: no se aborta por esto, pero
+        // hay que avisar, porque sin la retención su saldo de base no cierra en cero.
+        if (errRet) { setError(`El dinero YA se registró como entregado — NO lo repitas. Falló solo anotar los ${fmt(retencion)} de la visita: ${errRet}. Avísame para corregirlo.`); return; }
+      }
 
       // 3. El cliente queda Retirado y sin base entregada. Si esto falla, la devolución YA quedó
       //    registrada — hay que decirlo así para que nadie la vuelva a hacer creyendo que se perdió.
@@ -90,7 +114,15 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
         return;
       }
 
-      setRecibo(buildTicketDevolucionBase(nombre, cedula, montoEntregado, profile.nombre ?? "", firmaUrl));
+      // El recibo muestra la cuenta desglosada: el cliente tiene que poder ver POR QUÉ recibe
+      // menos de lo que entregó, sin que nadie se lo tenga que explicar de palabra.
+      const ticket = buildTicketDevolucionBase(nombre, cedula, aDevolver, profile.nombre ?? "", firmaUrl);
+      setRecibo(retencion > 0
+        ? { ...ticket, lineas: [
+            { label: "Entregó de base", valor: fmt(montoEntregado) },
+            { label: "Visita domiciliaria", valor: "- " + fmt(retencion) },
+          ] }
+        : ticket);
     } finally {
       setGuardando(false);
       setConfirmando(false);
@@ -108,8 +140,9 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
           display: "grid", gap: 14, boxSizing: "border-box", maxHeight: "calc(100dvh - 32px)", overflowY: "auto",
         }}>
           <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "12px 14px", borderRadius: 12, fontWeight: 700, fontSize: 14, lineHeight: 1.5 }}>
-            ✅ Devolución registrada por {fmt(montoEntregado)}. El cliente quedó como <strong>Retirado</strong> y
-            su firma quedó guardada como respaldo.
+            ✅ Entrégale <strong>{fmt(aDevolver)}</strong> al cliente.
+            {retencion > 0 && <> De sus {fmt(montoEntregado)} se descontaron {fmt(retencion)} de la visita domiciliaria.</>}
+            {" "}Quedó como <strong>Retirado</strong> y su firma quedó guardada como respaldo.
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
             Imprime el recibo y entrégaselo junto con el dinero. El papel es para él; la prueba que queda
@@ -142,10 +175,22 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
         </div>
 
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", textTransform: "uppercase" }}>Se le devuelve</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: "var(--warn-ink)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(montoEntregado)}</div>
+          {retencion > 0 && (
+            <div style={{ display: "grid", gap: 4, marginBottom: 8, fontSize: 13, color: "var(--muted2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <span>Entregó de base</span><strong style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(montoEntregado)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <span>Visita domiciliaria</span><strong style={{ fontVariantNumeric: "tabular-nums" }}>− {fmt(retencion)}</strong>
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", textTransform: "uppercase" }}>Se le entrega</div>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "var(--warn-ink)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{fmt(aDevolver)}</div>
           <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4, lineHeight: 1.5 }}>
-            Todo lo que entregó, sin descontar nada. Al confirmar, el cliente queda como <strong>Retirado</strong>.
+            {retencion > 0
+              ? <>Se descuenta lo que ya se le pagó al visitador que fue a su casa. Al confirmar, el cliente queda como <strong>Retirado</strong>.</>
+              : <>No se le hizo visita, así que se le devuelve todo lo que entregó. Al confirmar, queda como <strong>Retirado</strong>.</>}
           </div>
         </div>
 
@@ -181,7 +226,7 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
         {confirmando ? (
           <div style={{ display: "grid", gap: 10, padding: "12px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.5 }}>
-              ¿Confirmas que le entregas <strong>{fmt(montoEntregado)}</strong> en efectivo a {nombre.toUpperCase()}?
+              ¿Confirmas que le entregas <strong>{fmt(aDevolver)}</strong> en efectivo a {nombre.toUpperCase()}?
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setConfirmando(false)} disabled={guardando} style={{ ...secondaryBtn, flex: 1 }}>Volver</button>
@@ -197,7 +242,7 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
               onClick={() => { if (!firma) { setError("Falta la firma del cliente."); return; } setError(null); setConfirmando(true); }}
               style={{ ...primaryBtn, flex: 2 }}
             >
-              Devolver {fmt(montoEntregado)}
+              Entregar {fmt(aDevolver)}
             </button>
           </div>
         )}

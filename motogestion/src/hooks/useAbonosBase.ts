@@ -7,7 +7,22 @@ import { createTableStore } from "./createTableStore";
 // Vive aparte de `pagos` porque `pagos.contrato_id` es obligatorio y la base se entrega ANTES de
 // que exista contrato. Entradas y salidas comparten tabla (`tipo`) para que ninguna pantalla pueda
 // contar la una sin la otra.
-export type TipoAbonoBase = "abono" | "devolucion";
+// abono = el cliente entrega · devolucion = sale de la caja a sus manos ·
+// retencion = se queda la empresa (mig 092). Son tres hechos distintos y la caja los ve distinto:
+// la devolución es plata que SALE, la retención solo cambia de bolsillo dentro de la empresa.
+export type TipoAbonoBase = "abono" | "devolucion" | "retencion";
+
+/**
+ * Lo que la empresa retiene de la base cuando el cliente se retira: es lo que ya le pagó al
+ * visitador que fue a su casa. Regla del dueño (6-ago-2026): monto FIJO, una sola vez aunque se
+ * le hayan hecho varias visitas, y NO se descuenta si el cliente se retira antes de la visita —
+ * si nadie fue, la empresa no gastó nada.
+ *
+ * Vive en una constante y no escrito a mano en la pantalla por la lección de la multa: el día que
+ * subió de $20.000 a $30.000 el cálculo cambió pero un letrero siguió diciendo el valor viejo.
+ * Pasa a Configuración en la fase 6 del plan, junto con la multa y los montos de la base.
+ */
+export const COSTO_VISITA_DOMICILIARIA = 40000;
 
 export type AbonoBase = {
   id: string;
@@ -30,9 +45,10 @@ export type AbonoBase = {
 const store = createTableStore<AbonoBase>("abonos_base");
 
 /**
- * Lo que un cliente tiene entregado HOY de base: sus abonos menos sus devoluciones.
- * Nunca se lee solo la suma de abonos — quien se retiró y ya cobró figuraría debiendo cero
- * y con su plata todavía dentro.
+ * Lo que un cliente tiene entregado HOY de base: sus abonos menos lo que salió (devoluciones) y
+ * menos lo que la empresa retuvo. Nunca se lee solo la suma de abonos — quien se retiró y ya
+ * cobró figuraría con su plata todavía dentro. Y sin restar la retención quedaría figurando
+ * dueño de los $40.000 del visitador, que ya no son suyos.
  */
 export function saldoBaseDeCliente(movs: AbonoBase[], clienteId: string): number {
   return movs

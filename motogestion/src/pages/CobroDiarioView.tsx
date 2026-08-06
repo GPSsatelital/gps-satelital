@@ -26,6 +26,7 @@ import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
+import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
 import MoneyInput from "../components/MoneyInput";
 import { Badge } from "../components/atomos";
 
@@ -139,6 +140,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   // banco (ver `fechaDeCaja`), una del viernes digitada el lunes se iba a la caja del lunes y
   // ese día quedaba sobrando contra su extracto. El efectivo no lo necesita: es de hoy siempre.
   const [cobrarFecha, setCobrarFecha] = useState(hoyISO());
+  // A cuál cuenta de la empresa cayó la transferencia (mig 087).
+  const [cobrarCuentaId, setCobrarCuentaId] = useState<string | null>(null);
   const [cobrarSubiendo, setCobrarSubiendo] = useState(false);
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
@@ -313,7 +316,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         registradoPor: profile?.id,
         // El día del banco manda: `fecha` decide en qué caja entra esta plata. Si al confirmar
         // cruza con una partida del extracto, ese cruce la corrige y gana la fecha comprobada.
-        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim(), comprobanteUrl, fecha: cobrarFecha } : {}),
+        ...(cobrarMetodo === "Transferencia" ? { referencia: cobrarReferencia.trim(), comprobanteUrl, fecha: cobrarFecha, cuentaId: cobrarCuentaId } : {}),
         ...(f.convenioActivoId ? { convenioId: f.convenioActivoId } : {}),
       });
     setCobrandoLoading(false);
@@ -323,6 +326,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setCobrarValor(""); setCobrarReferencia(""); setCobrarComprobante(null);
     // La fecha vuelve a hoy: si no, la del cliente anterior viaja al siguiente cobro.
     setCobrarFecha(hoyISO());
+    // Y la cuenta también: el siguiente cliente puede ser de otro grupo.
+    setCobrarCuentaId(null);
     setCobrarNota("");
   }
 
@@ -501,6 +506,16 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                   {cobrarFecha === hoyISO()
                     ? "Es la fecha que aparece en el comprobante. Si el cliente transfirió otro día, cámbiala."
                     : <>Esta plata va a la caja del <strong>{cobrarFecha}</strong>, que es el día en que el banco la recibió — no a la de hoy.</>}
+                </div>
+
+                {/* A cuál cuenta de la empresa cayó (mig 087) — mismo componente que Cartera para
+                    que las dos puertas pregunten exactamente lo mismo. */}
+                <div style={{ marginTop: 14 }}>
+                  <SelectorCuentaBanco
+                    grupo={motos.find(m => m.id === f.motoId)?.grupo ?? null}
+                    value={cobrarCuentaId}
+                    onChange={setCobrarCuentaId}
+                  />
                 </div>
               </div>
             )}

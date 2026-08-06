@@ -89,6 +89,9 @@ export type Pago = {
   // De lo que fue a deudas, cuánto era una multa de recolección (mig 085). Solo para informar:
   // la caja lo muestra aparte porque no es plata del arriendo, es el costo de ir a buscar la moto.
   aplicado_multa?: number | null;
+  // A qué cuenta de la empresa cayó la transferencia (mig 087). NULL en efectivo, en los
+  // movimientos internos y en todo pago anterior a esa migración.
+  cuenta_id?: string | null;
   aplicado_convenio: number;
   aplicado_ahorro: number;
   aplicado_saldo_favor: number;
@@ -206,7 +209,7 @@ export function usePagos() {
     valor: number,
     metodo: MetodoPago,
     aplicado: AplicadoPago,
-    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null; fecha?: string; fechaCaja?: string; referencia?: string },
+    opts?: { convenioId?: string; tipoRegistro?: TipoRegistroPago; registradoPor?: string; comprobanteUrl?: string; folio?: string; forzarPendiente?: boolean; ubicacion?: { lat: number; lng: number } | null; fecha?: string; fechaCaja?: string; referencia?: string; cuentaId?: string | null },
   ) {
     const tipoRegistro = opts?.tipoRegistro ?? (metodo === "Efectivo" ? "normal" : "transferencia");
     const estado: PagoEstado = (metodo === "Efectivo" && !opts?.forzarPendiente) ? "Confirmado" : "Pendiente";
@@ -239,6 +242,8 @@ export function usePagos() {
       folio: opts?.folio ?? null,
       ubicacion: opts?.ubicacion ?? null,
       referencia: opts?.referencia ?? null,
+      // Solo la transferencia cae en una cuenta; el efectivo llega a la mano (mig 087).
+      cuenta_id: metodo === "Transferencia" ? (opts?.cuentaId ?? null) : null,
       // DOS fechas distintas (mig 064):
       //  · `fecha` = cuándo PAGÓ el cliente. Puede ser anterior a hoy cuando reporta tarde
       //    (transfirió el domingo y avisó el lunes). Manda para mora, historial y recibo.
@@ -310,7 +315,7 @@ export function usePagos() {
     const ref = normalizarRef(pago.referencia);
     if (ref.length < 3) return;
     const { data: partidas } = await supabase
-      .from("ingresos_no_identificados").select("id, referencia, monto, fecha_banco").eq("estado", "pendiente");
+      .from("ingresos_no_identificados").select("id, referencia, monto, fecha_banco, cuenta_id").eq("estado", "pendiente");
     // La referencia se guarda cruda: se compara normalizada en memoria.
     const match = (partidas ?? []).find(
       p => normalizarRef(p.referencia) === ref && Math.round(p.monto) === Math.round(pago.valor),
@@ -325,10 +330,15 @@ export function usePagos() {
     // Diario (donde el cruce solo ocurre acá, al confirmar) quedaba contado en la caja del día en
     // que se digitó, dejándola sobrando contra su extracto y al día real corto para siempre.
     // No afecta el reparto a cuota/deuda/convenio: el motor de cajas reparte por `created_at`.
-    if (match.fecha_banco) {
-      await supabase.from("pagos")
-        .update({ fecha: match.fecha_banco, fecha_registro: match.fecha_banco })
-        .eq("id", pagoId);
+    // Y la CUENTA que la partida traía leída del extracto se copia al pago (mig 087): en ese
+    // instante es el dato más confiable que existe sobre a dónde cayó la plata — sale del
+    // extracto, no de lo que dijo el cliente. Antes se perdía y el arqueo por cuenta quedaba
+    // ciego justo en los casos ya comprobados.
+    const cambios: Record<string, string> = {};
+    if (match.fecha_banco) { cambios.fecha = match.fecha_banco; cambios.fecha_registro = match.fecha_banco; }
+    if (match.cuenta_id) cambios.cuenta_id = match.cuenta_id;
+    if (Object.keys(cambios).length > 0) {
+      await supabase.from("pagos").update(cambios).eq("id", pagoId);
     }
   }
 

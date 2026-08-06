@@ -32,6 +32,7 @@ import ModalConvenio from "../components/ModalConvenio";
 import { generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
+import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
 import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
@@ -599,6 +600,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalRefRepetidaOk, setModalRefRepetidaOk] = useState(false);
   // El funcionario validó con la foto del comprobante un valor distinto al que muestra el banco.
   const [modalDescuadreOk, setModalDescuadreOk] = useState(false);
+  // A cuál cuenta de la empresa cayó (mig 087). Sin esto la caja da un solo total por grupo y
+  // COSTA, que recibe en dos cuentas, no se puede cuadrar contra cada extracto por separado.
+  const [modalCuentaId, setModalCuentaId] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -1138,12 +1142,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     setModalValor(""); setModalMetodo("Efectivo"); setModalError(null); setModalExito(false);
     setModalComprobante(null); setModalSubiendo(false); setModalFechaPago(hoyISO()); setModalReferencia("");
     setModalFechaDelBanco(null); setModalRefRepetidaOk(false); setModalDescuadreOk(false);
+    setModalCuentaId(null);
   }
 
   /** La referencia y la fecha del banco pertenecen a UN cliente: cambiar de cliente las invalida. */
   function limpiarDatosTransferencia() {
     setModalReferencia(""); setModalFechaPago(hoyISO()); setModalFechaDelBanco(null);
     setModalRefRepetidaOk(false); setModalDescuadreOk(false);
+    // La cuenta también: el cliente nuevo puede ser de otro grupo, y dejarla pegada marcaría
+    // su plata en una cuenta que ni siquiera es de su portafolio.
+    setModalCuentaId(null);
   }
 
   /** Otro pago (no rechazado) ya usó esta misma referencia: el mismo dinero respaldando dos cobros. */
@@ -1255,7 +1263,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         // hoy sobrando y aquel día corto para siempre. Sin cruce no se pasa nada y la caja sigue
         // siendo la de hoy, porque ahí la fecha es solo lo que dice el cliente.
         ...(cruce ? { fechaCaja: cruce.fecha_banco } : {}),
-        ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim() } : {}),
+        ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim(), cuentaId: modalCuentaId } : {}),
         ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
       },
     );
@@ -3518,6 +3526,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     recibió—, no a la de hoy. El cliente tampoco aparece en mora por esos días y el recibo muestra la fecha correcta.
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ¿A cuál cuenta de la empresa cayó? Solo pregunta cuando de verdad hay más de una
+                posible; con una sola la elige y se queda callado. Ver SelectorCuentaBanco. */}
+            {modalMetodo === "Transferencia" && (
+              <div style={{ marginBottom: 14 }}>
+                <SelectorCuentaBanco grupo={modalMoto?.grupo ?? null} value={modalCuentaId} onChange={setModalCuentaId} />
               </div>
             )}
 

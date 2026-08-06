@@ -447,6 +447,7 @@ const LABEL_CONCEPTO_DEUDA: Record<string, string> = {
   prestamo_repuesto: "Préstamo para compra de repuestos",
   prestamo_eventualidad: "Préstamo por eventualidad",
   fotomulta: "Fotomultas",
+  migracion: "Saldo anterior (sistema anterior)",
   otro: "Otros conceptos",
 };
 

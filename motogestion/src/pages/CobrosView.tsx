@@ -2067,6 +2067,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         <option value="prestamo_eventualidad">Préstamo eventualidad</option>
                         <option value="fotomulta">Fotomulta</option>
                         <option value="multa_recoleccion">Multa recolección</option>
+                        <option value="migracion">Deuda de migración (sistema viejo)</option>
                         <option value="otro">Otro</option>
                       </select>
                     </div>
@@ -2122,6 +2123,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                               necesitaba cargar a mano la multa de una recolección tenía que
                               disfrazarla de "Otro". */}
                           <option value="multa_recoleccion">Multa por recolección / inmovilización</option>
+                          <option value="migracion">Deuda de migración (sistema viejo)</option>
                           <option value="otro">Otro</option>
                         </select>
                       </div>

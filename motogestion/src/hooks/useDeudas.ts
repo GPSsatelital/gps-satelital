@@ -1,7 +1,11 @@
 import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
 
-export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "multa_recoleccion" | "otro";
+// 'migracion' (mig 090): saldo que el cliente traía del sistema viejo de Excel. Existe porque el
+// funcionario no tenía dónde marcarlo y lo escribía en la descripción — se encontraron 19 formas
+// distintas de decir lo mismo ("EXCEL VIEJO", "EXCELO VIEJO", "Viene del EXCEL SISTEMA VIEJO"...).
+// Es una sola cifra ya calculada en el arqueo, NO una semana que se pueda partir en tarifa+ahorro.
+export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "multa_recoleccion" | "migracion" | "otro";
 export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada";
 
 export type Deuda = {

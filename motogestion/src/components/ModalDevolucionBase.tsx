@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useAbonosBase, COSTO_VISITA_DOMICILIARIA } from "../hooks/useAbonosBase";
 import { useClientes } from "../hooks/useClientes";
-import { useVisitas } from "../hooks/useVisitas";
+import { useVisitas, visitaFueHecha } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 import { labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
@@ -42,7 +42,9 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
   const { profile } = useAuth();
 
   // El descuento sale de un hecho, no de una opinión: ¿alguien fue de verdad a visitarlo?
-  const tieneVisitaRealizada = visitas.some(v => v.cliente_id === clienteId && v.estado === "Realizada");
+  // OJO: "hecha" ≠ "aprobada". Una visita puede estar hecha y figurar "Pendiente de revisar"
+  // (falta que el admin la apruebe) — al visitador ya se le pagó igual.
+  const tieneVisitaRealizada = visitas.some(v => v.cliente_id === clienteId && visitaFueHecha(v));
   // Nunca se retiene más de lo que entregó: si dejó menos que el costo de la visita, se queda
   // en cero y no sale un "recibe -$5.000" que nadie sabría cómo entregar.
   const retencion = tieneVisitaRealizada ? Math.min(COSTO_VISITA_DOMICILIARIA, montoEntregado) : 0;

@@ -5,7 +5,7 @@ import { useContratos, infoFinContrato, ahorroTotal } from "../hooks/useContrato
 import { usePagos } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
-import { useVisitas } from "../hooks/useVisitas";
+import { useVisitas, visitaFueHecha } from "../hooks/useVisitas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { useTaller } from "../hooks/useTaller";
@@ -710,7 +710,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>Visita — {fmtFecha(v.fecha)}</div>
                       <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-                        <Badge bg={v.estado === "Realizada" ? "var(--ok-soft)" : "var(--warn-soft)"} color={v.estado === "Realizada" ? "var(--ok-ink)" : "var(--warn-ink)"}>{v.estado}</Badge>
+                        {/* Comparaba contra "Realizada", pero el sistema las guarda como
+                            "Completada": TODA visita hecha salía en amarillo, como si faltara. */}
+                        <Badge bg={visitaFueHecha(v) ? "var(--ok-soft)" : "var(--warn-soft)"} color={visitaFueHecha(v) ? "var(--ok-ink)" : "var(--warn-ink)"}>{v.estado}</Badge>
                         {v.resultado && <Badge bg={rBg} color={rColor}>{v.resultado}</Badge>}
                       </div>
                     </div>

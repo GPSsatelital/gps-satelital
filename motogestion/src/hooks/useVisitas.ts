@@ -1,7 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export type VisitaEstado = "Pendiente" | "Realizada";
+// "Completada" es lo que escribe `ModalVisita`, que es la ÚNICA puerta por la que se registran
+// visitas de verdad. "Realizada" venía del tipo original y de `registrarVisita()`, que resultó ser
+// código muerto (nadie la llama) — se deja aceptado por si alguna fila vieja lo trae.
+export type VisitaEstado = "Pendiente" | "Completada" | "Realizada";
+
+/**
+ * ¿Alguien fue de verdad a la casa del cliente?
+ *
+ * NO confundir con "aprobada": una visita puede estar hecha y todavía figurar "Pendiente de
+ * revisar" — eso significa que falta que un admin decida si aprueba o rechaza, no que falte ir.
+ *
+ * Existe como función y no como comparación suelta porque ya mordió: la devolución de la base
+ * preguntaba `estado === "Realizada"` y nunca descontaba la visita, porque el sistema las guarda
+ * como "Completada". Dos puertas escribiendo valores distintos para el mismo hecho.
+ */
+export function visitaFueHecha(v: { estado: VisitaEstado }): boolean {
+  return v.estado !== "Pendiente";
+}
 export type VisitaResultado = "Aprobado" | "Rechazado" | "Repetir" | null;
 
 export type Visita = {

@@ -3482,10 +3482,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               </div>
             )}
 
+            {/* Esta casilla decide a QUÉ CAJA entra la plata: desde el 4-ago `fechaDeCaja()`
+                manda la transferencia a la caja de esta fecha, no a la del día en que se digita.
+                Antes decía "¿Cuándo hizo la transferencia?" y avisaba "la plata entra a la caja
+                de hoy" — cierto con la regla vieja, falso desde ese cambio. Un funcionario dejó
+                la fecha en hoy (como siempre) y $262.000 que el banco recibió el 4 quedaron en la
+                caja del 5. Redactada igual que CobroDiarioView, que ya preguntaba por el banco. */}
             {modalMetodo === "Transferencia" && (
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
-                  ¿Cuándo hizo la transferencia?
+                  ¿Qué día entró la plata al banco? *
                 </label>
                 <input
                   type="date"
@@ -3501,10 +3507,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     Fecha tomada del extracto del banco ({formatDate(modalFechaEfectiva)}): está comprobada, por eso no se puede cambiar.
                     La plata entra a la caja del <strong>{formatDate(modalFechaEfectiva)}</strong>, que es el día en que el banco la recibió.
                   </div>
-                ) : modalFechaPago !== hoyISO() && (
+                ) : modalFechaPago === hoyISO() ? (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", background: "var(--soft)", borderRadius: 8, padding: "7px 10px" }}>
+                    Es la fecha que aparece en el comprobante. <strong>Si el banco la recibió otro día, cámbiala:</strong> esta
+                    plata entra a la caja de ese día, no a la de hoy.
+                  </div>
+                ) : (
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px" }}>
-                    Se registrará con fecha <strong>{formatDate(modalFechaPago)}</strong>: así el cliente no aparece en mora
-                    por esos días y el recibo muestra la fecha correcta. La plata entra a la caja de <strong>hoy</strong>.
+                    Esta plata entra a la caja del <strong>{formatDate(modalFechaPago)}</strong> —el día en que el banco la
+                    recibió—, no a la de hoy. El cliente tampoco aparece en mora por esos días y el recibo muestra la fecha correcta.
                   </div>
                 )}
               </div>

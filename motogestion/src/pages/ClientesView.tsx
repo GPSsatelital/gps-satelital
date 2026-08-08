@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import { supabase } from "../lib/supabase";
 import ModalVisita from "../components/ModalVisita";
 import {
@@ -429,12 +430,12 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {visita.fotos.clienteFuncionario && (
                           <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer">
-                            <img src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                            <ImgPrivada src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
                         {visita.fotos.fachada && (
                           <a href={visita.fotos.fachada} target="_blank" rel="noreferrer">
-                            <img src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                            <ImgPrivada src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
                       </div>
@@ -1703,7 +1704,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     {v.fotos.clienteFuncionario && (
                       esUrl(v.fotos.clienteFuncionario) ? (
                         <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Funcionario + visitados">
-                          <img src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                          <ImgPrivada src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>📎 Personas + funcionario: {v.fotos.clienteFuncionario}</div>
@@ -1712,7 +1713,7 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     {v.fotos.fachada && (
                       esUrl(v.fotos.fachada) ? (
                         <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada">
-                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                          <ImgPrivada src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>📎 Fachada: {v.fotos.fachada}</div>

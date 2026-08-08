@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import { supabase } from "../lib/supabase";
 import type { ViewKey } from "../App";
 import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
@@ -341,7 +342,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                 }}
               >
                 {cliente.foto_perfil_url ? (
-                  <img src={cliente.foto_perfil_url} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <ImgPrivada src={cliente.foto_perfil_url} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   cliente.nombre.trim()[0]?.toUpperCase() ?? "?"
                 )}
@@ -784,12 +785,12 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                       {v.fotos.fachada && /^https?:\/\//.test(v.fotos.fachada) && (
                         <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada de la vivienda">
-                          <img src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                          <ImgPrivada src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
                       {v.fotos.clienteFuncionario && /^https?:\/\//.test(v.fotos.clienteFuncionario) && (
                         <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Cliente + funcionario">
-                          <img src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
+                          <ImgPrivada src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
                     </div>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
@@ -1937,7 +1938,7 @@ export default function ReportesView({ onNavigate }: Props) {
           <div onClick={e => e.stopPropagation()} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
             {fotosVer.fotos.map(([ang, url]) => (
               <div key={ang} style={{ background: "var(--card)", borderRadius: 12, overflow: "hidden" }}>
-                <img src={url} alt={ANG_LABEL[ang] ?? ang} style={{ width: "100%", display: "block", maxHeight: 400, objectFit: "contain", background: "#000" }} />
+                <ImgPrivada src={url} alt={ANG_LABEL[ang] ?? ang} style={{ width: "100%", display: "block", maxHeight: 400, objectFit: "contain", background: "#000" }} />
                 <div style={{ padding: "8px 12px", fontWeight: 700, fontSize: 13, color: "var(--muted2)", textAlign: "center" }}>{ANG_LABEL[ang] ?? ang}</div>
               </div>
             ))}

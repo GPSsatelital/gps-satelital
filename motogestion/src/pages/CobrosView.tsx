@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import type { ViewKey } from "../App";
 import {
   usePagos,
@@ -2913,7 +2914,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       {/* Visor de foto del comprobante */}
       {fotoAmpliada && (
         <div onClick={() => setFotoAmpliada(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <img src={fotoAmpliada} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+          <ImgPrivada src={fotoAmpliada} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
         </div>
       )}
 

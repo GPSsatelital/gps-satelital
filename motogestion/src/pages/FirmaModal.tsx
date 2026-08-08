@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import { supabase } from "../lib/supabase";
 import { generarHTMLContrato, generarHTMLCertificado, generarHTMLPagare, type TipoDocumento } from "../hooks/useDocumentos";
 import type { Contrato } from "../hooks/useContratos";
@@ -443,7 +444,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                     </label>
                     {cedulaFoto && (
                       <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", maxWidth: 200, border: "1px solid var(--line)" }}>
-                        <img src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
+                        <ImgPrivada src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
                       </div>
                     )}
                   </div>
@@ -487,7 +488,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Firma capturada</div>
                   {firmas[pasoActual.key] ? (
                     <div style={{ borderRadius: 14, border: "2px solid var(--line)", overflow: "hidden", background: "var(--soft2)", maxWidth: 400 }}>
-                      <img src={firmas[pasoActual.key]!} alt="Firma" style={{ width: "100%", display: "block" }} />
+                      <ImgPrivada src={firmas[pasoActual.key]!} alt="Firma" style={{ width: "100%", display: "block" }} />
                     </div>
                   ) : (
                     <div style={{ padding: "20px", borderRadius: 14, border: "2px dashed var(--soft)", textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
@@ -501,7 +502,7 @@ export default function FirmaModal({ contrato, cliente, moto, onClose, onComplet
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 8 }}>Foto de cédula</div>
                     <div style={{ borderRadius: 14, overflow: "hidden", maxWidth: 200, border: "1px solid var(--line)" }}>
-                      <img src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
+                      <ImgPrivada src={cedulaFoto} alt="Cédula" style={{ width: "100%", display: "block" }} />
                     </div>
                   </div>
                 )}

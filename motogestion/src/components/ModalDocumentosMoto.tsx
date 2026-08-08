@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ImgPrivada from "./ImgPrivada";
 import type { Moto } from "../hooks/useMotos";
 import { useMotos } from "../hooks/useMotos";
 import { secondaryBtn } from "../styles/shared";
@@ -101,7 +102,7 @@ export default function ModalDocumentosMoto({ moto: motoInicial, onClose }: Prop
               </div>
               {url && (
                 <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginBottom: 8 }}>
-                  <img src={url} alt={label} style={{ maxHeight: 90, borderRadius: 8, border: "1px solid var(--line)" }} />
+                  <ImgPrivada src={url} alt={label} style={{ maxHeight: 90, borderRadius: 8, border: "1px solid var(--line)" }} />
                 </a>
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

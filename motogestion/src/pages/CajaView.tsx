@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -715,7 +716,7 @@ export default function CajaView() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     {i.comprobante_url && (
-                      <img src={i.comprobante_url} onClick={() => setFotoAmpliadaNI(i.comprobante_url)}
+                      <ImgPrivada src={i.comprobante_url} onClick={() => setFotoAmpliadaNI(i.comprobante_url)}
                         title="Ver el extracto del banco"
                         style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: "1px solid var(--warn-line)" }} />
                     )}
@@ -931,7 +932,7 @@ export default function CajaView() {
       {fotoAmpliadaNI && (
         <div onClick={() => setFotoAmpliadaNI(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.85)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, cursor: "zoom-out" }}>
-          <img src={fotoAmpliadaNI} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+          <ImgPrivada src={fotoAmpliadaNI} style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
         </div>
       )}
 

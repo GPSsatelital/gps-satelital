@@ -56,6 +56,41 @@ export function saldoBaseDeCliente(movs: AbonoBase[], clienteId: string): number
     .reduce((s, m) => s + (m.tipo === "abono" ? m.monto : -m.monto), 0);
 }
 
+/**
+ * La plata de BASES que se movió en la caja de un día, separada como la caja la necesita.
+ *
+ * Qué cuenta y qué no:
+ *  · `abono`      SUMA  — el cliente entregó, la plata entró
+ *  · `devolucion` RESTA — salió de la caja a manos del cliente
+ *  · `retencion`  NADA  — no es un movimiento de caja: esa plata ya estaba adentro y ahí se
+ *                         queda (solo cambia de bolsillo dentro de la empresa). Si restara,
+ *                         la caja diría que salió plata que sigue en la gaveta.
+ *
+ * La fecha se decide igual que en los pagos (`fechaDeCaja`): el efectivo cuenta el día en que se
+ * digitó —llega a la mano— y la transferencia el día en que el banco la recibió.
+ *
+ * `grupo`: una base nace SIN grupo (el cliente todavía no tiene moto, no se sabe de qué
+ * portafolio será). Sin grupo no se le suma a ningún socio — solo entra al total del día.
+ * Protegida por `useAbonosBase.test.ts`.
+ */
+export function basesDelDia(
+  movs: Array<Pick<AbonoBase, "tipo" | "monto" | "metodo" | "fecha" | "fecha_registro" | "grupo">>,
+  fecha: string,
+  grupo?: string | null,
+): { efectivo: number; transfer: number; total: number } {
+  let efectivo = 0, transfer = 0;
+  for (const m of movs) {
+    if (m.tipo === "retencion") continue;
+    const dia = m.metodo === "Transferencia" ? m.fecha : (m.fecha_registro || m.fecha);
+    if (dia !== fecha) continue;
+    if (grupo != null && m.grupo !== grupo) continue;
+    const signo = m.tipo === "abono" ? 1 : -1;
+    if (m.metodo === "Transferencia") transfer += signo * m.monto;
+    else efectivo += signo * m.monto;
+  }
+  return { efectivo, transfer, total: efectivo + transfer };
+}
+
 export function useAbonosBase() {
   const { data: abonos, loading } = store.useStore();
 

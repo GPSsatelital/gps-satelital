@@ -5,6 +5,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useCaja, cierreDesactualizado } from "../hooks/useCaja";
 import { useIngresosNoIdentificados, normalizarRef, pagoQueYaLaReclama, sinIdentificarDelDia, sinIdentificarSinGrupoDelDia } from "../hooks/useIngresosNoIdentificados";
+import { useAbonosBase, basesDelDia } from "../hooks/useAbonosBase";
 import { useCuentasBancarias, grupoDeCuenta } from "../hooks/useCuentasBancarias";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
@@ -61,6 +62,7 @@ export default function CajaView() {
   const { prestamos } = usePrestamos();
   const { cerrarCaja, cajaDia } = useCaja();
   const { pendientes: pendientesNI, registrar: registrarNI, eliminar: eliminarNI } = useIngresosNoIdentificados();
+  const { abonos: abonosBase } = useAbonosBase();
   const { activas: cuentasActivas } = useCuentasBancarias();
 
   const pagosDia = useMemo(() =>
@@ -114,6 +116,12 @@ export default function CajaView() {
   // recaudo, nunca dentro: al aparecer el dueño se registra como pago y entra a ESTE mismo día.
   const niDelDiaVista = sinIdentificarDelDia(pendientesNI, fecha, grupoEnVista);
   const niSinGrupoDelDia = sinIdentificarSinGrupoDelDia(pendientesNI, fecha);
+  // Plata de BASES INICIALES movida este día (mig 091). Va en renglón propio, nunca dentro de
+  // "Cobrado a clientes": no es cobro de arriendo, es lo que el cliente entrega para arrancar.
+  // Pero SÍ está en la gaveta, así que el arqueo tiene que contarla o el día nunca cuadra —
+  // era justo lo que faltaba para que la caja calzara con el efectivo real.
+  const basesDelDiaVista = basesDelDia(abonosBase, fecha, grupoEnVista);
+  const basesSinGrupoDelDia = basesDelDia(abonosBase.filter(a => !a.grupo), fecha);
 
   function resumenDeGrupo(grupo: GrupoMoto) {
     return calcResumen(pagosDia.filter(p => grupoDePago(p) === grupo));
@@ -195,13 +203,20 @@ export default function CajaView() {
   // `sinDueno`: la plata que entró al banco ese día y nadie ha reclamado. El extracto SÍ la
   // trae, así que hay que sumarla a lo esperado; si no, el arqueo la reporta como sobrante
   // todos los días aunque ya esté anotada, y esa alarma permanente deja de leerse.
-  function calcArqueo(efectivo: number, transfer: number, sinDueno = 0) {
+  // `bases`: la plata de bases iniciales movida ese día. NO es cobro de arriendo, pero SÍ está
+  // en la gaveta (o en el banco si transfirieron), así que lo esperado tiene que incluirla o el
+  // día nunca cuadra. Era exactamente lo que faltaba: se registraban clientes nuevos y la
+  // secretaria terminaba con más efectivo del que el sistema decía.
+  function calcArqueo(
+    efectivo: number, transfer: number, sinDueno = 0,
+    bases: { efectivo: number; transfer: number } = { efectivo: 0, transfer: 0 },
+  ) {
     const hayEf = efectivoContado !== "";
     const hayBc = bancoReportado !== "";
     return {
       hayEf, hayBc,
-      difEf: hayEf ? Number(efectivoContado) - efectivo : null,
-      difBc: hayBc ? Number(bancoReportado) - (transfer + sinDueno) : null,
+      difEf: hayEf ? Number(efectivoContado) - (efectivo + bases.efectivo) : null,
+      difBc: hayBc ? Number(bancoReportado) - (transfer + sinDueno + bases.transfer) : null,
       verificado: hayEf || hayBc,
       completo: hayEf && hayBc,
     };
@@ -217,7 +232,7 @@ export default function CajaView() {
     // Si ya estaba cerrado, esto es una ACTUALIZACIÓN: queda escrito de cuánto a cuánto se movió,
     // porque el upsert pisa la cifra vieja y si no se anota nadie sabría que cambió.
     const previo = cajaDia(fecha, g);
-    const arq = calcArqueo(r.efectivo, r.transfer, sinIdentificarDelDia(pendientesNI, fecha, g));
+    const arq = calcArqueo(r.efectivo, r.transfer, sinIdentificarDelDia(pendientesNI, fecha, g), basesDelDia(abonosBase, fecha, g));
     const detalle = pagosDia
       .filter(p => p.estado === "Confirmado" && grupoDePago(p) === g)
       .map(p => {
@@ -549,6 +564,22 @@ export default function CajaView() {
               <div style={{ fontSize: 11, color: "var(--warn-ink)", opacity: 0.85, marginTop: 2 }}>+ ${fmt(niDelDiaVista)} sin dueño</div>
             </div>
           )}
+          {/* BASES INICIALES en renglón propio (mig 091). No es cobro de arriendo — es lo que el
+              cliente entrega para arrancar su proceso — así que nunca va dentro de "Cobrado a
+              clientes". Pero SÍ está en la gaveta, y el arqueo ya la cuenta. Antes esta plata no
+              aparecía en ninguna parte y el efectivo del día jamás cuadraba. */}
+          {basesDelDiaVista.total !== 0 && (
+            <div style={{ flex: 1, minWidth: 120, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Bases iniciales</div>
+              <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 700, color: "var(--accent-ink)", marginTop: 4 }}>${fmt(basesDelDiaVista.total)}</div>
+              <div style={{ fontSize: 11, color: "var(--accent-ink)", opacity: 0.85, marginTop: 2 }}>
+                {basesDelDiaVista.efectivo !== 0 && <>efectivo ${fmt(basesDelDiaVista.efectivo)}</>}
+                {basesDelDiaVista.efectivo !== 0 && basesDelDiaVista.transfer !== 0 && " · "}
+                {basesDelDiaVista.transfer !== 0 && <>transf. ${fmt(basesDelDiaVista.transfer)}</>}
+                {grupoEnVista === null && basesSinGrupoDelDia.total !== 0 && <> · aún sin portafolio</>}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -762,7 +793,10 @@ export default function CajaView() {
         // El extracto del banco trae también la plata sin dueño de ese día: sin sumarla, el
         // arqueo la reportaría como sobrante aunque ya esté anotada en la bolsa.
         const niGrupoModal = sinIdentificarDelDia(pendientesNI, fecha, grupoACerrar);
-        const arqModal = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal);
+        // Las bases de ese grupo tambien estan en la gaveta: sin sumarlas el arqueo las
+        // reportaria como sobrante y el efectivo nunca cuadraria.
+        const basesGrupoModal = basesDelDia(abonosBase, fecha, grupoACerrar);
+        const arqModal = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal, basesGrupoModal);
         const efectivoDescuadrado = arqModal.difEf !== null && arqModal.difEf !== 0;
         // Este día ya se había cerrado: no es un cierre nuevo, es corregir la cifra firmada.
         const previoModal = cajaDia(fecha, grupoACerrar);
@@ -833,7 +867,7 @@ export default function CajaView() {
                 )}
               </div>
               {(() => {
-                const a = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal);
+                const a = calcArqueo(rc.efectivo, rc.transfer, niGrupoModal, basesGrupoModal);
                 if (!a.verificado) return null;
                 const faltaEfectivo = a.difEf !== null && a.difEf < 0;
                 const cuadraTodo = a.completo && a.difEf === 0 && a.difBc === 0;

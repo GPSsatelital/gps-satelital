@@ -148,7 +148,13 @@ export default function ModalVisita({ clienteId, clienteNombre, onClose, onGuard
     const { error: insErr } = await supabase.from("visitas").insert({
       cliente_id: clienteId,
       estado: "Completada",
-      resultado: recomendacion || null,
+      // `resultado` es la DECISIÓN DEL ADMIN, y nace vacía: la visita queda pendiente de revisar.
+      // Antes acá se guardaba `recomendacion`, o sea que el visitador aprobaba su propia visita:
+      // la pantalla decía "✔ Visita aprobada" sin que nadie la revisara, y como los botones de
+      // Aprobar/Repetir dependían de que este campo estuviera vacío, el admin se quedaba sin
+      // poder mandarla a repetir. La recomendación NO se pierde — sigue guardada dentro de
+      // `entrevista.recomendacion`, que es su lugar: es la opinión de quien fue, no una decisión.
+      resultado: null,
       entrevista,
       ubicacion: ubicacion ?? null,
       fecha: hoyISO(),

@@ -1611,6 +1611,13 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                   {v.resultado === null && (
                     <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--line)", color: "var(--muted3)", fontSize: 11, fontWeight: 700 }}>Pendiente de revisar</span>
                   )}
+                  {/* La opinión de quien FUE, separada de la decisión de quien APRUEBA. Antes
+                      compartían el mismo campo y "✔ Visita aprobada" salía sin que nadie revisara. */}
+                  {v.entrevista?.recomendacion && (
+                    <span style={{ padding: "3px 9px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-ink)", fontSize: 11, fontWeight: 700 }}>
+                      🗒 Recomendó: {v.entrevista.recomendacion}
+                    </span>
+                  )}
                 </div>
                 <div><b>Vive allí:</b> {v.entrevista.viveAlli || "Sin registrar"} {v.entrevista.tiempoResidencia ? `· ${v.entrevista.tiempoResidencia}` : ""}</div>
                 <div><b>Tipo vivienda:</b> {v.entrevista.tipoVivienda || "Sin registrar"}</div>

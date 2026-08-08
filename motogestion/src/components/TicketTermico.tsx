@@ -31,7 +31,15 @@ export type TicketData = {
   // verdad sirve (y donde no se borra: el papel térmico se desvanece con los años).
   firmaUrl?: string | null;
   firmaLabel?: string;
+  // A quién llamar si el cliente tiene dudas del proceso. Va al pie, después del "¡Gracias!".
+  contacto?: { nombre: string; telefono: string; cargo?: string };
 };
+
+// Quien atiende las dudas del proceso de ingreso. Va impreso en el recibo de la base inicial
+// para que el cliente sepa a quién llamar sin tener que volver a la oficina a preguntar.
+// Vive acá, en un solo lugar: si mañana cambia la persona o el número, se toca una sola línea
+// y no hay que buscarlo por las pantallas. (Pasa a Configuración en la fase 6 del plan.)
+export const CONTACTO_PROCESOS = { nombre: "SERGIO AGUAS", telefono: "3026987200", cargo: "Encargado de procesos" };
 
 // Recibo de la base inicial que el cliente entrega al registrarse (mismo formato de ticket).
 // fecha opcional: al reimprimir desde la ficha se usa la fecha de registro del cliente.
@@ -47,6 +55,9 @@ export function buildTicketBaseInicial(nombre: string, cedula: string, monto: nu
     monto,
     nota: "Entrega de base inicial para inicio de proceso",
     recibidoPor,
+    // El cliente que acaba de entregar su base es el que más dudas tiene y el que menos sabe a
+    // quién preguntarle. Con el número impreso llama en vez de volver a la oficina.
+    contacto: CONTACTO_PROCESOS,
   };
 }
 
@@ -163,6 +174,17 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
       )}
 
       <div style={{ fontSize: 11, textAlign: "center", marginTop: 6, color: "#000" }}>¡Gracias!</div>
+
+      {datos.contacto && (
+        <>
+          <div style={guion} />
+          <div style={{ fontSize: 11, textAlign: "center", color: "#000", lineHeight: 1.4 }}>
+            {datos.contacto.cargo && <div>{datos.contacto.cargo}</div>}
+            <div style={{ fontWeight: 700 }}>{datos.contacto.nombre}</div>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{datos.contacto.telefono}</div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

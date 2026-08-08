@@ -63,6 +63,55 @@ export function useConvenios() {
     return { error: null };
   }
 
+  /**
+   * AMPLIAR un convenio activo: le suma una deuda nueva sin tocar nada de lo ya acordado.
+   *
+   * EL CASO (8-ago-2026): un cliente con convenio activo al que le llega una deuda nueva —una
+   * multa de recolección, por ejemplo, que se crea sola— no tenía dónde ponerla. Cartera no
+   * ofrece crear un segundo convenio, la deuda `en_convenio` se excluye a propósito (mig 070), y
+   * borrar el viejo para rehacerlo PIERDE los abonos (WILLINGTON iba 1/9). El funcionario se
+   * quedaba sin salida y la deuda se acumulaba suelta. Son 37 clientes con convenio activo.
+   *
+   * REGLA DEL DUEÑO que esto cumple: *"los convenios que están hechos deberían quedar así, y
+   * mejor sería buscar la forma de arreglarlos sin robarle y sin perder nada"*.
+   *
+   * POR QUÉ SE MANTIENE LA CUOTA Y SE EXTIENDEN LAS CUOTAS, y no al revés: `cuotas_pagadas` se
+   * cuenta en CUOTAS, no en pesos (el trigger hace `floor(abonado / cuota_por_periodo)`). Si se
+   * subiera la cuota, esas mismas "1 cuota pagada" pasarían a valer más y se le estaría
+   * reescribiendo lo que ya pagó. Manteniendo la cuota, el cliente sigue pagando lo mismo por
+   * período —lo que aceptó y firmó— solo que por más tiempo.
+   */
+  async function ampliarConvenio(
+    convenio: Convenio,
+    montoExtra: number,
+    nuevoNumeroCuotas: number,
+    nuevaFechaLimite: string,
+    motivo: string,
+    ampliadoPor: string,
+  ) {
+    if (montoExtra <= 0) return { error: "El monto a agregar debe ser mayor a cero." };
+    if (convenio.estado !== "activo") return { error: "Solo se puede ampliar un convenio activo." };
+    const nuevoTotal = Math.round(convenio.deuda_total + montoExtra);
+
+    // Rastro ANTES de tocar nada: de cuánto a cuánto y por qué. Sin esto, mañana nadie sabría
+    // por qué el convenio que el cliente firmó por $513.000 ahora dice $543.000.
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: convenio.contrato_id,
+      campo: `Convenio #${convenio.numero_convenio}: deuda ampliada`,
+      valor_anterior: `$${convenio.deuda_total.toLocaleString("es-CO")} en ${convenio.numero_cuotas} cuotas`,
+      valor_nuevo: `$${nuevoTotal.toLocaleString("es-CO")} en ${nuevoNumeroCuotas} cuotas — ${motivo}`,
+      editado_por: ampliadoPor,
+    });
+
+    const { error } = await supabase.from("convenios").update({
+      deuda_total: nuevoTotal,
+      numero_cuotas: nuevoNumeroCuotas,
+      fecha_limite: nuevaFechaLimite,
+      // `cuota_por_periodo` y `cuotas_pagadas` NO se tocan: es lo que protege lo ya pagado.
+    }).eq("id", convenio.id).eq("estado", "activo");
+    return { error: error?.message ?? null };
+  }
+
   async function renovarConvenio(convenioId: string, contratoId: string, deudaTotal: number, cuotaPorPeriodo: number, numeroCuotas: number, fechaLimite: string, concepto: string, aprobadoPor: string) {
     await supabase.from("convenios").update({ estado: "renovado" }).eq("id", convenioId);
     const total = totalConveniosDelContrato(contratoId);
@@ -103,5 +152,5 @@ export function useConvenios() {
     return { error: error?.message ?? null };
   }
 
-  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio };
+  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio };
 }

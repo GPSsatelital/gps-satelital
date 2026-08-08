@@ -33,6 +33,7 @@ import { generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
+import ModalAmpliarConvenio from "../components/ModalAmpliarConvenio";
 import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
@@ -603,6 +604,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // A cuál cuenta de la empresa cayó (mig 087). Sin esto la caja da un solo total por grupo y
   // COSTA, que recibe en dos cuentas, no se puede cuadrar contra cada extracto por separado.
   const [modalCuentaId, setModalCuentaId] = useState<string | null>(null);
+  // Convenio activo al que se le va a agregar una deuda nueva (sin rehacerlo ni perder abonos).
+  const [ampliandoConvenio, setAmpliandoConvenio] = useState<import("../hooks/useConvenios").Convenio | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -2166,10 +2169,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
                     <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
                   </div>
+                  {/* Antes, un cliente con convenio activo al que le llegaba una deuda nueva (una
+                      multa de recolección, que se crea sola) no tenía dónde ponerla: no se puede
+                      crear un segundo convenio, y borrar este para rehacerlo pierde sus abonos.
+                      Ampliar respeta lo ya pagado y su cuota — solo extiende el plazo. */}
+                  <button
+                    onClick={() => setAmpliandoConvenio(convenioActual)}
+                    style={{ ...primaryBtn, width: "100%", marginTop: 12 }}
+                  >
+                    ➕ Agregar deuda a este convenio
+                  </button>
                 </div>
               ) : totalConvenios >= 3 ? (
-                <div style={{ color: "var(--bad-ink)", fontSize: 14, fontWeight: 600 }}>
-                  Máximo de 3 convenios. Si vuelve a incumplir, procede liquidación.
+                <div style={{ color: "var(--bad-ink)", fontSize: 14, fontWeight: 600, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", borderRadius: 12, padding: "12px 14px", lineHeight: 1.5 }}>
+                  Máximo de 3 convenios alcanzado. Si no puede pagar, la salida es la <strong>liquidación</strong> —
+                  se inicia desde Contratos o desde Inmovilizaciones.
                 </div>
               ) : deudasContrato.length === 0 ? (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
@@ -3242,6 +3256,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       )}
 
       {/* Modal de registro rápido de pago */}
+      {ampliandoConvenio && (
+        <ModalAmpliarConvenio
+          convenio={ampliandoConvenio}
+          clienteNombre={clientes.find(cl => cl.id === contratos.find(c => c.id === ampliandoConvenio.contrato_id)?.cliente_id)?.nombre ?? ""}
+          onClose={() => setAmpliandoConvenio(null)}
+          onDone={(msg) => alert(msg)}
+        />
+      )}
+
       {modalPago && (
         <div
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 60 }}

@@ -6,6 +6,7 @@ import {
   cajasExigidasHasta,
   huecoCuotasHoy,
   calcularEstadoCartera,
+  cuotaConvenioDelPeriodo,
   type ContratoCiclo,
 } from "./cicloPago";
 
@@ -194,5 +195,59 @@ describe("calcularEstadoCartera — el convenio también cuenta para la mora (mo
 
   it("un día después → gabela", () => {
     expect(calcularEstadoCartera(AL_DIA, [], D(23), 100000)).toBe("gabela");
+  });
+});
+
+// ── MARTHA ÁLVAREZ (RLT68H) — el convenio que se tragó semanas ────────────────
+// Reportado por el dueño el 7-ago-2026: su convenio absorbió las semanas hasta el 17-ago,
+// pero el sistema le seguía pidiendo los $50.000 de la cuota el 6-ago.
+//
+// REGLA DEL DUEÑO, textual: "que pague convenio cuando termine las semanas absorbidas — si se
+// absorbe una, en esa semana no paga, sino hasta que se le vence".
+//
+// Semanal, paga LUNES. Agosto 2026: 3=Lun, 10=Lun, 17=Lun, 24=Lun.
+const MARTHA: ContratoCiclo = {
+  forma_pago: "Semanal",
+  dia_pago: "Lunes",
+  fecha_entrega: "2026-07-27",
+  valor_semanal: 195000,
+  motor_v2: true,
+  total_cajas: 104,
+  cajas_pagadas: 52,
+  caja_actual_pagado: 0,
+  cajas_previas: 51,
+  fecha_inicio_cajas: "2026-07-27",
+};
+const CONV_MARTHA = { cuota_por_periodo: 50000, created_at: "2026-07-31T16:40:00Z", cubre_periodo_hasta: "2026-08-17" };
+const A = (dia: number) => new Date(2026, 7, dia); // mes 7 = agosto
+
+describe("cuotaConvenioDelPeriodo — el convenio no cobra mientras cubre semanas", () => {
+  it("período del 3-ago (absorbido): NO cobra convenio", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_MARTHA, MARTHA, A(6))).toBe(0);
+  });
+
+  it("período del 10-ago (también absorbido): NO cobra convenio", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_MARTHA, MARTHA, A(12))).toBe(0);
+  });
+
+  it("período del 17-ago (primer día NO cubierto): ahí SÍ cobra los $50.000", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_MARTHA, MARTHA, A(17))).toBe(50000);
+  });
+
+  it("y sigue cobrando en los períodos siguientes", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_MARTHA, MARTHA, A(26))).toBe(50000);
+  });
+
+  // La regla vieja no se perdió: un convenio SIN semanas absorbidas se sigue cobrando desde el
+  // período siguiente al que se creó, y nunca en uno que ya había arrancado antes.
+  it("sin semanas absorbidas: cobra desde el período siguiente al que se creó", () => {
+    const sinCubrir = { cuota_por_periodo: 50000, created_at: "2026-07-31T16:40:00Z", cubre_periodo_hasta: null };
+    expect(cuotaConvenioDelPeriodo(sinCubrir, MARTHA, A(1))).toBe(0);   // período del 27-jul, ya había arrancado
+    expect(cuotaConvenioDelPeriodo(sinCubrir, MARTHA, A(6))).toBe(50000); // período del 3-ago
+  });
+
+  it("sin convenio o con cuota en cero no cobra nada", () => {
+    expect(cuotaConvenioDelPeriodo(null, MARTHA, A(20))).toBe(0);
+    expect(cuotaConvenioDelPeriodo({ cuota_por_periodo: 0, created_at: "2026-07-01" }, MARTHA, A(20))).toBe(0);
   });
 });

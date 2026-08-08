@@ -134,12 +134,20 @@ export function totalPagadoPeriodoActual(
 // Estado de cartera (mora/gabela/al día) para contratos Semanal/Quincenal/Mensual.
 // TODOS usan el período real del contrato (ver totalPagadoPeriodoActual): Semanal por
 // día de la semana, Quincenal/Mensual por fechas del mes.
-// Cuota del convenio que se EXIGE en el período actual. Un convenio empieza a exigirse
-// desde el período en que se creó en adelante — NO en un período ya vencido antes de
-// hacerlo (ej. si el miércoles no pagó y el convenio se hizo el jueves, esa semana solo
-// debe su cuota normal; el abono del convenio arranca el próximo día de pago).
+// Cuota del convenio que se EXIGE en el período actual. Dos reglas, en este orden:
+//
+// 1. Un convenio empieza a exigirse desde el período en que se creó en adelante — NO en uno ya
+//    vencido antes de hacerlo (si el miércoles no pagó y el convenio se hizo el jueves, esa
+//    semana solo debe su cuota normal).
+//
+// 2. Si el convenio ABSORBIÓ semanas (`cubre_periodo_hasta`), durante esas semanas el cliente no
+//    paga NADA: ni cuota ni convenio. Empieza a abonar el convenio cuando esas semanas se vencen.
+//    Regla del dueño (7-ago-2026), textual: "que pague convenio cuando termine las semanas
+//    absorbidas — si se absorbe una, en esa semana no paga, sino hasta que se le vence".
+//    Antes se le cobraba el convenio de una: MARTHA (RLT68H) tenía sus semanas cubiertas hasta el
+//    17-ago y aun así le pedía $50.000 el 6-ago.
 export function cuotaConvenioDelPeriodo(
-  convenio: { cuota_por_periodo?: number | null; created_at?: string | null } | null | undefined,
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
   contrato: ContratoCiclo,
   hoy: Date,
 ): number {
@@ -148,7 +156,12 @@ export function cuotaConvenioDelPeriodo(
   const inicio = inicioPeriodoActual(contrato, hoy);
   const inicioISO = inicio.toISOString().slice(0, 10);
   const creadoISO = (convenio.created_at || "").slice(0, 10);
-  return creadoISO && creadoISO <= inicioISO ? cuota : 0;
+  if (!creadoISO || creadoISO > inicioISO) return 0;
+  // El período que ARRANCA justo el día en que se vence la cobertura ya sí paga: `cubre_periodo_hasta`
+  // marca el primer día NO cubierto (Martha: cubre hasta 17-ago = paga desde el período del 17).
+  const cubreHasta = (convenio.cubre_periodo_hasta || "").slice(0, 10);
+  if (cubreHasta && inicioISO < cubreHasta) return 0;
+  return cuota;
 }
 
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —

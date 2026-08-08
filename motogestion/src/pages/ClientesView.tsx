@@ -1658,8 +1658,19 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     </a>
                   </div>
                 )}
-                {puedeAprobarVisita && v.resultado === null && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                {/* Antes esto exigía `v.resultado === null` y los botones DESAPARECÍAN.
+                    El campo `resultado` lo llena el propio visitador con su "Recomendación"
+                    (ModalVisita:151, así desde el 22-jun), así que desde que existe el rol
+                    VISITADOR (29-jul) —gente dedicada que sí llena esa casilla— el admin se
+                    quedó sin poder mandar una visita a repetir. Nadie cambió código: cambió
+                    quién lo usa. La decisión del admin debe estar SIEMPRE disponible. */}
+                {puedeAprobarVisita && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                    {v.resultado !== null && (
+                      <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
+                        Recomendación del visitador: <strong>{v.resultado}</strong> — tu decisión:
+                      </span>
+                    )}
                     <button onClick={() => onAprobarVisita(v.id, selectedCliente.id)} style={miniBtn2("var(--ok-soft)", "var(--ok-ink)")}>✅ Aprobar visita</button>
                     <button onClick={() => onRepetirVisita(v.id, selectedCliente.id)} style={miniBtn2("var(--warn-soft)", "var(--warn-ink)")}>🔁 Repetir visita</button>
                   </div>

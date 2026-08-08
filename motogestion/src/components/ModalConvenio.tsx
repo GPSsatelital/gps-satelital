@@ -9,7 +9,7 @@ import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
-import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy } from "../utils/cicloPago";
+import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo } from "../utils/cicloPago";
 import { hoyDate, fechaISO } from "../utils/fecha";
 
 interface Props {
@@ -221,15 +221,23 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // es falso: el cliente sigue debiendo cuotas aunque el convenio quede firmado.
   const arriendoSinCubrir = Math.max(huecoHoy - cuotaSemana, 0);
 
-  // Hasta qué día queda cubierto: se avanza N días de pago desde hoy. Es lo que se guarda en
-  // `cubre_periodo_hasta` y lo que hace que esos períodos no cuenten como mora.
-  const cubreHasta = (() => {
-    if (finPeriodoISO && nFinanciadas >= 1) return finPeriodoISO;
-    if (!contratoActual || nFinanciadas < 1) return null;
-    let d = hoyDate();
-    for (let i = 0; i < nFinanciadas; i++) d = proximoDiaPago(contratoActual, d);
-    return fechaISO(d);
-  })();
+  // Hasta qué día queda cubierto. Es lo que se guarda en `cubre_periodo_hasta`, y de ahí sale
+  // algo MUY sensible: `CobrosView` deja de exigir TODAS las cajas anteriores a esa fecha.
+  //
+  // 🔴 EL DEFECTO QUE ESTO CORRIGE (8-ago-2026, lo cachó el dueño con JHEFERSON XYZ50H):
+  // antes se avanzaban N días de pago desde HOY. Pero las semanas que se financian son las
+  // VENCIDAS (hacia atrás), no las que vienen. Con 2 semanas vencidas y financiando 2, entraban
+  // $404.000 al convenio y la fecha quedaba en 19-ago — que perdonaba TRES períodos ($606.000).
+  // Le regalaba una semana entera, y por cada semana de atraso regalaba otra.
+  //
+  // La cuenta correcta: las N semanas tapan desde la vencida MÁS VIEJA hacia adelante, así que
+  // la fecha sale del período actual corrido (N − vencidas + 1) días de pago.
+  //   vencidas=2, N=2 → +1 → el período que sigue al último cubierto ✅
+  //   vencidas=2, N=1 → +0 → solo tapa la más vieja, la actual la sigue debiendo ✅
+  //   vencidas=0, N=1 → +2 → cubre el período que viene, como siempre ✅
+  const cubreHasta = (finPeriodoISO && nFinanciadas >= 1)
+    ? finPeriodoISO
+    : (contratoActual ? fechaCubrePeriodo(contratoActual, hoyDate(), nFinanciadas, semanasVencidas) : null);
 
   const metaBase = Number(metaManual) || 0;
   const meta = metaBase + cuotaSemana;

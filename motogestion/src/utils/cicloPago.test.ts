@@ -7,6 +7,7 @@ import {
   huecoCuotasHoy,
   calcularEstadoCartera,
   cuotaConvenioDelPeriodo,
+  fechaCubrePeriodo,
   type ContratoCiclo,
 } from "./cicloPago";
 
@@ -249,5 +250,52 @@ describe("cuotaConvenioDelPeriodo — el convenio no cobra mientras cubre semana
   it("sin convenio o con cuota en cero no cobra nada", () => {
     expect(cuotaConvenioDelPeriodo(null, MARTHA, A(20))).toBe(0);
     expect(cuotaConvenioDelPeriodo({ cuota_por_periodo: 0, created_at: "2026-07-01" }, MARTHA, A(20))).toBe(0);
+  });
+});
+
+// ── JHEFERSON GARCIA SILVA (XYZ50H) — el convenio que regalaba una semana ──────
+// Reportado por el dueño el 8-ago-2026: financiando 2 semanas ($404.000) la ventana ponía
+// cubre_periodo_hasta = 19-ago, y CobrosView deja de exigir TODAS las cajas anteriores a esa
+// fecha — o sea perdonaba TRES períodos ($606.000). Le regalaba $202.000.
+//
+// Paga MIÉRCOLES. Agosto 2026: 5=Mié, 12=Mié, 19=Mié, 26=Mié. Julio: 29=Mié.
+// Períodos: 29jul→4ago (vencida) · 5→11ago (vencida) · 12→18ago · 19→25ago
+const JHEFERSON: ContratoCiclo = {
+  forma_pago: "Semanal",
+  dia_pago: "Miércoles",
+  fecha_entrega: "2026-07-01",
+  valor_semanal: 202000,
+  motor_v2: true,
+  total_cajas: 104,
+  cajas_pagadas: 0,
+  caja_actual_pagado: 0,
+  cajas_previas: 0,
+  fecha_inicio_cajas: "2026-07-29",
+};
+const SAB_8_AGO = new Date(2026, 7, 8); // sábado, dentro del período 5→11 ago
+
+describe("fechaCubrePeriodo — el convenio no puede perdonar más semanas de las que cobra", () => {
+  it("2 vencidas y financia 2: cubre hasta el 12-ago (NO el 19 — eso regalaba una semana)", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 2, 2)).toBe("2026-08-12");
+  });
+
+  it("2 vencidas y financia 1: solo tapa la más vieja, la actual la sigue debiendo", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 1, 2)).toBe("2026-08-05");
+  });
+
+  it("cliente AL DÍA que financia 1: cubre el período que viene, como siempre", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 0 + 1, 0)).toBe("2026-08-19");
+  });
+
+  it("cliente al día que financia 2: cubre los dos que vienen", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 2, 0)).toBe("2026-08-26");
+  });
+
+  it("3 vencidas y financia 1: la cobertura queda en un período ya pasado", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 1, 3)).toBe("2026-07-29");
+  });
+
+  it("sin financiar nada no hay cobertura", () => {
+    expect(fechaCubrePeriodo(JHEFERSON, SAB_8_AGO, 0, 2)).toBeNull();
   });
 });

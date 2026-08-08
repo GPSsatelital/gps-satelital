@@ -445,6 +445,41 @@ export function prorrateoExigibleHoy(contrato: ContratoCiclo, hoy: Date): number
   return pend;
 }
 
+/**
+ * Hasta qué día queda cubierto un convenio que financia `nFinanciadas` semanas.
+ * Es lo que se guarda en `convenios.cubre_periodo_hasta`, y de ahí sale algo muy sensible:
+ * `CobrosView` deja de exigir TODAS las cajas anteriores a esa fecha.
+ *
+ * 🔴 EL DEFECTO QUE CORRIGE (8-ago-2026, JHEFERSON XYZ50H): antes se avanzaban N días de pago
+ * desde HOY. Pero las semanas que se financian son las VENCIDAS —hacia atrás—, no las que vienen.
+ * Con 2 semanas vencidas y financiando 2 entraban $404.000 al convenio y la fecha quedaba en
+ * 19-ago, que perdonaba TRES períodos ($606.000): una semana regalada, y otra más por cada
+ * semana de atraso.
+ *
+ * La cuenta correcta: las N semanas tapan desde la vencida MÁS VIEJA hacia adelante, así que la
+ * fecha sale del período actual corrido `(N − vencidas + 1)` días de pago.
+ */
+export function fechaCubrePeriodo(
+  contrato: ContratoCiclo,
+  hoy: Date,
+  nFinanciadas: number,
+  semanasVencidas: number,
+): string | null {
+  if (nFinanciadas < 1) return null;
+  const pasos = nFinanciadas - semanasVencidas + 1;
+  if (pasos >= 0) {
+    let d = inicioPeriodoActual(contrato, hoy);
+    for (let i = 0; i < pasos; i++) d = proximoDiaPago(contrato, d);
+    return fechaAISO(d);
+  }
+  // Financia MENOS semanas de las que debe: la cobertura queda en un período ya pasado. Se
+  // retrocede parándose en una fecha vieja y preguntando cuál era el período de ese día.
+  const dias = contrato.forma_pago === "Semanal" ? 7 : contrato.forma_pago === "Quincenal" ? 15 : 30;
+  const atras = new Date(hoy);
+  atras.setDate(atras.getDate() - Math.abs(pasos) * dias);
+  return fechaAISO(inicioPeriodoActual(contrato, atras));
+}
+
 // Hueco total exigible de CUOTAS a hoy (prorrateo pendiente + cajas exigidas sin llenar).
 // Es el "debe de cuotas" del ledger — las deudas registradas y el convenio van aparte.
 export function huecoCuotasHoy(contrato: ContratoCiclo, hoy: Date): number {

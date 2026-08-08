@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
 import type { ViewKey } from "../App";
 import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
 import { useContratos, infoFinContrato, ahorroTotal } from "../hooks/useContratos";
@@ -183,13 +184,52 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   // antes era rol quemado, así que el override por persona no aplicaba aquí.
   const puedeEliminarConvenio = puede("crear_convenio");
   const [borrandoConvenio, setBorrandoConvenio] = useState<string | null>(null);
+  // Borrar un convenio devuelve sus deudas a 'pendiente' y deshace las semanas que había marcado
+  // (mig 067). Lo que NO devuelve es lo que el cliente ya ABONÓ a la cuota: ese abono no bajó la
+  // deuda —la deuda vuelve COMPLETA— y solo vivía en el contador del convenio, que desaparece
+  // con él. Sin avisar, el cliente pagaba y esa plata dejaba de verse.
+  // Regla del dueño: "sin robarle y sin perder nada". Por eso se dice el monto exacto, se ofrece
+  // la alternativa (Ampliar, que no pierde nada) y queda el rastro para poder reconstruirlo.
   async function handleEliminarConvenio(id: string, num: number) {
     if (borrandoConvenio) return;
-    if (!confirm(`¿Eliminar el convenio #${num}? Esto lo borra por completo (úsalo solo para corregir un convenio creado por error).`)) return;
+    const cv = convenios.find(c => c.id === id);
+    const abonado = cv ? cv.cuotas_pagadas * cv.cuota_por_periodo : 0;
+
+    if (abonado > 0) {
+      const ok = confirm(
+        `⚠️ OJO: este cliente ya abonó $${Math.round(abonado).toLocaleString("es-CO")} a este convenio `
+        + `(${cv!.cuotas_pagadas} de ${cv!.numero_cuotas} cuotas).\n\n`
+        + `Si lo borras, su deuda vuelve COMPLETA y ese abono deja de verse en el sistema. `
+        + `Tendrías que descontárselo a mano.\n\n`
+        + `Si lo que necesitas es agregarle una deuda nueva, NO lo borres: usa "➕ Agregar deuda a `
+        + `este convenio" en Cartera — eso no pierde nada.\n\n`
+        + `¿Aun así quieres borrarlo?`,
+      );
+      if (!ok) return;
+    } else if (!confirm(`¿Eliminar el convenio #${num}? Esto lo borra por completo (úsalo solo para corregir un convenio creado por error).`)) {
+      return;
+    }
+
     setBorrandoConvenio(id);
+    // Rastro ANTES de borrar: sin esto no queda forma de saber cuánto había abonado el cliente.
+    if (cv && profile) {
+      await supabase.from("contratos_auditoria").insert({
+        contrato_id: cv.contrato_id,
+        campo: `Convenio #${num} eliminado`,
+        valor_anterior: `$${Math.round(cv.deuda_total).toLocaleString("es-CO")} · ${cv.cuotas_pagadas}/${cv.numero_cuotas} cuotas · abonado $${Math.round(abonado).toLocaleString("es-CO")}`,
+        valor_nuevo: "(borrado)",
+        editado_por: profile.id,
+      });
+    }
     const { error } = await eliminarConvenio(id);
     setBorrandoConvenio(null);
     if (error) alert("No se pudo eliminar: " + error);
+    else if (abonado > 0) {
+      alert(
+        `Convenio borrado. Recuerda: el cliente había abonado $${Math.round(abonado).toLocaleString("es-CO")} `
+        + `y su deuda volvió completa. Ajústasela a mano para no cobrárselo dos veces.`,
+      );
+    }
   }
   const { visitas } = useVisitas();
   const { gestiones, cargarHistorialCompleto } = useGestiones();

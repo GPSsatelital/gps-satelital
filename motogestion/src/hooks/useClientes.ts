@@ -120,9 +120,11 @@ const clientesStore = createTableStore<Cliente>("clientes");
 export function useClientes() {
   const { data: clientes, loading, error } = clientesStore.useStore();
 
+  // Devuelve el id del cliente creado: quien registra su base inicial lo necesita para ligarle
+  // el movimiento de plata (mig 091). Sin el id, esa entrada no tendría a quién pertenecer.
   async function crearCliente(nuevo: NuevoCliente) {
-    const { error } = await supabase.from("clientes").insert(nuevo);
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.from("clientes").insert(nuevo).select("id").single();
+    return { error: error?.message ?? null, id: data?.id ?? null };
   }
 
   // Sube un documento del cliente/acompañante al bucket "documentos" y devuelve la URL pública.

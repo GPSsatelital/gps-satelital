@@ -19,6 +19,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { hoyISO } from "../utils/fecha";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 import ModalDevolucionBase from "../components/ModalDevolucionBase";
+import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
+import { useAbonosBase } from "../hooks/useAbonosBase";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
@@ -586,6 +588,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const { clienteIdsPermitidos, filtrarVisitas, esSubadmin } = useScope();
   const { subadmins } = useSubadmins();
   const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente } = useClientes();
+  const { registrar: registrarAbonoBase } = useAbonosBase();
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
   const visitas = filtrarVisitas(todasVisitas);
   // Clientes con visita asignada a este SUBADMIN (embudo de ingreso) — considera tanto
@@ -635,6 +638,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   const [huellaActiva, setHuellaActiva] = useState<"cliente" | "acompanante">("cliente");
   // Recibo de base inicial: se abre automático al registrar y también desde la ficha.
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
+  // Cómo entregó la base (mig 091). Vive aparte de `form` a propósito: `form` se inserta tal cual
+  // en `clientes`, y estos dos campos no son columnas de esa tabla — meterlos ahí reventaría el
+  // insert. La base entra "mayormente en efectivo" (dueño), por eso ese es el default; pero si a
+  // veces transfieren y no se pregunta, la caja diría que hay plata en la gaveta que no está.
+  const [baseMetodo, setBaseMetodo] = useState<"Efectivo" | "Transferencia">("Efectivo");
+  const [baseCuentaId, setBaseCuentaId] = useState<string | null>(null);
   // Atrás cierra el modal/formulario abierto más reciente antes de cambiar de módulo.
   useBackGuard(reciboBase !== null, () => setReciboBase(null));
   useBackGuard(editForm !== null, () => setEditForm(null));
@@ -746,7 +755,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
     const estado = calcularEstado(form.documentos_cliente, form.documentos_acompanante, form.mismo_domicilio_acompanante);
 
-    const { error } = await crearCliente({
+    const { error, id: clienteNuevoId } = await crearCliente({
       ...form,
       nombre: form.nombre.trim(),
       cedula: form.cedula.trim(),
@@ -769,11 +778,35 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
+    // La base entra a la caja del día (mig 091). Antes solo se imprimía el recibo y la plata no
+    // quedaba registrada en ninguna parte: la secretaria terminaba el día con más efectivo en la
+    // gaveta del que el sistema decía, y la caja no podía cuadrar.
+    // No se aborta si esto falla — el cliente YA quedó creado y su base guardada en su ficha; se
+    // avisa para que alguien lo anote, pero no se le pierde el registro del cliente por esto.
+    if (form.ingreso_inicial && form.ingreso_inicial > 0 && clienteNuevoId) {
+      const { error: errAbono } = await registrarAbonoBase({
+        cliente_id: clienteNuevoId,
+        tipo: "abono",
+        monto: form.ingreso_inicial,
+        metodo: baseMetodo,
+        cuenta_id: baseMetodo === "Transferencia" ? baseCuentaId : null,
+        fecha: hoyISO(),
+        fecha_registro: hoyISO(),
+        registrado_por: profile?.id ?? null,
+        nota: "Base inicial entregada al registrarse",
+      });
+      if (errAbono) {
+        setFormError(`El cliente SÍ quedó registrado — no lo vuelvas a crear. Lo que falló fue anotar su base en la caja del día: ${errAbono}. Avísale a quien cierra la caja.`);
+      }
+    }
+
     // Recibo automático de la base inicial entregada (dinero que da para iniciar el proceso).
     if (form.ingreso_inicial && form.ingreso_inicial > 0) {
       setReciboBase(buildTicketBaseInicial(form.nombre.trim(), form.cedula.trim(), form.ingreso_inicial, profile?.nombre ?? ""));
     }
     setForm(emptyForm());
+    setBaseMetodo("Efectivo");
+    setBaseCuentaId(null);
     setOpen(false);
   }
 
@@ -982,7 +1015,9 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
     { label: "🔴 En riesgo", count: clientes.filter(c => c.estado === "En mora" || c.estado === "En riesgo").length, filter: "mora" },
   ];
 
-  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void) {
+  // `esNuevo`: el método de pago de la base solo se pregunta al REGISTRAR. Al editar no aplica —
+  // editar el monto no significa que el cliente haya vuelto a entregar plata.
+  function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void, esNuevo = false) {
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
 
@@ -1043,6 +1078,38 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 : data.ingreso_inicial >= INGRESO_IDEAL
                 ? "✔ Cumple el ideal"
                 : "✓ Cumple el mínimo (por debajo del ideal)"}
+            </div>
+          )}
+
+          {/* Cómo entregó la plata: define a qué lado de la caja entra. El efectivo se cuenta en
+              la gaveta y la transferencia contra el extracto — si se confunden, el arqueo de ese
+              día no cuadra y nadie sabe por qué. */}
+          {esNuevo && (data.ingreso_inicial ?? 0) > 0 && (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--warn-line)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 6 }}>¿Cómo entregó esta plata?</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {(["Efectivo", "Transferencia"] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => { setBaseMetodo(m); if (m === "Efectivo") setBaseCuentaId(null); }}
+                    style={{
+                      flex: 1, padding: "9px 12px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13,
+                      border: baseMetodo === m ? "2px solid var(--accent)" : "1px solid var(--line2)",
+                      background: baseMetodo === m ? "var(--accent-soft)" : "var(--card)",
+                      color: baseMetodo === m ? "var(--accent-ink)" : "var(--muted2)",
+                    }}
+                  >
+                    {m === "Efectivo" ? "💵 Efectivo" : "🏦 Transferencia"}
+                  </button>
+                ))}
+              </div>
+              {baseMetodo === "Transferencia" && (
+                <div style={{ marginTop: 10 }}>
+                  {/* Todavía no tiene moto, así que no hay grupo: se ofrecen todas las cuentas. */}
+                  <SelectorCuentaBanco grupo={null} value={baseCuentaId} onChange={setBaseCuentaId} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1445,7 +1512,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }} onClick={() => setOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: "var(--card)", borderRadius: 16, padding: 24, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
             <h3 style={{ margin: 0 }}>Ingresar cliente nuevo</h3>
-            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })))}
+            {renderClienteForm(form, (patch) => setForm((p) => ({ ...p, ...patch })), true)}
             {formError && <div style={{ marginTop: 12, color: "var(--bad-ink)", fontWeight: 600 }}>{formError}</div>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
               <button onClick={() => setOpen(false)} style={secondaryBtn}>Cancelar</button>

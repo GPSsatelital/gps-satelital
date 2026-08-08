@@ -124,6 +124,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // puerta por la que entraras. Unificado — decisión del dueño, 31-jul: "un convenio es un
   // convenio, no veo por qué habría alguna diferencia".
   const [financiarN, setFinanciarN] = useState(0);
+  // Deuda que NO entra acá por estar ya dentro de otro convenio activo. Se muestra para que el
+  // funcionario entienda por qué el monto precargado es menor que el "debe" de Cartera.
+  const [deudaEnOtroConvenio, setDeudaEnOtroConvenio] = useState(0);
   const [metaManual, setMetaManual] = useState("");
   const [metaCargada, setMetaCargada] = useState(false);
   const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
@@ -183,10 +186,16 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       // por otra puerta.
       const { data } = await supabase
         .from("deudas")
-        .select("monto_pendiente")
+        .select("monto_pendiente, estado")
         .eq("contrato_id", contratoId)
-        .eq("estado", "pendiente");
-      const total = (data ?? []).reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0);
+        .in("estado", ["pendiente", "en_convenio"]);
+      const filas = data ?? [];
+      const total = filas.filter(d => d.estado === "pendiente").reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0);
+      // Cuánta deuda queda AFUERA por estar ya dentro de otro convenio. Sin decirlo, la ventana
+      // precargaba $0 en silencio y el funcionario creía que el sistema se equivocaba: Cartera le
+      // mostraba $530.000 y acá salía cero (caso WILLINGTON, DQW26I). Es correcto no volver a
+      // meterla —se cobraría dos veces— pero hay que decir POR QUÉ.
+      setDeudaEnOtroConvenio(filas.filter(d => d.estado === "en_convenio").reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0));
       setMetaManual(String(total));
       setMetaCargada(true);
     }
@@ -402,6 +411,19 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                   financiadas se suman aparte y el funcionario tenía que hacer la cuenta de
                   cabeza. El total real se muestra ahora abajo, apenas se escogen las semanas. */}
               <div style={labelStyle}>Deuda a financiar</div>
+              {/* Sin esto la ventana mostraba $0 en silencio y parecía un error del sistema:
+                  Cartera decía "debe $530.000" y acá salía cero (caso WILLINGTON, DQW26I). */}
+              {deudaEnOtroConvenio > 0 && (
+                <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "9px 11px", marginBottom: 8, lineHeight: 1.5 }}>
+                  ⚠️ Este cliente ya tiene <strong>$ {fmt(deudaEnOtroConvenio)}</strong> de deuda dentro de otro convenio activo.
+                  Esa plata <strong>no se vuelve a incluir acá</strong> para no cobrársela dos veces — por eso el monto sale
+                  más bajo que el "debe" de Cartera.
+                  <span style={{ display: "block", marginTop: 4 }}>
+                    Si lo que quieres es reacomodarle TODA la deuda, primero elimina el convenio viejo desde su ficha
+                    (sus deudas vuelven solas a quedar disponibles) y vuelve a entrar acá.
+                  </span>
+                </div>
+              )}
               {metaFija != null && (
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
                   {metaBloqueada
@@ -551,7 +573,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               <div style={labelStyle}>Fecha límite (última cuota)</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
                 Se calcula sola avanzando {cuotasCalc > 0 ? cuotasCalc : "N"} día{cuotasCalc === 1 ? "" : "s"} de pago
-                desde hoy. Podés cambiarla si acordaron otra.
+                desde hoy. Puedes cambiarla si acordaron otra.
               </div>
               <input
                 type="date"

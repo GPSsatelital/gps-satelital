@@ -1880,9 +1880,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>TOTAL A COBRAR</span>
                 <span style={{ fontSize: 18, fontWeight: 700, color: "var(--bad-ink)" }}>$ {fmt(totalDebeAhora)}</span>
               </div>
-              {desg.proximaFecha && (
+              {/* Usa `proximoPagoFecha`, NO `desg.proximaFecha` cruda: cuando el convenio se tragó
+                  semanas (`cubre_periodo_hasta`), esas cajas dejan de exigirse y el próximo pago se
+                  corre. Los otros 3 sitios ya lo hacían bien y este se quedó con la fecha pelada:
+                  MARTHA (RLT68H) mostraba "Próximo: Lun 17" arriba y "próximo pago: Lun 10" abajo,
+                  en la misma pantalla. La correcta es la del convenio. */}
+              {proximoPagoFecha && (
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                  Después de esto, próximo pago: <strong>{fmtFecha(desg.proximaFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
+                  Después de esto, próximo pago: <strong>{fmtFecha(proximoPagoFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
                   {cuotaConvActiva > 0 && <span> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
                 </div>
               )}

@@ -208,9 +208,18 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
   const puedeFinanciar = esPeriodico && cuotaDelPeriodo > 0;
   const nFinanciadas = puedeFinanciar ? financiarN : 0;
+
+  // Cuántas semanas trae vencidas. Antes el selector ofrecía SIEMPRE 0/1/2 sin importar cuántas
+  // debiera: quien traía 3 atrasadas no tenía cómo cubrirlas, y quien traía 2 escogía 1 creyendo
+  // que lo dejaba al día. Ahora las opciones llegan hasta lo que de verdad debe.
+  const semanasVencidas = cuotaDelPeriodo > 0 ? Math.ceil(huecoHoy / cuotaDelPeriodo) : 0;
+  const opcionesFinanciar = Array.from({ length: Math.min(Math.max(semanasVencidas, 2), 8) + 1 }, (_, i) => i);
   const cuotaSemana = nFinanciadas >= 1
     ? primeraFinanciada + (nFinanciadas - 1) * cuotaDelPeriodo
     : 0;
+  // Lo que queda de arriendo SIN cubrir con lo escogido. Si es > 0, decir "paga $0 de arriendo"
+  // es falso: el cliente sigue debiendo cuotas aunque el convenio quede firmado.
+  const arriendoSinCubrir = Math.max(huecoHoy - cuotaSemana, 0);
 
   // Hasta qué día queda cubierto: se avanza N días de pago desde hoy. Es lo que se guarda en
   // `cubre_periodo_hasta` y lo que hace que esos períodos no cuenten como mora.
@@ -406,8 +415,17 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                     Se las metes al convenio: no las paga aparte y no cuentan mora.
                   </span>
                 </div>
+                {/* Cuántas semanas trae VENCIDAS. Sin esto el funcionario no tenía cómo saber que
+                    escogiendo 1 dejaba otra sin cubrir (caso JHEFERSON, XYZ50H: 2 vencidas y la
+                    ventana decía "paga $0 de arriendo" financiando una sola). */}
+                {semanasVencidas > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px", marginBottom: 8, lineHeight: 1.45 }}>
+                    Trae <strong>{semanasVencidas} semana{semanasVencidas > 1 ? "s" : ""} vencida{semanasVencidas > 1 ? "s" : ""}</strong> ($ {fmt(huecoHoy)}).
+                    Para dejarlo al día hay que financiar {semanasVencidas}.
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  {[0, 1, 2].map(n => (
+                  {opcionesFinanciar.map(n => (
                     <button key={n} type="button" onClick={() => setFinanciarN(n)}
                       style={{ flex: 1, padding: "8px 10px", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 14,
                         border: `2px solid ${financiarN === n ? "var(--accent)" : "var(--line)"}`,
@@ -419,8 +437,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 </div>
                 {nFinanciadas >= 1 && (
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
-                    Se financian <strong>{nFinanciadas}</strong> semana{nFinanciadas > 1 ? "s" : ""} = <strong>$ {fmt(cuotaSemana)}</strong> al
-                    convenio. El cliente paga <strong>$0 de arriendo</strong> hasta el <strong>{cubreHasta ?? "—"}</strong>.
+                    Se financian <strong>{nFinanciadas}</strong> semana{nFinanciadas > 1 ? "s" : ""} = <strong>$ {fmt(cuotaSemana)}</strong> al convenio.
+                    {arriendoSinCubrir > 0
+                      ? <> Pero le quedan <strong style={{ color: "var(--bad-ink)" }}>$ {fmt(arriendoSinCubrir)}</strong> de arriendo
+                          SIN cubrir: con esto <strong>no queda al día</strong>. Sube a {semanasVencidas} para taparlo todo.</>
+                      : <> El cliente paga <strong>$0 de arriendo</strong> hasta el <strong>{cubreHasta ?? "—"}</strong>.</>}
                     {huecoHoy > 0 && huecoHoy < cuotaDelPeriodo && (
                       <span style={{ display: "block", marginTop: 2 }}>
                         La primera va por <strong>$ {fmt(primeraFinanciada)}</strong>, que es lo que le falta del período en curso — el resto ya lo abonó.

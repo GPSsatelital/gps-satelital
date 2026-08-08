@@ -390,7 +390,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             </div>
 
             <div>
-              <div style={labelStyle}>Meta a pagar (total del convenio)</div>
+              {/* Decía "Meta a pagar (total del convenio)" y NO era el total: las semanas
+                  financiadas se suman aparte y el funcionario tenía que hacer la cuenta de
+                  cabeza. El total real se muestra ahora abajo, apenas se escogen las semanas. */}
+              <div style={labelStyle}>Deuda a financiar</div>
               {metaFija != null && (
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
                   {metaBloqueada
@@ -447,6 +450,21 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                         La primera va por <strong>$ {fmt(primeraFinanciada)}</strong>, que es lo que le falta del período en curso — el resto ya lo abonó.
                       </span>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* EL TOTAL, con la cuenta a la vista. Antes solo aparecía después de escribir el
+                número de cuotas — o sea, después de decidir. Y el campo de arriba decía "total"
+                sin serlo, así que el funcionario sumaba de cabeza deuda + semanas. */}
+            {meta > 0 && (
+              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Total del convenio</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>$ {fmt(meta)}</div>
+                {cuotaSemana > 0 && (
+                  <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>
+                    Deuda $ {fmt(metaBase)} + {nFinanciadas} semana{nFinanciadas > 1 ? "s" : ""} $ {fmt(cuotaSemana)}
                   </div>
                 )}
               </div>

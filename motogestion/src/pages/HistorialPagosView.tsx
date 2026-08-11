@@ -5,6 +5,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePrestamos, grupoDePago } from "../hooks/usePrestamos";
+import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { hoyISO, hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Badge, Chip, type BadgeTone } from "../components/atomos";
@@ -68,6 +69,7 @@ export default function HistorialPagosView({ onNavigate }: {
   const { clientes } = useClientes();
   const { motos } = useMotos();
   const { prestamos } = usePrestamos();
+  const { cesiones } = useCesiones();
   const { filtrarPorContrato } = useScope();
   const { puede } = useAuth();
   const [abrirDescarga, setAbrirDescarga] = useState(false);
@@ -77,9 +79,12 @@ export default function HistorialPagosView({ onNavigate }: {
   // (admins, secretaria) devuelve la lista completa, así que no cambia nada de lo que se ve hoy.
   const pagos = useMemo(() => filtrarPorContrato(pagosTodos), [pagosTodos, filtrarPorContrato]);
 
+  // El cliente de un pago es quien tenía el contrato EN ESA FECHA. Resolverlo por el titular de
+  // hoy haría que, tras una cesión, la plata que puso una persona apareciera a nombre de otra.
+  // Toda la pantalla (tabla, detalle y exportación) pasa por acá.
   function getInfo(p: Pago) {
     const c = contratos.find(ct => ct.id === p.contrato_id);
-    const cl = clientes.find(cl => cl.id === c?.cliente_id);
+    const cl = clientes.find(cl => cl.id === titularEnFecha(p.contrato_id, p.fecha, contratos, cesiones));
     const m = c?.moto_id ? motos.find(mo => mo.id === c.moto_id) : null;
     return { cliente: cl, moto: m };
   }
@@ -100,7 +105,8 @@ export default function HistorialPagosView({ onNavigate }: {
       }
       if (q) {
         const c = contratos.find(ct => ct.id === p.contrato_id);
-        const cl = clientes.find(cl => cl.id === c?.cliente_id);
+        // El buscador debe encontrar por el mismo nombre que muestra la fila.
+        const cl = clientes.find(cl => cl.id === titularEnFecha(p.contrato_id, p.fecha, contratos, cesiones));
         const m = c?.moto_id ? motos.find(m => m.id === c.moto_id) : null;
         const match = (cl?.nombre ?? "").toLowerCase().includes(q) || (cl?.cedula ?? "").includes(q) || (m?.placa ?? "").toLowerCase().includes(q);
         if (!match) return false;

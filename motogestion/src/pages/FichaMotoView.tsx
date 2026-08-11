@@ -13,6 +13,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useVisitas } from "../hooks/useVisitas";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import { useCesiones } from "../hooks/useCesiones";
 import { formatDiaPago } from "../utils/cicloPago";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -142,6 +143,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   const { convenios } = useConvenios();
   const { visitas } = useVisitas();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
+  const { cesiones } = useCesiones();
 
   // Préstamos donde esta moto participó (prestada a alguien, o reemplazada por otra).
   const prestamosMoto = useMemo(() =>
@@ -446,7 +448,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>Entregas, talleres, cobros, recolecciones, tarjeta y llaves — de lo más nuevo a lo más viejo.</div>
             <LineaTiempo
               objetivo={{ motoId }}
-              fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos }}
+              fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos, cesiones }}
               titulo={moto.placa}
               subtitulo={`${moto.marca} ${moto.modelo}`}
             />

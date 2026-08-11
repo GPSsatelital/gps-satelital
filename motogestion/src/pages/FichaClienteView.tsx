@@ -12,6 +12,7 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { useTaller } from "../hooks/useTaller";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import { useCesiones, contratosDeCliente, esDeSuTramo } from "../hooks/useCesiones";
 import LineaTiempo from "../components/LineaTiempo";
 import { formatDiaPago } from "../utils/cicloPago";
 import { fmtFechaLarga } from "../utils/fecha";
@@ -240,32 +241,44 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   const { motos } = useMotos();
   const { taller } = useTaller();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
+  const { cesiones } = useCesiones();
 
   const cliente = clientes.find(c => c.id === clienteId);
 
+  // Incluye los contratos que este cliente CEDIÓ: toda su historia cuelga del contrato, así que
+  // sin ellos su ficha quedaría en blanco el día que traspasa. Lo que ya no le pertenece se recorta
+  // más abajo por fecha, con `esDeSuTramo`.
   const contratosCliente = useMemo(() =>
-    contratos.filter(c => c.cliente_id === clienteId).sort((a, b) => (b.fecha_entrega ?? "").localeCompare(a.fecha_entrega ?? "")),
-    [contratos, clienteId]
+    contratosDeCliente(clienteId, contratos, cesiones).sort((a, b) => (b.fecha_entrega ?? "").localeCompare(a.fecha_entrega ?? "")),
+    [contratos, cesiones, clienteId]
   );
   const contratoIds = useMemo(() => new Set(contratosCliente.map(c => c.id)), [contratosCliente]);
   const contratoActivo = useMemo(() => contratosCliente.find(c => c.estado === "Activo"), [contratosCliente]);
 
+  // `esDeSuTramo` evita que, tras una cesión, al que recibe le aparezcan los pagos que hizo el
+  // anterior (y que al anterior se le pierdan). Sin cesiones devuelve siempre true: cero cambio.
   const pagosCliente = useMemo(() =>
-    pagos.filter(p => contratoIds.has(p.contrato_id)).sort((a, b) => b.fecha.localeCompare(a.fecha)),
-    [pagos, contratoIds]
+    pagos.filter(p => contratoIds.has(p.contrato_id) && esDeSuTramo(clienteId, p.contrato_id, p.fecha, contratos, cesiones))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha)),
+    [pagos, contratoIds, clienteId, contratos, cesiones]
   );
-  const deudasCliente = useMemo(() => deudas.filter(d => contratoIds.has(d.contrato_id)), [deudas, contratoIds]);
+  const deudasCliente = useMemo(() =>
+    deudas.filter(d => contratoIds.has(d.contrato_id) && esDeSuTramo(clienteId, d.contrato_id, d.created_at, contratos, cesiones)),
+    [deudas, contratoIds, clienteId, contratos, cesiones]
+  );
   const conveniosCliente = useMemo(() =>
-    convenios.filter(c => contratoIds.has(c.contrato_id)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
-    [convenios, contratoIds]
+    convenios.filter(c => contratoIds.has(c.contrato_id) && esDeSuTramo(clienteId, c.contrato_id, c.created_at, contratos, cesiones))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [convenios, contratoIds, clienteId, contratos, cesiones]
   );
   const visitasCliente = useMemo(() =>
     visitas.filter(v => v.cliente_id === clienteId).sort((a, b) => b.fecha.localeCompare(a.fecha)),
     [visitas, clienteId]
   );
   const gestionesCliente = useMemo(() =>
-    gestiones.filter(g => contratoIds.has(g.contrato_id)).sort((a, b) => b.created_at.localeCompare(a.created_at)),
-    [gestiones, contratoIds]
+    gestiones.filter(g => contratoIds.has(g.contrato_id) && esDeSuTramo(clienteId, g.contrato_id, g.fecha, contratos, cesiones))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [gestiones, contratoIds, clienteId, contratos, cesiones]
   );
 
   const totalPagado = useMemo(() =>
@@ -431,7 +444,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           </div>
           <LineaTiempo
             objetivo={{ clienteId }}
-            fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos }}
+            fuentes={{ contratos, pagos, gestiones, deudas, convenios, visitas, taller, prestamosDoc, clientes, motos, cesiones }}
             titulo={cliente.nombre}
             subtitulo={`C.C. ${cliente.cedula}`}
             resumen={(() => {

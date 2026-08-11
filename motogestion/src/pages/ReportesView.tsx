@@ -5,6 +5,7 @@ import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
+import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
@@ -418,6 +419,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const { subadmins } = useSubadmins();
   const { prestamos } = usePrestamos();
+  const { cesiones } = useCesiones();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
   const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
@@ -976,9 +978,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const topPagadores = useMemo(() => {
     const map: Record<string, number> = {};
     pagosRango.forEach(p => {
-      const c = contratos.find(ct => ct.id === p.contrato_id);
-      if (!c) return;
-      map[c.cliente_id] = (map[c.cliente_id] ?? 0) + p.valor;
+      // Se acredita a quien tenía el contrato EN ESA FECHA. Con el titular de hoy, tras una
+      // cesión el ranking le sumaría al nuevo la plata que puso el anterior.
+      const quien = titularEnFecha(p.contrato_id, p.fecha, contratos, cesiones);
+      if (!quien) return;
+      map[quien] = (map[quien] ?? 0) + p.valor;
     });
     return Object.entries(map)
       .map(([clienteId, total]) => ({

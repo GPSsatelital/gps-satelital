@@ -7,6 +7,7 @@ import type { Visita } from "../hooks/useVisitas";
 import type { Moto } from "../hooks/useMotos";
 import type { Cliente } from "../hooks/useClientes";
 import type { PrestamoDoc } from "../hooks/usePrestamosDoc";
+import { contratosDeCliente, tramosDeTitular, titularEnFecha, type CesionScope } from "../hooks/useCesiones";
 import { fechaISO } from "./fecha";
 
 // ── Línea de tiempo: todo lo que ha pasado con un cliente o una moto, en orden y
@@ -131,6 +132,9 @@ export type FuentesLT = {
   prestamosDoc: PrestamoDoc[];
   clientes: Cliente[];
   motos: Moto[];
+  // Obligatoria a propósito (no `cesiones?`): así el compilador señala cualquier pantalla que la
+  // olvide. Si una la omitiera, ese cliente vería la historia de otro sin que nadie se entere.
+  cesiones: (CesionScope & { id: string; created_at?: string })[];
 };
 
 /** Arma la línea de tiempo de un cliente (todos sus contratos/motos) o de una moto. */
@@ -142,8 +146,10 @@ export function construirLineaTiempo(
   const push = (e: EventoLT) => { if (e.fecha) ev.push(e); };
 
   // Alcance: qué contratos y motos entran según se pida por cliente o por moto.
+  // Para un cliente son los que tiene HOY **más los que cedió**: toda su historia cuelga del
+  // contrato, así que sin los cedidos su ficha quedaría en blanco el día que traspasa.
   const contratos = objetivo.clienteId
-    ? f.contratos.filter(c => c.cliente_id === objetivo.clienteId)
+    ? contratosDeCliente(objetivo.clienteId, f.contratos, f.cesiones)
     : f.contratos.filter(c => c.moto_id === objetivo.motoId);
   const contratoIds = new Set(contratos.map(c => c.id));
   const motoIds = new Set(
@@ -161,11 +167,31 @@ export function construirLineaTiempo(
     const n = deQuien(clienteId);
     return [txt, n ? `Cliente: ${n}` : ""].filter(Boolean).join(" · ") || undefined;
   };
-  const clienteDeContrato = (contratoId: string) => contratos.find(c => c.id === contratoId)?.cliente_id ?? null;
+  // Quién tenía el contrato EN ESA FECHA, no quién lo tiene hoy. Sin la fecha, tras una cesión
+  // los pagos viejos saldrían a nombre del titular nuevo — le atribuiría a una persona la plata
+  // que puso otra.
+  const clienteDeContrato = (contratoId: string, fecha: string) =>
+    titularEnFecha(contratoId, fecha, f.contratos, f.cesiones);
 
   // Ventana en que ESTE cliente tuvo cada moto: desde que se le entregó hasta que la recibió
   // otra persona. Sin esto, el taller o la tarjeta prestada de un dueño anterior/posterior se
   // le atribuían a este cliente.
+  // Tramo del CONTRATO que le pertenece a este cliente. Es el hermano de `ventanas`: aquella
+  // resuelve "esta MOTO tuvo varios dueños", esta resuelve "este CONTRATO tuvo varios
+  // arrendatarios". Sin ella, al ceder, el que recibe hereda en pantalla todos los pagos que
+  // nunca hizo y el que cedió los pierde.
+  const tramos = new Map<string, { desde: string; hasta: string }[]>();
+  if (objetivo.clienteId) {
+    for (const c of contratos) tramos.set(c.id, tramosDeTitular(objetivo.clienteId, c, f.cesiones));
+  }
+  const enTramo = (contratoId: string, fecha: string) => {
+    if (!objetivo.clienteId) return true;   // línea de la MOTO: la historia completa aplica
+    if (!fecha) return false;
+    const arr = tramos.get(contratoId);
+    if (!arr || arr.length === 0) return false;
+    return arr.some(t => fecha >= t.desde && fecha < t.hasta);
+  };
+
   const ventanas = new Map<string, { desde: string; hasta: string }[]>();
   if (objetivo.clienteId) {
     for (const c of contratos) {
@@ -175,8 +201,17 @@ export function construirLineaTiempo(
         .filter(o => o.moto_id === c.moto_id && o.id !== c.id && o.fecha_entrega && soloFecha(o.fecha_entrega) > desde)
         .map(o => soloFecha(o.fecha_entrega))
         .sort()[0];
+      const tope = siguiente ?? "9999-12-31";
       const arr = ventanas.get(c.moto_id) ?? [];
-      arr.push({ desde, hasta: siguiente ?? "9999-12-31" });
+      // Se INTERSECTA con los tramos de titularidad: tras una cesión el cliente dejó de tener la
+      // moto sin que apareciera un contrato nuevo sobre ella (es el mismo contrato). Sin cruzar
+      // las dos cosas, al que cedió le seguirían saliendo el taller y la tarjeta prestada de la
+      // etapa del que recibió.
+      for (const t of tramos.get(c.id) ?? [{ desde: "0000-01-01", hasta: "9999-12-31" }]) {
+        const d = t.desde > desde ? t.desde : desde;   // no antes de la entrega
+        const h = t.hasta < tope ? t.hasta : tope;     // no después de que la moto cambie de manos
+        if (d < h) arr.push({ desde: d, hasta: h });
+      }
       ventanas.set(c.moto_id, arr);
     }
   }
@@ -215,21 +250,26 @@ export function construirLineaTiempo(
   // ── Contrato ──────────────────────────────────────────────────────────────
   for (const c of contratos) {
     const placa = placaDe(c.moto_id);
-    push({
-      id: `ctr-${c.id}`, fecha: soloFecha(c.created_at), orden: c.created_at ?? "",
-      categoria: "contrato", icono: "📄", titulo: "Contrato creado",
-      detalle: `${c.forma_pago} de ${fmt(c.valor_semanal ?? 0)}${c.meses ? ` · ${c.meses} meses` : ""}${objetivo.motoId ? ` · ${nombreDe(c.cliente_id)}` : ""}`,
-      tono: "accent",
-    });
-    if (c.fecha_entrega) {
+    // "Contrato creado" y "Se entregó la moto" son del titular ORIGINAL. A quien lo recibe por
+    // cesión no le corresponden: él tiene su propio evento de recepción, más abajo.
+    if (enTramo(c.id, soloFecha(c.created_at))) {
+      push({
+        id: `ctr-${c.id}`, fecha: soloFecha(c.created_at), orden: c.created_at ?? "",
+        categoria: "contrato", icono: "📄", titulo: "Contrato creado",
+        detalle: `${c.forma_pago} de ${fmt(c.valor_semanal ?? 0)}${c.meses ? ` · ${c.meses} meses` : ""}${objetivo.motoId ? ` · ${nombreDe(titularEnFecha(c.id, soloFecha(c.created_at), f.contratos, f.cesiones))}` : ""}`,
+        tono: "accent",
+      });
+    }
+    if (c.fecha_entrega && enTramo(c.id, soloFecha(c.fecha_entrega))) {
       push({
         id: `ent-${c.id}`, fecha: soloFecha(c.fecha_entrega), orden: c.fecha_entrega,
         categoria: "moto", icono: "🏍️", titulo: `Se entregó la moto${placa ? ` ${placa}` : ""}`,
-        detalle: objetivo.motoId ? `A ${nombreDe(c.cliente_id)}` : undefined,
+        detalle: objetivo.motoId ? `A ${nombreDe(titularEnFecha(c.id, soloFecha(c.fecha_entrega), f.contratos, f.cesiones))}` : undefined,
         tono: "ok",
       });
     }
-    if (c.empalme_cerrado && (c as { empalme_cerrado_fecha?: string }).empalme_cerrado_fecha) {
+    if (c.empalme_cerrado && (c as { empalme_cerrado_fecha?: string }).empalme_cerrado_fecha
+        && enTramo(c.id, soloFecha((c as { empalme_cerrado_fecha?: string }).empalme_cerrado_fecha))) {
       push({
         id: `emp-${c.id}`, fecha: soloFecha((c as { empalme_cerrado_fecha?: string }).empalme_cerrado_fecha),
         orden: (c as { empalme_cerrado_fecha?: string }).empalme_cerrado_fecha ?? "",
@@ -237,7 +277,8 @@ export function construirLineaTiempo(
         detalle: "Se revisaron con el cliente el ahorro y la deuda que traía.", tono: "ok",
       });
     }
-    if ((c as { ubicacion_moto_validada_fecha?: string }).ubicacion_moto_validada_fecha) {
+    if ((c as { ubicacion_moto_validada_fecha?: string }).ubicacion_moto_validada_fecha
+        && enTramo(c.id, soloFecha((c as { ubicacion_moto_validada_fecha?: string }).ubicacion_moto_validada_fecha))) {
       const res = (c as { ubicacion_moto_resultado?: string }).ubicacion_moto_resultado;
       push({
         id: `ubi-${c.id}`, fecha: soloFecha((c as { ubicacion_moto_validada_fecha?: string }).ubicacion_moto_validada_fecha),
@@ -249,24 +290,43 @@ export function construirLineaTiempo(
     }
   }
 
+  // ── Cesión del contrato ───────────────────────────────────────────────────
+  // Filtrado SOLO por contrato, sin pasar por `enTramo`: la fecha de la cesión es justo el borde
+  // (el final de uno y el comienzo del otro), así que ningún tramo la contiene entera. Los dos
+  // deben verla — es el hecho que explica por qué su historia empieza o termina ahí.
+  for (const x of f.cesiones.filter(x => contratoIds.has(x.contrato_id))) {
+    const cede = x.cedente_id === objetivo.clienteId;
+    const recibe = x.cesionario_id === objetivo.clienteId;
+    push({
+      id: `ces-${x.id}`, fecha: soloFecha(x.fecha), orden: x.created_at ?? x.fecha,
+      categoria: "contrato",
+      icono: cede ? "📤" : recibe ? "📥" : "🔁",
+      titulo: cede ? `Le cedió el contrato a ${nombreDe(x.cesionario_id)}`
+            : recibe ? `Recibió el contrato de ${nombreDe(x.cedente_id)}`
+            : `Cambió de responsable: ${nombreDe(x.cedente_id)} → ${nombreDe(x.cesionario_id)}`,
+      detalle: "El contrato siguió igual — solo cambió quién responde por él.",
+      tono: "accent",
+    });
+  }
+
   // ── Pagos ─────────────────────────────────────────────────────────────────
-  for (const p of f.pagos.filter(p => contratoIds.has(p.contrato_id))) {
+  for (const p of f.pagos.filter(p => contratoIds.has(p.contrato_id) && enTramo(p.contrato_id, soloFecha(p.fecha)))) {
     const t = tituloPago(p);
     push({
       id: `pag-${p.id}`, fecha: soloFecha(p.fecha), orden: p.created_at ?? p.fecha,
       categoria: "pago", icono: t.icono, titulo: t.titulo,
-      detalle: conCliente([t.detalle, p.folio ? `Recibo ${p.folio}` : ""].filter(Boolean).join(" · ") || undefined, clienteDeContrato(p.contrato_id)),
+      detalle: conCliente([t.detalle, p.folio ? `Recibo ${p.folio}` : ""].filter(Boolean).join(" · ") || undefined, clienteDeContrato(p.contrato_id, soloFecha(p.fecha))),
       desglose: p.estado === "Confirmado" ? desglosarPago(p) : undefined,
       tono: t.tono,
     });
   }
 
   // ── Deudas ────────────────────────────────────────────────────────────────
-  for (const d of f.deudas.filter(d => contratoIds.has(d.contrato_id))) {
+  for (const d of f.deudas.filter(d => contratoIds.has(d.contrato_id) && enTramo(d.contrato_id, soloFecha(d.created_at)))) {
     push({
       id: `deu-${d.id}`, fecha: soloFecha(d.created_at), orden: d.created_at,
       categoria: "pago", icono: "📌", titulo: `Se le cargó una deuda de ${fmt(d.monto)}`,
-      detalle: conCliente(d.descripcion || d.concepto.replace(/_/g, " "), clienteDeContrato(d.contrato_id)),
+      detalle: conCliente(d.descripcion || d.concepto.replace(/_/g, " "), clienteDeContrato(d.contrato_id, soloFecha(d.created_at))),
       desglose: [
         { k: "Concepto", v: d.concepto.replace(/_/g, " ") },
         { k: "Le queda pendiente", v: fmt(d.monto_pendiente), tono: d.monto_pendiente > 0 ? "bad" : "ok" },
@@ -276,12 +336,12 @@ export function construirLineaTiempo(
   }
 
   // ── Convenios ─────────────────────────────────────────────────────────────
-  for (const cv of f.convenios.filter(c => contratoIds.has(c.contrato_id))) {
+  for (const cv of f.convenios.filter(c => contratoIds.has(c.contrato_id) && enTramo(c.contrato_id, soloFecha(c.created_at)))) {
     const anyv = cv as unknown as Record<string, unknown>;
     push({
       id: `cnv-${cv.id}`, fecha: soloFecha(cv.created_at), orden: cv.created_at,
       categoria: "pago", icono: "🤝", titulo: "Acuerdo de pago firmado",
-      detalle: conCliente((anyv.concepto as string) || undefined, clienteDeContrato(cv.contrato_id)),
+      detalle: conCliente((anyv.concepto as string) || undefined, clienteDeContrato(cv.contrato_id, soloFecha(cv.created_at))),
       desglose: [
         { k: "Debía", v: fmt(Number(anyv.deuda_total ?? 0)) },
         { k: "Cuota pactada", v: fmt(Number(anyv.cuota_por_periodo ?? 0)) },
@@ -294,7 +354,7 @@ export function construirLineaTiempo(
   // ── Gestiones de cobro ────────────────────────────────────────────────────
   // 'cobro_campo' se omite: al cobrar en campo se registra el pago Y una gestión que repite
   // el mismo folio y monto — se veían dos eventos con la misma plata. El pago ya lo cuenta.
-  for (const g of f.gestiones.filter(g => contratoIds.has(g.contrato_id) && g.tipo !== "cobro_campo")) {
+  for (const g of f.gestiones.filter(g => contratoIds.has(g.contrato_id) && g.tipo !== "cobro_campo" && enTramo(g.contrato_id, soloFecha(g.fecha)))) {
     const info = GESTION_INFO[g.tipo] ?? GESTION_INFO.otro;
     const extra: string[] = [];
     if (g.resultado) extra.push(g.resultado);
@@ -303,7 +363,7 @@ export function construirLineaTiempo(
     push({
       id: `ges-${g.id}`, fecha: soloFecha(g.fecha), orden: g.created_at ?? g.fecha,
       categoria: info.cat, icono: info.icono, titulo: info.titulo,
-      detalle: conCliente(extra.join(" · ") || undefined, clienteDeContrato(g.contrato_id)), tono: info.tono,
+      detalle: conCliente(extra.join(" · ") || undefined, clienteDeContrato(g.contrato_id, soloFecha(g.fecha))), tono: info.tono,
       interno: true, // gestión interna de cobranza: no va en el papel que recibe el cliente
     });
   }

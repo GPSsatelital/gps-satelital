@@ -12,7 +12,7 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useMotos } from "../hooks/useMotos";
 import { useTaller } from "../hooks/useTaller";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
-import { useCesiones, contratosDeCliente, esDeSuTramo } from "../hooks/useCesiones";
+import { useCesiones, contratosDeCliente, esDeSuTramo, cesionPendienteDeCliente } from "../hooks/useCesiones";
 import LineaTiempo from "../components/LineaTiempo";
 import { formatDiaPago } from "../utils/cicloPago";
 import { fmtFechaLarga } from "../utils/fecha";
@@ -505,6 +505,20 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               <InfoRow label="Dirección" value={cliente.direccion || "—"} />
               <InfoRow label="Fuente de llegada" value={cliente.fuente_llegada || "—"} />
               <InfoRow label="Registrado" value={fmtFecha(cliente.created_at)} />
+              {/* No pagó base: la hereda del contrato que le ceden. Se dice explícito para que
+                  nadie lo lea como un cliente al que se le olvidó cobrar la base. */}
+              {cliente.ingreso_por_cesion && (
+                <InfoRow
+                  label="Cómo ingresó"
+                  value={
+                    <span style={{ color: cesionPendienteDeCliente(cliente, cesiones) ? "var(--warn-ink)" : "var(--ok-ink)", fontWeight: 700 }}>
+                      {cesionPendienteDeCliente(cliente, cesiones)
+                        ? "Por cesión — pendiente de que le pasen el contrato"
+                        : "Por cesión de contrato (no pagó base)"}
+                    </span>
+                  }
+                />
+              )}
               {(cliente.ingreso_inicial ?? 0) > 0 && (
                 <>
                   <InfoRow label="Base inicial entregada" value={`$ ${fmt(cliente.ingreso_inicial ?? 0)}`} />

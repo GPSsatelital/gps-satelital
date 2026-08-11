@@ -7,6 +7,7 @@ import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
+import { useCesiones } from "../hooks/useCesiones";
 import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
 import { useAlertas } from "../hooks/useAlertas";
 import { useScope } from "../contexts/SubadminScopeContext";
@@ -72,6 +73,7 @@ export default function DashboardView({ onNavigate }: {
   const { gestiones } = useGestiones();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
   const { pendientes: ingresosNI } = useIngresosNoIdentificados();
+  const { cesiones } = useCesiones();
 
   const motos = filtrarMotos(todasMotos);
   const clientes = filtrarPorCliente(todosClientes);
@@ -81,7 +83,7 @@ export default function DashboardView({ onNavigate }: {
   const convenios = filtrarPorContrato(todosConvenios);
 
   // Misma fuente de alertas que la campana y la vista de Alertas
-  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI });
+  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI, cesiones });
 
   const loading = lM || lC || lCt || lP || lT;
 

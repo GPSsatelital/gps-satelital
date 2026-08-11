@@ -263,6 +263,7 @@ function emptyForm(): NuevoCliente {
     estado: "En proceso",
     ruta_contrato: "diario",
     ingreso_inicial: null,
+    ingreso_por_cesion: false,
     referido_por_cedula: "",
     referido_por_nombre: "",
     autorizacion_datos_firma_url: null,
@@ -690,7 +691,10 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
-    if (!form.ingreso_inicial || form.ingreso_inicial < INGRESO_MINIMO) {
+    // Quien entra por cesión NO paga base: la hereda del que le cede (el ahorro vive en el
+    // contrato, no en la persona). Exigirle el mínimo obligaría a teclear un monto inventado, y
+    // eso mete a la caja plata que nadie recibió y deja una base fantasma reclamable.
+    if (!form.ingreso_por_cesion && (!form.ingreso_inicial || form.ingreso_inicial < INGRESO_MINIMO)) {
       setFormError(`El ingreso inicial mínimo es $${INGRESO_MINIMO.toLocaleString("es-CO")}.`);
       return;
     }
@@ -830,6 +834,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       estado: cliente.estado,
       ruta_contrato: cliente.ruta_contrato ?? "diario",
       ingreso_inicial: cliente.ingreso_inicial ?? null,
+      ingreso_por_cesion: cliente.ingreso_por_cesion ?? false,
       referido_por_cedula: cliente.referido_por_cedula,
       referido_por_nombre: cliente.referido_por_nombre,
       autorizacion_datos_firma_url: cliente.autorizacion_datos_firma_url,
@@ -1062,7 +1067,43 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           </div>
         </div>
 
-        {/* Ingreso inicial */}
+        {/* Cómo ingresa: define si paga base o la hereda. Va ANTES del monto para que la decisión
+            se tome primero y nadie termine tecleando una cifra que no corresponde. */}
+        {esNuevo && (
+          <div style={{ padding: 16, borderRadius: 16, background: "var(--soft)", border: "1px solid var(--line2)" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>¿Cómo ingresa este cliente?</div>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8 }}>
+              {([
+                { v: false, t: "Paga base inicial", d: "Lo normal: entrega su plata para arrancar." },
+                { v: true, t: "Recibe un contrato por cesión", d: "No paga base — la hereda de quien le cede." },
+              ] as const).map(o => (
+                <button
+                  key={String(o.v)}
+                  type="button"
+                  onClick={() => update({ ingreso_por_cesion: o.v, ...(o.v ? { ingreso_inicial: null } : {}) })}
+                  style={{
+                    flex: 1, minWidth: 0, textAlign: "left", padding: "10px 12px", borderRadius: 12, cursor: "pointer",
+                    border: data.ingreso_por_cesion === o.v ? "2px solid var(--accent)" : "1px solid var(--line2)",
+                    background: data.ingreso_por_cesion === o.v ? "var(--accent-soft)" : "var(--card)",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{o.t}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{o.d}</div>
+                </button>
+              ))}
+            </div>
+            {data.ingreso_por_cesion && (
+              <div style={{ marginTop: 10, fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft2)", padding: "8px 10px", borderRadius: 10 }}>
+                No se registra ningún movimiento de plata ni se imprime recibo. Quedará marcado como
+                <strong> pendiente de cesión</strong> hasta que se le pase el contrato, y saldrá en alertas si pasan días.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ingreso inicial — no aplica si viene por cesión: no entrega plata. */}
+        {!data.ingreso_por_cesion && (
         <div style={{ padding: 16, borderRadius: 16, background: "var(--warn-soft2)", border: "2px solid #fbbf24" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 6 }}>Ingreso inicial</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
@@ -1114,6 +1155,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             </div>
           )}
         </div>
+        )}
 
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted2)", marginBottom: 10 }}>Datos personales</div>

@@ -9,6 +9,7 @@ import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import ModalCederContrato from "../components/ModalCederContrato";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
@@ -89,6 +90,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeCrear = puede("crear_contrato");
   const puedeEditar = puede("editar_contrato");
   const puedeLiquidar = puede("iniciar_liquidacion");
+  const puedeCeder = puede("ceder_contrato");
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
@@ -117,6 +119,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalDocumentosAbierto, setModalDocumentosAbierto] = useState(false);
   const [modalLiquidacionAbierto, setModalLiquidacionAbierto] = useState(false);
+  const [modalCesionAbierto, setModalCesionAbierto] = useState(false);
   // Atrás cierra el modal abierto antes de cambiar de módulo.
   useBackGuard(modalEditarAbierto, () => setModalEditarAbierto(false));
   useBackGuard(modalDocumentosAbierto, () => setModalDocumentosAbierto(false));
@@ -357,6 +360,25 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           </div>
         )}
 
+        {/* En su PROPIO bloque, no dentro del gateado por `puedeCrear`: ese fue exactamente el
+            defecto que documenta la mig 058 — el botón existía y no se mostraba nunca.
+            Suspendido SÍ entra: la moto guardada por falta de pago es el caso más frecuente,
+            y la cesión es lo que permite que salga a nombre de otro. */}
+        {puedeCeder && ["Activo", "Suspendido"].includes(c.estado) && (
+          <div style={{ ...card }}>
+            <button
+              onClick={() => setModalCesionAbierto(true)}
+              style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+            >
+              🔁 Ceder contrato a otro cliente
+            </button>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
+              Pasa el contrato completo —ahorros, semanas pagadas y deudas— a otra persona, con las
+              mismas condiciones. La moto se entrega aparte, por Inmovilizaciones.
+            </div>
+          </div>
+        )}
+
         {c.firma_cliente && (
           <div style={{ ...card, padding: "12px 16px" }}>
             <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>✅ Documentos firmados</div>
@@ -376,6 +398,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             contrato={c}
             clienteNombre={clienteDetalle.nombre}
             onClose={() => setModalDocumentosAbierto(false)}
+          />
+        )}
+
+        {modalCesionAbierto && (
+          <ModalCederContrato
+            contrato={c}
+            onClose={() => setModalCesionAbierto(false)}
+            onDone={(m) => { setModalCesionAbierto(false); alert(m); }}
           />
         )}
 

@@ -61,6 +61,9 @@ export type Cliente = {
   excepcion_plazo: string | null;
   ruta_contrato: RutaContrato;
   ingreso_inicial: number | null;
+  // Recibe un contrato por CESIÓN: no paga base, la hereda del que cede. Sin esta marca
+  // el funcionario tendría que teclear un monto inventado, y eso mete plata falsa a la caja.
+  ingreso_por_cesion: boolean;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
   autorizacion_datos_firma_url: string | null;
@@ -95,6 +98,9 @@ export type NuevoCliente = {
   estado: ClienteEstado;
   ruta_contrato: RutaContrato;
   ingreso_inicial: number | null;
+  // Recibe un contrato por CESIÓN: no paga base, la hereda del que cede. Sin esta marca
+  // el funcionario tendría que teclear un monto inventado, y eso mete plata falsa a la caja.
+  ingreso_por_cesion: boolean;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
   autorizacion_datos_firma_url: string | null;

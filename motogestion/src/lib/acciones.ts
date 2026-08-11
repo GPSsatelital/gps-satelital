@@ -34,6 +34,11 @@ export const ACCIONES: AccionDef[] = [
   { key: "crear_contrato",         label: "Crear contrato (wizard)",            modulo: "contratos" },
   { key: "editar_contrato",        label: "Editar contrato",                    modulo: "contratos" },
   { key: "iniciar_liquidacion",    label: "Iniciar liquidación",                modulo: "contratos" },
+  // Pasa el contrato completo (ahorros, semanas pagadas y deudas) a otra persona. Fuera de
+  // SECRETARIA y SUBADMIN a propósito: la cesión termina cambiando dos `clientes.estado`, y el
+  // trigger de la mig 019 solo se lo permite a ADMIN para arriba — dárselo a otro rol dejaría
+  // cesiones a medias (contrato ya cambiado, estados fallando).
+  { key: "ceder_contrato",         label: "Ceder contrato a otro cliente",      modulo: "contratos", dbEnforced: true },
   // Motos
   { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
   { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },
@@ -75,7 +80,7 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
   ADMIN: [
     "registrar_efectivo",
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
-    "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion",
+    "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion", "ceder_contrato",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
     "exportar_datos", "devolver_base",
   ],

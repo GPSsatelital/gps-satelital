@@ -436,6 +436,116 @@ export function generarHTMLPazYSalvo(contrato: Contrato, cliente: Cliente, moto:
   `;
 }
 
+// ACTA DE CESIÓN DE POSICIÓN CONTRACTUAL — el contrato pasa a otra persona con todo adentro
+// (ahorros, semanas pagadas y deudas).
+//
+// EL GANCHO LEGAL está en el propio contrato de arriendo: su cláusula SEGUNDA, parágrafo primero
+// dice que el arrendatario "no podrá... ceder, ni transferir... sin la autorización escrita del
+// ARRENDADOR". Esta acta ES esa autorización, y por eso la firman los TRES. Y la DÉCIMA CUARTA ya
+// hablaba de los gastos "de sus cesiones": el caso estaba previsto desde el principio.
+//
+// LAS CIFRAS LAS TRAE QUIEN LLAMA (mismo criterio que el estado de cuenta): son EXACTAMENTE las
+// que la pantalla le mostró a las dos personas, para que el papel no pueda decir otra cosa.
+//
+// ⚠️ La redacción jurídica final la debe revisar el abogado del arrendador. Acá está la estructura
+// y los números reales.
+export function generarHTMLCesion(
+  contrato: Contrato,
+  cedente: Cliente,
+  cesionario: Cliente | null,
+  moto: Moto | null,
+  d: {
+    fecha: string;
+    ahorroTotal: number;
+    snapshot: {
+      saldo_favor: number; deuda_total: number;
+      deuda_detalle: { concepto: string; pendiente: number }[];
+      convenio_saldo: number | null; convenio_cuota: number | null; convenio_cuotas_restantes: number | null;
+      cajas_pagadas: number | null; total_cajas: number | null;
+      valor_periodo: number | null; forma_pago: string | null; dia_pago_label: string | null;
+      moto_placa: string | null;
+    };
+  },
+  firmas: {
+    firmaCedente?: string | null; huellaCedente?: string | null;
+    firmaCesionario?: string | null; huellaCesionario?: string | null;
+  } = {},
+): string {
+  const s = d.snapshot;
+  const clausula = (titulo: string, cuerpo: string) =>
+    `<div style="margin-bottom:11px;text-align:justify;page-break-inside:avoid"><strong>${titulo}</strong> ${cuerpo}</div>`;
+  const fila = (k: string, v: string, fuerte = false) =>
+    `<tr><td style="border:1px solid #cbd5e1;padding:5px 8px">${k}</td>
+         <td style="border:1px solid #cbd5e1;padding:5px 8px;text-align:right;${fuerte ? "font-weight:700" : ""}">${v}</td></tr>`;
+
+  const persona = (c: Cliente | null, rol: string) =>
+    `<div style="margin-bottom:5px"><strong>${rol}:</strong> ${(c?.nombre ?? "").toUpperCase() || BLANK} · C.C. ${c?.cedula || BLANK}</div>`;
+
+  return `
+    <div style="font-family:Arial,sans-serif;font-size:11.5px;color:#0f172a;padding:28px;max-width:700px;margin:auto;line-height:1.5">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:1px">Club Moteros Cartagena</div>
+        <div style="font-size:13px;font-weight:700;margin-top:6px">ACTA DE CESIÓN DE POSICIÓN CONTRACTUAL</div>
+        <div style="font-size:10.5px;color:#64748b;margin-top:3px">Cartagena de Indias, ${fmtFecha(d.fecha)}</div>
+      </div>
+
+      <div style="border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;margin-bottom:14px">
+        <div style="margin-bottom:5px"><strong>ARRENDADOR:</strong> FREDY MORA AVENDAÑO · C.C. 1.047.393.901</div>
+        ${persona(cedente, "CEDENTE (entrega)")}
+        ${persona(cesionario, "CESIONARIO (recibe)")}
+        <div><strong>VEHÍCULO:</strong> Placa ${s.moto_placa || BLANK}${moto ? ` · ${moto.marca ?? ""} ${moto.modelo ?? ""}` : ""}
+          ${moto?.numero_motor ? ` · Motor ${moto.numero_motor}` : ""}${moto?.numero_chasis ? ` · Chasis ${moto.numero_chasis}` : ""}</div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;margin-bottom:5px">ESTADO DE CUENTA AL MOMENTO DE LA CESIÓN</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px">
+        <thead><tr style="background:#dbeafe">
+          <th style="border:1px solid #cbd5e1;padding:5px 8px;text-align:left">Concepto</th>
+          <th style="border:1px solid #cbd5e1;padding:5px 8px;text-align:right">Valor</th>
+        </tr></thead>
+        <tbody>
+          ${s.total_cajas ? fila("Períodos pagados", `${s.cajas_pagadas ?? 0} de ${s.total_cajas}`) : ""}
+          ${fila("Canon del período", `${fmt(s.valor_periodo ?? 0)} (${s.forma_pago ?? ""}${s.dia_pago_label ? " · " + s.dia_pago_label : ""})`)}
+          ${fila("Ahorro acumulado a favor del arrendatario", fmt(d.ahorroTotal))}
+          ${s.saldo_favor > 0 ? fila("Saldo a favor", fmt(s.saldo_favor)) : ""}
+          ${s.deuda_detalle.map(x => fila(`Deuda — ${x.concepto}`, fmt(x.pendiente))).join("")}
+          ${s.convenio_saldo ? fila(`Acuerdo de pago en curso (${s.convenio_cuotas_restantes} cuotas de ${fmt(s.convenio_cuota ?? 0)})`, fmt(s.convenio_saldo)) : ""}
+          ${fila("TOTAL DEUDA QUE ASUME EL CESIONARIO", fmt(s.deuda_total + (s.convenio_saldo ?? 0)), true)}
+        </tbody>
+      </table>
+
+      ${clausula("PRIMERA — OBJETO.", `EL CEDENTE cede a favor de EL CESIONARIO, de manera total, definitiva e irrevocable, la posición contractual que ocupa dentro del contrato de arrendamiento de motocicleta con opción de adquisición celebrado con EL ARRENDADOR${contrato.fecha_entrega ? ` el ${fmtFecha(contrato.fecha_entrega)}` : ""}, sobre el vehículo descrito, comprendiendo la totalidad de los derechos y obligaciones que de él se derivan y, de manera expresa, las cifras consignadas en el cuadro anterior.`)}
+
+      ${clausula("SEGUNDA — AUTORIZACIÓN DEL ARRENDADOR.", `De conformidad con la cláusula SEGUNDA, parágrafo primero del contrato de arrendamiento, que exige la autorización escrita de EL ARRENDADOR para ceder o transferir el vehículo, y con lo previsto en los artículos 887 y siguientes del Código de Comercio, EL ARRENDADOR autoriza expresamente la presente cesión mediante la suscripción de este documento.`)}
+
+      ${clausula("TERCERA — EL CONTRATO NO SE EXTINGUE.", `La presente cesión <strong>no constituye novación</strong>: el contrato cedido continúa vigente en sus mismos términos, condiciones, canon y plazo, sin solución de continuidad. EL CESIONARIO continúa exactamente donde iba EL CEDENTE${s.total_cajas ? `, es decir, en el período ${s.cajas_pagadas ?? 0} de ${s.total_cajas}` : ""}.`)}
+
+      ${clausula("CUARTA — DECLARACIONES DE EL CEDENTE.", `Declara bajo la gravedad del juramento que: (i) cede de manera libre, voluntaria y sin apremio alguno; (ii) renuncia de forma expresa e irrevocable a reclamar, hoy o en el futuro, suma alguna por concepto de ahorros acumulados, saldo a favor, aportes o mejoras derivados del contrato cedido; (iii) hace entrega de la motocicleta, sus accesorios y documentos; y (iv) cualquier acuerdo económico entre EL CEDENTE y EL CESIONARIO con ocasión de esta cesión es ajeno a EL ARRENDADOR.`)}
+
+      ${clausula("QUINTA — DECLARACIONES DE EL CESIONARIO.", `Declara que: (i) acepta la cesión; (ii) conoce y acepta el estado de cuenta del cuadro anterior, <strong>asumiendo de manera directa la deuda de ${fmt(s.deuda_total + (s.convenio_saldo ?? 0))}</strong> allí registrada; (iii) conoce y acepta las condiciones, tarifas, plazos y reglamento del contrato, que no sufren modificación alguna; (iv) suscribe a favor de EL ARRENDADOR el pagaré con carta de instrucciones exigido por la cláusula DÉCIMA SEGUNDA del contrato; y (v) recibe el vehículo en el estado en que se encuentra.`)}
+
+      ${clausula("SEXTA — PROPIEDAD DEL VEHÍCULO.", `La propiedad de la motocicleta permanece en cabeza de EL ARRENDADOR. Esta cesión no transfiere derecho de dominio alguno sobre el vehículo, sino únicamente la posición contractual. La opción de adquisición se hará efectiva a favor de EL CESIONARIO cuando cumpla la totalidad de las obligaciones a su cargo.`)}
+
+      ${clausula("SÉPTIMA — HECHOS ANTERIORES.", `Conforme a la cláusula DÉCIMA PRIMERA del contrato, las multas, comparendos, siniestros y daños originados en hechos ocurridos con anterioridad a esta fecha son de cargo exclusivo de EL CEDENTE, aun cuando se notifiquen después. Los posteriores, de EL CESIONARIO. Los gastos que cause esta cesión son de cargo del arrendatario, según la cláusula DÉCIMA CUARTA.`)}
+
+      <div style="margin:22px 0 6px;text-align:justify">En constancia, se firma en Cartagena de Indias el ${fmtFecha(d.fecha)}, en tres (3) ejemplares del mismo tenor.</div>
+
+      <div style="display:flex;gap:24px;margin-top:26px">
+        ${bloqueFirmaHuella(cedente?.nombre ?? "", cedente?.cedula ?? "", firmas.firmaCedente, firmas.huellaCedente)}
+        ${bloqueFirmaHuella(cesionario?.nombre ?? "", cesionario?.cedula ?? "", firmas.firmaCesionario, firmas.huellaCesionario)}
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:22px">
+        <div style="width:46%;text-align:center">
+          ${cajaFirma(null)}
+          <div style="border-top:1px solid #0f172a;padding-top:4px;font-size:10px">
+            FREDY MORA AVENDAÑO<br/>C.C. 1.047.393.901<br/>Arrendador — autoriza la cesión
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ACUERDO DE PAGO (convenio) — calcado del documento real de Club Moteros de la Costa.
 // Tabla de deuda por concepto (de las deudas registradas del cliente) + compromiso de
 // pagar una cuota adicional a la tarifa hasta saldar. Firma + huella del cliente

@@ -6,6 +6,7 @@ import type { Cliente } from "./useClientes";
 import type { Moto } from "./useMotos";
 import type { Pago } from "./usePagos";
 import type { Convenio } from "./useConvenios";
+import { cesionPendienteDeCliente, type CesionScope } from "./useCesiones";
 import type { Gestion } from "./useGestiones";
 import type { PrestamoDoc } from "./usePrestamosDoc";
 
@@ -26,7 +27,8 @@ export type AlertaTipo =
   | "validar_ubicacion_moto"
   | "promesa_pago_vence"
   | "prestamo_doc_vence"
-  | "dinero_sin_identificar";
+  | "dinero_sin_identificar"
+  | "cesion_pendiente";
 
 export type Alerta = {
   id: string;
@@ -60,12 +62,14 @@ export function useAlertas({
   gestiones = [],
   prestamosDoc = [],
   ingresosNI = [],
+  cesiones = [],
 }: {
   contratos: Contrato[];
   clientes: Cliente[];
   motos: Moto[];
   pagos: Pago[];
   convenios?: Convenio[];
+  cesiones?: CesionScope[];
   gestiones?: Gestion[];
   prestamosDoc?: PrestamoDoc[];
   /** Transferencias que entraron al banco y nadie ha reclamado (mig 064). */
@@ -223,6 +227,25 @@ export function useAlertas({
           contratoId: c.id,
         });
       }
+    }
+
+    // ── 5a. REGISTRADO POR CESIÓN PERO LA CESIÓN NO LLEGA (>3 días) ──────────
+    // La opción "no paga base" existe para quien recibe un contrato cedido. Es la única puerta
+    // del sistema para registrar a alguien sin cobrarle la base, así que necesita vigilancia:
+    // si pasan días y la cesión nunca ocurre, o se les olvidó, o se usó para saltarse el cobro.
+    // La marca es DERIVADA (`cesionPendienteDeCliente`): desaparece sola al hacerse la cesión.
+    for (const cl of clientes) {
+      if (!cesionPendienteDeCliente(cl, cesiones)) continue;
+      const dias = Math.floor((ahora.getTime() - new Date(cl.created_at).getTime()) / 86400000);
+      if (dias < 3) continue;
+      alertas.push({
+        id: `cesion-pendiente-${cl.id}`,
+        tipo: "cesion_pendiente",
+        nivel: dias >= 7 ? "alerta" : "info",
+        titulo: `Registrado por cesión y sigue sin contrato — ${cl.nombre.toUpperCase()}`,
+        detalle: `Hace ${dias} días se registró sin pagar base porque iba a recibir un contrato cedido, y la cesión no se ha hecho`,
+        clienteId: cl.id,
+      });
     }
 
     // ── 5b. VALIDAR DÓNDE SE GUARDA LA MOTO (post-entrega, persiste hasta validar) ──

@@ -41,6 +41,7 @@ import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   cuotaConvenioDelPeriodo,
+  proximaCuotaConvenio,
   calcularProrrateoInicial,
   calcularAhorroAplicado,
   tarifaPagadaPeriodoActual,
@@ -2169,6 +2170,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
                     <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
                     <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
+                    {/* La fecha límite es la de la ÚLTIMA cuota — no le sirve al funcionario para
+                        decirle al cliente cuándo vuelve a pagar. Esta sale de la misma función que
+                        decide el cobro, así que no puede anunciar una fecha y cobrar en otra. */}
+                    <InfoBox
+                      label="Próxima cuota"
+                      value={(() => {
+                        const f = proximaCuotaConvenio(convenioActual, contratoDetalle, hoyDate());
+                        return f ? fmtFechaLarga(f) : "—";
+                      })()}
+                      highlight
+                    />
                   </div>
                   {/* Antes, un cliente con convenio activo al que le llegaba una deuda nueva (una
                       multa de recolección, que se crea sola) no tenía dónde ponerla: no se puede

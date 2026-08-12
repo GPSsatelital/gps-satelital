@@ -7,6 +7,7 @@ import {
   huecoCuotasHoy,
   calcularEstadoCartera,
   cuotaConvenioDelPeriodo,
+  proximaCuotaConvenio,
   fechaCubrePeriodo,
   type ContratoCiclo,
 } from "./cicloPago";
@@ -267,6 +268,30 @@ describe("el convenio de base no se cobra encima del prorrateo", () => {
   it("un contrato sin prorrateo cobra el convenio desde su primer período", () => {
     const sinProrrateo = { ...JORGE, prorrateo_total: 0, prorrateo_pagado: 0 };
     expect(cuotaConvenioDelPeriodo(CONV_JORGE, sinProrrateo, new Date("2026-08-17T12:00:00"))).toBe(40000);
+  });
+});
+
+// La fecha que se le ANUNCIA al cliente tiene que ser la misma en que el sistema le cobra.
+// Por eso `proximaCuotaConvenio` le pregunta a `cuotaConvenioDelPeriodo` en vez de reimplementar
+// la regla: si algún día cambia cuándo se exige el convenio, la fecha mostrada cambia sola.
+describe("proximaCuotaConvenio — cuándo vuelve a pagar el cliente", () => {
+  it("salta el período del prorrateo: la primera cuota cae el segundo día de pago", () => {
+    // JORGE: primer día de pago 17-ago (solo prorrateo) → el convenio arranca el 24.
+    expect(proximaCuotaConvenio(CONV_JORGE, JORGE, new Date("2026-08-12T12:00:00"))).toBe("2026-08-24");
+  });
+
+  it("ya pasado el prorrateo, es simplemente el siguiente día de pago", () => {
+    expect(proximaCuotaConvenio(CONV_JORGE, JORGE, new Date("2026-08-25T12:00:00"))).toBe("2026-08-31");
+  });
+
+  it("un contrato sin prorrateo cobra desde su primer día de pago", () => {
+    const sinProrrateo = { ...JORGE, prorrateo_total: 0, prorrateo_pagado: 0 };
+    expect(proximaCuotaConvenio(CONV_JORGE, sinProrrateo, new Date("2026-08-12T12:00:00"))).toBe("2026-08-17");
+  });
+
+  it("sin convenio, o con cuota en cero, no inventa fecha", () => {
+    expect(proximaCuotaConvenio(null, JORGE, new Date("2026-08-12T12:00:00"))).toBeNull();
+    expect(proximaCuotaConvenio({ cuota_por_periodo: 0, created_at: "2026-08-11" }, JORGE, new Date("2026-08-12T12:00:00"))).toBeNull();
   });
 });
 

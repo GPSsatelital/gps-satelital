@@ -576,7 +576,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
-            {fechaPrimerPago && cuotasCalc > 0 && (
+            {fechaPrimerPago && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Primera cuota</span>
@@ -584,7 +584,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
                   <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Última cuota</span>
-                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{fechaLimite ? fmtFechaLarga(fechaLimite) : "—"}</strong>
+                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{cuotasCalc > 0 && fechaLimite ? fmtFechaLarga(fechaLimite) : "— falta definir las cuotas"}</strong>
                 </div>
               </div>
             )}

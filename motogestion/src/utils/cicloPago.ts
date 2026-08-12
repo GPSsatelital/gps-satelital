@@ -180,6 +180,32 @@ export function cuotaConvenioDelPeriodo(
   return cuota;
 }
 
+/**
+ * Cuándo cae la PRÓXIMA cuota del convenio que el cliente tiene que pagar.
+ *
+ * No es simplemente "el siguiente día de pago": el convenio puede no exigirse todavía (contrato
+ * en prorrateo, o semanas del arriendo financiadas dentro del propio convenio). Por eso avanza
+ * día de pago a día de pago preguntándole a `cuotaConvenioDelPeriodo` — la MISMA función que
+ * decide el cobro — hasta encontrar el primero que sí la exige.
+ *
+ * Preguntarle a la función en vez de reimplementar la regla es lo que evita que la pantalla
+ * anuncie una fecha y el cobro haga otra cosa.
+ */
+export function proximaCuotaConvenio(
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  contrato: ContratoCiclo,
+  hoy: Date,
+): string | null {
+  if (!convenio || (convenio.cuota_por_periodo ?? 0) <= 0) return null;
+  let d = proximoDiaPago(contrato, hoy);
+  // 8 períodos de margen: cubre el prorrateo y hasta 2 semanas financiadas con holgura.
+  for (let i = 0; i < 8; i++) {
+    if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) return fechaAISO(d);
+    d = proximoDiaPago(contrato, d);
+  }
+  return null;
+}
+
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").

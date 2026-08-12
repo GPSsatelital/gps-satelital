@@ -10,7 +10,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo } from "../utils/cicloPago";
-import { hoyDate, fechaISO } from "../utils/fecha";
+import { hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 
 interface Props {
   contratoId: string;
@@ -266,6 +266,13 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuotasCalc, contratoId]);
 
+  // Cuándo cae la PRIMERA cuota. Es solo informativo — no se guarda —, pero el funcionario lo
+  // necesita para decírselo al cliente en el momento de firmar. Antes este dato SÍ estaba a la
+  // vista, porque el campo de fecha pedía "el primer pago" y se escribía a mano; al pasarlo a
+  // "fecha límite" (que es lo que de verdad usa `marcar_convenios_vencidos()`) se perdió de
+  // pantalla sin querer, y el dueño lo reportó. Se repone como renglón de lectura.
+  const fechaPrimerPago = contratoActual ? fechaISO(proximoDiaPago(contratoActual, hoyDate())) : null;
+
   async function handleGuardar() {
     if (guardando) return;
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
@@ -284,7 +291,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       );
       return;
     }
-    if (!fechaLimite) { setError("Selecciona la fecha del primer pago."); return; }
+    if (!fechaLimite) { setError("Selecciona la fecha límite (la de la última cuota)."); return; }
     if (huellaResuelta && !tieneHuella) {
       setError(`${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
       return;
@@ -566,6 +573,19 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 {modoFijar === "cuotas"
                   ? <> ¿Querías escribir el <strong>valor</strong> de la cuota? Usa el botón “Fijar por valor de cuota”.</>
                   : <> Sube el valor de la cuota para que quepan en {MAX_CUOTAS} o menos.</>}
+              </div>
+            )}
+
+            {fechaPrimerPago && cuotasCalc > 0 && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Primera cuota</span>
+                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{fmtFechaLarga(fechaPrimerPago)}</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+                  <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Última cuota</span>
+                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{fechaLimite ? fmtFechaLarga(fechaLimite) : "—"}</strong>
+                </div>
               </div>
             )}
 

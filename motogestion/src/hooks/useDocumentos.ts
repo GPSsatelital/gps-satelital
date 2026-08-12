@@ -552,6 +552,7 @@ export function generarHTMLCesion(
 // (reutilizadas del registro — antes la huella se hacía a mano en papel).
 const LABEL_CONCEPTO_DEUDA: Record<string, string> = {
   tarifa_atrasada: "Saldo tarifas atrasadas",
+  lavada: "Lavada del vehículo",
   daño_vehiculo: "Restauración del vehículo",
   multa_recoleccion: "Multa por inmovilización",
   prestamo_repuesto: "Préstamo para compra de repuestos",

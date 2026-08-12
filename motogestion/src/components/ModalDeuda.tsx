@@ -9,7 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion";
+type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion" | "lavada";
 
 interface Props {
   contratoId: string;
@@ -40,6 +40,8 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
   { value: "prestamo_eventualidad", label: "💸 Préstamo por eventualidad" },
   { value: "fotomulta", label: "📸 Fotomulta" },
   { value: "tarifa_atrasada", label: "📅 Tarifa atrasada" },
+  // La moto entra sucia al patio, la empresa paga el lavado y ese costo es del cliente.
+  { value: "lavada", label: "🧼 Lavada del vehículo" },
   // Sin esta opción el funcionario escribía "EXCEL VIEJO" en la descripción y marcaba "Otro":
   // aparecieron 19 formas distintas de escribir lo mismo. Cuando la gente escribe a mano lo que
   // no puede marcar, el formulario está incompleto.

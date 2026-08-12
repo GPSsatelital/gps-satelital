@@ -143,8 +143,21 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
   }, [cesionario, contratos, visitas]);
 
   const faltan = requisitos.filter(r => !r.ok);
-  const puedeSeguir = bloqueos.length === 0 && !!cesionario && faltan.length === 0
-    && !!firmaCedente && !!firmaCesionario && !!acta && !!pagare && !!certificado;
+
+  // Lo que todavía falta para poder ceder, EN PALABRAS. Antes el botón simplemente quedaba
+  // apagado: el funcionario lo tocaba, no pasaba nada, y no tenía forma de saber qué faltaba.
+  // Un botón deshabilitado sin explicación es un callejón sin salida.
+  const faltaParaCeder = [
+    !cesionario && "Elegir quién recibe el contrato",
+    ...faltan.map(r => `${r.t} — ${r.ayuda || "revísalo en su ficha"}`),
+    !firmaCedente && `Firma de ${cedente?.nombre.split(" ")[0] ?? "quien entrega"} (quien ENTREGA)`,
+    !firmaCesionario && `Firma de ${cesionario?.nombre.split(" ")[0] ?? "quien recibe"} (quien RECIBE)`,
+    !acta && "Subir el acta de cesión firmada",
+    !pagare && "Subir el pagaré con carta de instrucciones",
+    !certificado && "Subir el certificado firmado",
+  ].filter(Boolean) as string[];
+
+  const puedeSeguir = bloqueos.length === 0 && faltaParaCeder.length === 0;
 
   function imprimirActa() {
     if (!cedente) return;
@@ -410,6 +423,17 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
                 </div>
               </div>
             ) : (
+              <>
+              {faltaParaCeder.length > 0 && (
+                <div style={{ padding: "11px 13px", borderRadius: 12, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 6 }}>
+                    Falta{faltaParaCeder.length > 1 ? "n" : ""} {faltaParaCeder.length} cosa{faltaParaCeder.length > 1 ? "s" : ""} para poder ceder:
+                  </div>
+                  {faltaParaCeder.map((f, i) => (
+                    <div key={i} style={{ fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>• {f}</div>
+                  ))}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={onClose} style={{ ...secondaryBtn, flex: 1 }}>Cancelar</button>
                 <button
@@ -420,6 +444,7 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
                   Ceder el contrato
                 </button>
               </div>
+              </>
             )}
           </>
         )}

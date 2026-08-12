@@ -238,7 +238,10 @@ const JORGE: ContratoCiclo = {
   prorrateo_pagado: 0,
   fecha_inicio_cajas: "2026-08-17",
 };
-const CONV_JORGE = { cuota_por_periodo: 38750, created_at: "2026-08-11" };
+// Cuota REAL guardada, no la división cruda: el sistema pacta 7 cuotas de $40.000 y una
+// última de $30.000 (= $310.000 exactos). Dividir 310.000 ÷ 8 daría $38.750 — una cifra que
+// nadie cobra en la calle y que `repartirConvenio` existe justamente para no producir.
+const CONV_JORGE = { cuota_por_periodo: 40000, created_at: "2026-08-11" };
 
 // REGLA DEL DUEÑO (12-ago-2026): "el primer día de pago se le cobran solo los días que rodó,
 // que es lo que llamamos prorrateo; lo que se pacte del convenio se empieza a cobrar el
@@ -252,18 +255,18 @@ describe("el convenio de base no se cobra encima del prorrateo", () => {
   });
 
   it("el siguiente día de pago ya sí cobra la cuota — ahí paga su primera semana completa", () => {
-    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-08-24T12:00:00"))).toBe(38750);
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-08-24T12:00:00"))).toBe(40000);
   });
 
   it("y sigue cobrándola de ahí en adelante", () => {
-    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-09-07T12:00:00"))).toBe(38750);
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-09-07T12:00:00"))).toBe(40000);
   });
 
   // Un contrato SIN prorrateo (migrado, o entregado justo el día de pago) no debe retrasarse:
   // ahí la primera caja ya es una semana completa desde el día uno.
   it("un contrato sin prorrateo cobra el convenio desde su primer período", () => {
     const sinProrrateo = { ...JORGE, prorrateo_total: 0, prorrateo_pagado: 0 };
-    expect(cuotaConvenioDelPeriodo(CONV_JORGE, sinProrrateo, new Date("2026-08-17T12:00:00"))).toBe(38750);
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, sinProrrateo, new Date("2026-08-17T12:00:00"))).toBe(40000);
   });
 });
 

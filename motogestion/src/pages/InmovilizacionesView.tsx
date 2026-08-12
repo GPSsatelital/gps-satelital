@@ -121,6 +121,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // inmovilizadas). "En mora" es la persecución previa a la recolección.
   const [tab, setTab]                 = useState<"retenidas" | "en_mora">("retenidas");
   const [filtroRet, setFiltroRet]     = useState<"todas" | "mora" | "temporal" | "taller">("todas");
+  const [busquedaRet, setBusquedaRet] = useState("");
 
   const hoy = hoyISO();
   const inicioSemana = (() => {
@@ -384,6 +385,22 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       // Agrupa visualmente por categoría: mora → temporal → taller.
       .sort((a, b) => ["mora", "temporal", "taller"].indexOf(a.categoria) - ["mora", "temporal", "taller"].indexOf(b.categoria));
   }, [contratos, clientes, motos, deudas, gestiones, pagos, convenios]);
+
+  // Lo que se ve en la pestaña Retenidas: categoría + búsqueda, en UN solo lugar. Antes esta
+  // expresión estaba escrita tres veces (contador, estado vacío y lista) — con tres copias,
+  // cualquier filtro nuevo se olvidaba en alguna y la pantalla se contradecía sola.
+  const retenidasVisibles = useMemo(() => {
+    let l = filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet);
+    const q = busquedaRet.trim().toLowerCase();
+    if (q) {
+      l = l.filter(m =>
+        m.clienteNombre.toLowerCase().includes(q) ||
+        m.placa.toLowerCase().includes(q) ||
+        `${m.marca} ${m.modelo}`.toLowerCase().includes(q) ||
+        (m.clienteTel ?? "").includes(q));
+    }
+    return l;
+  }, [motosRetenidas, filtroRet, busquedaRet]);
 
   // Cobro para recuperar: registra el pago sobre el contrato suspendido (la BD reparte con
   // FIFO: primero cuotas atrasadas, luego la multa). Al quedar la deuda de recuperación en
@@ -877,16 +894,39 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             {f.label}
           </Chip>
         ))}
+        <input
+          value={busquedaRet}
+          onChange={e => setBusquedaRet(e.target.value)}
+          placeholder="Buscar cliente, placa o teléfono..."
+          style={{ flex: 1, minWidth: 180, padding: "7px 14px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }}
+        />
       </div>
 
-      {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).length === 0 ? (
+      {retenidasVisibles.length === 0 ? (
         <div style={{ background: "var(--card)", borderRadius: 16, padding: "32px 24px", textAlign: "center", boxShadow: "0 2px 8px rgba(15,23,42,0.06)", marginBottom: isMobile ? 16 : 28 }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>🔓</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>No hay motos retenidas</div>
+          {/* Buscar algo que no existe NO es lo mismo que no tener motos retenidas: con un
+              solo mensaje, el funcionario cree que la lista está vacía y no que su búsqueda
+              no encontró nada. */}
+          <div style={{ fontSize: 36, marginBottom: 10 }}>{busquedaRet.trim() ? "🔍" : "🔓"}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
+            {busquedaRet.trim()
+              ? `Ninguna moto retenida coincide con "${busquedaRet.trim()}"`
+              : motosRetenidas.length > 0
+              ? "Ninguna en este filtro"
+              : "No hay motos retenidas"}
+          </div>
+          {busquedaRet.trim() && (
+            <button
+              onClick={() => setBusquedaRet("")}
+              style={{ marginTop: 12, background: "var(--soft)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: 10, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              Limpiar búsqueda
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10, marginBottom: isMobile ? 16 : 28 }}>
-          {(filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet)).map(m => {
+          {retenidasVisibles.map(m => {
             const entregable = puedeEntregar(m);
             // Solo la MULTA se exige en efectivo — es lo que cuesta haber ido a buscar la moto.
             // Se cobra ANTES de conveniar: si se conveniara con la multa pendiente, el trigger

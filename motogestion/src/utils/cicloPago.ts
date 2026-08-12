@@ -161,6 +161,22 @@ export function cuotaConvenioDelPeriodo(
   // marca el primer día NO cubierto (Martha: cubre hasta 17-ago = paga desde el período del 17).
   const cubreHasta = (convenio.cubre_periodo_hasta || "").slice(0, 10);
   if (cubreHasta && inicioISO < cubreHasta) return 0;
+
+  // MIENTRAS EL CONTRATO ESTÉ EN SU PRORRATEO, el convenio todavía no se exige.
+  //
+  // Regla del dueño (12-ago-2026): "el primer día de pago se le cobran solo los días que rodó,
+  // que es lo que llamamos prorrateo; lo que se pacte del convenio se empieza a cobrar el
+  // siguiente lunes, que es donde le toca pagar su tarifa completa más lo del convenio".
+  //
+  // Antes se le exigían las dos cosas el MISMO día: el prorrateo y la cuota del convenio, sin
+  // que hubiera pagado todavía una semana entera. Y como la cuota del convenio cuenta para la
+  // mora, el cliente aparecía atrasado desde su primer pago.
+  //
+  // Solo aplica a quien TIENE prorrateo: un migrado o alguien que recibió la moto justo el día
+  // de pago arranca con una semana completa desde el día uno, y ahí el convenio sí corre normal.
+  const inicioCajas = (contrato.fecha_inicio_cajas || "").slice(0, 10);
+  if ((contrato.prorrateo_total ?? 0) > 0 && inicioCajas && inicioISO <= inicioCajas) return 0;
+
   return cuota;
 }
 

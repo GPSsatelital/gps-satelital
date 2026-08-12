@@ -222,6 +222,51 @@ const MARTHA: ContratoCiclo = {
 const CONV_MARTHA = { cuota_por_periodo: 50000, created_at: "2026-07-31T16:40:00Z", cubre_periodo_hasta: "2026-08-17" };
 const A = (dia: number) => new Date(2026, 7, dia); // mes 7 = agosto
 
+// Contrato NUEVO del wizard que salió con convenio porque no completó la base.
+// Números reales de JORGE DAVID FIGUEROA: entregó $200.000, moto el martes 11-ago,
+// paga los lunes, primer día de pago el 17-ago, prorrateo de $171.000 (los 6 días que rodó).
+const JORGE: ContratoCiclo = {
+  forma_pago: "Semanal",
+  dia_pago: "Lunes",
+  fecha_entrega: "2026-08-11",
+  valor_semanal: 202000,
+  motor_v2: true,
+  total_cajas: 104,
+  cajas_pagadas: 0,
+  caja_actual_pagado: 200000,
+  prorrateo_total: 171000,
+  prorrateo_pagado: 0,
+  fecha_inicio_cajas: "2026-08-17",
+};
+const CONV_JORGE = { cuota_por_periodo: 38750, created_at: "2026-08-11" };
+
+// REGLA DEL DUEÑO (12-ago-2026): "el primer día de pago se le cobran solo los días que rodó,
+// que es lo que llamamos prorrateo; lo que se pacte del convenio se empieza a cobrar el
+// siguiente lunes, que es donde le toca pagar su tarifa completa más lo del convenio".
+//
+// Antes el convenio se exigía DESDE el primer día de pago: al cliente le caía encima el
+// prorrateo Y la cuota del convenio el mismo día, sin haber pagado todavía una semana entera.
+describe("el convenio de base no se cobra encima del prorrateo", () => {
+  it("el primer día de pago solo se cobra el prorrateo, sin cuota de convenio", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-08-17T12:00:00"))).toBe(0);
+  });
+
+  it("el siguiente día de pago ya sí cobra la cuota — ahí paga su primera semana completa", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-08-24T12:00:00"))).toBe(38750);
+  });
+
+  it("y sigue cobrándola de ahí en adelante", () => {
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, JORGE, new Date("2026-09-07T12:00:00"))).toBe(38750);
+  });
+
+  // Un contrato SIN prorrateo (migrado, o entregado justo el día de pago) no debe retrasarse:
+  // ahí la primera caja ya es una semana completa desde el día uno.
+  it("un contrato sin prorrateo cobra el convenio desde su primer período", () => {
+    const sinProrrateo = { ...JORGE, prorrateo_total: 0, prorrateo_pagado: 0 };
+    expect(cuotaConvenioDelPeriodo(CONV_JORGE, sinProrrateo, new Date("2026-08-17T12:00:00"))).toBe(38750);
+  });
+});
+
 describe("cuotaConvenioDelPeriodo — el convenio no cobra mientras cubre semanas", () => {
   it("período del 3-ago (absorbido): NO cobra convenio", () => {
     expect(cuotaConvenioDelPeriodo(CONV_MARTHA, MARTHA, A(6))).toBe(0);

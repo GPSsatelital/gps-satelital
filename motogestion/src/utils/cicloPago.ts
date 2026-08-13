@@ -275,8 +275,13 @@ export function loQueDebe(
   deudasPendientes: Array<{ monto: number; monto_pendiente: number }>,
   convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
   hoy: Date,
-  sinPagosNunca = pagosConfirmados.length === 0,
+  // `diario`: los contratos Diario cobran la tarifa del DÍA (con domingo aparte) contra lo
+  // recaudado HOY, no contra el período. Ese cálculo vive en usePagos (que arrastra Supabase),
+  // y este archivo es puro a propósito — por eso el valor entra desde afuera en vez de
+  // importarlo. Así los 2 contratos Diario se comportan exactamente igual que antes.
+  opciones: { sinPagosNunca?: boolean; diario?: { toca: number; pagado: number } } = {},
 ): LoQueDebe {
+  const sinPagosNunca = opciones.sinPagosNunca ?? pagosConfirmados.length === 0;
   // ── 1. La cuota del período ──
   // Con motor: sale del ledger real, que ya sabe qué cajas están llenas. Sin motor: la fórmula
   // vieja de ventana. Las dos YA descontaban lo pagado — no se tocan, solo se envuelven.
@@ -289,11 +294,12 @@ export function loQueDebe(
       + d.periodos.filter(p => !cubierto || p.fecha >= cubre!).reduce((s, p) => s + p.monto, 0);
     const toca = valorPeriodoReal(contrato);
     cuota = { toca, pagado: Math.max(toca - falta, 0), falta };
+  } else if (contrato.forma_pago === "Diario" && opciones.diario) {
+    const { toca, pagado } = opciones.diario;
+    cuota = { toca, pagado, falta: Math.max(toca - pagado, 0) };
   } else {
     const enProrrateo = estaEnProrrateo(contrato, sinPagosNunca);
-    const toca = contrato.forma_pago === "Diario"
-      ? valorPeriodoReal(contrato)
-      : enProrrateo ? calcularProrrateoInicial(contrato) : valorPeriodoReal(contrato);
+    const toca = enProrrateo ? calcularProrrateoInicial(contrato) : valorPeriodoReal(contrato);
     const pagado = totalPagadoPeriodoActual(contrato, pagosConfirmados, hoy);
     cuota = { toca, pagado, falta: Math.max(toca - pagado, 0) };
   }

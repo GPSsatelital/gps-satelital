@@ -20,7 +20,7 @@ import {
   estaEnProrrateo,
   inicioVentanaPagosISO,
   formatDiaPago,
-  cuotaConvenioDelPeriodo,
+  loQueDebe,
 } from "../utils/cicloPago";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
@@ -221,10 +221,16 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           // por días sin pago — antes un migrado con deuda real mostraba $0 hasta su primer pago.
           deudaEstimada: deudaReal + (dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0),
           deudaReal,
-          // Pasa por la función compartida (no la cuota cruda): ella sabe si el convenio ya
-          // se exige o si el contrato todavía está en su prorrateo. Con el valor crudo, esta
-          // pantalla repartía el pago distinto que Cartera para el mismo cliente.
-          cuotaConvenioFila: cuotaConvenioDelPeriodo(convActivo, c, new Date(hoy + "T00:00:00")),
+          // Lo que FALTA de la cuota del acuerdo — no la cuota cruda. Sale de `loQueDebe`, la
+          // misma fuente que Cartera, para que el mismo cliente el mismo día no se reparta
+          // distinto según por dónde le cobren. Si ya la pagó esta semana, acá da 0.
+          cuotaConvenioFila: loQueDebe(
+            c,
+            pagosC.filter(p => p.estado === "Confirmado"),
+            deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"),
+            convActivo,
+            new Date(hoy + "T00:00:00"),
+          ).acuerdo?.falta ?? 0,
           convenioActivoId: convActivo?.id ?? null,
           pagadoHoy,
           pagaHoy,

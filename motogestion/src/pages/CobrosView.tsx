@@ -43,6 +43,7 @@ import {
   cuotaConvenioDelPeriodo,
   proximaCuotaConvenio,
   loQueDebe,
+  type LoQueDebe,
   calcularProrrateoInicial,
   calcularAhorroAplicado,
   tarifaPagadaPeriodoActual,
@@ -836,21 +837,31 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // Fuente ÚNICA de "cuánto debe AHORA" (lista, Panel Hoy, cobro en campo, recibos). Para
   // motor de cajas usa el ledger real y respeta lo que el convenio ya financió
   // (cubre_periodo_hasta) — la fórmula vieja por ventana marcaba "Debe $X" a clientes al día.
+  // Todo lo que un contrato debe HOY, desglosado. Pasa por `loQueDebe` (cicloPago) — la fuente
+  // ÚNICA — para que la lista, el detalle, el recibo y Cobro Diario no puedan discrepar. Antes
+  // esta cuenta estaba escrita acá y en otros nueve sitios que se fueron separando.
+  function desgloseDebe(c: typeof resumenContratos[number]): LoQueDebe {
+    return loQueDebe(
+      c,
+      pagosDelContrato(c.id).filter(p => p.estado === "Confirmado"),
+      deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"),
+      c.convenioActivo,
+      hoyDate(),
+      {
+        sinPagosNunca: c.sinPagosNunca ?? true,
+        // El Diario cobra la tarifa del día contra lo recaudado HOY (ver loQueDebe).
+        diario: c.forma_pago === "Diario"
+          ? {
+              toca: calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo),
+              pagado: c.recaudadoHoy ?? 0,
+            }
+          : undefined,
+      },
+    );
+  }
+
   function calcularPendienteContrato(c: typeof resumenContratos[number]): number {
-    if (c.motor_v2 && c.forma_pago !== "Diario") {
-      const d = desgloseExigible(c, hoyDate());
-      const cubre = c.convenioActivo?.cubre_periodo_hasta ?? null;
-      const cubierto = !!(cubre && cubre >= hoyISO());
-      const cuotas = (cubierto ? 0 : d.prorrateoPendiente)
-        + d.periodos.filter(p => !cubierto || p.fecha >= cubre!).reduce((s, p) => s + p.monto, 0);
-      return cuotas + c.deudaContrato + c.cuotaConvenio;
-    }
-    const enProrrateo = estaEnProrrateo(c, c.sinPagosNunca ?? true);
-    const cuotaPact = c.forma_pago === "Diario"
-      ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-      : enProrrateo ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
-    const pagadoP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
-    return Math.max(cuotaPact - pagadoP, 0) + c.deudaContrato + c.cuotaConvenio;
+    return desgloseDebe(c).totalFalta;
   }
 
   function sumaAbonadoConvenio(convenioId: string): number {
@@ -1136,7 +1147,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const modalMonto = Number(modalValor) || 0;
   const modalDesglose: AplicadoPago = modalContrato
     ? (() => {
-        const a = calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, modalContrato.cuotaConvenio);
+        const a = calcularAplicacion(modalMonto, modalCuotaPendiente, 0, modalContrato.deudaContrato, desgloseDebe(modalContrato).acuerdo?.falta ?? 0);
         a.ahorro = calcularAhorroAplicado(modalContrato, a.tarifa, modalEnProrrateo,
           tarifaPagadaPeriodoActual(modalContrato, pagos.filter(p => p.contrato_id === modalContrato.id), hoyDate()));
         return a;
@@ -1313,12 +1324,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         valor: modalMonto,
         metodo: "Efectivo",
         estado: "Confirmado",
-        debiaTotal: modalCuotaPendiente + (modalContrato?.deudaContrato ?? 0) + (modalContrato?.cuotaConvenio ?? 0),
+        debiaTotal: modalContrato ? desgloseDebe(modalContrato).totalFalta : modalCuotaPendiente,
         aplicadoTarifa: modalDesglose.tarifa,
         aplicadoDeuda: modalDesglose.deuda,
         aplicadoConvenio: modalDesglose.convenio,
         aplicadoSaldoFavor: modalDesglose.saldo,
-        pendienteDespues: Math.max(modalCuotaPendiente + (modalContrato?.deudaContrato ?? 0) + (modalContrato?.cuotaConvenio ?? 0) - modalMonto, 0),
+        pendienteDespues: Math.max((modalContrato ? desgloseDebe(modalContrato).totalFalta : modalCuotaPendiente) - modalMonto, 0),
         convenioAbonado: modalContrato?.convenioActivo ? modalDesglose.convenio : null,
         convenioRestante: modalContrato?.convenioActivo
           ? Math.max(modalContrato.convenioActivo.deuda_total - sumaAbonadoConvenio(modalContrato.convenioActivo.id) - modalDesglose.convenio, 0)
@@ -1475,7 +1486,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     const cuotaPend = r.motor_v2 && r.forma_pago !== "Diario"
       ? huecoCuotasHoy(r, hoyDate())
       : Math.max(cuotaPact - pagadoP, 0);
-    const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, r.cuotaConvenio);
+    const aplicado = calcularAplicacion(monto, cuotaPend, 0, r.deudaContrato, desgloseDebe(r).acuerdo?.falta ?? 0);
     aplicado.ahorro = calcularAhorroAplicado(r, aplicado.tarifa, enProrrateoCampo,
       tarifaPagadaPeriodoActual(r, pagos.filter(p => p.contrato_id === r.id), hoyDate()));
     const folio = generarFolio();
@@ -1586,10 +1597,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // Saldo del convenio = lo firmado menos lo abonado (deudaContrato ya NO lo incluye:
     // ahora solo cuenta deuda exigible 'pendiente'; lo del convenio vive en el convenio).
     const saldoConvenio = cvActiva ? Math.max(cvActiva.deuda_total - sumaAbonadoConvenio(cvActiva.id), 0) : 0;
-    // deudaContrato (solo 'pendiente', ej. una multa nueva) SÍ se cobra directo, con o sin convenio.
-    const totalPendiente = (cvActiva
-      ? (contratoDetalle.estadoCartera === "al-dia" ? 0 : cuotaPendiente + cuotaConvExigida)
-      : cuotaPendiente) + contratoDetalle.deudaContrato;
+    // (El total de esta pantalla sale de `debe.totalFalta`, más abajo — la fuente única.)
     const proximoPagoConv = valorPeriodoReal(contratoDetalle) + cuotaConvActiva; // cuota + convenio próxima fecha
     // Si el convenio cubrió la cuota de esta semana, ese período ya no se cobra → el próximo
     // pago es cubre_periodo_hasta, que se guardó justamente como el día de pago SIGUIENTE
@@ -1615,7 +1623,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       deudas.filter(d => d.contrato_id === contratoDetalle.id && d.estado === "pendiente"),
       cvActiva,
       hoyDate(),
-      contratoDetalle.sinPagosNunca ?? true,
+      { sinPagosNunca: contratoDetalle.sinPagosNunca ?? true },
     );
     const totalDebeAhora = debe.totalFalta;
 
@@ -1960,9 +1968,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               <span style={{ background: "var(--bad-soft)", color: "var(--bad-ink)", borderRadius: 8, padding: "4px 10px", fontWeight: 700 }}>
                 + Deuda: $ {fmt(contratoDetalle.deudaContrato)}
               </span>
-              {totalPendiente > cuotaPendiente && (
+              {totalDebeAhora > cuotaPendiente && (
                 <span style={{ background: "rgba(255,255,255,0.8)", borderRadius: 8, padding: "4px 10px", fontWeight: 700, fontSize: 14, color: "var(--bad-ink)", marginLeft: "auto" }}>
-                  Total: $ {fmt(totalPendiente)}
+                  Total: $ {fmt(totalDebeAhora)}
                 </span>
               )}
             </div>
@@ -2641,19 +2649,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   const todasHechas = tareasDe.length > 0 && tareasDe.every(t => gestionHechaHoy(c.id, t.tipo));
                   const borderColor = grupoC ? grupoC.color : "var(--line)";
 
-                  // Monto que debe pagar
-                  const enProrrateoHoy = estaEnProrrateo(c, c.sinPagosNunca ?? true);
-                  const cuotaP = c.forma_pago === "Diario"
-                    ? calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo)
-                    : enProrrateoHoy ? calcularProrrateoInicial(c) : valorPeriodoReal(c);
-                  const pagP = c.forma_pago === "Diario" ? (c.recaudadoHoy ?? 0) : (c.pagadoEnPeriodoActual ?? 0);
-                  const cuotaPendParte = c.motor_v2 && c.forma_pago !== "Diario"
-                    ? huecoCuotasHoy(c, hoyDate())
-                    : Math.max(cuotaP - pagP, 0);
-                  // Con convenio la deuda la paga el convenio (no se suma completa). Si está al día, no debe nada.
-                  const debePagar = c.estadoCartera === "al-dia"
-                    ? 0
-                    : cuotaPendParte + (c.convenioActivo ? c.cuotaConvenio : c.deudaContrato);
+                  // Monto que debe pagar — fuente ÚNICA. Antes esta tarjeta rearmaba la cuenta a
+                  // mano y sumaba la cuota del acuerdo COMPLETA, por eso podía decir "$100.000" y
+                  // "Al día" en el mismo renglón (caso LIBINTO).
+                  const dd = desgloseDebe(c);
+                  const debePagar = dd.totalFalta;
 
                   return (
                     <div
@@ -2704,7 +2704,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--muted)" }}>Debe pagar</div>
                               <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums", color: "var(--bad)", lineHeight: 1.15 }}>$ {fmt(debePagar)}</div>
                               <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                                cuota ${fmt(cuotaPendParte)}{c.convenioActivo ? (c.cuotaConvenio > 0 ? ` + conv. $${fmt(c.cuotaConvenio)}` : "") : c.deudaContrato > 0 ? ` + deuda $${fmt(c.deudaContrato)}` : ""}
+                                cuota ${fmt(dd.cuota.falta)}{(dd.acuerdo?.falta ?? 0) > 0 ? ` + conv. $${fmt(dd.acuerdo!.falta)}` : ""}{dd.deudas.falta > 0 ? ` + deuda $${fmt(dd.deudas.falta)}` : ""}
                               </div>
                             </>
                           ) : (
@@ -3119,7 +3119,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   const cuotaPend = r
                     ? (r.motor_v2 && r.forma_pago !== "Diario" ? huecoCuotasHoy(r, hoyDate()) : Math.max(cuotaPact - pagadoP, 0))
                     : 0;
-                  const debeTotal = cuotaPend + (r?.deudaContrato ?? 0) + (r?.cuotaConvenio ?? 0);
+                  const debeTotal = r ? desgloseDebe(r).totalFalta : 0;
                   return (
                     <div style={{ display: "grid", gap: 12 }}>
                       <div style={{ padding: "10px 14px", background: "var(--soft2)", borderRadius: 12, border: "1px solid var(--line)" }}>
@@ -3132,7 +3132,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         <div style={{ fontSize: 11, color: "var(--accent-ink)", textTransform: "uppercase", fontWeight: 700 }}>Debe pagar (referencia)</div>
                         <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(debeTotal)}</div>
                         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                          Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{(r?.cuotaConvenio ?? 0) > 0 ? ` · Convenio: $${fmt(r!.cuotaConvenio)}` : ""}
+                          Cuota período: ${fmt(cuotaPend)}{(r?.deudaContrato ?? 0) > 0 ? ` · Deuda: $${fmt(r!.deudaContrato)}` : ""}{r && (desgloseDebe(r).acuerdo?.falta ?? 0) > 0 ? ` · Convenio: $${fmt(desgloseDebe(r).acuerdo!.falta)}` : ""}
                         </div>
                       </div>
 
@@ -3384,9 +3384,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     {modalContrato.deudaContrato > 0 && (
                       <div style={{ flex: 1, background: "var(--orange-soft)", borderRadius: 8, padding: "6px 10px", color: "var(--orange)", fontWeight: 700 }}>Deuda: $ {fmt(modalContrato.deudaContrato)}</div>
                     )}
-                    {modalContrato.cuotaConvenio > 0 && (
-                      <div style={{ flex: 1, background: "var(--accent-soft2)", borderRadius: 8, padding: "6px 10px", color: "var(--accent-ink)", fontWeight: 700 }}>Convenio: $ {fmt(modalContrato.cuotaConvenio)}/período</div>
-                    )}
+                    {modalContrato.cuotaConvenio > 0 && (() => {
+                      // Este chip dice cuánto VALE su cuota (por eso "/período"), no cuánto debe.
+                      // Si ya la pagó esta semana se marca, o el funcionario lo lee como deuda viva.
+                      const faltaConv = desgloseDebe(modalContrato).acuerdo?.falta ?? 0;
+                      return (
+                        <div style={{ flex: 1, background: "var(--accent-soft2)", borderRadius: 8, padding: "6px 10px", color: "var(--accent-ink)", fontWeight: 700 }}>
+                          Convenio: $ {fmt(modalContrato.cuotaConvenio)}/período{faltaConv === 0 ? " · ya pagada" : ""}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

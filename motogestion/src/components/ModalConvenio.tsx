@@ -534,6 +534,32 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
+            {/* 🔴 EL AVISO QUE FALTABA. Esta confusión se repitió TRES veces en un solo día
+                (ALBERT, y NESTOR dos veces): el funcionario firma el convenio creyendo que le
+                tapó la semana en curso, y a los tres días al cliente le llega un cobro. El
+                formulario ya avisaba "trae N vencidas", pero en abstracto y arriba de todo.
+                Acá va con FECHA y MONTO concretos, y justo antes del botón de guardar — que es
+                donde de verdad se lee. Arreglar uno de esos casos costó SQL, un papel firmado
+                que quedó inservible y una firma pendiente. */}
+            {meta > 0 && puedeFinanciar && (
+              <div style={{
+                padding: "10px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.5,
+                background: arriendoSinCubrir > 0 ? "var(--bad-line)" : "var(--ok-line)",
+                color: arriendoSinCubrir > 0 ? "var(--bad-ink)" : "var(--ok-ink)",
+              }}>
+                {arriendoSinCubrir > 0 ? (
+                  <>Con esto <strong>NO queda al día</strong>. Le siguen quedando{" "}
+                  <strong>$ {fmt(arriendoSinCubrir)}</strong> de arriendo que debe pagar aparte del
+                  acuerdo. Sube a {semanasVencidas} semana{semanasVencidas > 1 ? "s" : ""} para taparlo todo.</>
+                ) : (
+                  <>Queda en <strong>$0</strong> hasta el{" "}
+                  <strong>{cubreHasta ? fmtFechaLarga(cubreHasta) : "—"}</strong>. Ese día paga{" "}
+                  <strong>$ {fmt(cuotaDelPeriodo + cuotaCalc)}</strong> — su cuota de $ {fmt(cuotaDelPeriodo)}{" "}
+                  más $ {fmt(cuotaCalc)} del acuerdo.</>
+                )}
+              </div>
+            )}
+
             <div>
               <div style={labelStyle}>Fijar por</div>
               <div style={{ display: "flex", gap: 8 }}>

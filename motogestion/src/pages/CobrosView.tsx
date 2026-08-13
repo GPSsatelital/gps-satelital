@@ -42,6 +42,7 @@ import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
   cuotaConvenioDelPeriodo,
   proximaCuotaConvenio,
+  loQueDebe,
   calcularProrrateoInicial,
   calcularAhorroAplicado,
   tarifaPagadaPeriodoActual,
@@ -1603,11 +1604,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     const convCubreAhora = !!(cubreHasta && cubreHasta >= hoyISO());
     const periodosDebe = desg ? (convCubreAhora ? desg.periodos.filter(p => p.fecha >= cubreHasta!) : desg.periodos) : [];
     const prorrateoDebe = desg ? (convCubreAhora ? 0 : desg.prorrateoPendiente) : 0;
-    // Con motor de cajas (desg) el total respeta la cobertura del convenio; sin desg (Diario/v1)
-    // se cae al cálculo de siempre para no alterar esos contratos.
-    const totalDebeAhora = desg
-      ? prorrateoDebe + periodosDebe.reduce((s, p) => s + p.monto, 0) + contratoDetalle.deudaContrato + cuotaConvExigida
-      : totalPendiente;
+    // ── LA CUENTA, de UNA sola fuente (cicloPago.loQueDebe) ──
+    // Antes esta pantalla sumaba `cuotaConvExigida`, que es la cuota COMPLETA del acuerdo, sin
+    // descontar lo que el cliente ya había abonado ese período: LIBINTO pagó su semana y su
+    // cuota y la pantalla le seguía cobrando los mismos $100.000, mientras el estado decía
+    // "al día". Ahora las tres partes (cuota, acuerdo, deudas) descuentan lo pagado igual.
+    const debe = loQueDebe(
+      contratoDetalle,
+      pagosDelContrato(contratoDetalle.id).filter(p => p.estado === "Confirmado"),
+      deudas.filter(d => d.contrato_id === contratoDetalle.id && d.estado === "pendiente"),
+      cvActiva,
+      hoyDate(),
+      contratoDetalle.sinPagosNunca ?? true,
+    );
+    const totalDebeAhora = debe.totalFalta;
 
     // Estado de cuenta (imprimir/WhatsApp) — usa los MISMOS valores ya calculados arriba
     // para esta pantalla (totalPendiente, deudas, convenio), nunca un cálculo aparte.

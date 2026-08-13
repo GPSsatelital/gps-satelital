@@ -9,7 +9,7 @@ import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
-import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo } from "../utils/cicloPago";
+import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo, financiarSemanas } from "../utils/cicloPago";
 import { hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 
 interface Props {
@@ -213,7 +213,12 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // Si YA debe el período en curso, la primera semana financiada es lo que le falta de ese
   // período (parcial), no una cuota entera — si no, se le financiaría plata que ya abonó.
   const huecoHoy = contratoActual ? huecoCuotasHoy(contratoActual, hoyDate()) : 0;
-  const primeraFinanciada = huecoHoy > 0 ? Math.min(huecoHoy, cuotaDelPeriodo) : cuotaDelPeriodo;
+  // 🔴 La semana MÁS VIEJA sin pagar puede traer un abono a medias, y financiarla COMPLETA le
+  // cobra otra vez lo que ya abonó. `Math.min(hueco, cuota)` solo lo descontaba cuando el cliente
+  // debía MENOS de una semana; con dos o más atrasadas se quedaba con la semana entera y el abono
+  // se volvía invisible — y de paso el aviso "le quedan $X sin cubrir" salía corrido por ese mismo
+  // monto. Caso real (NESTOR, YAL67H, 12-ago-2026): debía 2 semanas y llevaba $14.000 abonados a
+  // la más vieja; el convenio se firmó por $202.000 cuando faltaban $188.000.
 
   const puedeFinanciar = esPeriodico && cuotaDelPeriodo > 0;
   const nFinanciadas = puedeFinanciar ? financiarN : 0;
@@ -223,9 +228,12 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // que lo dejaba al día. Ahora las opciones llegan hasta lo que de verdad debe.
   const semanasVencidas = cuotaDelPeriodo > 0 ? Math.ceil(huecoHoy / cuotaDelPeriodo) : 0;
   const opcionesFinanciar = Array.from({ length: Math.min(Math.max(semanasVencidas, 2), 8) + 1 }, (_, i) => i);
-  const cuotaSemana = nFinanciadas >= 1
-    ? primeraFinanciada + (nFinanciadas - 1) * cuotaDelPeriodo
-    : 0;
+  // Todo el cálculo (semana parcial + ahorro que viaja adentro) vive en cicloPago.ts, probado.
+  const fin = contratoActual ? financiarSemanas(contratoActual, hoyDate(), nFinanciadas) : { primera: 0, total: 0, ahorro: 0 };
+  const primeraFinanciada = fin.primera;
+  const cuotaSemana = fin.total;
+  const ahorroFinanciado = fin.ahorro;
+
   // Lo que queda de arriendo SIN cubrir con lo escogido. Si es > 0, decir "paga $0 de arriendo"
   // es falso: el cliente sigue debiendo cuotas aunque el convenio quede firmado.
   const arriendoSinCubrir = Math.max(huecoHoy - cuotaSemana, 0);
@@ -336,6 +344,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       contrato_id: contratoId,
       numero_convenio: count + 1,
       deuda_total: meta,
+      // EL DESGLOSE, congelado. `deuda_total` es una sola cifra y adentro hay dos cosas que se
+      // comportan distinto: la deuda vieja NO genera ahorro, la semana de arriendo SÍ. Sin
+      // guardarlo, después es imposible saber cuánto del convenio era semana — y no se puede
+      // acreditar el ahorro que le corresponde al cliente. La pantalla ya lo sabía y lo mostraba;
+      // solo se guardaba la suma.
+      monto_deudas: metaBase,
+      monto_semanas: cuotaSemana,
+      ahorro_semanas: ahorroFinanciado,
+      cajas_financiadas: nFinanciadas,
       cuota_por_periodo: cuotaCalc,
       numero_cuotas: cuotasCalc,
       cuotas_pagadas: 0,

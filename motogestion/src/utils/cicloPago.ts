@@ -657,6 +657,45 @@ export function fechaCubrePeriodo(
 
 // Hueco total exigible de CUOTAS a hoy (prorrateo pendiente + cajas exigidas sin llenar).
 // Es el "debe de cuotas" del ledger — las deudas registradas y el convenio van aparte.
+/**
+ * Cuánto arriendo entra a un convenio al financiar `n` semanas, y cuánto AHORRO viaja adentro.
+ *
+ * Dos reglas que parecen chiquitas y valen plata:
+ *
+ * 1. La semana MÁS VIEJA sin pagar puede traer un abono a medias. Financiarla completa le cobra
+ *    otra vez lo que ya abonó. (NESTOR, YAL67H: debía 2 semanas con $14.000 abonados a la más
+ *    vieja; el convenio se firmó por $202.000 cuando faltaban $188.000.)
+ * 2. Cada semana lleva su ahorro del cliente adentro. Aunque la semana entre al convenio, esa
+ *    plata sigue siendo SUYA — se congela acá para poder acreditársela cuando pague.
+ *
+ * El ahorro se reparte tarifa-primero, igual que en las cajas: solo el tramo final es ahorro.
+ */
+export type SemanasFinanciadas = { primera: number; total: number; ahorro: number };
+
+export function financiarSemanas(contrato: ContratoCiclo, hoy: Date, n: number): SemanasFinanciadas {
+  const vacio = { primera: 0, total: 0, ahorro: 0 };
+  if (n < 1 || contrato.forma_pago === "Diario") return vacio;
+  const cuota = valorPeriodoReal(contrato);
+  if (cuota <= 0) return vacio;
+
+  const hueco = huecoCuotasHoy(contrato, hoy);
+  // Sin nada vencido se financia hacia ADELANTE: la semana que viene entra entera y el abono de
+  // la caja en curso no cuenta (pertenece a otra semana).
+  const abono = hueco > 0 ? (contrato.caja_actual_pagado ?? 0) : 0;
+  const primera = hueco > 0 ? Math.max(Math.min(hueco, cuota - abono), 0) : cuota;
+
+  const ahorroSemana = ahorroPeriodoExacto(contrato, false);
+  const tarifa = Math.max(cuota - ahorroSemana, 0);
+  const antes = Math.min(Math.max(abono - tarifa, 0), ahorroSemana);
+  const despues = Math.min(Math.max(abono + primera - tarifa, 0), ahorroSemana);
+
+  return {
+    primera,
+    total: primera + (n - 1) * cuota,
+    ahorro: Math.max(despues - antes, 0) + (n - 1) * ahorroSemana,
+  };
+}
+
 export function huecoCuotasHoy(contrato: ContratoCiclo, hoy: Date): number {
   const valorCaja = valorPeriodoReal(contrato);
   const prorPend = prorrateoExigibleHoy(contrato, hoy);

@@ -2304,10 +2304,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 // (abono parcial sin ahorro), no "sin registrar"; el || caía al jsonb
                 // legacy y mostraba la cifra proporcional vieja ($13.333) ya recalculada.
                 const ahorroAp = p.aplicado_ahorro ?? leg.ahorro ?? 0;
+                const prorrAp = p.aplicado_prorrateo ?? 0;
+                const baseAp = p.aplicado_base_inicial ?? 0;
+                // La MULTA no es un renglón aparte: es el pedazo de `aplicado_deuda` que fue a
+                // multas (el motor la guarda como least(aplicado_deuda, multas_pendientes)).
+                // Mostrarla suelta contaría la misma plata dos veces — por eso acompaña a la deuda.
+                const multaAp = p.aplicado_multa ?? 0;
+                // El orden es el MISMO en que el motor reparte cada peso: días rodados → cuota →
+                // deuda → convenio → base → saldo a favor. Así el funcionario ve la regla, no solo
+                // el resultado. Faltaban prorrateo, multa y base inicial: un pago que iba entero a
+                // los días rodados salía diciendo "sin desglose (pago antiguo)" — falso, y dejaba
+                // invisible el ahorro que llevaba adentro.
                 const partes: string[] = [];
+                if (prorrAp > 0) partes.push(`Días rodados $${fmt(prorrAp)}`);
                 if (cuota > 0) partes.push(`Cuota $${fmt(cuota)}`);
-                if (deudaAp > 0) partes.push(`Deuda $${fmt(deudaAp)}`);
+                if (deudaAp > 0) partes.push(multaAp > 0
+                  ? `Deuda $${fmt(deudaAp)} · de eso multa $${fmt(multaAp)}`
+                  : `Deuda $${fmt(deudaAp)}`);
                 if (convAp > 0) partes.push(`Convenio $${fmt(convAp)}`);
+                if (baseAp > 0) partes.push(`Base inicial $${fmt(baseAp)}`);
                 if (saldoAp > 0) partes.push(`Saldo a favor $${fmt(saldoAp)}`);
                 return (
                 <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
@@ -2358,7 +2373,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line2)", fontSize: 11, color: "var(--accent-ink)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
                       <span style={{ color: "var(--faint)" }}>Se aplicó a:</span>
                       {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "var(--accent-soft)", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "var(--faint)" }}>sin desglose (pago antiguo)</span>}
-                      {ahorroAp > 0 && <span style={{ color: "var(--faint)", fontWeight: 400 }}>(de la cuota, ${fmt(ahorroAp)} fue ahorro)</span>}
+                      {/* El ahorro NO es una parte más: sale de adentro de la cuota o de los días
+                          rodados (los dos únicos baldes que lo generan). Decía "de la cuota", que
+                          era falso cuando venía del prorrateo. */}
+                      {ahorroAp > 0 && <span style={{ color: "var(--faint)", fontWeight: 400 }}>(de eso, ${fmt(ahorroAp)} es ahorro suyo)</span>}
                     </div>
                   )}
                 </div>

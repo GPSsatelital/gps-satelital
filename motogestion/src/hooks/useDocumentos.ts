@@ -720,6 +720,135 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
     </div>`;
 }
 
+/**
+ * ESTADO DE CUENTA DETALLADO — hoja carta.
+ *
+ * Distinto del de arriba, que es un TIQUETE de 80mm para la térmica y solo trae los últimos
+ * pagos. Este responde las cuatro cosas que el tiquete no podía: cómo va el cliente, el desglose
+ * de qué debe, el historial COMPLETO con a qué se aplicó cada peso, y cuánto le quedaría si
+ * liquidara hoy.
+ *
+ * 🔑 Es SOLO UN FORMATEADOR: no calcula ni una cifra. Todo llega ya resuelto por quien tiene los
+ * datos (CobrosView, que ya corre `loQueDebe()`). Si el documento hiciera sus propias cuentas
+ * volveríamos al defecto que costó una semana entera — la pantalla diciendo una cosa y el papel
+ * otra. Acá eso es imposible por construcción.
+ *
+ * Redacción: se escribe como si el cliente lo fuera a leer, aunque hoy lo use el funcionario.
+ * Una hoja con jerga interna no se le puede entregar a nadie; una escrita en claro sirve para los
+ * dos. Por eso quedan FUERA las gestiones de cobro, quién registró cada pago y las notas internas.
+ */
+export type PagoDetallado = {
+  fecha: string;
+  valor: number;
+  metodo: string;
+  referencia?: string | null;
+  partes: string[];       // "Cuota $202.000", "Días rodados $78.000", ...
+  ahorro: number;         // sale de ADENTRO de la cuota o del prorrateo; no se suma aparte
+};
+
+export type DatosDetallado = DatosEstadoCuenta & {
+  // Qué debe hoy, parte por parte. Sale del MISMO objeto que el número grande de la pantalla.
+  desglose: Array<{ concepto: string; toca: number; pagado: number; falta: number; nota?: string }>;
+  historial: PagoDetallado[];
+  totalPagado: number;
+  // Cálculo de referencia, NO una liquidación: no incluye daños (los valora el taller).
+  preliquidacion: { lineas: Array<{ label: string; monto: number }>; resultado: number };
+};
+
+export function generarHTMLEstadoCuentaDetallado(cliente: Cliente, moto: Moto | null, d: DatosDetallado): string {
+  const gris = "#475569", raya = "#cbd5e1";
+  const seccion = (n: number, titulo: string, cuerpo: string) => `
+    <div style="border-top:1px solid ${raya};padding-top:10px;margin-top:14px">
+      <div style="font-weight:bold;margin-bottom:8px">${n} · ${titulo}</div>${cuerpo}</div>`;
+  const fila = (l: string, v: string, fuerte = false) =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0${fuerte ? ";font-weight:bold" : ""}"><span>${l}</span><span>${v}</span></div>`;
+  const cols = (a: string, b: string, c: string, e: string, cab = false) => `
+    <tr style="${cab ? `color:${gris};font-size:11px` : ""}">
+      <td style="padding:3px 0">${a}</td>
+      <td style="text-align:right;width:95px">${b}</td>
+      <td style="text-align:right;width:95px">${c}</td>
+      <td style="text-align:right;width:105px${cab ? "" : ";font-weight:bold"}">${e}</td>
+    </tr>`;
+
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000;max-width:700px;margin:0 auto;padding:24px">
+    <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px">
+      <div style="font-size:17px;font-weight:bold">CLUB MOTEROS CARTAGENA</div>
+      <div style="color:${gris}">Estado de cuenta detallado · ${fmtFecha(hoyISO())}</div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:4px 28px">
+      <div><span style="color:${gris}">Cliente:</span> <b style="text-transform:uppercase">${cliente.nombre}</b></div>
+      <div><span style="color:${gris}">Cédula:</span> ${cliente.cedula}</div>
+      ${moto ? `<div><span style="color:${gris}">Moto:</span> ${moto.placa}${moto.grupo ? ` · ${moto.grupo}` : ""}</div>` : ""}
+      <div><span style="color:${gris}">Paga:</span> ${d.diaPagoLabel} · $ ${fmt(d.cuotaPeriodo)}</div>
+    </div>
+
+    ${seccion(1, "Cómo va el contrato",
+      (d.cajas ? fila("Cuotas pagadas", `${d.cajas.pagadas} de ${d.cajas.total}`, true) : "") +
+      (d.inicioContrato ? fila("Empezó", fmtFecha(d.inicioContrato)) : "") +
+      (d.finContrato?.fecha ? fila("Termina (aproximado)", fmtFecha(d.finContrato.fecha)) : "") +
+      fila("Estado", d.estadoLabel))}
+
+    ${seccion(2, "Qué debe hoy", `
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+        ${cols("Concepto", "Le tocaba", "Pagó", "Le falta", true)}
+        ${d.desglose.map(x => cols(
+          x.concepto + (x.nota ? ` <span style="color:${gris};font-weight:normal">(${x.nota})</span>` : ""),
+          `$ ${fmt(x.toca)}`, `$ ${fmt(x.pagado)}`, `$ ${fmt(x.falta)}`)).join("")}
+      </table>
+      <div style="border-top:1px solid ${raya};margin-top:6px;padding-top:6px">
+        ${fila("LE FALTA POR PAGAR", `$ ${fmt(d.debeHoy)}`, true)}
+      </div>
+      ${d.saldoFavor > 0 ? `<div style="color:${gris};margin-top:4px">Además tiene $ ${fmt(d.saldoFavor)} a favor, sin usar. No se descuenta solo: se aplica en oficina.</div>` : ""}`)}
+
+    ${seccion(3, "Su ahorro",
+      fila("Ahorro acumulado", `$ ${fmt(d.ahorroTotal)}`, true) +
+      (d.apertura ? fila("· Traía del sistema anterior", `$ ${fmt(d.apertura.viejo)}`) + fila("· Ganado pagando", `$ ${fmt(d.apertura.nuevo)}`) : "") +
+      (d.ahorroCiclos && d.ahorroCiclos.ciclos > 0 ? `<div style="color:${gris};margin-top:4px">Equivale a ${d.ahorroCiclos.ciclos} cuota${d.ahorroCiclos.ciclos === 1 ? "" : "s"} completa${d.ahorroCiclos.ciclos === 1 ? "" : "s"}. El ahorro se gana al COMPLETAR cada cuota: un abono a medias todavía no genera.</div>` : ""))}
+
+    ${d.deudas.length > 0 ? seccion(4, "Deudas registradas",
+      d.deudas.map(x => fila(LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto, `$ ${fmt(x.pendiente)}`)).join("") +
+      fila("Total", `$ ${fmt(d.deudas.reduce((a, x) => a + x.pendiente, 0))}`, true)) : ""}
+
+    ${d.convenio ? seccion(5, "Acuerdo de pago",
+      fila("Total del acuerdo", `$ ${fmt(d.convenio.total)}`) +
+      fila("Cuota por período", `$ ${fmt(d.convenio.cuota)}`) +
+      fila("Va en", `${d.convenio.pagadas} de ${d.convenio.numero} cuotas`) +
+      fila("Última cuota", fmtFecha(d.convenio.fechaLimite))) : ""}
+
+    ${seccion(6, "Historial de pagos", `
+      <div style="color:${gris};margin-bottom:8px">Todos sus pagos, y a qué se aplicó cada peso.</div>
+      ${d.historial.map(p => `
+        <div style="border-top:1px solid ${raya};padding:6px 0">
+          <div style="display:flex;justify-content:space-between;gap:12px">
+            <span>${fmtFecha(p.fecha)} · ${p.metodo}${p.referencia ? ` · ref ${p.referencia}` : ""}</span>
+            <b>$ ${fmt(p.valor)}</b>
+          </div>
+          <div style="color:${gris};font-size:12px;margin-top:2px">
+            ${p.partes.length > 0 ? p.partes.join(" · ") : "Sin desglose registrado"}${p.ahorro > 0 ? ` · de eso, $ ${fmt(p.ahorro)} es ahorro suyo` : ""}
+          </div>
+        </div>`).join("")}
+      <div style="border-top:2px solid #000;margin-top:6px;padding-top:6px">
+        ${fila(`Total pagado (${d.historial.length} pago${d.historial.length === 1 ? "" : "s"})`, `$ ${fmt(d.totalPagado)}`, true)}
+      </div>`)}
+
+    ${seccion(7, "Si liquidara hoy", `
+      ${d.preliquidacion.lineas.map(x => fila(x.label, `${x.monto < 0 ? "−" : "+"} $ ${fmt(Math.abs(x.monto))}`)).join("")}
+      <div style="border-top:1px solid ${raya};margin-top:6px;padding-top:6px">
+        ${fila(d.preliquidacion.resultado >= 0 ? "SE LE DEVOLVERÍA" : "QUEDARÍA DEBIENDO", `$ ${fmt(Math.abs(d.preliquidacion.resultado))}`, true)}
+      </div>
+      <div style="color:${gris};font-size:12px;margin-top:6px;line-height:1.5">
+        Cálculo de referencia, no una liquidación. <b>No incluye los daños de la moto</b>, que se
+        valoran en el taller al momento de entregarla.
+      </div>`)}
+
+    <div style="text-align:center;color:${gris};font-size:11px;margin-top:16px;border-top:1px solid ${raya};padding-top:8px">
+      Documento informativo · Cualquier reclamo sobre estas cifras se atiende en oficina
+    </div>
+  </div>`;
+}
+
 // Versión texto plano del estado de cuenta, para enviar por WhatsApp.
 export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: DatosEstadoCuenta, incluirAhorro = false): string {
   const l: string[] = [

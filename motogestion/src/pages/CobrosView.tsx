@@ -30,7 +30,7 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
 import MoneyInput from "../components/MoneyInput";
 import ModalConvenio from "../components/ModalConvenio";
-import { generarHTMLEstadoCuenta, armarTextoEstadoCuenta, type DatosEstadoCuenta } from "../hooks/useDocumentos";
+import { generarHTMLEstadoCuenta, armarTextoEstadoCuenta, generarHTMLEstadoCuentaDetallado, type DatosEstadoCuenta, type DatosDetallado } from "../hooks/useDocumentos";
 import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
@@ -1656,6 +1656,62 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       };
     }
 
+    // La hoja carta detallada. Reusa el MISMO `debe` que pinta la pantalla y el mismo desglose
+    // que ya se muestra bajo cada pago del historial: el papel no puede decir otra cosa.
+    function armarDatosDetallado(): DatosDetallado {
+      const c = contratoDetalle!;
+      const confirmados = pagosContrato.filter(p => p.estado === "Confirmado");
+      const partesDe = (p: typeof confirmados[number]): string[] => {
+        const out: string[] = [];
+        const add = (l: string, v: number | null | undefined) => { if ((v ?? 0) > 0) out.push(`${l} $ ${fmt(v!)}`); };
+        add("Días rodados", p.aplicado_prorrateo);
+        add("Cuota", p.aplicado_tarifa);
+        if ((p.aplicado_deuda ?? 0) > 0) out.push((p.aplicado_multa ?? 0) > 0
+          ? `Deuda $ ${fmt(p.aplicado_deuda!)} (multa $ ${fmt(p.aplicado_multa!)})`
+          : `Deuda $ ${fmt(p.aplicado_deuda!)}`);
+        add("Convenio", p.aplicado_convenio);
+        add("Base inicial", p.aplicado_base_inicial);
+        add("Saldo a favor", p.aplicado_saldo_favor);
+        return out;
+      };
+      const desglose = [
+        { concepto: "Cuota del período", ...debe.cuota },
+        ...(debe.acuerdo ? [{ concepto: "Cuota del acuerdo", toca: debe.acuerdo.toca, pagado: debe.acuerdo.pagado, falta: debe.acuerdo.falta }] : []),
+        ...(debe.deudas.toca > 0 ? [{ concepto: "Deudas registradas", ...debe.deudas }] : []),
+      ];
+      // Preliquidación: su ahorro, menos lo que quedaría debiendo. NO incluye daños — los valora
+      // el taller y sin revisión física cualquier cifra ahí sería inventada.
+      const ahorro = (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0);
+      const convPend = cvActiva ? Math.max(cvActiva.deuda_total - sumaAbonadoConvenio(cvActiva.id), 0) : 0;
+      const lineas = [
+        { label: "Se le devuelve su ahorro", monto: ahorro },
+        ...(convPend > 0 ? [{ label: "Menos lo que queda del acuerdo", monto: -convPend }] : []),
+        ...(debe.cuota.falta > 0 ? [{ label: "Menos la cuota corriente sin pagar", monto: -debe.cuota.falta }] : []),
+        ...(debe.deudas.falta > 0 ? [{ label: "Menos sus deudas pendientes", monto: -debe.deudas.falta }] : []),
+      ];
+      return {
+        ...armarDatosEstadoCuenta(),
+        desglose,
+        historial: confirmados.map(p => ({
+          fecha: p.fecha, valor: p.valor, metodo: p.metodo, referencia: p.referencia,
+          partes: partesDe(p), ahorro: p.aplicado_ahorro ?? 0,
+        })),
+        totalPagado: confirmados.reduce((s, p) => s + p.valor, 0),
+        preliquidacion: { lineas, resultado: lineas.reduce((s, x) => s + x.monto, 0) },
+      };
+    }
+
+    function imprimirDetallado() {
+      if (!clienteDetalle) return;
+      const html = generarHTMLEstadoCuentaDetallado(clienteDetalle, motoDetalle ?? null, armarDatosDetallado());
+      const w = window.open("", "_blank", "width=760,height=900");
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><title>Estado de cuenta detallado</title><style>*{print-color-adjust:exact;-webkit-print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
     function imprimirEstadoCuenta() {
       if (!clienteDetalle) return;
       const html = generarHTMLEstadoCuenta(clienteDetalle, motoDetalle ?? null, armarDatosEstadoCuenta(), incluirAhorroDoc);
@@ -1766,6 +1822,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
             <button onClick={imprimirEstadoCuenta} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📄 Estado de cuenta</button>
+            {/* El detallado es hoja carta: trae el historial COMPLETO con a qué se aplicó cada
+                peso y la preliquidación. El de al lado sigue siendo el tiquete de 80mm para la
+                térmica — son dos usos distintos, no se reemplazan. */}
+            <button onClick={imprimirDetallado} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px" }}>📋 Detallado</button>
             <button onClick={enviarEstadoCuentaWhatsApp} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 12px", color: "var(--ok-ink)" }}>📱 Enviar por WhatsApp</button>
             <button onClick={enviarCuentasWhatsApp}
               title={cuentasDelCliente.length > 0

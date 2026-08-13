@@ -177,6 +177,49 @@ No basta con que la tarea funcione donde se probó. Antes de darla por terminada
 
 ---
 
+## REGLAS DE LAS CIFRAS DE PLATA — OBLIGATORIO SIEMPRE
+*(cerradas con el dueño el 12-ago-2026, después de que LIBINTO pagara $302.000 y la pantalla le
+siguiera cobrando los mismos $100.000 del convenio. Pedido textual: "que cartera quede funcionando
+perfecto de una vez por todas".)*
+
+### 1. Cada cifra dice QUÉ PREGUNTA responde — y no se mezclan
+"Le falta por pagar", "Total del acuerdo" y "Deuda registrada" son tres cosas distintas y **no
+pueden compartir etiqueta**. El defecto de LIBINTO fue exactamente ese: el número decía *"le falta
+por pagar"* pero traía adentro la cuota **completa** del acuerdo, ya pagada.
+- **La cifra que se cobra siempre resta lo ya pagado.** Si ya pagó, dice **$0**.
+- El monto **pactado** puede seguir mostrándose (el chip "Convenio: $100.000/período" está bien),
+  pero entonces la etiqueta debe decir cuánto **vale**, no cuánto **debe** — y conviene marcar
+  "· ya pagada" para que nadie lo lea como pendiente.
+
+### 2. Antes de cambiar cómo se calcula **O CÓMO SE MUESTRA** una cifra: buscarla en todo `src/`
+La checklist de arriba ya obliga a esto para el **cálculo**. Se extiende a **lo que se muestra**:
+un número correcto explicado con la etiqueta equivocada es un defecto igual de caro — el
+funcionario le cobra de más a un cliente que ya pagó.
+- Caso real: *"¿cuánto debe hoy?"* estaba escrito en **10 lugares** (9 en `CobrosView` + 1 en
+  `CobroDiarioView`) y **no coincidían entre sí**. Cada arreglo tocaba una y dejaba nueve diciendo
+  otra cosa. Por eso "se dañaba con cada cambio".
+- 🔴 **Hoy existe UNA sola función: `loQueDebe()` en `src/utils/cicloPago.ts`.** Devuelve el
+  desglose completo (`cuota` · `acuerdo` · `deudas`, cada uno con `toca`/`pagado`/`falta`), no solo
+  el total — así el número grande y el recuadro que lo explica salen del **mismo objeto** y no
+  pueden contradecirse. **Ninguna pantalla vuelve a sumar la cuota del convenio a mano.**
+- Está protegida por `src/utils/loQueDebe.test.ts` con las cifras REALES de producción. Si alguien
+  le cambia la cuenta a uno de esos clientes, `npm test` lo caza antes de llegar a producción.
+
+### 3. Nunca quitar un dato de la vista sin reponerlo
+Si un campo cambia de significado, el dato viejo se muestra en otro lado — no se borra y ya.
+- Caso real (12-ago): el formulario de convenios pasó de *"Fecha del primer pago"* (a mano) a
+  *"Fecha límite"* (calculada). El cambio era correcto — sin él nacía un convenio ya vencido — pero
+  **se quitó de la vista un dato que el dueño usaba a diario** y hubo que reponerlo aparte.
+
+### Reglas de negocio que aplican al cálculo (cerradas, NO re-preguntar)
+- **La cuota del acuerdo se ARRASTRA.** Cuota $100.000, abonó $40.000 → la semana siguiente le tocan
+  **$160.000**. Nunca se le exige más que el `deuda_total` pactado.
+- **El saldo a favor se MUESTRA, nunca se resta solo** — se aplica a mano.
+- **El convenio de base no se cobra encima del prorrateo**: el primer día de pago solo se cobra lo
+  que rodó; el acuerdo arranca el siguiente período completo.
+
+---
+
 ## STACK
 
 | Capa | Tecnología |

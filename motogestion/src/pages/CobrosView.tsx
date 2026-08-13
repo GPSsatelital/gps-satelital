@@ -1840,6 +1840,46 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             </div>
           </div>
 
+          {/* ── De dónde sale esa cifra ──
+              El número de arriba solo dice CUÁNTO. El funcionario también necesita saber POR QUÉ:
+              si el cliente pagó o si el sistema se equivocó. Sin esto, un "$0" se lee como una
+              falla y un "$100.000" se le vuelve a cobrar a quien ya pagó (caso LIBINTO).
+              Sale del MISMO objeto que el número, así que no pueden contradecirse. */}
+          {!enProrrateo && (
+            <div style={{ marginTop: 12, background: "var(--soft2)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--line)" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4, marginBottom: 8 }}>
+                De dónde sale
+              </div>
+              {[
+                { k: "Cuota del período", p: debe.cuota },
+                ...(debe.acuerdo ? [{ k: "Cuota del acuerdo", p: debe.acuerdo }] : []),
+                ...(debe.deudas.toca > 0 ? [{ k: "Deudas", p: debe.deudas }] : []),
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "3px 0", fontSize: 13 }}>
+                  <span style={{ color: "var(--muted2)", minWidth: 0 }}>{f.k}</span>
+                  <span style={{ display: "flex", gap: 10, alignItems: "baseline", whiteSpace: "nowrap" }}>
+                    <span style={{ color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>$ {fmt(f.p.toca)}</span>
+                    <strong style={{ fontSize: 12, color: f.p.falta === 0 ? "var(--ok-ink)" : f.p.pagado > 0 ? "var(--warn-ink)" : "var(--bad-ink)" }}>
+                      {f.p.toca === 0 ? "—" : f.p.falta === 0 ? "pagada" : f.p.pagado > 0 ? `abonó $ ${fmt(f.p.pagado)}` : "pendiente"}
+                    </strong>
+                  </span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, borderTop: "1px solid var(--line)", marginTop: 8, paddingTop: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>Le falta por pagar</span>
+                <strong style={{ fontSize: 18, fontVariantNumeric: "tabular-nums", color: totalDebeAhora > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
+                  $ {fmt(totalDebeAhora)}
+                </strong>
+              </div>
+              {/* El saldo a favor se MUESTRA pero NO se resta (regla del dueño): se aplica a mano. */}
+              {debe.saldoAFavor > 0 && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)" }}>
+                  Además tiene <strong>$ {fmt(debe.saldoAFavor)}</strong> a favor, sin usar.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Ahorro del cliente — SIEMPRE visible en pantalla (en el impreso/compartido es opcional).
               De inicio = ahorro de apertura; Por pagos = ahorro ganado pagando. */}
           <div style={{ marginTop: 12, background: "var(--soft2)", borderRadius: 10, padding: "10px 12px" }}>

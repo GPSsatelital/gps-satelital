@@ -268,11 +268,21 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // vencido a la semana. Queda editable por si acordaron otra fecha.
   useEffect(() => {
     if (!contratoActual || cuotasCalc <= 0) return;
+    // 🔴 Si se financiaron semanas, la PRIMERA cuota no cae en el período de hoy: cae en el
+    // primero NO cubierto (`cubreHasta`), porque durante las semanas financiadas el cliente no
+    // paga nada. Contando desde hoy, la fecha queda corta por esas mismas semanas — y entonces
+    // `marcar_convenios_vencidos()` lo marca INCUMPLIDO antes de que termine de pagar, con
+    // 3 incumplidos = liquidación obligatoria. (ALBERT, YAL59H: límite 14-sep y su última cuota
+    // cae el 21.) Se arranca un día antes de `cubreHasta` para que la primera cuota SEA ese día.
     let d = hoyDate();
+    if (cubreHasta) {
+      const inicio = new Date(cubreHasta + "T00:00:00");
+      if (inicio > d) d = new Date(inicio.getTime() - 86400000);
+    }
     for (let i = 0; i < cuotasCalc; i++) d = proximoDiaPago(contratoActual, d);
     setFechaLimite(fechaISO(d));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cuotasCalc, contratoId]);
+  }, [cuotasCalc, contratoId, cubreHasta]);
 
   // Cuándo cae la PRIMERA cuota. Es solo informativo — no se guarda —, pero el funcionario lo
   // necesita para decírselo al cliente en el momento de firmar. Antes este dato SÍ estaba a la

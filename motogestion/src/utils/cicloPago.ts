@@ -206,6 +206,133 @@ export function proximaCuotaConvenio(
   return null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ¿CUÁNTO DEBE HOY? — UNA sola fuente para todo el sistema.
+//
+// EL PROBLEMA QUE VIENE A RESOLVER (12-ago-2026, caso LIBINTO XZT89H): esta cuenta estaba
+// escrita en DIEZ lugares distintos que se fueron separando. En nueve de ellos la cuota del
+// convenio se sumaba COMPLETA sin descontar lo que el cliente ya había abonado ese período: pagó
+// $302.000 (su semana + los $100.000 del acuerdo) y la pantalla le seguía cobrando los $100.000.
+// El colmo es que el ESTADO (al día / mora) sí lo descontaba — la misma pantalla decía "al día"
+// y "debe $100.000" al mismo tiempo.
+//
+// Por eso devuelve el DESGLOSE y no solo el total: el número grande y el recuadro que lo explica
+// salen del MISMO objeto, así que no pueden contradecirse. Ese era el defecto de fondo.
+//
+// REGLAS DEL DUEÑO (12-ago-2026, cerradas — no re-preguntar):
+//  1. "Le falta por pagar" es SOLO lo que falta. Si ya pagó todo, dice $0.
+//  2. El acuerdo se ARRASTRA: si su cuota es $100.000 y abonó $40.000, la semana siguiente le
+//     tocan $160.000. El acuerdo no se atrasa por abonar de a poco.
+//  3. El saldo a favor se MUESTRA, nunca se resta solo (se aplica a mano).
+
+export type ParteDebe = { toca: number; pagado: number; falta: number };
+
+export type LoQueDebe = {
+  cuota: ParteDebe;
+  acuerdo: (ParteDebe & { cuotaDelPeriodo: number }) | null;
+  deudas: ParteDebe;
+  /** El número que el funcionario le cobra hoy. */
+  totalFalta: number;
+  /** Se muestra al lado, NUNCA se resta del total (regla 3). */
+  saldoAFavor: number;
+};
+
+/**
+ * Cuántas cuotas del convenio se le han EXIGIDO desde que empezó a correr hasta hoy.
+ *
+ * Le pregunta a `cuotaConvenioDelPeriodo` período por período en vez de reimplementar la regla:
+ * ella ya sabe que el convenio no corre durante el prorrateo ni mientras cubre semanas
+ * financiadas. Si esa regla cambia algún día, este conteo la sigue solo.
+ */
+function periodosConvenioExigidos(
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null },
+  contrato: ContratoCiclo,
+  hoy: Date,
+): number {
+  if (!convenio.created_at) return 0;
+  const hoyIni = fechaAISO(inicioPeriodoActual(contrato, hoy));
+  let d = inicioPeriodoActual(contrato, new Date(convenio.created_at.slice(0, 10) + "T12:00:00"));
+  let n = 0;
+  // Tope de seguridad: un convenio no puede tener más de 24 cuotas (MAX_CUOTAS del modal), y
+  // sin tope un contrato con fechas raras colgaría la pantalla.
+  for (let i = 0; i < 200 && fechaAISO(d) <= hoyIni; i++) {
+    if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) n++;
+    d = proximoDiaPago(contrato, d);
+  }
+  return n;
+}
+
+/**
+ * Todo lo que un contrato debe HOY, desglosado en sus tres partes.
+ *
+ * `pagosConfirmados` deben ser SOLO los confirmados: un pago pendiente todavía no bajó nada.
+ * `deudasPendientes` son las de estado 'pendiente' — las 'en_convenio' NO van acá, ya se cobran
+ * dentro de la cuota del acuerdo (si se sumaran, se cobrarían dos veces).
+ */
+export function loQueDebe(
+  contrato: ContratoCiclo & { saldo_favor_apertura?: number | null },
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_saldo_favor?: number | null }>,
+  deudasPendientes: Array<{ monto: number; monto_pendiente: number }>,
+  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  hoy: Date,
+  sinPagosNunca = pagosConfirmados.length === 0,
+): LoQueDebe {
+  // ── 1. La cuota del período ──
+  // Con motor: sale del ledger real, que ya sabe qué cajas están llenas. Sin motor: la fórmula
+  // vieja de ventana. Las dos YA descontaban lo pagado — no se tocan, solo se envuelven.
+  let cuota: ParteDebe;
+  if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
+    const d = desgloseExigible(contrato, hoy);
+    const cubre = convenio?.cubre_periodo_hasta ?? null;
+    const cubierto = !!(cubre && cubre >= fechaAISO(hoy));
+    const falta = (cubierto ? 0 : d.prorrateoPendiente)
+      + d.periodos.filter(p => !cubierto || p.fecha >= cubre!).reduce((s, p) => s + p.monto, 0);
+    const toca = valorPeriodoReal(contrato);
+    cuota = { toca, pagado: Math.max(toca - falta, 0), falta };
+  } else {
+    const enProrrateo = estaEnProrrateo(contrato, sinPagosNunca);
+    const toca = contrato.forma_pago === "Diario"
+      ? valorPeriodoReal(contrato)
+      : enProrrateo ? calcularProrrateoInicial(contrato) : valorPeriodoReal(contrato);
+    const pagado = totalPagadoPeriodoActual(contrato, pagosConfirmados, hoy);
+    cuota = { toca, pagado, falta: Math.max(toca - pagado, 0) };
+  }
+
+  // ── 2. La cuota del acuerdo (con arrastre — regla 2) ──
+  // Se compara lo EXIGIDO ACUMULADO contra lo ABONADO ACUMULADO. Así, quien abonó de menos
+  // arrastra la diferencia sin que el acuerdo se atrase, y quien ya pagó queda en cero.
+  let acuerdo: LoQueDebe["acuerdo"] = null;
+  const cuotaPeriodo = convenio?.cuota_por_periodo ?? 0;
+  if (convenio && cuotaPeriodo > 0) {
+    const periodos = periodosConvenioExigidos(convenio, contrato, hoy);
+    // Nunca se le exige más de lo que pactó: la última cuota es el resto.
+    const exigido = Math.min(periodos * cuotaPeriodo, convenio.deuda_total ?? Infinity);
+    const abonado = pagosConfirmados.reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+    acuerdo = {
+      toca: exigido,
+      pagado: Math.min(abonado, exigido),
+      falta: Math.max(exigido - abonado, 0),
+      cuotaDelPeriodo: cuotaConvenioDelPeriodo(convenio, contrato, hoy),
+    };
+  }
+
+  // ── 3. Las deudas sueltas ──
+  const deudaOriginal = deudasPendientes.reduce((s, d) => s + d.monto, 0);
+  const deudaFalta = deudasPendientes.reduce((s, d) => s + d.monto_pendiente, 0);
+  const deudas: ParteDebe = { toca: deudaOriginal, pagado: Math.max(deudaOriginal - deudaFalta, 0), falta: deudaFalta };
+
+  const saldoAFavor = Math.max(
+    (contrato.saldo_favor_apertura ?? 0) + pagosConfirmados.reduce((s, p) => s + (p.aplicado_saldo_favor ?? 0), 0),
+    0,
+  );
+
+  return {
+    cuota, acuerdo, deudas,
+    totalFalta: cuota.falta + (acuerdo?.falta ?? 0) + deudas.falta,
+    saldoAFavor,
+  };
+}
+
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").

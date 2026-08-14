@@ -145,7 +145,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
         const cuotaConvenio = cuotaConvenioDelPeriodo(convenioAct, c, hoyDate);
         const periodoCubierto = !!(convenioAct?.cubre_periodo_hasta && convenioAct.cubre_periodo_hasta >= hoyISOStr);
-        const estadoCart = calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto);
+        const estadoCart = calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto, convenioAct);
         const deudaPendCalc = deudas
           .filter(d => d.contrato_id === c.id && d.estado === "pendiente")
           .reduce((acc, d) => acc + d.monto_pendiente, 0);
@@ -153,7 +153,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         if (!razonInmov) return [];
         // Los días de mora solo tienen sentido si de verdad está en mora; si entró por gabela o
         // por deuda, el contador va en 0 y la tarjeta lo dice por la razón, no por los días.
-        const dias = estadoCart === "mora" ? diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto) : 0;
+        const dias = estadoCart === "mora" ? diasEnMora(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto, convenioAct) : 0;
 
         const cliente = clientes.find(cl => cl.id === c.cliente_id);
         const moto    = motos.find(m => m.id === c.moto_id);

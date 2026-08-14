@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loQueDebe, type ContratoCiclo } from "./cicloPago";
+import { loQueDebe, calcularEstadoCartera, cuotaConvenioDelPeriodo, type ContratoCiclo } from "./cicloPago";
 
 // "¿Cuánto debe hoy?" — la cuenta que el funcionario le cobra al cliente.
 //
@@ -138,5 +138,52 @@ describe("casos borde que no pueden reventar", () => {
     const r = loQueDebe(LIBINTO, pagoDeMas, [], CONV_LIBINTO, D("2026-08-12"));
     expect(r.totalFalta).toBeGreaterThanOrEqual(0);
     expect(r.acuerdo?.falta).toBe(0);
+  });
+});
+
+// ── DANIEL MILLAN (RLT87H) — el estado y el monto decían cosas distintas ────────
+// Visto EN PANTALLA el 14-ago: su fila mostraba "Al día · $0" y al lado "Mora · P4: RECOLECCIÓN
+// FÍSICA". Estaba en la cola de recolección sin deber un peso.
+// Causa: el monto usaba el arrastre (todo lo abonado desde que se firmó el acuerdo) y el estado
+// miraba SOLO los pagos de la semana en curso. Él llevaba $61.000 abonados contra una cuota de
+// $33.500, pero los pagó el 1 y el 8 de agosto — para el estado esos pagos no existían.
+const DANIEL: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 195000,
+  tarifa_diaria: 26000, tarifa_domingo: 13000, ahorro_diario: 4000, ahorro_domingo: 2000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 104, cajas_pagadas: 54, caja_actual_pagado: 0, cajas_previas: 51,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+};
+const CONV_DANIEL = {
+  cuota_por_periodo: 33500, deuda_total: 737000,
+  created_at: "2026-08-01T19:02:00Z", cubre_periodo_hasta: "2026-08-10",
+};
+const PAGOS_DANIEL = [
+  { fecha: "2026-08-01", valor: 26000, aplicado_convenio: 26000 },
+  { fecha: "2026-08-08", valor: 230000, aplicado_convenio: 35000 },
+];
+const cuotaD = () => cuotaConvenioDelPeriodo(CONV_DANIEL, DANIEL, D("2026-08-14"));
+
+describe("DANIEL — abonó su acuerdo en semanas anteriores", () => {
+  it("no le falta nada del acuerdo: $61.000 abonados contra una cuota de $33.500", () => {
+    const r = loQueDebe(DANIEL, PAGOS_DANIEL, [], CONV_DANIEL, D("2026-08-14"));
+    expect(r.acuerdo?.falta).toBe(0);
+    expect(r.totalFalta).toBe(0);
+  });
+
+  it("🔴 EL DEFECTO: el estado decía MORA con $0 de deuda", () => {
+    expect(calcularEstadoCartera(DANIEL, PAGOS_DANIEL, D("2026-08-14"), cuotaD(), false, CONV_DANIEL))
+      .toBe("al-dia");
+  });
+
+  it("quien SÍ debe el acuerdo sigue saliendo en mora", () => {
+    const sinAbonos = [{ fecha: "2026-08-08", valor: 230000, aplicado_convenio: 0 }];
+    expect(calcularEstadoCartera(DANIEL, sinAbonos, D("2026-08-14"), cuotaD(), false, CONV_DANIEL))
+      .toBe("mora");
+  });
+
+  it("sin pasarle el convenio se conserva el comportamiento viejo", () => {
+    expect(calcularEstadoCartera(DANIEL, PAGOS_DANIEL, D("2026-08-14"), cuotaD()))
+      .toBe("mora");
   });
 });

@@ -307,20 +307,7 @@ export function loQueDebe(
   // ── 2. La cuota del acuerdo (con arrastre — regla 2) ──
   // Se compara lo EXIGIDO ACUMULADO contra lo ABONADO ACUMULADO. Así, quien abonó de menos
   // arrastra la diferencia sin que el acuerdo se atrase, y quien ya pagó queda en cero.
-  let acuerdo: LoQueDebe["acuerdo"] = null;
-  const cuotaPeriodo = convenio?.cuota_por_periodo ?? 0;
-  if (convenio && cuotaPeriodo > 0) {
-    const periodos = periodosConvenioExigidos(convenio, contrato, hoy);
-    // Nunca se le exige más de lo que pactó: la última cuota es el resto.
-    const exigido = Math.min(periodos * cuotaPeriodo, convenio.deuda_total ?? Infinity);
-    const abonado = pagosConfirmados.reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
-    acuerdo = {
-      toca: exigido,
-      pagado: Math.min(abonado, exigido),
-      falta: Math.max(exigido - abonado, 0),
-      cuotaDelPeriodo: cuotaConvenioDelPeriodo(convenio, contrato, hoy),
-    };
-  }
+  const acuerdo = faltaDelAcuerdo(convenio, contrato, pagosConfirmados, hoy);
 
   // ── 3. Las deudas sueltas ──
   const deudaOriginal = deudasPendientes.reduce((s, d) => s + d.monto, 0);
@@ -342,6 +329,44 @@ export function loQueDebe(
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").
+/**
+ * Cuánto le falta HOY de la cuota del acuerdo, con arrastre.
+ *
+ * 🔑 Es la ÚNICA cuenta del acuerdo en todo el sistema. La usan las dos cosas que antes se
+ * separaban: el MONTO que se cobra (`loQueDebe`) y el ESTADO que se pinta (`calcularEstadoCartera`).
+ *
+ * 🔴 POR QUÉ EXISTE (14-ago-2026, visto en pantalla con DANIEL MILLAN, RLT87H): el monto usaba el
+ * arrastre —todo lo abonado desde que se firmó el acuerdo— y el estado miraba SOLO los pagos de la
+ * semana en curso. DANIEL llevaba $61.000 abonados contra una cuota de $33.500, pero los había
+ * pagado el 1 y el 8 de agosto; para el estado esos pagos "no existían" y lo marcaba EN MORA con
+ * $0 de deuda — y de paso en la cola de RECOLECCIÓN FÍSICA.
+ *
+ * Es el mismo defecto de LIBINTO del 13-ago pero al revés: allá mentía el monto, acá el estado.
+ * Dos cuentas del mismo hecho SIEMPRE se separan. Por eso ahora hay una sola.
+ *
+ * La regla que implementa (regla 2 del dueño): se compara lo EXIGIDO ACUMULADO contra lo ABONADO
+ * ACUMULADO. Quien abonó de menos arrastra la diferencia; quien ya pagó queda en cero. Y nunca se
+ * le exige más de lo que pactó — la última cuota es el resto.
+ */
+export function faltaDelAcuerdo(
+  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  contrato: ContratoCiclo,
+  pagosConfirmados: Array<{ aplicado_convenio?: number | null }>,
+  hoy: Date,
+): (ParteDebe & { cuotaDelPeriodo: number }) | null {
+  const cuotaPeriodo = convenio?.cuota_por_periodo ?? 0;
+  if (!convenio || cuotaPeriodo <= 0) return null;
+  const periodos = periodosConvenioExigidos(convenio, contrato, hoy);
+  const exigido = Math.min(periodos * cuotaPeriodo, convenio.deuda_total ?? Infinity);
+  const abonado = pagosConfirmados.reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+  return {
+    toca: exigido,
+    pagado: Math.min(abonado, exigido),
+    falta: Math.max(exigido - abonado, 0),
+    cuotaDelPeriodo: cuotaConvenioDelPeriodo(convenio, contrato, hoy),
+  };
+}
+
 export function calcularEstadoCartera(
   contrato: ContratoCiclo,
   // aplicado_convenio es opcional: solo lo usa la rama del motor v2, para saber si la cuota
@@ -353,6 +378,10 @@ export function calcularEstadoCartera(
   // del convenio (alivio único). Mientras ese período esté cubierto, no cuenta como mora ni
   // se cobra la cuota normal aparte — ya está financiada en el convenio.
   periodoCubierto = false,
+  // El convenio COMPLETO. Con él, el estado usa la misma cuenta que el monto (arrastre
+  // acumulado) en vez de mirar solo los pagos de la semana en curso — ver `faltaDelAcuerdo`.
+  // Es opcional para no cambiarle el estado de golpe a las pantallas que aún no lo pasan.
+  convenio?: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null,
 ): EstadoCartera {
   // MOTOR V2 (libro de cajas): el estado sale de los acumuladores del ledger —
   // en mora si existe una caja exigida sin llenar (FIFO estricto). Esta rama cubre
@@ -368,11 +397,15 @@ export function calcularEstadoCartera(
     // nunca aparecía en mora ni en el panel del día, aunque la misma pantalla le dijera
     // "DEBE PAGAR AHORA: cuota del convenio". (Caso real: DIEGO LOCIN SOTO, XZI10H.)
     if (cuotaConvenio > 0) {
-      const desde = inicioVentanaPagosISO(contrato, hoyDia);
-      const abonadoConvenio = pagosConfirmados
-        .filter(p => p.fecha >= desde)
-        .reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
-      if (abonadoConvenio < cuotaConvenio) {
+      // Con el convenio a la mano, la MISMA cuenta que usa el monto: arrastre acumulado. Sin él,
+      // se conserva el comportamiento viejo (solo la ventana del período) para no moverle el
+      // estado a las pantallas que todavía no lo pasan.
+      const acuerdo = convenio ? faltaDelAcuerdo(convenio, contrato, pagosConfirmados, hoy) : null;
+      const faltaAcuerdo = acuerdo ? acuerdo.falta : Math.max(
+        cuotaConvenio - pagosConfirmados
+          .filter(p => p.fecha >= inicioVentanaPagosISO(contrato, hoyDia))
+          .reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0), 0);
+      if (faltaAcuerdo > 0) {
         const inicio = inicioPeriodoActual(contrato, hoyDia);
         const dias = Math.floor((hoyDia.getTime() - inicio.getTime()) / 86400000);
         if (dias <= 0) return "al-dia";   // le toca hoy: "paga hoy", no mora
@@ -423,12 +456,15 @@ export function calcularEstadoCartera(
 // cliente pague puntual) con "días de mora" real.
 export function diasEnMora(
   contrato: ContratoCiclo,
-  pagosConfirmados: Array<{ fecha: string; valor: number }>,
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null }>,
   hoy: Date,
   cuotaConvenio = 0,
   periodoCubierto = false,
+  // Se pasa derecho al estado: sin esto, un cliente que abonó su acuerdo en semanas anteriores
+  // seguiría contando días de mora y entraría a la cola de RECOLECCIÓN sin deber nada.
+  convenio?: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null,
 ): number {
-  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto) !== "mora") return 0;
+  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto, convenio) !== "mora") return 0;
   // MOTOR V2: días desde que se exigió la caja MÁS VIEJA sin llenar (FIFO), menos la gabela.
   if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
     return Math.max(diasEnMoraV2(contrato, hoy) - 1, 0);

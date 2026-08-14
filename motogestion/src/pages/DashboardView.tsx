@@ -113,7 +113,7 @@ export default function DashboardView({ onNavigate }: {
       const conv = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
       const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
       const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
-      return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto) === "gabela";
+      return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv) === "gabela";
     }).length;
     const clientesProceso   = clientes.filter(c => c.estado === "En proceso").length;
     const clientesVisita    = clientes.filter(c => c.estado === "Listo para visita").length;

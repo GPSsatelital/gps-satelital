@@ -96,14 +96,14 @@ export function useAlertas({
       const convenioActivo = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo");
       const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, c, ahora);
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoy);
-      const estadoCartera = calcularEstadoCartera(c, pagosC, ahora, cuotaConvenio, periodoCubierto);
+      const estadoCartera = calcularEstadoCartera(c, pagosC, ahora, cuotaConvenio, periodoCubierto, convenioActivo);
       const cliente = clientes.find(cl => cl.id === c.cliente_id);
       const moto = motos.find(m => m.id === c.moto_id);
       const nombre = cliente?.nombre ?? "Sin nombre";
       const placa = moto?.placa ?? "";
 
       if (estadoCartera === "mora") {
-        const dias = diasEnMora(c, pagosC, ahora, cuotaConvenio, periodoCubierto);
+        const dias = diasEnMora(c, pagosC, ahora, cuotaConvenio, periodoCubierto, convenioActivo);
         if (dias > 3) {
           alertas.push({
             id: `mora-critica-${c.id}`,

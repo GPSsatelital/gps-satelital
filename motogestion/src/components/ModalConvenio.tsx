@@ -228,6 +228,26 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // que lo dejaba al día. Ahora las opciones llegan hasta lo que de verdad debe.
   const semanasVencidas = cuotaDelPeriodo > 0 ? Math.ceil(huecoHoy / cuotaDelPeriodo) : 0;
   const opcionesFinanciar = Array.from({ length: Math.min(Math.max(semanasVencidas, 2), 8) + 1 }, (_, i) => i);
+
+  // 🔴 EL SELECTOR ARRANCA EN LO QUE EL CLIENTE DEBE, no en cero.
+  //
+  // Nacía en 0: si el funcionario no lo tocaba, el convenio salía SIN las semanas atrasadas y el
+  // cliente se iba creyendo que quedaba cubierto. Pasó CUATRO veces en dos días (ALBERT, NESTOR
+  // ×2, ANDRES, JORGE BELLO) y cada arreglo costó SQL, un papel firmado inservible y una firma
+  // pendiente. Con el valor de partida al derecho, olvidarse deja de costar plata: para NO meter
+  // las semanas hay que bajarlo a propósito.
+  //
+  // Se hace una sola vez, cuando el contrato termina de cargar — después manda lo que escoja el
+  // funcionario. Y solo en el caso general: cuando viene `metaFija` (base inicial del wizard,
+  // recuperar una moto retenida) el monto ya trae lo atrasado adentro, y sumarle semanas encima
+  // lo cobraría dos veces.
+  const [nInicializado, setNInicializado] = useState(false);
+  useEffect(() => {
+    if (nInicializado || !puedeFinanciar) return;
+    if (metaFija == null && semanasVencidas > 0) setFinanciarN(Math.min(semanasVencidas, 8));
+    setNInicializado(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puedeFinanciar, semanasVencidas]);
   // Todo el cálculo (semana parcial + ahorro que viaja adentro) vive en cicloPago.ts, probado.
   const fin = contratoActual ? financiarSemanas(contratoActual, hoyDate(), nFinanciadas) : { primera: 0, total: 0, ahorro: 0 };
   const primeraFinanciada = fin.primera;
@@ -487,8 +507,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                     ventana decía "paga $0 de arriendo" financiando una sola). */}
                 {semanasVencidas > 0 && (
                   <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 8, padding: "7px 10px", marginBottom: 8, lineHeight: 1.45 }}>
-                    Trae <strong>{semanasVencidas} semana{semanasVencidas > 1 ? "s" : ""} vencida{semanasVencidas > 1 ? "s" : ""}</strong> ($ {fmt(huecoHoy)}).
-                    Para dejarlo al día hay que financiar {semanasVencidas}.
+                    Trae <strong>{semanasVencidas} semana{semanasVencidas > 1 ? "s" : ""} vencida{semanasVencidas > 1 ? "s" : ""}</strong> ($ {fmt(huecoHoy)}),
+                    y {semanasVencidas > 1 ? "ya vienen escogidas" : "ya viene escogida"} para que
+                    quede al día. Si no {semanasVencidas > 1 ? "las quieres" : "la quieres"} meter
+                    al acuerdo, bájalo a 0 — pero entonces {semanasVencidas > 1 ? "las sigue" : "la sigue"} debiendo aparte.
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>

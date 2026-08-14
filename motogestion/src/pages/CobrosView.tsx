@@ -802,7 +802,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // Si el convenio absorbió la cuota de este período (alivio), ese período va "al día".
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
 
-      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto);
+      // Se le pasa el convenio COMPLETO para que el estado cuente el acuerdo con el mismo
+      // arrastre que el monto. Sin esto miraba solo los pagos de esta semana: quien había
+      // abonado su cuota en semanas anteriores salía EN MORA con $0 de deuda, y entraba a la
+      // cola de recolección. (DANIEL MILLAN, RLT87H: $61.000 abonados contra $33.500 de cuota.)
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       // Saldo a favor = lo que YA TRAÍA de las cuentas viejas (migrados, mig 079) + lo que fue

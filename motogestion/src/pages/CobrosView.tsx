@@ -1271,6 +1271,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       {
         folio,
         comprobanteUrl,
+        // QUIÉN lo registró. Esta puerta era la única que no lo guardaba — y como por acá entra
+        // casi todo, las 343 transferencias de agosto quedaron sin dueño. Para plata que llega
+        // por el banco y que después alguien tiene que cuadrar contra el extracto, un pago mal
+        // metido sin nadie a quien preguntarle es un hueco de control. Cobro Diario, Clientes e
+        // Inmovilizaciones sí lo guardaban: acá fue un olvido, no una decisión.
+        registradoPor: profile?.id,
         // Fecha REAL en que pagó. Solo la transferencia puede llevar una fecha anterior;
         // el efectivo se recibe en la mano en el momento, así que siempre es hoy.
         // Si cruzó con el banco, manda la fecha del extracto (está comprobada).

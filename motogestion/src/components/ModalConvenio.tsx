@@ -225,9 +225,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
   // Cuántas semanas trae vencidas. Antes el selector ofrecía SIEMPRE 0/1/2 sin importar cuántas
   // debiera: quien traía 3 atrasadas no tenía cómo cubrirlas, y quien traía 2 escogía 1 creyendo
-  // que lo dejaba al día. Ahora las opciones llegan hasta lo que de verdad debe.
+  // que lo dejaba al día. Por eso las opciones llegan hasta lo que de verdad debe.
   const semanasVencidas = cuotaDelPeriodo > 0 ? Math.ceil(huecoHoy / cuotaDelPeriodo) : 0;
-  const opcionesFinanciar = Array.from({ length: Math.min(Math.max(semanasVencidas, 2), 8) + 1 }, (_, i) => i);
+  // 🔴 ...pero aquel arreglo TOPÓ las opciones justo en las vencidas, y de paso quitó el poder ir
+  // hacia adelante. Quedó absurdo: con el cliente al día se podían financiar 2 semanas futuras,
+  // y apenas debía algo esa posibilidad desaparecía.
+  // ALVARO CASTRO CHIQUILLO (XZN21H, 14-ago-2026): debía 5 semanas, el selector solo llegaba a 5,
+  // y no hubo forma de meterle además la del 17 — que era justo lo que se quería para liberarle
+  // la moto inmovilizada. Ahora siempre sobran 2 opciones por encima de lo vencido.
+  const opcionesFinanciar = Array.from({ length: Math.min(semanasVencidas + 2, 8) + 1 }, (_, i) => i);
 
   // 🔴 EL SELECTOR ARRANCA EN LO QUE EL CLIENTE DEBE, no en cero.
   //

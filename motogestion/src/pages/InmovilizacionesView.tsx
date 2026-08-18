@@ -274,6 +274,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     motorV2: boolean;
     convenioId: string | null;
     diasRetenida: number;
+    fechaRetencion: string | null; // día en que se guardó/registró (de la recolección o la recepción)
     listaParaLiquidar: boolean;
     ahorroAcumulado: number;
     esTemporal: boolean; // guardada por incapacidad/entrega voluntaria (NO moroso)
@@ -372,6 +373,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motorV2,
           convenioId: convenioAct?.id ?? null,
           diasRetenida,
+          fechaRetencion: desdeISO,
           listaParaLiquidar: diasRetenida >= 7,
           ahorroAcumulado: ahorroTotal(c),
           esTemporal: c.motivo_suspension === "temporal",
@@ -991,8 +993,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           : m.categoria === "temporal"
                             ? <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--accent-soft)", color: "var(--accent-ink)" }}>🅿️ Guardada temporal (incapacidad)</span>
                             : <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>🔴 Por mora / recolección</span>}
+                        {/* Desde cuándo está guardada: la fecha del día en que se le hizo el proceso
+                            (la recolección, o la recepción si entró por otra puerta). Antes solo se
+                            veía el contador de días y no se sabía DESDE cuándo. */}
                         <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--soft)", color: "var(--muted2)" }}>
-                          ⏳ {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida
+                          ⏳ {m.fechaRetencion
+                            ? <>Guardada el {new Date(m.fechaRetencion + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })} · {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""}</>
+                            : <>{m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida · <span style={{ color: "var(--warn-ink)" }}>sin fecha registrada</span></>}
                         </span>
                         {m.listaParaLiquidar && (
                           <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ImgPrivada from "../components/ImgPrivada";
+import MoneyInput from "../components/MoneyInput";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -848,14 +849,14 @@ export default function CajaView() {
               <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Efectivo contado</label>
-                  <input inputMode="numeric" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value.replace(/\D/g, ""))}
-                    placeholder={String(Math.round(rc.efectivo))}
+                  <MoneyInput value={efectivoContado} onChange={setEfectivoContado}
+                    placeholder={`$ ${fmt(rc.efectivo)}`}
                     style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Según el banco</label>
-                  <input inputMode="numeric" value={bancoReportado} onChange={e => setBancoReportado(e.target.value.replace(/\D/g, ""))}
-                    placeholder={String(Math.round(rc.transfer + niGrupoModal))}
+                  <MoneyInput value={bancoReportado} onChange={setBancoReportado}
+                    placeholder={`$ ${fmt(rc.transfer + niGrupoModal)}`}
                     style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
                 </div>
               </div>
@@ -953,8 +954,7 @@ export default function CajaView() {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>Monto</label>
-                <input inputMode="numeric" value={formNI.monto} placeholder="$ 0"
-                  onChange={e => setFormNI(f => ({ ...f, monto: e.target.value.replace(/\D/g, "") }))}
+                <MoneyInput value={formNI.monto} onChange={v => setFormNI(f => ({ ...f, monto: v }))}
                   style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }} />
               </div>
               <div>

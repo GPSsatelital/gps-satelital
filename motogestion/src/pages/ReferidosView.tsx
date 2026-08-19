@@ -106,6 +106,37 @@ export default function ReferidosView() {
 
   const pendientesEntrega = referidores.filter(r => r.premiosPendientesEntrega.length > 0);
 
+  // Los que se quedan por fuera del conteo. Se DETECTAN y se muestran, nunca se juntan solos:
+  // dos personas distintas pueden llamarse igual, y un premio entregado al que no era es plata
+  // perdida. El dato se corrige en la ficha del cliente, que es donde debe quedar bien.
+  const revisar = useMemo(() => {
+    // (1) El mismo nombre escrito con cédulas distintas: la persona queda partida en pedazos y
+    //     ningún pedazo alcanza el premio. Caso real: JOHAN ROJAS, 2 referidos repartidos 1 y 1.
+    const porNombre = new Map<string, typeof referidores>();
+    referidores.forEach(r => {
+      const k = r.nombre.trim().toUpperCase();
+      if (!k || k === "(SIN NOMBRE)") return;
+      porNombre.set(k, [...(porNombre.get(k) ?? []), r]);
+    });
+    const partidos = [...porNombre.entries()]
+      .filter(([, lista]) => lista.length > 1)
+      .map(([nombre, lista]) => ({
+        nombre,
+        partes: lista,
+        totalJunto: lista.reduce((a, r) => a + r.confirmados, 0),
+        premioSiSeJunta: PREMIOS.filter(p => lista.reduce((a, r) => a + r.confirmados, 0) >= p.hito),
+      }));
+
+    // (2) Se escribió el nombre de quien refirió pero no la cédula. Regla del dueño: sin cédula
+    //     NO cuenta (la cédula es la constancia y va en la carta de recomendación). Se listan
+    //     igual para poder ir a completarlas, en vez de que se pierdan en silencio.
+    const sinCedula = clientes
+      .filter(c => (c.referido_por_nombre ?? "").trim() && !(c.referido_por_cedula ?? "").trim())
+      .map(c => ({ cliente: c, refirio: (c.referido_por_nombre ?? "").trim() }));
+
+    return { partidos, sinCedula };
+  }, [referidores, clientes]);
+
   const filtrados = useMemo(() => {
     if (!busqueda.trim()) return referidores;
     const q = busqueda.toLowerCase();
@@ -185,6 +216,63 @@ export default function ReferidosView() {
           })}
         </div>
       </div>
+
+      {/* Revisar — referidos que no están contando */}
+      {(revisar.partidos.length > 0 || revisar.sinCedula.length > 0) && (
+        <div style={{ background: "var(--bad-soft)", borderRadius: 16, padding: "20px 24px", marginBottom: 20, border: "1px solid var(--bad-line)" }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--bad-ink)", marginBottom: 4 }}>
+            ⚠️ Revisar — referidos que no están contando ({revisar.partidos.length + revisar.sinCedula.length})
+          </div>
+          <div style={{ fontSize: 12, color: "var(--bad-ink)", opacity: 0.85, marginBottom: 14, lineHeight: 1.5 }}>
+            El sistema agrupa por cédula. Si quedó mal escrita o falta, esos referidos no le suman a nadie.
+            Se corrige en la ficha del cliente, en el campo “Cédula de quien refirió”.
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {revisar.partidos.map(p => (
+              <div key={p.nombre} style={{ padding: "14px 16px", borderRadius: 12, background: "var(--card)", border: "1px solid var(--bad-line)" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+                  {p.nombre} — aparece con {p.partes.length} cédulas distintas
+                </div>
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                  {p.partes.map(parte => (
+                    <div key={parte.cedula} style={{ fontSize: 12.5, color: "var(--muted2)" }}>
+                      · <strong>{parte.cedula}</strong> → {parte.confirmados} referido{parte.confirmados !== 1 ? "s" : ""}
+                      {parte.referidos.length > 0 && (
+                        <span style={{ color: "var(--muted)" }}> ({parte.referidos.map(r => r.nombre).join(", ")})</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {p.premioSiSeJunta.length > 0 && (
+                  <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12.5, fontWeight: 700, lineHeight: 1.45 }}>
+                    Si es la misma persona son {p.totalJunto} referidos: ya ganó {p.premioSiSeJunta.map(x => `${x.icon} ${x.premio}`).join(" · ")}.
+                    Corrige la cédula en la ficha del cliente que quedó mal.
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {revisar.sinCedula.length > 0 && (
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--card)", border: "1px solid var(--bad-line)" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+                  Sin la cédula de quien refirió ({revisar.sinCedula.length}) — no cuentan para ningún premio
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.45 }}>
+                  La cédula es la constancia del referido y debe venir en la carta de recomendación. Consíguela y complétala en la ficha.
+                </div>
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                  {revisar.sinCedula.map(({ cliente: c, refirio }) => (
+                    <div key={c.id} style={{ fontSize: 12.5, color: "var(--muted2)" }}>
+                      · <span style={{ textTransform: "uppercase" }}>{c.nombre}</span> dice que lo refirió <strong style={{ textTransform: "uppercase" }}>{refirio}</strong> — falta la cédula
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Premios pendientes de entrega */}
       {pendientesEntrega.length > 0 && (

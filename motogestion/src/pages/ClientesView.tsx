@@ -699,6 +699,23 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       return;
     }
 
+    // Regla del dueño (19-ago): si viene referido, la cédula de quien lo refirió es OBLIGATORIA.
+    // Es la constancia de que de verdad lo mandó esa persona — y ya viene escrita en la carta de
+    // recomendación. Sin cédula no aplica el referido. Antes se podía escribir solo el nombre y
+    // seguir de largo: ese referido quedaba invisible y nunca contaba para el premio de nadie
+    // (casos reales: GABRIEL CAICEDO por CARLOS ALVAREZ, LINETH CASTELLAR por IVAN JIMENEZ).
+    // Se exige en los dos sentidos: una cédula sin nombre tampoco identifica a nadie.
+    const refNombre = (form.referido_por_nombre ?? "").trim();
+    const refCedula = (form.referido_por_cedula ?? "").trim();
+    if (refNombre && !refCedula) {
+      setFormError("Falta la cédula de quien lo refirió. Es obligatoria: es la constancia del referido y debe venir en la carta de recomendación. Sin ella el referido no cuenta para ningún premio.");
+      return;
+    }
+    if (refCedula && !refNombre) {
+      setFormError("Falta el nombre de quien lo refirió. Si pones la cédula, pon también el nombre.");
+      return;
+    }
+
     setGuardando(true);
     setFormError(null);
 
@@ -853,6 +870,20 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
     if (!editForm.nombre.trim() || !editForm.cedula.trim() || !editForm.direccion.trim() || !editForm.telefono.trim()) {
       setFormError("Completa nombre, cédula, dirección y teléfono.");
+      return;
+    }
+
+    // Misma regla que al registrar: nombre y cédula de quien refirió van juntos o no van. Si la
+    // exigiera solo el formulario de registro, editar sería el hueco por donde se cuela el dato
+    // a medias — y es justo aquí donde se van a corregir los que ya quedaron incompletos.
+    const eRefNombre = (editForm.referido_por_nombre ?? "").trim();
+    const eRefCedula = (editForm.referido_por_cedula ?? "").trim();
+    if (eRefNombre && !eRefCedula) {
+      setFormError("Falta la cédula de quien lo refirió. Es obligatoria: es la constancia del referido y debe venir en la carta de recomendación. Sin ella el referido no cuenta para ningún premio.");
+      return;
+    }
+    if (eRefCedula && !eRefNombre) {
+      setFormError("Falta el nombre de quien lo refirió. Si pones la cédula, pon también el nombre.");
       return;
     }
 

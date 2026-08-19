@@ -635,17 +635,24 @@ export default function ReportesView({ onNavigate }: Props) {
   const visitasData = useMemo(() => {
     const nombreAdmin = (id: string | null | undefined) =>
       id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar / Oficina";
-    type VisRow = { cliente: string; fecha: string; estado: string; resultado: string | null; gps: boolean; foto: boolean };
-    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number };
+    type VisRow = { cliente: string; fecha: string; estado: string; resultado: string | null; gps: boolean; foto: boolean; estimado: boolean };
+    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number; estimadas: number };
     const map = new Map<string, VisAgg>();
     visitas.filter(v => (v.fecha || "").slice(0, 10) >= desde && (v.fecha || "").slice(0, 10) <= hasta).forEach(v => {
-      const key = v.asignada_a ?? "__none__";
-      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(v.asignada_a), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0 });
+      // Se agrupa por QUIÉN LA HIZO, no por a quién se le encargó. Este informe es la base para
+      // pagar las visitas: si uno cubre a otro, el pago tiene que ir a quien fue. `realizada_por`
+      // se empezó a escribir después, así que las visitas viejas caen a `asignada_a` y se marcan
+      // como estimadas — mejor decirlo que dar por exacto un dato que no lo es.
+      const quien = v.realizada_por ?? v.asignada_a;
+      const estimado = !v.realizada_por;
+      const key = quien ?? "__none__";
+      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0, estimadas: 0 });
       const agg = map.get(key)!;
+      if (estimado) agg.estimadas++;
       agg.visitas.push({
         cliente: clientes.find(cl => cl.id === v.cliente_id)?.nombre ?? "Sin cliente",
         fecha: (v.fecha || "").slice(0, 10), estado: v.estado, resultado: v.resultado,
-        gps: !!v.ubicacion, foto: !!(v.fotos?.clienteFuncionario || v.fotos?.fachada),
+        gps: !!v.ubicacion, foto: !!(v.fotos?.clienteFuncionario || v.fotos?.fachada), estimado,
       });
       if (v.estado === "Pendiente") agg.pendientes++;
       else if (v.resultado === "Aprobado") agg.aprobadas++;

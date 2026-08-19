@@ -26,7 +26,13 @@ export type Visita = {
   cliente_id: string;
   estado: VisitaEstado;
   resultado: VisitaResultado;
+  // A quién se le ENCARGÓ la visita.
   asignada_a: string | null;
+  // Quién la HIZO de verdad. Existe en la BD desde la mig 010 pero faltaba en el tipo, así que
+  // el informe que paga las visitas no la podía usar y agrupaba por `asignada_a`: cuando uno
+  // cubría a otro, el pago se le acreditaba al equivocado. Null en visitas viejas (se empezó a
+  // escribir después) — quien la lea debe caer a `asignada_a` y marcar el dato como estimado.
+  realizada_por: string | null;
   entrevista: {
     viveAlli: string;
     tiempoResidencia: string;

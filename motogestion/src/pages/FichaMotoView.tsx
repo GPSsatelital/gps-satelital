@@ -12,6 +12,8 @@ import { useGestiones } from "../hooks/useGestiones";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useVisitas } from "../hooks/useVisitas";
+import { useUbicaciones } from "../hooks/useUbicaciones";
+import ImgPrivada from "../components/ImgPrivada";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useCesiones } from "../hooks/useCesiones";
 import { formatDiaPago } from "../utils/cicloPago";
@@ -66,7 +68,21 @@ const TALLER_COLORS: Record<string, { bg: string; color: string }> = {
   Finalizado:         { bg: "var(--line)", color: "var(--muted2)" },
 };
 
-type Tab = "info" | "contrato" | "historial" | "taller";
+type Tab = "info" | "contrato" | "historial" | "taller" | "recepciones";
+
+const MOTIVO_RECEPCION: Record<string, string> = {
+  retencion_mora: "Recolectada por mora",
+  entrega_voluntaria: "Entrega voluntaria del cliente",
+  liquidacion: "Recibida para liquidar",
+  nuevo_registro: "Registro de la moto",
+  otro: "Otro motivo",
+};
+
+const CONDICION_RECEPCION: Record<string, { txt: string; bg: string; color: string }> = {
+  buena:   { txt: "Buena",   bg: "var(--ok-soft)",   color: "var(--ok-ink)" },
+  regular: { txt: "Regular", bg: "var(--warn-soft)", color: "var(--warn-ink)" },
+  mala:    { txt: "Mala",    bg: "var(--bad-soft)",  color: "var(--bad-ink)" },
+};
 
 function Badge({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
   return (
@@ -142,6 +158,15 @@ export default function FichaMotoView({ motoId, onNavigate }: {
   const { deudas } = useDeudas();
   const { convenios } = useConvenios();
   const { visitas } = useVisitas();
+  const { recepciones } = useUbicaciones();
+  // Cada vez que la moto volvió a manos de la empresa, con las fotos del estado en que llegó.
+  // Las 6 fotos se venían exigiendo desde la recolección y NINGUNA pantalla las mostraba: se
+  // subían a Storage y ahí se quedaban. Esta pestaña es donde por fin se pueden ver.
+  const recepcionesMoto = useMemo(
+    () => recepciones.filter(r => r.moto_id === motoId),
+    [recepciones, motoId],
+  );
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
   const { prestamos: prestamosDoc } = usePrestamosDoc();
   const { cesiones } = useCesiones();
 
@@ -189,6 +214,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
     { key: "contrato", label: "Contrato activo" },
     { key: "historial",label: "Historial",  count: historialContratos.length },
     { key: "taller",   label: "Taller",     count: ordenesTodo.length },
+    { key: "recepciones", label: "Recepciones", count: recepcionesMoto.length },
   ];
 
   return (
@@ -516,6 +542,95 @@ export default function FichaMotoView({ motoId, onNavigate }: {
       )}
 
       {/* ── Tab: Taller ── */}
+      {tab === "recepciones" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {recepcionesMoto.length === 0 ? (
+            <Card>
+              <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--muted)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Sin recepciones registradas</div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+                  Aquí aparecen las veces que esta moto volvió a la empresa —recolectada por mora,
+                  entregada por el cliente o recibida para liquidar— con las fotos del estado en que llegó.
+                </div>
+              </div>
+            </Card>
+          ) : recepcionesMoto.map(r => {
+            const cond = CONDICION_RECEPCION[r.condicion_general] ?? { txt: r.condicion_general, bg: "var(--soft)", color: "var(--muted2)" };
+            const fotos = Array.isArray(r.fotos) ? r.fotos.filter(Boolean) : [];
+            return (
+              <Card key={r.id} borderColor={cond.color}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+                      {MOTIVO_RECEPCION[r.motivo] ?? r.motivo}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>
+                      {new Date(r.created_at).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}
+                      {r.nombre_entrega ? <> · la entregó <span style={{ textTransform: "uppercase" }}>{r.nombre_entrega}</span></> : null}
+                    </div>
+                  </div>
+                  <Badge bg={cond.bg} color={cond.color}>Condición {cond.txt.toLowerCase()}</Badge>
+                </div>
+
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: fotos.length > 0 || r.descripcion_danos || r.observaciones ? 10 : 0 }}>
+                  {r.kilometros != null && (
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", fontSize: 12, color: "var(--muted2)" }}>
+                      {fmt(r.kilometros)} km
+                    </span>
+                  )}
+                  {r.ubicacion_destino && (
+                    <span style={{ padding: "3px 10px", borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", fontSize: 12, color: "var(--muted2)" }}>
+                      Quedó en {r.ubicacion_destino}
+                    </span>
+                  )}
+                </div>
+
+                {r.descripcion_danos && (
+                  <div style={{ padding: "9px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 12.5, color: "var(--bad-ink)", marginBottom: 10, lineHeight: 1.5 }}>
+                    <strong>Daños:</strong> {r.descripcion_danos}
+                  </div>
+                )}
+                {r.observaciones && (
+                  <div style={{ fontSize: 12.5, color: "var(--muted2)", marginBottom: 10, lineHeight: 1.5 }}>{r.observaciones}</div>
+                )}
+
+                {/* Las fotos: la prueba del estado en que llegó. Es lo que sostiene cualquier
+                    cobro de daños más adelante, así que se ven grandes al tocarlas. */}
+                {fotos.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "var(--faint)", fontStyle: "italic" }}>
+                    Esta recepción no dejó fotos (se registró antes de que fueran obligatorias).
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                      {fotos.length} foto{fotos.length !== 1 ? "s" : ""} del estado en que llegó
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${isMobile ? 3 : 6}, 1fr)`, gap: 6 }}>
+                      {fotos.map((url, i) => (
+                        <ImgPrivada
+                          key={i}
+                          src={url}
+                          alt={`Foto ${i + 1} de la recepción`}
+                          onClick={() => setFotoAmpliada(url)}
+                          style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, border: "1px solid var(--line)", cursor: "pointer" }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {fotoAmpliada && (
+        <div onClick={() => setFotoAmpliada(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.9)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, cursor: "zoom-out" }}>
+          <ImgPrivada src={fotoAmpliada} alt="Foto ampliada" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+        </div>
+      )}
+
       {tab === "taller" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {costoTotalTaller > 0 && (

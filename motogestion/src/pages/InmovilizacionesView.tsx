@@ -260,6 +260,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     clienteTel: string;
     motoId: string | null;
     placa: string;
+    grupo: string;
     marca: string;
     modelo: string;
     deudasPendientes: { id: string; concepto: string; descripcion: string; monto_pendiente: number }[];
@@ -361,6 +362,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           clienteTel: cliente?.whatsapp ?? cliente?.telefono ?? "",
           motoId: c.moto_id ?? null,
           placa: moto?.placa ?? "Sin placa",
+          grupo: moto?.grupo ?? "",
           marca: moto?.marca ?? "",
           modelo: moto?.modelo ?? "",
           deudasPendientes: deudasC.map(d => ({ id: d.id, concepto: d.concepto, descripcion: d.descripcion, monto_pendiente: d.monto_pendiente })),
@@ -942,10 +944,30 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
+                    {/* La placa abre la ficha de la moto, donde vive todo el detalle: las FOTOS de
+                        la recepción, el kilometraje, la condición y los daños. Antes esas fotos se
+                        exigían (6, obligatorias) y no había ninguna pantalla que las mostrara. */}
                     <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)" }}>
-                      {m.placa} · {m.clienteNombre}
+                      {onNavigate && m.motoId
+                        ? <button onClick={() => onNavigate("ficha_moto", m.motoId!)}
+                            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", color: "var(--accent)", textDecoration: "underline" }}>
+                            {m.placa}
+                          </button>
+                        : m.placa}
+                      {" · "}{m.clienteNombre}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{m.marca} {m.modelo}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      {m.grupo && (
+                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--soft)", color: "var(--muted2)" }}>{m.grupo}</span>
+                      )}
+                      <span>{m.marca} {m.modelo}</span>
+                    </div>
+                    {onNavigate && m.motoId && (
+                      <button onClick={() => onNavigate("ficha_moto", m.motoId!)}
+                        style={{ marginTop: 6, padding: "5px 12px", borderRadius: 999, border: "1px solid var(--line2)", background: "var(--card)", cursor: "pointer", fontSize: 11.5, fontWeight: 700, color: "var(--text)" }}>
+                        📷 Ver fotos y detalle
+                      </button>
+                    )}
                     <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
                       {m.deudasPendientes.length === 0 ? (
                         <span style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>✓ Sin deudas pendientes</span>

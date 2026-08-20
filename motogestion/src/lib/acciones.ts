@@ -50,6 +50,10 @@ export const ACCIONES: AccionDef[] = [
   // base completa. Más delicado que registrar un ingreso — por eso acción propia y no colgada de
   // "editar_cliente". Default SECRETARIA + ADMIN (los mismos que reciben la base).
   { key: "devolver_base",          label: "Devolver la base inicial",           modulo: "clientes" },
+  // Referidos — otra plata que SALE (el premio, o el dinero que se paga en vez del premio).
+  // Mismo criterio que devolver_base: acción propia y no colgada de "editar_cliente", con default
+  // SECRETARIA + ADMIN porque la secretaria es quien maneja el efectivo de la oficina.
+  { key: "entregar_premio",        label: "Entregar premio de referidos",       modulo: "referidos", dbEnforced: true },
   // Configuración (módulo siempre visible)
   { key: "editar_configuracion",   label: "Editar configuración / mensajes",    modulo: "configuracion" },
   // Salida de datos. Va en "reportes" pero controla TODOS los botones de descarga del sistema
@@ -82,11 +86,12 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion", "ceder_contrato",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
-    "exportar_datos", "devolver_base",
+    "exportar_datos", "devolver_base", "entregar_premio",
   ],
   SECRETARIA: [
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",
     "aplicar_saldo_favor", "crear_convenio", "editar_cliente", "devolver_base",
+    "entregar_premio",
   ],
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
   // El visitador no aprueba, no cobra y no liquida: solo registra la visita que le asignaron.

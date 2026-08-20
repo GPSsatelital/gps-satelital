@@ -38,12 +38,15 @@ function BarraProgreso({ actual, siguiente }: { actual: number; siguiente: numbe
 }
 
 export default function ReferidosView() {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
   const { clientes } = useClientes();
   const { contratos } = useContratos();
   const { motos } = useMotos();
   const { premios, hitosEntregados, error: errorPremios } = usePremiosReferidos();
-  const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  // Permiso por PERSONA, no por rol clavado en el código: así se puede dar o quitar desde
+  // Usuarios sin tocar el sistema. Estaba a mano como ADMIN/ADMIN_PRINCIPAL y por eso ANGELA
+  // (SECRETARIA) no veía el botón — siendo la que maneja el efectivo de la oficina.
+  const puedeEntregarPremio = puede("entregar_premio");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
   useEffect(() => {
@@ -322,7 +325,7 @@ export default function ReferidosView() {
                 {/* Un botón por premio pendiente: cada hito se entrega y se registra por separado
                     (su foto, su costo, su reparto). Funciona igual si no es cliente — la entrega
                     se guarda por CÉDULA, no dentro de una ficha. */}
-                {esAdmin && (
+                {puedeEntregarPremio && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                     {premiosPendientesEntrega.map(p => (
                       <button

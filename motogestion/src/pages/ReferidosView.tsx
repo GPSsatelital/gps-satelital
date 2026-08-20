@@ -42,7 +42,7 @@ export default function ReferidosView() {
   const { clientes } = useClientes();
   const { contratos } = useContratos();
   const { motos } = useMotos();
-  const { premios, hitosEntregados } = usePremiosReferidos();
+  const { premios, hitosEntregados, error: errorPremios } = usePremiosReferidos();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
@@ -184,6 +184,16 @@ export default function ReferidosView() {
       {msg && (
         <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", color: "var(--ok-ink)", fontWeight: 700, fontSize: 13 }}>
           {msg}
+        </div>
+      )}
+
+      {/* Si la lista de entregas no se puede leer, se DICE. Callado se veía idéntico a "no hay
+          entregas todavía": los premios saldrían como pendientes para siempre y alguien terminaría
+          entregando dos veces el mismo. Es el mismo fallo silencioso que ya nos costó caro. */}
+      {errorPremios && (
+        <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", color: "var(--bad-ink)", fontWeight: 600, fontSize: 13, lineHeight: 1.5 }}>
+          No se pudo leer el historial de premios entregados: {errorPremios}. Los premios que ya se
+          hayan entregado van a salir como pendientes — <strong>no entregues nada hasta resolverlo</strong>.
         </div>
       )}
 

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useClientes, type Cliente } from "../hooks/useClientes";
 import { useContratos } from "../hooks/useContratos";
+import { useMotos } from "../hooks/useMotos";
+import { usePremiosReferidos } from "../hooks/usePremiosReferidos";
+import ModalEntregarPremio from "../components/ModalEntregarPremio";
+import { generarReciboPremio } from "../utils/generarReciboPremio";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 
 const PREMIOS = [
   { hito: 2,  premio: "Par de guantes de manejo", icon: "🧤" },
@@ -38,6 +41,8 @@ export default function ReferidosView() {
   const { profile } = useAuth();
   const { clientes } = useClientes();
   const { contratos } = useContratos();
+  const { motos } = useMotos();
+  const { premios, hitosEntregados } = usePremiosReferidos();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
 
@@ -48,7 +53,6 @@ export default function ReferidosView() {
   }, []);
 
   const [busqueda, setBusqueda] = useState("");
-  const [entregando, setEntregando] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   // Un referido CUENTA cuando ya recibió su moto (regla del dueño). Un contrato "En proceso"
@@ -58,6 +62,15 @@ export default function ReferidosView() {
     (clienteId: string) => contratos.some(ct => ct.cliente_id === clienteId && ct.estado !== "En proceso"),
     [contratos],
   );
+
+  // Portafolio del referido = el grupo de la MOTO que se le entregó. Es lo que decide quién paga
+  // el premio: el portafolio que ganó ese cliente. Se lee de la moto y no del contrato a propósito
+  // (misma trampa anotada para egresos: con una moto prestada, el gasto es del dueño de la moto).
+  const grupoDeReferido = useCallback((clienteId: string): string => {
+    const ct = contratos.find(c => c.cliente_id === clienteId && c.estado !== "En proceso");
+    const moto = ct?.moto_id ? motos.find(m => m.id === ct.moto_id) : null;
+    return moto?.grupo ?? "SIN GRUPO";
+  }, [contratos, motos]);
 
   const referidores = useMemo(() => {
     // La lista se arma desde el dato "referido por" que quedó escrito en cada ficha, NO desde
@@ -81,15 +94,16 @@ export default function ReferidosView() {
         // la mig 010 pero NADA en todo el sistema le sumaba nunca: nació en 0 y murió en 0 para
         // todos, así que ningún premio se disparó jamás. Contarlo aquí arregla también el pasado
         // sin backfill, y no se puede volver a desincronizar porque no hay contador que mantener.
-        const confirmados = g.referidos.filter(r => recibioMoto(r.id)).length;
+        const cuentan = g.referidos.filter(r => recibioMoto(r.id));
+        const confirmados = cuentan.length;
         const { siguiente } = calcularPremio(confirmados);
-        const premioEntregadoHasta = cliente?.premio_referidos_entregado ?? 0;
-        // OJO: `calcularPremio().entregados` son en realidad los ALCANZADOS — no dice nada de si
-        // se entregaron. Al usarlo para el chip "✓" el mismo premio salía a la vez como entregado
-        // y como pendiente. Nunca se había visto porque el contador estaba clavado en 0 y nadie
-        // alcanzaba ningún hito. Entregado = alcanzado Y marcado como entregado.
-        const entregados = PREMIOS.filter(p => confirmados >= p.hito && p.hito <= premioEntregadoHasta);
-        const premiosPendientesEntrega = PREMIOS.filter(p => confirmados >= p.hito && p.hito > premioEntregadoHasta);
+        // Lo entregado sale del registro de entregas (mig 102), que funciona igual para clientes y
+        // para quien no lo es. Antes vivía en `clientes.premio_referidos_entregado`, y por eso a
+        // un referidor que no fuera cliente no se le podía entregar nada: no había ficha.
+        // OJO: `calcularPremio().entregados` son los ALCANZADOS — no dicen si se entregaron.
+        const yaEntregados = hitosEntregados(g.cedula);
+        const entregados = PREMIOS.filter(p => confirmados >= p.hito && yaEntregados.includes(p.hito));
+        const premiosPendientesEntrega = PREMIOS.filter(p => confirmados >= p.hito && !yaEntregados.includes(p.hito));
         return {
           id: g.cedula,
           cedula: g.cedula,
@@ -98,11 +112,14 @@ export default function ReferidosView() {
           esCliente: !!cliente,
           cliente,
           referidos: g.referidos,
+          // Solo los que ya recibieron moto: son los que generaron el premio y cuyos portafolios
+          // lo pagan. Un referido sin moto todavía no le dio nada a ningún portafolio.
+          referidosConGrupo: cuentan.map(r => ({ nombre: r.nombre, grupo: grupoDeReferido(r.id) })),
           confirmados, entregados, siguiente, premiosPendientesEntrega,
         };
       })
       .sort((a, b) => b.confirmados - a.confirmados || b.referidos.length - a.referidos.length);
-  }, [clientes, recibioMoto]);
+  }, [clientes, recibioMoto, grupoDeReferido, hitosEntregados]);
 
   const pendientesEntrega = referidores.filter(r => r.premiosPendientesEntrega.length > 0);
 
@@ -150,13 +167,11 @@ export default function ReferidosView() {
     hitosAlcanzados: referidores.reduce((a, r) => a + PREMIOS.filter(p => r.confirmados >= p.hito).length, 0),
   }), [referidores, clientes, pendientesEntrega]);
 
-  async function marcarPremioEntregado(clienteId: string, hastaHito: number) {
-    setEntregando(clienteId);
-    const { error } = await supabase.from("clientes").update({ premio_referidos_entregado: hastaHito }).eq("id", clienteId);
-    if (!error) setMsg("Premio registrado como entregado.");
-    setEntregando(null);
-    setTimeout(() => setMsg(null), 4000);
-  }
+  // Qué premio se está entregando y a quién. Se abre desde la lista de pendientes.
+  const [entrega, setEntrega] = useState<{
+    cedula: string; nombre: string; hito: number; premio: string;
+    referidos: { nombre: string; grupo: string }[];
+  } | null>(null);
 
   return (
     <div style={{ paddingBottom: 32 }}>
@@ -281,7 +296,7 @@ export default function ReferidosView() {
             Premios pendientes de entrega ({pendientesEntrega.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {pendientesEntrega.map(({ id, nombre, cedula, cliente, esCliente, confirmados, premiosPendientesEntrega }) => (
+            {pendientesEntrega.map(({ id, nombre, cedula, referidosConGrupo, confirmados, premiosPendientesEntrega }) => (
               <div key={id} style={{ padding: "14px 16px", borderRadius: 12, background: "var(--card)", border: "1px solid var(--warn-line)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>{nombre}</div>
@@ -294,23 +309,62 @@ export default function ReferidosView() {
                     ))}
                   </div>
                 </div>
-                {/* La marca de "premio entregado" se guarda en la ficha del cliente. Si quien
-                    refirió no es cliente, no hay ficha donde anotarla — se dice en vez de
-                    mostrar un botón que no haría nada. El premio se le entrega igual. */}
-                {esAdmin && (esCliente && cliente ? (
-                  <button
-                    disabled={entregando === cliente.id}
-                    onClick={() => marcarPremioEntregado(cliente.id, premiosPendientesEntrega[premiosPendientesEntrega.length - 1].hito)}
-                    style={{ padding: "10px 18px", borderRadius: 10, border: "none", cursor: "pointer", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13, opacity: entregando === cliente.id ? 0.6 : 1, whiteSpace: "nowrap" }}
-                  >
-                    {entregando === cliente.id ? "..." : "Marcar entregado"}
-                  </button>
-                ) : (
-                  <div style={{ maxWidth: 230, padding: "8px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px dashed var(--line2)", fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 }}>
-                    Ganó el premio, pero <strong>no está registrado como cliente</strong>: no hay ficha
-                    donde anotar la entrega. Regístralo en Clientes con la cédula {cedula} y aparece el botón.
+                {/* Un botón por premio pendiente: cada hito se entrega y se registra por separado
+                    (su foto, su costo, su reparto). Funciona igual si no es cliente — la entrega
+                    se guarda por CÉDULA, no dentro de una ficha. */}
+                {esAdmin && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    {premiosPendientesEntrega.map(p => (
+                      <button
+                        key={p.hito}
+                        onClick={() => setEntrega({ cedula, nombre, hito: p.hito, premio: p.premio, referidos: referidosConGrupo })}
+                        style={{ padding: "10px 18px", borderRadius: 10, border: "none", cursor: "pointer", background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13, whiteSpace: "nowrap" }}
+                      >
+                        Entregar {p.icon}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Entregas hechas — con su foto y el recibo por portafolio */}
+      {premios.length > 0 && (
+        <div style={{ background: "var(--card)", borderRadius: 16, padding: "20px 24px", marginBottom: 20, border: "1px solid var(--line)" }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", marginBottom: 4 }}>
+            Premios entregados ({premios.length})
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+            Cada entrega genera un recibo por portafolio, para enviarle a cada socio de dónde salió su parte.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {premios.map(p => (
+              <div key={p.id} style={{ padding: "14px 16px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>{p.nombre_referidor}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      {p.premio} · {p.forma === "dinero" ? "pagado en dinero" : "premio físico"} ·{" "}
+                      {new Date(p.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>${p.costo_total.toLocaleString("es-CO")}</div>
+                    <a href={p.foto_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 700 }}>📷 ver foto</a>
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {p.reparto.map(r => (
+                    <button key={r.grupo}
+                      onClick={() => generarReciboPremio(p, r, profile?.nombre ?? "")}
+                      style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid var(--line2)", background: "var(--card)", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                      🖨️ {r.grupo} — ${r.monto.toLocaleString("es-CO")}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -412,6 +466,18 @@ export default function ReferidosView() {
           </div>
         )}
       </div>
+
+      {entrega && (
+        <ModalEntregarPremio
+          cedulaReferidor={entrega.cedula}
+          nombreReferidor={entrega.nombre}
+          hito={entrega.hito}
+          premio={entrega.premio}
+          referidos={entrega.referidos}
+          onClose={() => setEntrega(null)}
+          onDone={() => { setMsg("Premio entregado. Ya puedes imprimir el recibo de cada portafolio."); setTimeout(() => setMsg(null), 6000); }}
+        />
+      )}
     </div>
   );
 }

@@ -91,11 +91,54 @@ describe("lo pagado cuenta las cajas previas y lo abonado a la caja en curso", (
   });
 });
 
+describe("el ahorro de los días cobrados es del CLIENTE, no de la empresa", () => {
+  // Regla del dueño (21-ago): «si cobras los 31, sabes que tienes que colocar aparte los 4 mil de
+  // ahorro que le corresponde». De cada $31.000 diarios, $27.000 son tarifa y $4.000 son su ahorro.
+  // Antes se le descontaban los días completos de su ahorro sin devolverle su parte: perdía plata
+  // suya, que es justo lo que la spec prohíbe ("nadie pierde ahorro como castigo").
+
+  it("ANTONIO: 4 días cobrados traen $16.000 de ahorro suyo", () => {
+    // Su ledger arranca el 27-jul y entregó el 30-jul: lun 27, mar 28, mié 29, jue 30.
+    const r = ajusteSalidaLedger(ANTONIO, D("2026-07-30"));
+    expect(r.porCobrar).toBe(4 * 31000);          // 4 días completos
+    expect(r.ahorroPorCobrar).toBe(4 * 4000);     // su parte de ahorro
+  });
+
+  it("lo que la empresa se queda es SOLO la tarifa", () => {
+    const r = ajusteSalidaLedger(ANTONIO, D("2026-07-30"));
+    expect(r.porCobrar - r.ahorroPorCobrar).toBe(4 * 27000);
+  });
+
+  it("si no se le cobra nada, tampoco hay ahorro que devolver", () => {
+    // Al día de arranque no ha consumido nada: no hay días cobrados, no hay ahorro que acreditar.
+    const r = ajusteSalidaLedger(SERAFIN, D("2026-07-13"));
+    expect(r.porCobrar).toBe(0);
+    expect(r.ahorroPorCobrar).toBe(0);
+  });
+
+  it("el ahorro devuelto nunca puede superar lo que se le cobra", () => {
+    for (const c of [ANTONIO, SERAFIN, JOSUE]) {
+      for (const dia of ["2026-07-20", "2026-08-03", "2026-08-20"]) {
+        const r = ajusteSalidaLedger(c, D(dia));
+        expect(r.ahorroPorCobrar).toBeLessThanOrEqual(r.porCobrar);
+        expect(r.ahorroPorCobrar).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it("no se le acredita dos veces el ahorro que sus pagos ya le dieron", () => {
+    // JOSUE tiene 3 cajas propias pagadas + $114.000 abonados a la caja en curso. Ese ahorro ya
+    // está en su ahorro_acumulado; volverlo a sumar acá se lo daría dos veces.
+    const r = ajusteSalidaLedger(JOSUE, D("2026-08-20"));
+    expect(r.ahorroPorCobrar).toBeLessThanOrEqual(r.porCobrar);
+  });
+});
+
 describe("contratos que el motor de cajas no cubre", () => {
   it("un contrato Diario no tiene cuenta de salida", () => {
     const diario: ContratoCiclo = { ...ANTONIO, forma_pago: "Diario" };
     expect(ajusteSalidaLedger(diario, D("2026-08-20"))).toEqual({
-      pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0,
+      pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0,
     });
   });
 

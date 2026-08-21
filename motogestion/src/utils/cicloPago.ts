@@ -865,8 +865,8 @@ export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
 export function ajusteSalidaLedger(
   contrato: ContratoCiclo,
   fechaRetorno: Date,
-): { pagado: number; consumido: number; aFavor: number; porCobrar: number } {
-  const cero = { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+): { pagado: number; consumido: number; aFavor: number; porCobrar: number; ahorroPorCobrar: number } {
+  const cero = { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0 };
   if (!contrato.motor_v2 || contrato.forma_pago === "Diario" || !contrato.fecha_inicio_cajas) return cero;
   const valor = valorPeriodoReal(contrato);
   if (valor <= 0) return cero;
@@ -878,10 +878,16 @@ export function ajusteSalidaLedger(
   const inicio = new Date(contrato.fecha_inicio_cajas + "T00:00:00");
   const ret = new Date(fechaAISO(fechaRetorno) + "T00:00:00");
   let consumido = 0;
+  // Del pago diario, una parte es TARIFA (de la empresa) y otra es AHORRO (del cliente). Se lleva
+  // aparte para no cobrarle al cliente su propio ahorro al liquidar — ver `ahorroPorCobrar` abajo.
+  let ahorroConsumido = 0;
+  const ahorroCaja = ahorroPeriodoExacto(contrato, false);
   if (ret >= inicio) {
     consumido += contrato.prorrateo_total ?? 0; // los días previos al inicio ya se consumieron
     const pagoLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
     const pagoDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
+    const ahLS = contrato.ahorro_diario ?? 4000;
+    const ahDom = contrato.ahorro_domingo ?? 2000;
     // Recorre las cajas por sus fechas de pago: período completo terminado antes del
     // retorno → valor completo; la caja en curso → día a día hasta el día de entrega.
     let inicioCaja = new Date(inicio);
@@ -889,23 +895,49 @@ export function ajusteSalidaLedger(
       const finCaja = proximoDiaPago(contrato, inicioCaja); // día que inicia la caja siguiente
       if (finCaja <= ret) {
         consumido += valor;
+        ahorroConsumido += ahorroCaja;
         inicioCaja = finCaja;
       } else {
+        // La caja en curso se cuenta día a día hasta el día de entrega.
+        let tramo = 0;
+        let tramoAhorro = 0;
         let d = new Date(inicioCaja);
         while (d <= ret) {
-          consumido += d.getDay() === 0 ? pagoDom : pagoLS;
+          const esDom = d.getDay() === 0;
+          tramo += esDom ? pagoDom : pagoLS;
+          tramoAhorro += esDom ? ahDom : ahLS;
           d.setDate(d.getDate() + 1);
         }
-        consumido = Math.min(consumido, (contrato.prorrateo_total ?? 0) + (k + 1) * valor);
+        // Un tramo nunca puede valer más que la caja completa que representa (la suma día a día
+        // se pasa por unos pesos por el redondeo del domingo). Si se recorta, su ahorro se recorta
+        // al de la caja: si no, quedaría un ahorro mayor al del período entero.
+        if (tramo > valor) { tramo = valor; tramoAhorro = ahorroCaja; }
+        consumido += tramo;
+        ahorroConsumido += tramoAhorro;
         break;
       }
     }
   }
+  const porCobrar = Math.max(consumido - pagado, 0);
+  // AHORRO QUE LE CORRESPONDE DE LO QUE SE LE COBRA (regla del dueño, 21-ago).
+  //
+  // De cada $31.000 diarios, $27.000 son tarifa de la empresa y $4.000 son ahorro DEL CLIENTE.
+  // Al liquidar se le cobran los días completos, así que hay que devolverle aparte su parte de
+  // ahorro — si no, la empresa se queda con plata que no es suya y el cliente PIERDE ahorro, que
+  // es justo lo que la spec prohíbe ("nadie pierde ahorro como castigo").
+  //
+  // Se descuenta el ahorro que sus pagos YA le acreditaron: dentro de un período rige tarifa
+  // primero, así que lo pagado cubre tarifa antes de generar ahorro, y ese ahorro ya está sumado
+  // en `ahorro_acumulado`. Contarlo otra vez acá sería dárselo dos veces.
+  const tarifaConsumida = consumido - ahorroConsumido;
+  const ahorroYaGanado = Math.max(pagado - tarifaConsumida, 0);
+  const ahorroPorCobrar = porCobrar > 0 ? Math.max(ahorroConsumido - ahorroYaGanado, 0) : 0;
   return {
     pagado,
     consumido,
     aFavor: Math.max(pagado - consumido, 0),
-    porCobrar: Math.max(consumido - pagado, 0),
+    porCobrar,
+    ahorroPorCobrar,
   };
 }
 

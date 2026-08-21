@@ -223,12 +223,17 @@ export default function LiquidacionesView() {
     // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día en que ENTREGÓ la moto
     // —no hasta hoy— y lo prepagado no consumido se devuelve (porCobrar suma, aFavor resta).
     const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
-    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00")) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00")) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0 };
     // El saldo a favor es plata que el cliente YA entregó: se le devuelve igual que el ahorro
     // (regla del dueño). Va en su propio renglón, no sumado al ahorro, para que la pantalla no
     // diga "ahorro" de un dinero que no es ahorro.
     const saldoFavor = contratoLiq ? saldoAFavorDe(contratoLiq, pagosDelContrato(sel.contrato_id)) : 0;
-    const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor;
+    // El ahorro que le corresponde de los días que se le cobran: de cada $31.000 diarios, $4.000
+    // son suyos. Va sumado a lo que se le devuelve, no restado por dentro del cobro.
+    const ahorroDeLosDias = ajuste.ahorroPorCobrar;
+    // Los días que rodó sin pagar se cobran completos (porCobrar) y su parte de ahorro se le
+    // devuelve (ahorroDeLosDias): el efecto neto es que la empresa cobra solo su tarifa.
+    const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor - ahorroDeLosDias;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
     await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos, saldoFavor);
     setGuardando(false);

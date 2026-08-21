@@ -62,6 +62,15 @@ export function cuentaLiquidacion(opts: {
   if (saldoFavor > 0) aFavor.push({ concepto: "Saldo a favor", monto: saldoFavor });
   // Lo que pagó por adelantado y no alcanzó a usar: se le devuelve (regla 9 del libro de cajas).
   if (ajuste.aFavor > 0) aFavor.push({ concepto: "Pagó adelantado y no alcanzó a usar", monto: ajuste.aFavor });
+  // De cada día que se le cobra, una parte es AHORRO SUYO ($4.000 de los $31.000 diarios). Se le
+  // cobran los días completos abajo, así que su parte se le devuelve acá — si no, la empresa se
+  // quedaría con plata que no es suya y él perdería ahorro, que es lo que la spec prohíbe.
+  // Decisión del dueño (21-ago): «si cobras los 31, sabes que tienes que colocar aparte los 4 mil
+  // de ahorro que le corresponde de ese cobro». Se muestra en dos renglones y no restando por
+  // dentro, para que el cliente vea de dónde sale cada peso.
+  if (ajuste.ahorroPorCobrar > 0) {
+    aFavor.push({ concepto: "Ahorro que le corresponde de esos días", monto: ajuste.ahorroPorCobrar });
+  }
 
   const enContra: RenglonCuenta[] = [];
   if (ajuste.porCobrar > 0) enContra.push({ concepto: "Días que rodó y no pagó", monto: ajuste.porCobrar });

@@ -32,6 +32,7 @@ import ModalPrestarReemplazo from "../components/ModalPrestarReemplazo";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { Chip } from "../components/atomos";
+import { recepcionDelContrato } from "../utils/recepcionDelContrato";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -330,9 +331,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         const recoleccionG = gestiones
           .filter(g => g.contrato_id === c.id && g.tipo === "recoleccion")
           .sort((a, b) => b.fecha.localeCompare(a.fecha))[0] ?? null;
-        const recepcionFecha = recoleccionG ? null : (recepciones
-          .filter(r => r.contrato_id === c.id)
-          .sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.created_at.slice(0, 10) ?? null);
+        // Cuál recepción es de este contrato lo decide `recepcionDelContrato` (una sola función,
+        // con pruebas): muchas quedaron guardadas SOLO con la moto —sin contrato ni cliente— y
+        // esta pantalla, que buscaba por contrato, decía "sin fecha registrada" aunque la fecha
+        // existiera con sus 6 fotos. Caso real: ANTONIO MONTERROZA (IEW65I), recibida el 30-jul.
+        const recepcionFecha = recoleccionG ? null
+          : (recepcionDelContrato(recepciones, c, contratos.filter(x => x.moto_id === c.moto_id))
+              ?.created_at.slice(0, 10) ?? null);
         const desdeISO = recoleccionG?.fecha ?? recepcionFecha;
         const diasRetenida = desdeISO
           ? Math.floor((hoyMs - new Date(desdeISO + "T00:00:00").getTime()) / 86400000)

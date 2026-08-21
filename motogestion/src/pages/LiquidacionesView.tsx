@@ -12,6 +12,7 @@ import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacio
 import { ajusteSalidaLedger } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
+import { recepcionDelContrato } from "../utils/recepcionDelContrato";
 import MoneyInput from "../components/MoneyInput";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
@@ -111,9 +112,13 @@ export default function LiquidacionesView() {
   // sin fecha NO se deja calcular, porque cualquier otra cosa es adivinar con la plata del cliente.
   useEffect(() => {
     if (!sel) { setFechaEntregaMoto(""); return; }
-    const rec = recepciones
-      .filter(r => r.contrato_id === sel.contrato_id || (sel.moto_id && r.moto_id === sel.moto_id))
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    // La MISMA función que usa Inmovilizaciones, para que las dos pantallas no digan fechas
+    // distintas de la misma moto. Está en un solo sitio y con pruebas porque decide la fecha de
+    // corte: equivocarse es cobrarle semanas de más a uno o de menos a otro.
+    const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
+    const rec = contratoLiq
+      ? recepcionDelContrato(recepciones, contratoLiq, contratos.filter(x => x.moto_id === contratoLiq.moto_id))
+      : null;
     setFechaEntregaMoto(rec ? rec.created_at.slice(0, 10) : "");
   }, [sel, recepciones]);
 

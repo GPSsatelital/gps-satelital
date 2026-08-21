@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiquidaciones, type Liquidacion, type DetalleDano, type DetalleDeuda, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
+import { useUbicaciones } from "../hooks/useUbicaciones";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type Moto } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
@@ -8,7 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
-import { hoyDate } from "../utils/fecha";
+import { hoyISO } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import MoneyInput from "../components/MoneyInput";
 
@@ -79,6 +80,7 @@ export default function LiquidacionesView() {
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
   const { taller } = useTaller();
+  const { recepciones } = useUbicaciones();
   const motos = filtrarMotos(todasMotos);
 
   const [sel, setSel] = useState<Liquidacion | null>(null);
@@ -91,6 +93,27 @@ export default function LiquidacionesView() {
   const [cargoResp, setCargoResp] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // EL DÍA EN QUE SE GUARDÓ LA MOTO. Regla del dueño (19-ago): «se liquida hasta el día en que se
+  // guardó o se retuvo el vehículo» — regla 9 del libro de cajas. Antes acá iba `hoyDate()`, así
+  // que al cliente se le cobraban los días que la moto llevaba en la BODEGA DE LA EMPRESA, y la
+  // cifra CAMBIABA según el día en que alguien abriera la pantalla: dos personas revisando la
+  // misma liquidación veían números distintos.
+  // Caso real (DANIEL DIAZ, RNG53H): contando hasta hoy le salían 8 semanas ($1.560.000) y
+  // quedaba debiendo $662.000; contando hasta el día que se guardó, se le DEVUELVEN $313.000.
+  const [fechaEntregaMoto, setFechaEntregaMoto] = useState("");
+
+  // Se precarga con la recepción del vehículo, que es donde SÍ queda esa fecha cuando el
+  // funcionario pasó por el formulario de las 6 fotos. Si no hay recepción —hoy 20 de las 44
+  // retenidas no la tienen— el campo nace vacío y el ADMIN la escribe. Decisión del dueño:
+  // sin fecha NO se deja calcular, porque cualquier otra cosa es adivinar con la plata del cliente.
+  useEffect(() => {
+    if (!sel) { setFechaEntregaMoto(""); return; }
+    const rec = recepciones
+      .filter(r => r.contrato_id === sel.contrato_id || (sel.moto_id && r.moto_id === sel.moto_id))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    setFechaEntregaMoto(rec ? rec.created_at.slice(0, 10) : "");
+  }, [sel, recepciones]);
 
   const activas = liquidaciones.filter((l) => l.estado !== "cerrada");
   const cerradas = liquidaciones.filter((l) => l.estado === "cerrada");
@@ -139,17 +162,26 @@ export default function LiquidacionesView() {
 
   async function handleRegistrarTaller() {
     if (!sel) return;
-    if (!confirm("¿Registrar la revisión de taller con estos daños y deudas? Se recalculará el saldo de la liquidación.")) return;
+    // Sin la fecha de entrega no se calcula. Es la decisión del dueño y no tiene atajo: el ajuste
+    // de salida ES una función de esa fecha, así que "calcular sin ella" significa inventarla.
+    if (!fechaEntregaMoto) {
+      setMsg("Falta el día en que se guardó la moto. Sin esa fecha no se puede calcular: es hasta ahí que se le cobra.");
+      return;
+    }
+    if (fechaEntregaMoto > hoyISO()) {
+      setMsg("El día en que se guardó la moto no puede ser una fecha futura.");
+      return;
+    }
+    if (!confirm(`¿Registrar la revisión de taller y calcular el saldo?\n\nSe le va a cobrar hasta el ${new Date(fechaEntregaMoto + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}, que es el día en que se guardó la moto.`)) return;
     setGuardando(true);
     const danosValidos = danos.filter((d) => d.concepto.trim());
     const deudasValidas = deudas.filter((d) => d.concepto.trim());
     const totalDanos = danosValidos.reduce((s, d) => s + Number(d.monto), 0);
     const totalDeudas = deudasValidas.reduce((s, d) => s + Number(d.monto), 0);
-    // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día de entrega de la
-    // moto (caja en curso prorrateada) y lo prepagado NO consumido se devuelve — entra al
-    // saldo como deuda negativa (porCobrar suma, aFavor resta).
+    // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día en que ENTREGÓ la moto
+    // —no hasta hoy— y lo prepagado no consumido se devuelve (porCobrar suma, aFavor resta).
     const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
-    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, hoyDate()) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00")) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
     const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
     await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos);
@@ -294,6 +326,22 @@ export default function LiquidacionesView() {
             {/* Paso: registrar revisión taller */}
             {(sel.estado === "iniciada" || sel.estado === "en_taller") && (
               <div style={card}>
+                {/* PRIMERO la fecha: es lo que decide toda la cuenta. Va arriba de la revisión
+                    porque si se pone abajo, el funcionario llena los daños y se estrella al final. */}
+                <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 12, background: fechaEntregaMoto ? "var(--accent-soft4)" : "var(--warn-soft)", border: `1px solid ${fechaEntregaMoto ? "var(--accent-line)" : "var(--warn-line)"}` }}>
+                  <label style={{ ...label, color: fechaEntregaMoto ? "var(--accent-ink)" : "var(--warn-ink)" }}>
+                    ¿Qué día se guardó la moto?
+                  </label>
+                  <input type="date" value={fechaEntregaMoto} max={hoyISO()}
+                    onChange={e => setFechaEntregaMoto(e.target.value)}
+                    style={{ ...inputStyle, marginBottom: 6 }} />
+                  <div style={{ fontSize: 12, color: fechaEntregaMoto ? "var(--accent-ink)" : "var(--warn-ink)", lineHeight: 1.5 }}>
+                    {fechaEntregaMoto
+                      ? <>Se le cobra <strong>hasta ese día</strong>. Los días que la moto lleva en la bodega no se le cobran.</>
+                      : <>No hay recepción registrada para esta moto, así que <strong>hay que escribir la fecha</strong>. Sin ella no se puede calcular: es hasta ahí que se le cobra.</>}
+                  </div>
+                </div>
+
                 <div style={{ fontWeight: 700, marginBottom: 12 }}>Revisión de taller</div>
 
                 {/* Estado REAL de la orden del mecánico. Sin esto, la liquidación decía

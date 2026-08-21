@@ -77,7 +77,7 @@ export default function LiquidacionesView() {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
   const { filtrarMotos } = useScope();
-  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, confirmarCierre } = useLiquidaciones();
+  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, confirmarCierre } = useLiquidaciones();
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
@@ -249,6 +249,19 @@ export default function LiquidacionesView() {
     setGuardando(false);
     if (error) setMsg(error);
     else setMsg("Documento firmado subido correctamente.");
+  }
+
+  async function handleFirmaTardia(file: File) {
+    if (!sel || guardando) return;
+    if (!confirm("¿Adjuntar este documento firmado a la liquidación ya cerrada?")) return;
+    setGuardando(true);
+    const { error } = await adjuntarFirmaACerrada(sel.id, file);
+    setGuardando(false);
+    if (error) setMsg("Error al subir el documento: " + error);
+    else {
+      setMsg("Documento firmado adjuntado. La liquidación queda completa.");
+      setSel(liquidaciones.find(l => l.id === sel.id) ?? null);
+    }
   }
 
   async function handleCerrar() {
@@ -518,11 +531,34 @@ export default function LiquidacionesView() {
             )}
 
             {sel.estado === "cerrada" && (
-              <div style={{ ...card, background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700, textAlign: "center" }}>
-                Liquidación cerrada
+              <div style={{ ...card, background: sel.documento_firmado_url ? "var(--ok-soft)" : "var(--warn-soft)", color: sel.documento_firmado_url ? "var(--ok-ink)" : "var(--warn-ink)", fontWeight: 700, textAlign: "center" }}>
+                {sel.documento_firmado_url ? "Liquidación cerrada" : "Liquidación cerrada — SIN FIRMA del cliente"}
                 {sel.documento_firmado_url && (
                   <div style={{ marginTop: 8 }}>
                     <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
+                  </div>
+                )}
+                {/* Si se cerró sin firma y el cliente aparece después, aquí se completa. Pasa de
+                    verdad: hay que cerrar un día porque la moto se necesita, y él llega al
+                    siguiente. Antes no había puerta y quedaba "sin firma" para siempre. */}
+                {!sel.documento_firmado_url && (
+                  <div style={{ marginTop: 10, fontWeight: 400 }}>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10 }}>
+                      El cierre ya se aplicó. Si el cliente aparece y firma, súbelo acá y queda completa —
+                      el documento es el respaldo de la cuenta que se le hizo.
+                    </div>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                        📷 Cámara
+                        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleFirmaTardia(f); }} />
+                      </label>
+                      <label style={{ ...btn("var(--muted3)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                        🖼 Galería / PDF
+                        <input type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) handleFirmaTardia(f); }} />
+                      </label>
+                    </div>
                   </div>
                 )}
                 {sel.motivo === "cumplimiento" && (

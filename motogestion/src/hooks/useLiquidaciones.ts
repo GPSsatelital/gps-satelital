@@ -208,6 +208,29 @@ export function useLiquidaciones() {
     return { error: error?.message ?? null };
   }
 
+  /**
+   * Adjunta la firma a una liquidación YA CERRADA.
+   *
+   * Pasa de verdad: hay que cerrar la cuenta un día porque la moto se necesita, y el cliente
+   * aparece al siguiente. Antes eso no tenía salida — cerrada quedaba "sin firma del cliente"
+   * para siempre, aunque él viniera y firmara. Solo pega el documento: NO devuelve la liquidación
+   * a "firmada", porque el cierre ya se aplicó (contrato, moto, deudas) y retroceder el estado
+   * dejaría el módulo diciendo una cosa y la base otra.
+   */
+  async function adjuntarFirmaACerrada(liquidacionId: string, file: File) {
+    const ext = file.name.split(".").pop();
+    const path = `liquidaciones/${liquidacionId}/firmado.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
+    if (uploadError) return { error: uploadError.message };
+    const { data } = supabase.storage.from("documentos").getPublicUrl(path);
+    const { error } = await supabase.from("liquidaciones")
+      .update({ documento_firmado_url: data.publicUrl })
+      .eq("id", liquidacionId);
+    if (error) return { error: error.message };
+    await fetchLiquidaciones();
+    return { error: null };
+  }
+
   async function subirDocumentoFirmado(liquidacionId: string, file: File) {
     const ext = file.name.split(".").pop();
     const path = `liquidaciones/${liquidacionId}/firmado.${ext}`;
@@ -256,6 +279,7 @@ export function useLiquidaciones() {
     calcularSaldo,
     marcarDocumentoGenerado,
     subirDocumentoFirmado,
+    adjuntarFirmaACerrada,
     confirmarCierre,
   };
 }

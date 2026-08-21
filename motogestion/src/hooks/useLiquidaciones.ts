@@ -180,6 +180,7 @@ export function useLiquidaciones() {
       total_deudas: totalDeudas,
       saldo_final: saldoFinal,
     }).eq("id", liquidacionId);
+    if (!error) await fetchLiquidaciones();
     return { error: error?.message ?? null };
   }
 
@@ -196,6 +197,7 @@ export function useLiquidaciones() {
       saldo_final: saldo,
       estado: "calculada",
     }).eq("id", liquidacionId);
+    if (!error) await fetchLiquidaciones();
     return { error: error?.message ?? null, saldo };
   }
 
@@ -205,6 +207,7 @@ export function useLiquidaciones() {
       nombre_responsable: nombreResponsable,
       cargo_responsable: cargoResponsable,
     }).eq("id", liquidacionId);
+    if (!error) await fetchLiquidaciones();
     return { error: error?.message ?? null };
   }
 
@@ -242,6 +245,7 @@ export function useLiquidaciones() {
       estado: "firmada",
       documento_firmado_url: data.publicUrl,
     }).eq("id", liquidacionId);
+    if (!error) await fetchLiquidaciones();
     return { error: error?.message ?? null };
   }
 

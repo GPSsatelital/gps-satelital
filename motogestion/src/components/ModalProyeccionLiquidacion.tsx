@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
@@ -39,9 +39,20 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
   // de esta pantalla es poder mover esa fecha y ver cómo cambia la cuenta.
   const fechaSugerida = useMemo(() => {
     const rec = recepcionDelContrato(recepciones, contrato, contratos.filter(x => x.moto_id === contrato.moto_id));
-    return rec ? rec.created_at.slice(0, 10) : hoyISO();
+    return rec ? rec.created_at.slice(0, 10) : null;
   }, [recepciones, contrato, contratos]);
-  const [fecha, setFecha] = useState(fechaSugerida);
+  const [fecha, setFecha] = useState(hoyISO());
+  const [fechaTocada, setFechaTocada] = useState(false);
+
+  // La ventana se abre ANTES de que terminen de cargar las recepciones, así que la fecha sugerida
+  // llega tarde. `useState(valor)` solo usa el valor de la PRIMERA vez, así que la fecha se
+  // quedaba en "hoy" para siempre — y eso le cobraba al cliente todos los días que la moto lleva
+  // en la bodega. Caso real: ANTONIO MONTERROZA (IEW65I) entregó el 30-jul y la pantalla contaba
+  // hasta el 21-ago: 22 días de más, y le decía que debía $613.000.
+  // Se sincroniza cuando llega, pero NO si el funcionario ya la movió a mano.
+  useEffect(() => {
+    if (fechaSugerida && !fechaTocada) setFecha(fechaSugerida);
+  }, [fechaSugerida, fechaTocada]);
 
   const cuenta = useMemo(() => cuentaLiquidacion({
     contrato,
@@ -77,7 +88,7 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
 
         <div>
           <div style={labelStyle}>Contando hasta el día en que se guardó la moto</div>
-          <input type="date" value={fecha} max={hoyISO()} onChange={e => setFecha(e.target.value)} style={inputStyle} />
+          <input type="date" value={fecha} max={hoyISO()} onChange={e => { setFecha(e.target.value); setFechaTocada(true); }} style={inputStyle} />
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 5, lineHeight: 1.45 }}>
             Muévela y mira cómo cambia la cuenta. Entre más tarde, más días se le cobran.
           </div>

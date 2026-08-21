@@ -86,7 +86,14 @@ export default function LiquidacionesView() {
   const { pagos } = usePagos();
   const motos = filtrarMotos(todasMotos);
 
-  const [sel, setSel] = useState<Liquidacion | null>(null);
+  // Se guarda el ID, NO el objeto. Guardar el objeto era una FOTOCOPIA: al seleccionar se copiaba
+  // una vez y esa copia ya no cambiaba nunca. Entonces se le daba a "Registrar revisión y
+  // calcular", la base se actualizaba de verdad... y la pantalla seguía mostrando el mismo paso,
+  // como congelada. Es lo que reportó el dueño al intentar su primera liquidación.
+  // Derivándolo de la lista, cada refresco se ve solo.
+  const [selId, setSelId] = useState<string | null>(null);
+  const sel = selId ? (liquidaciones.find(l => l.id === selId) ?? null) : null;
+  const setSel = (l: Liquidacion | null) => setSelId(l?.id ?? null);
 
   // Estados formulario taller
   const [obsT, setObsT] = useState("");

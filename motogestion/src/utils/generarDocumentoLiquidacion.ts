@@ -64,11 +64,15 @@ export function htmlLiquidacion(
 <meta charset="UTF-8"/>
 <title>Liquidación ${liq.numero}</title>
 <style>
+  /* Tamaño CARTA: es el papel que se usa acá. Todo el documento tiene que caber en UNA hoja —
+     antes la constancia y las firmas se iban a una segunda página casi vacía. Carta (279mm) es
+     más corta que A4 (297mm), así que si cabe en carta cabe también en el PDF, que se arma en A4. */
+  @page { size: letter; margin: 12mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; position: relative; }
   h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
-  .subtitulo { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 24px; }
-  .seccion { margin-bottom: 20px; }
+  .subtitulo { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 16px; }
+  .seccion { margin-bottom: 14px; }
   .seccion h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
   .fila { display: flex; justify-content: space-between; margin-bottom: 6px; }
   .fila span:first-child { color: #64748b; }
@@ -79,23 +83,31 @@ export function htmlLiquidacion(
   .total-row td { font-weight: 700; background: #f1f5f9; }
   .saldo-positivo { color: #166534; font-size: 18px; font-weight: 800; }
   .saldo-negativo { color: #991b1b; font-size: 18px; font-weight: 800; }
-  .explica { margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11.5px; line-height: 1.55; color: #334155; }
-  .explica p { margin-bottom: 6px; }
+  .explica { margin-top: 10px; padding: 9px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11.5px; line-height: 1.5; color: #334155; }
+  .explica p { margin-bottom: 5px; }
   .explica p:last-child { margin-bottom: 0; }
-  .firmas { display: flex; gap: 30px; margin-top: 54px; align-items: flex-end; }
+  /* Una liquidación normal cabe en UNA hoja carta. Una con muchos renglones (varias deudas +
+     varios daños) necesita dos, y eso está bien — lo que no puede pasar es que corte mal:
+     una fila de plata partida por la mitad, o la firma sola en una hoja aparte. */
+  .cierre { page-break-inside: avoid; break-inside: avoid; }
+  .explica, .seccion, .tabla tr { page-break-inside: avoid; break-inside: avoid; }
+  .tabla thead { display: table-header-group; }   /* el encabezado se repite en la 2ª hoja */
+  .firmas { display: flex; gap: 30px; margin-top: 34px; align-items: flex-end; }
   .firma-box { flex: 1; text-align: center; font-size: 12px; }
-  .firma-trazo { height: 62px; display: flex; align-items: flex-end; justify-content: center; }
-  .firma-trazo img { max-height: 60px; max-width: 100%; }
+  .firma-trazo { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
+  .firma-trazo img { max-height: 48px; max-width: 100%; }
   .firma-linea { border-top: 1px solid #334155; padding-top: 8px; }
-  .huella-box { width: 120px; text-align: center; font-size: 11px; color: #64748b; }
-  .huella-cuadro { width: 100px; height: 100px; margin: 0 auto 6px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .huella-box { width: 110px; text-align: center; font-size: 11px; color: #64748b; }
+  .huella-cuadro { width: 92px; height: 92px; margin: 0 auto 5px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .huella-cuadro img { max-width: 100%; max-height: 100%; }
-  .constancia { margin-top: 26px; font-size: 11px; color: #475569; line-height: 1.6; text-align: justify; }
+  .constancia { margin-top: 18px; font-size: 11px; color: #475569; line-height: 1.55; text-align: justify; }
   .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: #64748b; }
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
   .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; font-weight: 700; text-align: center; }
   .contenido { position: relative; z-index: 1; }
-  @media print { body { padding: 20px; } }
+  /* Al imprimir manda el margen de @page; el padding del body lo sumaría encima y comería
+     otros 80px de alto, que es justo lo que hacía que no cupiera en una hoja. */
+  @media print { body { padding: 0; } .numero-liq { top: 0; right: 0; } }
 </style>
 </head>
 <body>
@@ -160,6 +172,7 @@ ${moto ? `<div class="seccion">
   </div>
 </div>
 
+<div class="cierre">
 <div class="firmas">
   <div class="firma-box">
     <div class="firma-trazo"></div>
@@ -189,6 +202,7 @@ ${moto ? `<div class="seccion">
   y que no queda ninguna reclamación pendiente por este contrato.
   ${fechaFirma ? `Firmado el ${new Date(fechaFirma).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}.` : ""}
 </p>
+</div>
 </div>
 </body>
 </html>`;

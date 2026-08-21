@@ -1089,14 +1089,23 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     )}
                     {/* Solo el permiso manda (antes exigía además rol ADMIN, así que darle
                         "iniciar liquidación" a un SUBADMIN no servía aquí — sí en Motos). */}
+                    {/* Los 7 días son AVISO, no ley — ya se había decidido así el 11-jul y quedó
+                        aplicado en Motos, pero esta pantalla se quedó con el candado viejo.
+                        Peor todavía: el reloj arranca con la fecha de retención, y 20 de las 44
+                        retenidas no la tienen registrada. Para esas, `diasRetenida` es 0 y el
+                        candado NO SE ABRÍA NUNCA — así llevaran meses guardadas.
+                        Caso real: ANTONIO MONTERROZA (IEW65I), imposible de liquidar.
+                        Ahora avisa cuántos días lleva y deja pasar; la decisión es del ADMIN. */}
                     {puedeLiquidar && (
                       <button
                         onClick={() => setLiquidacionModal(m)}
-                        disabled={procesandoEsta || !m.listaParaLiquidar}
-                        title={!m.listaParaLiquidar ? `Se habilita a los 7 días retenida (lleva ${m.diasRetenida})` : ""}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (procesandoEsta || !m.listaParaLiquidar) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: m.listaParaLiquidar ? "var(--warn-soft)" : "var(--soft)", color: m.listaParaLiquidar ? "var(--warn-ink)" : "var(--faint)", opacity: procesandoEsta ? 0.6 : 1 }}
+                        disabled={procesandoEsta}
+                        title={m.fechaRetencion == null
+                          ? "No hay fecha de cuándo se guardó. Al liquidar hay que escribirla."
+                          : !m.listaParaLiquidar ? `Lleva ${m.diasRetenida} día${m.diasRetenida !== 1 ? "s" : ""} guardada — lo normal es esperar 7` : ""}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: procesandoEsta ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
-                        {m.listaParaLiquidar ? "📄 Iniciar liquidación" : "🔒 Liquidar (a los 7d)"}
+                        📄 Iniciar liquidación
                       </button>
                     )}
                   </div>

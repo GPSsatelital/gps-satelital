@@ -8,6 +8,7 @@ import {
   generarFolio,
   esPagoDeCaja,
   fechaDeCaja,
+  saldoAFavorDe,
   APLICADO_LO_REPARTE_LA_BD,
   type MetodoPago,
   type PagoEstado,
@@ -817,11 +818,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
-      // Saldo a favor = lo que YA TRAÍA de las cuentas viejas (migrados, mig 079) + lo que fue
-      // quedando de los pagos del sistema. Al usarlo, el movimiento de "Aplicar" registra un
-      // aplicado_saldo_favor NEGATIVO, así que el total baja solo.
-      const saldoAFavor = (contrato.saldo_favor_apertura ?? 0)
-        + confirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
+      // Una sola función para todo el sistema (usePagos): la liquidación necesita esta misma
+      // cuenta, y dos copias de la misma cuenta se separan solas — la lección de loQueDebe().
+      const saldoAFavor = saldoAFavorDe(contrato, confirmados);
       const sinPagosNunca = confirmados.length === 0;
 
       return {

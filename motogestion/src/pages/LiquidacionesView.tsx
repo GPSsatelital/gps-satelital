@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLiquidaciones, type Liquidacion, type DetalleDano, type DetalleDeuda, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
 import { useUbicaciones } from "../hooks/useUbicaciones";
+import { usePagos, saldoAFavorDe } from "../hooks/usePagos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type Moto } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
@@ -81,6 +82,7 @@ export default function LiquidacionesView() {
   const { contratos } = useContratos();
   const { taller } = useTaller();
   const { recepciones } = useUbicaciones();
+  const { pagos } = usePagos();
   const motos = filtrarMotos(todasMotos);
 
   const [sel, setSel] = useState<Liquidacion | null>(null);
@@ -117,6 +119,11 @@ export default function LiquidacionesView() {
 
   const activas = liquidaciones.filter((l) => l.estado !== "cerrada");
   const cerradas = liquidaciones.filter((l) => l.estado === "cerrada");
+
+  /** Pagos confirmados del contrato — la base del saldo a favor. */
+  function pagosDelContrato(contratoId: string) {
+    return pagos.filter(p => p.contrato_id === contratoId && p.estado === "Confirmado");
+  }
 
   /** La orden de taller que creó ESTA liquidación (se vincula en `taller_id` al iniciarla). */
   function ordenDe(l: Liquidacion): TallerItem | null {
@@ -182,9 +189,13 @@ export default function LiquidacionesView() {
     // —no hasta hoy— y lo prepagado no consumido se devuelve (porCobrar suma, aFavor resta).
     const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
     const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00")) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0 };
+    // El saldo a favor es plata que el cliente YA entregó: se le devuelve igual que el ahorro
+    // (regla del dueño). Va en su propio renglón, no sumado al ahorro, para que la pantalla no
+    // diga "ahorro" de un dinero que no es ahorro.
+    const saldoFavor = contratoLiq ? saldoAFavorDe(contratoLiq, pagosDelContrato(sel.contrato_id)) : 0;
     const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
-    await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos);
+    await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos, saldoFavor);
     setGuardando(false);
     if (error) setMsg(error);
     else if (ajuste.aFavor > 0 || ajuste.porCobrar > 0) {
@@ -310,6 +321,14 @@ export default function LiquidacionesView() {
               {/* Resumen financiero */}
               <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 12, marginTop: 8, fontSize: 13 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Ahorro acumulado</span><span style={{ fontWeight: 600, color: "var(--ok)" }}>${sel.ahorro_acumulado.toLocaleString("es-CO")}</span></div>
+                {/* Renglón propio, no sumado al ahorro: es plata del cliente pero NO es su ahorro,
+                    y una cifra correcta con la etiqueta equivocada ya nos costó caro antes. */}
+                {(sel.saldo_favor ?? 0) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: "var(--muted)" }}>Saldo a favor</span>
+                    <span style={{ fontWeight: 600, color: "var(--ok)" }}>+ ${(sel.saldo_favor ?? 0).toLocaleString("es-CO")}</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Total deudas</span><span style={{ fontWeight: 600, color: "var(--bad)" }}>- ${sel.total_deudas.toLocaleString("es-CO")}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ color: "var(--muted)" }}>Costo daños</span><span style={{ fontWeight: 600, color: "var(--bad)" }}>- ${sel.costo_danos.toLocaleString("es-CO")}</span></div>
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 8, display: "flex", justifyContent: "space-between" }}>

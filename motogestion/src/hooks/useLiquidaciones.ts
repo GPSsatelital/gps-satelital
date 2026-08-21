@@ -17,6 +17,7 @@ export type Liquidacion = {
   motivo: MotivoLiquidacion;
   estado: EstadoLiquidacion;
   ahorro_acumulado: number;
+  saldo_favor: number;
   total_deudas: number;
   costo_danos: number;
   saldo_final: number;
@@ -103,16 +104,27 @@ export function useLiquidaciones() {
       concepto: d.descripcion || d.concepto,
       monto: d.monto_pendiente,
     }));
-    const { data: convenioActivo } = await supabase
+    // El convenio se trae esté 'activo' o 'incumplido'. Antes solo miraba 'activo', y ese era el
+    // hueco más caro del módulo: las deudas metidas en un convenio quedan marcadas 'en_convenio'
+    // (por eso no entran arriba, para no cobrarlas dos veces). Si el cliente dejaba de pagar, el
+    // convenio pasaba a 'incumplido' y DESAPARECÍA de la liquidación — así que sus deudas estaban
+    // escondidas dentro del convenio y el convenio escondido por su estado. Resultado: liquidaba
+    // con $0 de deuda y se le devolvía TODO el ahorro. Y es justo el caso que más se liquida: la
+    // regla dice "3er convenio incumplido → liquidación obligatoria".
+    // 'cumplido' y 'renovado' NO entran: el primero ya se pagó, el segundo vive en su reemplazo.
+    const { data: convenios } = await supabase
       .from("convenios")
-      .select("deuda_total, cuota_por_periodo, cuotas_pagadas")
+      .select("deuda_total, cuota_por_periodo, cuotas_pagadas, estado")
       .eq("contrato_id", contratoId)
-      .eq("estado", "activo")
-      .limit(1);
-    if (convenioActivo && convenioActivo.length > 0) {
-      const cv = convenioActivo[0];
+      .in("estado", ["activo", "incumplido"]);
+    for (const cv of convenios ?? []) {
       const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
-      if (restante > 0) detalleDeudas.push({ concepto: "Saldo pendiente de convenio", monto: restante });
+      if (restante > 0) {
+        detalleDeudas.push({
+          concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
+          monto: restante,
+        });
+      }
     }
     const totalDeudas = detalleDeudas.reduce((acc, d) => acc + d.monto, 0);
 
@@ -171,10 +183,14 @@ export function useLiquidaciones() {
     return { error: error?.message ?? null };
   }
 
-  async function calcularSaldo(liquidacionId: string, ahorro: number, deudas: number, danos: number) {
-    const saldo = ahorro - deudas - danos;
+  // El saldo a favor entra en la cuenta igual que el ahorro (regla del dueño, 19-ago): es plata
+  // que el cliente YA entregó. Va como parámetro propio y no sumado al ahorro para que la pantalla
+  // no llame "ahorro" a un dinero que no lo es (mig 104).
+  async function calcularSaldo(liquidacionId: string, ahorro: number, deudas: number, danos: number, saldoFavor = 0) {
+    const saldo = ahorro + saldoFavor - deudas - danos;
     const { error } = await supabase.from("liquidaciones").update({
       ahorro_acumulado: ahorro,
+      saldo_favor: saldoFavor,
       total_deudas: deudas,
       costo_danos: danos,
       saldo_final: saldo,

@@ -44,6 +44,25 @@ export function fechaDeCaja(p: { fecha: string; fecha_registro?: string | null; 
   return p.fecha_registro || p.fecha;
 }
 
+/**
+ * Saldo a favor de un contrato: plata que el cliente YA entregó y quedó guardada a su nombre.
+ *
+ * Sale de dos partes: lo que traía de las cuentas viejas (migrados, mig 079) más lo que fueron
+ * dejando sus pagos. Al aplicarlo, el movimiento registra un `aplicado_saldo_favor` NEGATIVO, así
+ * que el total baja solo — por eso es una suma y no hay que restar nada aparte.
+ *
+ * Vive acá y no dentro de una pantalla porque ya hay dos que lo necesitan (Cartera y la
+ * liquidación). Es la lección de `loQueDebe()`: la misma cuenta escrita en dos sitios se separa
+ * sola, y nadie se entera hasta que un cliente reclama en el mostrador.
+ */
+export function saldoAFavorDe(
+  contrato: { saldo_favor_apertura?: number | null },
+  pagosConfirmados: { aplicado_saldo_favor?: number | null }[],
+): number {
+  return (contrato.saldo_favor_apertura ?? 0)
+    + pagosConfirmados.reduce((acc, p) => acc + (p.aplicado_saldo_favor ?? 0), 0);
+}
+
 export function esPagoDeCaja(p: { tipo_registro?: string | null }): boolean {
   return p.tipo_registro !== "adelanto_base" && p.tipo_registro !== "saldo_favor";
 }

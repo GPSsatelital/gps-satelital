@@ -417,7 +417,11 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             motoId={c.moto_id}
             placa={motoDetalle?.placa ?? "Sin placa"}
             ahorroAcumulado={ahorroTotal(c)}
-            motivoInicial={c.estado === "Suspendido" ? "incumplimiento" : "cumplimiento"}
+            // Nunca "cumplimiento" por defecto: ese motivo le ENTREGA la moto al cliente. Venía
+            // preseleccionado para todo contrato Activo, así que bastaba no cambiarlo para regalar
+            // una moto. Ahora hay que elegirlo a propósito, y el modal solo lo ofrece si el
+            // cliente terminó de pagar todas sus cuotas.
+            motivoInicial={c.estado === "Suspendido" ? "incumplimiento" : "retiro_voluntario"}
             onClose={() => setModalLiquidacionAbierto(false)}
           />
         )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useLiquidaciones, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
@@ -55,6 +55,7 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
   const { registrarDeuda } = useDeudas();
   const { profile } = useAuth();
 
+  // Nunca arranca en "cumplimiento" si el que llama no lo pidió: ese motivo regala la moto.
   const [motivo, setMotivo] = useState<MotivoLiquidacion>(motivoInicial ?? "incumplimiento");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +68,36 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
   const [kilometros, setKilometros] = useState("");
   const [fotos, setFotos] = useState<Partial<Record<AnguloFoto, string>>>({});
 
-  const motivoSel = MOTIVOS.find(m => m.value === motivo)!;
   const contrato = contratos.find(c => c.id === contratoId);
+
+  // 🔒 CANDADO DE LA MOTO REGALADA. "Cumplimiento" pone la moto En traspaso e imprime Paz y Salvo:
+  // la moto pasa a ser del cliente. Ese motivo venía PRESELECCIONADO para cualquier contrato
+  // Activo, así que un cliente en la caja 12 de 52 que se retira, con el funcionario que no cambia
+  // el motivo, se llevaba la moto. Decisión del dueño (19-ago): bloquearlo del todo — no aparece.
+  // Solo se ofrece cuando el ledger dice que ya llenó todas sus cajas.
+  const cajasPagadas = contrato?.cajas_pagadas ?? 0;
+  const totalCajas = contrato?.total_cajas ?? null;
+  const terminoDePagar = totalCajas != null && cajasPagadas >= totalCajas;
+  // Un contrato sin motor de cajas (Diario, o v1 sin inicializar) no se puede verificar: se deja
+  // pasar para no bloquear una operación legítima, pero el aviso de abajo lo dice.
+  const sinLedger = !contrato?.motor_v2 || totalCajas == null;
+  const puedeCumplimiento = terminoDePagar || sinLedger;
+  const MOTIVOS_VISIBLES = puedeCumplimiento ? MOTIVOS : MOTIVOS.filter(m => m.value !== "cumplimiento");
+
+  // El empalme abierto significa que sus cifras viejas —ahorro y deuda que traía— NUNCA se
+  // revisaron con él. La liquidación se FIRMA, así que firmar sobre números sin confirmar es un
+  // problema. Se avisa fuerte y se deja seguir: la decisión es del que está con el cliente enfrente.
+  const empalmeAbierto = !!contrato?.es_migrado && !contrato?.empalme_cerrado;
+
+  // Quitar "cumplimiento" de la LISTA no basta: quien abre la ventana puede mandarlo como valor
+  // inicial (ContratosView lo hacía para todo contrato Activo), y entonces el select se ve en otra
+  // cosa mientras por dentro sigue en "cumplimiento" — y liquidaría regalando la moto igual.
+  // Se corrige el valor, no solo lo que se ve.
+  useEffect(() => {
+    if (!puedeCumplimiento && motivo === "cumplimiento") setMotivo("retiro_voluntario");
+  }, [puedeCumplimiento, motivo]);
+
+  const motivoSel = MOTIVOS.find(m => m.value === motivo)!;
   // Contrato Activo = la moto todavía figura entregada al cliente. Hay que recibirla.
   const necesitaRecepcion = !!motoId && contrato?.estado === "Activo";
 
@@ -228,12 +257,28 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
           </>
         )}
 
+        {empalmeAbierto && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 12.5, color: "var(--bad-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+            ⚠️ Este cliente <strong>nunca revisó sus cifras viejas</strong>: traía
+            {" "}${(contrato?.ahorro_apertura ?? 0).toLocaleString("es-CO")} de ahorro de la migración,
+            y su deuda de apertura tampoco se ha confirmado con él. Si liquidas ahora,
+            <strong> cierras su cuenta sobre números que él nunca aceptó</strong> — y la liquidación se firma.
+            Lo ideal es cerrarle el empalme primero, en Cartera.
+          </div>
+        )}
+
         <div>
           <div style={labelStyle}>Motivo de la liquidación</div>
           <select style={inputStyle} value={motivo} onChange={e => setMotivo(e.target.value as MotivoLiquidacion)}>
-            {MOTIVOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {MOTIVOS_VISIBLES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>{motivoSel.desc}</div>
+          {!puedeCumplimiento && (
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+              🔒 <strong>"Cumplimiento" no está disponible</strong>: va en la cuota {cajasPagadas} de {totalCajas}.
+              Ese motivo le entrega la moto al cliente, y solo se puede usar cuando terminó de pagarlas todas.
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 12, color: "var(--accent-ink)" }}>

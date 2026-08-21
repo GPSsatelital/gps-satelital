@@ -255,20 +255,28 @@ export function useLiquidaciones() {
    * el ahorro se pone en cero, y si no alcanzó, el faltante queda como UNA deuda viva para poder
    * cobrársela si vuelve (regla del dueño).
    */
-  async function confirmarCierre(liquidacionId: string, cerradaPor: string) {
+  async function confirmarCierre(liquidacionId: string, cerradaPor: string, sigueConEmpresa = false) {
     const { data, error } = await supabase.rpc("cerrar_liquidacion", {
       p_liquidacion_id: liquidacionId,
       p_cerrada_por: cerradaPor,
+      p_sigue_con_empresa: sigueConEmpresa,
     });
     if (error) return { error: error.message };
     await fetchLiquidaciones();
-    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number };
-    return {
-      error: null,
-      avisoDeuda: r.deuda_creada
-        ? `El ahorro no alcanzó: quedaron $${Math.round(r.faltante ?? 0).toLocaleString("es-CO")} como deuda del cliente, para cobrárselos si vuelve.`
-        : null,
-    };
+    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number; estado_cliente?: string; lista_negra?: boolean };
+    const avisos: string[] = [];
+    if (r.deuda_creada) {
+      avisos.push(`El ahorro no alcanzó: quedaron $${Math.round(r.faltante ?? 0).toLocaleString("es-CO")} como deuda del cliente, para cobrárselos si vuelve.`);
+    }
+    if (r.estado_cliente === "Aprobado") {
+      avisos.push("El cliente quedó listo para su contrato nuevo — ya lo puedes elegir en el wizard.");
+    }
+    // Si quedó en lista negra pero se marcó que sigue, hay que decirlo: son dos cosas que se
+    // contradicen y el funcionario tiene que enterarse ANTES de prometerle una moto.
+    if (r.lista_negra && r.estado_cliente === "Aprobado") {
+      avisos.push("⚠️ OJO: quedó en LISTA NEGRA por el saldo pendiente. Revísalo antes de entregarle otra moto.");
+    }
+    return { error: null, avisoDeuda: avisos.length > 0 ? avisos.join(" ") : null };
   }
 
   return {

@@ -105,6 +105,9 @@ export default function LiquidacionesView() {
   // Caso real (DANIEL DIAZ, RNG53H): contando hasta hoy le salían 8 semanas ($1.560.000) y
   // quedaba debiendo $662.000; contando hasta el día que se guardó, se le DEVUELVEN $313.000.
   const [fechaEntregaMoto, setFechaEntregaMoto] = useState("");
+  // ¿La persona sigue con la empresa? Decide si al cerrar queda "Aprobado" (listo para otra moto)
+  // o "Retirado". Se pregunta al cerrar, que es el momento en que se sabe con certeza.
+  const [sigueConEmpresa, setSigueConEmpresa] = useState(false);
 
   // Se precarga con la recepción del vehículo, que es donde SÍ queda esa fecha cuando el
   // funcionario pasó por el formulario de las 6 fotos. Si no hay recepción —hoy 20 de las 44
@@ -266,9 +269,15 @@ export default function LiquidacionesView() {
 
   async function handleCerrar() {
     if (!sel || !profile) return;
-    if (!confirm("¿Cerrar definitivamente esta liquidación? Esta acción define el saldo final, el estado del contrato y de la moto, y no se puede deshacer.")) return;
+    if (!confirm(
+      "¿Cerrar definitivamente esta liquidación?\n\n"
+      + "Se define el saldo final, se cierra el contrato, se saldan sus deudas y su convenio, y se decide el destino de la moto. No se puede deshacer.\n\n"
+      + (sigueConEmpresa
+          ? "Marcaste que el cliente SIGUE con la empresa: va a quedar listo para su contrato nuevo."
+          : "El cliente va a quedar Retirado. Si le vas a entregar otra moto, cancela y marca la casilla antes de cerrar.")
+    )) return;
     setGuardando(true);
-    const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id);
+    const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id, sigueConEmpresa);
     setGuardando(false);
     if (error) setMsg(error);
     else {
@@ -524,6 +533,26 @@ export default function LiquidacionesView() {
                   {sel.motivo === "cumplimiento" ? ", la moto pasará a En traspaso (propiedad del cliente) y el cliente quedará Egresado" : ""}
                   {sel.saldo_final < 0 ? " y el cliente será marcado en lista negra por saldo pendiente" : ""}.
                 </div>
+                {/* Sin esto, el cliente quedaba "Retirado" y el wizard dejaba de ofrecerlo — así
+                    que liquidar para pasarlo a otra moto lo dejaba trancado. Regla del dueño: la
+                    liquidación ES el camino para cambiar de moto, no un rodeo. */}
+                {sel.motivo !== "cumplimiento" && (
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 12, marginBottom: 14, cursor: "pointer",
+                    background: sigueConEmpresa ? "var(--accent-soft)" : "var(--soft2)",
+                    border: `1px solid ${sigueConEmpresa ? "var(--accent-line)" : "var(--line)"}` }}>
+                    <input type="checkbox" checked={sigueConEmpresa} onChange={e => setSigueConEmpresa(e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", display: "block" }}>
+                        Este cliente sigue con la empresa
+                      </span>
+                      <span style={{ fontSize: 12, color: sigueConEmpresa ? "var(--accent-ink)" : "var(--muted)", lineHeight: 1.45 }}>
+                        Márcalo si se le va a entregar otra moto. Queda listo para su contrato nuevo.
+                        Si no lo marcas queda Retirado y el wizard no lo va a ofrecer.
+                      </span>
+                    </span>
+                  </label>
+                )}
                 <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={handleCerrar} disabled={guardando}>
                   {guardando ? "Cerrando..." : "Confirmar y cerrar liquidación"}
                 </button>

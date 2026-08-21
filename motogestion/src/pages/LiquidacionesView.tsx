@@ -77,7 +77,7 @@ export default function LiquidacionesView() {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
   const { filtrarMotos } = useScope();
-  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, confirmarCierre } = useLiquidaciones();
+  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, volverACalcular, confirmarCierre } = useLiquidaciones();
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
@@ -139,6 +139,18 @@ export default function LiquidacionesView() {
   // OJO: el COSTO del taller NO se copia a los daños. Ese es lo que gastó la EMPRESA; los daños
   // son lo que se le cobra AL CLIENTE, y son dos decisiones distintas. Confundirlas sería
   // descontarle del ahorro el aceite y los frenos que la empresa asume.
+  // Los daños y las deudas ya guardados se vuelven a cargar en el formulario. Sin esto, volver a
+  // calcular arrancaba en blanco y se perdía lo que el funcionario ya había escrito.
+  useEffect(() => {
+    if (!sel) {
+      setDanos([{ concepto: "", monto: 0 }]);
+      setDeudas([{ concepto: "", monto: 0 }]);
+      return;
+    }
+    setDanos(sel.detalle_danos?.length ? sel.detalle_danos : [{ concepto: "", monto: 0 }]);
+    setDeudas(sel.detalle_deudas?.length ? sel.detalle_deudas : [{ concepto: "", monto: 0 }]);
+  }, [selId]);
+
   useEffect(() => {
     if (!sel) { setObsT(""); return; }
     if (sel.observaciones_taller) { setObsT(sel.observaciones_taller); return; }
@@ -270,6 +282,15 @@ export default function LiquidacionesView() {
     setGuardando(false);
     if (error) setMsg(error);
     else setMsg("Documento firmado subido correctamente.");
+  }
+
+  async function handleVolverACalcular() {
+    if (!sel || guardando) return;
+    if (!confirm("¿Volver al paso del cálculo para corregir la cuenta?\n\nEl documento que ya imprimiste queda sin valor: hay que generarlo de nuevo con las cifras corregidas.")) return;
+    setGuardando(true);
+    const { error } = await volverACalcular(sel.id);
+    setGuardando(false);
+    setMsg(error ? "Error: " + error : "Puedes corregir la cuenta. Al terminar, genera el documento otra vez.");
   }
 
   async function handleFirmaTardia(file: File) {
@@ -415,7 +436,11 @@ export default function LiquidacionesView() {
             {msg && <div style={{ ...card, background: msg.includes("error") || msg.includes("Error") ? "var(--bad-soft)" : "var(--ok-soft)", color: msg.includes("error") || msg.includes("Error") ? "var(--bad)" : "var(--ok)", fontSize: 13 }}>{msg}</div>}
 
             {/* Paso: registrar revisión taller */}
-            {(sel.estado === "iniciada" || sel.estado === "en_taller") && (
+            {/* La cuenta se puede rehacer mientras el cliente NO haya firmado. Antes, apenas se
+                calculaba una vez, el formulario desaparecía y no había forma de corregir: ni si el
+                mecánico encontraba algo más, ni si el funcionario se equivocó en un daño. Después
+                de "firmada" ya no se toca — ahí el cliente firmó un número. */}
+            {(sel.estado === "iniciada" || sel.estado === "en_taller" || sel.estado === "calculada") && (
               <div style={card}>
                 {/* PRIMERO la fecha: es lo que decide toda la cuenta. Va arriba de la revisión
                     porque si se pone abajo, el funcionario llena los daños y se estrella al final. */}
@@ -517,6 +542,17 @@ export default function LiquidacionesView() {
             {/* Paso: subir documento firmado */}
             {sel.estado === "documento_generado" && (
               <div style={card}>
+                {/* Salida de emergencia: el documento ya se imprimió pero el cliente NO ha firmado.
+                    Si al revisarlo con él aparece un error, hay que poder devolverse — antes esto
+                    era un callejón sin salida. */}
+                <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5 }}>
+                  ¿Al revisarlo con el cliente encontraste un error en la cuenta?{" "}
+                  <button onClick={handleVolverACalcular} disabled={guardando}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", fontWeight: 700, color: "var(--accent)", textDecoration: "underline" }}>
+                    Corregir la cuenta
+                  </button>
+                  {" "}— vuelve al paso del cálculo. Todavía puedes, porque aún no ha firmado.
+                </div>
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>Subir documento firmado por el cliente</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>Fotografía o escaneo del documento con la firma del cliente.</div>
                 {sel.documento_firmado_url && (

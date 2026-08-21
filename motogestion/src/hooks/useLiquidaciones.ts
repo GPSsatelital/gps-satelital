@@ -201,6 +201,22 @@ export function useLiquidaciones() {
     return { error: error?.message ?? null, saldo };
   }
 
+  /**
+   * Devuelve una liquidación del paso "documento generado" al del cálculo.
+   *
+   * Solo mientras el cliente NO haya firmado: después de eso el número está en un papel con su
+   * firma y no se toca. Sin esto, imprimir el documento era un callejón sin salida — si al
+   * revisarlo con el cliente aparecía un error, no había cómo devolverse.
+   */
+  async function volverACalcular(liquidacionId: string) {
+    const { error } = await supabase.from("liquidaciones")
+      .update({ estado: "calculada" })
+      .eq("id", liquidacionId)
+      .eq("estado", "documento_generado");   // candado: nunca desde 'firmada' ni 'cerrada'
+    if (!error) await fetchLiquidaciones();
+    return { error: error?.message ?? null };
+  }
+
   async function marcarDocumentoGenerado(liquidacionId: string, nombreResponsable: string, cargoResponsable: string) {
     const { error } = await supabase.from("liquidaciones").update({
       estado: "documento_generado",
@@ -290,6 +306,7 @@ export function useLiquidaciones() {
     registrarRevisionTaller,
     calcularSaldo,
     marcarDocumentoGenerado,
+    volverACalcular,
     subirDocumentoFirmado,
     adjuntarFirmaACerrada,
     confirmarCierre,

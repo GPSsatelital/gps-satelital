@@ -255,10 +255,17 @@ export default function LiquidacionesView() {
     if (!sel || !profile) return;
     if (!confirm("¿Cerrar definitivamente esta liquidación? Esta acción define el saldo final, el estado del contrato y de la moto, y no se puede deshacer.")) return;
     setGuardando(true);
-    const { error } = await confirmarCierre(sel.id, profile.id);
+    const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id);
     setGuardando(false);
     if (error) setMsg(error);
-    else { setMsg("Liquidación cerrada."); setSel(null); }
+    else {
+      // Si el ahorro no alcanzó, se dice cuánto quedó debiendo y que esa plata sigue viva. Antes
+      // solo decía "Liquidación cerrada" y nadie sabía que el cliente quedaba con una deuda.
+      setMsg(avisoDeuda
+        ? `Liquidación cerrada. ${avisoDeuda}`
+        : "Liquidación cerrada. Sus deudas y su convenio quedaron saldados.");
+      setSel(null);
+    }
   }
 
   // Paz y Salvo — constancia de cumplimiento y transferencia de la moto al cliente.

@@ -222,80 +222,30 @@ export function useLiquidaciones() {
     return { error: error?.message ?? null };
   }
 
+  /**
+   * Cierra la liquidación. TODO en una sola función de la base (mig 105): o pasa todo, o no pasa
+   * nada. Antes eran 4 escrituras sueltas desde el navegador y si se caía el internet a la mitad
+   * quedaba la liquidación 'cerrada' con el contrato 'Activo' — el cliente que ya entregó la moto
+   * seguía en el Panel Hoy con su cuota por cobrar.
+   *
+   * Además ahora SALDA: las deudas y el convenio que se cruzaron contra el ahorro quedan pagados,
+   * el ahorro se pone en cero, y si no alcanzó, el faltante queda como UNA deuda viva para poder
+   * cobrársela si vuelve (regla del dueño).
+   */
   async function confirmarCierre(liquidacionId: string, cerradaPor: string) {
-    const liq = liquidaciones.find((l) => l.id === liquidacionId);
-    if (!liq) return { error: "Liquidación no encontrada" };
-
-    const { error } = await supabase.from("liquidaciones").update({
-      estado: "cerrada",
-      cerrada_por: cerradaPor,
-    }).eq("id", liquidacionId);
+    const { data, error } = await supabase.rpc("cerrar_liquidacion", {
+      p_liquidacion_id: liquidacionId,
+      p_cerrada_por: cerradaPor,
+    });
     if (error) return { error: error.message };
-
-    // El estado final del contrato depende del MOTIVO: incumplimiento = fin anormal
-    // (Cancelado); cumplimiento/retiro_voluntario = fin ordenado (Finalizado).
-    const estadoContrato = liq.motivo === "incumplimiento" ? "Cancelado" : "Finalizado";
-    await supabase.from("contratos").update({ estado: estadoContrato }).eq("id", liq.contrato_id);
-
-    // Destino de la moto según el motivo: en cumplimiento la moto pasa a ser del
-    // cliente ("En traspaso" hasta completar el cambio de titularidad ante tránsito);
-    // en los demás casos vuelve a la flota como Disponible.
-    if (liq.moto_id) {
-      // La moto NO se libera si ya está comprometida con OTRO contrato: en la operación real
-      // el papeleo va detrás de la calle — el cliente entrega la moto, se le asigna a otro
-      // enseguida, y la liquidación se cierra días después. Sin esta guarda, ese cierre tardío
-      // pisaba la "Reservada" del contrato nuevo y dejaba la moto suelta para que un tercero
-      // la tomara. (Caso real 27-jul: RLT70H, liquidación de LUIS SANDON con la moto ya
-      // reservada para ADOLFO GAMEZ.)
-      const { data: otroContrato } = await supabase
-        .from("contratos")
-        .select("id")
-        .eq("moto_id", liq.moto_id)
-        .in("estado", ["En proceso", "Activo"])
-        .neq("id", liq.contrato_id)
-        .limit(1);
-      const comprometida = !!otroContrato && otroContrato.length > 0;
-      // En 'cumplimiento' la moto pasa a ser del cliente: eso manda SIEMPRE, aunque alguien la
-      // haya reservado por error (ahí el problema es la reserva, no el traspaso).
-      if (liq.motivo === "cumplimiento") {
-        await supabase.from("motos").update({ estado: "En traspaso" }).eq("id", liq.moto_id);
-      } else if (!comprometida) {
-        await supabase.from("motos").update({ estado: "Disponible" }).eq("id", liq.moto_id);
-      }
-      // Si está comprometida y no es cumplimiento, se deja como está (Reservada/Asignada):
-      // el contrato nuevo manda.
-    }
-
-    // El cliente pasa a "Egresado" si cumplió su contrato (caso feliz — se lleva su moto),
-    // o "Retirado" en incumplimiento/retiro voluntario. No se toca si tiene otro contrato
-    // Activo (ej. graduación Diario→tiempo definido, donde continúa con el nuevo contrato).
-    const { data: otroActivo } = await supabase
-      .from("contratos")
-      .select("id")
-      .eq("cliente_id", liq.cliente_id)
-      .in("estado", ["Activo", "En proceso"])
-      .neq("id", liq.contrato_id)
-      .limit(1);
-    if (!otroActivo || otroActivo.length === 0) {
-      const estadoCliente = liq.motivo === "cumplimiento" ? "Egresado" : "Retirado";
-      // El error se revisa: antes se descartaba y, como 'Egresado' no existía en el CHECK
-      // (corregido en la mig 067), el cierre por cumplimiento decía "listo" y dejaba al
-      // cliente Activo para siempre. Un fallo aquí no invalida el cierre, pero hay que verlo.
-      const { error: errCliente } = await supabase
-        .from("clientes").update({ estado: estadoCliente }).eq("id", liq.cliente_id);
-      if (errCliente) {
-        return { error: `La liquidación se cerró, pero el cliente no quedó como "${estadoCliente}": ${errCliente.message}. Avísale al administrador.` };
-      }
-    }
-
-    if (liq.saldo_final < 0) {
-      await supabase.from("clientes").update({
-        lista_negra: true,
-        motivo_lista_negra: `Liquidación ${liq.numero}: saldo pendiente $${Math.abs(liq.saldo_final).toLocaleString("es-CO")}`,
-      }).eq("id", liq.cliente_id);
-    }
-
-    return { error: null };
+    await fetchLiquidaciones();
+    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number };
+    return {
+      error: null,
+      avisoDeuda: r.deuda_creada
+        ? `El ahorro no alcanzó: quedaron $${Math.round(r.faltante ?? 0).toLocaleString("es-CO")} como deuda del cliente, para cobrárselos si vuelve.`
+        : null,
+    };
   }
 
   return {

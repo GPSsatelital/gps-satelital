@@ -10,16 +10,7 @@ import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
-
-// Cómo se llama cada etapa en palabras — la pantalla de Contratos no tiene por qué saber los
-// nombres internos del módulo de Liquidaciones.
-const ESTADO_LIQ: Record<string, string> = {
-  iniciada: "iniciada",
-  en_taller: "revisión de taller",
-  calculada: "saldo calculado",
-  documento_generado: "documento generado",
-  firmada: "firmada por el cliente",
-};
+import ModalProyeccionLiquidacion from "../components/ModalProyeccionLiquidacion";
 import ModalCederContrato from "../components/ModalCederContrato";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
@@ -31,6 +22,16 @@ const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16,
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 13 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
+
+// Cómo se llama cada etapa en palabras — la pantalla de Contratos no tiene por qué mostrarle al
+// funcionario los nombres internos del módulo de Liquidaciones.
+const ESTADO_LIQ: Record<string, string> = {
+  iniciada: "iniciada",
+  en_taller: "revisión de taller",
+  calculada: "saldo calculado",
+  documento_generado: "documento generado",
+  firmada: "firmada por el cliente",
+};
 
 // Días hasta la fecha real de fin del contrato (fecha_fin_contrato, guardada — no un
 // solo período de pago). Antes se recalculaba siempre desde fecha_entrega + meses,
@@ -131,6 +132,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalDocumentosAbierto, setModalDocumentosAbierto] = useState(false);
   const [modalLiquidacionAbierto, setModalLiquidacionAbierto] = useState(false);
+  const [proyeccionAbierta, setProyeccionAbierta] = useState(false);
   const [modalCesionAbierto, setModalCesionAbierto] = useState(false);
   // Atrás cierra el modal abierto antes de cambiar de módulo.
   useBackGuard(modalEditarAbierto, () => setModalEditarAbierto(false));
@@ -324,6 +326,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   <div style={{ marginTop: 2, fontWeight: 400 }}>Continúala en el módulo <strong>Liquidaciones</strong> para calcular el saldo y cerrarla.</div>
                 </div>
               )}
+              {/* Ver la cuenta ANTES de decidir. No escribe nada — sirve para saber si al cliente
+                  se le devuelve plata o queda debiendo, y cuánto cambia según el día en que se
+                  guardó la moto. Sale también con liquidación abierta: ahí ayuda a revisar. */}
+              {(c.estado === "Activo" || c.estado === "Suspendido") && (
+                <button onClick={() => setProyeccionAbierta(true)} style={{ background: "var(--soft2)", color: "var(--text)", border: "1px solid var(--line2)", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+                  🧮 Si lo liquido, ¿cuánto sale?
+                </button>
+              )}
               {(c.estado === "Activo" || c.estado === "Suspendido") && puedeLiquidar && !liqAbierta && (
                 // Todo cierre REAL (con moto entregada, ahorro, posible deuda) pasa por
                 // Liquidación — calcula el saldo, trae deudas automáticas, deja documento
@@ -432,6 +442,15 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             contrato={c}
             onClose={() => setModalCesionAbierto(false)}
             onDone={(m) => { setModalCesionAbierto(false); alert(m); }}
+          />
+        )}
+
+        {proyeccionAbierta && (
+          <ModalProyeccionLiquidacion
+            contrato={c}
+            clienteNombre={clienteDetalle.nombre}
+            placa={motoDetalle?.placa ?? "Sin placa"}
+            onClose={() => setProyeccionAbierta(false)}
           />
         )}
 

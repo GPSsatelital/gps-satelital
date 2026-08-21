@@ -235,7 +235,13 @@ export default function LiquidacionesView() {
     // devuelve (ahorroDeLosDias): el efecto neto es que la empresa cobra solo su tarifa.
     const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor - ahorroDeLosDias;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
-    await calcularSaldo(sel.id, sel.ahorro_acumulado, deudasAjustadas, totalDanos, saldoFavor);
+    // Lo que le pertenece: su ahorro (ganado pagando + apertura) MÁS su base, pero la base solo se
+    // suma en MIGRADOS. En los del wizard la base ya se repartió al entrar (parte pagó su primera
+    // semana, parte quedó en apertura), así que sumarla acá la contaría dos veces.
+    const ahorroDelCliente = (contratoLiq?.ahorro_acumulado ?? 0)
+      + (contratoLiq?.ahorro_apertura ?? 0)
+      + (contratoLiq?.es_migrado ? (contratoLiq.ahorro_inicial ?? 0) : 0);
+    await calcularSaldo(sel.id, ahorroDelCliente, deudasAjustadas, totalDanos, saldoFavor);
     setGuardando(false);
     if (error) setMsg(error);
     else if (ajuste.aFavor > 0 || ajuste.porCobrar > 0) {

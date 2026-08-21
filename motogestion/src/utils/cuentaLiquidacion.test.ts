@@ -14,25 +14,53 @@ const SERAFIN: ContratoCiclo & { ahorro_acumulado: number; ahorro_apertura: numb
 };
 
 describe("lo que se le devuelve al cliente", () => {
-  it("suma ahorro y saldo a favor por separado, cada uno con su nombre", () => {
+  it("cada plata sale con su nombre, sin mezclarse", () => {
     const c = cuentaLiquidacion({
       contrato: SERAFIN, fechaCorte: "2026-07-13", saldoFavor: 3000, deudas: [], convenios: [],
     });
     const nombres = c.aFavor.renglones.map(r => r.concepto);
-    expect(nombres).toContain("Ahorro acumulado");
     expect(nombres).toContain("Saldo a favor");
-    // El ahorro son los $418.000 reales de SERAFIN: $110.000 por pagos + $308.000 de apertura.
-    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro acumulado")!.monto).toBe(418000);
     expect(c.aFavor.renglones.find(r => r.concepto === "Saldo a favor")!.monto).toBe(3000);
+    // SERAFIN NO es migrado: su apertura es el remanente de su base, y lo ganado pagando va aparte.
+    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro que viene de su base inicial")!.monto).toBe(308000);
+    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro que ganó pagando")!.monto).toBe(110000);
+  });
+});
+
+describe("la base y el ahorro son dos cosas distintas, y se guardan distinto", () => {
+  // Regla del dueño (21-ago): «la base es la base y los ahorros acumulados son otros; solo se unen
+  // en la liquidación». Y el arqueo de los migrados trajo en `ahorro_apertura` SOLO lo ganado
+  // pagando — su base quedó aparte, en `ahorro_inicial`.
+
+  // ANTONIO MONTERROZA (IEW65I): migrado, base $300.000, arqueo $148.000.
+  const ANTONIO = {
+    forma_pago: "Semanal" as const, dia_pago: "Lunes", valor_semanal: 202000,
+    es_migrado: true, motor_v2: true,
+    total_cajas: 104, cajas_pagadas: 5, cajas_previas: 5, caja_actual_pagado: 0,
+    prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+    ahorro_acumulado: 0, ahorro_apertura: 148000, ahorro_inicial: 300000,
+  };
+
+  it("al MIGRADO se le suma su base: sin eso se le devuelve menos de lo que es suyo", () => {
+    const c = cuentaLiquidacion({
+      contrato: ANTONIO, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [],
+    });
+    expect(c.aFavor.renglones.find(r => r.concepto === "Base inicial que entregó")!.monto).toBe(300000);
+    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro que ganó pagando")!.monto).toBe(148000);
   });
 
-  it("el saldo a favor NO se disfraza de ahorro", () => {
-    // Un número correcto con la etiqueta equivocada ya costó caro antes (caso LIBINTO).
+  it("al del WIZARD no se le suma la base: ya está repartida adentro y sería contarla dos veces", () => {
+    // SERAFIN entró por el wizard con $510.000: $202.000 pagaron su primera semana (Caja 1) y
+    // $308.000 quedaron en apertura. Sumar la base otra vez le daría $818.000 de ahorro.
+    const conBase = { ...SERAFIN, ahorro_inicial: 510000 };
     const c = cuentaLiquidacion({
-      contrato: SERAFIN, fechaCorte: "2026-07-13", saldoFavor: 3000, deudas: [], convenios: [],
+      contrato: conBase, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [],
     });
-    expect(c.aFavor.renglones.filter(r => r.concepto === "Ahorro acumulado")).toHaveLength(1);
-    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro acumulado")!.monto).not.toBe(421000);
+    expect(c.aFavor.renglones.some(r => r.concepto === "Base inicial que entregó")).toBe(false);
+    const sumaAhorro = c.aFavor.renglones
+      .filter(r => r.concepto.startsWith("Ahorro"))
+      .reduce((s, r) => s + r.monto, 0);
+    expect(sumaAhorro).toBe(418000);
   });
 });
 

@@ -46,7 +46,12 @@ const CONCEPTO_LEGIBLE: Record<string, string> = {
  *                    que la moto lleva en la bodega de la empresa no se le cobran al cliente.
  */
 export function cuentaLiquidacion(opts: {
-  contrato: ContratoCiclo & { ahorro_acumulado?: number | null; ahorro_apertura?: number | null };
+  contrato: ContratoCiclo & {
+    ahorro_acumulado?: number | null;
+    ahorro_apertura?: number | null;
+    /** La BASE que entregó al entrar. No es ahorro — solo se suma en migrados (ver abajo). */
+    ahorro_inicial?: number | null;
+  };
   fechaCorte: string;
   saldoFavor: number;
   deudas: DeudaCuenta[];
@@ -57,8 +62,33 @@ export function cuentaLiquidacion(opts: {
   const ajuste = ajusteSalidaLedger(contrato, new Date(fechaCorte + "T12:00:00"));
 
   const aFavor: RenglonCuenta[] = [];
-  const ahorro = (contrato.ahorro_acumulado ?? 0) + (contrato.ahorro_apertura ?? 0);
-  if (ahorro > 0) aFavor.push({ concepto: "Ahorro acumulado", monto: ahorro });
+
+  // LA BASE Y EL AHORRO SON DOS COSAS DISTINTAS, y solo se unen acá, en la liquidación
+  // (regla del dueño, 21-ago): «la base la pone él al entrar; el ahorro lo construye pagando».
+  // Se muestran en renglones SEPARADOS para que el cliente vea de dónde sale cada peso.
+  //
+  // ⚠️ SE GUARDAN DISTINTO SEGÚN CÓMO ENTRÓ EL CLIENTE — no se puede tratar igual a los dos:
+  //
+  //  · MIGRADO: el arqueo del sistema viejo trajo en `ahorro_apertura` SOLO lo ganado pagando.
+  //    Su base quedó aparte, en `ahorro_inicial`, y hay que SUMARLA — si no, se le devuelve menos
+  //    de lo que es suyo. Caso ANTONIO MONTERROZA: $148.000 del arqueo + $300.000 de base.
+  //
+  //  · DEL WIZARD: la base YA se repartió al entrar — una parte pagó su primera semana (entró al
+  //    ledger como Caja 1) y el resto quedó en `ahorro_apertura`. Sumar `ahorro_inicial` acá la
+  //    contaría DOS VECES. Por eso solo se etiqueta de dónde viene cada parte.
+  const ahorroPagando = contrato.ahorro_acumulado ?? 0;
+  const ahorroApertura = contrato.ahorro_apertura ?? 0;
+  const baseEntregada = contrato.ahorro_inicial ?? 0;
+
+  if (contrato.es_migrado) {
+    if (baseEntregada > 0) aFavor.push({ concepto: "Base inicial que entregó", monto: baseEntregada });
+    const ahorro = ahorroPagando + ahorroApertura;
+    if (ahorro > 0) aFavor.push({ concepto: "Ahorro que ganó pagando", monto: ahorro });
+  } else {
+    // La apertura de un contrato del wizard ES el remanente de su base, no ahorro ganado.
+    if (ahorroApertura > 0) aFavor.push({ concepto: "Ahorro que viene de su base inicial", monto: ahorroApertura });
+    if (ahorroPagando > 0) aFavor.push({ concepto: "Ahorro que ganó pagando", monto: ahorroPagando });
+  }
   if (saldoFavor > 0) aFavor.push({ concepto: "Saldo a favor", monto: saldoFavor });
   // Lo que pagó por adelantado y no alcanzó a usar: se le devuelve (regla 9 del libro de cajas).
   if (ajuste.aFavor > 0) aFavor.push({ concepto: "Pagó adelantado y no alcanzó a usar", monto: ajuste.aFavor });

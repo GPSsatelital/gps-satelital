@@ -6,7 +6,19 @@ export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumpli
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada";
 
 export type DetalleDano = { concepto: string; monto: number };
-export type DetalleDeuda = { concepto: string; monto: number };
+/**
+ * Un renglón de lo que se le descuenta al cliente.
+ *
+ * `monto` NEGATIVO = crédito a su favor. Suena raro dentro de algo llamado "deudas", pero es que
+ * `total_deudas` siempre fue el neto: adentro va lo que rodó sin pagar MENOS su ahorro de esos
+ * días MENOS lo que había prepagado. Antes solo se guardaba el neto y el desglose quedaba vacío,
+ * así que el documento que el cliente FIRMA mostraba un total que no cuadraba con sus renglones
+ * (caso ANTONIO: $108.000 sin explicación). Ahora cada peso del neto tiene su renglón.
+ *
+ * `auto` = lo puso el sistema al calcular, no una persona. Los formularios lo filtran: si se
+ * precargaran, volver a guardar los sumaría dos veces.
+ */
+export type DetalleDeuda = { concepto: string; monto: number; auto?: boolean };
 
 export type Liquidacion = {
   id: string;
@@ -27,6 +39,9 @@ export type Liquidacion = {
   nombre_responsable: string | null;
   cargo_responsable: string | null;
   documento_firmado_url: string | null;
+  firma_cliente_url: string | null;
+  huella_cliente_url: string | null;
+  fecha_firma: string | null;
   taller_id: string | null;
   iniciada_por: string | null;
   cerrada_por: string | null;
@@ -208,6 +223,24 @@ export function useLiquidaciones() {
    * firma y no se toca. Sin esto, imprimir el documento era un callejón sin salida — si al
    * revisarlo con el cliente aparecía un error, no había cómo devolverse.
    */
+  /**
+   * Corrige el motivo de una liquidación que todavía no se firma.
+   *
+   * El motivo decide TODO lo que pasa al cerrar: si el contrato queda Finalizado o Cancelado, si
+   * la moto vuelve a la flota o pasa a ser del cliente, y cómo queda el cliente. Elegirlo mal y no
+   * poder corregirlo obligaba a anular la liquidación entera — y anular tampoco existe.
+   *
+   * Solo hasta 'documento_generado': después el cliente firmó un papel que dice ese motivo.
+   */
+  async function cambiarMotivo(liquidacionId: string, motivo: MotivoLiquidacion) {
+    const { error } = await supabase.from("liquidaciones")
+      .update({ motivo })
+      .eq("id", liquidacionId)
+      .in("estado", ["iniciada", "en_taller", "calculada", "documento_generado"]);
+    if (!error) await fetchLiquidaciones();
+    return { error: error?.message ?? null };
+  }
+
   async function volverACalcular(liquidacionId: string) {
     const { error } = await supabase.from("liquidaciones")
       .update({ estado: "calculada" })
@@ -248,6 +281,60 @@ export function useLiquidaciones() {
     if (error) return { error: error.message };
     await fetchLiquidaciones();
     return { error: null };
+  }
+
+  /**
+   * Firma en pantalla: guarda la firma, la huella y el documento FINAL ya armado con las dos
+   * incrustadas. Deja la liquidación en 'firmada', igual que subir la foto del papel.
+   *
+   * El PDF va a `documento_firmado_url`, la misma columna de siempre: todo lo que ya la lee
+   * —el botón de descargar, el aviso de "cerrada sin firma", el cierre— sigue funcionando sin
+   * enterarse de que ahora puede venir de la pantalla en vez de la cámara.
+   *
+   * Si el PDF falla (html2canvas es delicado), NO se guarda nada a medias: se devuelve el error
+   * y la liquidación se queda donde estaba, para poder reintentar o irse por el papel.
+   */
+  async function firmarDigital(
+    liquidacionId: string,
+    firmaDataUrl: string,
+    huellaDataUrl: string | null,
+    htmlFinal: string,
+  ) {
+    const subirDataUrl = async (dataUrl: string, nombre: string) => {
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `liquidaciones/${liquidacionId}/${nombre}`;
+      const { error } = await supabase.storage.from("documentos").upload(path, blob, { upsert: true, contentType: blob.type || "image/png" });
+      if (error) throw new Error(error.message);
+      return supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
+    };
+
+    try {
+      const { htmlAPdfBlob } = await import("../utils/pdf");
+      const pdf = await htmlAPdfBlob(htmlFinal);
+
+      const firmaUrl = await subirDataUrl(firmaDataUrl, "firma.png");
+      const huellaUrl = huellaDataUrl ? await subirDataUrl(huellaDataUrl, "huella.png") : null;
+
+      const pathDoc = `liquidaciones/${liquidacionId}/firmado.pdf`;
+      const { error: errDoc } = await supabase.storage.from("documentos")
+        .upload(pathDoc, pdf, { upsert: true, contentType: "application/pdf" });
+      if (errDoc) return { error: errDoc.message };
+      const docUrl = supabase.storage.from("documentos").getPublicUrl(pathDoc).data.publicUrl;
+
+      const { error } = await supabase.from("liquidaciones").update({
+        estado: "firmada",
+        documento_firmado_url: docUrl,
+        firma_cliente_url: firmaUrl,
+        huella_cliente_url: huellaUrl,
+        fecha_firma: new Date().toISOString(),
+      }).eq("id", liquidacionId);
+      if (error) return { error: error.message };
+
+      await fetchLiquidaciones();
+      return { error: null };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "No se pudo guardar la firma." };
+    }
   }
 
   async function subirDocumentoFirmado(liquidacionId: string, file: File) {
@@ -307,8 +394,10 @@ export function useLiquidaciones() {
     calcularSaldo,
     marcarDocumentoGenerado,
     volverACalcular,
+    cambiarMotivo,
     subirDocumentoFirmado,
     adjuntarFirmaACerrada,
+    firmarDigital,
     confirmarCierre,
   };
 }

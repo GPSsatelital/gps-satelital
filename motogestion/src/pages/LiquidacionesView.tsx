@@ -8,8 +8,11 @@ import { useContratos } from "../hooks/useContratos";
 import { useTaller, type TallerItem } from "../hooks/useTaller";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
-import { generarDocumentoLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiquidacion";
+import ModalFirmaLiquidacion from "../components/ModalFirmaLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
+import { desgloseDeudas } from "../utils/desgloseLiquidacion";
 import { hoyISO } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
@@ -77,7 +80,8 @@ export default function LiquidacionesView() {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
 
   const { filtrarMotos } = useScope();
-  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, volverACalcular, confirmarCierre } = useLiquidaciones();
+  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();
+  const [firmando, setFirmando] = useState(false);
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
@@ -148,7 +152,7 @@ export default function LiquidacionesView() {
       return;
     }
     setDanos(sel.detalle_danos?.length ? sel.detalle_danos : [{ concepto: "", monto: 0 }]);
-    setDeudas(sel.detalle_deudas?.length ? sel.detalle_deudas : [{ concepto: "", monto: 0 }]);
+    setDeudas(deudasEditables(sel));
   }, [selId]);
 
   useEffect(() => {
@@ -193,7 +197,7 @@ export default function LiquidacionesView() {
     // normal del negocio. Solo se cobra lo que el cliente dañó (farol roto, abolladura).
     // Precargar el costo del taller aquí le habría cobrado al cliente hasta el mantenimiento.
     setDanos(l.detalle_danos.length > 0 ? l.detalle_danos : [{ concepto: "", monto: 0 }]);
-    setDeudas(l.detalle_deudas.length > 0 ? l.detalle_deudas : [{ concepto: "", monto: 0 }]);
+    setDeudas(deudasEditables(l));
     setNombreResp(l.nombre_responsable ?? "");
     setCargoResp(l.cargo_responsable ?? "");
   }
@@ -214,6 +218,18 @@ export default function LiquidacionesView() {
     return motos.find((m) => m.id === liq.moto_id) ?? null;
   }
 
+  /**
+   * Las deudas que el funcionario puede EDITAR: las que escribió una persona.
+   *
+   * Deja fuera las que pone el sistema al calcular (los días que rodó, su ahorro de esos días,
+   * lo prepagado). Si se precargaran en el formulario, al volver a calcular se sumarían encima
+   * de las que el cálculo genera de nuevo — se le cobraría dos veces.
+   */
+  function deudasEditables(l: Liquidacion): DetalleDeuda[] {
+    const manuales = (l.detalle_deudas ?? []).filter(d => !d.auto);
+    return manuales.length > 0 ? manuales : [{ concepto: "", monto: 0 }];
+  }
+
   async function handleRegistrarTaller() {
     if (!sel) return;
     // Sin la fecha de entrega no se calcula. Es la decisión del dueño y no tiene atajo: el ajuste
@@ -231,7 +247,6 @@ export default function LiquidacionesView() {
     const danosValidos = danos.filter((d) => d.concepto.trim());
     const deudasValidas = deudas.filter((d) => d.concepto.trim());
     const totalDanos = danosValidos.reduce((s, d) => s + Number(d.monto), 0);
-    const totalDeudas = deudasValidas.reduce((s, d) => s + Number(d.monto), 0);
     // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día en que ENTREGÓ la moto
     // —no hasta hoy— y lo prepagado no consumido se devuelve (porCobrar suma, aFavor resta).
     const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
@@ -245,8 +260,17 @@ export default function LiquidacionesView() {
     const ahorroDeLosDias = ajuste.ahorroPorCobrar;
     // Los días que rodó sin pagar se cobran completos (porCobrar) y su parte de ahorro se le
     // devuelve (ahorroDeLosDias): el efecto neto es que la empresa cobra solo su tarifa.
-    const deudasAjustadas = totalDeudas + ajuste.porCobrar - ajuste.aFavor - ahorroDeLosDias;
-    const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, deudasValidas, totalDeudas);
+    // El total y su explicación salen del MISMO sitio (desgloseDeudas), con prueba propia. Antes
+    // el total llevaba el ajuste y el detalle no, así que el documento que el cliente FIRMA
+    // mostraba renglones que no sumaban — a ANTONIO le faltaban $108.000 sin explicar.
+    const desglose = desgloseDeudas({
+      manuales: deudasValidas,
+      porCobrar: ajuste.porCobrar,
+      ahorroDeLosDias,
+      prepagadoNoUsado: ajuste.aFavor,
+    });
+    const deudasAjustadas = desglose.total;
+    const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, desglose.renglones, deudasAjustadas);
     // Lo que le pertenece: su ahorro (ganado pagando + apertura) MÁS su base, pero la base solo se
     // suma en MIGRADOS. En los del wizard la base ya se repartió al entrar (parte pagó su primera
     // semana, parte quedó en apertura), así que sumarla acá la contaría dos veces.
@@ -269,9 +293,41 @@ export default function LiquidacionesView() {
     const { error } = await marcarDocumentoGenerado(sel.id, nombreResp, cargoResp);
     setGuardando(false);
     if (error) { setMsg(error); return; }
-    const cliente = clienteDe(sel);
-    const moto = motoDe(sel);
-    generarDocumentoLiquidacion(sel, { nombre: cliente?.nombre ?? "", cedula: (cliente as any)?.cedula, telefono: cliente?.telefono }, moto ? { marca: (moto as any).marca, modelo: (moto as any).modelo, placa: moto.placa } : null);
+    imprimirLiquidacion(sel, datosCliente(sel), datosMoto(sel));
+  }
+
+  // Los mismos datos, armados igual, para el documento / el borrador / el recibo de egreso.
+  // Si cada llamada los armara por su lado, el borrador que el cliente lee podría traer un dato
+  // distinto del que termina firmando.
+  function datosCliente(l: Liquidacion) {
+    const c = clienteDe(l);
+    return { nombre: c?.nombre ?? "", cedula: (c as any)?.cedula, telefono: c?.telefono };
+  }
+  function datosMoto(l: Liquidacion) {
+    const m = motoDe(l);
+    return m ? { marca: (m as any).marca, modelo: (m as any).modelo, placa: m.placa } : null;
+  }
+
+  /** Reimprimir. Si ya firmó, sale CON su firma y su huella; si no, sale como borrador. */
+  function handleReimprimir(l: Liquidacion) {
+    const yaFirmo = !!l.firma_cliente_url;
+    imprimirLiquidacion(l, datosCliente(l), datosMoto(l), {
+      borrador: !yaFirmo,
+      firmaUrl: l.firma_cliente_url,
+      huellaUrl: l.huella_cliente_url,
+      fechaFirma: l.fecha_firma,
+    });
+  }
+
+  function handleReciboEgreso(l: Liquidacion) {
+    const m = motoDe(l);
+    const c = clienteDe(l);
+    generarReciboEgresoLiquidacion(
+      l,
+      { nombre: c?.nombre ?? "", cedula: (c as any)?.cedula },
+      m ? { placa: m.placa, grupo: (m as any).grupo } : null,
+      profile?.nombre ?? "",
+    );
   }
 
   async function handleSubirFirmado(file: File) {
@@ -282,6 +338,15 @@ export default function LiquidacionesView() {
     setGuardando(false);
     if (error) setMsg(error);
     else setMsg("Documento firmado subido correctamente.");
+  }
+
+  async function handleCambiarMotivo(motivo: MotivoLiquidacion) {
+    if (!sel || guardando || motivo === sel.motivo) return;
+    if (!confirm(`¿Cambiar el motivo a "${MOTIVO_LABEL[motivo]}"?\n\nEsto define qué pasa al cerrar: el estado del contrato, el destino de la moto y cómo queda el cliente.`)) return;
+    setGuardando(true);
+    const { error } = await cambiarMotivo(sel.id, motivo);
+    setGuardando(false);
+    setMsg(error ? "Error: " + error : `Motivo cambiado a "${MOTIVO_LABEL[motivo]}".`);
   }
 
   async function handleVolverACalcular() {
@@ -398,6 +463,11 @@ export default function LiquidacionesView() {
       {/* Detalle */}
       {sel && (() => {
         const cliente = clienteDe(sel);
+        // "Cumplimiento" le ENTREGA la moto al cliente: solo se ofrece si el ledger dice que llenó
+        // todas sus cajas. Sin ledger (Diario, o migrado v1) no se puede verificar y se deja pasar.
+        const ctoSel = contratos.find(ct => ct.id === sel.contrato_id);
+        const termino = !ctoSel?.motor_v2 || ctoSel?.total_cajas == null
+          || (ctoSel.cajas_pagadas ?? 0) >= ctoSel.total_cajas;
         motoDe(sel);
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -405,7 +475,32 @@ export default function LiquidacionesView() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 18 }}>{sel.numero}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[sel.motivo]}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
+                  {/* El motivo se puede CORREGIR mientras el cliente no haya firmado. Decide todo
+                      lo que pasa al cerrar —si el contrato queda Finalizado o Cancelado, si la moto
+                      vuelve a la flota o pasa a ser del cliente, y cómo queda él—, y elegirlo mal
+                      obligaba a anular la liquidación entera... que tampoco se puede.
+                      "Cumplimiento" solo aparece si terminó de pagar: es el que le entrega la moto. */}
+                  {(sel.estado === "iniciada" || sel.estado === "en_taller" || sel.estado === "calculada" || sel.estado === "documento_generado") ? (
+                    <div style={{ marginTop: 6 }}>
+                      <select value={sel.motivo} onChange={e => handleCambiarMotivo(e.target.value as MotivoLiquidacion)}
+                        disabled={guardando}
+                        style={{ ...inputStyle, padding: "6px 10px", fontSize: 12.5, width: "auto", minWidth: 210 }}>
+                        {(["retiro_voluntario", "incumplimiento", "cumplimiento"] as MotivoLiquidacion[])
+                          .filter(mv => mv !== "cumplimiento" || termino)
+                          .map(mv => <option key={mv} value={mv}>{MOTIVO_LABEL[mv]}</option>)}
+                      </select>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
+                        {sel.motivo === "cumplimiento"
+                          ? "La moto pasa a ser del cliente · Paz y Salvo · queda Egresado"
+                          : sel.motivo === "incumplimiento"
+                            ? "Contrato Cancelado · la moto vuelve a la flota"
+                            : "Contrato Finalizado · la moto vuelve a la flota"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{MOTIVO_LABEL[sel.motivo]}</div>
+                  )}
                 </div>
                 <button onClick={() => setSel(null)} style={btn("var(--line)", "var(--muted2)")}>✕</button>
               </div>
@@ -519,6 +614,32 @@ export default function LiquidacionesView() {
                 ))}
                 <button style={{ ...btn("var(--soft)", "var(--muted2)"), marginBottom: 14, fontSize: 12 }} onClick={() => setDeudas([...deudas, { concepto: "", monto: 0 }])}>+ Agregar deuda</button>
 
+                {/* Lo que pone el sistema al calcular. Va aparte y sin poder editarse: si el
+                    funcionario ve "Total deudas $108.000" con su formulario vacío, la pantalla le
+                    está escondiendo de dónde sale la cifra que el cliente va a firmar. */}
+                {(() => {
+                  const auto = (sel.detalle_deudas ?? []).filter(d => d.auto);
+                  if (auto.length === 0) return null;
+                  return (
+                    <div style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted2)", marginBottom: 6 }}>
+                        Lo que calculó el sistema por los días de la moto
+                      </div>
+                      {auto.map((d, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, marginBottom: 3 }}>
+                          <span style={{ minWidth: 0, color: "var(--muted)" }}>{d.concepto}</span>
+                          <span style={{ fontWeight: 700, flexShrink: 0, color: d.monto < 0 ? "var(--ok-ink)" : "var(--text)" }}>
+                            {d.monto < 0 ? "+" : "−"} ${Math.abs(d.monto).toLocaleString("es-CO")}
+                          </span>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
+                        Sale del día que pusiste arriba. Estos renglones no se escriben a mano — se recalculan solos y aparecen en el documento del cliente.
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <button style={btn("var(--accent)")} onClick={handleRegistrarTaller} disabled={guardando}>
                   {guardando ? "Guardando..." : "Registrar revisión y calcular"}
                 </button>
@@ -553,23 +674,56 @@ export default function LiquidacionesView() {
                   </button>
                   {" "}— vuelve al paso del cálculo. Todavía puedes, porque aún no ha firmado.
                 </div>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>Subir documento firmado por el cliente</div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>Fotografía o escaneo del documento con la firma del cliente.</div>
-                {sel.documento_firmado_url && (
-                  <div style={{ marginBottom: 10 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento actual</a>
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                    📷 Cámara
-                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
-                  </label>
-                  <label style={{ ...btn("var(--muted3)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                    🖼 Galería / PDF
-                    <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
-                  </label>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Firma del cliente</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12, lineHeight: 1.5 }}>
+                  Primero le muestras la cuenta —en pantalla o impresa— y solo cuando esté de acuerdo firma.
                 </div>
+                <button style={{ ...btn("var(--ok)"), width: "100%", padding: "12px 16px", fontSize: 14 }} onClick={() => setFirmando(true)}>
+                  ✍️ Firmar en pantalla (firma + huella)
+                </button>
+
+                {/* El papel sigue disponible a propósito: el lector de huella solo trabaja en el PC
+                    de la oficina y ya ha fallado antes. Si falla, no se puede quedar trancada una
+                    liquidación con el cliente ahí parado. */}
+                <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px dashed var(--line)" }}>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>
+                    ¿El lector no responde o el cliente prefiere el papel? Imprime, que firme a mano y sube la foto.
+                  </div>
+                  {sel.documento_firmado_url && (
+                    <div style={{ marginBottom: 10 }}>
+                      <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento actual</a>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)" }} onClick={() => handleReimprimir(sel)}>
+                      🖨️ Imprimir
+                    </button>
+                    <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      📷 Cámara
+                      <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
+                    </label>
+                    <label style={{ ...btn("var(--muted3)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      🖼 Galería / PDF
+                      <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Reimprimir y recibo de egreso — disponibles desde que hay cuenta calculada, y
+                sobre todo cuando ya está CERRADA: antes una liquidación cerrada no se podía
+                volver a imprimir, así que el cliente que perdía su copia se quedaba sin ella. */}
+            {sel.estado !== "iniciada" && sel.estado !== "en_taller" && (
+              <div style={{ ...card, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)" }} onClick={() => handleReimprimir(sel)}>
+                  🖨️ {sel.firma_cliente_url ? "Reimprimir documento firmado" : "Imprimir documento"}
+                </button>
+                {sel.saldo_final > 0 && (
+                  <button style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)" }} onClick={() => handleReciboEgreso(sel)}>
+                    🧾 Recibo de egreso ({motoDe(sel)?.grupo ?? "sin portafolio"})
+                  </button>
+                )}
               </div>
             )}
 
@@ -654,6 +808,17 @@ export default function LiquidacionesView() {
           </div>
         );
       })()}
+
+      {firmando && sel && (
+        <ModalFirmaLiquidacion
+          liq={sel}
+          cliente={datosCliente(sel)}
+          moto={datosMoto(sel)}
+          huellaRegistroUrl={clienteDe(sel)?.autorizacion_datos_huella_url ?? null}
+          onCerrar={() => setFirmando(false)}
+          onFirmar={(firma, huella, html) => firmarDigital(sel.id, firma, huella, html)}
+        />
+      )}
     </div>
   );
 }

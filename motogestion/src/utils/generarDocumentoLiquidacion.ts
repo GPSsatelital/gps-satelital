@@ -1,5 +1,17 @@
 import type { Liquidacion } from "../hooks/useLiquidaciones";
 
+// EL DOCUMENTO DE LIQUIDACIÓN, EN TRES MODOS, DESDE UN SOLO HTML.
+//
+//   · borrador  → marca de agua "BORRADOR", firmas en blanco. Es lo que el cliente LEE antes.
+//   · firmado   → con la firma y la huella incrustadas. Es lo que se guarda y vale.
+//   · reimpresión → el mismo firmado, cuando haya que volver a sacarlo.
+//
+// Es UN solo armador para los tres: si cada modo tuviera su copia, el borrador que el cliente
+// revisa podría decir una cosa y el que firma otra — y acá el número se FIRMA.
+//
+// Colores en hex a propósito, NUNCA var(--…): esto se abre en ventana aparte (sin el CSS de la
+// app) y también pasa por html2canvas, que revienta con "unsupported color function var".
+
 type Cliente = { nombre: string; cedula?: string; telefono?: string };
 type Moto = { marca?: string; modelo?: string; placa?: string };
 
@@ -13,19 +25,47 @@ function cop(n: number) {
   return `$${Math.abs(n).toLocaleString("es-CO")}`;
 }
 
-export function generarDocumentoLiquidacion(
+/**
+ * Un renglón de descuento. Monto NEGATIVO = plata que se le SUMA al cliente, y se muestra con
+ * "+" en verde: si saliera con "−" como los demás, el cliente vería que le restan su propio
+ * ahorro y la tabla no cuadraría con el saldo final.
+ *
+ * El rótulo "Deuda:" solo va en lo que escribió una persona. Los renglones del cálculo ya se
+ * explican solos ("Días que rodó y no pagó") y llamarlos "Deuda:" sería decir mal qué son.
+ */
+function renglon(d: { concepto: string; monto: number; auto?: boolean }) {
+  const credito = d.monto < 0;
+  const etiqueta = d.auto ? d.concepto : `Deuda: ${d.concepto}`;
+  return `<tr><td>${etiqueta}</td><td style="${credito ? "color:#166534" : ""}">${credito ? "+" : "-"} ${cop(d.monto)}</td></tr>`;
+}
+
+export type OpcionesDocumento = {
+  /** Marca de agua "BORRADOR" y aviso de que todavía no vale. */
+  borrador?: boolean;
+  /** dataURL o URL de la firma capturada en pantalla. */
+  firmaUrl?: string | null;
+  /** dataURL o URL de la huella capturada con el lector. */
+  huellaUrl?: string | null;
+  /** Fecha en que firmó, para el pie del documento. */
+  fechaFirma?: string | null;
+};
+
+export function htmlLiquidacion(
   liq: Liquidacion,
   cliente: Cliente,
-  moto: Moto | null
+  moto: Moto | null,
+  opts: OpcionesDocumento = {}
 ) {
-  const html = `<!DOCTYPE html>
+  const { borrador = false, firmaUrl = null, huellaUrl = null, fechaFirma = null } = opts;
+
+  return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <title>Liquidación ${liq.numero}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; position: relative; }
   h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
   .subtitulo { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 24px; }
   .seccion { margin-bottom: 20px; }
@@ -42,16 +82,33 @@ export function generarDocumentoLiquidacion(
   .explica { margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11.5px; line-height: 1.55; color: #334155; }
   .explica p { margin-bottom: 6px; }
   .explica p:last-child { margin-bottom: 0; }
-  .firmas { display: flex; gap: 40px; margin-top: 60px; }
-  .firma-box { flex: 1; border-top: 1px solid #334155; padding-top: 8px; text-align: center; font-size: 12px; }
+  .firmas { display: flex; gap: 30px; margin-top: 54px; align-items: flex-end; }
+  .firma-box { flex: 1; text-align: center; font-size: 12px; }
+  .firma-trazo { height: 62px; display: flex; align-items: flex-end; justify-content: center; }
+  .firma-trazo img { max-height: 60px; max-width: 100%; }
+  .firma-linea { border-top: 1px solid #334155; padding-top: 8px; }
+  .huella-box { width: 120px; text-align: center; font-size: 11px; color: #64748b; }
+  .huella-cuadro { width: 100px; height: 100px; margin: 0 auto 6px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .huella-cuadro img { max-width: 100%; max-height: 100%; }
+  .constancia { margin-top: 26px; font-size: 11px; color: #475569; line-height: 1.6; text-align: justify; }
   .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: #64748b; }
+  .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
+  .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; font-weight: 700; text-align: center; }
+  .contenido { position: relative; z-index: 1; }
   @media print { body { padding: 20px; } }
 </style>
 </head>
 <body>
+${borrador ? `<div class="marca-borrador">BORRADOR</div>` : ""}
+<div class="contenido">
 <div class="numero-liq">${liq.numero} · ${new Date(liq.created_at).toLocaleDateString("es-CO")}</div>
 <h1>Club Moteros Cartagena</h1>
 <p class="subtitulo">DOCUMENTO DE LIQUIDACIÓN DE CONTRATO</p>
+
+${borrador ? `<div class="aviso-borrador">
+  Esta es una copia de revisión. Todavía NO está firmada y no tiene valor.<br/>
+  Léala con calma: si algo no le cuadra, dígalo antes de firmar.
+</div>` : ""}
 
 <div class="seccion">
   <h2>Datos del cliente</h2>
@@ -80,7 +137,7 @@ ${moto ? `<div class="seccion">
     <tbody>
       <tr><td>Ahorro acumulado</td><td>${cop(liq.ahorro_acumulado)}</td></tr>
       ${(liq.saldo_favor ?? 0) > 0 ? `<tr><td>Saldo a favor (plata suya sin usar)</td><td>${cop(liq.saldo_favor)}</td></tr>` : ""}
-      ${liq.detalle_deudas.map((d) => `<tr><td>Deuda: ${d.concepto}</td><td>- ${cop(d.monto)}</td></tr>`).join("")}
+      ${liq.detalle_deudas.map((d) => renglon(d)).join("")}
       ${liq.detalle_danos.map((d) => `<tr><td>Daño: ${d.concepto}</td><td>- ${cop(d.monto)}</td></tr>`).join("")}
       <tr class="total-row"><td>SALDO FINAL</td><td class="${liq.saldo_final >= 0 ? "saldo-positivo" : "saldo-negativo"}">${liq.saldo_final >= 0 ? cop(liq.saldo_final) : `(${cop(liq.saldo_final)}) — CLIENTE DEBE`}</td></tr>
     </tbody>
@@ -105,23 +162,52 @@ ${moto ? `<div class="seccion">
 
 <div class="firmas">
   <div class="firma-box">
-    <p>${liq.nombre_responsable ?? "________________________"}</p>
-    <p>${liq.cargo_responsable ?? "Responsable Club Moteros Cartagena"}</p>
-    <p style="margin-top:4px;color:#64748b">Por la empresa</p>
+    <div class="firma-trazo"></div>
+    <div class="firma-linea">
+      <p style="font-weight:700;text-transform:uppercase">${liq.nombre_responsable ?? "________________________"}</p>
+      <p style="color:#64748b">${liq.cargo_responsable ?? "Responsable Club Moteros Cartagena"}</p>
+      <p style="margin-top:4px;color:#64748b">Por la empresa</p>
+    </div>
   </div>
   <div class="firma-box">
-    <p>________________________</p>
-    <p>${cliente.nombre}</p>
-    <p style="margin-top:4px;color:#64748b">El cliente</p>
+    <div class="firma-trazo">${firmaUrl ? `<img src="${firmaUrl}" alt="Firma del cliente"/>` : ""}</div>
+    <div class="firma-linea">
+      <p style="font-weight:700;text-transform:uppercase">${cliente.nombre}</p>
+      ${cliente.cedula ? `<p style="color:#64748b">C.C. ${cliente.cedula}</p>` : ""}
+      <p style="margin-top:4px;color:#64748b">El cliente</p>
+    </div>
   </div>
+  <div class="huella-box">
+    <div class="huella-cuadro">${huellaUrl ? `<img src="${huellaUrl}" alt="Huella del cliente"/>` : ""}</div>
+    <p>Huella del cliente</p>
+  </div>
+</div>
+
+<p class="constancia">
+  Con su firma y su huella el cliente declara que revisó esta cuenta renglón por renglón, que está
+  de acuerdo con las cifras aquí detalladas, que recibe a satisfacción el saldo que le corresponde
+  y que no queda ninguna reclamación pendiente por este contrato.
+  ${fechaFirma ? `Firmado el ${new Date(fechaFirma).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}.` : ""}
+</p>
 </div>
 </body>
 </html>`;
+}
 
+/** Abre el documento en una ventana aparte y manda a imprimir. */
+export function imprimirLiquidacion(
+  liq: Liquidacion,
+  cliente: Cliente,
+  moto: Moto | null,
+  opts: OpcionesDocumento = {}
+) {
   const ventana = window.open("", "_blank", "width=800,height=900");
   if (!ventana) return;
-  ventana.document.write(html);
+  ventana.document.write(htmlLiquidacion(liq, cliente, moto, opts));
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 400);
 }
+
+/** Nombre viejo, conservado para no romper las llamadas que ya existen. */
+export const generarDocumentoLiquidacion = imprimirLiquidacion;

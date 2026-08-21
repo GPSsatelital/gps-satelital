@@ -9,6 +9,17 @@ import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import { useLiquidaciones } from "../hooks/useLiquidaciones";
+
+// Cómo se llama cada etapa en palabras — la pantalla de Contratos no tiene por qué saber los
+// nombres internos del módulo de Liquidaciones.
+const ESTADO_LIQ: Record<string, string> = {
+  iniciada: "iniciada",
+  en_taller: "revisión de taller",
+  calculada: "saldo calculado",
+  documento_generado: "documento generado",
+  firmada: "firmada por el cliente",
+};
 import ModalCederContrato from "../components/ModalCederContrato";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
@@ -90,6 +101,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeCrear = puede("crear_contrato");
   const puedeEditar = puede("editar_contrato");
   const puedeLiquidar = puede("iniciar_liquidacion");
+  const { liquidaciones } = useLiquidaciones();
   const puedeCeder = puede("ceder_contrato");
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
@@ -197,6 +209,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     }
 
     const c = contratoSeleccionado;
+    // La liquidación abierta de ESTE contrato (si la hay). "Cerrada" no cuenta: esa ya terminó.
+    const liqAbierta = liquidaciones.find(l => l.contrato_id === c.id && l.estado !== "cerrada") ?? null;
     const esDiario = c.forma_pago === "Diario";
     const ahorro = ahorroTotal(c);
     const ahorroMeta = c.base_inicial ?? 510000;
@@ -298,7 +312,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   ⏸️ Suspender contrato
                 </button>
               )}
-              {(c.estado === "Activo" || c.estado === "Suspendido") && puedeLiquidar && (
+              {/* Si YA hay una liquidación abierta, la pantalla lo dice. Antes se le daba a
+                  "Iniciar liquidación", se creaba, y aquí no cambiaba absolutamente nada: el
+                  botón seguía igual y no había forma de saber que ya existía ni dónde seguirla.
+                  El único aviso llegaba al volver a darle, cuando el candado anti-doble decía
+                  "ya existe una". Hay 11 liquidaciones atascadas en la primera etapa, y esto
+                  explica buena parte: se abren y nadie sabe que quedaron a medias. */}
+              {liqAbierta && (
+                <div style={{ background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                  📄 <strong>Liquidación {liqAbierta.numero} en curso</strong> — va en «{ESTADO_LIQ[liqAbierta.estado] ?? liqAbierta.estado}».
+                  <div style={{ marginTop: 2, fontWeight: 400 }}>Continúala en el módulo <strong>Liquidaciones</strong> para calcular el saldo y cerrarla.</div>
+                </div>
+              )}
+              {(c.estado === "Activo" || c.estado === "Suspendido") && puedeLiquidar && !liqAbierta && (
                 // Todo cierre REAL (con moto entregada, ahorro, posible deuda) pasa por
                 // Liquidación — calcula el saldo, trae deudas automáticas, deja documento
                 // firmado. Los botones rápidos de antes cerraban sin calcular nada.

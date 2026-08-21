@@ -33,6 +33,7 @@ import { useUbicaciones } from "../hooks/useUbicaciones";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { Chip } from "../components/atomos";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
+import { useLiquidaciones } from "../hooks/useLiquidaciones";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -105,6 +106,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // Liquidar a los 7 días sigue siendo decisión del ADMIN (regla local), pero además se le
   // puede recortar por persona. El convenio de recuperación exige el permiso crear_convenio.
   const puedeLiquidar = puede("iniciar_liquidacion");
+  const { liquidaciones } = useLiquidaciones();
+  /** La liquidación abierta de un contrato, si la hay ("cerrada" ya terminó). */
+  const liqAbiertaDe = (contratoId: string) =>
+    liquidaciones.find(l => l.contrato_id === contratoId && l.estado !== "cerrada") ?? null;
   const puedeCrearConvenio = puede("crear_convenio");
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
@@ -1101,7 +1106,15 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         candado NO SE ABRÍA NUNCA — así llevaran meses guardadas.
                         Caso real: ANTONIO MONTERROZA (IEW65I), imposible de liquidar.
                         Ahora avisa cuántos días lleva y deja pasar; la decisión es del ADMIN. */}
-                    {puedeLiquidar && (
+                    {/* Si ya hay una liquidación abierta, se dice y se deja de ofrecer "iniciar":
+                        antes el botón se veía idéntico y se podía intentar de nuevo sin saber que
+                        ya existía. */}
+                    {puedeLiquidar && liqAbiertaDe(m.contratoId) && (
+                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
+                        📄 {liqAbiertaDe(m.contratoId)!.numero} en curso — sigue en Liquidaciones
+                      </span>
+                    )}
+                    {puedeLiquidar && !liqAbiertaDe(m.contratoId) && (
                       <button
                         onClick={() => setLiquidacionModal(m)}
                         disabled={procesandoEsta}

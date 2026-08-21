@@ -120,7 +120,27 @@ export default function LiquidacionesView() {
       ? recepcionDelContrato(recepciones, contratoLiq, contratos.filter(x => x.moto_id === contratoLiq.moto_id))
       : null;
     setFechaEntregaMoto(rec ? rec.created_at.slice(0, 10) : "");
-  }, [sel, recepciones]);
+  }, [sel, recepciones, contratos]);
+
+  // TRAER SOLA LA REVISIÓN DEL MECÁNICO. Antes él la escribía en su orden de Taller y aquí había
+  // que RE-TECLEARLA: dos formularios para lo mismo. Nadie sabía que tenía que volver a copiarla,
+  // y por eso hay 11 liquidaciones atascadas en "En taller" desde la LIQ-0001.
+  // Se trae lo que él escribió (el detalle y los repuestos) y se deja EDITABLE.
+  // OJO: el COSTO del taller NO se copia a los daños. Ese es lo que gastó la EMPRESA; los daños
+  // son lo que se le cobra AL CLIENTE, y son dos decisiones distintas. Confundirlas sería
+  // descontarle del ahorro el aceite y los frenos que la empresa asume.
+  useEffect(() => {
+    if (!sel) { setObsT(""); return; }
+    if (sel.observaciones_taller) { setObsT(sel.observaciones_taller); return; }
+    const orden = sel.taller_id ? taller.find(t => t.id === sel.taller_id) : null;
+    if (orden && orden.estado_tecnico === "Finalizado") {
+      const partes = [orden.detalle?.trim(), orden.repuestos?.trim() ? `Repuestos: ${orden.repuestos.trim()}` : ""]
+        .filter(Boolean);
+      setObsT(partes.join("\n"));
+    } else {
+      setObsT("");
+    }
+  }, [sel, taller]);
 
   const activas = liquidaciones.filter((l) => l.estado !== "cerrada");
   const cerradas = liquidaciones.filter((l) => l.estado === "cerrada");
@@ -383,7 +403,7 @@ export default function LiquidacionesView() {
                       background: listo ? "var(--ok-soft)" : "var(--warn-soft)",
                       color: listo ? "var(--ok-ink)" : "var(--warn-ink)" }}>
                       {listo ? (
-                        <>✓ <strong>El mecánico ya terminó la revisión.</strong> Sus observaciones están abajo.</>
+                        <>✓ <strong>El mecánico ya terminó la revisión.</strong> Lo que él escribió ya está abajo — revísalo y complétalo si hace falta.</>
                       ) : (
                         <>⏳ <strong>El mecánico aún no termina</strong> (va en «{o.estado_tecnico}»).
                         Puedes esperar a que cierre su orden en Taller, o escribir la revisión aquí si ya la tienes.</>

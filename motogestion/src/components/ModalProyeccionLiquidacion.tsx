@@ -86,6 +86,16 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
           Los daños no están incluidos: esos salen de la revisión de taller.
         </div>
 
+        {/* Migrado sin base confirmada: la cuenta no la inventa (regla del dueño, 22-ago —
+            la fuente es el campo manual "Ahorro inicial"; el SQL era proyección). */}
+        {cuenta.baseSinConfirmar && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)", fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+            ⚠️ <strong>La BASE de este migrado está SIN CONFIRMAR</strong> (el campo «Ahorro inicial»
+            de su contrato está en cero). Esta cuenta sale SIN base — antes de liquidar, confirma
+            cuánto entregó y escríbelo en Editar contrato → Ahorro inicial.
+          </div>
+        )}
+
         <div>
           <div style={labelStyle}>Contando hasta el día en que se guardó la moto</div>
           <input type="date" value={fecha} max={hoyISO()} onChange={e => { setFecha(e.target.value); setFechaTocada(true); }} style={inputStyle} />

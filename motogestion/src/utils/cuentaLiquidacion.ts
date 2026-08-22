@@ -21,6 +21,11 @@ export type CuentaLiquidacion = {
   saldoFinal: number;
   /** Hasta qué día se contó. Todo lo demás depende de esto. */
   fechaCorte: string;
+  /**
+   * Migrado con el campo "Ahorro inicial" en cero: su base está SIN CONFIRMAR (empalme
+   * pendiente). La cuenta no inventa base — hay que llenarla a mano antes de liquidar.
+   */
+  baseSinConfirmar: boolean;
 };
 
 export type DeudaCuenta = { concepto: string; descripcion: string; monto_pendiente: number; estado: string };
@@ -42,17 +47,16 @@ export type ContratoConPlata = ContratoCiclo & {
   ahorro_acumulado?: number | null;
   ahorro_apertura?: number | null;
   /**
-   * La BASE que entregó al entrar, según el arqueo. Es el campo BUENO: verificado contra el
-   * archivo original de COSTA (106 × $510.000, 51 × $500.000 y los raros, calcado) y lleno en
-   * los 236 migrados de los tres grupos.
+   * El dato de la SIEMBRA (arqueo/SQL). ⚠️ NO es la fuente de la base — regla del dueño
+   * (22-ago, tarde): «los migrados con datos del SQL eran PROYECCIONES; lo real es lo que
+   * permaneció o lo que se cambió» en el campo manual. Se conserva solo como referencia.
    */
   base_inicial?: number | null;
   /**
-   * ⚠️ NO USAR para la base. Se ve parecido pero está revuelto: la migración de COSTA lo dejó
-   * en CERO (lo hace el propio script) y después se llenó a medias — 64 de COSTA siguen en
-   * cero, y hay valores que no existen en ningún arqueo ($515.000, $560.000, $880.000).
-   * Leerlo era el defecto: a ANTONIO le contaba $300.000 habiendo entregado $510.000, y a
-   * cualquiera de esos 64 no le contaba NADA de base.
+   * LA FUENTE de la base del migrado — el campo "Ahorro inicial" de Editar contrato, el que el
+   * dueño corrige A MANO (regla del 22-ago). Si nadie lo tocó, el valor de proyección quedó
+   * confirmado; si se corrigió (JAVIER 510→403), manda la corrección. Si está en CERO, la base
+   * está SIN CONFIRMAR (empalme pendiente) — la cuenta lo avisa y no inventa nada.
    */
   ahorro_inicial?: number | null;
 };
@@ -69,15 +73,18 @@ export type ContratoConPlata = ContratoCiclo & {
  *
  * ⚠️ SE TRATAN DISTINTO SEGÚN CÓMO ENTRÓ EL CLIENTE:
  *
- *  · MIGRADO: el arqueo trajo en `ahorro_apertura` SOLO lo ganado pagando. Su base quedó aparte,
- *    en `base_inicial`, y hay que SUMARLA — si no, se le devuelve menos de lo que es suyo.
+ *  · MIGRADO: el arqueo trajo en `ahorro_apertura` SOLO lo ganado pagando. Su base va aparte y
+ *    hay que SUMARLA — si no, se le devuelve menos de lo que es suyo.
  *
- *    Pero NO completa: de esa base, el valor de un período pagó su PRIMERA SEMANA, que ya rodó y
- *    ya se consumió. Devolverla sería devolverle un alquiler que ya usó. Regla del dueño: «si se
- *    cogen solo los 300, y las que aparezcan con 510 sabes que ahí habría que descontarle el
- *    equivalente a una semana». La resta usa el período de CADA contrato, así que las cuentas
- *    viejas salen bien sin caso especial — los datos lo confirman: $510.000 − $202.000 y
- *    $500.000 − $195.000 caen en $308.000 y $305.000, el ahorro de apertura estándar.
+ *    LA FUENTE es el campo manual "Ahorro inicial" (`ahorro_inicial`) — regla del dueño, 22-ago:
+ *    lo del SQL eran proyecciones; lo real es lo que permaneció o lo que él corrigió a mano.
+ *
+ *    Y SE RESTA LA SEMANA COMPLETA («se le resta la semana completa, pero se le devuelve lo que
+ *    le haya sobrado» — dueño, 22-ago): en el esquema viejo la base incluía la semana adelantada,
+ *    que es alquiler, no ahorro. Lo que "sobre" de esa semana NO se calcula acá: lo devuelve el
+ *    ajuste de salida por días (consumidos se cobran, no consumidos se devuelven), que es donde
+ *    también reaparece lo que dejó de pagar. La resta usa el período de CADA contrato, así que
+ *    las cuentas viejas de $195.000 salen bien sin caso especial.
  *
  *  · DEL WIZARD: la base YA se repartió al entrar — una parte pagó su primera semana (entró al
  *    ledger como Caja 1) y el resto quedó en `ahorro_apertura`. Sumarla acá la contaría DOS
@@ -87,15 +94,14 @@ export function plataQueEsDelCliente(contrato: ContratoConPlata): RenglonCuenta[
   const renglones: RenglonCuenta[] = [];
   const ahorroPagando = contrato.ahorro_acumulado ?? 0;
   const ahorroApertura = contrato.ahorro_apertura ?? 0;
-  const baseEntregada = contrato.base_inicial ?? 0;
+  const baseEntregada = contrato.ahorro_inicial ?? 0;
 
   if (contrato.es_migrado) {
     if (baseEntregada > 0) {
       renglones.push({ concepto: "Base inicial que entregó", monto: baseEntregada });
-      // Nunca se resta más de lo que entregó: hay un migrado con base de $202.000 exactos, y
-      // dejarlo en negativo le inventaría una deuda.
+      // Nunca se resta más de lo que entregó — dejarlo en negativo le inventaría una deuda.
       const semana = Math.min(valorPeriodoReal(contrato), baseEntregada);
-      if (semana > 0) renglones.push({ concepto: "Menos la semana que esa base pagó", monto: -semana });
+      if (semana > 0) renglones.push({ concepto: "Menos la semana adelantada de esa base", monto: -semana });
     }
     const ahorro = ahorroPagando + ahorroApertura;
     if (ahorro > 0) renglones.push({ concepto: "Ahorro que ganó pagando", monto: ahorro });
@@ -170,5 +176,6 @@ export function cuentaLiquidacion(opts: {
     enContra: { renglones: enContra, total: totalContra },
     saldoFinal: totalFavor - totalContra,
     fechaCorte,
+    baseSinConfirmar: !!contrato.es_migrado && (contrato.ahorro_inicial ?? 0) <= 0,
   };
 }

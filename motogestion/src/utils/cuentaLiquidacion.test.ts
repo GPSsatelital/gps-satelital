@@ -27,63 +27,65 @@ describe("lo que se le devuelve al cliente", () => {
   });
 });
 
-describe("la base y el ahorro son dos cosas distintas, y se guardan distinto", () => {
-  // Regla del dueño (21-ago): «la base es la base y los ahorros acumulados son otros; solo se unen
-  // en la liquidación». Y el arqueo de los migrados trajo en `ahorro_apertura` SOLO lo ganado
-  // pagando — su base quedó aparte, en `ahorro_inicial`.
+describe("la base del migrado: el campo MANUAL manda, y se le resta la semana completa", () => {
+  // Regla del dueño (22-ago, tarde): «el único valor que cuenta como base para los migrados es
+  // el que se coloca manualmente en "Ahorro inicial"; lo del SQL eran proyecciones». Y sobre la
+  // semana adelantada: «se le resta la semana completa, pero se le devuelve lo que le haya
+  // sobrado» — lo sobrado lo devuelve el ajuste de salida por días, no este renglón.
 
-  // ANTONIO MONTERROZA (IEW65I): migrado, base del arqueo $510.000, ahorro del arqueo $148.000.
-  const ANTONIO = {
+  const MIGRADO = {
     forma_pago: "Semanal" as const, dia_pago: "Lunes", valor_semanal: 202000,
     es_migrado: true, motor_v2: true,
     total_cajas: 104, cajas_pagadas: 5, cajas_previas: 5, caja_actual_pagado: 0,
     prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
-    ahorro_acumulado: 0, ahorro_apertura: 148000, base_inicial: 510000,
+    ahorro_acumulado: 0, ahorro_apertura: 148000,
   };
 
-  it("al MIGRADO se le suma su base: sin eso se le devuelve menos de lo que es suyo", () => {
-    const c = cuentaLiquidacion({
-      contrato: ANTONIO, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [],
-    });
-    expect(c.aFavor.renglones.find(r => r.concepto === "Base inicial que entregó")!.monto).toBe(510000);
-    expect(c.aFavor.renglones.find(r => r.concepto === "Ahorro que ganó pagando")!.monto).toBe(148000);
+  it("caso JAVIER (XYZ54H): dio $403.000 → base $403.000 − semana $202.000 = $201.000", () => {
+    // Del dueño, con este caso exacto: «se le resta la semana completa, pero se le devuelve lo
+    // que le haya sobrado». Los $107.000 que dejó de pagar reaparecen en el ajuste de días.
+    const javier = { ...MIGRADO, ahorro_inicial: 403000, base_inicial: 150000 };
+    const c = cuentaLiquidacion({ contrato: javier, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
+    expect(c.aFavor.renglones.find(r => r.concepto === "Base inicial que entregó")!.monto).toBe(403000);
+    expect(c.aFavor.renglones.find(r => r.concepto === "Menos la semana adelantada de esa base")!.monto).toBe(-202000);
+    const base = c.aFavor.renglones.filter(r => /base/i.test(r.concepto)).reduce((s, r) => s + r.monto, 0);
+    expect(base).toBe(201000);
   });
 
-  it("de la base se descuenta la semana que ella pagó: ya rodó y ya se consumió", () => {
-    const c = cuentaLiquidacion({
-      contrato: ANTONIO, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [],
-    });
-    expect(c.aFavor.renglones.find(r => r.concepto === "Menos la semana que esa base pagó")!.monto).toBe(-202000);
-    // $510.000 − $202.000 = $308.000, que es el ahorro de apertura estándar. Es la prueba de que
-    // la resta es la correcta y no un número inventado.
-    const base = c.aFavor.renglones.filter(r => /base/i.test(r.concepto)).reduce((s, r) => s + r.monto, 0);
-    expect(base).toBe(308000);
+  it("la fuente es el campo MANUAL (ahorro_inicial), NO la proyección del SQL (base_inicial)", () => {
+    const corregido = { ...MIGRADO, ahorro_inicial: 403000, base_inicial: 510000 };
+    const c = cuentaLiquidacion({ contrato: corregido, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
+    expect(c.aFavor.renglones.find(r => r.concepto === "Base inicial que entregó")!.monto).toBe(403000);
   });
 
-  it("las cuentas VIEJAS de $195.000 salen bien solas, sin caso especial", () => {
-    // JOSUE GRAU (RML59H): moto usada, base del arqueo $500.000.
-    const josue = { ...ANTONIO, valor_semanal: 195000, base_inicial: 500000 };
-    const c = cuentaLiquidacion({ contrato: josue, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
-    expect(c.aFavor.renglones.find(r => r.concepto === "Menos la semana que esa base pagó")!.monto).toBe(-195000);
+  it("las cuentas VIEJAS de $195.000 restan SU semana, sin caso especial", () => {
+    const viejo = { ...MIGRADO, valor_semanal: 195000, ahorro_inicial: 500000 };
+    const c = cuentaLiquidacion({ contrato: viejo, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
+    expect(c.aFavor.renglones.find(r => r.concepto === "Menos la semana adelantada de esa base")!.monto).toBe(-195000);
     const base = c.aFavor.renglones.filter(r => /base/i.test(r.concepto)).reduce((s, r) => s + r.monto, 0);
-    expect(base).toBe(305000);   // el ahorro de apertura de las cuentas viejas
+    expect(base).toBe(305000);
   });
 
   it("nunca se le resta más de lo que entregó: no se le inventa una deuda", () => {
-    // Existe un migrado real con base de $202.000 exactos — igual a su semana.
-    const chico = { ...ANTONIO, base_inicial: 202000, ahorro_apertura: 0 };
+    const chico = { ...MIGRADO, ahorro_inicial: 150000, ahorro_apertura: 0 };
     const c = cuentaLiquidacion({ contrato: chico, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
     const base = c.aFavor.renglones.filter(r => /base/i.test(r.concepto)).reduce((s, r) => s + r.monto, 0);
     expect(base).toBe(0);
     expect(c.aFavor.total).toBeGreaterThanOrEqual(0);
   });
 
-  it("NO se lee ahorro_inicial: ese campo está revuelto y 64 migrados lo tienen en cero", () => {
-    // La migración de COSTA lo dejó en 0 y se llenó a medias después. Si el cálculo lo leyera,
-    // a esos 64 no se les contaría NADA de base — perderían ~$500.000 cada uno.
-    const revuelto = { ...ANTONIO, ahorro_inicial: 0 };
-    const c = cuentaLiquidacion({ contrato: revuelto, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
-    expect(c.aFavor.renglones.find(r => r.concepto === "Base inicial que entregó")!.monto).toBe(510000);
+  it("base SIN CONFIRMAR (campo en cero): la cuenta lo AVISA y no inventa base", () => {
+    // Los 64 de COSTA que la siembra dejó en cero: nadie los ha confirmado en el empalme.
+    const sinConfirmar = { ...MIGRADO, ahorro_inicial: 0, base_inicial: 510000 };
+    const c = cuentaLiquidacion({ contrato: sinConfirmar, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] });
+    expect(c.baseSinConfirmar).toBe(true);
+    expect(c.aFavor.renglones.some(r => r.concepto === "Base inicial que entregó")).toBe(false);
+  });
+
+  it("un migrado con base confirmada NO avisa; un contrato del wizard tampoco", () => {
+    const ok = { ...MIGRADO, ahorro_inicial: 403000 };
+    expect(cuentaLiquidacion({ contrato: ok, fechaCorte: "2026-07-30", saldoFavor: 0, deudas: [], convenios: [] }).baseSinConfirmar).toBe(false);
+    expect(cuentaLiquidacion({ contrato: SERAFIN, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [] }).baseSinConfirmar).toBe(false);
   });
 
   it("al del WIZARD no se le suma la base: ya está repartida adentro y sería contarla dos veces", () => {

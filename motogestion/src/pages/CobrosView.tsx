@@ -2122,8 +2122,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   sistema (es de las cuentas viejas), así que la frase de arriba no aplica a esa parte. */}
               {(contratoDetalle.saldo_favor_apertura ?? 0) > 0 && (
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--accent-line)", fontSize: 11.5, lineHeight: 1.5, color: "var(--accent-ink)" }}>
-                  De ese total, <b>$ {fmt(contratoDetalle.saldo_favor_apertura ?? 0)}</b> los traía <b>de las cuentas
-                  viejas</b>, de antes de entrar al sistema. Esa parte nunca pasó por una caja de acá.
+                  De ese total, <b>$ {fmt(contratoDetalle.saldo_favor_apertura ?? 0)}</b> los traía <b>de antes de este
+                  contrato</b> (de las cuentas viejas, o de la liquidación de su contrato anterior — el origen exacto
+                  está en la auditoría del contrato). Esa parte nunca pasó por una caja de acá.
                 </div>
               )}
             </div>

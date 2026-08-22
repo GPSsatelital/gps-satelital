@@ -334,6 +334,39 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       if (err) { setError(err.message); return; }
       setContratoId(data.id);
       setContratoData(data as Contrato);
+
+      // SALDO CON ORIGEN (mig 115): si la liquidación de su contrato anterior le dejó plata
+      // reservada "a favor para el contrato nuevo", entra acá — con la marca de dónde viene en
+      // la auditoría, y la liquidación queda apuntando a este contrato para que no se pueda
+      // reclamar dos veces. Pedido del dueño (22-ago): "que siempre quede marcado de dónde
+      // viene y a dónde se aplica cuando se aplique".
+      const { data: liqsConSaldo } = await supabase
+        .from("liquidaciones")
+        .select("id, numero, saldo_para_nueva")
+        .eq("cliente_id", form.cliente_id)
+        .eq("estado", "cerrada")
+        .gt("saldo_para_nueva", 0)
+        .is("contrato_destino_id", null)
+        .limit(1);
+      const liqOrigen = liqsConSaldo?.[0];
+      if (liqOrigen) {
+        const { error: errSaldo } = await supabase.from("contratos")
+          .update({ saldo_favor_apertura: liqOrigen.saldo_para_nueva })
+          .eq("id", data.id);
+        if (!errSaldo) {
+          await supabase.from("liquidaciones")
+            .update({ contrato_destino_id: data.id })
+            .eq("id", liqOrigen.id);
+          const { data: u } = await supabase.auth.getUser();
+          await supabase.from("contratos_auditoria").insert({
+            contrato_id: data.id,
+            campo: "Saldo a favor de apertura",
+            valor_anterior: "0",
+            valor_nuevo: `${liqOrigen.saldo_para_nueva} — viene de la liquidación ${liqOrigen.numero}`,
+            editado_por: u?.user?.id ?? null,
+          });
+        }
+      }
       if (form.forma_pago !== "Diario" && !baseSuficiente) {
         setConvenioPendiente({ contratoId: data.id, falta: baseRequerida - ahorroEntregado });
       } else {

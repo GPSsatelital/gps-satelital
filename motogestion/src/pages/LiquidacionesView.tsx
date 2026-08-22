@@ -139,6 +139,7 @@ export default function LiquidacionesView() {
   // o "Retirado". Se pregunta al cerrar, que es el momento en que se sabe con certeza.
   const [sigueConEmpresa, setSigueConEmpresa] = useState(false);
   const [baseNueva, setBaseNueva] = useState(0);   // cuánto del saldo queda como base de la moto nueva
+  const [saldoParaNueva, setSaldoParaNueva] = useState(0);   // y cuánto queda a favor para ese contrato
 
   // Se precarga con la recepción del vehículo, que es donde SÍ queda esa fecha cuando el
   // funcionario pasó por el formulario de las 6 fotos. Si no hay recepción —hoy 20 de las 44
@@ -401,20 +402,21 @@ export default function LiquidacionesView() {
 
   async function handleCerrar() {
     if (!sel || !profile) return;
-    if (sigueConEmpresa && baseNueva > sel.saldo_final) {
-      setMsg("La base para la moto nueva no puede ser más de lo que el cliente tiene a favor.", true);
+    if (sigueConEmpresa && baseNueva + saldoParaNueva > sel.saldo_final) {
+      setMsg("Base + saldo a favor no pueden sumar más de lo que el cliente tiene a favor.", true);
       return;
     }
     const base = sigueConEmpresa ? Math.max(baseNueva, 0) : 0;
+    const paraNueva = sigueConEmpresa ? Math.max(saldoParaNueva, 0) : 0;
     if (!confirm(
       "¿Cerrar definitivamente esta liquidación?\n\n"
       + "Se define el saldo final, se cierra el contrato, se saldan sus deudas y su convenio, y se decide el destino de la moto. No se puede deshacer.\n\n"
       + (sigueConEmpresa
-          ? `Marcaste que el cliente SIGUE con la empresa: queda listo para su contrato nuevo.${base > 0 ? `\n$${base.toLocaleString("es-CO")} quedan como BASE de la moto nueva y $${(sel.saldo_final - base).toLocaleString("es-CO")} se le entregan en efectivo.` : ""}`
+          ? `Marcaste que el cliente SIGUE con la empresa: queda listo para su contrato nuevo.${(base > 0 || paraNueva > 0) ? `\nBase moto nueva: $${base.toLocaleString("es-CO")} · a favor del contrato nuevo: $${paraNueva.toLocaleString("es-CO")} · en efectivo: $${(sel.saldo_final - base - paraNueva).toLocaleString("es-CO")}.` : ""}`
           : "El cliente va a quedar Retirado. Si le vas a entregar otra moto, cancela y marca la casilla antes de cerrar.")
     )) return;
     setGuardando(true);
-    const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id, sigueConEmpresa, base);
+    const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id, sigueConEmpresa, base, paraNueva);
     setGuardando(false);
     if (error) setMsg(error, true);
     else {
@@ -794,8 +796,15 @@ export default function LiquidacionesView() {
                   <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 12, marginBottom: 14, cursor: "pointer",
                     background: sigueConEmpresa ? "var(--accent-soft)" : "var(--soft2)",
                     border: `1px solid ${sigueConEmpresa ? "var(--accent-line)" : "var(--line)"}` }}>
-                    <input type="checkbox" checked={sigueConEmpresa}
-                      onChange={e => { setSigueConEmpresa(e.target.checked); setBaseNueva(e.target.checked && sel.saldo_final > 0 ? Math.min(sel.saldo_final, 510000) : 0); }}
+    	            <input type="checkbox" checked={sigueConEmpresa}
+                      onChange={e => {
+                        setSigueConEmpresa(e.target.checked);
+                        // Reparto por defecto (regla del dueño): base estándar $510.000 y el
+                        // RESTO a favor del contrato nuevo — efectivo solo si él lo pide.
+                        const base = e.target.checked && sel.saldo_final > 0 ? Math.min(sel.saldo_final, 510000) : 0;
+                        setBaseNueva(base);
+                        setSaldoParaNueva(e.target.checked && sel.saldo_final > 0 ? Math.max(sel.saldo_final - base, 0) : 0);
+                      }}
                       style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
                     <span style={{ minWidth: 0 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", display: "block" }}>
@@ -807,22 +816,34 @@ export default function LiquidacionesView() {
                       </span>
                     </span>
                   </label>
-                  {/* El saldo pasa DIRECTO como base de la moto nueva (pedido del dueño, 22-ago:
-                      "lo que le quede entra enseguida como base"). Editable porque a veces se
-                      lleva una parte en efectivo; el wizard precarga lo que quede acá. */}
-                  {sigueConEmpresa && sel.saldo_final > 0 && (
+                  {/* El saldo se reparte en TRES destinos (pedido del dueño, 22-ago): la BASE de
+                      la moto nueva (el wizard la precarga), el resto A FAVOR para ese contrato
+                      nuevo (entra solo al crearlo, con su origen anotado), y lo que decida
+                      llevarse en efectivo. */}
+                  {sigueConEmpresa && sel.saldo_final > 0 && (() => {
+                    const efectivo = sel.saldo_final - baseNueva - saldoParaNueva;
+                    return (
                     <div style={{ padding: "12px 14px", borderRadius: 12, marginBottom: 14, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)" }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-ink)", marginBottom: 6 }}>
-                        De sus $ {sel.saldo_final.toLocaleString("es-CO")}, ¿cuánto queda como BASE de la moto nueva?
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-ink)", marginBottom: 8 }}>
+                        ¿A dónde van sus $ {sel.saldo_final.toLocaleString("es-CO")}?
                       </div>
-                      <MoneyInput value={baseNueva > 0 ? String(baseNueva) : ""} onChange={v => setBaseNueva(Number(v) || 0)} />
-                      <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 6, lineHeight: 1.5 }}>
-                        {baseNueva > sel.saldo_final
-                          ? <b style={{ color: "var(--bad-ink)" }}>No puede ser más de lo que tiene a favor.</b>
-                          : <>Queda como base: <b>$ {baseNueva.toLocaleString("es-CO")}</b> · se le entrega en efectivo: <b>$ {(sel.saldo_final - baseNueva).toLocaleString("es-CO")}</b>. El wizard precarga la base solo.</>}
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-ink)", marginBottom: 4 }}>Base de la moto nueva</div>
+                      <MoneyInput value={baseNueva > 0 ? String(baseNueva) : ""} onChange={v => {
+                        const b = Number(v) || 0;
+                        setBaseNueva(b);
+                        setSaldoParaNueva(Math.max(sel.saldo_final - b, 0));   // el resto, a favor por defecto
+                      }} />
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent-ink)", margin: "10px 0 4px" }}>Queda A FAVOR para su contrato nuevo</div>
+                      <MoneyInput value={saldoParaNueva > 0 ? String(saldoParaNueva) : ""} onChange={v => setSaldoParaNueva(Number(v) || 0)} />
+                      <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 8, lineHeight: 1.6 }}>
+                        {efectivo < 0
+                          ? <b style={{ color: "var(--bad-ink)" }}>Base + a favor no pueden sumar más de lo que tiene ($ {sel.saldo_final.toLocaleString("es-CO")}).</b>
+                          : <>Base: <b>$ {baseNueva.toLocaleString("es-CO")}</b> · a favor del nuevo: <b>$ {saldoParaNueva.toLocaleString("es-CO")}</b> · en efectivo: <b>$ {efectivo.toLocaleString("es-CO")}</b>.
+                             La base y el saldo entran SOLOS al crear el contrato nuevo, con su origen anotado.</>}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                   </>
                 )}
                 <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={handleCerrar} disabled={guardando}>

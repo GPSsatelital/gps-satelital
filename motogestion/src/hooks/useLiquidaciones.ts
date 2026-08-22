@@ -50,6 +50,10 @@ export type Liquidacion = {
   fecha_firma: string | null;
   /** Cuánto del saldo quedó DIRECTO como base de la moto nueva al cerrar (mig 114). */
   base_trasladada: number | null;
+  /** Parte del saldo reservada A FAVOR para su contrato nuevo (mig 115). */
+  saldo_para_nueva: number | null;
+  /** El contrato nuevo que ya reclamó ese saldo — lleno = no se reclama dos veces. */
+  contrato_destino_id: string | null;
   taller_id: string | null;
   iniciada_por: string | null;
   cerrada_por: string | null;
@@ -390,7 +394,7 @@ export function useLiquidaciones() {
    * el ahorro se pone en cero, y si no alcanzó, el faltante queda como UNA deuda viva para poder
    * cobrársela si vuelve (regla del dueño).
    */
-  async function confirmarCierre(liquidacionId: string, cerradaPor: string, sigueConEmpresa = false, baseNueva = 0) {
+  async function confirmarCierre(liquidacionId: string, cerradaPor: string, sigueConEmpresa = false, baseNueva = 0, saldoParaNueva = 0) {
     const { data, error } = await supabase.rpc("cerrar_liquidacion", {
       p_liquidacion_id: liquidacionId,
       p_cerrada_por: cerradaPor,
@@ -398,10 +402,13 @@ export function useLiquidaciones() {
       // Cuánto de su saldo queda DIRECTO como base de la moto nueva (mig 114): la BD lo escribe
       // en clientes.ingreso_inicial y el wizard lo precarga solo — sin pasos a mano de por medio.
       p_base_nueva: sigueConEmpresa ? baseNueva : 0,
+      // Y cuánto queda A FAVOR para ese contrato nuevo (mig 115): el wizard lo pasa como
+      // saldo_favor_apertura al crearlo, con su origen en la auditoría.
+      p_saldo_para_nueva: sigueConEmpresa ? saldoParaNueva : 0,
     });
     if (error) return { error: error.message };
     await fetchLiquidaciones();
-    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number; estado_cliente?: string; lista_negra?: boolean; base_trasladada?: number };
+    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number; estado_cliente?: string; lista_negra?: boolean; base_trasladada?: number; saldo_para_nueva?: number };
     const avisos: string[] = [];
     if (r.deuda_creada) {
       avisos.push(`El ahorro no alcanzó: quedaron $${Math.round(r.faltante ?? 0).toLocaleString("es-CO")} como deuda del cliente, para cobrárselos si vuelve.`);
@@ -411,6 +418,9 @@ export function useLiquidaciones() {
     }
     if ((r.base_trasladada ?? 0) > 0) {
       avisos.push(`$${Math.round(r.base_trasladada ?? 0).toLocaleString("es-CO")} quedaron como base de su moto nueva — el wizard la precarga solo.`);
+    }
+    if ((r.saldo_para_nueva ?? 0) > 0) {
+      avisos.push(`$${Math.round(r.saldo_para_nueva ?? 0).toLocaleString("es-CO")} quedaron A FAVOR para su contrato nuevo — entran solos al crearlo, con su origen anotado.`);
     }
     // Si quedó en lista negra pero se marcó que sigue, hay que decirlo: son dos cosas que se
     // contradicen y el funcionario tiene que enterarse ANTES de prometerle una moto.

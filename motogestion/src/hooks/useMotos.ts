@@ -56,7 +56,13 @@ export type DestinoLiberacion = "taller" | "operacion";
 // vuelve a "Asignada" (el cliente la sigue esperando). Solo si no hay contrato activo
 // queda "Disponible" para asignarse a otro. Evita que una moto quede "Disponible"
 // mientras un contrato sigue Activo apuntándola (podría entregarse a dos clientes).
-export async function estadoMotoTrasLiberar(motoId: string): Promise<"Asignada" | "Disponible"> {
+export async function estadoMotoTrasLiberar(motoId: string): Promise<"Asignada" | "Disponible" | "En traspaso"> {
+  // "En traspaso" es un estado FINAL: la moto ya es del cliente (cumplió su contrato) y nunca
+  // vuelve a la flota. Sin este candado, cerrar la orden de taller que quedó vinculada a la
+  // liquidación DESPUÉS del cierre la mandaba a "Disponible" — y una moto que ya es de otra
+  // persona aparecía lista para asignarse a un cliente nuevo.
+  const { data: moto } = await supabase.from("motos").select("estado").eq("id", motoId).single();
+  if (moto?.estado === "En traspaso") return "En traspaso";
   const { data } = await supabase
     .from("contratos")
     .select("id")

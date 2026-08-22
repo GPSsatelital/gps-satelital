@@ -35,6 +35,12 @@ export type Liquidacion = {
   saldo_final: number;
   detalle_deudas: DetalleDeuda[];
   detalle_danos: DetalleDano[];
+  /**
+   * Desglose de la plata que ES del cliente (mig 109). Su suma es lo que se le devuelve antes de
+   * descuentos. Antes esto era un solo número rotulado "Ahorro acumulado" que traía adentro la
+   * base que entregó — y la base NO es ahorro. Vacío = liquidación vieja.
+   */
+  detalle_favor: DetalleDeuda[];
   observaciones_taller: string | null;
   nombre_responsable: string | null;
   cargo_responsable: string | null;
@@ -102,6 +108,22 @@ export function useLiquidaciones() {
       .limit(1);
     if (abierta && abierta.length > 0) {
       return { error: `Ya existe una liquidación en curso para este contrato (${abierta[0].numero} — ${abierta[0].estado}). Continúala en el módulo de Liquidaciones en vez de iniciar otra.` };
+    }
+
+    // PRÉSTAMO DE REEMPLAZO ACTIVO: mientras dura el préstamo, contrato.moto_id apunta a la moto
+    // PRESTADA (el préstamo hace el intercambio de placas). Liquidar así se comía la prestada —
+    // orden de taller, "Mantenimiento" y hasta el traspaso caían sobre una moto de OTRO
+    // portafolio — y la moto propia del cliente quedaba suelta, sin liquidar. La guarda va AQUÍ,
+    // en el hook, para que aplique a las tres puertas de entrada (Contratos, Motos e
+    // Inmovilizaciones), no solo a la que se acordó de revisar.
+    const { data: prestamo } = await supabase
+      .from("prestamos_reemplazo")
+      .select("id")
+      .eq("contrato_id", contratoId)
+      .eq("estado", "activo")
+      .limit(1);
+    if (prestamo && prestamo.length > 0) {
+      return { error: "Este contrato tiene un préstamo de reemplazo activo: la moto que anda usando el cliente es PRESTADA, no la suya. Primero devuelve la prestada (Cartera → Préstamos activos) — ahí mismo se resuelve el tiempo de la guardada — y después inicia la liquidación sobre la moto propia." };
     }
 
     const numero = await generarNumero();
@@ -202,10 +224,14 @@ export function useLiquidaciones() {
   // El saldo a favor entra en la cuenta igual que el ahorro (regla del dueño, 19-ago): es plata
   // que el cliente YA entregó. Va como parámetro propio y no sumado al ahorro para que la pantalla
   // no llame "ahorro" a un dinero que no lo es (mig 104).
-  async function calcularSaldo(liquidacionId: string, ahorro: number, deudas: number, danos: number, saldoFavor = 0) {
+  async function calcularSaldo(
+    liquidacionId: string, ahorro: number, deudas: number, danos: number, saldoFavor = 0,
+    detalleFavor: DetalleDeuda[] = [],
+  ) {
     const saldo = ahorro + saldoFavor - deudas - danos;
     const { error } = await supabase.from("liquidaciones").update({
       ahorro_acumulado: ahorro,
+      detalle_favor: detalleFavor,
       saldo_favor: saldoFavor,
       total_deudas: deudas,
       costo_danos: danos,

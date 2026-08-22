@@ -13,6 +13,7 @@ import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiqu
 import ModalFirmaLiquidacion from "../components/ModalFirmaLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
 import { desgloseDeudas } from "../utils/desgloseLiquidacion";
+import { plataQueEsDelCliente } from "../utils/cuentaLiquidacion";
 import { hoyISO } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
@@ -106,7 +107,21 @@ export default function LiquidacionesView() {
   const [nombreResp, setNombreResp] = useState("");
   const [cargoResp, setCargoResp] = useState("");
   const [guardando, setGuardando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  // El aviso lleva su tipo EXPLÍCITO. Antes se pintaba verde salvo que el texto contuviera la
+  // palabra "error" — un fallo de red o de la BD salía en verde y el funcionario seguía como si
+  // todo hubiera quedado guardado.
+  const [msgState, setMsgState] = useState<{ texto: string; esError: boolean } | null>(null);
+  const msg = msgState;
+  const setMsg = (texto: string | null, esError = false) =>
+    setMsgState(texto === null ? null : { texto, esError: esError || /^error|error:/i.test(texto) });
+  // A 375px las dos columnas fijas (320px + detalle) partían la pantalla: mismo patrón de
+  // isMobile que usan las demás vistas.
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
 
   // EL DÍA EN QUE SE GUARDÓ LA MOTO. Regla del dueño (19-ago): «se liquida hasta el día en que se
   // guardó o se retuvo el vehículo» — regla 9 del libro de cajas. Antes acá iba `hoyDate()`, así
@@ -235,11 +250,19 @@ export default function LiquidacionesView() {
     // Sin la fecha de entrega no se calcula. Es la decisión del dueño y no tiene atajo: el ajuste
     // de salida ES una función de esa fecha, así que "calcular sin ella" significa inventarla.
     if (!fechaEntregaMoto) {
-      setMsg("Falta el día en que se guardó la moto. Sin esa fecha no se puede calcular: es hasta ahí que se le cobra.");
+      setMsg("Falta el día en que se guardó la moto. Sin esa fecha no se puede calcular: es hasta ahí que se le cobra.", true);
       return;
     }
     if (fechaEntregaMoto > hoyISO()) {
-      setMsg("El día en que se guardó la moto no puede ser una fecha futura.");
+      setMsg("El día en que se guardó la moto no puede ser una fecha futura.", true);
+      return;
+    }
+    // Un daño o una deuda con MONTO pero sin nombre antes se descartaba en silencio: el
+    // funcionario digitaba $85.000 del farol, se le olvidaba el concepto, y esos $85.000
+    // desaparecían de la cuenta sin ningún aviso.
+    const sinNombre = [...danos, ...deudas].filter(d => Number(d.monto) > 0 && !d.concepto.trim());
+    if (sinNombre.length > 0) {
+      setMsg(`Hay ${sinNombre.length === 1 ? "un renglón" : sinNombre.length + " renglones"} con monto pero sin concepto (${sinNombre.map(d => `$${Number(d.monto).toLocaleString("es-CO")}`).join(", ")}). Escríbele qué es, o bórrale el monto — si se deja así, esa plata NO entra a la cuenta.`, true);
       return;
     }
     if (!confirm(`¿Registrar la revisión de taller y calcular el saldo?\n\nSe le va a cobrar hasta el ${new Date(fechaEntregaMoto + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}, que es el día en que se guardó la moto.`)) return;
@@ -271,15 +294,15 @@ export default function LiquidacionesView() {
     });
     const deudasAjustadas = desglose.total;
     const { error } = await registrarRevisionTaller(sel.id, obsT, danosValidos, totalDanos, desglose.renglones, deudasAjustadas);
-    // Lo que le pertenece: su ahorro (ganado pagando + apertura) MÁS su base, pero la base solo se
-    // suma en MIGRADOS. En los del wizard la base ya se repartió al entrar (parte pagó su primera
-    // semana, parte quedó en apertura), así que sumarla acá la contaría dos veces.
-    const ahorroDelCliente = (contratoLiq?.ahorro_acumulado ?? 0)
-      + (contratoLiq?.ahorro_apertura ?? 0)
-      + (contratoLiq?.es_migrado ? (contratoLiq.ahorro_inicial ?? 0) : 0);
-    await calcularSaldo(sel.id, ahorroDelCliente, deudasAjustadas, totalDanos, saldoFavor);
+    // Lo que le pertenece sale de `plataQueEsDelCliente` — la MISMA función que usa la ventana de
+    // proyección. Antes esta pantalla hacía su propia suma aparte, y leía `ahorro_inicial`: un
+    // campo revuelto que la migración de COSTA dejó en CERO en 64 contratos (a esos no se les
+    // contaba NADA de base) y que en otros no coincide con el arqueo. El bueno es `base_inicial`.
+    const renglonesFavor = contratoLiq ? plataQueEsDelCliente(contratoLiq) : [];
+    const ahorroDelCliente = renglonesFavor.reduce((s, r) => s + r.monto, 0);
+    await calcularSaldo(sel.id, ahorroDelCliente, deudasAjustadas, totalDanos, saldoFavor, renglonesFavor);
     setGuardando(false);
-    if (error) setMsg(error);
+    if (error) setMsg(error, true);
     else if (ajuste.aFavor > 0 || ajuste.porCobrar > 0) {
       setMsg(`Revisión registrada. Ajuste de salida por cajas: ${ajuste.aFavor > 0 ? `$${ajuste.aFavor.toLocaleString("es-CO")} a favor del cliente (prepagado no consumido)` : ""}${ajuste.porCobrar > 0 ? `$${ajuste.porCobrar.toLocaleString("es-CO")} por cobrar (días consumidos sin pagar)` : ""} — ya incluido en el saldo.`);
     }
@@ -287,12 +310,12 @@ export default function LiquidacionesView() {
   }
 
   async function handleGenerarDoc() {
-    if (!sel || !nombreResp.trim()) { setMsg("Ingresa el nombre del responsable."); return; }
+    if (!sel || !nombreResp.trim()) { setMsg("Ingresa el nombre del responsable.", true); return; }
     if (!confirm("¿Generar el documento de liquidación con estos datos?")) return;
     setGuardando(true);
     const { error } = await marcarDocumentoGenerado(sel.id, nombreResp, cargoResp);
     setGuardando(false);
-    if (error) { setMsg(error); return; }
+    if (error) { setMsg(error, true); return; }
     imprimirLiquidacion(sel, datosCliente(sel), datosMoto(sel));
   }
 
@@ -336,7 +359,7 @@ export default function LiquidacionesView() {
     setGuardando(true);
     const { error } = await subirDocumentoFirmado(sel.id, file);
     setGuardando(false);
-    if (error) setMsg(error);
+    if (error) setMsg(error, true);
     else setMsg("Documento firmado subido correctamente.");
   }
 
@@ -383,7 +406,7 @@ export default function LiquidacionesView() {
     setGuardando(true);
     const { error, avisoDeuda } = await confirmarCierre(sel.id, profile.id, sigueConEmpresa);
     setGuardando(false);
-    if (error) setMsg(error);
+    if (error) setMsg(error, true);
     else {
       // Si el ahorro no alcanzó, se dice cuánto quedó debiendo y que esa plata sigue viva. Antes
       // solo decía "Liquidación cerrada" y nadie sabía que el cliente quedaba con una deuda.
@@ -397,9 +420,11 @@ export default function LiquidacionesView() {
   // Paz y Salvo — constancia de cumplimiento y transferencia de la moto al cliente.
   function handlePazYSalvo() {
     if (!sel) return;
+    // Doble candado con el del render: el papel dice "no debe nada" y tiene que ser verdad.
+    if (sel.saldo_final < 0) { setMsg("No se puede imprimir el Paz y Salvo: el cliente quedó debiendo.", true); return; }
     const cliente = clienteDe(sel);
     const contrato = contratos.find(ct => ct.id === sel.contrato_id);
-    if (!cliente || !contrato) { setMsg("No se encontró el cliente o el contrato."); return; }
+    if (!cliente || !contrato) { setMsg("No se encontró el cliente o el contrato.", true); return; }
     const moto = motoDe(sel);
     const html = generarHTMLPazYSalvo(contrato, cliente, (moto as Moto | null));
     const w = window.open("", "_blank");
@@ -416,9 +441,18 @@ export default function LiquidacionesView() {
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Cargando...</div>;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: sel ? "320px 1fr" : "1fr", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : (sel ? "320px 1fr" : "1fr"), gap: 16 }}>
+      {/* En el celular no caben las dos columnas: con un detalle abierto se muestra SOLO el
+          detalle, con su botón de volver — el mismo patrón lista→detalle del resto de la app. */}
+      {isMobile && sel && (
+        <button onClick={() => setSel(null)}
+          style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)", textAlign: "left", width: "100%", boxSizing: "border-box" }}>
+          ← Volver a la lista
+        </button>
+      )}
       {/* Lista */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {!(isMobile && sel) && (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
         {activas.length === 0 && cerradas.length === 0 && (
           <div style={{ ...card, color: "var(--muted)", textAlign: "center" }}>No hay liquidaciones registradas.</div>
         )}
@@ -459,6 +493,7 @@ export default function LiquidacionesView() {
           </div>
         )}
       </div>
+      )}
 
       {/* Detalle */}
       {sel && (() => {
@@ -528,7 +563,7 @@ export default function LiquidacionesView() {
               </div>
             </div>
 
-            {msg && <div style={{ ...card, background: msg.includes("error") || msg.includes("Error") ? "var(--bad-soft)" : "var(--ok-soft)", color: msg.includes("error") || msg.includes("Error") ? "var(--bad)" : "var(--ok)", fontSize: 13 }}>{msg}</div>}
+            {msg && <div style={{ ...card, background: msg.esError ? "var(--bad-soft)" : "var(--ok-soft)", color: msg.esError ? "var(--bad)" : "var(--ok)", fontSize: 13 }}>{msg.esError ? "⚠️ " : ""}{msg.texto}</div>}
 
             {/* Paso: registrar revisión taller */}
             {/* La cuenta se puede rehacer mientras el cliente NO haya firmado. Antes, apenas se
@@ -798,11 +833,18 @@ export default function LiquidacionesView() {
                     </div>
                   </div>
                 )}
-                {sel.motivo === "cumplimiento" && (
+                {/* El Paz y Salvo dice que el cliente NO debe nada. Si el saldo quedó negativo
+                    (debe y quizás hasta en lista negra), imprimirlo sería darle un papel firmado
+                    que contradice su propia liquidación. */}
+                {sel.motivo === "cumplimiento" && (sel.saldo_final >= 0 ? (
                   <div style={{ marginTop: 10 }}>
                     <button style={btn("var(--accent)")} onClick={handlePazYSalvo}>🖨️ Imprimir Paz y Salvo</button>
                   </div>
-                )}
+                ) : (
+                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft)", color: "var(--warn-ink)", fontSize: 12.5, lineHeight: 1.5 }}>
+                    Quedó debiendo ${Math.abs(sel.saldo_final).toLocaleString("es-CO")} — no hay Paz y Salvo hasta que esa deuda se pague. El Paz y Salvo declara que no debe nada, y no es cierto.
+                  </div>
+                ))}
               </div>
             )}
           </div>

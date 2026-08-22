@@ -150,7 +150,13 @@ ${borrador ? `<div class="aviso-borrador">
   <table class="tabla">
     <thead><tr><th>Concepto</th><th>Valor</th></tr></thead>
     <tbody>
-      <tr><td>Ahorro acumulado</td><td>${cop(liq.ahorro_acumulado)}</td></tr>
+      ${(liq.detalle_favor?.length
+        // Con desglose (mig 109): cada peso que se le devuelve sale con su nombre. Antes esto era
+        // un solo renglón "Ahorro acumulado" que traía la base adentro — y la base no es ahorro.
+        ? liq.detalle_favor.map(d => `<tr><td>${d.concepto}</td><td style="${d.monto < 0 ? "color:#991b1b" : ""}">${d.monto < 0 ? "-" : ""} ${cop(d.monto)}</td></tr>`).join("")
+        // Liquidación vieja, sin desglose guardado: se dibuja como siempre para no cambiar nada
+        // de lo que ya está firmado.
+        : `<tr><td>Ahorro acumulado</td><td>${cop(liq.ahorro_acumulado)}</td></tr>`)}
       ${(liq.saldo_favor ?? 0) > 0 ? `<tr><td>Saldo a favor (plata suya sin usar)</td><td>${cop(liq.saldo_favor)}</td></tr>` : ""}
       ${liq.detalle_deudas.map((d) => renglon(d)).join("")}
       ${liq.detalle_danos.map((d) => `<tr><td>Daño: ${d.concepto}</td><td>- ${cop(d.monto)}</td></tr>`).join("")}

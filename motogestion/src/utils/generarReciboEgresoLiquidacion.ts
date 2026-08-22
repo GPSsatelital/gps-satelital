@@ -86,7 +86,9 @@ export function generarReciboEgresoLiquidacion(
   </table>
 
   <table class="desglose">
-    <tr><td>Ahorro acumulado del cliente</td><td style="text-align:right">${cop(liq.ahorro_acumulado)}</td></tr>
+    ${liq.detalle_favor?.length
+      ? liq.detalle_favor.map(d => `<tr><td>${d.concepto}</td><td style="text-align:right${d.monto < 0 ? ";color:#991b1b" : ""}">${d.monto < 0 ? "- " : ""}${cop(d.monto)}</td></tr>`).join("")
+      : `<tr><td>Ahorro acumulado del cliente</td><td style="text-align:right">${cop(liq.ahorro_acumulado)}</td></tr>`}
     ${(liq.saldo_favor ?? 0) > 0 ? `<tr><td>Saldo a favor</td><td style="text-align:right">${cop(liq.saldo_favor)}</td></tr>` : ""}
     ${liq.detalle_deudas.map(d => {
       // Monto negativo = crédito del cliente (su ahorro de los días cobrados, lo prepagado).

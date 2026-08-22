@@ -48,6 +48,8 @@ export type Liquidacion = {
   firma_cliente_url: string | null;
   huella_cliente_url: string | null;
   fecha_firma: string | null;
+  /** Cuánto del saldo quedó DIRECTO como base de la moto nueva al cerrar (mig 114). */
+  base_trasladada: number | null;
   taller_id: string | null;
   iniciada_por: string | null;
   cerrada_por: string | null;
@@ -388,21 +390,27 @@ export function useLiquidaciones() {
    * el ahorro se pone en cero, y si no alcanzó, el faltante queda como UNA deuda viva para poder
    * cobrársela si vuelve (regla del dueño).
    */
-  async function confirmarCierre(liquidacionId: string, cerradaPor: string, sigueConEmpresa = false) {
+  async function confirmarCierre(liquidacionId: string, cerradaPor: string, sigueConEmpresa = false, baseNueva = 0) {
     const { data, error } = await supabase.rpc("cerrar_liquidacion", {
       p_liquidacion_id: liquidacionId,
       p_cerrada_por: cerradaPor,
       p_sigue_con_empresa: sigueConEmpresa,
+      // Cuánto de su saldo queda DIRECTO como base de la moto nueva (mig 114): la BD lo escribe
+      // en clientes.ingreso_inicial y el wizard lo precarga solo — sin pasos a mano de por medio.
+      p_base_nueva: sigueConEmpresa ? baseNueva : 0,
     });
     if (error) return { error: error.message };
     await fetchLiquidaciones();
-    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number; estado_cliente?: string; lista_negra?: boolean };
+    const r = (data ?? {}) as { deuda_creada?: boolean; faltante?: number; estado_cliente?: string; lista_negra?: boolean; base_trasladada?: number };
     const avisos: string[] = [];
     if (r.deuda_creada) {
       avisos.push(`El ahorro no alcanzó: quedaron $${Math.round(r.faltante ?? 0).toLocaleString("es-CO")} como deuda del cliente, para cobrárselos si vuelve.`);
     }
     if (r.estado_cliente === "Aprobado") {
       avisos.push("El cliente quedó listo para su contrato nuevo — ya lo puedes elegir en el wizard.");
+    }
+    if ((r.base_trasladada ?? 0) > 0) {
+      avisos.push(`$${Math.round(r.base_trasladada ?? 0).toLocaleString("es-CO")} quedaron como base de su moto nueva — el wizard la precarga solo.`);
     }
     // Si quedó en lista negra pero se marcó que sigue, hay que decirlo: son dos cosas que se
     // contradicen y el funcionario tiene que enterarse ANTES de prometerle una moto.

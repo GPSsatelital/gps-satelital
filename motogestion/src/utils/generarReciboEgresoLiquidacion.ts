@@ -98,6 +98,9 @@ export function generarReciboEgresoLiquidacion(
     }).join("")}
     ${liq.detalle_danos.map(d => `<tr><td>Daño descontado: ${d.concepto}</td><td style="text-align:right">- ${cop(d.monto)}</td></tr>`).join("")}
     <tr class="tot"><td>SALE DEL PORTAFOLIO</td><td style="text-align:right">${cop(liq.saldo_final)}</td></tr>
+    ${(liq.base_trasladada ?? 0) > 0 ? `
+    <tr><td style="padding-left:18px;color:#64748b">↳ Quedó como base de su moto nueva</td><td style="text-align:right">${cop(liq.base_trasladada ?? 0)}</td></tr>
+    <tr><td style="padding-left:18px;color:#64748b">↳ Entregado en efectivo</td><td style="text-align:right">${cop(liq.saldo_final - (liq.base_trasladada ?? 0))}</td></tr>` : ""}
   </table>
 
   <div class="nota">

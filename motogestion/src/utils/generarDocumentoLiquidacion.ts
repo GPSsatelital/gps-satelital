@@ -68,15 +68,20 @@ export function htmlLiquidacion(
      antes la constancia y las firmas se iban a una segunda página casi vacía. Carta (279mm) es
      más corta que A4 (297mm), así que si cabe en carta cabe también en el PDF, que se arma en A4. */
   @page { size: letter; margin: 12mm; }
+  /* El espacio se aprieta acá, en la hoja de siempre — NO dentro de @media print. El PDF que se
+     guarda al firmar se arma con html2canvas, que renderiza en modo PANTALLA: cualquier ahorro
+     que viva solo en @media print no lo ve, y el PDF sale con el tamaño viejo. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; position: relative; }
-  h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
-  .subtitulo { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 16px; }
-  .seccion { margin-bottom: 14px; }
-  .seccion h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
-  .fila { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 26px; position: relative; }
+  h1 { font-size: 20px; text-align: center; margin-bottom: 2px; }
+  .subtitulo { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 14px; }
+  .seccion { margin-bottom: 12px; }
+  .seccion h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 7px; }
+  /* Los datos van en DOS columnas: uno debajo de otro gastaba media hoja en cuatro renglones. */
+  .datos { display: flex; flex-wrap: wrap; gap: 2px 28px; }
+  .fila { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 4px; flex: 1 1 44%; min-width: 0; }
   .fila span:first-child { color: #64748b; }
-  .fila span:last-child { font-weight: 600; }
+  .fila span:last-child { font-weight: 600; text-align: right; }
   .tabla { width: 100%; border-collapse: collapse; margin-top: 6px; }
   .tabla th, .tabla td { padding: 6px 10px; border: 1px solid #e2e8f0; text-align: left; font-size: 12px; }
   .tabla th { background: #f8fafc; font-weight: 700; }
@@ -92,7 +97,7 @@ export function htmlLiquidacion(
   .cierre { page-break-inside: avoid; break-inside: avoid; }
   .explica, .seccion, .tabla tr { page-break-inside: avoid; break-inside: avoid; }
   .tabla thead { display: table-header-group; }   /* el encabezado se repite en la 2ª hoja */
-  .firmas { display: flex; gap: 30px; margin-top: 34px; align-items: flex-end; }
+  .firmas { display: flex; gap: 26px; margin-top: 26px; align-items: flex-end; }
   .firma-box { flex: 1; text-align: center; font-size: 12px; }
   .firma-trazo { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
   .firma-trazo img { max-height: 48px; max-width: 100%; }
@@ -123,18 +128,16 @@ ${borrador ? `<div class="aviso-borrador">
 </div>` : ""}
 
 <div class="seccion">
-  <h2>Datos del cliente</h2>
-  <div class="fila"><span>Nombre</span><span>${cliente.nombre}</span></div>
-  ${cliente.cedula ? `<div class="fila"><span>Cédula</span><span>${cliente.cedula}</span></div>` : ""}
-  ${cliente.telefono ? `<div class="fila"><span>Teléfono</span><span>${cliente.telefono}</span></div>` : ""}
+  <h2>Datos del cliente${moto ? " y del vehículo" : ""}</h2>
+  <div class="datos">
+    <div class="fila"><span>Nombre</span><span>${cliente.nombre}</span></div>
+    ${cliente.cedula ? `<div class="fila"><span>Cédula</span><span>${cliente.cedula}</span></div>` : ""}
+    ${cliente.telefono ? `<div class="fila"><span>Teléfono</span><span>${cliente.telefono}</span></div>` : ""}
+    ${moto?.placa ? `<div class="fila"><span>Placa</span><span>${moto.placa}</span></div>` : ""}
+    ${moto?.marca ? `<div class="fila"><span>Marca</span><span>${moto.marca}</span></div>` : ""}
+    ${moto?.modelo ? `<div class="fila"><span>Modelo</span><span>${moto.modelo}</span></div>` : ""}
+  </div>
 </div>
-
-${moto ? `<div class="seccion">
-  <h2>Vehículo</h2>
-  ${moto.marca ? `<div class="fila"><span>Marca</span><span>${moto.marca}</span></div>` : ""}
-  ${moto.modelo ? `<div class="fila"><span>Modelo</span><span>${moto.modelo}</span></div>` : ""}
-  ${moto.placa ? `<div class="fila"><span>Placa</span><span>${moto.placa}</span></div>` : ""}
-</div>` : ""}
 
 <div class="seccion">
   <h2>Motivo de liquidación</h2>

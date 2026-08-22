@@ -40,8 +40,12 @@ export function generarReciboEgresoLiquidacion(
 <meta charset="UTF-8"/>
 <title>Egreso liquidación ${liq.numero} — ${grupo}</title>
 <style>
+  /* Carta, igual que el documento de liquidación: es el papel que se usa acá. Sin esta regla el
+     navegador asume A4 y el recibo puede partirse en dos hojas. */
+  @page { size: letter; margin: 12mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 40px; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 30px; }
+  @media print { body { padding: 0; } }
   h1 { font-size: 20px; margin-bottom: 2px; }
   .sub { font-size: 12px; color: #64748b; margin-bottom: 20px; }
   .portafolio { display: inline-block; padding: 5px 14px; border-radius: 999px; background: #0f172a; color: #ffffff; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; }
@@ -55,7 +59,9 @@ export function generarReciboEgresoLiquidacion(
   .desglose td { padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12px; }
   .desglose .tot td { font-weight: bold; background: #f1f5f9; }
   .nota { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #334155; line-height: 1.5; margin-bottom: 18px; }
-  .firma { margin-top: 44px; display: flex; gap: 40px; }
+  .desglose tr, .nota { page-break-inside: avoid; break-inside: avoid; }
+  /* Las dos firmas y el pie no se separan del recibo: es la constancia de que la plata se entregó. */
+  .firma { margin-top: 44px; display: flex; gap: 40px; page-break-inside: avoid; break-inside: avoid; }
   .firma > div { flex: 1; }
   .firma p { margin-bottom: 3px; }
   .linea { border-top: 1px solid #0f172a; margin-bottom: 4px; }

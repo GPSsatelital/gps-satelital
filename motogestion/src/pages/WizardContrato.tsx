@@ -607,7 +607,8 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   setForm(p => ({
                     ...p,
                     cliente_id: e.target.value,
-                    forma_pago: c?.ruta_contrato === "diario" ? "Diario" : p.forma_pago,
+                    // La ruta "diario" ya no crea contratos Diarios: arrancan Semanal como todos.
+                    forma_pago: p.forma_pago === "Diario" ? "Semanal" : p.forma_pago,
                     // Siempre refleja lo pagado al registrarse — el campo no es editable en el wizard.
                     ahorro_inicial: c ? String(c.ingreso_inicial ?? 0) : "",
                   }));
@@ -619,8 +620,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
               <div>
                 <label style={labelStyle}>Modalidad</label>
+                {/* "Diario" se RETIRÓ de los contratos nuevos (decisión del dueño, 22-ago: "ya
+                    diarios no habrán más" — la ruta diaria pasa a pagar semanal para tener los
+                    ciclos controlados). Además el motor de cajas nunca cubrió al Diario y su
+                    reparto nacía torcido (caso ADOLFO). Los diarios EXISTENTES siguen normales. */}
                 <select style={inputStyle} value={form.forma_pago} onChange={e => setForm(p => ({ ...p, forma_pago: e.target.value as FormaPago }))}>
-                  <option value="Diario">Diario — ahorrando base inicial</option>
                   <option value="Semanal">Semanal — pago cada semana</option>
                   <option value="Quincenal">Quincenal — pago cada 15 días</option>
                   <option value="Mensual">Mensual — pago cada mes</option>

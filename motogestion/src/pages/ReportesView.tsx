@@ -24,6 +24,9 @@ import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../compone
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
+import { useUbicaciones } from "../hooks/useUbicaciones";
+import { nominaSemana, lunesDe, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
+import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -34,7 +37,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
-type Tab   = "resumen" | "admins" | "grupos" | "visitas" | "cartera" | "flota" | "entregas" | "exportar";
+type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "flota" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",           label: "Hoy" },
@@ -51,6 +54,7 @@ const RANGOS: { key: Rango; label: string }[] = [
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "resumen",  label: "Resumen",   icon: "📊" },
   { key: "admins",   label: "Por admin", icon: "👤" },
+  { key: "nomina",   label: "Nómina",    icon: "💰" },
   { key: "grupos",   label: "Por grupo", icon: "📁" },
   { key: "visitas",  label: "Visitas",   icon: "🏠" },
   { key: "cartera",  label: "Cartera",   icon: "💳" },
@@ -419,6 +423,15 @@ export default function ReportesView({ onNavigate }: Props) {
   // Informes de gestión: lista de sub-admins + fila expandida (drill-down)
   const { subadmins } = useSubadmins();
   const { prestamos } = usePrestamos();
+  const { recepciones } = useUbicaciones();   // retenciones de la semana → nómina de cobradores
+  // Nómina: por defecto la última semana COMPLETA (lunes a domingo) — la nómina se liquida
+  // cuando la semana ya cerró. Las flechas mueven de a una semana.
+  const [lunesNomina, setLunesNomina] = useState<string>(() => {
+    const d = new Date(lunesDe(hoyISO()) + "T12:00:00");
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [nominaExp, setNominaExp] = useState<string | null>(null);   // drill-down abierto
   const { cesiones } = useCesiones();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
@@ -450,6 +463,30 @@ export default function ReportesView({ onNavigate }: Props) {
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
   const { convenioActivoDelContrato } = useConvenios();
+
+  // ── NÓMINA DE COBRADORES (regla del dueño, 22-ago — memoria regla-nomina-cobradores) ──
+  const domingoNomina = useMemo(() => {
+    const d = new Date(lunesNomina + "T12:00:00");
+    d.setDate(d.getDate() + 6);
+    return d.toISOString().slice(0, 10);
+  }, [lunesNomina]);
+  const nominas = useMemo(() => {
+    if (tab !== "nomina") return [];
+    return nominaSemana({
+      desde: lunesNomina,
+      hasta: domingoNomina,
+      contratos,
+      pagos,
+      motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null })),
+      recepciones,
+      clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
+    });
+  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes]);
+  const moverSemanaNomina = (dir: -1 | 1) => {
+    const d = new Date(lunesNomina + "T12:00:00");
+    d.setDate(d.getDate() + dir * 7);
+    setLunesNomina(d.toISOString().slice(0, 10));
+  };
 
   // Busca contratos entregados con firmas guardadas pero PDF en blanco, y los regenera con sus
   // firmas/huellas reales (nadie re-firma). On-demand — no corre solo al abrir la pestaña.
@@ -1461,6 +1498,96 @@ export default function ReportesView({ onNavigate }: Props) {
           <GestionBloques bloques={porAdminData} modo="admin" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>
       )}
+
+      {/* ── TAB NÓMINA de cobradores (regla del dueño, 22-ago) ── */}
+      {tab === "nomina" && (() => {
+        const fmtDia = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+        const nombreDe = (id: string | null) => id === null ? null : (subadmins.find(s => s.id === id)?.nombre ?? "COBRADOR");
+        const TIPO_TXT: Record<TipoGestion, string> = {
+          ciclo: "Ciclo a tiempo", ciclo_atrasado: "Ciclo atrasado (30%)",
+          prorrateo: "Prorrateo", retencion: "Retención",
+        };
+        const conCobrador = nominas.filter(n => n.subadminId !== null);
+        const sinCobrador = nominas.find(n => n.subadminId === null);
+        const totalSemana = conCobrador.reduce((s, n) => s + n.total, 0);
+        return (
+          <div style={{ display: "grid", gap: 16 }}>
+            {/* Selector de semana (lunes a domingo) */}
+            <div style={{ ...card, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => moverSemanaNomina(-1)} style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer" }}>◀ Semana anterior</button>
+              <div style={{ textAlign: "center", minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 15 }}>Semana del {fmtDia(lunesNomina)} al {fmtDia(domingoNomina)}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>Total nómina: <b style={{ color: "var(--text)" }}>$ {fmt(totalSemana)}</b></div>
+              </div>
+              <button onClick={() => moverSemanaNomina(1)} disabled={domingoNomina >= hoyISO()}
+                style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: domingoNomina >= hoyISO() ? "not-allowed" : "pointer", opacity: domingoNomina >= hoyISO() ? 0.4 : 1 }}>Siguiente ▶</button>
+            </div>
+
+            {/* La regla, visible siempre: el texto se explica solo */}
+            <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
+              Se paga por <b>moto gestionada</b>: ciclo cobrado a tiempo <b>$ {fmt(VALOR_CICLO)}</b> (una vez por ciclo del cliente) ·
+              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) · retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
+              en mora sin pagar y sin retener <b>$ 0</b>. Los contratos <b>Diarios no entran</b>.
+            </div>
+
+            {conCobrador.length === 0 && (
+              <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>Sin gestiones pagables en esta semana.</div>
+            )}
+
+            {conCobrador.map(n => {
+              const abierto = nominaExp === (n.subadminId ?? "");
+              return (
+                <div key={n.subadminId} style={card}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase" }}>{nombreDe(n.subadminId)}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                        {n.ciclosATiempo > 0 && <span>{n.ciclosATiempo} a tiempo · </span>}
+                        {n.prorrateos > 0 && <span>{n.prorrateos} prorrateo{n.prorrateos === 1 ? "" : "s"} · </span>}
+                        {n.ciclosAtrasados > 0 && <span>{n.ciclosAtrasados} atrasado{n.ciclosAtrasados === 1 ? "" : "s"} · </span>}
+                        {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
+                        {n.renglones.length} gestiones
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>$ {fmt(n.total)}</div>
+                    <button onClick={() => setNominaExp(abierto ? null : (n.subadminId ?? ""))}
+                      style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
+                      {abierto ? "Ocultar detalle" : "Ver detalle"}
+                    </button>
+                    <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "")}
+                      style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
+                      🖨️ Desprendible
+                    </button>
+                  </div>
+                  {abierto && (
+                    <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 8, maxHeight: "48vh", overflowY: "auto" }}>
+                      {n.renglones.map((r, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5, minWidth: 0 }}>
+                          <span style={{ fontWeight: 800, letterSpacing: 0.5, flexShrink: 0 }}>{r.placa}</span>
+                          <span style={{ flex: 1, minWidth: 0, textTransform: "uppercase", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.cliente}</span>
+                          <span style={{ flexShrink: 0, fontSize: 11.5, color: r.tipo === "retencion" ? "var(--warn-ink)" : r.tipo === "ciclo_atrasado" ? "var(--bad-ink)" : "var(--ok-ink)" }}>{TIPO_TXT[r.tipo]}</span>
+                          <span style={{ flexShrink: 0, color: "var(--faint)", fontSize: 11.5 }}>{fmtDia(r.fecha)}</span>
+                          <span style={{ flexShrink: 0, fontWeight: 800, fontVariantNumeric: "tabular-nums", width: 72, textAlign: "right" }}>$ {fmt(r.valor)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Gestiones de motos SIN cobrador: esa plata no se le paga a nadie — para que el dueño asigne */}
+            {sinCobrador && (
+              <div style={{ ...card, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)" }}>
+                <div style={{ fontWeight: 800, color: "var(--warn-ink)" }}>⚠️ {sinCobrador.renglones.length} gestiones de motos SIN cobrador asignado (valdrían $ {fmt(sinCobrador.total)})</div>
+                <div style={{ fontSize: 12.5, color: "var(--warn-ink)", marginTop: 4 }}>
+                  No se le pagan a nadie. Asigna el cobrador en Motos → editar → sub-admin a cargo: {[...new Set(sinCobrador.renglones.map(r => r.placa))].join(" · ")}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── TAB POR GRUPO (cada moto muestra QUIÉN la tiene asignada) ── */}
       {tab === "grupos" && (

@@ -2133,6 +2133,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               ✅ Listo. Se usó el saldo del cliente para cubrir lo que debía. No entró dinero nuevo, así que la caja de hoy no cambia.
             </div>
           )}
+
+          {/* El día de corte de la cartera del grupo (pedido del dueño, 22-ago): saber qué día se
+              hizo el corte. Un solo renglón a propósito — así lo pidió. */}
+          {motoDetalle?.grupo && (
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--line)", fontSize: 11.5, color: "var(--muted)", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              📅 Corte de la cartera <strong>{motoDetalle.grupo}</strong>: <strong>{fmtFecha(corteMigracionGrupo(motoDetalle.grupo))}</strong>
+            </div>
+          )}
         </div>
 
         {/* Sección "Registrar pago" del detalle eliminada (decisión del usuario):

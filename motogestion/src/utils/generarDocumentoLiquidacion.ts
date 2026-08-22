@@ -99,8 +99,11 @@ export function htmlLiquidacion(
   .tabla thead { display: table-header-group; }   /* el encabezado se repite en la 2ª hoja */
   .firmas { display: flex; gap: 26px; margin-top: 26px; align-items: flex-end; }
   .firma-box { flex: 1; text-align: center; font-size: 12px; }
-  .firma-trazo { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
-  .firma-trazo img { max-height: 48px; max-width: 100%; }
+  /* La firma va GRANDE: es lo que da fe del documento. Se había apretado a 48px para que la hoja
+     cupiera en carta y quedó ilegible (reclamo del dueño, 22-ago) — el espacio sobraba por otro
+     lado (los datos en dos columnas ya habían liberado ~230px). */
+  .firma-trazo { height: 104px; display: flex; align-items: flex-end; justify-content: center; }
+  .firma-trazo img { max-height: 100px; max-width: 100%; }
   .firma-linea { border-top: 1px solid #334155; padding-top: 8px; }
   .huella-box { width: 110px; text-align: center; font-size: 11px; color: #64748b; }
   .huella-cuadro { width: 92px; height: 92px; margin: 0 auto 5px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }

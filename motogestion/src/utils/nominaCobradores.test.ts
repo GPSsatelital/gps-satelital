@@ -200,6 +200,84 @@ describe("la nómina LEE el reparto del motor — no lo reinventa (auditoría 22
   });
 });
 
+describe("MODO EXACTO: con las anotaciones del vigía (mig 112) no se relee ningún pago", () => {
+  it("una anotación de caja en la semana = un ciclo, con su fecha real", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      eventos: [{ contrato_id: "ct1", caja_numero: 6, fecha: "2026-08-17", fuente: "pago" }],
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("una caja marcada por CONVENIO no paga por la anotación (se paga cuando entran sus cuotas)", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      eventos: [{ contrato_id: "ct1", caja_numero: 6, fecha: "2026-08-18", fuente: "convenio" }],
+    });
+    expect(n).toHaveLength(0);
+  });
+
+  it("la caja exigida en una semana pasada que se llena hoy sale atrasada (30%)", () => {
+    // La caja 6 se exigía el lunes 17; la anotación dice que se llenó la semana del 24.
+    const n = nominaSemana({
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      eventos: [{ contrato_id: "ct1", caja_numero: 6, fecha: "2026-08-25", fuente: "pago" }],
+    });
+    expect(n[0].ciclosAtrasados).toBe(1);
+    expect(n[0].total).toBe(VALOR_ATRASADO);
+  });
+
+  it("la adelantada del wizard (su caja 1) tampoco se paga en modo exacto", () => {
+    const wizard: ContratoNomina = { ...CONTRATO, es_migrado: false, cajas_previas: 0, prorrateo_total: 47000 };
+    const n = nominaSemana({
+      ...SEMANA, contratos: [wizard], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      eventos: [
+        { contrato_id: "ct1", caja_numero: 1, fecha: "2026-08-17", fuente: "pago" },   // adelantada
+        { contrato_id: "ct1", caja_numero: 0, fecha: "2026-08-17", fuente: "pago" },   // prorrateo
+      ],
+    });
+    expect(n[0].prorrateos).toBe(1);
+    expect(n[0].renglones.filter(r => r.tipo === "ciclo")).toHaveLength(0);
+    expect(n[0].total).toBe(VALOR_CICLO);   // solo el prorrateo
+  });
+});
+
+describe("las cuotas de convenio pagan el 30% cuando ENTRAN (decisión del dueño, 22-ago)", () => {
+  const CONVENIO = { contrato_id: "ct1", cuota_por_periodo: 50000, numero_cuotas: 10, created_at: "2026-08-01T00:00:00Z" };
+
+  it("una cuota completa cobrada en la semana = $2.250", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO],
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-19", created_at: "2026-08-19T10:00:00Z", estado: "Confirmado", aplicado_convenio: 50000 }],
+    });
+    expect(n[0].cuotasConvenio).toBe(1);
+    expect(n[0].total).toBe(VALOR_ATRASADO);
+  });
+
+  it("un abono que NO completa la cuota no paga — y al completarse la paga UNA vez", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO],
+      pagos: [
+        { contrato_id: "ct1", fecha: "2026-08-18", created_at: "2026-08-18T10:00:00Z", estado: "Confirmado", aplicado_convenio: 30000 },
+        { contrato_id: "ct1", fecha: "2026-08-20", created_at: "2026-08-20T10:00:00Z", estado: "Confirmado", aplicado_convenio: 20000 },
+      ],
+    });
+    expect(n[0].cuotasConvenio).toBe(1);
+  });
+
+  it("firmarse el convenio NO paga nada: sin cuotas cobradas, cero renglones", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO], pagos: [],
+    });
+    expect(n).toHaveLength(0);
+  });
+});
+
 describe("la semana de nómina", () => {
   it("lunesDe encuentra el lunes de cualquier día", () => {
     expect(lunesDe("2026-08-17")).toBe("2026-08-17");   // lunes

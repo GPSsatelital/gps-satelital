@@ -31,7 +31,22 @@ export const EXTRA_RETENCION = 10000;             // → $17.500 la retención
 export const VALOR_ATRASADO = VALOR_CICLO * FRACCION_ATRASADO;
 export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
 
-export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion";
+export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio";
+
+/** Anotación del vigía (mig 112): una caja que se llenó, con fecha y por cuál camino. */
+export type EventoCaja = {
+  contrato_id: string;
+  caja_numero: number;   // 0 = prorrateo
+  fecha: string;
+  fuente: "pago" | "convenio";
+};
+
+export type ConvenioNomina = {
+  contrato_id: string;
+  cuota_por_periodo: number;
+  numero_cuotas: number;
+  created_at: string;
+};
 
 export type GestionNomina = {
   motoId: string;
@@ -53,6 +68,7 @@ export type NominaCobrador = {
   ciclosAtrasados: number;
   prorrateos: number;
   retenciones: number;
+  cuotasConvenio: number;
   total: number;
 };
 
@@ -83,6 +99,7 @@ export type PagoNomina = {
   aplicado_tarifa?: number | null;
   aplicado_ahorro?: number | null;
   aplicado_prorrateo?: number | null;
+  aplicado_convenio?: number | null;
 };
 
 export type MotoNomina = { id: string; placa: string; subadmin_id: string | null; grupo?: string | null };
@@ -118,10 +135,24 @@ export function nominaSemana(opts: {
   motos: MotoNomina[];
   recepciones: RecepcionNomina[];
   clientesPorId: Map<string, string>;
+  /**
+   * Las anotaciones del vigía (mig 112) para esta semana. Si vienen, los ciclos salen de acá —
+   * exacto por construcción, cubre los tres caminos de llenado. Si vienen null (semana anterior
+   * a la migración), se cae al método viejo de releer pagos, que solo es confiable para
+   * contratos post-motor sin convenios ni ajustes — la pantalla lo avisa.
+   */
+  eventos?: EventoCaja[] | null;
+  /** Los convenios del sistema — para pagar el 30% cuando ENTRA cada cuota (decisión del dueño). */
+  convenios?: ConvenioNomina[];
 }): NominaCobrador[] {
-  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId } = opts;
+  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, eventos = null, convenios = [] } = opts;
   const motoDe = new Map(motos.map(m => [m.id, m]));
   const renglones: GestionNomina[] = [];
+  const eventosPorContrato = new Map<string, EventoCaja[]>();
+  if (eventos) for (const e of eventos) {
+    if (!eventosPorContrato.has(e.contrato_id)) eventosPorContrato.set(e.contrato_id, []);
+    eventosPorContrato.get(e.contrato_id)!.push(e);
+  }
 
   // ── 1) CICLOS: cada caja del libro que se llenó dentro de la semana ─────────
   for (const c of contratos) {
@@ -149,10 +180,38 @@ export function nominaSemana(opts: {
       return exigencias[cajaRel - 1];
     };
 
+    // ── MODO EXACTO (mig 112): las anotaciones del vigía dicen qué caja se llenó y cuándo ──
+    if (eventos) {
+      for (const ev of eventosPorContrato.get(c.id) ?? []) {
+        if (ev.fecha < desde || ev.fecha > hasta) continue;
+        // Las cajas marcadas por un CONVENIO no se pagan por la anotación: se pagan cuando
+        // entra cada cuota del convenio (sección 1b) — decisión del dueño, 22-ago.
+        if (ev.fuente === "convenio") continue;
+        if (ev.caja_numero === 0) {
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: ev.fecha, valor: VALOR_CICLO });
+          continue;
+        }
+        // La semana ADELANTADA del wizard (su primera caja, pagada con la base): nadie la cobró.
+        if (!c.es_migrado && ev.caja_numero === 1) continue;
+        if (c.total_cajas != null && ev.caja_numero > c.total_cajas) continue;
+        const rel = ev.caja_numero - previas;
+        if (rel < 1) continue;   // cajas del corte de migración: no son gestión de nadie acá
+        const atrasada = lunesDe(exigenciaDe(rel)) < lunesDe(ev.fecha);
+        renglones.push({
+          motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
+          tipo: atrasada ? "ciclo_atrasado" : "ciclo",
+          fecha: ev.fecha,
+          valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
+        });
+      }
+      continue;   // con anotaciones no se relee ningún pago: una sola fuente de verdad
+    }
+
     const pagosC = pagos
       .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
+    // MÉTODO VIEJO (solo semanas anteriores a la mig 112).
     // Se replica EXACTAMENTE lo que el motor ya repartió (mig 045): la plata de cajas viene en
     // `aplicado_tarifa` (con el ahorro adentro — NO se le suma aplicado_ahorro, sería contarlo
     // dos veces) y la del prorrateo en `aplicado_prorrateo`. La nómina no reparte nada: solo lee
@@ -201,6 +260,34 @@ export function nominaSemana(opts: {
     }
   }
 
+  // ── 1b) CUOTAS DE CONVENIO: el 30% cuando ENTRA cada cuota (decisión del dueño, 22-ago:
+  //        "plata que entra, gestión que se paga" — ni al firmarse el convenio, ni nunca antes).
+  //        Cada cuota COMPLETA que se cobra dentro de la semana genera $2.250.
+  for (const cv of convenios) {
+    if (cv.cuota_por_periodo <= 0) continue;
+    const c = contratos.find(x => x.id === cv.contrato_id);
+    if (!c || !c.moto_id || c.forma_pago === "Diario" || c.estado === "Cancelado") continue;
+    const moto = motoDe.get(c.moto_id);
+    if (!moto) continue;
+    const cliente = clientesPorId.get(c.cliente_id) ?? "—";
+    // El mismo conteo del motor (mig 045, líneas 349-354): acumulado de aplicado_convenio desde
+    // que el convenio existe; cada múltiplo de la cuota es una cuota completa.
+    const pagosConv = pagos
+      .filter(p => p.contrato_id === cv.contrato_id && p.estado === "Confirmado" && (p.aplicado_convenio ?? 0) > 0 && p.created_at >= cv.created_at)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    let acum = 0;
+    for (const p of pagosConv) {
+      const antes = Math.floor(acum / cv.cuota_por_periodo);
+      acum += p.aplicado_convenio ?? 0;
+      const despues = Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
+      const f = dia(p.fecha);
+      if (f < desde || f > hasta) continue;
+      for (let k = Math.max(antes, 0); k < despues; k++) {
+        renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "cuota_convenio", fecha: f, valor: VALOR_ATRASADO });
+      }
+    }
+  }
+
   // ── 2) RETENCIONES: una sola vez, la semana en que se retiene ───────────────
   const yaRetenida = new Set<string>();
   for (const r of recepciones) {
@@ -234,6 +321,7 @@ export function nominaSemana(opts: {
       ciclosAtrasados: rs.filter(r => r.tipo === "ciclo_atrasado").length,
       prorrateos: rs.filter(r => r.tipo === "prorrateo").length,
       retenciones: rs.filter(r => r.tipo === "retencion").length,
+      cuotasConvenio: rs.filter(r => r.tipo === "cuota_convenio").length,
       total: rs.reduce((s, r) => s + r.valor, 0),
     };
   }).sort((a, b) => b.total - a.total);

@@ -27,6 +27,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
+import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -476,7 +477,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { motos }     = useMotos();
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
-  const { convenioActivoDelContrato } = useConvenios();
+  const { convenios, convenioActivoDelContrato } = useConvenios();
 
   // ── NÓMINA DE COBRADORES (regla del dueño, 22-ago — memoria regla-nomina-cobradores) ──
   const domingoNomina = useMemo(() => {
@@ -484,6 +485,9 @@ export default function ReportesView({ onNavigate }: Props) {
     d.setDate(d.getDate() + 6);
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
+  // Las anotaciones del vigía (mig 112). null = semana sin anotaciones (anterior a la migración)
+  // → la nómina cae al método viejo y la pantalla lo avisa.
+  const { eventos: eventosNomina } = useCajasLlenadas(lunesNomina, domingoNomina, tab === "nomina");
   const nominas = useMemo(() => {
     if (tab !== "nomina") return [];
     return nominaSemana({
@@ -494,8 +498,10 @@ export default function ReportesView({ onNavigate }: Props) {
       motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null, grupo: m.grupo ?? null })),
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
+      eventos: eventosNomina,
+      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, created_at: cv.created_at })),
     });
-  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes]);
+  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios]);
   const moverSemanaNomina = (dir: -1 | 1) => {
     const d = new Date(lunesNomina + "T12:00:00");
     d.setDate(d.getDate() + dir * 7);
@@ -1535,6 +1541,7 @@ export default function ReportesView({ onNavigate }: Props) {
         const TIPO_TXT: Record<TipoGestion, string> = {
           ciclo: "Ciclo a tiempo", ciclo_atrasado: "Ciclo atrasado (30%)",
           prorrateo: "Prorrateo", retencion: "Retención",
+          cuota_convenio: "Cuota de convenio (30%)",
         };
         const conCobrador = nominas.filter(n => n.subadminId !== null);
         const sinCobrador = nominas.find(n => n.subadminId === null);
@@ -1555,9 +1562,19 @@ export default function ReportesView({ onNavigate }: Props) {
             {/* La regla, visible siempre: el texto se explica solo */}
             <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
               Se paga por <b>moto gestionada</b>: ciclo cobrado a tiempo <b>$ {fmt(VALOR_CICLO)}</b> (una vez por ciclo del cliente) ·
-              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) · retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
+              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) · cuota de convenio cobrada <b>$ {fmt(VALOR_ATRASADO)}</b> (30%, cuando entra) ·
+              retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
               en mora sin pagar y sin retener <b>$ 0</b>. Los contratos <b>Diarios no entran</b>.
             </div>
+
+            {/* Semana anterior al registro exacto (mig 112): las cifras salen del método viejo. */}
+            {!eventosNomina && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)", fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                ⚠️ Esta semana no tiene el registro exacto de ciclos (existe desde la migración 112).
+                Las cifras salen del método antiguo: <b>revísalas contra el desprendible antes de pagar</b>.
+                Desde la primera semana completa después de la migración, la nómina es exacta.
+              </div>
+            )}
 
             {conCobrador.length === 0 && (
               <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>Sin gestiones pagables en esta semana.</div>
@@ -1574,6 +1591,7 @@ export default function ReportesView({ onNavigate }: Props) {
                         {n.ciclosATiempo > 0 && <span>{n.ciclosATiempo} a tiempo · </span>}
                         {n.prorrateos > 0 && <span>{n.prorrateos} prorrateo{n.prorrateos === 1 ? "" : "s"} · </span>}
                         {n.ciclosAtrasados > 0 && <span>{n.ciclosAtrasados} atrasado{n.ciclosAtrasados === 1 ? "" : "s"} · </span>}
+                        {n.cuotasConvenio > 0 && <span>{n.cuotasConvenio} cuota{n.cuotasConvenio === 1 ? "" : "s"} de convenio · </span>}
                         {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
                         {n.renglones.length} gestiones
                       </div>

@@ -225,10 +225,13 @@ function fmtFechaCorta(iso: string) {
 // ── Gestión: fila de moto y bloque (admin o grupo). Una sola base, dos cortes. ──
 // estado: al día / parcial (abonó pero debe) / no pagó — MISMA verdad de mora que Cartera,
 // con convenio: si tiene convenio activo y lo cumple, va "al día" (la deuda queda programada).
-type EstadoPagoG = "aldia" | "parcial" | "nopago";
+// "retenida" (pedido del dueño, 22-ago): la moto está guardada/inmovilizada en la empresa — el
+// cliente NO puede producir, así que mostrarla como "no pagó" con días de mora era injusto y
+// ensuciaba el % del cobrador. Va aparte: ni al día ni en mora.
+type EstadoPagoG = "aldia" | "parcial" | "nopago" | "retenida";
 type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string; diasMora: number; cuotaCiclo: number };
-type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; recaudado: number; pctv: number };
-const ESTADO_RANK: Record<EstadoPagoG, number> = { nopago: 0, parcial: 1, aldia: 2 };
+type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; retenidas: number; debenSinConvenio: number; recaudado: number; pctv: number };
+const ESTADO_RANK: Record<EstadoPagoG, number> = { nopago: 0, parcial: 1, retenida: 2, aldia: 3 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
   const map = new Map<string, MotoRowG[]>();
   rows.forEach(r => {
@@ -240,15 +243,19 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     const alDia = motos.filter(m => m.estado === "aldia").length;
     const parcial = motos.filter(m => m.estado === "parcial").length;
     const noPago = motos.filter(m => m.estado === "nopago").length;
+    const retenidas = motos.filter(m => m.estado === "retenida").length;
+    // El % del cobrador se mide sobre las motos que PODÍAN pagar: una guardada en la empresa
+    // no puede producir y no debe castigar (ni inflar) su cumplimiento.
+    const evaluables = motos.length - retenidas;
     return {
       key,
       nombre: modo === "admin" ? motos[0].adminNombre : key,
       color: modo === "grupo" ? (GRUPO_COLORS[key] ?? "var(--muted)") : undefined,
       motos: motos.slice().sort((x, y) => (ESTADO_RANK[x.estado] - ESTADO_RANK[y.estado]) || x.cliente.localeCompare(y.cliente)),
-      total: motos.length, alDia, parcial, noPago,
+      total: motos.length, alDia, parcial, noPago, retenidas,
       debenSinConvenio: motos.filter(m => m.debeSinConvenio).length,
       recaudado: motos.reduce((s, m) => s + m.monto, 0),
-      pctv: motos.length > 0 ? Math.round((alDia / motos.length) * 100) : 0,
+      pctv: evaluables > 0 ? Math.round((alDia / evaluables) * 100) : 0,
     };
   });
   if (modo === "grupo") {
@@ -260,9 +267,10 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
 const pctColorG = (p: number) => (p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)");
 const pctFillG  = (p: number) => (p >= 85 ? "var(--ok2)" : p >= 70 ? "var(--warn2)" : "var(--bad)");
 const EST_META: Record<EstadoPagoG, { punto: string; ink: string; soft: string }> = {
-  aldia:   { punto: "🟢", ink: "var(--ok-ink)",   soft: "var(--ok-soft)" },
-  parcial: { punto: "🟡", ink: "var(--warn-ink)", soft: "var(--warn-soft)" },
-  nopago:  { punto: "🔴", ink: "var(--bad-ink)",  soft: "var(--bad-soft)" },
+  aldia:    { punto: "🟢", ink: "var(--ok-ink)",     soft: "var(--ok-soft)" },
+  parcial:  { punto: "🟡", ink: "var(--warn-ink)",   soft: "var(--warn-soft)" },
+  nopago:   { punto: "🔴", ink: "var(--bad-ink)",    soft: "var(--bad-soft)" },
+  retenida: { punto: "🔒", ink: "var(--indigo-ink)", soft: "var(--indigo-soft)" },
 };
 
 function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: BloqueG[]; modo: "admin" | "grupo"; expandido: string | null; onToggle: (k: string) => void }) {
@@ -300,6 +308,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
               <span style={{ color: "var(--warn-ink)", fontWeight: 700 }}>🟡 {b.parcial} parcial</span>
               <span style={{ color: "var(--faint)" }}>·</span>
               <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>🔴 {b.noPago} no pagó</span>
+              {b.retenidas > 0 && <><span style={{ color: "var(--faint)" }}>·</span><span style={{ color: "var(--indigo-ink)", fontWeight: 700 }}>🔒 {b.retenidas} retenida{b.retenidas === 1 ? "" : "s"}</span></>}
               {b.debenSinConvenio > 0 && <span style={{ color: "var(--warn-ink)", fontWeight: 700, background: "var(--warn-soft)", borderRadius: 6, padding: "1px 6px" }}>⚠️ {b.debenSinConvenio} sin convenio</span>}
             </div>
             {open && (
@@ -328,7 +337,10 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: em.ink, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-                          {m.estado === "aldia" ? (m.monto > 0 ? `🟢 ✓ $ ${fmt(m.monto)}` : "🟢 Al día") : m.estado === "parcial" ? `🟡 $ ${fmt(m.monto)}` : "🔴 No pagó"}
+                          {m.estado === "aldia" ? (m.monto > 0 ? `🟢 ✓ $ ${fmt(m.monto)}` : "🟢 Al día")
+                            : m.estado === "parcial" ? `🟡 $ ${fmt(m.monto)}`
+                            : m.estado === "retenida" ? `🔒 Retenida${m.monto > 0 ? ` · $ ${fmt(m.monto)}` : ""}`
+                            : "🔴 No pagó"}
                         </div>
                         {m.estado !== "aldia" && m.deudaPend > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", marginTop: 1, whiteSpace: "nowrap" }}>falta $ {fmt(m.deudaPend)}</div>}
                       </div>
@@ -346,7 +358,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
 
 type FiltrosG = { grupo: string[]; cobrador: string[]; modalidad: string[]; estado: string[] };
 const MODALIDADES = ["Diario", "Semanal", "Quincenal", "Mensual"];
-const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día" }, { v: "parcial", l: "Parcial" }, { v: "nopago", l: "No pagó" }, { v: "sinconvenio", l: "Sin convenio" }];
+const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día" }, { v: "parcial", l: "Parcial" }, { v: "nopago", l: "No pagó" }, { v: "retenida", l: "🔒 Retenida" }, { v: "sinconvenio", l: "Sin convenio" }];
 const FILTROS_VACIOS: FiltrosG = { grupo: [], cobrador: [], modalidad: [], estado: [] };
 function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: FiltrosG; setFiltros: React.Dispatch<React.SetStateAction<FiltrosG>>; subadmins: { id: string; nombre: string }[]; resumen: string }) {
   const activos = resumen.length > 0;
@@ -376,14 +388,16 @@ function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: 
   );
 }
 
-function CabeceraGestion({ totMotos, alDia, parcial, noPago, debenSinConvenio, totRec, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; parcial: number; noPago: number; debenSinConvenio: number; totRec: number; rangoLabel: string; desde: string; hasta: string; nota: string; onExport?: () => void }) {
+function CabeceraGestion({ totMotos, alDia, parcial, noPago, retenidas = 0, debenSinConvenio, totRec, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; parcial: number; noPago: number; retenidas?: number; debenSinConvenio: number; totRec: number; rangoLabel: string; desde: string; hasta: string; nota: string; onExport?: () => void }) {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
-        <KPI label="Motos activas" value={`${totMotos}`} />
-        <KPI label="Al día" value={`${alDia}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(alDia, totMotos)} />
+        <KPI label="Motos" value={`${totMotos}`} />
+        {/* El % de al día se mide sobre las que PODÍAN pagar (sin las retenidas). */}
+        <KPI label="Al día" value={`${alDia}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(alDia, totMotos - retenidas)} />
         <KPI label="Parcial" value={`${parcial}`} color="var(--warn-ink)" bg="var(--warn-soft)" />
         <KPI label="No pagó" value={`${noPago}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+        {retenidas > 0 && <KPI label="🔒 Retenidas" value={`${retenidas}`} color="var(--indigo-ink)" bg="var(--indigo-soft)" />}
         <KPI label="Recaudado" value={`$ ${fmt(totRec)}`} color="var(--accent)" />
       </div>
       <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -547,10 +561,16 @@ export default function ReportesView({ onNavigate }: Props) {
     // deuda pendiente REAL (no la que ya quedó dentro de un convenio ni la pagada)
     const deudaPendMap = new Map<string, number>();
     deudas.filter(d => d.estado === "pendiente").forEach(d => deudaPendMap.set(d.contrato_id, (deudaPendMap.get(d.contrato_id) ?? 0) + d.monto_pendiente));
+    // Estados de moto que significan "guardada en la empresa": el cliente NO la tiene y no puede
+    // producir — su fila sale como 🔒 Retenida, no como mora (pedido del dueño, 22-ago).
+    const MOTO_GUARDADA = new Set(["Recuperada", "Mantenimiento", "Fiscalia", "Transito", "Garantia"]);
     const rows: MotoRowG[] = [];
-    contratos.filter(c => c.estado === "Activo" && c.moto_id).forEach(c => {
+    // Los Suspendidos también entran (antes desaparecían del informe): son justamente las
+    // retenidas/guardadas, y el dueño necesita verlas contadas, no invisibles.
+    contratos.filter(c => (c.estado === "Activo" || c.estado === "Suspendido") && c.moto_id).forEach(c => {
       const moto = motos.find(m => m.id === c.moto_id);
       if (!moto) return;
+      const guardada = c.estado === "Suspendido" || MOTO_GUARDADA.has(moto.estado ?? "");
       // Grupo y admin salen de la moto del PORTAFOLIO: si el cliente anda en una prestada,
       // su recaudo sigue siendo del socio dueño de su moto real, no del socio que prestó.
       // La placa sí es la que anda rodando (es la que está en la calle).
@@ -561,10 +581,10 @@ export default function ReportesView({ onNavigate }: Props) {
       const convenioActivo = convenioActivoDelContrato(c.id);
       const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, c as never, hoy);
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
-      const enMora = calcularEstadoCartera(c as never, confirmados as never, hoy, cuotaConvenio, periodoCubierto, convenioActivo as never) === "mora";
+      const enMora = !guardada && calcularEstadoCartera(c as never, confirmados as never, hoy, cuotaConvenio, periodoCubierto, convenioActivo as never) === "mora";
       const deudaP = deudaPendMap.get(c.id) ?? 0;
       const tieneConvenio = !!convenioActivo;
-      const estado: EstadoPagoG = !enMora ? "aldia" : (monto > 0 ? "parcial" : "nopago");
+      const estado: EstadoPagoG = guardada ? "retenida" : !enMora ? "aldia" : (monto > 0 ? "parcial" : "nopago");
       const cli = clientes.find(cl => cl.id === c.cliente_id);
       // Última fecha en que este contrato pagó (el pago confirmado más reciente).
       const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
@@ -600,7 +620,7 @@ export default function ReportesView({ onNavigate }: Props) {
     (filtros.estado.length === 0 || filtros.estado.some(e => e === "sinconvenio" ? r.debeSinConvenio : r.estado === e))
   ), [baseGestion, filtros]);
   const nombreCobradorFiltro = (id: string) => id === "__none__" ? "Sin asignar" : (subadmins.find(s => s.id === id)?.nombre ?? "cobrador");
-  const ESTADO_LBL: Record<string, string> = { aldia: "al día", parcial: "parcial", nopago: "no pagó", sinconvenio: "sin convenio" };
+  const ESTADO_LBL: Record<string, string> = { aldia: "al día", parcial: "parcial", nopago: "no pagó", retenida: "retenida", sinconvenio: "sin convenio" };
   const filtrosResumen = [
     ...filtros.grupo,
     ...filtros.cobrador.map(nombreCobradorFiltro),
@@ -621,6 +641,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const gAlDia    = baseFiltrada.filter(r => r.estado === "aldia").length;
   const gParcial  = baseFiltrada.filter(r => r.estado === "parcial").length;
   const gNoPago   = baseFiltrada.filter(r => r.estado === "nopago").length;
+  const gRetenidas = baseFiltrada.filter(r => r.estado === "retenida").length;
   const gDebenSinConv = baseFiltrada.filter(r => r.debeSinConvenio).length;
   const gTotRec   = baseFiltrada.reduce((s, r) => s + r.monto, 0);
   // E2 — esperado por ciclo vs recaudado (% cumplimiento en $).
@@ -709,7 +730,9 @@ export default function ReportesView({ onNavigate }: Props) {
     ? { v: "Al día", color: "#166534", fill: "#dcfce7", align: "center" }
     : m.estado === "parcial"
       ? { v: "Parcial", color: "#92400e", fill: "#fef3c7", align: "center" }
-      : { v: "No pagó", color: "#991b1b", fill: "#fee2e2", align: "center" };
+      : m.estado === "retenida"
+        ? { v: "Retenida", color: "#3730a3", fill: "#e0e7ff", align: "center" }
+        : { v: "No pagó", color: "#991b1b", fill: "#fee2e2", align: "center" };
   const xPagado = (m: MotoRowG): CeldaX => m.monto > 0 ? { num: m.monto } : { v: "—", align: "center" };
   const xFalta = (m: MotoRowG): CeldaX => m.deudaPend > 0 ? { num: m.deudaPend, color: "#991b1b" } : { v: "—", align: "center" };
   const xConvenio = (m: MotoRowG): CeldaX => m.tieneConvenio
@@ -720,7 +743,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const xUltPago = (m: MotoRowG): CeldaX => ({ v: m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos", align: "center", color: m.ultimaFechaPago ? undefined : "#94a3b8" });
   const xTelefono = (m: MotoRowG): CeldaX => ({ v: m.telefono || "—", align: "center" });
   const xDiasMora = (m: MotoRowG): CeldaX => m.diasMora > 0 ? { v: String(m.diasMora), align: "center", color: m.diasMora > 15 ? "#991b1b" : m.diasMora > 7 ? "#b45309" : "#92400e" } : { v: "—", align: "center" };
-  const xLeyenda = "Estados: Al día = pagó lo que debía o su convenio está al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar. 'Días mora' = antigüedad de la mora. Los montos están en pesos.";
+  const xLeyenda = "Estados: Al día = pagó lo que debía o su convenio está al día · Parcial = abonó pero aún debe · No pagó = en mora sin abonar · Retenida = la moto está guardada en la empresa (no puede producir; no cuenta como mora ni entra al % de al día). 'Días mora' = antigüedad de la mora. Los montos están en pesos.";
 
   // 12 columnas (col 0 = etiqueta cruzada). Mismas para Por admin (Grupo) y Por grupo (Administrador).
   const colsGestion = (cross: string): ColX[] => [
@@ -963,13 +986,19 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [contratosActivos]);
 
   // ── Mora ───────────────────────────────────────────────────────────────────
-  const enMora = useMemo(() => contratosActivos.map(c => {
-    const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
-    const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    const grupoMoto = motos.find(m => m.id === c.moto_id)?.grupo ?? null;
-    const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(grupoMoto)) ?? 0;
-    return { contrato: c, diasSinPago: dias, ultimoPago: ultimo?.fecha ?? null };
-  }).filter(e => e.diasSinPago > 2), [contratosActivos, pagos, motos]);
+  // Las motos GUARDADAS en la empresa no entran a esta lista (pedido del dueño, 22-ago): el
+  // cliente no puede producir, así que sus "días sin pagar" no son mora — están retenidas y se
+  // ven como 🔒 en los informes de gestión y en Inmovilizaciones.
+  const enMora = useMemo(() => {
+    const GUARDADA = new Set(["Recuperada", "Mantenimiento", "Fiscalia", "Transito", "Garantia"]);
+    return contratosActivos.filter(c => !GUARDADA.has(motos.find(m => m.id === c.moto_id)?.estado ?? "")).map(c => {
+      const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
+      const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+      const grupoMoto = motos.find(m => m.id === c.moto_id)?.grupo ?? null;
+      const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(grupoMoto)) ?? 0;
+      return { contrato: c, diasSinPago: dias, ultimoPago: ultimo?.fecha ?? null };
+    }).filter(e => e.diasSinPago > 2);
+  }, [contratosActivos, pagos, motos]);
 
   // Deuda real por contrato (tabla deudas) — no estimada por días
   // Mismo criterio que la línea 589 de este archivo (`=== "pendiente"`): antes había DOS
@@ -1212,9 +1241,9 @@ export default function ReportesView({ onNavigate }: Props) {
 
     const gDetalle = (bloques: BloqueG[], modo: "admin" | "grupo", cross: string) => {
       const filas = bloques.map(b => {
-        const cab = `<tr class="sec"><td colspan="11">${b.nombre.toUpperCase()} — ${b.total} motos · ${b.alDia} al día · ${b.parcial} parcial · ${b.noPago} no pagó${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""} · recaudado $ ${fmt(b.recaudado)}</td></tr>`;
+        const cab = `<tr class="sec"><td colspan="11">${b.nombre.toUpperCase()} — ${b.total} motos · ${b.alDia} al día · ${b.parcial} parcial · ${b.noPago} no pagó${b.retenidas > 0 ? ` · ${b.retenidas} retenida${b.retenidas === 1 ? "" : "s"}` : ""}${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""} · recaudado $ ${fmt(b.recaudado)}</td></tr>`;
         const motos = b.motos.map(m => {
-          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "parcial" ? { t: "Parcial", c: "#92400e" } : { t: "No pagó", c: "#991b1b" };
+          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "parcial" ? { t: "Parcial", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : { t: "No pagó", c: "#991b1b" };
           const conv = m.tieneConvenio ? "Sí" : (m.debeSinConvenio ? "Falta" : "—");
           const ult = m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos";
           return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : m.adminNombre}</td><td class="c">${m.formaPago}</td><td class="c">${m.diaPago || "—"}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r" style="${m.deudaPend > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.deudaPend > 0 ? "$ " + fmt(m.deudaPend) : "—"}</td><td class="c">${ult}</td><td class="c">${m.telefono || "—"}</td><td class="c">${conv}</td></tr>`;
@@ -1471,7 +1500,7 @@ export default function ReportesView({ onNavigate }: Props) {
           </div>
           {/* Filtros combinables (grupo · cobrador · modalidad · estado) */}
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
-          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} retenidas={gRetenidas} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
             nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={puedeExportar ? () => setDescarga("admin") : undefined} />
           {/* C1 — comparación de recaudo vs período anterior */}
           <div style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12.5 }}>
@@ -1603,7 +1632,7 @@ export default function ReportesView({ onNavigate }: Props) {
       {tab === "grupos" && (
         <div style={{ display: "grid", gap: 16 }}>
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
-          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} parcial={gParcial} noPago={gNoPago} retenidas={gRetenidas} debenSinConvenio={gDebenSinConv} totRec={gTotRec} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
             nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={puedeExportar ? () => setDescarga("grupo") : undefined} />
           <GestionBloques bloques={porGrupoData} modo="grupo" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
         </div>

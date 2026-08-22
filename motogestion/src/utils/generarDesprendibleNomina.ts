@@ -1,5 +1,5 @@
 import type { NominaCobrador, GestionNomina } from "./nominaCobradores";
-import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION } from "./nominaCobradores";
+import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, totalesPorGrupo } from "./nominaCobradores";
 
 // EL DESPRENDIBLE DE NÓMINA DE UN COBRADOR — pedido textual del dueño (22-ago): "debe ser un
 // documento detallado para que cada cobrador o subadmin pueda verificar bien qué le están
@@ -37,11 +37,15 @@ export function generarDesprendibleNomina(
   const filas = nomina.renglones.map(r => `
     <tr>
       <td class="placa">${r.placa}</td>
+      <td style="color:#64748b;font-size:10.5px">${r.grupo}</td>
       <td style="text-transform:uppercase">${r.cliente}</td>
       <td>${TIPO_LABEL[r.tipo]}</td>
       <td>${fechaCorta(r.fecha)}</td>
       <td class="num">${cop(r.valor)}</td>
     </tr>`).join("");
+
+  // De qué portafolio sale la plata: cada gestión la paga el grupo dueño de la moto.
+  const porGrupo = totalesPorGrupo(nomina.renglones);
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -82,7 +86,7 @@ export function generarDesprendibleNomina(
 
   <table>
     <thead>
-      <tr><th>Placa</th><th>Cliente</th><th>Gestión</th><th>Cuándo</th><th style="text-align:right">Valor</th></tr>
+      <tr><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Gestión</th><th>Cuándo</th><th style="text-align:right">Valor</th></tr>
     </thead>
     <tbody>${filas}</tbody>
   </table>
@@ -94,6 +98,11 @@ export function generarDesprendibleNomina(
     ${nomina.retenciones > 0 ? `<tr><td>${nomina.retenciones} retenci${nomina.retenciones === 1 ? "ón" : "ones"} × ${cop(VALOR_RETENCION)}</td><td class="num">${cop(nomina.retenciones * VALOR_RETENCION)}</td></tr>` : ""}
     <tr class="total-final"><td>TOTAL A PAGAR</td><td class="num">${cop(nomina.total)}</td></tr>
   </table>
+
+  ${porGrupo.length > 0 ? `<table class="totales" style="margin-top:-6px">
+    <tr><td colspan="2" style="font-size:10.5px;color:#64748b;text-transform:uppercase;font-weight:bold">De qué portafolio sale</td></tr>
+    ${porGrupo.map(g => `<tr><td>${g.grupo}</td><td class="num">${cop(g.total)}</td></tr>`).join("")}
+  </table>` : ""}
 
   <div class="regla">
     <strong>Cómo se paga.</strong> Cada ciclo del cliente cobrado a tiempo vale ${cop(VALOR_CICLO)}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, lunesDe, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina } from "./nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -17,13 +17,15 @@ const CONTRATO: ContratoNomina = {
   fecha_inicio_cajas: "2026-08-17",
 };
 
-const MOTOS = [{ id: "m1", placa: "ABC12D", subadmin_id: "PEDRO" }];
+const MOTOS = [{ id: "m1", placa: "ABC12D", subadmin_id: "PEDRO", grupo: "PRADERA" }];
 const CLIENTES = new Map([["cl1", "JUAN PEREZ"]]);
 
 function pago(fecha: string, cuota: number, extra: Partial<PagoNomina> = {}): PagoNomina {
+  // Semántica REAL del motor (mig 045): aplicado_tarifa trae TODA la plata que fue a cajas
+  // (con el ahorro adentro) y aplicado_ahorro es informativo (subconjunto de la misma plata).
   return {
     contrato_id: "ct1", fecha, created_at: fecha + "T10:00:00Z", estado: "Confirmado",
-    aplicado_tarifa: cuota * 0.87, aplicado_ahorro: cuota * 0.13, ...extra,
+    aplicado_tarifa: cuota, aplicado_ahorro: Math.round(cuota * 0.13), ...extra,
   };
 }
 
@@ -107,20 +109,19 @@ describe("lo que NO se paga", () => {
       ...CONTRATO, id: "ct2", es_migrado: false, cajas_previas: 0,
       prorrateo_total: 47000, fecha_inicio_cajas: "2026-08-17",
     };
+    // Semántica del motor: la adelantada llena SU caja completa vía aplicado_tarifa (202.000,
+    // ahorro adentro) y el prorrateo viaja en SU columna aplicado_prorrateo — nunca mezclados.
     const pagoInterno: PagoNomina = {
       contrato_id: "ct2", fecha: "2026-08-17", created_at: "2026-08-17T08:00:00Z",
       estado: "Confirmado", tipo_registro: "adelanto_base",
-      aplicado_tarifa: 176000, aplicado_ahorro: 26000,
+      aplicado_tarifa: 202000, aplicado_ahorro: 26000,
     };
     // El prorrateo lo cobró el cobrador ese mismo día (SÍ se paga, completo).
     const pagoProrrateo: PagoNomina = {
       contrato_id: "ct2", fecha: "2026-08-17", created_at: "2026-08-17T09:00:00Z",
-      estado: "Confirmado", aplicado_tarifa: 40000, aplicado_ahorro: 7000,
+      estado: "Confirmado", aplicado_prorrateo: 47000, aplicado_tarifa: 0, aplicado_ahorro: 7000,
     };
-    // OJO al orden FIFO: el reparto del motor va por created_at — la adelantada entró primero...
-    // pero el prorrateo se llena PRIMERO en la cola de plata (es la caja 0). Acá el orden de los
-    // pagos hace que la plata de la adelantada cruce el prorrateo. Lo que la regla exige es:
-    // UN pago por el prorrateo, NADA por la adelantada.
+    // Lo que la regla exige: UN pago por el prorrateo, NADA por la adelantada.
     const n = nominaSemana({
       ...SEMANA, contratos: [wizard], motos: MOTOS, recepciones: [],
       clientesPorId: new Map([["cl1", "JUAN PEREZ"]]),
@@ -170,6 +171,32 @@ describe("quincenal: una vez por ciclo, no por semana", () => {
     // valorPeriodoReal del quincenal > valor semanal: la plata de una quincena llena UNA caja.
     expect(n.length).toBeLessThanOrEqual(1);
     if (n.length === 1) expect(n[0].ciclosATiempo + n[0].ciclosAtrasados).toBe(1);
+  });
+});
+
+describe("la nómina LEE el reparto del motor — no lo reinventa (auditoría 22-ago)", () => {
+  it("el ahorro NO se cuenta dos veces: 8 semanas exactas = 8 ciclos, no 9", () => {
+    // El motor escribe en aplicado_tarifa TODA la plata de cajas (ahorro adentro) y en
+    // aplicado_ahorro cuánto de esa misma plata fue ahorro. El defecto era sumar los dos:
+    // inflaba ~13% y cada ~8 semanas aparecía un ciclo FANTASMA que se pagaba sin existir.
+    const pagos = Array.from({ length: 8 }, (_, i) => {
+      const d = new Date("2026-06-29T12:00:00");
+      d.setDate(d.getDate() + 7 * i);
+      return pago(d.toISOString().slice(0, 10), 202000, { created_at: d.toISOString() });
+    });
+    const n = nominaSemana({
+      desde: "2026-06-29", hasta: "2026-08-23",
+      contratos: [{ ...CONTRATO, fecha_inicio_cajas: "2026-06-29" }],
+      pagos, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+    });
+    const ciclos = n[0].ciclosATiempo + n[0].ciclosAtrasados;
+    expect(ciclos).toBe(8);
+  });
+
+  it("cada gestión dice de qué PORTAFOLIO sale la plata", () => {
+    const n = correr([pago("2026-08-17", 202000)]);
+    expect(n[0].renglones[0].grupo).toBe("PRADERA");
+    expect(totalesPorGrupo(n[0].renglones)).toEqual([{ grupo: "PRADERA", total: VALOR_CICLO }]);
   });
 });
 

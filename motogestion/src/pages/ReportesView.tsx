@@ -25,7 +25,7 @@ import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemana, lunesDe, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 
 interface Props {
@@ -477,7 +477,7 @@ export default function ReportesView({ onNavigate }: Props) {
       hasta: domingoNomina,
       contratos,
       pagos,
-      motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null })),
+      motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null, grupo: m.grupo ?? null })),
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
     });
@@ -1548,6 +1548,15 @@ export default function ReportesView({ onNavigate }: Props) {
                         {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
                         {n.renglones.length} gestiones
                       </div>
+                      {/* De qué portafolio sale la plata de esta nómina (pedido del dueño):
+                          la gestión de cada moto la paga el grupo dueño de esa moto. */}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        {totalesPorGrupo(n.renglones).map(g => (
+                          <span key={g.grupo} style={{ fontSize: 11, fontWeight: 700, background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 8px", color: "var(--muted2)" }}>
+                            {g.grupo} paga $ {fmt(g.total)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>$ {fmt(n.total)}</div>
                     <button onClick={() => setNominaExp(abierto ? null : (n.subadminId ?? ""))}
@@ -1564,6 +1573,7 @@ export default function ReportesView({ onNavigate }: Props) {
                       {n.renglones.map((r, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5, minWidth: 0 }}>
                           <span style={{ fontWeight: 800, letterSpacing: 0.5, flexShrink: 0 }}>{r.placa}</span>
+                          <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--faint)" }}>{r.grupo}</span>
                           <span style={{ flex: 1, minWidth: 0, textTransform: "uppercase", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.cliente}</span>
                           <span style={{ flexShrink: 0, fontSize: 11.5, color: r.tipo === "retencion" ? "var(--warn-ink)" : r.tipo === "ciclo_atrasado" ? "var(--bad-ink)" : "var(--ok-ink)" }}>{TIPO_TXT[r.tipo]}</span>
                           <span style={{ flexShrink: 0, color: "var(--faint)", fontSize: 11.5 }}>{fmtDia(r.fecha)}</span>

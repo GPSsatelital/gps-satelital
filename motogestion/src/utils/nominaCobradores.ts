@@ -36,6 +36,8 @@ export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion"
 export type GestionNomina = {
   motoId: string;
   placa: string;
+  /** El portafolio dueño de la moto: de ahí sale la plata de esta gestión (pedido del dueño, 22-ago). */
+  grupo: string;
   cliente: string;
   tipo: TipoGestion;
   /** El día en que entró la plata (o en que se retuvo). */
@@ -69,11 +71,28 @@ export type PagoNomina = {
   created_at: string;
   estado: string;
   tipo_registro?: string | null;
+  /**
+   * ⚠️ SEMÁNTICA DEL MOTOR (mig 045), verificada contra su código el 22-ago:
+   *  · `aplicado_tarifa` = TODA la plata que este pago metió a cajas — CON el ahorro adentro
+   *    (el bucle FIFO suma el delta completo, línea 203 de la 045).
+   *  · `aplicado_ahorro` = cuánto de ESA MISMA plata fue ahorro. Es informativo: sumarlo encima
+   *    de aplicado_tarifa cuenta el ahorro DOS VECES — primer defecto que descuadró la nómina.
+   *  · `aplicado_prorrateo` = la plata del prorrateo, en SU columna — no vive dentro de tarifa
+   *    (segundo defecto: buscarla ahí robaba plata de las cajas en contratos del wizard).
+   */
   aplicado_tarifa?: number | null;
   aplicado_ahorro?: number | null;
+  aplicado_prorrateo?: number | null;
 };
 
-export type MotoNomina = { id: string; placa: string; subadmin_id: string | null };
+export type MotoNomina = { id: string; placa: string; subadmin_id: string | null; grupo?: string | null };
+
+/** Cuánto sale de cada portafolio en una nómina (la plata la paga el grupo dueño de cada moto). */
+export function totalesPorGrupo(renglones: GestionNomina[]): Array<{ grupo: string; total: number }> {
+  const m = new Map<string, number>();
+  for (const r of renglones) m.set(r.grupo, (m.get(r.grupo) ?? 0) + r.valor);
+  return [...m.entries()].map(([grupo, total]) => ({ grupo, total })).sort((a, b) => b.total - a.total);
+}
 export type RecepcionNomina = { moto_id: string; motivo: string; created_at: string };
 
 const dia = (iso: string) => iso.slice(0, 10);
@@ -134,29 +153,26 @@ export function nominaSemana(opts: {
       .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
-    // Dos carriles a propósito: la plata de la semana ADELANTADA (pago interno del wizard) va
-    // DERECHO a su caja — nunca al prorrateo. Si entrara al carril común, como el pago interno
-    // se registra primero, sus pesos cruzarían el prorrateo y el sistema le pagaría al cobrador
-    // un prorrateo que en realidad quedó pago con la base (hay prueba que lo caza).
+    // Se replica EXACTAMENTE lo que el motor ya repartió (mig 045): la plata de cajas viene en
+    // `aplicado_tarifa` (con el ahorro adentro — NO se le suma aplicado_ahorro, sería contarlo
+    // dos veces) y la del prorrateo en `aplicado_prorrateo`. La nómina no reparte nada: solo lee
+    // el reparto del motor y le pone fecha a cada caja que se llenó.
     let prorrAcum = 0;
     let cajaAcum = 0;
     for (const p of pagosC) {
-      let cuota = (p.aplicado_tarifa ?? 0) + (p.aplicado_ahorro ?? 0);
-      if (cuota <= 0) continue;
       const esAdelanto = p.tipo_registro === "adelanto_base";
+      const f = dia(p.fecha);
 
-      // El prorrateo (caja 0) se llena primero, solo con plata COBRADA de verdad.
-      if (!esAdelanto && prorrAcum < prorrateoTotal) {
-        const alProrrateo = Math.min(cuota, prorrateoTotal - prorrAcum);
-        prorrAcum += alProrrateo;
-        cuota -= alProrrateo;
-        if (prorrAcum >= prorrateoTotal) {
-          const f = dia(p.fecha);
-          if (f >= desde && f <= hasta) {
-            renglones.push({ motoId: moto.id, placa: moto.placa, cliente, tipo: "prorrateo", fecha: f, valor: VALOR_CICLO });
-          }
+      // Prorrateo (caja 0): su plata vive en SU columna. Se paga al completarse.
+      const pror = p.aplicado_prorrateo ?? 0;
+      if (pror > 0 && prorrateoTotal > 0 && prorrAcum < prorrateoTotal) {
+        prorrAcum += pror;
+        if (prorrAcum >= prorrateoTotal && f >= desde && f <= hasta) {
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: f, valor: VALOR_CICLO });
         }
       }
+
+      const cuota = p.aplicado_tarifa ?? 0;
       if (cuota <= 0) continue;
 
       // ¿Qué cajas cruzó este pago? (cajaRel = 1, 2, ... relativa al arranque del libro)
@@ -176,7 +192,7 @@ export function nominaSemana(opts: {
         // (llenarla antes de tiempo —prepago— también es a tiempo). Tarde = 30%.
         const atrasada = lunesDe(exigenciaDe(rel)) < lunesDe(f);
         renglones.push({
-          motoId: moto.id, placa: moto.placa, cliente,
+          motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
           fecha: f,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
@@ -198,7 +214,7 @@ export function nominaSemana(opts: {
     const contrato = contratos.find(x => x.moto_id === r.moto_id && x.estado !== "Cancelado");
     if (contrato?.forma_pago === "Diario") continue;   // los diarios están por fuera de la nómina
     const cliente = contrato ? (clientesPorId.get(contrato.cliente_id) ?? "—") : "—";
-    renglones.push({ motoId: moto.id, placa: moto.placa, cliente, tipo: "retencion", fecha: f, valor: VALOR_RETENCION });
+    renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "retencion", fecha: f, valor: VALOR_RETENCION });
   }
 
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────

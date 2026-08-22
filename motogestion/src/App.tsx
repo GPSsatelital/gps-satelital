@@ -463,7 +463,10 @@ function Shell() {
     // Historial de pagos: admins y SECRETARIA por defecto (ella registra/confirma el dinero);
     // otros roles (SUBADMIN, etc.) solo si se les activa el permiso a medida.
     if (view === "historial_pagos") return esAdmin || roleActual === "SECRETARIA";
-    const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "liquidaciones", "usuarios"];
+    // Liquidaciones: también SECRETARIA (decisión del dueño, 22-ago). Ella es quien maneja la
+    // plata en oficina y quien tiene el lector de huella — el flujo completo, cierre incluido.
+    if (view === "liquidaciones") return esAdmin || roleActual === "SECRETARIA";
+    const adminViews: ViewKey[] = ["reportes", "cobro_diario", "referidos", "alertas", "inmovilizaciones", "usuarios"];
     if (adminViews.includes(view)) return esAdmin;
     // El VISITADOR va antes del `return true` de abajo A PROPÓSITO: ese `true` abre clientes,
     // motos, contratos, cobros, caja y taller a cualquier rol sin lista de permisos a medida.

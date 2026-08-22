@@ -33,7 +33,7 @@ export const ACCESOS_SUGERIDOS: Record<string, ViewKey[]> = {
   ADMIN_PRINCIPAL: MODULOS_ASIGNABLES.map(m => m.key),
   ADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "cobro_diario", "alertas", "inmovilizaciones", "historial_pagos", "reportes", "caja", "liquidaciones", "referidos"],
   SUBADMIN: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "cobro_diario", "alertas", "inmovilizaciones"],
-  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "caja", "cobro_diario", "historial_pagos"],
+  SECRETARIA: ["clientes", "contratos", "cobros", "motos", "taller", "tarjetas_llaves", "caja", "cobro_diario", "historial_pagos", "liquidaciones"],
   MECANICO: ["taller"],
   // El visitador NO lleva "clientes": no debe ver la ficha de nadie. Su pantalla propia se
   // alimenta de la función mis_visitas_asignadas() (mig 076), que solo devuelve nombre,

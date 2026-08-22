@@ -92,6 +92,9 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",
     "aplicar_saldo_favor", "crear_convenio", "editar_cliente", "devolver_base",
     "entregar_premio",
+    // Decisión del dueño (22-ago): ANGELA hace liquidaciones completas — es la de la plata en
+    // oficina. Espejo en _acciones_default() de la mig 110: si se toca acá, tocar allá.
+    "iniciar_liquidacion",
   ],
   SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
   // El visitador no aprueba, no cobra y no liquida: solo registra la visita que le asignaron.

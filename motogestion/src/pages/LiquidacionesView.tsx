@@ -78,7 +78,11 @@ function Stepper({ estado }: { estado: string }) {
 export default function LiquidacionesView() {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
-  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  // SECRETARIA entra con el flujo COMPLETO, cierre incluido (decisión del dueño, 22-ago): ella
+  // maneja la plata de oficina, el lector de huella está en su PC, y sin ella el cliente firmado
+  // quedaba esperando a que un admin diera el clic del cierre. La RLS ya la dejaba desde la mig
+  // 026 — solo esta pantalla la rebotaba (hallazgo de la auditoría del 12-ago).
+  const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL" || role === "SECRETARIA";
 
   const { filtrarMotos } = useScope();
   const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();

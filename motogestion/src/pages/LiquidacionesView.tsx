@@ -795,7 +795,7 @@ export default function LiquidacionesView() {
                     background: sigueConEmpresa ? "var(--accent-soft)" : "var(--soft2)",
                     border: `1px solid ${sigueConEmpresa ? "var(--accent-line)" : "var(--line)"}` }}>
                     <input type="checkbox" checked={sigueConEmpresa}
-                      onChange={e => { setSigueConEmpresa(e.target.checked); setBaseNueva(e.target.checked && sel.saldo_final > 0 ? sel.saldo_final : 0); }}
+                      onChange={e => { setSigueConEmpresa(e.target.checked); setBaseNueva(e.target.checked && sel.saldo_final > 0 ? Math.min(sel.saldo_final, 510000) : 0); }}
                       style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0, marginTop: 1 }} />
                     <span style={{ minWidth: 0 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", display: "block" }}>

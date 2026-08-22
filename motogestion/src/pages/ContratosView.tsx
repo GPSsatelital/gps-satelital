@@ -283,12 +283,16 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           )}
         </div>
 
-        {/* Acciones */}
-        {puedeCrear && c.estado !== "Finalizado" && (
+        {/* Acciones. OJO al contenedor: antes estaba gateado SOLO por puedeCrear y le escondía a
+            ANGELA (SECRETARIA) la proyección y el iniciar liquidación, que sí son suyos desde la
+            mig 110 — el mismo error de contenedor contra el que advierte el comentario de más
+            abajo. Ahora el contenedor abre si tiene CUALQUIER acción; cada botón exigente
+            (reactivar, suspender, continuar wizard, eliminar) lleva su puedeCrear propio. */}
+        {(puedeCrear || puedeLiquidar) && c.estado !== "Finalizado" && (
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--muted2)" }}>Acciones</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {c.estado === "Cancelado" && (
+              {puedeCrear && c.estado === "Cancelado" && (
                 <button onClick={async () => {
                   if (!confirm("¿Reactivar este contrato? Quedará Activo otra vez y la moto pasará a Asignada.")) return;
                   const { error } = await reactivarContrato(c.id, c.moto_id);
@@ -297,7 +301,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   ↩️ Reactivar contrato
                 </button>
               )}
-              {c.estado === "En proceso" && (
+              {puedeCrear && c.estado === "En proceso" && (
                 <button onClick={() => abrirWizardContinuar(c)} style={{
                   padding: "12px 16px", borderRadius: 14, border: "none",
                   background: "linear-gradient(90deg,var(--accent),var(--ok2))", color: "var(--card)",
@@ -306,7 +310,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   {!c.moto_id ? "🏍️ Continuar — asignar moto" : !c.firma_cliente ? "✍️ Continuar — firmar documentos" : "🚀 Continuar — entregar moto"}
                 </button>
               )}
-              {c.estado === "Activo" && (
+              {puedeCrear && c.estado === "Activo" && (
                 <button onClick={() => {
                   if (!confirm("¿Suspender este contrato? La moto quedará como Recuperada (retenida por la empresa).")) return;
                   suspenderContrato(c.id, c.moto_id);
@@ -342,7 +346,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   📄 Iniciar liquidación
                 </button>
               )}
-              {c.estado === "En proceso" && (
+              {puedeCrear && c.estado === "En proceso" && (
                 // Un contrato "En proceso" nunca se activó — es un intento abortado.
                 // Cancelarlo lo ELIMINA por completo (fila, fotos/firmas, libera la moto),
                 // no lo deja como "Cancelado" (ese estado se reserva para contratos que

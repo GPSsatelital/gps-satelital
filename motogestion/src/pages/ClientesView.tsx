@@ -1870,22 +1870,37 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <ClienteBadge estado={estadoVisual(selectedCliente)} />
         {puede("editar_cliente") && <button onClick={onEdit} style={miniBtn2("var(--accent-soft)", "var(--accent-ink)")}>Actualizar datos / documentos</button>}
-        {selectedCliente.estado === "Listo para visita" && (
-          <button onClick={onVisita} style={miniBtn2("var(--accent-soft3)", "var(--accent-ink)")}>Registrar visita</button>
-        )}
-        {puedeAprobarVisita && selectedCliente.estado === "Listo para visita" && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Asignar a:</span>
-            <select
-              value={selectedCliente.visita_asignada_a ?? ""}
-              onChange={e => onAsignarVisitaCliente(selectedCliente.id, e.target.value || null)}
-              style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid var(--line2)", fontSize: 12 }}
-            >
-              <option value="">— Sin asignar —</option>
-              {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
-          </div>
-        )}
+        {/* RE-VISITA (mig 113, pedido del dueño 22-ago): a un cliente que YA tiene contrato se le
+            puede pedir una visita nueva — ej. cambio de moto entregado hoy y la verificación se
+            hace después. La regla de siempre del embudo queda idéntica; esto solo AGREGA los
+            estados con contrato. Al registrarse, la asignación se limpia sola (trigger 113). */}
+        {(() => {
+          const esEmbudo = selectedCliente.estado === "Listo para visita";
+          const esRevisita = ["Aprobado", "Activo", "En seguimiento", "En riesgo", "En mora"].includes(selectedCliente.estado);
+          if (!esEmbudo && !esRevisita) return null;
+          return (
+            <>
+              <button onClick={onVisita} style={miniBtn2("var(--accent-soft3)", "var(--accent-ink)")}>
+                {esEmbudo ? "Registrar visita" : "Registrar re-visita"}
+              </button>
+              {puedeAprobarVisita && subadmins && subadmins.length > 0 && onAsignarVisitaCliente && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>
+                    {esEmbudo ? "Asignar a:" : "🏠 Pedir re-visita a:"}
+                  </span>
+                  <select
+                    value={selectedCliente.visita_asignada_a ?? ""}
+                    onChange={e => onAsignarVisitaCliente(selectedCliente.id, e.target.value || null)}
+                    style={{ padding: "6px 10px", borderRadius: 10, border: "1px solid var(--line2)", fontSize: 12 }}
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {subadmins.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                </div>
+              )}
+            </>
+          );
+        })()}
         {puedeAprobarVisita && (
           <>
             {/* "Activar cliente" manual ELIMINADO (caso SERAFIN): ponía Activo a un cliente

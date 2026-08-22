@@ -15,6 +15,8 @@ import ModalCederContrato from "../components/ModalCederContrato";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
+import { usePagos } from "../hooks/usePagos";
+import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
@@ -103,6 +105,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeEditar = puede("editar_contrato");
   const puedeLiquidar = puede("iniciar_liquidacion");
   const { liquidaciones } = useLiquidaciones();
+  const { pagos } = usePagos();
+  const [histAbierto, setHistAbierto] = useState<string | null>(null);   // historial del contrato cerrado
   const puedeCeder = puede("ceder_contrato");
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
@@ -369,9 +373,97 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           </div>
         )}
 
+        {/* CONTRATO CERRADO: el resumen del cierre y su historial. Antes un Finalizado quedaba
+            MUDO — se seleccionaba y no decía ni qué se le liquidó ni qué pasó mientras vivió
+            (reporte del dueño, 22-ago, con el contrato de ANTONIO recién cerrado). */}
+        {(c.estado === "Finalizado" || c.estado === "Cancelado") && (() => {
+          const liq = liquidaciones.find(l => l.contrato_id === c.id && l.estado === "cerrada") ?? null;
+          const pagosC = pagos
+            .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
+            .sort((a, b) => b.fecha.localeCompare(a.fecha));
+          const totalPagado = pagosC.reduce((s, p) => s + p.valor, 0);
+          const primero = pagosC.length > 0 ? pagosC[pagosC.length - 1].fecha : null;
+          const ultimo = pagosC.length > 0 ? pagosC[0].fecha : null;
+          const cli = clientes.find(x => x.id === c.cliente_id);
+          const moto = motos.find(m => m.id === c.moto_id);
+          const MOTIVO_TXT: Record<string, string> = { cumplimiento: "Cumplimiento", retiro_voluntario: "Retiro voluntario", incumplimiento: "Incumplimiento" };
+          const abierto = histAbierto === c.id;
+          return (
+            <>
+              <div style={card}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, color: "var(--muted2)" }}>📄 Así cerró este contrato</div>
+                {liq ? (
+                  <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)" }}>Liquidación</span><strong>{liq.numero}</strong></div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)" }}>Motivo</span><strong>{MOTIVO_TXT[liq.motivo] ?? liq.motivo}</strong></div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--muted)" }}>{liq.saldo_final >= 0 ? "Se le devolvió" : "Quedó debiendo"}</span>
+                      <strong style={{ color: liq.saldo_final >= 0 ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 15 }}>$ {fmt(Math.abs(liq.saldo_final))}</strong>
+                    </div>
+                    {(liq.base_trasladada ?? 0) > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)" }}>Quedó como base de su moto nueva</span><strong>$ {fmt(liq.base_trasladada ?? 0)}</strong></div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)" }}>Firma del cliente</span><strong style={{ color: liq.documento_firmado_url ? "var(--ok-ink)" : "var(--warn-ink)" }}>{liq.documento_firmado_url ? "✓ Firmada" : "Sin firma"}</strong></div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                      {liq.documento_firmado_url && (
+                        <a href={liq.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ ...secondaryBtn, textDecoration: "none", textAlign: "center" }}>📄 Ver documento firmado</a>
+                      )}
+                      <button
+                        onClick={() => imprimirLiquidacion(liq,
+                          { nombre: cli?.nombre ?? "", cedula: cli?.cedula, telefono: cli?.telefono },
+                          moto ? { marca: moto.marca, modelo: moto.modelo, placa: moto.placa } : null,
+                          { borrador: !liq.firma_cliente_url, firmaUrl: liq.firma_cliente_url, huellaUrl: liq.huella_cliente_url, fechaFirma: liq.fecha_firma })}
+                        style={{ ...secondaryBtn }}>
+                        🖨️ Reimprimir liquidación
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                    Cerró sin liquidación registrada en el sistema (contratos viejos o cierres manuales).
+                  </div>
+                )}
+              </div>
+
+              <div style={card}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--muted2)" }}>🧾 Lo que pasó mientras estuvo activo</div>
+                  {pagosC.length > 0 && (
+                    <button onClick={() => setHistAbierto(abierto ? null : c.id)} style={{ ...secondaryBtn, padding: "7px 12px", fontSize: 12.5 }}>
+                      {abierto ? "Ocultar pagos" : `Ver los ${pagosC.length} pagos`}
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.6 }}>
+                  <strong style={{ color: "var(--text)" }}>{pagosC.length}</strong> pagos confirmados ·
+                  total <strong style={{ color: "var(--text)" }}>$ {fmt(totalPagado)}</strong>
+                  {primero && ultimo && <> · del <strong>{primero}</strong> al <strong>{ultimo}</strong></>}
+                  {c.motor_v2 && c.total_cajas != null && <> · llegó a la semana <strong>{c.cajas_pagadas ?? 0} de {c.total_cajas}</strong></>}
+                </div>
+                {abierto && (
+                  <div style={{ marginTop: 10, borderTop: "1px solid var(--line)", maxHeight: "40vh", overflowY: "auto" }}>
+                    {pagosC.map((p, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5, minWidth: 0 }}>
+                        <span style={{ color: "var(--muted)", flexShrink: 0 }}>{p.fecha}</span>
+                        <span style={{ flex: 1, minWidth: 0, textAlign: "center", color: "var(--faint)", fontSize: 11.5 }}>{p.metodo}</span>
+                        <strong style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>$ {fmt(p.valor)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 8 }}>
+                  El detalle completo (a qué se aplicó cada pago, deudas, convenios, gestiones) vive en la ficha del cliente.
+                </div>
+              </div>
+            </>
+          );
+        })()}
+
         {/* Cada botón depende de SU permiso (no de puedeCrear): así "Editar contrato"
-            funciona para quien tenga esa acción activada, sin importar el rol. */}
-        {(puedeEditar || puedeDocumentos) && (
+            funciona para quien tenga esa acción activada, sin importar el rol.
+            OJO: un contrato FINALIZADO no se edita — ya se liquidó y sus cifras respaldan un
+            documento firmado (reporte del dueño, 22-ago: el botón seguía saliendo). */}
+        {((puedeEditar && c.estado !== "Finalizado") || puedeDocumentos) && (
           <div style={{ ...card, display: "grid", gap: 8 }}>
             {/* Migrados: entraron por SQL sin sus documentos físicos — recordatorio no
                 bloqueante hasta que se suban con el botón de abajo. Los del wizard nunca
@@ -381,7 +473,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 📎 Faltan documentos del contrato: {[!c.contrato_pdf_url && "contrato firmado", !c.pagare_pdf_url && "pagaré"].filter(Boolean).join(" y ")} — súbelos con el botón de abajo.
               </div>
             )}
-            {puedeEditar && (
+            {puedeEditar && c.estado !== "Finalizado" && (
               <button
                 onClick={() => setModalEditarAbierto(true)}
                 style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}

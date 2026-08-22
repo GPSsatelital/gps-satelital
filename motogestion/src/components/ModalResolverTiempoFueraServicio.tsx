@@ -4,7 +4,10 @@ import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useUbicaciones, type DecisionTiempo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
+import { useClientes } from "../hooks/useClientes";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
+import ModalFirmaAcuerdoTiempo from "./ModalFirmaAcuerdoTiempo";
+import { imprimirAcuerdoTiempo, type DatosAcuerdoTiempo } from "../utils/generarDocumentoAcuerdoTiempo";
 
 interface Props {
   contrato: Contrato;
@@ -45,25 +48,49 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
 
   const [decision, setDecision] = useState<DecisionTiempo | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
+  const [firmando, setFirmando] = useState(false);
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
+  // El cliente completo (cédula + huella del registro) para el documento firmable en pantalla.
+  const { clientes } = useClientes();
+  const clienteFull = clientes.find(cl => cl.id === contrato.cliente_id) ?? null;
+
+  // Fecha base real del contrato hoy (guardada o calculada) + los días fuera de servicio.
+  // Arriba del handler a propósito: el DOCUMENTO que el cliente lee y firma dice la fecha nueva,
+  // y tiene que ser exactamente la misma que después se guarda — no dos cálculos separados.
+  const baseActual = contrato.fecha_fin_contrato
+    ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : fechaSalida);
+  const fechaFinExtendida = (() => {
+    const d = new Date(baseActual + "T00:00:00");
+    d.setDate(d.getDate() + diasARodar);   // períodos COMPLETOS, no los días crudos
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const datosDocumento: DatosAcuerdoTiempo = {
+    cliente: { nombre: clienteNombre, cedula: clienteFull?.cedula },
+    placa: motoPlaca,
+    motivo,
+    fechaEntrada,
+    fechaSalida,
+    dias,
+    decision: (decision ?? "rodar_al_final") as DatosAcuerdoTiempo["decision"],
+    periodosCompletos,
+    diasARodar,
+    fechaFinAnterior: baseActual,
+    fechaFinNueva: fechaFinExtendida,
+    valorCobrar: valorTotal,
+    observaciones: observaciones || undefined,
+  };
+
   async function handleConfirmar() {
     if (guardando || !profile || !decision) return;
-    if (!archivo) { setError("Sube el documento firmado por el cliente antes de continuar."); return; }
+    if (!archivo) { setError("Firma en pantalla o sube el documento firmado antes de continuar."); return; }
     setError(null);
     setGuardando(true);
     try {
-      // Fecha base real del contrato hoy (guardada o calculada) + los días fuera de servicio
-      const baseActual = contrato.fecha_fin_contrato
-        ?? (contrato.fecha_entrega && contrato.meses ? calcularFechaFinContrato(contrato.fecha_entrega, contrato.meses) : fechaSalida);
-      const fechaFinExtendida = (() => {
-        const d = new Date(baseActual + "T00:00:00");
-        d.setDate(d.getDate() + diasARodar);   // períodos COMPLETOS, no los días crudos
-        return d.toISOString().slice(0, 10);
-      })();
 
       const { error: errAcuerdo, id: acuerdoId } = await crearAcuerdoTiempo({
         contrato_id: contrato.id,
@@ -238,7 +265,21 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
               <div style={{ fontSize: 12, color: "var(--warn-ink)", marginBottom: 10 }}>
                 Debe quedar claro que el cliente entiende que su contrato {decision === "rodar_al_final" ? `termina ${diasARodar} día(s) después de lo previsto` : `debe $${fmt(valorTotal)} adicionales`}.
               </div>
+              {/* Firma en pantalla (pedido del dueño, 22-ago: "como los de liquidación"): genera
+                  el documento, el cliente lo lee, firma con el canvas y la huella sale del
+                  registro. El PDF cae en este mismo casillero — el resto del flujo no cambia. */}
+              <button onClick={() => setFirmando(true)}
+                style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "none", background: "var(--ok)", color: "#fff", fontWeight: 700, fontSize: 13.5, cursor: "pointer", marginBottom: 10 }}>
+                ✍️ Generar y firmar en pantalla (firma + huella)
+              </button>
+              <div style={{ fontSize: 11.5, color: "var(--warn-ink)", marginBottom: 8 }}>
+                ¿Prefieren papel? Imprime el acuerdo, que lo firme a mano, y sube la foto:
+              </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => imprimirAcuerdoTiempo(datosDocumento, { borrador: true })}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", color: "var(--text)", fontWeight: 700, fontSize: 13 }}>
+                  🖨️ Imprimir
+                </button>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "7px 14px", borderRadius: 10, background: "var(--accent)", color: "var(--card)", fontWeight: 700, fontSize: 13 }}>
                   📷 Cámara
                   <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => setArchivo(e.target.files?.[0] ?? null)} />
@@ -248,7 +289,11 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                   <input type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={e => setArchivo(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
-              {archivo && <div style={{ marginTop: 8, fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>✅ {archivo.name}</div>}
+              {archivo && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>
+                  ✅ {archivo.name === "acuerdo-tiempo-firmado.pdf" ? "Firmado en pantalla — documento listo" : archivo.name}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -275,6 +320,15 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
           )}
         </div>
       </div>
+
+      {firmando && decision && (
+        <ModalFirmaAcuerdoTiempo
+          datos={datosDocumento}
+          huellaRegistroUrl={clienteFull?.autorizacion_datos_huella_url ?? null}
+          onCerrar={() => setFirmando(false)}
+          onFirmado={(pdf) => setArchivo(pdf)}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
 import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
+import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import { hoyISO } from "../utils/fecha";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
@@ -22,6 +24,7 @@ import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 13 };
+const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "#0f172a", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", fontSize: 13 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
@@ -108,6 +111,16 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const { pagos } = usePagos();
   const [histAbierto, setHistAbierto] = useState<string | null>(null);   // historial del contrato cerrado
   const puedeCeder = puede("ceder_contrato");
+  // RESOLVER EL TIEMPO GUARDADO DESPUÉS (24-ago): cuando la entrega la hace un SUBADMIN o
+  // SECRETARIA, el modal de cobrar/rodar no les sale (la decisión es del admin) y el caso se
+  // evaporaba para siempre — pasó dos veces el mismo fin de semana (WILLINGTON DQW26I y JUAN
+  // CARLOS YAL68H, ajustados por SQL). Este botón lo deja RE-ABRIBLE: el admin pone las fechas
+  // reales del guardado y sigue el flujo de siempre, con documento firmado. Nada queda en el aire.
+  const esAdminRol = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
+  const [rtFechas, setRtFechas] = useState<{ desde: string; hasta: string } | null>(null);
+  const [rtFormAbierto, setRtFormAbierto] = useState(false);
+  const [rtDesde, setRtDesde] = useState("");
+  const [rtHasta, setRtHasta] = useState(hoyISO());
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
@@ -481,6 +494,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 ✏️ Editar contrato
               </button>
             )}
+            {esAdminRol && c.estado === "Activo" && (
+              <button
+                onClick={() => { setRtDesde(""); setRtHasta(hoyISO()); setRtFormAbierto(true); }}
+                style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+              >
+                ⏱️ Resolver tiempo guardado (cobrar / rodar)
+              </button>
+            )}
             {puedeDocumentos && (
               <button
                 onClick={() => setModalDocumentosAbierto(true)}
@@ -522,6 +543,53 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             contrato={c}
             clienteNombre={clienteDetalle.nombre}
             onClose={() => setModalEditarAbierto(false)}
+          />
+        )}
+
+        {/* Mini-paso del tiempo guardado: el admin pone las fechas REALES (de cuándo a cuándo
+            estuvo la moto en la empresa) y sigue el flujo de siempre con documento firmado. */}
+        {rtFormAbierto && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setRtFormAbierto(false)}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "var(--card)", borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, boxSizing: "border-box", display: "grid", gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>⏱️ ¿De qué fecha a qué fecha estuvo guardada?</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                Con las fechas, el sistema calcula los períodos COMPLETOS que se pueden rodar
+                (los días sueltos se quedan en su semana). Si el cliente tiene convenio, sus
+                cuotas de esas semanas se corren también.
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Se guardó el</div>
+                <input type="date" value={rtDesde} onChange={e => setRtDesde(e.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft)", color: "var(--text)", fontSize: 14 }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Se devolvió el</div>
+                <input type="date" value={rtHasta} onChange={e => setRtHasta(e.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft)", color: "var(--text)", fontSize: 14 }} />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setRtFormAbierto(false)} style={{ ...secondaryBtn, flex: 1 }}>Cancelar</button>
+                <button
+                  disabled={!rtDesde || !rtHasta || rtDesde >= rtHasta}
+                  onClick={() => { setRtFormAbierto(false); setRtFechas({ desde: rtDesde, hasta: rtHasta }); }}
+                  style={{ ...primaryBtn, flex: 1, opacity: !rtDesde || !rtHasta || rtDesde >= rtHasta ? 0.5 : 1 }}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {rtFechas && (
+          <ModalResolverTiempoFueraServicio
+            contrato={c}
+            clienteNombre={clienteDetalle.nombre}
+            motoPlaca={motoDetalle?.placa ?? "Sin placa"}
+            motivo="Moto guardada en la empresa"
+            fechaEntrada={rtFechas.desde}
+            fechaSalida={rtFechas.hasta}
+            onClose={() => setRtFechas(null)}
           />
         )}
 

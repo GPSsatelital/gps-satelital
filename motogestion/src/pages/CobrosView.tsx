@@ -36,6 +36,8 @@ import ModalRecoleccion from "../components/ModalRecoleccion";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
 import ModalAmpliarConvenio from "../components/ModalAmpliarConvenio";
+import ModalPartituraConvenio from "../components/ModalPartituraConvenio";
+import { amortizarPartitura, plataAlConvenio } from "../utils/partituraConvenio";
 import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
@@ -564,7 +566,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
-  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato } = useConvenios();
+  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, guardarPartitura } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   const { render: renderMsg } = useMensajesWhatsapp();
 
@@ -611,6 +613,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalCuentaId, setModalCuentaId] = useState<string | null>(null);
   // Convenio activo al que se le va a agregar una deuda nueva (sin rehacerlo ni perder abonos).
   const [ampliandoConvenio, setAmpliandoConvenio] = useState<import("../hooks/useConvenios").Convenio | null>(null);
+  // La partitura del convenio (mig 116): el editor para escribirle la lista a los viejos.
+  const [editandoPartitura, setEditandoPartitura] = useState(false);
+  const [guardandoPartitura, setGuardandoPartitura] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
@@ -1073,6 +1078,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // (saldo del convenio) — aquí duplicaría el cobro en tab Deudas, estado de cuenta y meta.
   const deudasContrato = contratoSeleccionadoId
     ? deudas.filter(d => d.contrato_id === contratoSeleccionadoId && d.estado === "pendiente")
+    : [];
+
+  // Para el editor de la partitura: también las 'en_convenio' — son precisamente las que viven
+  // dentro del convenio y deben poder engancharse a su renglón (así se cierran solas al pagarse).
+  const deudasParaPartitura = contratoSeleccionadoId
+    ? deudas
+        .filter(d => d.contrato_id === contratoSeleccionadoId && d.estado !== "pagada")
+        .sort((a, b) => (a.estado === "en_convenio" ? -1 : 1) - (b.estado === "en_convenio" ? -1 : 1))
     : [];
 
   const totalConvenios = contratoSeleccionadoId ? totalConveniosDelContrato(contratoSeleccionadoId) : 0;
@@ -2328,6 +2341,74 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       highlight
                     />
                   </div>
+
+                  {/* LA PARTITURA (mig 116): qué financia este convenio y qué va cubierto con
+                      plata REAL. El tachado se deriva del mismo conteo del motor (plata entrada
+                      al convenio desde la firma) — ninguna pantalla puede decir otra cosa. */}
+                  {convenioActual.partitura?.length ? (() => {
+                    const entrada = plataAlConvenio(
+                      pagos.filter(p => p.contrato_id === convenioActual.contrato_id),
+                      convenioActual.created_at,
+                    );
+                    const { renglones: tachado, sobrante } = amortizarPartitura(convenioActual.partitura, entrada);
+                    return (
+                      <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid var(--warn-line)", padding: 10, marginTop: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", marginBottom: 6 }}>
+                          Qué financia — y qué va pagado de verdad (van $ {fmt(entrada)})
+                        </div>
+                        <div style={{ display: "grid", gap: 4 }}>
+                          {tachado.map((r, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, minWidth: 0 }}>
+                              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: r.cubierto ? "var(--ok-ink)" : "inherit", textDecoration: r.cubierto ? "line-through" : "none" }}>
+                                {r.cubierto ? "✓ " : ""}{r.etiqueta}
+                              </span>
+                              <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: r.cubierto ? "var(--ok-ink)" : r.pagado > 0 ? "var(--warn-ink)" : "var(--muted)" }}>
+                                {r.cubierto ? "pagado" : r.pagado > 0 ? `$ ${fmt(r.pagado)} de $ ${fmt(r.monto)}` : `$ ${fmt(r.monto)}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {sobrante > 0 && (
+                          <div style={{ fontSize: 12, color: "var(--bad-ink)", fontWeight: 700, marginTop: 6 }}>
+                            ⚠️ Entraron $ {fmt(sobrante)} por encima de esta lista — revisar con el encargado.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
+                    <div style={{ background: "var(--warn-soft2)", border: "1px dashed var(--warn-line)", borderRadius: 10, padding: 10, marginTop: 12, fontSize: 13, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                      Este convenio no tiene su <strong>lista de qué financia</strong> (es de los de antes).
+                      Sin ella, el sistema no puede contar cada peso donde verdaderamente iba.
+                    </div>
+                  )}
+                  {(profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL") && (
+                    <button
+                      onClick={() => setEditandoPartitura(true)}
+                      style={{ ...secondaryBtn, width: "100%", marginTop: 8 }}
+                    >
+                      ✍️ {convenioActual.partitura?.length ? "Corregir la lista de qué financia" : "Escribir la lista (con el acuerdo firmado en la mano)"}
+                    </button>
+                  )}
+                  {editandoPartitura && (
+                    <ModalPartituraConvenio
+                      convenio={convenioActual}
+                      deudas={deudasParaPartitura}
+                      guardando={guardandoPartitura}
+                      onClose={() => setEditandoPartitura(false)}
+                      onGuardar={async lista => {
+                        if (guardandoPartitura) return;
+                        setGuardandoPartitura(true);
+                        try {
+                          const r = await guardarPartitura(convenioActual, lista, profile?.id ?? "");
+                          if (r.error) { alert("No se pudo guardar: " + r.error); return; }
+                          setEditandoPartitura(false);
+                        } finally {
+                          setGuardandoPartitura(false);
+                        }
+                      }}
+                    />
+                  )}
+
                   {/* Antes, un cliente con convenio activo al que le llegaba una deuda nueva (una
                       multa de recolección, que se crea sola) no tenía dónde ponerla: no se puede
                       crear un segundo convenio, y borrar este para rehacerlo pierde sus abonos.

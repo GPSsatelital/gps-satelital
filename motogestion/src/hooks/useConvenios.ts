@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
+import type { RenglonPartitura } from "../utils/partituraConvenio";
 
 export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado";
 
@@ -17,6 +18,9 @@ export type Convenio = {
   aprobado_por: string | null;
   cubre_periodo_hasta: string | null; // si el convenio absorbió la cuota del período actual al crearse
   firma_url: string | null; // firma del acuerdo de pago (opcional)
+  /** La PARTITURA (mig 116): qué financia este convenio, en pesos y en orden. null = convenio
+   *  viejo sin lista — el dueño se la escribe desde el editor, contra el acuerdo firmado. */
+  partitura: RenglonPartitura[] | null;
   created_at: string;
 };
 
@@ -152,5 +156,20 @@ export function useConvenios() {
     return { error: error?.message ?? null };
   }
 
-  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio };
+  /** Escribe (o corrige) la partitura de un convenio — el editor de los viejos. Queda rastro
+   *  completo en la auditoría del contrato: qué decía antes y qué quedó. */
+  async function guardarPartitura(convenio: Convenio, partitura: RenglonPartitura[], editadoPor: string) {
+    const { error } = await supabase.from("convenios").update({ partitura }).eq("id", convenio.id);
+    if (error) return { error: error.message };
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: convenio.contrato_id,
+      campo: `Partitura del convenio #${convenio.numero_convenio}`,
+      valor_anterior: convenio.partitura ? JSON.stringify(convenio.partitura) : "sin partitura",
+      valor_nuevo: JSON.stringify(partitura),
+      editado_por: editadoPor,
+    });
+    return { error: null };
+  }
+
+  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio, guardarPartitura };
 }

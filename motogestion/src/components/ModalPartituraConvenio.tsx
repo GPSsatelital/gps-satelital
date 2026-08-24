@@ -17,23 +17,43 @@ type RenglonForm = { tipo: RenglonPartitura["tipo"]; ref?: string | number; etiq
 
 const fmt = (n: number) => n.toLocaleString("es-CO");
 
-export default function ModalPartituraConvenio({ convenio, deudas, guardando, onGuardar, onClose }: {
+export default function ModalPartituraConvenio({ convenio, deudas, valorCaja, guardando, onGuardar, onClose }: {
   convenio: Convenio;
   /** Las deudas del contrato (en_convenio primero): para enganchar renglones a su deuda real. */
   deudas: DeudaOpcion[];
+  /** El valor del período del contrato — para que la propuesta automática derive las semanas. */
+  valorCaja: number;
   guardando: boolean;
   onGuardar: (partitura: RenglonPartitura[]) => void;
   onClose: () => void;
 }) {
+  const esPropuesta = !convenio.partitura?.length;
   const [renglones, setRenglones] = useState<RenglonForm[]>(() => {
     if (convenio.partitura?.length) {
       return convenio.partitura.map(r => ({ tipo: r.tipo, ref: r.ref, etiqueta: r.etiqueta, monto: String(r.monto) }));
     }
-    // Propuesta inicial para un convenio viejo: sus deudas envueltas, con lo que hoy marcan.
-    // Es un PUNTO DE PARTIDA — el dueño lo ajusta contra el acuerdo firmado.
-    return deudas
-      .filter(d => d.estado === "en_convenio" && d.monto_pendiente > 0)
-      .map(d => ({ tipo: "deuda" as const, ref: d.id, etiqueta: `Deuda: ${d.concepto}`, monto: String(d.monto_pendiente) }));
+    // LA PROPUESTA AUTOMÁTICA (pedida por el dueño, 23-ago): el sistema saca la cuenta completa
+    // — lo que el total del convenio no explica con deudas fueron semanas atrasadas al firmar —
+    // y al humano solo le queda CONFIRMARLA contra el acuerdo firmado. Nunca se guarda sola.
+    const deudasProp = deudas.filter(d => d.estado === "en_convenio" && d.monto_pendiente > 0);
+    const sumaDeudas = deudasProp.reduce((s, d) => s + d.monto_pendiente, 0);
+    const resto = convenio.deuda_total - sumaDeudas;
+    const semanas: RenglonForm[] = [];
+    let sobrante = resto;
+    if (resto > 0 && valorCaja > 0) {
+      const n = Math.floor(resto / valorCaja);
+      for (let k = 1; k <= n; k++) {
+        semanas.push({ tipo: "semana", etiqueta: `Semana atrasada al firmar (${k} de ${n})`, monto: String(valorCaja) });
+      }
+      sobrante = resto - n * valorCaja;
+    }
+    return [
+      ...semanas,
+      ...deudasProp.map(d => ({ tipo: "deuda" as const, ref: d.id, etiqueta: `Deuda: ${d.concepto}`, monto: String(d.monto_pendiente) })),
+      ...(sobrante > 0
+        ? [{ tipo: "ajuste" as const, etiqueta: "Por confirmar contra el acuerdo (sobrante)", monto: String(sobrante) }]
+        : []),
+    ];
   });
 
   const parseados: RenglonPartitura[] = renglones.map(r => ({
@@ -51,9 +71,16 @@ export default function ModalPartituraConvenio({ convenio, deudas, guardando, on
         <div style={{ fontWeight: 700, fontSize: 16 }}>La lista del convenio #{convenio.numero_convenio}</div>
         <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, lineHeight: 1.5 }}>
           Qué financia este convenio, en pesos y en orden (semanas viejas primero, deudas después,
-          ajuste al final). <strong>Escribila con el acuerdo firmado en la mano</strong> — la suma
-          debe cuadrar con el total pactado: <strong>$ {fmt(convenio.deuda_total)}</strong>.
+          ajuste al final). La suma debe cuadrar con el total pactado:{" "}
+          <strong>$ {fmt(convenio.deuda_total)}</strong>.
         </div>
+        {esPropuesta && (
+          <div style={{ fontSize: 13, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)", color: "var(--warn-ink)", borderRadius: 10, padding: "8px 12px", marginTop: 8, lineHeight: 1.5 }}>
+            Esta es <strong>la cuenta que sacó el sistema</strong> con los datos del convenio.
+            Compárala contra el <strong>acuerdo firmado</strong> antes de guardar — ajusta lo que
+            el papel diga distinto.
+          </div>
+        )}
 
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
           {renglones.map((r, i) => (

@@ -168,6 +168,10 @@ export function useConvenios() {
       valor_nuevo: JSON.stringify(partitura),
       editado_por: editadoPor,
     });
+    // Amortización inmediata (mig 117): un convenio viejo con cuotas YA pagadas debe dejar sus
+    // deudas envueltas al día AHORA — no cuando al cliente se le ocurra volver a pagar. Es un
+    // recálculo idempotente; si el RPC aún no existe (117 sin correr), el próximo pago lo hace.
+    await supabase.rpc("amortizar_convenio", { p_convenio_id: convenio.id }).then(() => {}, () => {});
     return { error: null };
   }
 

@@ -2401,6 +2401,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <ModalPartituraConvenio
                       convenio={convenioActual}
                       deudas={deudasParaPartitura}
+                      valorCaja={contratoDetalle ? valorPeriodoReal(contratoDetalle) : 0}
                       guardando={guardandoPartitura}
                       onClose={() => setEditandoPartitura(false)}
                       onGuardar={async lista => {

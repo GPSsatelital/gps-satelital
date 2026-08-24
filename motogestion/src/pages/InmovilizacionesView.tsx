@@ -98,7 +98,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { gestiones } = useGestiones();
   const { deudas, registrarDeuda } = useDeudas();
   const { convenios } = useConvenios();
-  const { recepciones } = useUbicaciones();
+  const { recepciones, acuerdos } = useUbicaciones();
   const { prestamos, devolverReemplazo } = usePrestamos();
   const { profile, puede } = useAuth();
   const { render: renderMsg } = useMensajesWhatsapp();
@@ -427,6 +427,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
   // Resolver tiempo (cobrar/rodar): reusado por TEMA A (reactivar temporal) y TEMA B (devolver préstamo).
   const [resolverRec, setResolverRec] = useState<{ contratoId: string; placa: string; clienteNombre: string; fechaEntrada: string; motivo: string } | null>(null);
+  // EL PRE-PASO (regla del dueño, 24-ago): la decisión del tiempo guardado se toma ENSEGUIDA
+  // — antes del formulario del convenio si no tiene, antes de la entrega si ya tiene. Quien
+  // opere decide (el subadmin también tiene permiso); lo sagrado es que TODO quede registrado:
+  // qué se decidió, quién, cuándo y con qué documento.
+  const [preResolver, setPreResolver] = useState<{ m: MotoRetenida; luego: "entrega" | "convenio" } | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
@@ -501,6 +506,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return rec ? rec.created_at.slice(0, 10) : hoyISO();
   };
 
+  // ¿El tiempo guardado de ESTA retención ya se resolvió (cobrar o rodar)? Un acuerdo de
+  // tiempo posterior a la recepción del guardado lo cubre. Si no hay, el pre-paso pregunta.
+  const tiempoGuardadoResuelto = (contratoId: string) => {
+    const fecha = fechaGuardado(contratoId);
+    return acuerdos.some(a => a.contrato_id === contratoId && a.created_at >= fecha);
+  };
+
   // Puede entregarse la moto cuando: la MULTA está paga en efectivo Y lo demás (deudas viejas
   // + cuotas atrasadas) está pago O financiado por un convenio activo.
   // Antes se exigían TODAS las deudas en efectivo, y eso dejaba sin salida a un cliente con una
@@ -553,6 +565,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     if (debeTemporal > 0) {
       const conv = m.convenioId != null ? "\n\nYa tiene un convenio activo." : "\n\nLo normal es cobrarle o dejarle un convenio antes de entregársela.";
       if (!confirm(`${m.clienteNombre.toUpperCase()} debe $${fmt(debeTemporal)}.${conv}\n\n¿Entregarle igual la moto ${m.placa}?`)) return;
+    }
+    // EL PRE-PASO: antes de la entrega, la decisión del tiempo guardado (cobrar o rodar) —
+    // ENSEGUIDA, no después, para que nadie cobre ni entregue con esa parte en el aire.
+    if (!tiempoGuardadoResuelto(m.contratoId)) {
+      setPreResolver({ m, luego: "entrega" });
+      return;
     }
     setEntregaRec(m);
   }
@@ -1079,7 +1097,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                     )}
                     {puedeHacerConvenio && puedeCrearConvenio && (
                       <button
-                        onClick={() => setConvenioRec(m)}
+                        onClick={() => {
+                          // EL PRE-PASO: si no tiene convenio, la decisión del tiempo guardado
+                          // va ANTES del formulario — así el convenio nace con los valores
+                          // reales (si se ruedan semanas, la meta baja sola).
+                          if (!tiempoGuardadoResuelto(m.contratoId)) { setPreResolver({ m, luego: "convenio" }); return; }
+                          setConvenioRec(m);
+                        }}
                         disabled={procesandoEsta}
                         title="Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-ink)", color: "var(--card)" }}
@@ -1267,17 +1291,6 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motoId={entregaRec.motoId}
           placa={entregaRec.placa}
           onClose={() => setEntregaRec(null)}
-          onDone={() => {
-            // También para RETENIDAS POR MORA (antes solo temporales — el hueco que mordió a
-            // WILLINGTON y a JUAN CARLOS LEAL, 23/24-ago): al devolver la moto, el admin decide
-            // qué pasa con el tiempo guardado — cobrar (default) o rodar períodos COMPLETOS con
-            // documento firmado. El modal roda el PAQUETE: semana + cuota del convenio.
-            if (esAdmin) setResolverRec({
-              contratoId: entregaRec.contratoId, placa: entregaRec.placa,
-              clienteNombre: entregaRec.clienteNombre, fechaEntrada: fechaGuardado(entregaRec.contratoId),
-              motivo: entregaRec.esTemporal ? "Entrega temporal / incapacidad" : "Retención por mora",
-            });
-          }}
         />
       )}
 
@@ -1293,8 +1306,32 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         />
       )}
 
-      {/* Al devolver una guardada (temporal O retenida por mora): resolver el tiempo guardado
-          — cobrar, o rodar el paquete completo (semana + convenio) con documento firmado. */}
+      {/* EL PRE-PASO: la decisión del tiempo guardado, ENSEGUIDA — antes del convenio si no
+          tiene, antes de la entrega si ya tiene (regla del dueño, 24-ago). Quien opera decide
+          (subadmin incluido); todo queda registrado. Cancelar = no se continúa el flujo. */}
+      {preResolver && (() => {
+        const c = contratos.find(x => x.id === preResolver.m.contratoId);
+        if (!c) return null;
+        return (
+          <ModalResolverTiempoFueraServicio
+            contrato={c}
+            clienteNombre={preResolver.m.clienteNombre}
+            motoPlaca={preResolver.m.placa}
+            motivo={preResolver.m.esTemporal ? "Entrega temporal / incapacidad" : "Retención por mora"}
+            fechaEntrada={fechaGuardado(preResolver.m.contratoId)}
+            fechaSalida={hoyISO()}
+            onClose={() => setPreResolver(null)}
+            onResuelto={() => {
+              const { m, luego } = preResolver;
+              setPreResolver(null);
+              if (luego === "entrega") setEntregaRec(m);
+              else setConvenioRec(m);
+            }}
+          />
+        );
+      })()}
+
+      {/* Resolver el tiempo del que tuvo moto de reemplazo (su moto propia estuvo en taller). */}
       {resolverRec && (() => {
         const c = contratos.find(x => x.id === resolverRec.contratoId);
         if (!c) return null;

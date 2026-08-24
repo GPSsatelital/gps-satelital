@@ -14,15 +14,20 @@ interface Props {
   contrato: Contrato;
   clienteNombre: string;
   motoPlaca: string;
-  motivo: string; // "Taller" | "Fiscalía" | "Tránsito" | "Garantía"
+  motivo: string; // "Taller" | "Fiscalía" | "Tránsito" | "Garantía" | "Retención por mora"...
   fechaEntrada: string;
   fechaSalida: string;
   onClose: () => void;
+  /** PRE-PASO de un flujo (regla del dueño, 24-ago: la decisión se toma ENSEGUIDA — antes del
+   *  convenio si no tiene, antes de la entrega si ya tiene). Se llama cuando la decisión quedó
+   *  tomada (cobrar o rodar) O cuando quien opera no tiene potestad y la difiere al encargado
+   *  — el flujo continúa y el pendiente queda visible por la detección derivada. */
+  onResuelto?: () => void;
 }
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-export default function ModalResolverTiempoFueraServicio({ contrato, clienteNombre, motoPlaca, motivo, fechaEntrada, fechaSalida, onClose }: Props) {
+export default function ModalResolverTiempoFueraServicio({ contrato, clienteNombre, motoPlaca, motivo, fechaEntrada, fechaSalida, onClose, onResuelto }: Props) {
   const { profile } = useAuth();
   const { editarContrato } = useContratos();
   const { registrarDeuda } = useDeudas();
@@ -32,6 +37,10 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
   // perdona: ambas se pagan al final. "Se le rueda al final también."
   const { convenioActivoDelContrato, rodarPeriodosConvenio } = useConvenios();
   const convenioActivo = convenioActivoDelContrato(contrato.id);
+  // QUIÉN DECIDE (aclarado por el dueño, 24-ago): quien opere el flujo — el subadmin también
+  // tiene permiso, es parte de su trabajo. Lo sagrado es EL RASTRO: qué se decidió, quién
+  // (creado_por), cuándo y cómo (el acuerdo + el documento firmado + la auditoría). "Todo el
+  // sistema debe saber qué sucedió, quién y cómo sucedió."
 
   const dias = Math.max(1, Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(fechaEntrada + "T00:00:00").getTime()) / 86400000));
   const tarifa = contrato.tarifa_diaria ?? 27000;
@@ -149,7 +158,39 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
       }
 
       setExito(true);
-      setTimeout(() => onClose(), 1500);
+      setTimeout(() => { onResuelto?.(); onClose(); }, 1500);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  /**
+   * Confirmar que se COBRA (no rodar) en un contrato con motor: los días YA están exigidos por
+   * el libro de cajas — no se crea deuda ni se toca un peso. El acuerdo es el REGISTRO de la
+   * decisión (regla de la esencia y el rastro): apaga el pendiente "sin resolver" y los informes
+   * sabrán que el admin lo decidió, cuándo y por qué. Sin documento: cobrar no cambia ninguna
+   * obligación del cliente (es lo pactado de siempre) — el papel firmado es para RODAR.
+   */
+  async function confirmarCobroV2() {
+    if (guardando || !profile) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      const { error: e } = await crearAcuerdoTiempo({
+        contrato_id: contrato.id,
+        cliente_id: contrato.cliente_id,
+        moto_id: contrato.moto_id!,
+        dias_en_empresa: dias,
+        valor_por_dia: tarifa,
+        decision: "cobrar_ahora",
+        fecha_entrada: fechaEntrada,
+        fecha_salida: fechaSalida,
+        observaciones: `${motivo} — se confirmó COBRAR: los días ya estaban exigidos por el libro de cajas, no se creó deuda aparte${observaciones ? " — " + observaciones : ""}`,
+        creado_por: profile.id,
+      });
+      if (e) { setError(e); return; }
+      setExito(true);
+      setTimeout(() => { onResuelto?.(); onClose(); }, 1200);
     } finally {
       setGuardando(false);
     }
@@ -231,7 +272,14 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                 </div>
               </div>
             )}
-            {!decision && <button onClick={onClose} style={{ ...secondaryBtn, width: "100%" }}>Cerrar sin rodar</button>}
+            {/* Cobrar es el default del negocio, pero la decisión igual queda REGISTRADA (quién,
+                cuándo, por qué) — sin registro, el sistema no sabría que alguien lo decidió. */}
+            {!decision && (
+              <button onClick={confirmarCobroV2} disabled={guardando || exito}
+                style={{ ...secondaryBtn, width: "100%", opacity: guardando || exito ? 0.6 : 1 }}>
+                {guardando ? "Registrando..." : "✅ Se cobra normal (no rodar) — registrar la decisión"}
+              </button>
+            )}
           </div>
         ) : (
         <div>

@@ -1677,7 +1677,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           return monto > 0 && porCiclo > 0 ? { monto, ciclos: Math.floor(monto / porCiclo) } : null;
         })(),
         deudas: deudasContrato.map(d => ({ concepto: d.concepto, pendiente: d.monto_pendiente })),
-        convenio: cvActiva ? { total: cvActiva.deuda_total, cuota: cvActiva.cuota_por_periodo, pagadas: cvActiva.cuotas_pagadas, numero: cvActiva.numero_cuotas, fechaLimite: cvActiva.fecha_limite } : null,
+        convenio: cvActiva ? {
+          total: cvActiva.deuda_total, cuota: cvActiva.cuota_por_periodo, pagadas: cvActiva.cuotas_pagadas,
+          numero: cvActiva.numero_cuotas, fechaLimite: cvActiva.fecha_limite,
+          // La partitura tachada (mig 116): el documento explica el convenio renglón por renglón,
+          // con el MISMO conteo del motor — el papel no puede decir otra cosa que la pantalla.
+          partitura: cvActiva.partitura?.length
+            ? amortizarPartitura(cvActiva.partitura, plataAlConvenio(pagosContrato, cvActiva.created_at)).renglones
+            : null,
+        } : null,
         saldoFavor: c.saldoAFavor ?? 0,
         pagosRecientes: pagosContrato.slice(0, 5).filter(p => p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor, metodo: p.metodo })),
         inicioContrato: c.fecha_entrega,

@@ -668,7 +668,12 @@ export type DatosEstadoCuenta = {
   // ciclos COMPLETOS equivale — refuerza la regla: el ahorro se gana completando períodos.
   ahorroCiclos?: { monto: number; ciclos: number } | null;
   deudas: Array<{ concepto: string; pendiente: number }>;
-  convenio?: { total: number; cuota: number; pagadas: number; numero: number; fechaLimite: string } | null;
+  convenio?: {
+    total: number; cuota: number; pagadas: number; numero: number; fechaLimite: string;
+    /** La partitura TACHADA (mig 116): qué financia el convenio y qué va pagado con plata real.
+     *  null = convenio viejo sin lista — el documento no inventa desglose. */
+    partitura?: Array<{ etiqueta: string; monto: number; pagado: number; cubierto: boolean }> | null;
+  } | null;
   saldoFavor: number;
   pagosRecientes: Array<{ fecha: string; valor: number; metodo: string }>;
   inicioContrato?: string | null; // fecha_entrega
@@ -710,7 +715,14 @@ export function generarHTMLEstadoCuenta(cliente: Cliente, moto: Moto | null, d: 
         linea("Total acuerdo", `$ ${fmt(d.convenio.total)}`) +
         linea("Cuota", `$ ${fmt(d.convenio.cuota)}`) +
         linea("Va en", `${d.convenio.pagadas}/${d.convenio.numero} cuotas`) +
-        linea("Fecha límite", fmtFecha(d.convenio.fechaLimite)) : ""}
+        linea("Fecha límite", fmtFecha(d.convenio.fechaLimite)) +
+        (d.convenio.partitura?.length
+          ? `<div style="font-weight:800;margin-top:4px">QUÉ FINANCIA EL ACUERDO</div>` +
+            d.convenio.partitura.map(r => linea(
+              r.cubierto ? `[X] ${r.etiqueta}` : r.etiqueta,
+              r.cubierto ? "pagado" : r.pagado > 0 ? `$ ${fmt(r.pagado)}/${fmt(r.monto)}` : `$ ${fmt(r.monto)}`,
+            )).join("")
+          : "") : ""}
       ${d.pagosRecientes.length > 0 ? sep + `<div style="font-weight:800">ÚLTIMOS PAGOS</div>` +
         d.pagosRecientes.map(p => linea(`${fmtFecha(p.fecha)} ${p.metodo === "Efectivo" ? "💵" : "🏦"}`, `$ ${fmt(p.valor)}`)).join("") : ""}
       ${d.finContrato?.fecha ? sep + linea("Fin de contrato (aprox.)", fmtFecha(d.finContrato.fecha)) +
@@ -815,7 +827,14 @@ export function generarHTMLEstadoCuentaDetallado(cliente: Cliente, moto: Moto | 
       fila("Total del acuerdo", `$ ${fmt(d.convenio.total)}`) +
       fila("Cuota por período", `$ ${fmt(d.convenio.cuota)}`) +
       fila("Va en", `${d.convenio.pagadas} de ${d.convenio.numero} cuotas`) +
-      fila("Última cuota", fmtFecha(d.convenio.fechaLimite))) : ""}
+      fila("Última cuota", fmtFecha(d.convenio.fechaLimite)) +
+      (d.convenio.partitura?.length
+        ? `<div style="font-weight:700;margin-top:8px">Qué financia el acuerdo — y qué va pagado de verdad</div>` +
+          d.convenio.partitura.map(r => fila(
+            r.cubierto ? `✓ ${r.etiqueta}` : r.etiqueta,
+            r.cubierto ? "pagado" : r.pagado > 0 ? `$ ${fmt(r.pagado)} de $ ${fmt(r.monto)}` : `$ ${fmt(r.monto)}`,
+          )).join("")
+        : "")) : ""}
 
     ${seccion(6, "Historial de pagos", `
       <div style="color:${gris};margin-bottom:8px">Todos sus pagos, y a qué se aplicó cada peso.</div>
@@ -873,7 +892,19 @@ export function armarTextoEstadoCuenta(cliente: Cliente, moto: Moto | null, d: D
     l.push("", "*Deudas pendientes:*");
     for (const x of d.deudas) l.push(`· ${LABEL_CONCEPTO_DEUDA[x.concepto] ?? x.concepto}: $${fmt(x.pendiente)}`);
   }
-  if (d.convenio) l.push("", `Acuerdo de pago: $${fmt(d.convenio.total)} en cuotas de $${fmt(d.convenio.cuota)} (va ${d.convenio.pagadas}/${d.convenio.numero})`);
+  if (d.convenio) {
+    l.push("", `Acuerdo de pago: $${fmt(d.convenio.total)} en cuotas de $${fmt(d.convenio.cuota)} (va ${d.convenio.pagadas}/${d.convenio.numero})`);
+    if (d.convenio.partitura?.length) {
+      l.push("*Qué financia el acuerdo:*");
+      for (const r of d.convenio.partitura) {
+        l.push(r.cubierto
+          ? `· ✓ ${r.etiqueta} — pagado`
+          : r.pagado > 0
+            ? `· ${r.etiqueta}: van $${fmt(r.pagado)} de $${fmt(r.monto)}`
+            : `· ${r.etiqueta}: $${fmt(r.monto)}`);
+      }
+    }
+  }
   if (d.finContrato?.fecha) l.push("", `Fin de contrato (aprox.): ${fmtFecha(d.finContrato.fecha)}`);
   l.push("", "Club Moteros Cartagena");
   return l.join("\n");

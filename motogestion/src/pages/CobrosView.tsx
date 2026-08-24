@@ -1622,8 +1622,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
     const cvActiva = contratoDetalle.convenioActivo;
     const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0; // cuota completa del convenio (próximo pago)
-    // Lo que se EXIGE del convenio este período (0 si el convenio se creó después de vencer la semana).
-    const cuotaConvExigida = cuotaConvenioDelPeriodo(cvActiva, contratoDetalle, hoyDate());
+    // (Lo exigido del convenio ya no se calcula aparte: el renglón del desglose usa
+    // debe.acuerdo.falta — el ARRASTRE completo, la misma cifra que suma el total.)
     // Saldo del convenio = lo firmado menos lo abonado (deudaContrato ya NO lo incluye:
     // ahora solo cuenta deuda exigible 'pendiente'; lo del convenio vive en el convenio).
     const saldoConvenio = cvActiva ? Math.max(cvActiva.deuda_total - sumaAbonadoConvenio(cvActiva.id), 0) : 0;
@@ -1633,7 +1633,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // pago es cubre_periodo_hasta, que se guardó justamente como el día de pago SIGUIENTE
     // al período cubierto (ej. convenio del mié 8 → cubre_periodo_hasta = mié 15).
     const cubreHasta = cvActiva?.cubre_periodo_hasta ?? null;
-    const proximoPagoFecha = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : (desg?.proximaFecha ?? ec.proximoPago);
+    const proximoPagoFechaCruda = cubreHasta && cubreHasta >= hoyISO() ? cubreHasta : (desg?.proximaFecha ?? ec.proximoPago);
+    // Una caja CORRIDA (cajas exoneradas al rodar tiempo guardado, migs 078/118) conserva su
+    // etiqueta de calendario original — que puede quedar en el PASADO. Pero "Próximo pago"
+    // responde CUÁNDO paga, no cómo se llama la caja (regla de las cifras — caso JUAN CARLOS
+    // YAL68H, 24-ago: decía "Próximo: Lun 17 ago" siendo hoy 24). Si la etiqueta quedó atrás,
+    // el cobro real es el próximo día de pago del calendario.
+    const proximoPagoFecha = proximoPagoFechaCruda && proximoPagoFechaCruda < hoyISO()
+      ? fechaISO(proximoDiaPago(contratoDetalle, hoyDate()))
+      : proximoPagoFechaCruda;
 
     // "Debe pagar ahora" respetando la cobertura del convenio: si el convenio cubre hasta una
     // fecha >= hoy, las cajas de ese período ya están financiadas y NO se exigen ahora. El total
@@ -2031,9 +2039,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
                   </div>
                 )}
-                {cuotaConvExigida > 0 && (
+                {/* EL ARRASTRE COMPLETO, no una cuota suelta: el total de abajo suma todas las
+                    cuotas acumuladas del convenio (loQueDebe.acuerdo.falta) — si este renglón
+                    mostrara solo la del período, el desglose no cuadraría con el total (regla
+                    de las cifras — caso JUAN CARLOS 24-ago: renglón $58.000, total con $232.000). */}
+                {(debe.acuerdo?.falta ?? 0) > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
-                    <span>Cuota del convenio</span><strong>$ {fmt(cuotaConvExigida)}</strong>
+                    <span>
+                      {cuotaConvActiva > 0 && (debe.acuerdo?.falta ?? 0) > cuotaConvActiva
+                        ? `Cuotas del convenio (${Math.ceil((debe.acuerdo?.falta ?? 0) / cuotaConvActiva)} acumuladas)`
+                        : "Cuota del convenio"}
+                    </span>
+                    <strong>$ {fmt(debe.acuerdo?.falta ?? 0)}</strong>
                   </div>
                 )}
               </div>

@@ -487,7 +487,15 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [lunesNomina]);
   // Las anotaciones del vigía (mig 112). null = semana sin anotaciones (anterior a la migración)
   // → la nómina cae al método viejo y la pantalla lo avisa.
-  const { eventos: eventosNomina } = useCajasLlenadas(lunesNomina, domingoNomina, tab === "nomina");
+  // Se piden 12 semanas hacia atrás: con la regla del paquete (23-ago), una caja llena de una
+  // semana vieja se vuelve renglón ESTA semana si la cuota de convenio que le faltaba recién
+  // entró — la nómina filtra por la fecha del paquete completo, no por la del evento.
+  const desdeEventosNomina = useMemo(() => {
+    const d = new Date(lunesNomina + "T12:00:00");
+    d.setDate(d.getDate() - 84);
+    return d.toISOString().slice(0, 10);
+  }, [lunesNomina]);
+  const { eventos: eventosNomina } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina");
   const nominas = useMemo(() => {
     if (tab !== "nomina") return [];
     return nominaSemana({
@@ -1541,7 +1549,7 @@ export default function ReportesView({ onNavigate }: Props) {
         const TIPO_TXT: Record<TipoGestion, string> = {
           ciclo: "Ciclo a tiempo", ciclo_atrasado: "Ciclo atrasado (30%)",
           prorrateo: "Prorrateo", retencion: "Retención",
-          cuota_convenio: "Cuota de convenio (30%)",
+          cuota_convenio: "Convenio de retenida (30%)",
         };
         const conCobrador = nominas.filter(n => n.subadminId !== null);
         const sinCobrador = nominas.find(n => n.subadminId === null);

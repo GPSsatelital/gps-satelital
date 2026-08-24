@@ -12,6 +12,15 @@ import { proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPag
 //   · En mora, ni pagó ni se retuvo ..... $0       (no hubo gestión)
 //   · La semana ADELANTADA del wizard ... $0       (nace paga con la base — nadie la cobró)
 //
+//   · CONVENIO = parte del PAQUETE (regla del dueño, 23-ago: "solo se le va a pagar una sola
+//     agrupación de semana + convenio = 7.500, no por separados"). El cliente con convenio debe
+//     su semana + la cuota del convenio como UNA sola cosa: el renglón del ciclo nace cuando el
+//     paquete COMPLETO está cubierto; si cualquiera de las dos patas llegó tarde, vale el 30%;
+//     mientras falte una, $0 — "si no paga completo es como si la caja de la semana no se ha
+//     completado". Cuotas adelantadas dejan cubiertas las semanas que vienen, sin renglones
+//     sueltos (3 cuotas juntas = una gestión, no tres). Única excepción: la moto RETENIDA
+//     (contrato Suspendido, sin semanas corriendo) paga $2.250 por semana en que entre cuota.
+//
 // Solo SUBADMIN con motos asignadas. Los DIARIOS quedan por fuera (decisión del dueño: "la idea
 // ahorita es que todos los diarios paguen solo a semanal").
 //
@@ -148,11 +157,42 @@ export function nominaSemana(opts: {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, eventos = null, convenios = [] } = opts;
   const motoDe = new Map(motos.map(m => [m.id, m]));
   const renglones: GestionNomina[] = [];
+  /** `contratoId|lunes` de cada semana que ya generó su renglón — para que la excepción de la
+   *  retenida (1b) nunca pague encima de una semana ya pagada como ciclo. */
+  const semanaConCiclo = new Set<string>();
   const eventosPorContrato = new Map<string, EventoCaja[]>();
   if (eventos) for (const e of eventos) {
     if (!eventosPorContrato.has(e.contrato_id)) eventosPorContrato.set(e.contrato_id, []);
     eventosPorContrato.get(e.contrato_id)!.push(e);
   }
+
+  // ── EL PAQUETE: de cada convenio se precalcula la fecha en que quedó cubierta cada cuota,
+  // con el mismo conteo del motor (mig 045): acumulado FIFO de aplicado_convenio desde la firma;
+  // cada múltiplo de la cuota es una cuota completa. fechasCubiertas[n-1] = el día del pago que
+  // dejó cubiertas n cuotas. Si un contrato tiene varios convenios, manda el más reciente.
+  const convenioPorContrato = new Map<string, { cv: ConvenioNomina; fechasCubiertas: string[] }>();
+  for (const cv of convenios) {
+    if (cv.cuota_por_periodo <= 0) continue;
+    const previo = convenioPorContrato.get(cv.contrato_id);
+    if (previo && previo.cv.created_at >= cv.created_at) continue;
+    convenioPorContrato.set(cv.contrato_id, { cv, fechasCubiertas: [] });
+  }
+  for (const info of convenioPorContrato.values()) {
+    const { cv } = info;
+    const pagosConv = pagos
+      .filter(p => p.contrato_id === cv.contrato_id && p.estado === "Confirmado" && (p.aplicado_convenio ?? 0) > 0 && p.created_at >= cv.created_at)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    let acum = 0;
+    for (const p of pagosConv) {
+      const antes = Math.floor(acum / cv.cuota_por_periodo);
+      acum += p.aplicado_convenio ?? 0;
+      const despues = Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
+      for (let k = Math.max(antes, 0); k < despues; k++) info.fechasCubiertas.push(dia(p.fecha));
+    }
+  }
+  const SEMANA_MS = 7 * 24 * 3600 * 1000;
+  const semanasEntre = (lunesA: string, lunesB: string) =>
+    Math.round((Date.parse(lunesB + "T12:00:00") - Date.parse(lunesA + "T12:00:00")) / SEMANA_MS);
 
   // ── 1) CICLOS: cada caja del libro que se llenó dentro de la semana ─────────
   for (const c of contratos) {
@@ -180,14 +220,33 @@ export function nominaSemana(opts: {
       return exigencias[cajaRel - 1];
     };
 
+    // La fecha en que el PAQUETE de una caja quedó completo: la caja llena Y el convenio al día
+    // hasta la semana en que esa caja se exigía. null = todavía falta una pata → no hay renglón
+    // ("si no paga completo es como si la caja de la semana no se ha completado" — el dueño).
+    // La cuota 1 se exige la semana SIGUIENTE a la firma: el convenio arranca el período
+    // completo que sigue, igual que el convenio de base del wizard.
+    const cvInfo = convenioPorContrato.get(c.id);
+    const fechaPaquete = (exigencia: string, fechaCaja: string): string | null => {
+      if (!cvInfo) return fechaCaja;
+      const req = Math.min(
+        Math.max(semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)), 0),
+        cvInfo.cv.numero_cuotas,
+      );
+      if (req <= 0) return fechaCaja;
+      const convenioOk = cvInfo.fechasCubiertas[req - 1];
+      if (convenioOk === undefined) return null;
+      return convenioOk > fechaCaja ? convenioOk : fechaCaja;
+    };
+
     // ── MODO EXACTO (mig 112): las anotaciones del vigía dicen qué caja se llenó y cuándo ──
     if (eventos) {
       for (const ev of eventosPorContrato.get(c.id) ?? []) {
-        if (ev.fecha < desde || ev.fecha > hasta) continue;
-        // Las cajas marcadas por un CONVENIO no se pagan por la anotación: se pagan cuando
-        // entra cada cuota del convenio (sección 1b) — decisión del dueño, 22-ago.
+        // Las cajas marcadas por un CONVENIO no se pagan por la anotación: entró papel, no
+        // plata. Su plata real llega en las cuotas — que son la pata-convenio de los paquetes
+        // semanales, no renglones propios (regla del paquete, 23-ago).
         if (ev.fuente === "convenio") continue;
         if (ev.caja_numero === 0) {
+          if (ev.fecha < desde || ev.fecha > hasta) continue;
           renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: ev.fecha, valor: VALOR_CICLO });
           continue;
         }
@@ -196,11 +255,18 @@ export function nominaSemana(opts: {
         if (c.total_cajas != null && ev.caja_numero > c.total_cajas) continue;
         const rel = ev.caja_numero - previas;
         if (rel < 1) continue;   // cajas del corte de migración: no son gestión de nadie acá
-        const atrasada = lunesDe(exigenciaDe(rel)) < lunesDe(ev.fecha);
+        const exigencia = exigenciaDe(rel);
+        // El renglón se fecha cuando se completó el PAQUETE (la pata que llegó de última):
+        // una caja llena de una semana vieja puede volverse renglón esta semana, si la cuota
+        // del convenio que le faltaba recién entró.
+        const paq = fechaPaquete(exigencia, ev.fecha);
+        if (paq === null || paq < desde || paq > hasta) continue;
+        const atrasada = lunesDe(exigencia) < lunesDe(paq);
+        semanaConCiclo.add(c.id + "|" + lunesDe(paq));
         renglones.push({
           motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
-          fecha: ev.fecha,
+          fecha: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
         });
       }
@@ -245,46 +311,43 @@ export function nominaSemana(opts: {
         if (c.total_cajas != null && cajaAbs > c.total_cajas) break;
         // La semana ADELANTADA del wizard nace paga con la base: nadie la cobró, no se paga.
         if (esAdelanto) continue;
-        const f = dia(p.fecha);
-        if (f < desde || f > hasta) continue;
-        // A tiempo si la semana en que se exigía aún no había pasado cuando se llenó
+        const exigencia = exigenciaDe(rel);
+        // Misma regla del paquete que el modo exacto: el renglón nace (y se fecha) cuando la
+        // última pata entró — caja llena Y convenio al día hasta esa semana.
+        const paq = fechaPaquete(exigencia, dia(p.fecha));
+        if (paq === null || paq < desde || paq > hasta) continue;
+        // A tiempo si la semana en que se exigía aún no había pasado cuando se completó
         // (llenarla antes de tiempo —prepago— también es a tiempo). Tarde = 30%.
-        const atrasada = lunesDe(exigenciaDe(rel)) < lunesDe(f);
+        const atrasada = lunesDe(exigencia) < lunesDe(paq);
+        semanaConCiclo.add(c.id + "|" + lunesDe(paq));
         renglones.push({
           motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
-          fecha: f,
+          fecha: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
         });
       }
     }
   }
 
-  // ── 1b) CUOTAS DE CONVENIO: el 30% cuando ENTRA cada cuota (decisión del dueño, 22-ago:
-  //        "plata que entra, gestión que se paga" — ni al firmarse el convenio, ni nunca antes).
-  //        Cada cuota COMPLETA que se cobra dentro de la semana genera $2.250.
-  for (const cv of convenios) {
-    if (cv.cuota_por_periodo <= 0) continue;
-    const c = contratos.find(x => x.id === cv.contrato_id);
-    if (!c || !c.moto_id || c.forma_pago === "Diario" || c.estado === "Cancelado") continue;
+  // ── 1b) CONVENIO DE MOTO RETENIDA: un contrato Suspendido no llena cajas, así que el paquete
+  //        semanal no existe — la única gestión medible es que el retenido siga pagando su
+  //        convenio. Se paga UNA sola vez por semana (la gestión es semanal, nunca por cuota:
+  //        regla del paquete, 23-ago) y a tarifa de atrasado — lo que vive en un convenio nació
+  //        de un atraso.
+  for (const info of convenioPorContrato.values()) {
+    const c = contratos.find(x => x.id === info.cv.contrato_id);
+    if (!c || c.estado !== "Suspendido" || !c.moto_id || c.forma_pago === "Diario") continue;
     const moto = motoDe.get(c.moto_id);
     if (!moto) continue;
     const cliente = clientesPorId.get(c.cliente_id) ?? "—";
-    // El mismo conteo del motor (mig 045, líneas 349-354): acumulado de aplicado_convenio desde
-    // que el convenio existe; cada múltiplo de la cuota es una cuota completa.
-    const pagosConv = pagos
-      .filter(p => p.contrato_id === cv.contrato_id && p.estado === "Confirmado" && (p.aplicado_convenio ?? 0) > 0 && p.created_at >= cv.created_at)
-      .sort((a, b) => a.created_at.localeCompare(b.created_at));
-    let acum = 0;
-    for (const p of pagosConv) {
-      const antes = Math.floor(acum / cv.cuota_por_periodo);
-      acum += p.aplicado_convenio ?? 0;
-      const despues = Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
-      const f = dia(p.fecha);
+    const semanasPagadas = new Set<string>();
+    for (const f of info.fechasCubiertas) {
       if (f < desde || f > hasta) continue;
-      for (let k = Math.max(antes, 0); k < despues; k++) {
-        renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "cuota_convenio", fecha: f, valor: VALOR_ATRASADO });
-      }
+      const sem = lunesDe(f);
+      if (semanasPagadas.has(sem) || semanaConCiclo.has(c.id + "|" + sem)) continue;
+      semanasPagadas.add(sem);
+      renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "cuota_convenio", fecha: f, valor: VALOR_ATRASADO });
     }
   }
 

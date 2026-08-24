@@ -210,7 +210,7 @@ describe("MODO EXACTO: con las anotaciones del vigía (mig 112) no se relee ning
     expect(n[0].total).toBe(VALOR_CICLO);
   });
 
-  it("una caja marcada por CONVENIO no paga por la anotación (se paga cuando entran sus cuotas)", () => {
+  it("una caja marcada por CONVENIO no paga por la anotación (entró papel, no plata)", () => {
     const n = nominaSemana({
       ...SEMANA, contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
       eventos: [{ contrato_id: "ct1", caja_numero: 6, fecha: "2026-08-18", fuente: "convenio" }],
@@ -244,32 +244,82 @@ describe("MODO EXACTO: con las anotaciones del vigía (mig 112) no se relee ning
   });
 });
 
-describe("las cuotas de convenio pagan el 30% cuando ENTRAN (decisión del dueño, 22-ago)", () => {
-  const CONVENIO = { contrato_id: "ct1", cuota_por_periodo: 50000, numero_cuotas: 10, created_at: "2026-08-01T00:00:00Z" };
+describe("EL PAQUETE: semana + convenio = UNA sola gestión (regla del dueño, 23-ago)", () => {
+  // Convenio firmado el lunes 10-ago: su cuota 1 se exige la semana del lunes 17 (el convenio
+  // arranca el período completo que sigue a la firma). Cuota $60.000 × 16, como GEOVANNY.
+  const CONVENIO = { contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 16, created_at: "2026-08-10T00:00:00Z" };
+  const conv = (fecha: string, monto: number): PagoNomina => ({
+    contrato_id: "ct1", fecha, created_at: fecha + "T11:00:00Z", estado: "Confirmado", aplicado_convenio: monto,
+  });
 
-  it("una cuota completa cobrada en la semana = $2.250", () => {
+  it("paquete completo dentro de su semana = UN renglón de $7.500, nada por separado", () => {
     const n = nominaSemana({
       ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
       convenios: [CONVENIO],
-      pagos: [{ contrato_id: "ct1", fecha: "2026-08-19", created_at: "2026-08-19T10:00:00Z", estado: "Confirmado", aplicado_convenio: 50000 }],
+      pagos: [pago("2026-08-17", 202000), conv("2026-08-18", 60000)],
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].cuotasConvenio).toBe(0);
+    expect(n[0].total).toBe(VALOR_CICLO);   // 7.500 — no 7.500 + 2.250
+  });
+
+  it("3 cuotas juntas NO pagan renglones sueltos (caso GEOVANNY): sin la semana, $0", () => {
+    // Pagó $180.000 al convenio un sábado (3 cuotas de una) pero su semana quedó descubierta:
+    // el paquete está incompleto — "si no paga completo es como si la caja no se ha completado".
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO],
+      pagos: [conv("2026-08-22", 180000)],
+    });
+    expect(n).toHaveLength(0);
+  });
+
+  it("caja llena pero convenio atrasado: el renglón ESPERA, y sale al 30% cuando entra la cuota", () => {
+    const pagos = [pago("2026-08-17", 202000), conv("2026-08-26", 60000)];
+    // La semana de la caja: nada todavía (falta la pata del convenio).
+    const sem1 = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO], pagos,
+    });
+    expect(sem1).toHaveLength(0);
+    // La semana en que entró la cuota: el paquete se completó tarde → $2.250, fechado ese día.
+    const sem2 = nominaSemana({
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO], pagos,
+    });
+    expect(sem2[0].ciclosAtrasados).toBe(1);
+    expect(sem2[0].cuotasConvenio).toBe(0);
+    expect(sem2[0].total).toBe(VALOR_ATRASADO);
+  });
+
+  it("cuotas adelantadas dejan cubiertas las semanas que vienen: la siguiente paga $7.500 completo", () => {
+    // El sábado 22 entran 2 cuotas ($120.000). La semana del 24, la caja 7 se llena a tiempo
+    // (anotación del vigía) y su pata-convenio (cuota 2) ya estaba cubierta desde el 22.
+    const n = nominaSemana({
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO],
+      pagos: [conv("2026-08-22", 120000)],
+      eventos: [{ contrato_id: "ct1", caja_numero: 7, fecha: "2026-08-24", fuente: "pago" }],
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].cuotasConvenio).toBe(0);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("moto RETENIDA (contrato suspendido): entren las cuotas que entren, UN solo $2.250 esa semana", () => {
+    const suspendido: ContratoNomina = { ...CONTRATO, estado: "Suspendido" };
+    const n = nominaSemana({
+      ...SEMANA, contratos: [suspendido], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [CONVENIO],
+      pagos: [conv("2026-08-22", 180000)],   // 3 cuotas el mismo sábado
     });
     expect(n[0].cuotasConvenio).toBe(1);
     expect(n[0].total).toBe(VALOR_ATRASADO);
   });
 
-  it("un abono que NO completa la cuota no paga — y al completarse la paga UNA vez", () => {
-    const n = nominaSemana({
-      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
-      convenios: [CONVENIO],
-      pagos: [
-        { contrato_id: "ct1", fecha: "2026-08-18", created_at: "2026-08-18T10:00:00Z", estado: "Confirmado", aplicado_convenio: 30000 },
-        { contrato_id: "ct1", fecha: "2026-08-20", created_at: "2026-08-20T10:00:00Z", estado: "Confirmado", aplicado_convenio: 20000 },
-      ],
-    });
-    expect(n[0].cuotasConvenio).toBe(1);
-  });
-
-  it("firmarse el convenio NO paga nada: sin cuotas cobradas, cero renglones", () => {
+  it("firmarse el convenio NO paga nada: sin plata, cero renglones", () => {
     const n = nominaSemana({
       ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
       convenios: [CONVENIO], pagos: [],

@@ -23,6 +23,9 @@ export type DatosAcuerdoTiempo = {
   diasARodar?: number;
   fechaFinAnterior?: string | null;
   fechaFinNueva?: string | null;
+  /** Solo rodar, cliente CON convenio: las cuotas del convenio de esas semanas se corren
+   *  también (el paquete completo). El papel lo dice — nada queda en el aire. */
+  convenioCorrido?: { cuotas: number; valorCuota: number } | null;
   /** Solo cobrar: el valor que queda como deuda. */
   valorCobrar?: number;
   observaciones?: string;
@@ -110,6 +113,11 @@ ${borrador ? `<div class="aviso-borrador">
       <strong>SE RUEDA AL FINAL del contrato</strong>: esa${d.periodosCompletos === 1 ? "" : "s"} cuota${d.periodosCompletos === 1 ? "" : "s"} no se
       exige${d.periodosCompletos === 1 ? "" : "n"} ahora ni queda${d.periodosCompletos === 1 ? "" : "n"} como deuda, y el cliente la${d.periodosCompletos === 1 ? "" : "s"} pagará al final,
       cuando le corresponda.</li>
+    ${d.convenioCorrido ? `
+    <li>Su <strong>acuerdo de pago (convenio)</strong> también se corre: la${d.convenioCorrido.cuotas === 1 ? "" : "s"}
+      <strong>${d.convenioCorrido.cuotas} cuota${d.convenioCorrido.cuotas === 1 ? "" : "s"} de ${cop(d.convenioCorrido.valorCuota)}</strong> de
+      esa${d.convenioCorrido.cuotas === 1 ? "" : "s"} semana${d.convenioCorrido.cuotas === 1 ? "" : "s"} se pagará${d.convenioCorrido.cuotas === 1 ? "" : "n"} en las
+      semanas siguientes. <strong>El total del convenio no cambia ni un peso.</strong></li>` : ""}
     <li>El cliente entiende y acepta que la cuota <strong>no se perdona — se corre</strong>, y que su contrato
       termina <strong>${d.diasARodar} días más tarde</strong> de lo previsto${d.fechaFinNueva ? `:
       pasa del <strong>${d.fechaFinAnterior ? fechaLarga(d.fechaFinAnterior) : "—"}</strong> al

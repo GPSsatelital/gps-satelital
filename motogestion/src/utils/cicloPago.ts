@@ -245,7 +245,7 @@ export type LoQueDebe = {
  * financiadas. Si esa regla cambia algún día, este conteo la sigue solo.
  */
 function periodosConvenioExigidos(
-  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null },
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null },
   contrato: ContratoCiclo,
   hoy: Date,
 ): number {
@@ -259,7 +259,11 @@ function periodosConvenioExigidos(
     if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) n++;
     d = proximoDiaPago(contrato, d);
   }
-  return n;
+  // RODAR EL PAQUETE (mig 118, regla del dueño 24-ago): las cuotas del convenio de las semanas
+  // en que la moto estuvo GUARDADA se corren al final — no se perdonan, se exigen más tarde
+  // (mismo principio que cajas_exoneradas, mig 078: restar ANTES del tope de deuda_total hace
+  // que la curva se corra y el total igual se pague completo).
+  return Math.max(n - (convenio.periodos_exonerados ?? 0), 0);
 }
 
 /**
@@ -273,7 +277,7 @@ export function loQueDebe(
   contrato: ContratoCiclo & { saldo_favor_apertura?: number | null },
   pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_saldo_favor?: number | null }>,
   deudasPendientes: Array<{ monto: number; monto_pendiente: number }>,
-  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null } | null | undefined,
   hoy: Date,
   // `diario`: los contratos Diario cobran la tarifa del DÍA (con domingo aparte) contra lo
   // recaudado HOY, no contra el período. Ese cálculo vive en usePagos (que arrastra Supabase),
@@ -349,7 +353,7 @@ export function loQueDebe(
  * le exige más de lo que pactó — la última cuota es el resto.
  */
 export function faltaDelAcuerdo(
-  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null } | null | undefined,
   contrato: ContratoCiclo,
   pagosConfirmados: Array<{ aplicado_convenio?: number | null }>,
   hoy: Date,

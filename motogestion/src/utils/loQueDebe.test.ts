@@ -187,3 +187,43 @@ describe("DANIEL — abonó su acuerdo en semanas anteriores", () => {
       .toBe("mora");
   });
 });
+
+// ── JUAN CARLOS LEAL (YAL68H) — rodar el PAQUETE (mig 118, 24-ago) ─────────────
+// Moto guardada por retención de mora del 5-ago al 24-ago = 2 semanas COMPLETAS de bodega
+// (los 5 días sueltos se quedan en su semana — regla del dueño). Su convenio del 14-jul
+// ($616.500, cuotas de $58.000) exigía 6 cuotas al 24-ago; al rodar 2, exige 4.
+// "No es que se le perdona — es que se le rueda al final también."
+const JUAN_CARLOS: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 202000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 104, cajas_pagadas: 14, caja_actual_pagado: 0, cajas_previas: 10,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-06",
+};
+const CONV_JC = {
+  cuota_por_periodo: 58000, deuda_total: 616500,
+  created_at: "2026-07-14T16:48:07Z", cubre_periodo_hasta: null as string | null,
+};
+
+describe("JUAN CARLOS — las cuotas del convenio de las semanas guardadas se corren, no se perdonan", () => {
+  it("sin rodar, al 24-ago el arrastre exige 6 cuotas ($348.000) — la cifra real de la pantalla", () => {
+    const r = loQueDebe(JUAN_CARLOS, [], [], CONV_JC, D("2026-08-24"));
+    expect(r.acuerdo).toMatchObject({ toca: 348000, falta: 348000 });
+  });
+
+  it("con 2 períodos rodados, exige 4 cuotas ($232.000) — las otras 2 van al final", () => {
+    const r = loQueDebe(JUAN_CARLOS, [], [], { ...CONV_JC, periodos_exonerados: 2 }, D("2026-08-24"));
+    expect(r.acuerdo).toMatchObject({ toca: 232000, falta: 232000 });
+  });
+
+  it("rodar NO perdona: con el tiempo la exigencia igual alcanza el total del convenio", () => {
+    // Meses después, el acumulado exigido llega al tope de deuda_total aunque haya exonerados
+    // — la curva se corrió, el total se paga completo (mismo principio que la mig 078).
+    const r = loQueDebe(JUAN_CARLOS, [], [], { ...CONV_JC, periodos_exonerados: 2 }, D("2027-01-25"));
+    expect(r.acuerdo?.toca).toBe(616500);
+  });
+
+  it("exonerar más períodos de los exigidos deja la exigencia en cero, nunca negativa", () => {
+    const r = loQueDebe(JUAN_CARLOS, [], [], { ...CONV_JC, periodos_exonerados: 50 }, D("2026-08-24"));
+    expect(r.acuerdo).toMatchObject({ toca: 0, falta: 0 });
+  });
+});

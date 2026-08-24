@@ -426,7 +426,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
   // Resolver tiempo (cobrar/rodar): reusado por TEMA A (reactivar temporal) y TEMA B (devolver préstamo).
-  const [resolverRec, setResolverRec] = useState<{ contratoId: string; placa: string; clienteNombre: string; fechaEntrada: string } | null>(null);
+  const [resolverRec, setResolverRec] = useState<{ contratoId: string; placa: string; clienteNombre: string; fechaEntrada: string; motivo: string } | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
@@ -487,7 +487,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         const cont = contratos.find(c => c.id === p.contrato_id);
         const cli = cont ? clientes.find(cl => cl.id === cont.cliente_id) : null;
         const motoO = p.moto_original_id ? motos.find(m => m.id === p.moto_original_id) : null;
-        if (cont) setResolverRec({ contratoId: p.contrato_id, placa: motoO?.placa ?? "", clienteNombre: cli?.nombre ?? "", fechaEntrada: p.fecha_inicio });
+        if (cont) setResolverRec({ contratoId: p.contrato_id, placa: motoO?.placa ?? "", clienteNombre: cli?.nombre ?? "", fechaEntrada: p.fecha_inicio, motivo: "Moto propia en taller (tuvo reemplazo)" });
       }
     } finally { setPrestamoProc(null); }
   }
@@ -1267,7 +1267,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motoId={entregaRec.motoId}
           placa={entregaRec.placa}
           onClose={() => setEntregaRec(null)}
-          onDone={() => { if (entregaRec.esTemporal && esAdmin) setResolverRec({ contratoId: entregaRec.contratoId, placa: entregaRec.placa, clienteNombre: entregaRec.clienteNombre, fechaEntrada: fechaGuardado(entregaRec.contratoId) }); }}
+          onDone={() => {
+            // También para RETENIDAS POR MORA (antes solo temporales — el hueco que mordió a
+            // WILLINGTON y a JUAN CARLOS LEAL, 23/24-ago): al devolver la moto, el admin decide
+            // qué pasa con el tiempo guardado — cobrar (default) o rodar períodos COMPLETOS con
+            // documento firmado. El modal roda el PAQUETE: semana + cuota del convenio.
+            if (esAdmin) setResolverRec({
+              contratoId: entregaRec.contratoId, placa: entregaRec.placa,
+              clienteNombre: entregaRec.clienteNombre, fechaEntrada: fechaGuardado(entregaRec.contratoId),
+              motivo: entregaRec.esTemporal ? "Entrega temporal / incapacidad" : "Retención por mora",
+            });
+          }}
         />
       )}
 
@@ -1283,7 +1293,8 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         />
       )}
 
-      {/* Al reactivar una TEMPORAL: resolver el tiempo guardado (cobrar / rodar con doc firmado) */}
+      {/* Al devolver una guardada (temporal O retenida por mora): resolver el tiempo guardado
+          — cobrar, o rodar el paquete completo (semana + convenio) con documento firmado. */}
       {resolverRec && (() => {
         const c = contratos.find(x => x.id === resolverRec.contratoId);
         if (!c) return null;
@@ -1292,7 +1303,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
             contrato={c}
             clienteNombre={resolverRec.clienteNombre}
             motoPlaca={resolverRec.placa}
-            motivo="Entrega temporal / incapacidad"
+            motivo={resolverRec.motivo}
             fechaEntrada={resolverRec.fechaEntrada}
             fechaSalida={hoyISO()}
             onClose={() => setResolverRec(null)}

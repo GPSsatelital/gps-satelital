@@ -54,6 +54,9 @@ export type ConvenioNomina = {
   contrato_id: string;
   cuota_por_periodo: number;
   numero_cuotas: number;
+  /** Cuotas corridas al final porque la moto estuvo guardada (mig 118) — esas semanas el
+   *  paquete no exige la pata del convenio. */
+  periodos_exonerados?: number | null;
   created_at: string;
 };
 
@@ -228,8 +231,13 @@ export function nominaSemana(opts: {
     const cvInfo = convenioPorContrato.get(c.id);
     const fechaPaquete = (exigencia: string, fechaCaja: string): string | null => {
       if (!cvInfo) return fechaCaja;
+      // Las cuotas RODADAS (moto guardada, mig 118) no son pata del paquete esa semana:
+      // se corren al final igual que la semana. Mismo resta-antes-del-tope de siempre.
       const req = Math.min(
-        Math.max(semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)), 0),
+        Math.max(
+          semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)) - (cvInfo.cv.periodos_exonerados ?? 0),
+          0,
+        ),
         cvInfo.cv.numero_cuotas,
       );
       if (req <= 0) return fechaCaja;

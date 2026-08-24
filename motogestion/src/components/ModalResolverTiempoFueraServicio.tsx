@@ -5,6 +5,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { useUbicaciones, type DecisionTiempo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { useClientes } from "../hooks/useClientes";
+import { useConvenios } from "../hooks/useConvenios";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import ModalFirmaAcuerdoTiempo from "./ModalFirmaAcuerdoTiempo";
 import { imprimirAcuerdoTiempo, type DatosAcuerdoTiempo } from "../utils/generarDocumentoAcuerdoTiempo";
@@ -26,6 +27,11 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
   const { editarContrato } = useContratos();
   const { registrarDeuda } = useDeudas();
   const { crearAcuerdoTiempo, subirDocumentoAcuerdo } = useUbicaciones();
+  // RODAR EL PAQUETE (regla del dueño, 24-ago): si el cliente tiene convenio, las semanas
+  // guardadas se corren COMPLETAS — su semana normal Y su cuota del convenio. Ninguna se
+  // perdona: ambas se pagan al final. "Se le rueda al final también."
+  const { convenioActivoDelContrato, rodarPeriodosConvenio } = useConvenios();
+  const convenioActivo = convenioActivoDelContrato(contrato.id);
 
   const dias = Math.max(1, Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(fechaEntrada + "T00:00:00").getTime()) / 86400000));
   const tarifa = contrato.tarifa_diaria ?? 27000;
@@ -82,6 +88,9 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
     fechaFinAnterior: baseActual,
     fechaFinNueva: fechaFinExtendida,
     valorCobrar: valorTotal,
+    convenioCorrido: convenioActivo && periodosCompletos >= 1
+      ? { cuotas: periodosCompletos, valorCuota: convenioActivo.cuota_por_periodo ?? 0 }
+      : null,
     observaciones: observaciones || undefined,
   };
 
@@ -127,6 +136,15 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
               : errRodar,
           );
           return;
+        }
+        // El PAQUETE completo: las cuotas del convenio de esas semanas se corren también
+        // (se cobran en las siguientes — el total del convenio no cambia ni un peso).
+        if (convenioActivo && periodosCompletos >= 1) {
+          const { error: errConv } = await rodarPeriodosConvenio(
+            convenioActivo, periodosCompletos, diasARodar, profile.id,
+            `moto guardada por ${motivo} del ${fechaEntrada} al ${fechaSalida} (acuerdo de tiempo firmado)`,
+          );
+          if (errConv) { setError(errConv); return; }
         }
       }
 
@@ -192,6 +210,14 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                   Esa{periodosCompletos !== 1 ? "s" : ""} {periodosCompletos} cuota{periodosCompletos !== 1 ? "s" : ""} dejan
                   de exigírsele <strong>ahora</strong> y las paga <strong>al final</strong>. No se le perdonan:
                   el contrato termina {diasARodar} días más tarde.
+                  {convenioActivo && (
+                    <>
+                      <br />
+                      <strong>También se corren {periodosCompletos} cuota{periodosCompletos !== 1 ? "s" : ""} de su
+                      convenio ($ {fmt((convenioActivo.cuota_por_periodo ?? 0) * periodosCompletos)})</strong> — el
+                      paquete completo de esas semanas. El total del convenio no cambia.
+                    </>
+                  )}
                   <br />
                   Es la excepción — la prioridad de la empresa siempre es cobrar de una.
                 </div>
@@ -236,6 +262,9 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   No se cobra nada. El contrato termina {diasARodar} días más tarde
                   ({periodosCompletos} período{periodosCompletos !== 1 ? "s" : ""} completo{periodosCompletos !== 1 ? "s" : ""}).
+                  {convenioActivo && (
+                    <> También se corren {periodosCompletos} cuota{periodosCompletos !== 1 ? "s" : ""} de su convenio — el total no cambia.</>
+                  )}
                 </div>
               </button>
             ) : (

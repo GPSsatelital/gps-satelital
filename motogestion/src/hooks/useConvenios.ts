@@ -21,6 +21,9 @@ export type Convenio = {
   /** La PARTITURA (mig 116): qué financia este convenio, en pesos y en orden. null = convenio
    *  viejo sin lista — el dueño se la escribe desde el editor, contra el acuerdo firmado. */
   partitura: RenglonPartitura[] | null;
+  /** RODAR EL PAQUETE (mig 118): cuotas del convenio corridas al final porque la moto estuvo
+   *  guardada esas semanas. No se perdonan — se exigen más tarde (espejo de cajas_exoneradas). */
+  periodos_exonerados: number | null;
   created_at: string;
 };
 
@@ -175,5 +178,39 @@ export function useConvenios() {
     return { error: null };
   }
 
-  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio, guardarPartitura };
+  /**
+   * RODAR N cuotas del convenio (la moto estuvo guardada esas semanas): se corren al final,
+   * nunca se perdonan. Corre también la fecha límite para que el vencimiento no lo marque
+   * incumplido antes de tiempo. Deja el rastro completo en la auditoría del contrato,
+   * enlazado al acuerdo de tiempo firmado (regla de la esencia y el rastro, 23-ago).
+   */
+  async function rodarPeriodosConvenio(convenio: Convenio, periodos: number, diasCorridos: number, editadoPor: string, motivo: string) {
+    if (periodos <= 0) return { error: null };
+    const fechaNueva = (() => {
+      const d = new Date(convenio.fecha_limite + "T12:00:00");
+      d.setDate(d.getDate() + diasCorridos);
+      return d.toISOString().slice(0, 10);
+    })();
+    const { error } = await supabase.from("convenios").update({
+      periodos_exonerados: (convenio.periodos_exonerados ?? 0) + periodos,
+      fecha_limite: fechaNueva,
+    }).eq("id", convenio.id);
+    if (error) {
+      return {
+        error: error.message.includes("periodos_exonerados")
+          ? "Falta correr la migración 118 en Supabase: sin ella no se puede rodar el convenio."
+          : error.message,
+      };
+    }
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: convenio.contrato_id,
+      campo: `Convenio #${convenio.numero_convenio}: cuotas corridas al final`,
+      valor_anterior: `exoneradas=${convenio.periodos_exonerados ?? 0} · fecha_limite=${convenio.fecha_limite}`,
+      valor_nuevo: `exoneradas=${(convenio.periodos_exonerados ?? 0) + periodos} · fecha_limite=${fechaNueva} — ${motivo}`,
+      editado_por: editadoPor,
+    });
+    return { error: null };
+  }
+
+  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio, guardarPartitura, rodarPeriodosConvenio };
 }

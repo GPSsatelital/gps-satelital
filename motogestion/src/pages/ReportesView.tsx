@@ -507,7 +507,7 @@ export default function ReportesView({ onNavigate }: Props) {
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
       eventos: eventosNomina,
-      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, created_at: cv.created_at })),
+      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, created_at: cv.created_at })),
     });
   }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios]);
   const moverSemanaNomina = (dir: -1 | 1) => {

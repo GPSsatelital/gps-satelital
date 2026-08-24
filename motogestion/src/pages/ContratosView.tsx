@@ -9,6 +9,8 @@ import WizardContrato from "./WizardContrato";
 import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import { hoyISO } from "../utils/fecha";
+import { useUbicaciones } from "../hooks/useUbicaciones";
+import { tiempoGuardadoSinResolver } from "../utils/tiempoGuardado";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
@@ -121,6 +123,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [rtFormAbierto, setRtFormAbierto] = useState(false);
   const [rtDesde, setRtDesde] = useState("");
   const [rtHasta, setRtHasta] = useState(hoyISO());
+  // La detección DERIVADA: guardada → entregada sin acuerdo de tiempo = pendiente visible.
+  // "Que el sistema tenga claro qué fue lo que pasó" — encuentra sola también los casos viejos.
+  const { recepciones, acuerdos } = useUbicaciones();
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
@@ -494,14 +499,30 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 ✏️ Editar contrato
               </button>
             )}
-            {esAdminRol && c.estado === "Activo" && (
-              <button
-                onClick={() => { setRtDesde(""); setRtHasta(hoyISO()); setRtFormAbierto(true); }}
-                style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
-              >
-                ⏱️ Resolver tiempo guardado (cobrar / rodar)
-              </button>
-            )}
+            {esAdminRol && c.estado === "Activo" && (() => {
+              const pendiente = tiempoGuardadoSinResolver(recepciones, acuerdos, c.id, c.moto_id);
+              return (
+                <>
+                  {pendiente && (
+                    <div style={{ background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--warn-ink)", fontWeight: 700, lineHeight: 1.5 }}>
+                      ⏱️ Tiempo guardado SIN resolver: la moto estuvo en la empresa del{" "}
+                      {pendiente.desde} al {pendiente.hasta} ({pendiente.dias} días) y se entregó
+                      sin decidir si ese tiempo se cobra o se rueda. Resuélvelo con el botón de abajo.
+                    </div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setRtDesde(pendiente?.desde ?? "");
+                      setRtHasta(pendiente?.hasta ?? hoyISO());
+                      setRtFormAbierto(true);
+                    }}
+                    style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center" }}
+                  >
+                    ⏱️ Resolver tiempo guardado (cobrar / rodar)
+                  </button>
+                </>
+              );
+            })()}
             {puedeDocumentos && (
               <button
                 onClick={() => setModalDocumentosAbierto(true)}

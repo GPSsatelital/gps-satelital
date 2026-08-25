@@ -237,7 +237,9 @@ function fmtFechaCorta(iso: string) {
 type EstadoPagoG = "aldia" | "parcial" | "nopago" | "retenida";
 type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string; diasMora: number; cuotaCiclo: number };
 type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; retenidas: number; debenSinConvenio: number; recaudado: number; pctv: number };
-const ESTADO_RANK: Record<EstadoPagoG, number> = { nopago: 0, parcial: 1, retenida: 2, aldia: 3 };
+/** La cola de trabajo: los que DEBEN van juntos (los ordenan los días de mora), después las
+ *  guardadas —que no pueden pagar— y al final las que están al día. */
+const RANK_COLA: Record<EstadoPagoG, number> = { nopago: 0, parcial: 0, retenida: 1, aldia: 2 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
   const map = new Map<string, MotoRowG[]>();
   rows.forEach(r => {
@@ -257,7 +259,15 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
       key,
       nombre: modo === "admin" ? motos[0].adminNombre : key,
       color: modo === "grupo" ? (GRUPO_COLORS[key] ?? "var(--muted)") : undefined,
-      motos: motos.slice().sort((x, y) => (ESTADO_RANK[x.estado] - ESTADO_RANK[y.estado]) || x.cliente.localeCompare(y.cliente)),
+      // EL MÁS ATRASADO PRIMERO (pedido del dueño, 25-ago): "el primero es el que está en mora
+      // hace más días que los demás". Los que DEBEN (no pagó y parcial) van juntos, ordenados
+      // por días desde su último pago — quien lleva 30 días encabeza, aunque haya abonado algo,
+      // sobre quien lleva 5 sin pagar nada. Después las retenidas y al final las que están al
+      // día. Antes mandaba el orden alfabético y el informe no se leía como cola de trabajo.
+      motos: motos.slice().sort((x, y) =>
+        (RANK_COLA[x.estado] - RANK_COLA[y.estado])
+        || (y.diasMora - x.diasMora)
+        || x.cliente.localeCompare(y.cliente)),
       total: motos.length, alDia, parcial, noPago, retenidas,
       debenSinConvenio: motos.filter(m => m.debeSinConvenio).length,
       recaudado: motos.reduce((s, m) => s + m.monto, 0),

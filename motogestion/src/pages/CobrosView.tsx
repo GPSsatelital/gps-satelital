@@ -2468,14 +2468,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       comportaba distinto del de las otras tres puertas (Inmovilizaciones, Cobro Diario y
                       el wizard), y además se saltaba el tope de cuotas. Ahora las cuatro usan el mismo
                       componente. Decisión del dueño, 31-jul: "un convenio es un convenio". */}
+                  {/* SIN `metaFija` a propósito: el modal carga las deudas registradas y suma las
+                      semanas atrasadas APARTE, con su selector (que se auto-marca en las vencidas).
+                      Pasarle una meta que ya incluyera las semanas las cobraba DOS VECES — lo cazó
+                      el dueño el 25-ago: "sugerido $199.500 + 1 semana $199.500 = $399.000" por una
+                      sola semana. Lo advertía el propio comentario del modal (línea ~246). */}
                   {mostrarFormConvenio && contratoDetalle && (
                     <ModalConvenio
                       contratoId={contratoDetalle.id}
                       clienteNombre={clienteDetalle?.nombre ?? ""}
-                      // La meta precargada (EDITABLE) = semanas que debe hoy + deudas registradas —
-                      // la misma cifra que la pantalla le cobra, del mismo objeto (loQueDebe).
-                      metaFija={debe.cuota.falta + deudasContrato.reduce((s, d) => s + d.monto_pendiente, 0)}
-                      metaNota="lo que debe hoy de semanas más sus deudas registradas"
                       onClose={() => setMostrarFormConvenio(false)}
                     />
                   )}

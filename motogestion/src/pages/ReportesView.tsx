@@ -15,7 +15,7 @@ import { useBackGuard } from "../contexts/BackNav";
 import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
-import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo, cajasExigidasHasta } from "../utils/cicloPago";
 import {
   exportarCSV, descargarExcel, GRUPO_HEX,
   type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
@@ -235,7 +235,13 @@ function fmtFechaCorta(iso: string) {
 // cliente NO puede producir, así que mostrarla como "no pagó" con días de mora era injusto y
 // ensuciaba el % del cobrador. Va aparte: ni al día ni en mora.
 type EstadoPagoG = "aldia" | "parcial" | "nopago" | "retenida";
-type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string; diasMora: number; cuotaCiclo: number };
+type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string; diasMora: number; cuotaCiclo: number;
+  /** Lo que se le EXIGIÓ dentro del período del informe (cuotas que vencieron en el rango).
+   *  Sin esto, "parcial" decía cuánto pagó pero no contra qué — y no se podía gestionar. */
+  debiaPeriodo: number;
+  /** Lo que quedó debiendo de ese período: debiaPeriodo − lo que pagó en el rango. */
+  faltoPeriodo: number;
+};
 type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; parcial: number; noPago: number; retenidas: number; debenSinConvenio: number; recaudado: number; pctv: number };
 /** La cola de trabajo: los que DEBEN van juntos (los ordenan los días de mora), después las
  *  guardadas —que no pueden pagar— y al final las que están al día. */
@@ -358,7 +364,16 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                             : m.estado === "retenida" ? `🔒 Retenida${m.monto > 0 ? ` · $ ${fmt(m.monto)}` : ""}`
                             : "🔴 No pagó"}
                         </div>
-                        {m.estado !== "aldia" && m.deudaPend > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", marginTop: 1, whiteSpace: "nowrap" }}>falta $ {fmt(m.deudaPend)}</div>}
+                        {/* Contra QUÉ se mide lo que pagó: lo exigido en el período y lo que
+                            quedó debiendo de él. Sin esto, "🟡 $50.000" no decía si iba bien
+                            o mal (pedido del dueño, 25-ago). */}
+                        {m.estado !== "aldia" && m.estado !== "retenida" && m.debiaPeriodo > 0 && (
+                          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1, whiteSpace: "nowrap" }}>
+                            de $ {fmt(m.debiaPeriodo)}
+                            {m.faltoPeriodo > 0 && <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · debe $ {fmt(m.faltoPeriodo)}</span>}
+                          </div>
+                        )}
+                        {m.estado !== "aldia" && m.deudaPend > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", marginTop: 1, whiteSpace: "nowrap" }}>deuda $ {fmt(m.deudaPend)}</div>}
                       </div>
                     </div>
                   );
@@ -619,10 +634,22 @@ export default function ReportesView({ onNavigate }: Props) {
       const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
       // Días de mora (aging) — solo si está en mora; mismo criterio que la lista de mora de esta vista.
       const diasMora = enMora ? (diasDesdeUltimoPago(ultimaFechaPago, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(moto.grupo ?? null)) ?? 0) : 0;
+      // LO QUE SE LE EXIGIÓ EN EL PERÍODO DEL INFORME (pedido del dueño, 25-ago: "cuánto tenía
+      // que haber pagado y cuánto quedó debiendo, teniendo en cuenta el tiempo seleccionado").
+      // Las cuotas que vencieron DENTRO del rango = cajas exigidas al final menos las exigidas
+      // el día antes de empezar. Sale de `cajasExigidasHasta`, la misma cuenta del motor — así
+      // el informe no puede exigir una cifra distinta de la que cobra Cartera.
+      const cuotasEnRango = c.forma_pago === "Diario" ? 0 : Math.max(
+        cajasExigidasHasta(c as never, new Date(hasta + "T12:00:00"))
+        - cajasExigidasHasta(c as never, new Date(Date.parse(desde + "T12:00:00") - 86400000)),
+        0,
+      );
+      const debiaPeriodo = cuotasEnRango * valorPeriodoReal(c as never);
       rows.push({
         placa: moto.placa,
         cliente: cli?.nombre ?? "Sin cliente",
         monto, estado, deudaPend: deudaP, tieneConvenio,
+        debiaPeriodo, faltoPeriodo: Math.max(debiaPeriodo - monto, 0),
         debeSinConvenio: deudaP > 0 && !tieneConvenio,
         grupo: motoPortafolio.grupo ?? "OTRO",
         adminId: motoPortafolio.subadmin_id ?? "__none__",
@@ -796,6 +823,10 @@ export default function ReportesView({ onNavigate }: Props) {
         ? { v: "Retenida", color: "#3730a3", fill: "#e0e7ff", align: "center" }
         : { v: "No pagó", color: "#991b1b", fill: "#fee2e2", align: "center" };
   const xPagado = (m: MotoRowG): CeldaX => m.monto > 0 ? { num: m.monto } : { v: "—", align: "center" };
+  // Contra qué se mide lo que pagó: lo exigido DENTRO del período del informe y lo que quedó
+  // debiendo de él (pedido del dueño, 25-ago — antes solo se veía lo pagado, sin referencia).
+  const xDebia = (m: MotoRowG): CeldaX => m.debiaPeriodo > 0 ? { num: m.debiaPeriodo } : { v: "—", align: "center" };
+  const xFaltoPeriodo = (m: MotoRowG): CeldaX => m.faltoPeriodo > 0 ? { num: m.faltoPeriodo, color: "#991b1b" } : { v: "—", align: "center" };
   const xFalta = (m: MotoRowG): CeldaX => m.deudaPend > 0 ? { num: m.deudaPend, color: "#991b1b" } : { v: "—", align: "center" };
   const xConvenio = (m: MotoRowG): CeldaX => m.tieneConvenio
     ? { v: "Sí", align: "center" }
@@ -811,8 +842,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const colsGestion = (cross: string): ColX[] => [
     { label: cross, ancho: cross === "Administrador" ? 150 : 95 }, { label: "Placa", ancho: 75 }, { label: "Cliente", ancho: 190 },
     { label: "Modalidad", align: "center", ancho: 90 }, { label: "Día de pago", align: "center", ancho: 95 },
-    { label: "Estado", align: "center", ancho: 80 }, { label: "Pagó período ($)", align: "right", ancho: 105 },
-    { label: "Le falta ($)", align: "right", ancho: 95 }, { label: "Días mora", align: "center", ancho: 75 }, { label: "Últ. pago", align: "center", ancho: 90 },
+    { label: "Estado", align: "center", ancho: 80 },
+    { label: "Debía en el período ($)", align: "right", ancho: 130 },
+    { label: "Pagó período ($)", align: "right", ancho: 105 },
+    { label: "Quedó debiendo ($)", align: "right", ancho: 125 },
+    { label: "Deuda aparte ($)", align: "right", ancho: 105 }, { label: "Días mora", align: "center", ancho: 75 }, { label: "Últ. pago", align: "center", ancho: 90 },
     { label: "Teléfono", align: "center", ancho: 105 }, { label: "Convenio", align: "center", ancho: 75 },
   ];
 
@@ -915,7 +949,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const campos: ((m: MotoRowG) => CeldaX)[] = [
       m => cross === "grupo" ? m.grupo : m.adminNombre.toUpperCase(),
       m => m.placa, m => m.cliente.toUpperCase(),
-      xModalidad, xDiaPago, xEstado, xPagado, xFalta, xDiasMora, xUltPago, xTelefono, xConvenio,
+      xModalidad, xDiaPago, xEstado, xDebia, xPagado, xFaltoPeriodo, xFalta, xDiasMora, xUltPago, xTelefono, xConvenio,
     ];
     return cols.map((c, i) => ({
       key: `c${i}`, rotulo: c.label, align: c.align, ancho: c.ancho,

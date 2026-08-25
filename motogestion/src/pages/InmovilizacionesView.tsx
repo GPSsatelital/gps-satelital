@@ -1264,19 +1264,21 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         </>
       )}
 
-      {/* Convenio para recuperar una moto retenida.
-          `conveniable` = cuotas atrasadas + deudas viejas. La MULTA no entra: esa se paga en
-          efectivo antes y sin ella no aparece este botón. Antes la meta traía solo las cuotas
-          atrasadas, así que una deuda vieja quedaba FUERA del monto pero el trigger 054 la
-          marcaba 'en_convenio' igual — y esa plata se perdía. */}
+      {/* Convenio para recuperar una moto retenida — IGUAL que por Cartera (unificado 25-ago,
+          caso IGC46I): la meta trae solo las DEUDAS viejas y las cuotas atrasadas entran por el
+          selector, que se auto-marca en las vencidas. Antes esta puerta metía las cuotas DENTRO
+          de la meta y dejaba el selector en 0: el mismo convenio se veía distinto según por
+          dónde entraras, y subir ese 0 cobraba la misma semana dos veces.
+          La MULTA no entra: se paga en efectivo antes, y sin ella no aparece este botón. */}
       {convenioRec && (
         <ModalConvenio
           contratoId={convenioRec.contratoId}
           clienteNombre={convenioRec.clienteNombre}
-          metaFija={convenioRec.conveniable}
+          metaFija={convenioRec.otrasDeudas}
+          metaTraeSemanas={false}
           // Acá SÍ se ajusta a propósito: la regla del dueño es que el mínimo obligatorio es la
           // multa y el resto se financia pidiéndole lo máximo que pueda dar.
-          metaNota="lo que tiene atrasado más sus deudas"
+          metaNota="sus deudas viejas (las cuotas atrasadas se agregan abajo)"
           motivoInicial="Convenio para recuperar moto retenida"
           onClose={() => setConvenioRec(null)}
         />

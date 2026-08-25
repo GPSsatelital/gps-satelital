@@ -19,6 +19,17 @@ interface Props {
   // Monto fijo que el convenio debe cubrir (ej. base inicial incompleta al crear el
   // contrato) — si no viene, la meta se precarga con la deuda pendiente del contrato.
   metaFija?: number;
+  /**
+   * La meta que llega YA trae las cuotas atrasadas adentro. Con `true` el selector de semanas
+   * arranca en 0 (si no, se cobrarían dos veces); con `false` se auto-marca en las vencidas.
+   *
+   * 🔴 POR QUÉ ES EXPLÍCITO (25-ago-2026, caso IGC46I): antes se deducía de "¿vino metaFija?",
+   * y por eso las dos puertas del MISMO convenio se veían distintas — Inmovilizaciones mostraba
+   * el selector en 0 (con las semanas escondidas dentro del monto) y Cartera en 2. El
+   * funcionario veía el 0, creía que faltaban las semanas, subía el selector… y el convenio
+   * salía cobrando la misma semana dos veces.
+   */
+  metaTraeSemanas?: boolean;
   motivoInicial?: string;
   // Qué ES el monto sugerido, en palabras del funcionario. No es lo mismo "lo que tiene atrasado"
   // (moto retenida) que "lo que le falta de la base inicial" (cliente nuevo del wizard): decirle
@@ -116,7 +127,7 @@ function cuotaRedonda(meta: number, cuotas: number): number {
   return redonda * (cuotas - 1) < meta ? redonda : exacta;
 }
 
-export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
+export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, metaTraeSemanas, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   // Cuántas cuotas del arriendo se le financian DENTRO del convenio (0, 1 o 2). Antes acá era un
@@ -250,7 +261,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [nInicializado, setNInicializado] = useState(false);
   useEffect(() => {
     if (nInicializado || !puedeFinanciar) return;
-    if (metaFija == null && semanasVencidas > 0) setFinanciarN(Math.min(semanasVencidas, 8));
+    // `metaTraeSemanas` manda; si nadie lo dice, se cae al criterio viejo (vino metaFija = las
+    // trae). Explícito porque de esa deducción salió el doble cobro del caso IGC46I.
+    const metaTrae = metaTraeSemanas ?? (metaFija != null);
+    if (!metaTrae && semanasVencidas > 0) setFinanciarN(Math.min(semanasVencidas, 8));
     setNInicializado(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [puedeFinanciar, semanasVencidas]);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tiempoGuardadoSinResolver } from "./tiempoGuardado";
+import { tiempoGuardadoSinResolver, tiempoGuardadoPendiente } from "./tiempoGuardado";
 
 // El caso real (24-ago): el SUBADMIN entregó la moto de JUAN CARLOS (YAL68H) y el tiempo
 // guardado quedó sin resolver — el admin solo se enteró porque se lo contaron. Esta detección
@@ -46,5 +46,31 @@ describe("el tiempo guardado que nadie resolvió queda visible solo", () => {
 
   it("sin recepciones no hay nada que resolver", () => {
     expect(tiempoGuardadoSinResolver([], [], CT, MOTO)).toBeNull();
+  });
+});
+
+// El caso IGC46I (25-ago): le hicieron el convenio para recuperar la moto SIN rodarle antes
+// los días de bodega — el convenio nació cobrando semanas que la moto pasó en la empresa.
+// Desde Inmovilizaciones el pre-paso preguntaba; desde Cartera pasaba derecho.
+describe("la moto que TODAVÍA está guardada (el convenio para recuperarla)", () => {
+  it("cuenta el tramo hasta HOY y avisa que sigue guardada", () => {
+    const p = tiempoGuardadoPendiente([rec("bodega", "2026-08-15")], [], CT, MOTO, "2026-08-25");
+    expect(p).toEqual({ desde: "2026-08-15", hasta: "2026-08-25", dias: 10, sigueGuardada: true });
+  });
+
+  it("ya entregada: el tramo cierra en la entrega, no en hoy", () => {
+    const p = tiempoGuardadoPendiente(
+      [rec("bodega", "2026-08-15"), rec("con_cliente", "2026-08-24")], [], CT, MOTO, "2026-09-30");
+    expect(p).toMatchObject({ hasta: "2026-08-24", dias: 9, sigueGuardada: false });
+  });
+
+  it("con acuerdo posterior al guardado ya no pide nada", () => {
+    const p = tiempoGuardadoPendiente([rec("bodega", "2026-08-15")], [acu("2026-08-20")], CT, MOTO, "2026-08-25");
+    expect(p).toBeNull();
+  });
+
+  it("el mismo día que se guarda no hay días que rodar todavía", () => {
+    const p = tiempoGuardadoPendiente([rec("bodega", "2026-08-25")], [], CT, MOTO, "2026-08-25");
+    expect(p).toMatchObject({ dias: 0, sigueGuardada: true });
   });
 });

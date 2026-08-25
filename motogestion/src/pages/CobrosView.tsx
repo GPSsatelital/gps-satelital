@@ -37,6 +37,9 @@ import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
 import ModalAmpliarConvenio from "../components/ModalAmpliarConvenio";
 import ModalPartituraConvenio from "../components/ModalPartituraConvenio";
+import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
+import { useUbicaciones } from "../hooks/useUbicaciones";
+import { tiempoGuardadoPendiente } from "../utils/tiempoGuardado";
 import { amortizarPartitura, plataAlConvenio } from "../utils/partituraConvenio";
 import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
@@ -613,6 +616,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalCuentaId, setModalCuentaId] = useState<string | null>(null);
   // Convenio activo al que se le va a agregar una deuda nueva (sin rehacerlo ni perder abonos).
   const [ampliandoConvenio, setAmpliandoConvenio] = useState<import("../hooks/useConvenios").Convenio | null>(null);
+  // EL PRE-PASO DEL CONVENIO también en Cartera (caso IGC46I, 25-ago): la decisión del tiempo
+  // guardado solo se preguntaba desde Inmovilizaciones; por Cartera pasaba derecho y el convenio
+  // nacía cobrando las semanas que la moto pasó en la empresa.
+  const { recepciones, acuerdos } = useUbicaciones();
+  const [preResolverConv, setPreResolverConv] = useState(false);
   // La partitura del convenio (mig 116): el editor para escribirle la lista a los viejos.
   const [editandoPartitura, setEditandoPartitura] = useState(false);
   const [guardandoPartitura, setGuardandoPartitura] = useState(false);
@@ -2459,11 +2467,36 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               ) : (
                 <div>
                   <button
-                    onClick={() => setMostrarFormConvenio(true)}
+                    onClick={() => {
+                      // EL PRE-PASO: si la moto estuvo (o está) guardada y nadie decidió qué pasa
+                      // con ese tiempo, se pregunta ANTES — así el convenio nace con la cifra
+                      // real. Cancelar el pre-paso NO abre el convenio: no se puede saltar.
+                      const pend = contratoDetalle
+                        ? tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO())
+                        : null;
+                      if (pend && pend.dias > 0) { setPreResolverConv(true); return; }
+                      setMostrarFormConvenio(true);
+                    }}
                     style={miniBtn("var(--accent-soft2)", "var(--accent-ink)")}
                   >
                     + Crear convenio
                   </button>
+                  {preResolverConv && contratoDetalle && (() => {
+                    const pend = tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO());
+                    if (!pend) { setPreResolverConv(false); return null; }
+                    return (
+                      <ModalResolverTiempoFueraServicio
+                        contrato={contratoDetalle as never}
+                        clienteNombre={clienteDetalle?.nombre ?? ""}
+                        motoPlaca={motoDetalle?.placa ?? "Sin placa"}
+                        motivo={pend.sigueGuardada ? "Moto guardada en la empresa" : "Tiempo guardado sin resolver"}
+                        fechaEntrada={pend.desde}
+                        fechaSalida={pend.hasta}
+                        onClose={() => setPreResolverConv(false)}
+                        onResuelto={() => { setPreResolverConv(false); setMostrarFormConvenio(true); }}
+                      />
+                    );
+                  })()}
                   {/* Cartera tenía su PROPIO formulario de convenio escrito acá adentro: se veía y se
                       comportaba distinto del de las otras tres puertas (Inmovilizaciones, Cobro Diario y
                       el wizard), y además se saltaba el tope de cuotas. Ahora las cuatro usan el mismo

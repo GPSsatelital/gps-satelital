@@ -26,6 +26,49 @@ type AcuerdoMin = {
 };
 
 export type TiempoPendiente = { desde: string; hasta: string; dias: number };
+export type TiempoPendienteFull = TiempoPendiente & {
+  /** true = la moto TODAVÍA está guardada (el tramo se cuenta hasta hoy). */
+  sigueGuardada: boolean;
+};
+
+/**
+ * Tiempo guardado SIN resolver, cubriendo los DOS casos (25-ago):
+ *   · la moto ya se entregó y nadie decidió qué pasaba con esos días, y
+ *   · la moto SIGUE guardada — el caso del convenio para recuperarla, que es cuando más
+ *     importa: si no se rueda ANTES, el convenio nace cobrando semanas de bodega.
+ *
+ * null = no hay nada pendiente: nunca se guardó, o ya tiene su acuerdo de tiempo.
+ */
+export function tiempoGuardadoPendiente(
+  recepciones: RecepcionMin[],
+  acuerdos: AcuerdoMin[],
+  contratoId: string,
+  motoId: string | null,
+  hoyISO: string,
+): TiempoPendienteFull | null {
+  const propias = recepciones
+    .filter(r => r.contrato_id === contratoId || (r.contrato_id == null && motoId != null && r.moto_id === motoId))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  if (propias.length === 0) return null;
+
+  let guardado: RecepcionMin | null = null;
+  let entrega: RecepcionMin | null = null;
+  for (const r of propias) {
+    if (r.ubicacion_destino === "con_cliente") { if (guardado) entrega = r; }
+    else { guardado = r; entrega = null; }
+  }
+  if (!guardado) return null;
+  if (acuerdos.some(a => a.contrato_id === contratoId && a.created_at >= guardado!.created_at)) return null;
+
+  const desde = guardado.created_at.slice(0, 10);
+  const hasta = entrega ? entrega.created_at.slice(0, 10) : hoyISO;
+  if (hasta < desde) return null;
+  return {
+    desde, hasta,
+    dias: Math.max(0, Math.round((Date.parse(hasta + "T12:00:00") - Date.parse(desde + "T12:00:00")) / 86400000)),
+    sigueGuardada: !entrega,
+  };
+}
 
 /**
  * El último tramo guardado→entregado de un contrato que quedó SIN resolver (ni cobrar ni

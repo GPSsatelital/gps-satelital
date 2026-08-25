@@ -29,6 +29,7 @@ import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VA
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
+import { reporteConvenios, totalesConvenios } from "../utils/reporteConvenios";
 import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
 
 interface Props {
@@ -40,7 +41,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
-type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "flota" | "guardadas" | "entregas" | "exportar";
+type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",           label: "Hoy" },
@@ -61,6 +62,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "grupos",   label: "Por grupo", icon: "📁" },
   { key: "visitas",  label: "Visitas",   icon: "🏠" },
   { key: "cartera",  label: "Cartera",   icon: "💳" },
+  { key: "convenios",label: "Convenios", icon: "🤝" },
   { key: "flota",    label: "Flota",     icon: "🏍️" },
   { key: "guardadas",label: "Guardadas", icon: "🔒" },
   { key: "entregas", label: "Entregas",  icon: "🛵" },
@@ -641,6 +643,19 @@ export default function ReportesView({ onNavigate }: Props) {
     u => UBICACION_LABEL[u as keyof typeof UBICACION_LABEL] ?? u,
   ), [motos, recepciones, contratos, clientes, subadmins]);
   const [guardadasPor, setGuardadasPor] = useState<"grupo" | "encargado" | "donde">("grupo");
+
+  // ── CONVENIOS: cómo se han pagado desde que se firmaron (pedido del dueño, 25-ago) ──
+  // Lo exigido lo calcula `faltaDelAcuerdo` (la misma función del cobro), así que este informe
+  // no puede decir una cifra distinta de la que ve el funcionario en Cartera.
+  const [conveniosTodos, setConveniosTodos] = useState(false);
+  const conveniosRep = useMemo(() => reporteConvenios(
+    convenios as never, pagos as never, contratos as never,
+    new Map(motos.map(m => [m.id, { placa: m.placa, grupo: m.grupo, subadmin_id: m.subadmin_id }])),
+    new Map(clientes.map(c => [c.id, c.nombre])),
+    new Map(subadmins.map(s => [s.id, s.nombre])),
+    hoyISO(), !conveniosTodos,
+  ), [convenios, pagos, contratos, motos, clientes, subadmins, conveniosTodos]);
+  const totConv = useMemo(() => totalesConvenios(conveniosRep), [conveniosRep]);
   const guardadasAgrupadas = useMemo(() => agruparGuardadas(
     guardadas,
     guardadasPor === "grupo" ? (f: MotoGuardada) => f.grupo
@@ -2016,6 +2031,133 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── TAB ENTREGAS ── */}
+      {/* ── CONVENIOS: cómo se ha pagado cada uno desde que se firmó ──────────────────────── */}
+      {tab === "convenios" && (() => {
+        function excelConvenios() {
+          const cols: ColX[] = [
+            { label: "Fecha del abono", align: "center", ancho: 105 },
+            { label: "Método", align: "center", ancho: 95 },
+            { label: "Abonó", align: "right", ancho: 95 },
+            { label: "Lleva abonado", align: "right", ancho: 105 },
+            { label: "Cuotas que cerró", align: "center", ancho: 105 },
+          ];
+          const secciones: SeccionX[] = conveniosRep.map(c => ({
+            titulo: `${c.placa}  ·  ${c.cliente.toUpperCase()}  —  Convenio #${c.numero} del ${fmtFechaCorta(c.firmado)} · `
+              + `$${fmt(c.total)} en ${c.numeroCuotas} cuotas de $${fmt(c.cuota)} · `
+              + `abonado $${fmt(c.abonado)} · saldo $${fmt(c.saldo)} · `
+              + (c.atrasado > 0 ? `ATRASADO $${fmt(c.atrasado)}` : "al día")
+              + ` · ${c.grupo} · ${c.encargado.toUpperCase()}`,
+            color: GRUPO_HEX[c.grupo] ?? "#334155",
+            filas: c.abonos.length === 0
+              ? [[{ v: `SIN UN SOLO ABONO desde que se firmó (hace ${c.diasDesdeFirma} días)`, color: "#991b1b", bold: true }, "", "", "", ""]]
+              : c.abonos.map(a => [
+                  { v: fmtFechaCorta(a.fecha), align: "center" as const },
+                  { v: a.metodo, align: "center" as const },
+                  { num: a.monto, align: "right" as const },
+                  { num: a.acumulado, align: "right" as const },
+                  { v: a.cuotasCompletadas > 0 ? String(a.cuotasCompletadas) : "—", align: "center" as const },
+                ]),
+          }));
+          descargarExcel({
+            archivo: `convenios_${hoyISO()}`,
+            titulo: "Convenios — cómo se han pagado desde que se firmaron",
+            periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
+            leyenda: "Cada bloque es un convenio y sus abonos reales, en orden. 'Atrasado' = lo que se le ha exigido menos lo que abonó (con arrastre); es la MISMA cuenta que ve el funcionario en Cartera.",
+            columnas: cols, secciones,
+            totalGeneral: [
+              { v: `${totConv.cantidad} convenios · pactado $${fmt(totConv.pactado)}`, bold: true }, "",
+              { num: totConv.abonado, align: "right" as const, bold: true },
+              { num: totConv.saldo, align: "right" as const, bold: true },
+              { v: totConv.atrasado > 0 ? `atraso $${fmt(totConv.atrasado)}` : "al día", align: "center" as const, bold: true },
+            ],
+          });
+        }
+
+        return (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
+              <KPI label="Convenios"        value={String(totConv.cantidad)}      color="var(--warn-ink)" />
+              <KPI label="Pactado"          value={`$ ${fmt(totConv.pactado)}`}   color="var(--muted2)" />
+              <KPI label="Abonado"          value={`$ ${fmt(totConv.abonado)}`}   color="var(--ok-ink)" bg="var(--ok-soft)" />
+              <KPI label="Saldo"            value={`$ ${fmt(totConv.saldo)}`}     color="var(--accent)" />
+              <KPI label="Atrasado"         value={`$ ${fmt(totConv.atrasado)}`}  color="var(--bad-ink)" bg={totConv.atrasado > 0 ? "var(--bad-soft)" : undefined} />
+              <KPI label="Sin ningún abono" value={String(totConv.sinUnSoloAbono)} color={totConv.sinUnSoloAbono > 0 ? "var(--bad-ink)" : "var(--muted2)"} />
+            </div>
+
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Convenios y sus pagos</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                    {totConv.alDia} al día · {totConv.cantidad - totConv.alDia} atrasados
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button onClick={() => setConveniosTodos(v => !v)}
+                    style={{ padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12.5, background: conveniosTodos ? "var(--text)" : "var(--soft2)", color: conveniosTodos ? "var(--card)" : "var(--muted2)" }}>
+                    {conveniosTodos ? "Todos" : "Solo activos"}
+                  </button>
+                  <button onClick={excelConvenios} disabled={conveniosRep.length === 0}
+                    style={{ padding: "8px 14px", borderRadius: 10, border: "none", cursor: conveniosRep.length ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, background: "var(--ok-soft)", color: "var(--ok-ink)", opacity: conveniosRep.length ? 1 : 0.5 }}>
+                    ⬇️ Excel
+                  </button>
+                </div>
+              </div>
+
+              {conveniosRep.length === 0 ? (
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay convenios para mostrar.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 12 }}>
+                  {conveniosRep.map(c => (
+                    <div key={c.convenioId} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${c.atrasado > 0 ? "var(--bad-line)" : "var(--line)"}`, background: "var(--card)", display: "grid", gap: 8, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                          <Placa placa={c.placa} grupo={c.grupo} size="sm" />
+                          <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.cliente}</span>
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
+                          background: c.atrasado > 0 ? "var(--bad-soft)" : "var(--ok-soft)", color: c.atrasado > 0 ? "var(--bad-ink)" : "var(--ok-ink)" }}>
+                          {c.atrasado > 0 ? `atrasado $ ${fmt(c.atrasado)}` : "✓ al día"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
+                        Convenio #{c.numero} del {fmtFechaCorta(c.firmado)} · <strong>$ {fmt(c.total)}</strong> en {c.numeroCuotas} cuotas de $ {fmt(c.cuota)}
+                        {" · "}👤 {c.encargado}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 6, fontSize: 12 }}>
+                        {[["Abonado", `$ ${fmt(c.abonado)}`, "var(--ok-ink)"], ["Saldo", `$ ${fmt(c.saldo)}`, "var(--muted2)"],
+                          ["Cuotas", `${c.cuotasCompletas} / ${c.numeroCuotas}`, "var(--muted2)"],
+                          ["Último abono", c.ultimoAbono ? `${c.diasSinAbonar}d` : "nunca", c.ultimoAbono ? "var(--muted2)" : "var(--bad-ink)"]].map(([l, v, col]) => (
+                          <div key={l} style={{ padding: "6px 8px", borderRadius: 8, background: "var(--soft2)", textAlign: "center" }}>
+                            <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>{l}</div>
+                            <div style={{ fontWeight: 700, color: col as string }}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {c.abonos.length === 0 ? (
+                        <div style={{ fontSize: 11.5, color: "var(--bad-ink)", fontWeight: 700 }}>
+                          Sin un solo abono desde que se firmó, hace {c.diasDesdeFirma} días.
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 3, fontSize: 11.5, color: "var(--muted)" }}>
+                          {c.abonos.slice(-4).map((a, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                              <span>{fmtFechaCorta(a.fecha)} · {a.metodo}{a.cuotasCompletadas > 0 ? ` · cerró ${a.cuotasCompletadas} cuota${a.cuotasCompletadas === 1 ? "" : "s"}` : " · abono parcial"}</span>
+                              <strong style={{ whiteSpace: "nowrap" }}>$ {fmt(a.monto)}</strong>
+                            </div>
+                          ))}
+                          {c.abonos.length > 4 && <div style={{ fontSize: 11, color: "var(--faint)" }}>+ {c.abonos.length - 4} abonos más — están todos en el Excel</div>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── GUARDADAS: las motos que no están produciendo ─────────────────────────────────── */}
       {tab === "guardadas" && (() => {
         const enBodega = guardadas.filter(g => /bodega/i.test(g.donde)).length;

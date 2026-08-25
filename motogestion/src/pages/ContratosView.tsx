@@ -499,6 +499,43 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 ✏️ Editar contrato
               </button>
             )}
+            {/* LOS ACUERDOS DE TIEMPO YA RESUELTOS — su papel firmado, siempre a la mano.
+                Se guardaba en Storage pero no había dónde volver a verlo: ni para reimprimirle
+                la copia al cliente ni para revisar qué se decidió (lo cazó el dueño, 25-ago).
+                Visible para todos: es historia del contrato, no una acción. */}
+            {(() => {
+              const mios = acuerdos
+                .filter(a => a.contrato_id === c.id)
+                .sort((a, b) => b.created_at.localeCompare(a.created_at));
+              if (mios.length === 0) return null;
+              return (
+                <div style={{ ...card, display: "grid", gap: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>⏱️ Tiempo guardado — lo que se decidió</div>
+                  {mios.map(a => (
+                    <div key={a.id} style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", display: "grid", gap: 4 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: a.decision === "rodar_al_final" ? "var(--ok-ink)" : "var(--warn-ink)" }}>
+                        {a.decision === "rodar_al_final" ? "📅 Se rodó al final" : "💰 Se cobró"}
+                        <span style={{ fontWeight: 400, color: "var(--muted)" }}> · {a.dias_en_empresa} día{a.dias_en_empresa === 1 ? "" : "s"} guardada</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted2)" }}>
+                        Del {a.fecha_entrada} al {a.fecha_salida ?? "—"}
+                        {a.nueva_fecha_fin_contrato && <> · contrato hasta el {a.nueva_fecha_fin_contrato}</>}
+                      </div>
+                      {a.observaciones && <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>{a.observaciones}</div>}
+                      {a.documento_firmado_url ? (
+                        <a href={a.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                          style={{ ...secondaryBtn, textDecoration: "none", textAlign: "center", fontSize: 12.5, padding: "8px 12px" }}>
+                          📄 Ver / imprimir el acuerdo firmado
+                        </a>
+                      ) : (
+                        <div style={{ fontSize: 11.5, color: "var(--warn-ink)", fontWeight: 700 }}>Sin documento firmado adjunto</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {esAdminRol && c.estado === "Activo" && (() => {
               const pendiente = tiempoGuardadoSinResolver(recepciones, acuerdos, c.id, c.moto_id);
               return (

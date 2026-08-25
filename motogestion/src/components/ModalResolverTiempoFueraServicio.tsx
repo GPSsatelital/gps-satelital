@@ -367,8 +367,20 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
                 </label>
               </div>
               {archivo && (
-                <div style={{ marginTop: 8, fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>
-                  ✅ {archivo.name === "acuerdo-tiempo-firmado.pdf" ? "Firmado en pantalla — documento listo" : archivo.name}
+                <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 700 }}>
+                    ✅ {archivo.name === "acuerdo-tiempo-firmado.pdf" ? "Firmado en pantalla — documento listo" : archivo.name}
+                  </div>
+                  {/* La COPIA DEL CLIENTE (pedido del dueño, 25-ago: "¿dónde puedo descargar ese
+                      documento para dárselo al cliente?"). Se abre el archivo ya firmado tal cual
+                      quedó — el mismo que se guarda, no una reimpresión que podría diferir. */}
+                  <button
+                    type="button"
+                    onClick={() => { const u = URL.createObjectURL(archivo); window.open(u, "_blank"); setTimeout(() => URL.revokeObjectURL(u), 60000); }}
+                    style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid var(--ok-line, var(--line))", background: "var(--ok-soft)", color: "var(--ok-ink)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    📄 Ver / imprimir la copia del cliente
+                  </button>
                 </div>
               )}
             </div>

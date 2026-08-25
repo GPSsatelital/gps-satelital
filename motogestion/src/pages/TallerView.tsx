@@ -10,6 +10,8 @@ import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import MoneyInput from "../components/MoneyInput";
 import { Badge, type BadgeTone } from "../components/atomos";
+import { useBackGuard } from "../contexts/BackNav";
+import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 
 const TALLER_TONE: Record<TallerEstado, BadgeTone> = {
   Pendiente: "warn",
@@ -518,6 +520,11 @@ export default function TallerView() {
 
   const [tab, setTab] = useState<"activas" | "historial">("activas");
   const [seleccionId, setSeleccionId] = useState<string | null>(null);
+  // El detalle es una ventana flotante: el botón atrás del celular la cierra (y NO se sale del
+  // módulo), igual que el resto de capas de la app. Y el fondo se congela mientras está abierta,
+  // para que el dedo mueva la ventana y no la lista de atrás.
+  useBackGuard(seleccionId !== null, () => setSeleccionId(null));
+  useBloquearScrollFondo(seleccionId !== null);
   const [showNueva, setShowNueva] = useState(false);
   const [showActualizar, setShowActualizar] = useState(false);
   const [showCambioEstado, setShowCambioEstado] = useState(false);
@@ -672,20 +679,6 @@ export default function TallerView() {
             )}
           </div>
 
-          {/* Panel detalle */}
-          {seleccionado && seleccionado.estado_tecnico !== "Finalizado" && (
-            <div style={{ flex: "0 1 340px", ...card, minWidth: 280 }}>
-              <h3 style={{ margin: "0 0 16px", fontSize: 17, color: "var(--text)" }}>Detalle de la orden</h3>
-              <DetallePanel
-                item={seleccionado}
-                motoLabel={getMotoLabel(seleccionado.moto_id)}
-                onCambiarEstado={() => setShowCambioEstado(true)}
-                onActualizar={() => setShowActualizar(true)}
-                onFinalizar={handleFinalizar}
-                onImprimir={() => imprimirOrden(seleccionado, getMotoLabel(seleccionado.moto_id))}
-              />
-            </div>
-          )}
         </div>
       ) : (
         /* Historial */
@@ -729,6 +722,56 @@ export default function TallerView() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* DETALLE DE LA ORDEN — ventana flotante (pedido del dueño, 25-ago): antes era una
+          columna al lado que en el celular caía DEBAJO de la lista, y había que bajar toda la
+          página para verla y volver a subir para elegir otra orden. Ahora se sobrepone y se
+          cierra con la X, tocando el fondo o con el botón atrás del celular. */}
+      {seleccionado && seleccionado.estado_tecnico !== "Finalizado" && (
+        <div
+          onClick={() => setSeleccionId(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.62)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "var(--card)", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "92vh", boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 50px rgba(2,6,23,0.45)" }}
+          >
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>Detalle de la orden</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {getMotoLabel(seleccionado.moto_id)}
+                </div>
+              </div>
+              <button
+                onClick={() => setSeleccionId(null)}
+                style={{ background: "var(--soft)", border: "none", borderRadius: 999, width: 32, height: 32, fontSize: 18, lineHeight: 1, cursor: "pointer", color: "var(--muted2)", flexShrink: 0 }}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: "14px 16px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+              <DetallePanel
+                item={seleccionado}
+                motoLabel={getMotoLabel(seleccionado.moto_id)}
+                onCambiarEstado={() => setShowCambioEstado(true)}
+                onActualizar={() => setShowActualizar(true)}
+                onFinalizar={handleFinalizar}
+                onImprimir={() => imprimirOrden(seleccionado, getMotoLabel(seleccionado.moto_id))}
+              />
+            </div>
+            <div style={{ padding: "10px 16px", borderTop: "1px solid var(--line)" }}>
+              <button
+                onClick={() => setSeleccionId(null)}
+                style={{ ...ghostBtn, width: "100%", padding: "11px 16px", fontSize: 14 }}
+              >
+                ← Volver a las órdenes
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

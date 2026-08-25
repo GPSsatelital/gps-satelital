@@ -28,6 +28,8 @@ import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
+import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
+import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -38,7 +40,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
-type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "flota" | "entregas" | "exportar";
+type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "flota" | "guardadas" | "entregas" | "exportar";
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",           label: "Hoy" },
@@ -60,6 +62,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "visitas",  label: "Visitas",   icon: "🏠" },
   { key: "cartera",  label: "Cartera",   icon: "💳" },
   { key: "flota",    label: "Flota",     icon: "🏍️" },
+  { key: "guardadas",label: "Guardadas", icon: "🔒" },
   { key: "entregas", label: "Entregas",  icon: "🛵" },
   { key: "exportar", label: "Exportar",  icon: "⬇️" },
 ];
@@ -624,6 +627,26 @@ export default function ReportesView({ onNavigate }: Props) {
     });
     return rows;
   }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, prestamos, convenioActivoDelContrato]);
+
+  // ── MOTOS GUARDADAS: las que no están produciendo (pedido del dueño, 25-ago) ──
+  // Todo derivado: el estado dice que está guardada, la última recepción dice desde cuándo y
+  // por qué. Sin recepción → se marca, no se inventa. La lógica y sus pruebas viven en
+  // `motosGuardadas.ts` para que esta pantalla solo pinte.
+  const guardadas = useMemo(() => motosGuardadas(
+    motos, recepciones, contratos,
+    new Map(clientes.map(c => [c.id, c.nombre])),
+    new Map(subadmins.map(s => [s.id, s.nombre])),
+    hoyISO(),
+    m => MOTIVO_RECEPCION_LABEL[m as keyof typeof MOTIVO_RECEPCION_LABEL] ?? m,
+    u => UBICACION_LABEL[u as keyof typeof UBICACION_LABEL] ?? u,
+  ), [motos, recepciones, contratos, clientes, subadmins]);
+  const [guardadasPor, setGuardadasPor] = useState<"grupo" | "encargado" | "donde">("grupo");
+  const guardadasAgrupadas = useMemo(() => agruparGuardadas(
+    guardadas,
+    guardadasPor === "grupo" ? (f: MotoGuardada) => f.grupo
+      : guardadasPor === "encargado" ? (f: MotoGuardada) => f.subadminNombre
+      : (f: MotoGuardada) => f.donde,
+  ), [guardadas, guardadasPor]);
 
   // ── FILTROS COMBINABLES (multi-selección) — baseFiltrada es la fuente de TODO ──
   // Array vacío en una dimensión = "todos"; con valores = OR dentro, AND entre dimensiones.
@@ -1993,6 +2016,132 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── TAB ENTREGAS ── */}
+      {/* ── GUARDADAS: las motos que no están produciendo ─────────────────────────────────── */}
+      {tab === "guardadas" && (() => {
+        const enBodega = guardadas.filter(g => /bodega/i.test(g.donde)).length;
+        const enTaller = guardadas.filter(g => /taller/i.test(g.donde)).length;
+        const legal = guardadas.filter(g => /fiscal|tránsito|transito|patios/i.test(g.donde)).length;
+        const sinReg = guardadas.filter(g => g.sinRegistro).length;
+        const masDe30 = guardadas.filter(g => (g.dias ?? 0) > 30).length;
+        const diasTotal = guardadas.reduce((s, g) => s + (g.dias ?? 0), 0);
+
+        function excelGuardadas() {
+          const cols: ColX[] = [
+            { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
+            { label: "Motivo", ancho: 190 }, { label: "Dónde está", ancho: 110 },
+            { label: "Guardada desde", align: "center", ancho: 100 },
+            { label: "Días", align: "center", ancho: 55 },
+            { label: "Encargado", ancho: 150 },
+          ];
+          const secciones: SeccionX[] = guardadasAgrupadas.map(g => ({
+            titulo: `${g.clave.toUpperCase()}   —   ${g.filas.length} moto${g.filas.length === 1 ? "" : "s"} · ${g.dias} días acumulados sin producir`,
+            color: guardadasPor === "grupo" ? (GRUPO_HEX[g.clave] ?? "#334155") : "#334155",
+            filas: g.filas.map(f => [
+              f.placa, f.clienteNombre.toUpperCase(), f.motivo, f.donde,
+              { v: f.desde ? fmtFechaCorta(f.desde) : "sin registro", align: "center" as const, color: f.sinRegistro ? "#991b1b" : undefined },
+              { v: f.dias == null ? "—" : String(f.dias), align: "center" as const, bold: (f.dias ?? 0) > 30, color: (f.dias ?? 0) > 30 ? "#991b1b" : undefined },
+              f.subadminNombre.toUpperCase(),
+            ]),
+          }));
+          descargarExcel({
+            archivo: `motos_guardadas_${hoyISO()}`,
+            titulo: "Motos guardadas — no están produciendo",
+            periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
+            leyenda: "Una moto guardada no genera arriendo. 'Sin registro' = figura guardada pero no tiene recepción que lo respalde.",
+            columnas: cols, secciones,
+            totalGeneral: [{ v: `TOTAL: ${guardadas.length} motos guardadas`, bold: true }, "", "", "", "", { v: String(diasTotal), align: "center" as const, bold: true }, ""],
+          });
+        }
+
+        return (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
+              <KPI label="Guardadas"        value={String(guardadas.length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
+              <KPI label="En bodega"        value={String(enBodega)}         color="var(--warn-ink)" />
+              <KPI label="En taller"        value={String(enTaller)}         color="var(--accent)" />
+              <KPI label="Retención legal"  value={String(legal)}            color="var(--violet)" />
+              <KPI label="Más de 30 días"   value={String(masDe30)}          color="var(--bad-ink)" bg={masDe30 > 0 ? "var(--bad-soft)" : undefined} />
+              <KPI label="Sin registro"     value={String(sinReg)}           color={sinReg > 0 ? "var(--bad-ink)" : "var(--muted2)"} />
+            </div>
+
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Motos que no están produciendo</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                    {guardadas.length} guardadas · {diasTotal} días acumulados sin generar arriendo
+                  </div>
+                </div>
+                <button onClick={excelGuardadas} disabled={guardadas.length === 0}
+                  style={{ padding: "8px 14px", borderRadius: 10, border: "none", cursor: guardadas.length ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, background: "var(--ok-soft)", color: "var(--ok-ink)", opacity: guardadas.length ? 1 : 0.5 }}>
+                  ⬇️ Excel
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                <span style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center", fontWeight: 700 }}>Agrupar por:</span>
+                {([["grupo", "📁 Portafolio"], ["encargado", "👤 Encargado"], ["donde", "📍 Dónde está"]] as const).map(([k, l]) => (
+                  <button key={k} onClick={() => setGuardadasPor(k)}
+                    style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
+                      background: guardadasPor === k ? "var(--text)" : "var(--soft2)", color: guardadasPor === k ? "var(--card)" : "var(--muted2)" }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+
+              {guardadas.length === 0 ? (
+                <div style={{ color: "var(--ok-ink)", fontSize: 14, fontWeight: 700, background: "var(--ok-soft)", borderRadius: 12, padding: "14px 16px" }}>
+                  ✓ Ninguna moto guardada — toda la flota está produciendo.
+                </div>
+              ) : guardadasAgrupadas.map(g => (
+                <div key={g.clave} style={{ marginBottom: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "var(--soft2)", marginBottom: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 13.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.clave}</span>
+                    <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                      {g.filas.length} moto{g.filas.length === 1 ? "" : "s"} · {g.dias}d
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {g.filas.map(f => (
+                      <div key={f.motoId} style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", display: "grid", gap: 6, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                            <Placa placa={f.placa} grupo={f.grupo} size="sm" />
+                            <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.clienteNombre}</span>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
+                            background: f.dias == null ? "var(--bad-soft)" : (f.dias > 30 ? "var(--bad-soft)" : f.dias > 7 ? "var(--warn-soft)" : "var(--soft2)"),
+                            color: f.dias == null ? "var(--bad-ink)" : (f.dias > 30 ? "var(--bad-ink)" : f.dias > 7 ? "var(--warn-ink)" : "var(--muted2)") }}>
+                            {f.dias == null ? "⚠️ sin registro" : `${f.dias} día${f.dias === 1 ? "" : "s"} guardada`}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
+                          <strong>{f.motivo}</strong> · 📍 {f.donde}
+                          {f.desde && <> · desde el {fmtFechaCorta(f.desde)}</>}
+                          {guardadasPor !== "encargado" && <> · 👤 {f.subadminNombre}</>}
+                          {guardadasPor !== "grupo" && <> · 📁 {f.grupo}</>}
+                        </div>
+                        {f.sinRegistro && (
+                          <div style={{ fontSize: 11.5, color: "var(--bad-ink)", fontWeight: 700 }}>
+                            Figura guardada pero no tiene recepción registrada — no se sabe desde cuándo ni quién la recibió.
+                          </div>
+                        )}
+                        {onNavigate && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent-ink)" }}>🏍️ Ver moto</button>
+                            <button onClick={() => onNavigate("inmovilizaciones")} style={{ padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 700, background: "var(--soft2)", color: "var(--muted2)" }}>🔒 Inmovilizaciones</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {tab === "entregas" && (
         <div style={{ display: "grid", gap: 16 }}>
           {/* Filtro por grupo */}

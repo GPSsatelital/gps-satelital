@@ -135,22 +135,35 @@ export function createTableStore<T>(
     if (fetchEnCurso && !forzar) return;
     const miTurno = ++secuencia;
     fetchEnCurso = true;
-    let q = supabase.from(table).select("*").order(orderBy, { ascending });
-    // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
-    // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
-    if (!completo && opts?.ventanaDias) {
-      q = q.gte(campoFecha, hoyMasDias(-opts.ventanaDias));
+    // EN TANDAS DE 1.000 (24-ago-2026): Supabase entrega MÁXIMO 1.000 filas por consulta y no
+    // avisa. `pagos` fue la primera tabla en cruzarlas: el historial del mes salía cortado en
+    // pantalla, a XYZ54H le "faltaban" 4 pagos viejos, y los cálculos que suman pagos quedaban
+    // cortos EN SILENCIO — exactamente el riesgo que advierte el comentario de la ventana.
+    // Se pagina hasta traerlo todo, tanda a tanda.
+    const TANDA = 1000;
+    const filas: T[] = [];
+    let errorMsg: string | null = null;
+    for (let desde = 0; ; desde += TANDA) {
+      let q = supabase.from(table).select("*").order(orderBy, { ascending }).range(desde, desde + TANDA - 1);
+      // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
+      // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
+      if (!completo && opts?.ventanaDias) {
+        q = q.gte(campoFecha, hoyMasDias(-opts.ventanaDias));
+      }
+      const { data, error } = await q;
+      // Si mientras esperábamos salió otra consulta (típico: la ventana de 120 días seguía en
+      // vuelo y la ficha pidió la historia completa), esta respuesta ya está vieja. Descartarla,
+      // o pisaría los datos buenos con los recortados.
+      if (miTurno !== secuencia) return;
+      if (error) { errorMsg = error.message; break; }
+      filas.push(...((data ?? []) as T[]));
+      if (!data || data.length < TANDA) break;   // última tanda: ya está todo
     }
-    const { data, error } = await q;
-    // Si mientras esperábamos salió otra consulta (típico: la ventana de 120 días seguía en
-    // vuelo y la ficha pidió la historia completa), esta respuesta ya está vieja. Descartarla,
-    // o pisaría los datos buenos con los recortados.
-    if (miTurno !== secuencia) return;
     fetchEnCurso = false;
     ultimoFetch = Date.now();
-    snapshot = error
-      ? { data: snapshot.data, loading: false, error: error.message }
-      : { data: (data ?? []) as T[], loading: false, error: null };
+    snapshot = errorMsg
+      ? { data: snapshot.data, loading: false, error: errorMsg }
+      : { data: filas, loading: false, error: null };
     emit();
   }
 

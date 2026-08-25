@@ -2451,8 +2451,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   Máximo de 3 convenios alcanzado. Si no puede pagar, la salida es la <strong>liquidación</strong> —
                   se inicia desde Contratos o desde Inmovilizaciones.
                 </div>
-              ) : deudasContrato.length === 0 ? (
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay deudas pendientes para crear un convenio.</div>
+              ) : deudasContrato.length === 0 && debe.cuota.falta <= 0 ? (
+                // La puerta solo miraba `deudas` registradas: un cliente EN MORA de semanas pero
+                // sin deudas sueltas no se podía convenir (reporte del dueño, 25-ago). Las semanas
+                // atrasadas también se financian — el convenio existe justo para eso.
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay nada que convenir: las semanas están al día y no tiene deudas registradas.</div>
               ) : (
                 <div>
                   <button
@@ -2469,6 +2472,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <ModalConvenio
                       contratoId={contratoDetalle.id}
                       clienteNombre={clienteDetalle?.nombre ?? ""}
+                      // La meta precargada (EDITABLE) = semanas que debe hoy + deudas registradas —
+                      // la misma cifra que la pantalla le cobra, del mismo objeto (loQueDebe).
+                      metaFija={debe.cuota.falta + deudasContrato.reduce((s, d) => s + d.monto_pendiente, 0)}
+                      metaNota="lo que debe hoy de semanas más sus deudas registradas"
                       onClose={() => setMostrarFormConvenio(false)}
                     />
                   )}

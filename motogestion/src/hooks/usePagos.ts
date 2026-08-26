@@ -368,8 +368,26 @@ export function usePagos() {
       .eq("pago_id", pagoId);
   }
 
+  /**
+   * Confirmar = la secretaria YA tiene la plata en la mano. Por eso un cobro de campo queda
+   * también marcado como entregado: confirmarlo sin eso dejaba la MISMA plata contada dos veces
+   * en la caja del día — "pendiente entregar por el funcionario" Y "efectivo recibido".
+   *
+   * 🔴 EL CASO (25-ago-2026, YERMIN RODRIGUEZ, XZN83H, $400.000): la secretaria confirmó desde
+   * Caja Diaria antes de que el funcionario tocara "entregué a secretaria". Cartera sí tenía el
+   * candado (solo muestra Confirmar si está entregado); Caja Diaria no. En vez de agregar otro
+   * candado —que dejaría el mismo hueco abierto en la próxima pantalla que confirme pagos—, se
+   * arregla en el embudo por donde pasan TODAS las confirmaciones.
+   */
   async function confirmarPago(id: string) {
-    const { error } = await supabase.from("pagos").update({ estado: "Confirmado" }).eq("id", id);
+    // Se lee de la BD, no del store: el store puede no tener la fila (ventana de días) y acá
+    // no se puede adivinar — de una adivinanza salió justamente este defecto.
+    const { data: pago } = await supabase.from("pagos")
+      .select("tipo_registro, entregado_caja").eq("id", id).single();
+    const campoSinEntregar = pago?.tipo_registro === "campo" && !pago.entregado_caja;
+    const { error } = await supabase.from("pagos")
+      .update(campoSinEntregar ? { estado: "Confirmado", entregado_caja: true } : { estado: "Confirmado" })
+      .eq("id", id);
     if (error) return { error: error.message };
     await cruzarConDineroSinDuenio(id);
     return { error: null };

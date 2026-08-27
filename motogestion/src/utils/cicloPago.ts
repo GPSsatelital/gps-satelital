@@ -294,9 +294,21 @@ export function loQueDebe(
     const d = desgloseExigible(contrato, hoy);
     const cubre = convenio?.cubre_periodo_hasta ?? null;
     const cubierto = !!(cubre && cubre >= fechaAISO(hoy));
+    const exigibles = d.periodos.filter(p => !cubierto || p.fecha >= cubre!);
     const falta = (cubierto ? 0 : d.prorrateoPendiente)
-      + d.periodos.filter(p => !cubierto || p.fecha >= cubre!).reduce((s, p) => s + p.monto, 0);
-    const toca = valorPeriodoReal(contrato);
+      + exigibles.reduce((s, p) => s + p.monto, 0);
+    // 🔴 `toca` es TODO lo que se le exige hoy, no una sola cuota (25-ago-2026, caso MARLON
+    // MUÑOZ RNG53H): con dos semanas vencidas la pantalla mostraba "Cuota del período $202.000"
+    // arriba y "Le falta por pagar $404.000" abajo — el desglose no cuadraba con su propio
+    // total, que es exactamente lo que la regla de las cifras prohíbe. Ahora `toca` cuenta las
+    // cajas exigidas (una completa por cada una, aunque venga parcial) más el prorrateo, y
+    // `pagado` sale de la resta: así el recuadro explica el número grande en vez de contradecirlo.
+    const valorCaja = valorPeriodoReal(contrato);
+    const prorrateoTotal = cubierto ? 0
+      : (d.prorrateoPendiente > 0 ? Math.max(contrato.prorrateo_total ?? 0, d.prorrateoPendiente) : 0);
+    const toca = exigibles.length > 0 || prorrateoTotal > 0
+      ? prorrateoTotal + exigibles.length * valorCaja
+      : valorCaja;   // al día: se muestra la cuota del período como referencia de lo que viene
     cuota = { toca, pagado: Math.max(toca - falta, 0), falta };
   } else if (contrato.forma_pago === "Diario" && opciones.diario) {
     const { toca, pagado } = opciones.diario;

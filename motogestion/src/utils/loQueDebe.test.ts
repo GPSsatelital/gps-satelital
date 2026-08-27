@@ -188,6 +188,41 @@ describe("DANIEL — abonó su acuerdo en semanas anteriores", () => {
   });
 });
 
+// ── MARLON MUÑOZ (RNG53H) — el desglose DEBE cuadrar con su propio total (25-ago) ──
+// Lo cazó el dueño en pantalla: arriba decía "Cuota del período $202.000" y abajo "Le falta por
+// pagar $404.000" (dos semanas vencidas). El total estaba bien; el renglón que lo explica, no.
+const MARLON: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Miércoles", valor_semanal: 202000,
+  es_migrado: false, motor_v2: true,
+  total_cajas: 83, cajas_pagadas: 1, caja_actual_pagado: 0, cajas_previas: 0,
+  prorrateo_total: 62000, prorrateo_pagado: 62000, fecha_inicio_cajas: "2026-08-12",
+};
+
+describe("MARLON — lo que dice el desglose es lo que suma el total", () => {
+  it("con DOS semanas vencidas, la cuota que se muestra son las dos ($404.000)", () => {
+    const r = loQueDebe(MARLON, [], [], null, D("2026-08-27"));
+    expect(r.cuota).toMatchObject({ toca: 404000, pagado: 0, falta: 404000 });
+    expect(r.totalFalta).toBe(404000);
+  });
+
+  it("el renglón NUNCA puede ser menor que lo que falta — esa era la contradicción", () => {
+    const r = loQueDebe(MARLON, [], [], null, D("2026-08-27"));
+    expect(r.cuota.toca).toBeGreaterThanOrEqual(r.cuota.falta);
+  });
+
+  it("una caja a medias suma completa en 'toca' y solo el resto en 'falta'", () => {
+    const conAbono = { ...MARLON, caja_actual_pagado: 150000 };
+    const r = loQueDebe(conAbono, [], [], null, D("2026-08-27"));
+    expect(r.cuota).toMatchObject({ toca: 404000, pagado: 150000, falta: 254000 });
+  });
+
+  it("al día, el renglón muestra la cuota del período como referencia", () => {
+    const alDia = { ...MARLON, cajas_pagadas: 3 };
+    const r = loQueDebe(alDia, [], [], null, D("2026-08-27"));
+    expect(r.cuota).toMatchObject({ toca: 202000, falta: 0 });
+  });
+});
+
 // ── JUAN CARLOS LEAL (YAL68H) — rodar el PAQUETE (mig 118, 24-ago) ─────────────
 // Moto guardada por retención de mora del 5-ago al 24-ago = 2 semanas COMPLETAS de bodega
 // (los 5 días sueltos se quedan en su semana — regla del dueño). Su convenio del 14-jul

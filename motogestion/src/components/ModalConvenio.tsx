@@ -30,6 +30,10 @@ interface Props {
    * salía cobrando la misma semana dos veces.
    */
   metaTraeSemanas?: boolean;
+  /** Oculta la opción de financiar semanas del arriendo. Se usa en el convenio de la BASE
+   *  INICIAL del wizard: ahí la primera semana ya viene pagada dentro de la base, así que
+   *  financiarla sería cobrarla dos veces (ver el comentario de `puedeFinanciar`). */
+  sinFinanciarSemanas?: boolean;
   motivoInicial?: string;
   // Qué ES el monto sugerido, en palabras del funcionario. No es lo mismo "lo que tiene atrasado"
   // (moto retenida) que "lo que le falta de la base inicial" (cliente nuevo del wizard): decirle
@@ -127,7 +131,7 @@ function cuotaRedonda(meta: number, cuotas: number): number {
   return redonda * (cuotas - 1) < meta ? redonda : exacta;
 }
 
-export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, metaTraeSemanas, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
+export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, metaTraeSemanas, sinFinanciarSemanas, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   // Cuántas cuotas del arriendo se le financian DENTRO del convenio (0, 1 o 2). Antes acá era un
@@ -231,7 +235,14 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // monto. Caso real (NESTOR, YAL67H, 12-ago-2026): debía 2 semanas y llevaba $14.000 abonados a
   // la más vieja; el convenio se firmó por $202.000 cuando faltaban $188.000.
 
-  const puedeFinanciar = esPeriodico && cuotaDelPeriodo > 0;
+  // 🔴 EN EL CONVENIO DE LA BASE INICIAL NO SE FINANCIAN SEMANAS (25-ago-2026). Un contrato que
+  // acaba de nacer tiene su primera semana PAGADA por definición: viene dentro de la base
+  // ($510.000 = $308.000 de ahorro + la semana adelantada), y el wizard la registra como pago
+  // `adelanto_base`. Financiarla otra vez dentro del convenio cobra la MISMA semana dos veces.
+  // Barrido del 25-ago: 7 convenios inflados en $1.616.000 (OSVALDO YAL57H con 2 semanas de más;
+  // MARLON RNG53H, RUBEN DQL81I, GERMÁN IGC39I y 3 más con una). La firma del defecto es exacta:
+  // los 7 tenían `cubre_periodo_hasta` con fecha, los 8 sanos lo tenían vacío.
+  const puedeFinanciar = esPeriodico && cuotaDelPeriodo > 0 && !sinFinanciarSemanas;
   const nFinanciadas = puedeFinanciar ? financiarN : 0;
 
   // Cuántas semanas trae vencidas. Antes el selector ofrecía SIEMPRE 0/1/2 sin importar cuántas

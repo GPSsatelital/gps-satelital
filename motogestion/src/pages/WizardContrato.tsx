@@ -1074,6 +1074,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           // La cifra la calcula el sistema (base requerida − lo que entregó) y NO es negociable:
           // si se pudiera bajar, el cliente quedaría debiendo menos base de la que debe.
           metaBloqueada
+          // Sin financiar semanas: la primera ya viene pagada DENTRO de la base (el pago
+          // `adelanto_base` de arriba), así que meterla al convenio la cobra dos veces. Fue el
+          // defecto de 7 convenios ($1.616.000) hasta el 25-ago — ver ModalConvenio.
+          sinFinanciarSemanas
           metaNota="lo que le falta para completar la base inicial"
           motivoInicial="Base inicial incompleta al crear el contrato"
           obligatorio

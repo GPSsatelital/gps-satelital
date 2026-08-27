@@ -1750,7 +1750,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           fecha: p.fecha, valor: p.valor, metodo: p.metodo, referencia: p.referencia,
           partes: partesDe(p), ahorro: p.aplicado_ahorro ?? 0,
         })),
-        totalPagado: confirmados.reduce((s, p) => s + p.valor, 0),
+        // Lo que el cliente ENTREGÓ de verdad: los movimientos internos (aplicar su saldo a
+        // favor, la semana adelantada de la base) ya se contaron el día que esa plata entró.
+        totalPagado: confirmados.filter(esPagoDeCaja).reduce((s, p) => s + p.valor, 0),
         preliquidacion: { lineas, resultado: lineas.reduce((s, x) => s + x.monto, 0) },
       };
     }

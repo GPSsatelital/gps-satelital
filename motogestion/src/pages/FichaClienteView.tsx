@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import type { ViewKey } from "../App";
 import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
 import { useContratos, infoFinContrato, ahorroTotal } from "../hooks/useContratos";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useVisitas, visitaFueHecha } from "../hooks/useVisitas";
@@ -281,8 +281,12 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
     [gestiones, contratoIds, clienteId, contratos, cesiones]
   );
 
+  // PLATA QUE EL CLIENTE ENTREGÓ — no cuenta los movimientos internos (aplicar un saldo a favor
+  // que ya tenía, o la semana adelantada de la base). Esa plata YA se contó el día que entró;
+  // sumarla otra vez al aplicarla la cuenta dos veces (caso ALEJANDRO NIETO, RMZ60H, 26-ago:
+  // dos aplicaciones de $80.000 le inflaban el total en $160.000).
   const totalPagado = useMemo(() =>
-    pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0),
+    pagosCliente.filter(p => p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0),
     [pagosCliente]
   );
   // Solo deuda EXIGIBLE: las 'en_convenio' ya están financiadas dentro del convenio y se cobran
@@ -597,7 +601,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
               Suspendido: { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
             };
             const ec = ESTADO_C[c.estado] ?? { bg: "var(--line)", color: "var(--muted2)" };
-            const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
+            const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0);
             const ahorro = ahorroTotal(c);
             const isActive = c.estado === "Activo";
             return (
@@ -708,9 +712,12 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
             {[
-              { label: "Confirmados", val: pagosCliente.filter(p => p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
-              { label: "Efectivo", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo").reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
-              { label: "Transferencia", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia").reduce((s, p) => s + p.valor, 0), color: "var(--accent-ink)", bg: "var(--accent-soft3)" },
+              // Los tres cuentan PLATA QUE ENTRÓ: los movimientos internos (saldo a favor
+              // aplicado, semana adelantada de la base) quedan fuera — esa plata ya se contó
+              // el día que el cliente la entregó.
+              { label: "Confirmados", val: pagosCliente.filter(p => p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+              { label: "Efectivo", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Efectivo" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0), color: "var(--ok-ink)", bg: "var(--ok-soft)" },
+              { label: "Transferencia", val: pagosCliente.filter(p => p.estado === "Confirmado" && p.metodo === "Transferencia" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0), color: "var(--accent-ink)", bg: "var(--accent-soft3)" },
               { label: "Pendientes", val: pagosCliente.filter(p => p.estado === "Pendiente").reduce((s, p) => s + p.valor, 0), color: "var(--warn-ink)", bg: "var(--warn-soft)" },
             ].map(kpi => (
               <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 14, padding: "12px 14px" }}>

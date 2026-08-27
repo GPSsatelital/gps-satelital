@@ -4,7 +4,7 @@ import { useMotos } from "../hooks/useMotos";
 import { useContratos, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useTaller } from "../hooks/useTaller";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { usePrestamos } from "../hooks/usePrestamos";
 import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
 import LineaTiempo from "../components/LineaTiempo";
@@ -413,7 +413,9 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       {(() => {
-                        const totalPagado = pagos.filter(p => p.contrato_id === contratoActivo.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
+                        // Solo plata que ENTRÓ: el saldo a favor aplicado y la semana adelantada
+                        // de la base ya se contaron el día que el cliente entregó esa plata.
+                        const totalPagado = pagos.filter(p => p.contrato_id === contratoActivo.id && p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0);
                         return (
                           <>
                             <div style={{ fontSize: 20, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
@@ -506,7 +508,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
           ) : historialContratos.map(c => {
             const cliente = clientes.find(cl => cl.id === c.cliente_id);
             const cEc = ESTADO_C[c.estado] ?? { bg: "var(--line)", color: "var(--muted2)" };
-            const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").reduce((s, p) => s + p.valor, 0);
+            const pagosContrato = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado" && esPagoDeCaja(p)).reduce((s, p) => s + p.valor, 0);
             return (
               <Card key={c.id} borderColor={cEc.color}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>

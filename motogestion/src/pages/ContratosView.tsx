@@ -19,7 +19,7 @@ import ModalCederContrato from "../components/ModalCederContrato";
 import Placa from "../components/Placa";
 import type { Contrato } from "../hooks/useContratos";
 import { formatDiaPago } from "../utils/cicloPago";
-import { usePagos } from "../hooks/usePagos";
+import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
@@ -399,7 +399,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           const pagosC = pagos
             .filter(p => p.contrato_id === c.id && p.estado === "Confirmado")
             .sort((a, b) => b.fecha.localeCompare(a.fecha));
-          const totalPagado = pagosC.reduce((s, p) => s + p.valor, 0);
+          // Lo que el cliente ENTREGÓ: sin los movimientos internos (saldo a favor aplicado,
+          // semana adelantada de la base), que ya se contaron el día que la plata entró.
+          const totalPagado = pagosC.filter(esPagoDeCaja).reduce((s, p) => s + p.valor, 0);
           const primero = pagosC.length > 0 ? pagosC[pagosC.length - 1].fecha : null;
           const ultimo = pagosC.length > 0 ? pagosC[0].fecha : null;
           const cli = clientes.find(x => x.id === c.cliente_id);

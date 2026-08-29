@@ -306,8 +306,9 @@ function periodosConvenioExigidos(
   const hoyIni = fechaAISO(inicioPeriodoActual(contrato, hoy));
   let d = inicioPeriodoActual(contrato, new Date(convenio.created_at.slice(0, 10) + "T12:00:00"));
   let n = 0;
-  // Tope de seguridad: un convenio no puede tener más de 24 cuotas (MAX_CUOTAS del modal), y
-  // sin tope un contrato con fechas raras colgaría la pantalla.
+  // Tope de seguridad anti-cuelgue: un contrato con fechas raras haría un bucle infinito. Las 200
+  // vueltas cubren de sobra el tope duro de 60 cuotas del ModalConvenio (29-ago: dejaron de ser
+  // 24 — ver los DOS TOPES allá). Si alguna vez ese tope subiera de 200, hay que subir este.
   for (let i = 0; i < 200 && fechaAISO(d) <= hoyIni; i++) {
     if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) n++;
     d = proximoDiaPago(contrato, d);

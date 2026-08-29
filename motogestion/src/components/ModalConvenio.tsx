@@ -70,14 +70,31 @@ const labelStyle: React.CSSProperties = {
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-// Tope de cuotas de un convenio. Nació en 12 el 28-jul-2026, y el dueño lo subió a 24 el
-// 1-ago-2026: los clientes MIGRADOS traen deudas de apertura altas, y con 12 cuotas la cuota
-// semanal quedaba impagable — el tope terminaba empujando a partir la deuda en varios convenios,
-// que es peor. Con 24 hay margen sin que deje de ser un plazo con final.
-// Sigue cumpliendo su otra función, que es la que de verdad ataja errores: es la red contra el
-// error de dedo de escribir el VALOR de la cuota en la casilla del NÚMERO de cuotas — pasó de
-// verdad (XZN20H: 60.000 en el número de cuotas → cuotas de $9 durante 60.000 semanas).
-const MAX_CUOTAS = 24;
+// DOS TOPES, no uno (decisión del dueño, 29-ago-2026). Antes había un solo número (24) haciendo
+// dos trabajos distintos, y por eso ninguno quedaba bien:
+//
+//   1) Atajar el ERROR DE DEDO de escribir el VALOR de la cuota en la casilla del NÚMERO de
+//      cuotas. Pasó de verdad: XZN20H, 60.000 en el número de cuotas → cuotas de $9 durante
+//      60.000 semanas, con fecha límite en el año 3176.
+//   2) La NORMA del negocio: un convenio que no se paga en ~24 cuotas ya es otra conversación.
+//
+// Con un solo número, subirlo (12 → 24 → …) debilitaba (2) sin mejorar (1) — contra un 60.000
+// dan igual 24 que 30. Y apretaba de verdad: JORGE (ZIB64G) debe $2.203.000, así que en 24
+// cuotas le tocaban $91.800 SOBRE su semana de $195.000 = $286.800 semanales. El propio código
+// ya advertía que el tope "termina empujando a partir la deuda en varios convenios, que es peor".
+//
+// Ahora: el tope DURO solo ataja el error de dedo (nadie hace 60 cuotas a propósito) y la NORMA
+// avisa sin bloquear, pidiendo confirmar a propósito y dejando rastro en el motivo.
+export const TOPE_DURO_CUOTAS = 60;
+export const CUOTAS_NORMALES = 24;
+
+/** Veredicto del número de cuotas. Función pura para poder protegerla con pruebas. */
+export type VeredictoCuotas = "ok" | "excede-lo-normal" | "error-de-dedo";
+export function veredictoCuotas(cuotas: number): VeredictoCuotas {
+  if (cuotas > TOPE_DURO_CUOTAS) return "error-de-dedo";
+  if (cuotas > CUOTAS_NORMALES) return "excede-lo-normal";
+  return "ok";
+}
 
 /**
  * Cómo se reparte un convenio en cuotas. **REGLA DEL DUEÑO, y es la que manda:**
@@ -145,6 +162,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [metaManual, setMetaManual] = useState("");
   const [metaCargada, setMetaCargada] = useState(false);
   const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
+  // Pasar de las 24 normales no se bloquea, pero hay que marcarlo a propósito (ver los DOS TOPES).
+  const [excepcionConfirmada, setExcepcionConfirmada] = useState(false);
   const [cuotasInput, setCuotasInput] = useState("");
   const [cuotaInput, setCuotaInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
@@ -347,17 +366,18 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
     if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
     if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
-    // Tope de cuotas (28-jul-2026, subido a 24 el 1-ago): un convenio que no se paga en 24 cuotas
-    // ya no es un convenio, es otra conversación (liquidación).
-    // Esto además ataja el error de dedo que sí pasó: en el convenio de XZN20H alguien escribió
-    // 60000 en la casilla del NÚMERO DE CUOTAS pensando que era el valor, y el sistema obedeció:
-    // $505.000 ÷ 60.000 = cuotas de $9 durante 60.000 semanas, con fecha límite en el año 3176.
-    if (cuotasCalc > MAX_CUOTAS) {
+    // TOPE DURO: esto no es un convenio largo, es un error de dedo (ver los DOS TOPES arriba).
+    if (cuotasCalc > TOPE_DURO_CUOTAS) {
       setError(
         modoFijar === "cuotas"
-          ? `${cuotasCalc} cuotas es demasiado (el máximo es ${MAX_CUOTAS}). ¿Escribiste ahí el VALOR de la cuota? Para eso usa el botón "Fijar por valor de cuota".`
-          : `Con una cuota de $${fmt(Number(cuotaInput))} saldrían ${cuotasCalc} cuotas, y el máximo es ${MAX_CUOTAS}. Sube el valor de la cuota.`,
+          ? `${fmt(cuotasCalc)} cuotas no es un plazo, es un error: el máximo es ${TOPE_DURO_CUOTAS}. ¿Escribiste ahí el VALOR de la cuota? Para eso usa el botón "Fijar por valor de cuota".`
+          : `Con una cuota de $${fmt(Number(cuotaInput))} saldrían ${fmt(cuotasCalc)} cuotas, y el máximo es ${TOPE_DURO_CUOTAS}. Sube el valor de la cuota.`,
       );
+      return;
+    }
+    // NORMA: pasar de 24 se permite, pero a propósito y con rastro.
+    if (cuotasCalc > CUOTAS_NORMALES && !excepcionConfirmada) {
+      setError(`Son ${cuotasCalc} cuotas y lo normal son ${CUOTAS_NORMALES}. Si es a propósito, marca la casilla de abajo para dejarlo por escrito.`);
       return;
     }
     if (!fechaLimite) { setError("Selecciona la fecha límite (la de la última cuota)."); return; }
@@ -419,7 +439,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       cuotas_pagadas: 0,
       fecha_limite: fechaLimite,
       estado: "activo",
-      concepto: motivo.trim(),
+      // Rastro de la excepción: queda DENTRO del motivo, que es lo que se imprime en el acuerdo
+      // y se ve en la ficha. Así nadie tiene que ir a buscar por qué este convenio salió largo.
+      concepto: cuotasCalc > CUOTAS_NORMALES
+        ? `${motivo.trim()} [Excepción: ${cuotasCalc} cuotas, más de las ${CUOTAS_NORMALES} normales]`
+        : motivo.trim(),
       // QUIÉN LO HIZO (no quién lo autorizó — aclaración del dueño): el funcionario que se sentó
       // con el cliente y armó el acuerdo. La columna se llama `aprobado_por` por historia, pero
       // lo que guarda es el autor. La ventana insertaba `null` porque no pasaba por el hook
@@ -673,12 +697,34 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
             {/* Aviso ANTES de intentar guardar: el error de handleGuardar solo aparece al tocar el
                 botón, y para entonces ya se escribió todo. */}
-            {cuotasCalc > MAX_CUOTAS && (
+            {cuotasCalc > TOPE_DURO_CUOTAS ? (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
-                ⛔ Son <strong>{fmt(cuotasCalc)} cuotas</strong> y el máximo es {MAX_CUOTAS}.
+                ⛔ Son <strong>{fmt(cuotasCalc)} cuotas</strong>. Eso no es un plazo, es un error de dedo.
                 {modoFijar === "cuotas"
                   ? <> ¿Querías escribir el <strong>valor</strong> de la cuota? Usa el botón “Fijar por valor de cuota”.</>
-                  : <> Sube el valor de la cuota para que quepan en {MAX_CUOTAS} o menos.</>}
+                  : <> Sube el valor de la cuota.</>}
+              </div>
+            ) : cuotasCalc > CUOTAS_NORMALES && (
+              /* NO bloquea: solo pide marcarlo a propósito. Un convenio con la cuota impagable es
+                 peor que uno largo — de 78 activos, 25 no tienen un solo abono. */
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", color: "var(--warn-ink)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>
+                  Este acuerdo es más largo de lo normal: {fmt(cuotasCalc)} cuotas.
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>
+                  Lo usual son hasta {CUOTAS_NORMALES}. Se puede hacer, pero conviene revisar si al
+                  cliente le sirve mejor una cuota más alta en menos tiempo. Si es a propósito,
+                  márcalo aquí y queda escrito en el acuerdo.
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 9, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={excepcionConfirmada}
+                    onChange={e => setExcepcionConfirmada(e.target.checked)}
+                    style={{ width: 18, height: 18, flexShrink: 0, cursor: "pointer" }}
+                  />
+                  Sí, este cliente necesita el plazo largo
+                </label>
               </div>
             )}
 

@@ -381,11 +381,12 @@ export function useContratos() {
     fecha_fin_contrato: "Fecha fin de contrato",
     dias_pago_mes: "Días de pago (mes)",
     cajas_exoneradas: "Períodos rodados al final",
+    fecha_inicio_cajas: "Arranque de cajas",
   };
 
   async function editarContrato(
     contratoActual: Contrato,
-    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "saldo_favor_apertura" | "fecha_fin_contrato" | "cajas_exoneradas">>,
+    cambios: Partial<Pick<Contrato, "forma_pago" | "dia_pago" | "dias_pago_mes" | "valor_semanal" | "tarifa_diaria" | "tarifa_domingo" | "ahorro_diario" | "ahorro_domingo" | "meses" | "ahorro_inicial" | "fecha_entrega" | "ahorro_acumulado" | "ahorro_apertura" | "saldo_favor_apertura" | "fecha_fin_contrato" | "cajas_exoneradas" | "fecha_inicio_cajas">>,
     editadoPor: string,
   ) {
     const camposModificados = (Object.keys(cambios) as (keyof typeof cambios)[]).filter(

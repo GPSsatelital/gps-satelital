@@ -3,7 +3,7 @@ import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn, fmtMoney } from "../styles/shared";
-import { valorPeriodoReal } from "../utils/cicloPago";
+import { valorPeriodoReal, DIAS_PAGO_NORMALES, moverAlDiaDeLaSemana } from "../utils/cicloPago";
 import MoneyInput from "./MoneyInput";
 
 interface Props {
@@ -106,6 +106,13 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
             saldo_favor_apertura: Number(saldoFavorApertura) || 0,
           } : {}),
           fecha_fin_contrato: esDiario ? null : (fechaFinContrato || null),
+          // Si cambió el DÍA de un semanal con motor, hay que mover con él el arranque de las
+          // cajas: el motor cuenta cada 7 días desde ahí y no mira el texto `dia_pago`. Sin esto
+          // la ficha diría "paga lunes" y el motor seguiría exigiendo los sábados. Se mueve dentro
+          // de la misma semana, así que no se le corre ni adelanta ninguna caja.
+          ...(!esDiario && !esCalendario && contrato.fecha_inicio_cajas && diaPago !== contrato.dia_pago
+            ? { fecha_inicio_cajas: moverAlDiaDeLaSemana(contrato.fecha_inicio_cajas, diaPago) }
+            : {}),
         },
         profile.id,
       );
@@ -147,10 +154,26 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           {formaPago === "Semanal" && (
             <div>
               <div style={labelStyle}>Día de pago</div>
+              {/* Antes esta lista SOLO tenía Lunes y Miércoles. Con un contrato guardado en
+                  "Sábado" (los migrados de RASTREADOR del 29-ago) el select no encontraba su
+                  valor: mostraba "Lunes" pero por dentro seguía en "Sábado", así que el día
+                  NO se podía cambiar y la ficha decía una cosa y esta ventana otra. */}
               <select style={inputStyle} value={diaPago} onChange={e => setDiaPago(e.target.value)}>
                 <option value="Lunes">Lunes</option>
                 <option value="Miércoles">Miércoles</option>
+                <option value="Martes">Martes</option>
+                <option value="Jueves">Jueves</option>
+                <option value="Viernes">Viernes</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
               </select>
+              {!DIAS_PAGO_NORMALES.has(diaPago) && (
+                <div style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "7px 10px" }}>
+                  <b>Verificar este día con el cliente.</b> Lo normal en la empresa es lunes o
+                  miércoles. Este contrato quedó en <b>{diaPago}</b> porque así venía en la
+                  planilla de migración, y ese dato no está confirmado.
+                </div>
+              )}
             </div>
           )}
           {(formaPago === "Quincenal" || formaPago === "Mensual") && (

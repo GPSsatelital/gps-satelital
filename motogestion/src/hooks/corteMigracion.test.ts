@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { corteMigracionGrupo, corteMigracionContrato, diasDesdeUltimoPago } from "./useContratos";
+import { moverAlDiaDeLaSemana, diaPagoPorConfirmar } from "../utils/cicloPago";
 
 // El defecto que estas pruebas cazan (29-ago-2026, caso VICTOR / ZHO35G):
 // el corte de migración se guardaba POR GRUPO, pero un grupo puede tener VARIAS tandas migradas
@@ -72,5 +73,57 @@ describe("diasDesdeUltimoPago — el defecto de VICTOR, con cifras reales", () =
 
   it("sin pagos y sin entrega no se puede saber", () => {
     expect(diasDesdeUltimoPago(null, null, "2026-07-01")).toBeNull();
+  });
+});
+
+// ── Cambiar el día de pago DEBE mover el arranque de cajas ──────────────────────────────────
+// El motor cuenta cada 7 días desde `fecha_inicio_cajas` y no mira el texto `dia_pago`. Cambiar
+// el día sin mover el arranque dejaba la ficha diciendo "paga lunes" y el motor exigiendo sábados.
+describe("moverAlDiaDeLaSemana — corregir el día no puede descuadrar el motor", () => {
+  it("VICTOR: sábado 29-ago pasado a lunes cae en el 24-ago, su MISMA semana", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-29", "Lunes")).toBe("2026-08-24");
+  });
+
+  it("no se corre de semana: jueves 3-sep a lunes da el 31-ago, no el 7-sep", () => {
+    expect(moverAlDiaDeLaSemana("2026-09-03", "Lunes")).toBe("2026-08-31");
+  });
+
+  it("hacia adelante dentro de la semana: lunes 24-ago a sábado da el 29-ago", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-24", "Sábado")).toBe("2026-08-29");
+  });
+
+  it("el domingo cierra la semana, no la abre: lunes 24-ago a domingo da el 30-ago", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-24", "Domingo")).toBe("2026-08-30");
+  });
+
+  it("acepta el día escrito sin tilde", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-24", "Sabado")).toBe("2026-08-29");
+    expect(moverAlDiaDeLaSemana("2026-08-29", "Miercoles")).toBe("2026-08-26");
+  });
+
+  it("mismo día = no se mueve", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-24", "Lunes")).toBe("2026-08-24");
+  });
+
+  it("un día que no existe deja la fecha intacta (nunca inventa un arranque)", () => {
+    expect(moverAlDiaDeLaSemana("2026-08-24", "Quincenal")).toBe("2026-08-24");
+  });
+});
+
+describe("diaPagoPorConfirmar — a cuáles hay que validarles el día", () => {
+  const base = { forma_pago: "Semanal" as const, valor_semanal: 195000, dias_pago_mes: null };
+  it("lunes y miércoles son los normales: no avisa", () => {
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Lunes" })).toBe(false);
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Miércoles" })).toBe(false);
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Miercoles" })).toBe(false);
+  });
+  it("sábado, jueves y viernes hay que confirmarlos", () => {
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Sábado" })).toBe(true);
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Jueves" })).toBe(true);
+    expect(diaPagoPorConfirmar({ ...base, dia_pago: "Viernes" })).toBe(true);
+  });
+  it("los diarios y los de fecha del mes no aplican", () => {
+    expect(diaPagoPorConfirmar({ ...base, forma_pago: "Diario", dia_pago: "Diario" })).toBe(false);
+    expect(diaPagoPorConfirmar({ ...base, forma_pago: "Quincenal", dia_pago: "Quincenal", dias_pago_mes: [5, 20] })).toBe(false);
   });
 });

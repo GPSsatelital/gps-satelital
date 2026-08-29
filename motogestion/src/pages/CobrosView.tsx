@@ -62,6 +62,7 @@ import {
   inicioPeriodoActual,
   proximoDiaPago,
   formatDiaPago,
+  diaPagoPorConfirmar,
   totalPagadoPeriodoActual,
   inicioVentanaPagosISO,
   valorPeriodoReal,
@@ -1845,6 +1846,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 Contrato {contratoDetalle.forma_pago ?? "semanal"} · Paga {formatDiaPago(contratoDetalle)}
                 {clienteDetalle?.direccion && ` · ${clienteDetalle.direccion}`}
               </div>
+              {/* Nota pedida por el dueño (29-ago): los días de los 7 migrados de RASTREADOR
+                  salieron de la planilla y al menos uno estaba mal (VICTOR figuraba sábado y es
+                  lunes). No se corrigen a ciegas: el funcionario los valida con el cliente y los
+                  arregla desde "Editar contrato". Esta nota le dice cuáles revisar. */}
+              {diaPagoPorConfirmar(contratoDetalle) && (
+                <div style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "7px 10px" }}>
+                  <b>Confirmar el día de pago con el cliente.</b> Dice <b>{formatDiaPago(contratoDetalle)}</b>,
+                  pero lo normal aquí es lunes o miércoles y ese dato vino de la planilla sin confirmar.
+                  Si no es el correcto, cámbialo en <b>Editar contrato</b>.
+                </div>
+              )}
               {/* Quién responde por esta moto. El grupo ya va bajo la placa. */}
               {motoDetalle && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>

@@ -104,6 +104,40 @@ export function formatDiaPago(contrato: ContratoCiclo): string {
   return contrato.dia_pago;
 }
 
+// Los días en que la empresa cobra normalmente. El motor soporta cualquier día (cuenta cada 7
+// desde `fecha_inicio_cajas`, nunca mira este texto), pero la regla del negocio es lunes o
+// miércoles — así que un día distinto casi siempre significa un dato sin confirmar.
+export const DIAS_PAGO_NORMALES = new Set(["Lunes", "Miércoles", "Miercoles"]);
+
+// ¿El día de pago de este contrato hay que confirmarlo con el cliente?
+// Nace de los 7 migrados de RASTREADOR (29-ago): sus días salieron de la planilla y al menos uno
+// estaba mal (VICTOR figuraba sábado y en realidad es lunes). El funcionario los corrige a medida
+// que los va viendo, así que la pantalla tiene que avisarle cuáles revisar.
+export function diaPagoPorConfirmar(contrato: ContratoCiclo): boolean {
+  if (contrato.forma_pago === "Diario" || esCalendario(contrato)) return false;
+  return !DIAS_PAGO_NORMALES.has(contrato.dia_pago);
+}
+
+// Mueve una fecha al día de la semana pedido, DENTRO de su misma semana (de lunes a domingo).
+//
+// Para qué: el motor cuenta las cajas cada 7 días desde `fecha_inicio_cajas` y NUNCA mira el texto
+// `dia_pago`. Así que cambiar el día en la ficha sin mover el arranque deja la pantalla diciendo
+// "paga lunes" mientras el motor sigue exigiendo los sábados — la trampa de "una cosa dice la
+// pantalla y otra el motor" que ya costó caro antes.
+//
+// Se mueve dentro de la MISMA semana a propósito: así no se le corre ni se le adelanta ninguna
+// caja, solo se corrige el día. VICTOR (arranque sábado 29-ago) pasado a lunes → 24-ago, y las
+// cajas exigidas hoy siguen siendo las mismas.
+export function moverAlDiaDeLaSemana(fechaISO: string, diaPago: string): string {
+  const target = DIAS_SEMANA[diaPago];
+  if (target === undefined) return fechaISO;
+  const d = new Date(fechaISO + "T00:00:00");
+  const offsetActual = (d.getDay() + 6) % 7; // lunes = 0 … domingo = 6
+  const offsetNuevo = (target + 6) % 7;
+  d.setDate(d.getDate() + (offsetNuevo - offsetActual));
+  return fechaAISO(d);
+}
+
 // Fecha ISO desde la cual cuentan los pagos del período actual: el último día de
 // pago del contrato, menos 1 día de gracia para el prepago de víspera (el cliente
 // que paga el martes en la noche su cuota del miércoles).

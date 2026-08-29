@@ -21,6 +21,97 @@ export type DeudaReparto = {
   esMulta?: boolean;
 };
 
+/**
+ * Cuántas cuotas del convenio están EXIGIDAS a una fecha — el freno que le faltaba al motor.
+ *
+ * Se ancla a `fecha_inicio_cajas` + múltiplos del período, EL MISMO RELOJ que usa
+ * `cajas_exigidas`. Es a propósito: si el convenio contara sus períodos por su lado, podría
+ * decir "te exijo 3 cuotas" mientras las cajas dicen "te exijo 2 semanas", y el paquete dejaría
+ * de ir parejo — que es justo lo que la regla del dueño prohíbe.
+ *
+ * Qué NO cuenta (mismas reglas que `cuotaConvenioDelPeriodo` en cicloPago):
+ *   · los períodos anteriores a la firma del convenio;
+ *   · los que el convenio ya cubre por dentro (`cubre_periodo_hasta`: semanas financiadas);
+ *   · el período del prorrateo — regla del dueño 12-ago: el convenio arranca el siguiente
+ *     período completo, no el día en que solo se cobran los días que rodó;
+ *   · los rodados por moto guardada (`periodos_exonerados`, mig 118): no se perdonan, se
+ *     corren al final, así que se restan ANTES del tope de `deuda_total`.
+ */
+export function cuotasConvenioExigidas(
+  convenio: {
+    cuotaPorPeriodo: number;
+    deudaTotal: number;
+    creadoISO: string;
+    cubrePeriodoHastaISO?: string | null;
+    periodosExonerados?: number | null;
+  },
+  contrato: {
+    fechaInicioCajasISO: string;
+    diasDelPeriodo: number;      // 7 semanal · 15 quincenal · 30 mensual
+    prorrateoTotal?: number;
+  },
+  hoyISO: string,
+): { periodos: number; exigido: number } {
+  const vacio = { periodos: 0, exigido: 0 };
+  if (convenio.cuotaPorPeriodo <= 0 || !contrato.fechaInicioCajasISO) return vacio;
+  const dias = contrato.diasDelPeriodo > 0 ? contrato.diasDelPeriodo : 7;
+  const DIA = 86_400_000;
+  const inicioCajas = Date.parse(contrato.fechaInicioCajasISO + "T00:00:00Z");
+  const hoy = Date.parse(hoyISO + "T00:00:00Z");
+  if (Number.isNaN(inicioCajas) || Number.isNaN(hoy) || hoy < inicioCajas) return vacio;
+
+  /** Inicio del período que contiene esa fecha, sobre el reloj de las cajas. */
+  const inicioDe = (t: number) =>
+    inicioCajas + Math.floor((t - inicioCajas) / DIA / dias) * dias * DIA;
+
+  // Desde cuándo empieza a correr: el primer período que sí paga cuota.
+  let desde = Date.parse(convenio.creadoISO.slice(0, 10) + "T00:00:00Z");
+  if (convenio.cubrePeriodoHastaISO) {
+    const cubre = Date.parse(convenio.cubrePeriodoHastaISO.slice(0, 10) + "T00:00:00Z");
+    if (!Number.isNaN(cubre) && cubre > desde) desde = cubre;
+  }
+  // Durante el prorrateo el convenio no corre: arranca el período siguiente.
+  if ((contrato.prorrateoTotal ?? 0) > 0) {
+    const trasProrrateo = inicioCajas + dias * DIA;
+    if (trasProrrateo > desde) desde = trasProrrateo;
+  }
+  if (desde < inicioCajas) desde = inicioCajas;
+  // Redondear al primer inicio de período que sea >= `desde`.
+  let primero = inicioDe(desde);
+  if (primero < desde) primero += dias * DIA;
+
+  const actual = inicioDe(hoy);
+  let periodos = actual < primero ? 0 : Math.floor((actual - primero) / DIA / dias) + 1;
+  periodos = Math.max(periodos - (convenio.periodosExonerados ?? 0), 0);
+  return { periodos, exigido: Math.min(periodos * convenio.cuotaPorPeriodo, convenio.deudaTotal) };
+}
+
+/**
+ * Días de gracia para el PREPAGO: cuántos días antes de su día de pago se acepta que el cliente
+ * pague el período que arranca.
+ *
+ * Por qué existe (decisión del dueño, 29-ago-2026 — caso DANIEL MILLÁN, RLT87H): él paga los
+ * lunes y pagó el SÁBADO sus $230.000 de siempre. Para el motor, ese sábado no había ninguna
+ * semana exigida (la del lunes anterior ya estaba paga), así que el dinero cayó al convenio y el
+ * lunes DANIEL aparecía debiendo su semana, habiendo pagado dos días antes.
+ *
+ * No es un adelanto: es pagar a tiempo, un poco antes. Con la ventana, su pago del sábado llena
+ * la caja del lunes y el paquete se reparte parejo solo.
+ *
+ * NO rompe la regla de "el excedente no llena cajas futuras": esa caja ya no es futura, está
+ * dentro de la ventana de cobro. Lo que sobre DESPUÉS sigue yendo a saldo a favor, para aplicarse
+ * a mano — como manda la regla del 12-ago.
+ */
+export const DIAS_GRACIA_PREPAGO = 3;
+
+/** La fecha con la que hay que preguntarle a `cajas_exigidas` por un pago de esta fecha. */
+export function fechaConGraciaPrepago(fechaPagoISO: string): string {
+  const d = new Date(fechaPagoISO + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return fechaPagoISO;
+  d.setUTCDate(d.getUTCDate() + DIAS_GRACIA_PREPAGO);
+  return d.toISOString().slice(0, 10);
+}
+
 export type EntradaReparto = {
   monto: number;
   /** 'adelanto_base' no paga prorrateo y puede llenar su caja aunque no esté exigida. */
@@ -41,6 +132,10 @@ export type EntradaReparto = {
   deudas?: DeudaReparto[];
   /** Saldo que le falta al convenio: `deuda_total − abonado_total`. */
   convenioPendiente?: number;
+  /** Lo que el convenio tiene EXIGIDO a la fecha del pago (de `cuotasConvenioExigidas`). */
+  convenioExigido?: number;
+  /** Lo que ya se le abonó al convenio ANTES de este pago. */
+  convenioAbonado?: number;
 };
 
 export type ResultadoReparto = {
@@ -124,20 +219,27 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     monto -= delta;
   }
 
-  // 4) Convenio activo.
-  // 🔴 HOY NO TIENE TOPE: recibe hasta TODO su saldo pendiente, no solo las cuotas exigidas.
-  // Las cajas sí tienen freno (arriba), el convenio no — por eso a un cliente que paga su
-  // paquete ANTES de su día de pago se le va todo al convenio y su semana queda descubierta.
-  // Caso real DANIEL MILLÁN (RLT87H, 29-ago-2026): paga los lunes, pagó el sábado $230.000,
-  // y el motor mandó los $230.000 completos al convenio (7 cuotas de golpe) dejándole la
-  // semana del lunes sin cubrir. Está fijado en las pruebas para que el cambio se vea.
-  if (monto > 0) {
-    const pendConv = Math.max(e.convenioPendiente ?? 0, 0);
-    r.convenio = Math.min(monto, pendConv);
+  // 4) Convenio activo — TOPADO A LO EXIGIDO (el freno que faltaba).
+  //
+  // Antes recibía hasta TODO su saldo pendiente. Las cajas tenían freno y el convenio no, así
+  // que a quien pagaba su paquete ANTES de su día de pago se le iba todo al convenio y la
+  // semana quedaba descubierta. Caso real DANIEL MILLÁN (RLT87H, 29-ago-2026): paga los lunes,
+  // pagó el sábado $230.000 y el motor los mandó completos al convenio — 7 cuotas de golpe —
+  // dejándolo apareciendo en mora el lunes, habiendo pagado dos días antes.
+  //
+  // Ponerse al día NO es adelanto: si trae cuotas atrasadas acumuladas, las cubre todas. El
+  // tope es `exigido − ya abonado`, no "una cuota".
+  const pendConv = Math.max(e.convenioPendiente ?? 0, 0);
+  if (monto > 0 && pendConv > 0) {
+    const puedeRecibir = Math.max(
+      Math.min((e.convenioExigido ?? 0) - (e.convenioAbonado ?? 0), pendConv),
+      0,
+    );
+    r.convenio = Math.min(monto, puedeRecibir);
     monto -= r.convenio;
   }
 
-  // 5) Lo que sobre queda a favor del cliente (se aplica a mano).
+  // 5) Lo que sobre queda a favor del cliente (se aplica a mano — regla del dueño, 12-ago).
   r.saldo = monto;
   return r;
 }

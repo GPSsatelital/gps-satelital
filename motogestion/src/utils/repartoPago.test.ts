@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { repartirPagoV2 } from "./repartoPago";
+import { repartirPagoV2, fechaConGraciaPrepago } from "./repartoPago";
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // PASO 1 DEL TOPE DEL PAQUETE: la FOTOGRAFÍA de cómo reparte el motor HOY.
@@ -34,6 +34,8 @@ function daniel(over: Partial<Parameters<typeof repartirPagoV2>[0]> = {}) {
     totalCajas: 104,
     cajasExigidas: 57,          // le toca la semana en curso
     convenioPendiente: 411_000, // lo que le falta al convenio
+    convenioExigido: 105_000,   // 3 cuotas exigidas al 29-ago (verificado contra producción)
+    convenioAbonado: 70_000,    // 2 cuotas ya abonadas → puede recibir 1 más
     ...over,
   };
 }
@@ -124,60 +126,105 @@ describe("el freno de las cajas — este YA existe y debe seguir igual", () => {
   });
 });
 
-describe("🔴 EL DEFECTO — el convenio no tiene freno (esto es lo que cambia en el paso 2)", () => {
-  it("🔴 DANIEL, sábado 29-ago: pagó su PAQUETE y se fue COMPLETO al convenio", () => {
-    // Paga los lunes. El sábado no hay caja exigida (la del lunes 24 ya está paga), así que el
-    // motor manda los $230.000 enteros al convenio: 6 cuotas y media de un solo golpe, y el
-    // lunes 31 aparece debiendo su semana habiendo pagado dos días antes.
-    const r = repartirPagoV2(daniel({ monto: PAQUETE, cajasExigidas: 56 }));
-    expect(r.tarifa).toBe(0);
-    expect(r.convenio).toBe(230_000);
-    expect(r.ahorro).toBe(0);       // no ahorra nada, aunque pagó su semana completa
-    // Lo que DEBERÍA pasar tras el paso 2:  tarifa 195.000 · convenio 35.000 · ahorro 26.000
-  });
-
-  it("🔴 el saldo a favor aplicado cae en la misma trampa", () => {
-    // El mismo día se le aplicaron $17.000 de saldo a favor: también se fueron al convenio.
-    const r = repartirPagoV2(daniel({ monto: 17_000, cajasExigidas: 56 }));
-    expect(r.convenio).toBe(17_000);
-  });
-
-  it("🔴 pagar DOBLE no adelanta el paquete siguiente: se traga el convenio", () => {
-    // $460.000 = dos paquetes. Debería quedar con dos semanas y dos cuotas cubiertas.
-    const r = repartirPagoV2(daniel({ monto: 2 * PAQUETE, cajasExigidas: 57 }));
-    expect(r.tarifa).toBe(195_000);   // solo la exigida
-    expect(r.convenio).toBe(265_000); // el resto entero al convenio ← el defecto
+describe("✅ EL FRENO — el convenio solo recibe lo EXIGIDO, nunca se lo traga todo", () => {
+  it("DANIEL, sábado 29-ago: con la ventana de prepago su paquete se reparte PAREJO", () => {
+    // Antes: los $230.000 completos al convenio (6 cuotas y media de golpe), y el lunes 31
+    // aparecía debiendo su semana habiendo pagado dos días antes.
+    // Ahora: la ventana de gracia hace que el sábado cuente la caja del lunes (cajasExigidas 57),
+    // y el freno impide que el convenio tome más de lo exigido.
+    const r = repartirPagoV2(daniel({
+      monto: PAQUETE,
+      cajasExigidas: 57,                                   // con los 3 días de gracia
+      convenioExigido: 140_000, convenioAbonado: 105_000,  // le falta 1 cuota
+    }));
+    expect(r.tarifa).toBe(195_000);
+    expect(r.convenio).toBe(35_000);
+    expect(r.ahorro).toBe(26_000);   // el ahorro que antes perdía
     expect(r.saldo).toBe(0);
-    // Tras el paso 2:  tarifa 390.000 · convenio 70.000 (dos paquetes completos)
   });
 
-  it("🔴 el convenio se traga hasta su saldo COMPLETO si el pago alcanza", () => {
-    const r = repartirPagoV2(daniel({ monto: 700_000, cajasExigidas: 57, convenioPendiente: 411_000 }));
-    expect(r.convenio).toBe(411_000);  // el convenio entero de un pago
-    expect(r.saldo).toBe(94_000);
+  it("el convenio YA NO se traga su saldo completo aunque el pago alcance", () => {
+    const r = repartirPagoV2(daniel({
+      monto: 700_000, cajasExigidas: 57, convenioPendiente: 411_000,
+      convenioExigido: 105_000, convenioAbonado: 70_000,
+    }));
+    expect(r.tarifa).toBe(195_000);
+    expect(r.convenio).toBe(35_000);   // solo la cuota que le faltaba, no los $411.000
+    expect(r.saldo).toBe(470_000);     // el resto queda a favor, para aplicarlo a mano
   });
 
-  it("ponerse al día en el convenio SÍ es correcto y debe seguir funcionando", () => {
-    // Le deben 3 cuotas atrasadas: cubrirlas NO es adelantar (regla del dueño, 24-ago).
-    const r = repartirPagoV2(daniel({ monto: 195_000 + 3 * CUOTA_CONV, cajasExigidas: 57 }));
+  it("ponerse al día en el convenio SÍ se puede — no es adelanto (regla del dueño, 24-ago)", () => {
+    // Le deben 3 cuotas y no ha abonado ninguna: las cubre todas de una.
+    const r = repartirPagoV2(daniel({
+      monto: 195_000 + 3 * CUOTA_CONV, cajasExigidas: 57,
+      convenioExigido: 105_000, convenioAbonado: 0,
+    }));
     expect(r.tarifa).toBe(195_000);
     expect(r.convenio).toBe(105_000);
+    expect(r.saldo).toBe(0);
+  });
+
+  it("con el convenio al día, lo que sobra NO se le mete: queda a favor", () => {
+    const r = repartirPagoV2(daniel({
+      monto: 500_000, cajasExigidas: 57,
+      convenioExigido: 105_000, convenioAbonado: 105_000,   // ya está al día
+    }));
+    expect(r.tarifa).toBe(195_000);
+    expect(r.convenio).toBe(0);
+    expect(r.saldo).toBe(305_000);
+  });
+
+  it("el saldo a favor aplicado ya no se lo traga el convenio", () => {
+    const r = repartirPagoV2(daniel({
+      monto: 17_000, cajasExigidas: 57, convenioExigido: 105_000, convenioAbonado: 105_000,
+    }));
+    expect(r.convenio).toBe(0);
+    expect(r.tarifa).toBe(17_000);   // abona a su semana, que es lo que el cliente espera
+  });
+
+  it("sin convenio no cambia nada: semana y después deuda", () => {
+    const r = repartirPagoV2(daniel({
+      monto: 300_000, cajasExigidas: 57, convenioPendiente: 0, convenioExigido: 0,
+      deudas: [{ montoPendiente: 80_000 }],
+    }));
+    expect(r.tarifa).toBe(195_000);
+    expect(r.deuda).toBe(80_000);
+    expect(r.saldo).toBe(25_000);
   });
 });
 
-describe("DANIEL, sus pagos reales de agosto — así los repartió el motor", () => {
+describe("la ventana de prepago — pagar unos días antes es pagar a tiempo", () => {
+  it("suma los 3 días de gracia a la fecha del pago", () => {
+    expect(fechaConGraciaPrepago("2026-08-29")).toBe("2026-09-01");  // sábado → cubre el lunes
+    expect(fechaConGraciaPrepago("2026-08-31")).toBe("2026-09-03");
+  });
+
+  it("cubre el caso de DANIEL: sábado 29 alcanza su lunes 31", () => {
+    expect(fechaConGraciaPrepago("2026-08-29") >= "2026-08-31").toBe(true);
+  });
+
+  it("NO alcanza a la semana subsiguiente: no adelanta de más", () => {
+    expect(fechaConGraciaPrepago("2026-08-29") < "2026-09-07").toBe(true);
+  });
+
+  it("una fecha rara no revienta", () => {
+    expect(fechaConGraciaPrepago("no-es-fecha")).toBe("no-es-fecha");
+  });
+});
+
+describe("DANIEL, sus pagos reales de agosto — el reparto correcto", () => {
   it("8, 15 y 24-ago (lunes, su día): el paquete se repartió PAREJO", () => {
-    // Estos tres están bien: pagó su día, había caja exigida, y salió 195.000 + 35.000.
-    const r = repartirPagoV2(daniel({ monto: PAQUETE, cajasExigidas: 57 }));
+    const r = repartirPagoV2(daniel({
+      monto: PAQUETE, cajasExigidas: 57, convenioExigido: 140_000, convenioAbonado: 105_000,
+    }));
     expect(r).toMatchObject({ tarifa: 195_000, convenio: 35_000, ahorro: 26_000, saldo: 0 });
   });
 
   it("1-ago ($169.000): a deuda y el resto a favor — ese día AÚN NO existía el convenio", () => {
     // Su convenio se creó ese mismo 1-ago a las 19:22 y este pago entró a las 14:41. Sin convenio
-    // vivo, los $17.000 que sobraron quedaron a su favor. Con convenio se los habría tragado —
-    // que es justamente el defecto: dos horas de diferencia cambian a dónde va la plata.
+    // vivo los $17.000 quedaron a su favor; con convenio y SIN freno se los habría tragado.
     const r = repartirPagoV2(daniel({
-      monto: 169_000, cajasExigidas: 56, convenioPendiente: 0,
+      monto: 169_000, cajasExigidas: 56, convenioPendiente: 0, convenioExigido: 0,
       deudas: [{ montoPendiente: 152_000 }],
     }));
     expect(r.deuda).toBe(152_000);

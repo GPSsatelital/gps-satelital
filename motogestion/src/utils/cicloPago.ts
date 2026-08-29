@@ -138,6 +138,25 @@ export function moverAlDiaDeLaSemana(fechaISO: string, diaPago: string): string 
   return fechaAISO(d);
 }
 
+// 🔴 CANDADO DEL DUEÑO (29-ago): mover el arranque de cajas SOLO se permite en un contrato que
+// acaba de migrarse y todavía no ha cobrado nada. A un cliente que lleva meses pagando NUNCA se le
+// mueve: le correría TODAS sus cajas futuras y le descuadraría el conteo. Palabras suyas: "no vaya
+// a ser que por algún motivo cambien el día de pago —cosa que no debería pasar, pero por si pasa—
+// y se vaya a rodar también el cuándo inició la caja".
+//
+// La ventana es objetiva, sin placas escritas a mano: el arranque tiene que caer en la semana
+// EN CURSO o en la SIGUIENTE. Los 7 recién migrados arrancan entre el 24-ago y el 5-sep (dentro);
+// los 28 RASTREADOR viejos (6-jul), COSTA (27-jul) y PRADERA (1-jul) quedan fuera y no se tocan.
+// Al pasar esa ventana el contrato ya arrancó a cobrar de verdad y su arranque queda sellado.
+export function puedeMoverArranqueCajas(fechaInicioCajas: string | null | undefined, hoy: Date): boolean {
+  if (!fechaInicioCajas) return false;
+  const lunesDeEstaSemana = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  lunesDeEstaSemana.setDate(lunesDeEstaSemana.getDate() - ((hoy.getDay() + 6) % 7));
+  const domingoDeLaSiguiente = new Date(lunesDeEstaSemana);
+  domingoDeLaSiguiente.setDate(domingoDeLaSiguiente.getDate() + 13);
+  return fechaInicioCajas >= fechaAISO(lunesDeEstaSemana) && fechaInicioCajas <= fechaAISO(domingoDeLaSiguiente);
+}
+
 // Fecha ISO desde la cual cuentan los pagos del período actual: el último día de
 // pago del contrato, menos 1 día de gracia para el prepago de víspera (el cliente
 // que paga el martes en la noche su cuota del miércoles).

@@ -3,7 +3,7 @@ import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { useContratos, calcularFechaFinContrato } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn, fmtMoney } from "../styles/shared";
-import { valorPeriodoReal, DIAS_PAGO_NORMALES, moverAlDiaDeLaSemana } from "../utils/cicloPago";
+import { valorPeriodoReal, DIAS_PAGO_NORMALES, moverAlDiaDeLaSemana, puedeMoverArranqueCajas } from "../utils/cicloPago";
 import MoneyInput from "./MoneyInput";
 
 interface Props {
@@ -57,6 +57,12 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
   const [cargandoAuditoria, setCargandoAuditoria] = useState(true);
 
   const esCalendario = formaPago === "Quincenal" || formaPago === "Mensual";
+  // ¿Se le puede corregir el día? Solo mientras el contrato esté en su ventana de migración
+  // (arranque en la semana en curso o la siguiente). Después queda sellado — ver el candado
+  // `puedeMoverArranqueCajas`, pedido por el dueño para no dañar a los que ya están cobrando.
+  const arranqueMovible = puedeMoverArranqueCajas(contrato.fecha_inicio_cajas, new Date());
+  const cambioDeDia = formaPago === "Semanal" && diaPago !== contrato.dia_pago;
+  const diaSellado = !!contrato.fecha_inicio_cajas && !arranqueMovible;
   const totalPeriodoPreview = useMemo(() => valorPeriodoReal({
     forma_pago: formaPago,
     dia_pago: diaPago,
@@ -86,6 +92,16 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
       const esDiario = formaPago === "Diario";
       if (formaPago === "Quincenal" && diasPagoMes.length !== 2) { setError("Elige las 2 fechas del mes en que paga."); return; }
       if (formaPago === "Mensual" && diasPagoMes.length !== 1) { setError("Elige la fecha del mes en que paga."); return; }
+      // Cambiar el día a un contrato que ya lleva tiempo cobrando descuadraría todas sus cajas:
+      // el motor las cuenta desde `fecha_inicio_cajas`, que en ese caso NO se puede mover.
+      // Se bloquea en vez de guardar a medias — si no, la ficha diría un día y el cobro caería otro.
+      if (cambioDeDia && contrato.fecha_inicio_cajas && !arranqueMovible) {
+        setError(
+          `Este contrato ya viene cobrando desde el ${contrato.fecha_inicio_cajas}, así que su día no se puede cambiar aquí: ` +
+          `se le correrían todas las cajas. El cambio de día solo se permite recién migrado el contrato.`
+        );
+        return;
+      }
       const { error: err } = await editarContrato(
         contrato,
         {
@@ -110,8 +126,9 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
           // cajas: el motor cuenta cada 7 días desde ahí y no mira el texto `dia_pago`. Sin esto
           // la ficha diría "paga lunes" y el motor seguiría exigiendo los sábados. Se mueve dentro
           // de la misma semana, así que no se le corre ni adelanta ninguna caja.
-          ...(!esDiario && !esCalendario && contrato.fecha_inicio_cajas && diaPago !== contrato.dia_pago
-            ? { fecha_inicio_cajas: moverAlDiaDeLaSemana(contrato.fecha_inicio_cajas, diaPago) }
+          // El candado `puedeMoverArranqueCajas` deja fuera a los que ya llevan meses cobrando.
+          ...(cambioDeDia && arranqueMovible
+            ? { fecha_inicio_cajas: moverAlDiaDeLaSemana(contrato.fecha_inicio_cajas!, diaPago) }
             : {}),
         },
         profile.id,
@@ -158,7 +175,12 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
                   "Sábado" (los migrados de RASTREADOR del 29-ago) el select no encontraba su
                   valor: mostraba "Lunes" pero por dentro seguía en "Sábado", así que el día
                   NO se podía cambiar y la ficha decía una cosa y esta ventana otra. */}
-              <select style={inputStyle} value={diaPago} onChange={e => setDiaPago(e.target.value)}>
+              <select
+                style={{ ...inputStyle, ...(diaSellado ? { opacity: 0.6, cursor: "not-allowed" } : {}) }}
+                value={diaPago}
+                disabled={diaSellado}
+                onChange={e => setDiaPago(e.target.value)}
+              >
                 <option value="Lunes">Lunes</option>
                 <option value="Miércoles">Miércoles</option>
                 <option value="Martes">Martes</option>
@@ -167,11 +189,18 @@ export default function ModalEditarContrato({ contrato, clienteNombre, onClose }
                 <option value="Sábado">Sábado</option>
                 <option value="Domingo">Domingo</option>
               </select>
-              {!DIAS_PAGO_NORMALES.has(diaPago) && (
+              {diaSellado ? (
+                <div style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45, color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 10, padding: "7px 10px" }}>
+                  <b>El día ya no se puede cambiar aquí.</b> Este contrato viene cobrando desde el{" "}
+                  <b>{contrato.fecha_inicio_cajas}</b>: moverle el día ahora le correría todas las
+                  cajas. Solo se puede corregir mientras el contrato está recién migrado.
+                </div>
+              ) : !DIAS_PAGO_NORMALES.has(diaPago) && (
                 <div style={{ marginTop: 6, fontSize: 11.5, lineHeight: 1.45, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "7px 10px" }}>
                   <b>Verificar este día con el cliente.</b> Lo normal en la empresa es lunes o
                   miércoles. Este contrato quedó en <b>{diaPago}</b> porque así venía en la
-                  planilla de migración, y ese dato no está confirmado.
+                  planilla de migración, y ese dato no está confirmado. Al cambiarlo se le corrige
+                  también el día en que el sistema le cobra.
                 </div>
               )}
             </div>

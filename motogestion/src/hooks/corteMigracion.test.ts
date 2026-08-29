@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { corteMigracionGrupo, corteMigracionContrato, diasDesdeUltimoPago } from "./useContratos";
-import { moverAlDiaDeLaSemana, diaPagoPorConfirmar } from "../utils/cicloPago";
+import { moverAlDiaDeLaSemana, diaPagoPorConfirmar, puedeMoverArranqueCajas } from "../utils/cicloPago";
 
 // El defecto que estas pruebas cazan (29-ago-2026, caso VICTOR / ZHO35G):
 // el corte de migración se guardaba POR GRUPO, pero un grupo puede tener VARIAS tandas migradas
@@ -125,5 +125,54 @@ describe("diaPagoPorConfirmar — a cuáles hay que validarles el día", () => {
   it("los diarios y los de fecha del mes no aplican", () => {
     expect(diaPagoPorConfirmar({ ...base, forma_pago: "Diario", dia_pago: "Diario" })).toBe(false);
     expect(diaPagoPorConfirmar({ ...base, forma_pago: "Quincenal", dia_pago: "Quincenal", dias_pago_mes: [5, 20] })).toBe(false);
+  });
+});
+
+// ── 🔴 EL CANDADO: a los que ya están cobrando NO se les mueve el arranque ──────────────────
+// Pedido del dueño (29-ago): "no vaya a ser que por algún motivo cambien el día de pago —cosa que
+// no debería pasar, pero por si pasa— y se vaya a rodar también el cuándo inició la caja. Esto
+// solo aplicaría para estos 7". Mover el arranque de un contrato que lleva meses le correría
+// TODAS sus cajas futuras. La ventana permitida: semana en curso o la siguiente.
+describe("puedeMoverArranqueCajas — protege a los ~370 que ya vienen cobrando", () => {
+  const hoy = new Date("2026-08-29T12:00:00"); // sábado, semana del 24-ago
+
+  it("los 7 recién migrados SÍ se pueden corregir", () => {
+    expect(puedeMoverArranqueCajas("2026-08-29", hoy)).toBe(true); // VICTOR, esta semana
+    expect(puedeMoverArranqueCajas("2026-08-24", hoy)).toBe(true); // lunes de esta semana
+    expect(puedeMoverArranqueCajas("2026-08-31", hoy)).toBe(true); // JHON y CESAR
+    expect(puedeMoverArranqueCajas("2026-09-03", hoy)).toBe(true); // JORGE
+    expect(puedeMoverArranqueCajas("2026-09-05", hoy)).toBe(true); // JAIRO y RAMON
+  });
+
+  it("los que YA venían cobrando quedan sellados", () => {
+    expect(puedeMoverArranqueCajas("2026-07-06", hoy)).toBe(false); // 28 RASTREADOR viejos
+    expect(puedeMoverArranqueCajas("2026-07-27", hoy)).toBe(false); // los 180 de COSTA
+    expect(puedeMoverArranqueCajas("2026-07-01", hoy)).toBe(false); // PRADERA
+    expect(puedeMoverArranqueCajas("2026-08-23", hoy)).toBe(false); // el domingo ANTERIOR: fuera
+  });
+
+  it("tampoco se puede mover algo que arranca más allá de la semana que entra", () => {
+    expect(puedeMoverArranqueCajas("2026-09-06", hoy)).toBe(true);  // domingo de la siguiente: último día
+    expect(puedeMoverArranqueCajas("2026-09-07", hoy)).toBe(false); // ya es la subsiguiente
+    expect(puedeMoverArranqueCajas("2026-12-01", hoy)).toBe(false);
+  });
+
+  it("sin arranque de cajas no hay nada que mover", () => {
+    expect(puedeMoverArranqueCajas(null, hoy)).toBe(false);
+    expect(puedeMoverArranqueCajas(undefined, hoy)).toBe(false);
+  });
+
+  it("la ventana se mueve con el calendario: pasado el plazo, los 7 también quedan sellados", () => {
+    const dosSemanasDespues = new Date("2026-09-12T12:00:00"); // sábado, semana del 7-sep
+    expect(puedeMoverArranqueCajas("2026-08-29", dosSemanasDespues)).toBe(false); // VICTOR, ya sellado
+    expect(puedeMoverArranqueCajas("2026-09-05", dosSemanasDespues)).toBe(false); // JAIRO y RAMON, sellados
+    // Lo único abierto para entonces sería algo que arranque en esas dos semanas.
+    expect(puedeMoverArranqueCajas("2026-09-14", dosSemanasDespues)).toBe(true);
+  });
+
+  it("un lunes también cuenta su propia semana como la actual", () => {
+    const lunes = new Date("2026-08-31T09:00:00");
+    expect(puedeMoverArranqueCajas("2026-08-31", lunes)).toBe(true);
+    expect(puedeMoverArranqueCajas("2026-08-30", lunes)).toBe(false); // domingo anterior: fuera
   });
 });

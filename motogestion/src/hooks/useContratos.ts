@@ -135,6 +135,22 @@ export function corteMigracionGrupo(grupo?: string | null): string {
   return (grupo && CORTE_POR_GRUPO[grupo]) || FECHA_CORTE_MIGRACION;
 }
 
+// El corte REAL de un contrato migrado es su propio arranque de cajas, no el de su grupo.
+// Por qué: un grupo puede tener VARIAS tandas migradas en fechas distintas. RASTREADOR ya tiene
+// dos (28 el 6-jul y 7 el 29-ago). Con el corte del grupo, a VICTOR (ZHO35G, sembrado hoy y sin
+// pagos aún) el sistema le contaba desde el 6-jul = "54 días sin pagar" → Paso 4 Recolección,
+// cuando apenas le toca pagar HOY. Es el mismo defecto que sufrió COSTA con el corte del 1-jul.
+// `fecha_inicio_cajas` es exactamente la fecha desde la que se le empieza a exigir, así que es
+// el corte correcto. Para PRADERA/COSTA/RASTREADOR-viejos no cambia nada: su arranque se calculó
+// justamente a partir del corte de su grupo.
+export function corteMigracionContrato(
+  c: Pick<Contrato, "es_migrado" | "fecha_inicio_cajas">,
+  grupo?: string | null,
+): string {
+  if (c.es_migrado && c.fecha_inicio_cajas) return c.fecha_inicio_cajas;
+  return corteMigracionGrupo(grupo);
+}
+
 // ¿Este contrato migrado sigue pendiente de empalme? (badge ⚠️ y panel en Cartera)
 export function empalmePendiente(c: Pick<Contrato, "es_migrado" | "empalme_cerrado">): boolean {
   return !!c.es_migrado && !c.empalme_cerrado;
@@ -152,7 +168,11 @@ export function diasDesdeUltimoPago(ultimoPagoFecha: string | null, fechaEntrega
   const base = ultimoPagoFecha
     ?? (fechaEntrega ? (fechaEntrega > corte ? fechaEntrega : corte) : null);
   if (!base) return null;
-  return Math.floor((Date.now() - new Date(base + "T00:00:00").getTime()) / 86400000);
+  const d = Math.floor((Date.now() - new Date(base + "T00:00:00").getTime()) / 86400000);
+  // Nunca negativo: con el corte POR CONTRATO (corteMigracionContrato) el arranque puede caer en
+  // el FUTURO — a los 6 migrados el 29-ago les toca su primer pago entre el 31-ago y el 5-sep.
+  // Sin esto la pantalla diría "-5d sin pagar".
+  return Math.max(d, 0);
 }
 
 // Calcula los días hasta el próximo lunes o miércoles

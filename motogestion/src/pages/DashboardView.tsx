@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, Fragment } from "react";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../hooks/useContratos";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
@@ -249,7 +249,7 @@ export default function DashboardView({ onNavigate }: {
         const diasSinPago = diasDesdeUltimoPago(
           ultimoPago?.fecha ?? null,
           c.fecha_entrega ?? c.created_at.slice(0, 10),
-          corteMigracionGrupo(grupoMoto),
+          corteMigracionContrato(c, grupoMoto),
         ) ?? 0;
         return { contrato: c, diasSinPago };
       })

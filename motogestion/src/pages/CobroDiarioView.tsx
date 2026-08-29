@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { usePagos, calcularAplicacion, esPagoDeCaja, fechaDeCaja, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
@@ -189,7 +189,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const { dias, pagadoHasta, estadoLabel } = esContratoDiario
           ? (() => {
               const confDiario = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
-              const d = diasDesdeUltimoPago(confDiario[0]?.fecha ?? null, c.fecha_entrega ?? null, corteMigracionGrupo(moto?.grupo)) ?? 999;
+              const d = diasDesdeUltimoPago(confDiario[0]?.fecha ?? null, c.fecha_entrega ?? null, corteMigracionContrato(c, moto?.grupo)) ?? 999;
               return {
                 dias: d,
                 pagadoHasta: confDiario[0]?.fecha ?? null,

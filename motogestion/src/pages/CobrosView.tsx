@@ -15,7 +15,7 @@ import {
   type AplicadoPago,
   type Aplicado,
 } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, empalmePendiente, infoFinContrato } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionContrato, empalmePendiente, infoFinContrato } from "../hooks/useContratos";
 import PanelEmpalme from "../components/PanelEmpalme";
 import PanelGuardadoMoto from "../components/PanelGuardadoMoto";
 import { useClientes } from "../hooks/useClientes";
@@ -805,7 +805,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       const diasSinPago = ultimoPagoFecha
         ? Math.floor((Date.now() - new Date(ultimoPagoFecha + "T00:00:00").getTime()) / 86400000)
         : contrato.fecha_entrega
-          ? (diasDesdeUltimoPago(null, contrato.fecha_entrega, corteMigracionGrupo(grupoMoto)) ?? 999)
+          ? (diasDesdeUltimoPago(null, contrato.fecha_entrega, corteMigracionContrato(contrato, grupoMoto)) ?? 999)
           : 999;
       const ultimaGestion = gestiones.filter(g => g.contrato_id === contrato.id)[0] ?? null;
 
@@ -2183,11 +2183,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             </div>
           )}
 
-          {/* El día de corte de la cartera del grupo (pedido del dueño, 22-ago): saber qué día se
-              hizo el corte. Un solo renglón a propósito — así lo pidió. */}
-          {motoDetalle?.grupo && (
+          {/* El día de corte de la cartera (pedido del dueño, 22-ago): saber qué día se hizo el
+              corte. Un solo renglón a propósito — así lo pidió.
+              29-ago: muestra el corte DE ESTE CONTRATO, no el del grupo. RASTREADOR tiene dos
+              tandas (28 el 6-jul, 7 el 29-ago) y a los nuevos les salía la fecha de julio. */}
+          {motoDetalle?.grupo && contratoDetalle && (
             <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--line)", fontSize: 11.5, color: "var(--muted)", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              📅 Corte de la cartera <strong>{motoDetalle.grupo}</strong>: <strong>{fmtFecha(corteMigracionGrupo(motoDetalle.grupo))}</strong>
+              📅 Corte de la cartera <strong>{motoDetalle.grupo}</strong>: <strong>{fmtFecha(corteMigracionContrato(contratoDetalle, motoDetalle.grupo))}</strong>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import ImgPrivada from "../components/ImgPrivada";
 import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
-import { useContratos, diasDesdeUltimoPago, corteMigracionGrupo, ahorroTotal } from "../hooks/useContratos";
+import { useContratos, diasDesdeUltimoPago, corteMigracionContrato, ahorroTotal } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
@@ -633,7 +633,7 @@ export default function ReportesView({ onNavigate }: Props) {
       // Última fecha en que este contrato pagó (el pago confirmado más reciente).
       const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
       // Días de mora (aging) — solo si está en mora; mismo criterio que la lista de mora de esta vista.
-      const diasMora = enMora ? (diasDesdeUltimoPago(ultimaFechaPago, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(moto.grupo ?? null)) ?? 0) : 0;
+      const diasMora = enMora ? (diasDesdeUltimoPago(ultimaFechaPago, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionContrato(c, moto.grupo ?? null)) ?? 0) : 0;
       // LO QUE SE LE EXIGIÓ EN EL PERÍODO DEL INFORME (pedido del dueño, 25-ago: "cuánto tenía
       // que haber pagado y cuánto quedó debiendo, teniendo en cuenta el tiempo seleccionado").
       // Las cuotas que vencieron DENTRO del rango = cajas exigidas al final menos las exigidas
@@ -1091,7 +1091,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
       const ultimo = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
       const grupoMoto = motos.find(m => m.id === c.moto_id)?.grupo ?? null;
-      const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionGrupo(grupoMoto)) ?? 0;
+      const dias = diasDesdeUltimoPago(ultimo?.fecha ?? null, c.fecha_entrega ?? c.created_at.slice(0, 10), corteMigracionContrato(c, grupoMoto)) ?? 0;
       return { contrato: c, diasSinPago: dias, ultimoPago: ultimo?.fecha ?? null };
     }).filter(e => e.diasSinPago > 2);
   }, [contratosActivos, pagos, motos]);

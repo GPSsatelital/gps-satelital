@@ -60,7 +60,21 @@ export const EXTRA_RETENCION = 10000;             // → $17.500 la retención
 export const VALOR_ATRASADO = VALOR_CICLO * FRACCION_ATRASADO;
 export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
 
-export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio";
+/**
+ * LA VISITA DOMICILIARIA — $30.000, regla del dueño (valor confirmado el 1-sep-2026; la
+ * condición venía del 30-jul con el rol VISITADOR).
+ *
+ *   · La paga QUIEN LA HIZO (`visitas.realizada_por`), no el dueño de la moto. Un cobrador que
+ *     hace la visita de un cliente que después será suyo cobra las dos cosas.
+ *   · Entra en la semana en que se ENTREGA la moto — no en la que se hizo la visita. Hasta que
+ *     el cliente no recibe, no hay nada que pagar.
+ *   · Se REVIERTE si la validación de ubicación sale falsa: "se paga por dejar el dato CIERTO"
+ *     (dueño, 30-jul). Si la moto NO duerme donde el cliente declaró, esa visita no vale.
+ *   · El portafolio sale solo: para cuando se paga, el cliente ya tiene moto y la moto tiene grupo.
+ */
+export const VALOR_VISITA = 30000;
+
+export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio" | "visita";
 
 /** Anotación del vigía (mig 112): una caja que se llenó, con fecha y por cuál camino. */
 export type EventoCaja = {
@@ -80,6 +94,14 @@ export type ConvenioNomina = {
   created_at: string;
 };
 
+export type VisitaNomina = {
+  id: string;
+  cliente_id: string;
+  realizada_por: string | null;
+  fecha: string;
+  estado: string;
+};
+
 export type GestionNomina = {
   motoId: string;
   placa: string;
@@ -90,6 +112,12 @@ export type GestionNomina = {
   /** El día en que entró la plata (o en que se retuvo). */
   fecha: string;
   valor: number;
+  /**
+   * Quién cobra ESTE renglón. Si no viene, lo cobra el dueño de la moto (`motos.subadmin_id`),
+   * que es como funciona todo lo demás. Las VISITAS lo traen explícito: las paga quien la hizo,
+   * aunque la moto termine a cargo de otro.
+   */
+  cobradorId?: string | null;
 };
 
 export type NominaCobrador = {
@@ -101,10 +129,13 @@ export type NominaCobrador = {
   prorrateos: number;
   retenciones: number;
   cuotasConvenio: number;
+  visitas: number;
   total: number;
 };
 
 export type ContratoNomina = ContratoCiclo & {
+  /** Validación de dónde duerme la moto: si dice 'no_coincide', la visita no se paga. */
+  ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
   id: string;
   cliente_id: string;
   moto_id: string | null;
@@ -176,8 +207,10 @@ export function nominaSemana(opts: {
   eventos?: EventoCaja[] | null;
   /** Los convenios del sistema — para pagar el 30% cuando ENTRA cada cuota (decisión del dueño). */
   convenios?: ConvenioNomina[];
+  /** Las visitas domiciliarias — $30.000 a quien la hizo, al entregarse la moto (ver VALOR_VISITA). */
+  visitas?: VisitaNomina[];
 }): NominaCobrador[] {
-  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [] } = opts;
+  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [] } = opts;
   // El interruptor MIRA LA SEMANA, no si existe algún evento suelto (ver VIGIA_DESDE): con
   // anotaciones incompletas el modo exacto deja fuera a todo el que no aparezca en ellas.
   const eventos = vigiaCubre(desde) ? (opts.eventos ?? null) : null;
@@ -398,10 +431,37 @@ export function nominaSemana(opts: {
     renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "retencion", fecha: f, valor: VALOR_RETENCION });
   }
 
+  // ── 2b) VISITAS: $30.000 a QUIEN LA HIZO, en la semana en que se entregó la moto ──────────
+  // Ver VALOR_VISITA. Una visita se paga UNA sola vez: la primera entrega posterior a ella.
+  const visitaPagada = new Set<string>();
+  for (const v of visitas) {
+    if (v.estado === "Rechazada" || !v.realizada_por) continue;
+    if (visitaPagada.has(v.id)) continue;
+    // El contrato que nació de esta visita: la primera entrega del cliente posterior a ella.
+    const c = contratos
+      .filter(x => x.cliente_id === v.cliente_id && x.fecha_entrega && dia(x.fecha_entrega) >= dia(v.fecha)
+                   && x.estado !== "Cancelado")
+      .sort((a, b) => dia(a.fecha_entrega!).localeCompare(dia(b.fecha_entrega!)))[0];
+    if (!c || !c.moto_id) continue;
+    const entrega = dia(c.fecha_entrega!);
+    if (entrega < desde || entrega > hasta) continue;
+    // "Se paga por dejar el dato CIERTO": si la validación dice que la moto NO duerme ahí, no vale.
+    if (c.ubicacion_moto_resultado === "no_coincide") continue;
+    const moto = motoDe.get(c.moto_id);
+    if (!moto) continue;
+    visitaPagada.add(v.id);
+    renglones.push({
+      motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—",
+      cliente: clientesPorId.get(c.cliente_id) ?? "—",
+      tipo: "visita", fecha: entrega, valor: VALOR_VISITA,
+      cobradorId: v.realizada_por,          // la cobra quien la hizo, no el dueño de la moto
+    });
+  }
+
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────
   const porCobrador = new Map<string | null, GestionNomina[]>();
   for (const r of renglones) {
-    const sub = motoDe.get(r.motoId)?.subadmin_id ?? null;
+    const sub = r.cobradorId !== undefined ? r.cobradorId : (motoDe.get(r.motoId)?.subadmin_id ?? null);
     if (!porCobrador.has(sub)) porCobrador.set(sub, []);
     porCobrador.get(sub)!.push(r);
   }
@@ -416,6 +476,7 @@ export function nominaSemana(opts: {
       prorrateos: rs.filter(r => r.tipo === "prorrateo").length,
       retenciones: rs.filter(r => r.tipo === "retencion").length,
       cuotasConvenio: rs.filter(r => r.tipo === "cuota_convenio").length,
+      visitas: rs.filter(r => r.tipo === "visita").length,
       total: rs.reduce((s, r) => s + r.valor, 0),
     };
   }).sort((a, b) => b.total - a.total);

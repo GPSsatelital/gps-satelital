@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre } from "./nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -393,5 +393,76 @@ describe("🔴 semana anterior al vigía: las anotaciones sueltas NO pueden tapa
     expect(vigiaCubre("2026-08-21")).toBe(false);
     expect(vigiaCubre("2026-08-22")).toBe(true);
     expect(vigiaCubre("2026-08-24")).toBe(true);
+  });
+});
+
+// ── LA VISITA DOMICILIARIA — $30.000 (regla del dueño; valor confirmado el 1-sep) ────────────
+// La cobra QUIEN LA HIZO, en la semana en que se ENTREGA la moto, y se revierte si la validación
+// dice que la moto no duerme donde el cliente declaró ("se paga por dejar el dato CIERTO").
+describe("visitas domiciliarias", () => {
+  const VISITADOR = "vis1";
+  const conEntrega = (over: Partial<ContratoNomina> = {}): ContratoNomina => ({
+    ...CONTRATO, fecha_entrega: "2026-08-19", ...over,
+  });
+  const visita = { id: "v1", cliente_id: "cl1", realizada_por: VISITADOR, fecha: "2026-08-10", estado: "Realizada" };
+  const base = { ...SEMANA, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES, pagos: [] };
+
+  it("se paga $30.000 en la semana de la ENTREGA, no en la de la visita", () => {
+    const n = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [visita] });
+    const v = n.flatMap(x => x.renglones).filter(r => r.tipo === "visita");
+    expect(v).toHaveLength(1);
+    expect(v[0].valor).toBe(VALOR_VISITA);
+    expect(v[0].fecha).toBe("2026-08-19");   // el día de la entrega
+  });
+
+  it("la cobra QUIEN LA HIZO, aunque la moto sea de otro cobrador", () => {
+    const n = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [visita] });
+    const suya = n.find(x => x.subadminId === VISITADOR);
+    expect(suya).toBeTruthy();
+    expect(suya!.visitas).toBe(1);
+    expect(suya!.total).toBe(VALOR_VISITA);
+    // El dueño de la moto (PEDRO) no cobra la visita.
+    expect(n.find(x => x.subadminId === "sub1")?.renglones.some(r => r.tipo === "visita")).toBeFalsy();
+  });
+
+  it("si la entrega fue en otra semana, no entra en esta", () => {
+    const n = nominaSemana({ ...base, contratos: [conEntrega({ fecha_entrega: "2026-09-05" })], visitas: [visita] });
+    expect(n.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
+  });
+
+  it("🔴 NO se paga si la validación dice que la moto no duerme ahí", () => {
+    const n = nominaSemana({
+      ...base, visitas: [visita],
+      contratos: [conEntrega({ ubicacion_moto_resultado: "no_coincide" })],
+    });
+    expect(n.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
+  });
+
+  it("sí se paga cuando la validación confirma el lugar", () => {
+    const n = nominaSemana({
+      ...base, visitas: [visita],
+      contratos: [conEntrega({ ubicacion_moto_resultado: "coincide" })],
+    });
+    expect(n.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(1);
+  });
+
+  it("la visita se carga al portafolio de la moto entregada", () => {
+    const n = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [visita] });
+    expect(n.flatMap(x => x.renglones).find(r => r.tipo === "visita")!.grupo).toBe("PRADERA");
+  });
+
+  it("una visita se paga UNA sola vez, aunque el cliente tenga varias entregas", () => {
+    const n = nominaSemana({
+      ...base, visitas: [visita],
+      contratos: [conEntrega(), conEntrega({ id: "ct2", fecha_entrega: "2026-08-21" })],
+    });
+    expect(n.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(1);
+  });
+
+  it("una visita rechazada o sin responsable no se paga", () => {
+    const rechazada = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [{ ...visita, estado: "Rechazada" }] });
+    expect(rechazada.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
+    const sinQuien = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [{ ...visita, realizada_por: null }] });
+    expect(sinQuien.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
   });
 });

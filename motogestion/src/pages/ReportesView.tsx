@@ -25,7 +25,7 @@ import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemana, lunesDe, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
@@ -538,8 +538,9 @@ export default function ReportesView({ onNavigate }: Props) {
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
       eventos: eventosNomina,
       convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, created_at: cv.created_at })),
+      visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
     });
-  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios]);
+  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas]);
   const moverSemanaNomina = (dir: -1 | 1) => {
     const d = new Date(lunesNomina + "T12:00:00");
     d.setDate(d.getDate() + dir * 7);
@@ -1632,6 +1633,7 @@ export default function ReportesView({ onNavigate }: Props) {
           ciclo: "Ciclo a tiempo", ciclo_atrasado: "Ciclo atrasado (30%)",
           prorrateo: "Prorrateo", retencion: "Retención",
           cuota_convenio: "Convenio de retenida (30%)",
+          visita: "Visita domiciliaria",
         };
         const conCobrador = nominas.filter(n => n.subadminId !== null);
         const sinCobrador = nominas.find(n => n.subadminId === null);
@@ -1659,6 +1661,10 @@ export default function ReportesView({ onNavigate }: Props) {
               El cliente con <b>convenio</b> paga su semana y su cuota como <b>un solo paquete</b>: el
               ciclo se paga cuando el paquete queda completo — nunca por cuota suelta. Única excepción:
               la moto <b>retenida</b>, que paga <b>$ {fmt(VALOR_ATRASADO)}</b> por semana en que abone a su convenio.
+              <br />
+              La <b>visita domiciliaria</b> vale <b>$ {fmt(VALOR_VISITA)}</b> y la cobra <b>quien la hizo</b>,
+              en la semana en que se <b>entrega la moto</b>. Si después la validación dice que la moto
+              no duerme donde el cliente declaró, esa visita <b>no se paga</b>.
             </div>
 
             {/* Semana anterior al vigía (mig 112, 22-ago): sus anotaciones estarían incompletas, así
@@ -1672,6 +1678,44 @@ export default function ReportesView({ onNavigate }: Props) {
                 motor sin convenios ni ajustes hechos a mano. <b>Revisa el desprendible antes de pagar.</b>
               </div>
             )}
+
+            {/* LO QUE PAGA CADA PORTAFOLIO (pedido del dueño, 1-sep): cada grupo paga la gestión de
+                SUS motos. Los chips de cada cobrador dicen de dónde sale su plata; este bloque lo
+                muestra al revés — cuánto pone cada portafolio en total y entre quiénes se reparte. */}
+            {conCobrador.length > 0 && (() => {
+              const porGrupo = new Map<string, { total: number; porCobrador: Map<string, number> }>();
+              for (const n of conCobrador) {
+                for (const r of n.renglones) {
+                  if (!porGrupo.has(r.grupo)) porGrupo.set(r.grupo, { total: 0, porCobrador: new Map() });
+                  const g = porGrupo.get(r.grupo)!;
+                  g.total += r.valor;
+                  const quien = nombreDe(n.subadminId) ?? "SIN COBRADOR";
+                  g.porCobrador.set(quien, (g.porCobrador.get(quien) ?? 0) + r.valor);
+                }
+              }
+              const filas = [...porGrupo.entries()].sort((a, b) => b[1].total - a[1].total);
+              return (
+                <div style={{ ...card, display: "grid", gap: 10 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>Lo que pone cada portafolio</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>
+                    Cada grupo paga la gestión de sus propias motos. Las visitas las paga el portafolio
+                    de la moto que se entregó.
+                  </div>
+                  {filas.map(([grupo, g]) => (
+                    <div key={grupo} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 10px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 13.5 }}>{grupo}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                          {[...g.porCobrador.entries()].sort((a, b) => b[1] - a[1])
+                            .map(([q, v]) => `${q}: $ ${fmt(v)}`).join(" · ")}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 17, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>$ {fmt(g.total)}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {conCobrador.length === 0 && (
               <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>Sin gestiones pagables en esta semana.</div>
@@ -1690,6 +1734,7 @@ export default function ReportesView({ onNavigate }: Props) {
                         {n.ciclosAtrasados > 0 && <span>{n.ciclosAtrasados} atrasado{n.ciclosAtrasados === 1 ? "" : "s"} · </span>}
                         {n.cuotasConvenio > 0 && <span>{n.cuotasConvenio} cuota{n.cuotasConvenio === 1 ? "" : "s"} de convenio · </span>}
                         {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
+                        {n.visitas > 0 && <span>{n.visitas} visita{n.visitas === 1 ? "" : "s"} · </span>}
                         {n.renglones.length} gestiones
                       </div>
                       {/* De qué portafolio sale la plata de esta nómina (pedido del dueño):

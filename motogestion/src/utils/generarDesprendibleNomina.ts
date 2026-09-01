@@ -26,6 +26,7 @@ const TIPO_LABEL: Record<GestionNomina["tipo"], string> = {
   prorrateo: "Prorrateo (primer cobro)",
   retencion: "Retención",
   cuota_convenio: "Convenio de retenida (30%)",
+  visita: "Visita domiciliaria",
 };
 
 export function generarDesprendibleNomina(

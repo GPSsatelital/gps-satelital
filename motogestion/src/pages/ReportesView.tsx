@@ -23,6 +23,8 @@ import {
 import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../components/ModalDescargar";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
+import { useNominaCierres } from "../hooks/useNominaCierres";
+import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemana, lunesDe, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion } from "../utils/nominaCobradores";
@@ -526,6 +528,9 @@ export default function ReportesView({ onNavigate }: Props) {
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
   const { eventos: eventosNomina } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina");
+  // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
+  const { cerrarSemana, cierreDe } = useNominaCierres(lunesNomina, tab === "nomina");
+  const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
   const nominas = useMemo(() => {
     if (tab !== "nomina") return [];
     return nominaSemana({
@@ -1679,6 +1684,65 @@ export default function ReportesView({ onNavigate }: Props) {
               </div>
             )}
 
+            {/* LAS VISITAS, APARTE (pedido del dueño, 1-sep: "separa las visitas aparte para ver
+                solo el total de las visitas"). Es plata de otra naturaleza: no es cobrar una
+                semana, es haber ido a la casa. Y la cobra quien la hizo, no el dueño de la moto. */}
+            {(() => {
+              const visitas = conCobrador.flatMap(n =>
+                n.renglones.filter(r => r.tipo === "visita").map(r => ({ ...r, quien: nombreDe(n.subadminId) ?? "SIN COBRADOR" })));
+              if (visitas.length === 0) return null;
+              const total = visitas.reduce((a, r) => a + r.valor, 0);
+              const porQuien = new Map<string, number>();
+              const porGrupo = new Map<string, number>();
+              for (const v of visitas) {
+                porQuien.set(v.quien, (porQuien.get(v.quien) ?? 0) + v.valor);
+                porGrupo.set(v.grupo, (porGrupo.get(v.grupo) ?? 0) + v.valor);
+              }
+              return (
+                <div style={{ ...card, display: "grid", gap: 10, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--accent-ink)" }}>🏠 Visitas domiciliarias</div>
+                      <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 2 }}>
+                        {visitas.length} visita{visitas.length === 1 ? "" : "s"} × $ {fmt(VALOR_VISITA)} — se pagan al entregarse la moto
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 22, fontVariantNumeric: "tabular-nums", color: "var(--accent-ink)", flexShrink: 0 }}>$ {fmt(total)}</div>
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-ink)" }}>Quién las hizo</div>
+                    {[...porQuien.entries()].sort((a, b) => b[1] - a[1]).map(([q, v]) => (
+                      <div key={q} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, color: "var(--accent-ink)" }}>
+                        <span style={{ minWidth: 0, textTransform: "uppercase" }}>{q}</span>
+                        <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>$ {fmt(v)}</b>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-ink)", marginTop: 4 }}>Qué portafolio las paga</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {[...porGrupo.entries()].sort((a, b) => b[1] - a[1]).map(([g, v]) => (
+                        <span key={g} style={{ fontSize: 11, fontWeight: 700, background: "var(--card)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "3px 9px", color: "var(--accent-ink)" }}>
+                          {g} $ {fmt(v)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <details>
+                    <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--accent-ink)" }}>Ver las {visitas.length} visitas</summary>
+                    <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                      {visitas.sort((a, b) => a.fecha.localeCompare(b.fecha)).map((v, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0, fontSize: 12, color: "var(--accent-ink)", borderTop: "1px solid var(--accent-line)", paddingTop: 4 }}>
+                          <span style={{ fontWeight: 700, flexShrink: 0 }}>{v.placa}</span>
+                          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "uppercase" }}>{v.cliente}</span>
+                          <span style={{ flexShrink: 0, opacity: 0.8 }}>{fmtDia(v.fecha)}</span>
+                          <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>$ {fmt(v.valor)}</b>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              );
+            })()}
+
             {/* LO QUE PAGA CADA PORTAFOLIO (pedido del dueño, 1-sep): cada grupo paga la gestión de
                 SUS motos. Los chips de cada cobrador dicen de dónde sale su plata; este bloque lo
                 muestra al revés — cuánto pone cada portafolio en total y entre quiénes se reparte. */}
@@ -1747,11 +1811,43 @@ export default function ReportesView({ onNavigate }: Props) {
                         ))}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>$ {fmt(n.total)}</div>
+                    {(() => {
+                      // El total del cobrador, partido: lo de COBRAR y lo de VISITAR son trabajos
+                      // distintos y el dueño los quiere ver por separado.
+                      const enVisitas = n.renglones.filter(r => r.tipo === "visita").reduce((a, r) => a + r.valor, 0);
+                      return (
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>$ {fmt(n.total)}</div>
+                          {enVisitas > 0 && (
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1, whiteSpace: "nowrap" }}>
+                              cobros $ {fmt(n.total - enVisitas)} · visitas $ {fmt(enVisitas)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <button onClick={() => setNominaExp(abierto ? null : (n.subadminId ?? ""))}
                       style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
                       {abierto ? "Ocultar detalle" : "Ver detalle"}
                     </button>
+                    {/* CERRAR Y PAGAR (mig 120): congela las cifras, guarda firma y foto. Si ya
+                        está cerrada, en vez del botón va el sello de pagado. */}
+                    {n.subadminId && (cierreDe(n.subadminId)
+                      ? (() => {
+                          const ci = cierreDe(n.subadminId)!;
+                          return (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", color: "var(--ok-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                              ✓ Pagado {new Date(ci.created_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+                              {ci.firma_url ? " · firmado" : ""}
+                            </span>
+                          );
+                        })()
+                      : (
+                        <button onClick={() => setCerrando(n.subadminId)}
+                          style={{ border: "none", background: "var(--ok-ink)", color: "var(--on-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5, flexShrink: 0 }}>
+                          ✓ Cerrar y pagar
+                        </button>
+                      ))}
                     <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "")}
                       style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
                       🖨️ Desprendible
@@ -1784,6 +1880,32 @@ export default function ReportesView({ onNavigate }: Props) {
                 </div>
               </div>
             )}
+
+            {/* CERRAR Y PAGAR la semana de un cobrador (mig 120) */}
+            {cerrando && (() => {
+              const n = conCobrador.find(x => x.subadminId === cerrando);
+              if (!n) return null;
+              const nombre = nombreDe(n.subadminId) ?? "COBRADOR";
+              return (
+                <ModalCerrarNomina
+                  nomina={n}
+                  cobradorNombre={nombre}
+                  lunes={lunesNomina}
+                  domingo={domingoNomina}
+                  onClose={() => setCerrando(null)}
+                  onCerrar={({ firmaDataUrl, fotoDataUrl, observacion }) => cerrarSemana({
+                    semanaLunes: lunesNomina,
+                    subadminId: n.subadminId,
+                    cobradorNombre: nombre,
+                    total: n.total,
+                    renglones: n.renglones,
+                    totalesGrupo: totalesPorGrupo(n.renglones),
+                    firmaDataUrl, fotoDataUrl, observacion,
+                    cerradoPor: profile?.id ?? "",
+                  })}
+                />
+              );
+            })()}
           </div>
         );
       })()}

@@ -121,6 +121,11 @@ declare
   v_pend_conv numeric;
   v_sin_reparto boolean; v_multa_antes numeric;
   v_conv_exigido numeric; v_conv_abonado numeric; v_puede_conv numeric;  -- ★ freno del convenio
+  -- ★ Fila TIPADA del convenio. `v_convenio` es un `record` genérico y una función que pide
+  --   `public.convenios` no puede recibirlo: "cannot cast type record to convenios". Es el MISMO
+  --   tropiezo que ya dio `caja_valor()` el 11-jul con `contratos` — por eso `v_contrato` sí
+  --   está tipado. Se relee la fila con su tipo antes de llamar.
+  v_conv_tipado public.convenios;
 begin
   if tg_op = 'DELETE' then
     v_row := old;
@@ -231,8 +236,9 @@ begin
               where contrato_id = v_row.contrato_id and estado = 'Confirmado'
                 and created_at >= v_convenio.created_at and id <> v_row.id;
             v_pend_conv := greatest(coalesce(v_convenio.deuda_total, 0) - v_abonado_total, 0);
+            select * into v_conv_tipado from public.convenios where id = v_convenio.id;
             v_conv_exigido := public.cuotas_convenio_exigidas(
-              v_contrato, v_convenio, coalesce(v_row.fecha, current_date) + 3);
+              v_contrato, v_conv_tipado, coalesce(v_row.fecha, current_date) + 3);
             v_puede_conv := greatest(least(v_conv_exigido - v_abonado_total, v_pend_conv), 0);
             v_ap_conv := least(v_monto, v_puede_conv);
             v_monto := v_monto - v_ap_conv;

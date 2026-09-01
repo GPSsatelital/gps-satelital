@@ -34,6 +34,26 @@ import { proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPag
 // para que cada cobrador o subadmin pueda verificar bien qué le están pagando". Por eso cada
 // renglón trae placa, cliente, qué gestión, fecha y valor — nada sale de un total mudo.
 
+/**
+ * El día en que el VIGÍA empezó a anotar (mig 112, corrida el 22-ago-2026).
+ *
+ * 🔴 POR QUÉ EXISTE (defecto real, 1-sep): el interruptor entre el modo exacto y el viejo era
+ * `if (eventos)` — GLOBAL. Bastaba UNA anotación en toda la base para que todos los contratos
+ * entraran por el modo exacto, y un contrato sin anotación quedaba INVISIBLE aunque el cliente
+ * hubiera pagado. La semana del 17–23 de agosto tenía 137 clientes pagando y solo 5 anotaciones
+ * (el vigía arrancó el 22): la nómina reconoció 3 gestiones y mostró $231.750 cuando el trabajo
+ * real rondaba el millón. Se le habría pagado de menos al cobrador, sin que nada avisara.
+ *
+ * Ahora la decisión es por SEMANA: si la semana arrancó antes de que el vigía existiera, sus
+ * anotaciones están incompletas por definición y NO se usan — se calcula desde los pagos.
+ */
+export const VIGIA_DESDE = "2026-08-22";
+
+/** ¿Las anotaciones del vigía cubren esta semana entera? Si no, hay que ir a los pagos. */
+export function vigiaCubre(desdeISO: string): boolean {
+  return desdeISO >= VIGIA_DESDE;
+}
+
 export const VALOR_CICLO = 7500;
 export const FRACCION_ATRASADO = 0.3;             // → $2.250
 export const EXTRA_RETENCION = 10000;             // → $17.500 la retención
@@ -157,7 +177,10 @@ export function nominaSemana(opts: {
   /** Los convenios del sistema — para pagar el 30% cuando ENTRA cada cuota (decisión del dueño). */
   convenios?: ConvenioNomina[];
 }): NominaCobrador[] {
-  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, eventos = null, convenios = [] } = opts;
+  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [] } = opts;
+  // El interruptor MIRA LA SEMANA, no si existe algún evento suelto (ver VIGIA_DESDE): con
+  // anotaciones incompletas el modo exacto deja fuera a todo el que no aparezca en ellas.
+  const eventos = vigiaCubre(desde) ? (opts.eventos ?? null) : null;
   const motoDe = new Map(motos.map(m => [m.id, m]));
   const renglones: GestionNomina[] = [];
   /** `contratoId|lunes` de cada semana que ya generó su renglón — para que la excepción de la

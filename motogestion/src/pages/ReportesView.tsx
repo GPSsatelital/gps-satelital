@@ -25,7 +25,7 @@ import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type TipoGestion } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
@@ -1652,17 +1652,24 @@ export default function ReportesView({ onNavigate }: Props) {
             {/* La regla, visible siempre: el texto se explica solo */}
             <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
               Se paga por <b>moto gestionada</b>: ciclo cobrado a tiempo <b>$ {fmt(VALOR_CICLO)}</b> (una vez por ciclo del cliente) ·
-              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) · cuota de convenio cobrada <b>$ {fmt(VALOR_ATRASADO)}</b> (30%, cuando entra) ·
+              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) ·
               retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
               en mora sin pagar y sin retener <b>$ 0</b>. Los contratos <b>Diarios no entran</b>.
+              <br />
+              El cliente con <b>convenio</b> paga su semana y su cuota como <b>un solo paquete</b>: el
+              ciclo se paga cuando el paquete queda completo — nunca por cuota suelta. Única excepción:
+              la moto <b>retenida</b>, que paga <b>$ {fmt(VALOR_ATRASADO)}</b> por semana en que abone a su convenio.
             </div>
 
-            {/* Semana anterior al registro exacto (mig 112): las cifras salen del método viejo. */}
-            {!eventosNomina && (
+            {/* Semana anterior al vigía (mig 112, 22-ago): sus anotaciones estarían incompletas, así
+                que la nómina calcula desde los PAGOS. Antes este aviso dependía de "¿llegaron
+                eventos?" — y con 5 eventos sueltos de una semana de 137 pagos no salía, mientras
+                la pantalla mostraba un total en el que no se podía confiar. */}
+            {!vigiaCubre(lunesNomina) && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)", fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>
-                ⚠️ Esta semana no tiene el registro exacto de ciclos (existe desde la migración 112).
-                Las cifras salen del método antiguo: <b>revísalas contra el desprendible antes de pagar</b>.
-                Desde la primera semana completa después de la migración, la nómina es exacta.
+                ⚠️ <b>Semana anterior al registro exacto de ciclos</b> (existe desde el 22 de agosto).
+                Estas cifras se calculan releyendo los pagos, y son confiables para los contratos con
+                motor sin convenios ni ajustes hechos a mano. <b>Revisa el desprendible antes de pagar.</b>
               </div>
             )}
 

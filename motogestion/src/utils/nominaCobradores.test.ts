@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina } from "./nominaCobradores";
+import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -201,10 +201,13 @@ describe("la nómina LEE el reparto del motor — no lo reinventa (auditoría 22
 });
 
 describe("MODO EXACTO: con las anotaciones del vigía (mig 112) no se relee ningún pago", () => {
+  // OJO con las fechas: el modo exacto SOLO corre desde VIGIA_DESDE (22-ago). Antes de eso las
+  // anotaciones estarian incompletas y la nomina calcula desde los pagos — ver el describe de abajo.
   it("una anotación de caja en la semana = un ciclo, con su fecha real", () => {
     const n = nominaSemana({
-      ...SEMANA, contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
-      eventos: [{ contrato_id: "ct1", caja_numero: 6, fecha: "2026-08-17", fuente: "pago" }],
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      eventos: [{ contrato_id: "ct1", caja_numero: 7, fecha: "2026-08-24", fuente: "pago" }],
     });
     expect(n[0].ciclosATiempo).toBe(1);
     expect(n[0].total).toBe(VALOR_CICLO);
@@ -232,10 +235,11 @@ describe("MODO EXACTO: con las anotaciones del vigía (mig 112) no se relee ning
   it("la adelantada del wizard (su caja 1) tampoco se paga en modo exacto", () => {
     const wizard: ContratoNomina = { ...CONTRATO, es_migrado: false, cajas_previas: 0, prorrateo_total: 47000 };
     const n = nominaSemana({
-      ...SEMANA, contratos: [wizard], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [wizard], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
       eventos: [
-        { contrato_id: "ct1", caja_numero: 1, fecha: "2026-08-17", fuente: "pago" },   // adelantada
-        { contrato_id: "ct1", caja_numero: 0, fecha: "2026-08-17", fuente: "pago" },   // prorrateo
+        { contrato_id: "ct1", caja_numero: 1, fecha: "2026-08-24", fuente: "pago" },   // adelantada
+        { contrato_id: "ct1", caja_numero: 0, fecha: "2026-08-24", fuente: "pago" },   // prorrateo
       ],
     });
     expect(n[0].prorrateos).toBe(1);
@@ -339,5 +343,55 @@ describe("la semana de nómina", () => {
   it("un pago fuera de la semana no entra", () => {
     const n = correr([pago("2026-08-24", 202000)]);
     expect(n).toHaveLength(0);
+  });
+});
+
+// ── 🔴 EL DEFECTO DE LA SEMANA DEL 17 AL 23 (1-sep-2026) ────────────────────────────────────
+// El interruptor entre modo exacto y modo viejo era GLOBAL (`if (eventos)`). Bastaba UNA
+// anotación en toda la base para que TODOS los contratos entraran por el modo exacto — y el que
+// no tuviera anotación quedaba INVISIBLE, aunque su cliente hubiera pagado. Caso real: la semana
+// del 17 al 23 de agosto tuvo 137 clientes pagando y solo 5 anotaciones (el vigía arrancó el 22).
+// La nómina mostró 3 gestiones y $231.750 cuando el trabajo real rondaba el millón.
+describe("🔴 semana anterior al vigía: las anotaciones sueltas NO pueden tapar los pagos", () => {
+  it("con anotaciones incompletas de una semana vieja, se calcula desde los PAGOS", () => {
+    const n = nominaSemana({
+      ...SEMANA,   // 17–23 ago: ANTES del vigía
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-17", created_at: "2026-08-17T10:00:00Z",
+                estado: "Confirmado", aplicado_tarifa: 202000 }],
+      eventos: [],   // el vigía no tenía nada de esa semana
+    });
+    expect(n[0].total).toBe(VALOR_CICLO);   // el pago SÍ se ve
+  });
+
+  it("el cliente que pagó no queda invisible por no tener anotación", () => {
+    const n = nominaSemana({
+      ...SEMANA,
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-18", created_at: "2026-08-18T10:00:00Z",
+                estado: "Confirmado", aplicado_tarifa: 202000 }],
+      // Una anotación de OTRO contrato: antes esto bastaba para cegar la nómina entera.
+      eventos: [{ contrato_id: "otro-contrato", caja_numero: 3, fecha: "2026-08-22", fuente: "pago" }],
+    });
+    expect(n).toHaveLength(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("desde el 24-ago sí manda el vigía: los pagos no se releen", () => {
+    const n = nominaSemana({
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-25", created_at: "2026-08-25T10:00:00Z",
+                estado: "Confirmado", aplicado_tarifa: 202000 }],
+      eventos: [],   // el vigía dice que no se llenó ninguna caja
+    });
+    expect(n).toHaveLength(0);   // no se inventa un ciclo releyendo el pago
+  });
+
+  it("vigiaCubre marca la frontera exacta", () => {
+    expect(vigiaCubre("2026-08-17")).toBe(false);
+    expect(vigiaCubre("2026-08-21")).toBe(false);
+    expect(vigiaCubre("2026-08-22")).toBe(true);
+    expect(vigiaCubre("2026-08-24")).toBe(true);
   });
 });

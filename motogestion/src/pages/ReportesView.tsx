@@ -27,7 +27,7 @@ import { useNominaCierres } from "../hooks/useNominaCierres";
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemana, lunesDe, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion } from "../utils/nominaCobradores";
+import { nominaSemana, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
@@ -546,6 +546,29 @@ export default function ReportesView({ onNavigate }: Props) {
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
     });
   }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas]);
+  /**
+   * LO QUE SE MUESTRA. Si una semana ya se cerró, mandan las cifras CONGELADAS de ese día — no las
+   * que daría el cálculo de hoy. Sin esto el sello decía "✓ Pagado" al lado de un total que seguía
+   * moviéndose con cada pago que entrara después, que es justo lo que el cierre vino a evitar.
+   * Se cambia la nómina entera (no solo el total) para que el recuadro de visitas, el de
+   * portafolios y el detalle salgan todos del MISMO dato y no puedan contradecirse.
+   */
+  const nominasVista = useMemo(() => nominas.map(n => {
+    const ci = n.subadminId ? cierreDe(n.subadminId) : null;
+    if (!ci) return n;
+    return { ...resumirRenglones(n.subadminId, (ci.renglones ?? []) as GestionNomina[]), total: Number(ci.total) };
+  }), [nominas, cierreDe]);
+
+  /** Cobradores cuya semana cerrada YA NO coincide con lo que daría el cálculo de hoy. */
+  const derivaNomina = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const n of nominas) {
+      const ci = n.subadminId ? cierreDe(n.subadminId) : null;
+      if (ci && Math.round(Number(ci.total)) !== Math.round(n.total)) m.set(n.subadminId!, n.total);
+    }
+    return m;
+  }, [nominas, cierreDe]);
+
   const moverSemanaNomina = (dir: -1 | 1) => {
     const d = new Date(lunesNomina + "T12:00:00");
     d.setDate(d.getDate() + dir * 7);
@@ -1640,8 +1663,8 @@ export default function ReportesView({ onNavigate }: Props) {
           cuota_convenio: "Convenio de retenida (30%)",
           visita: "Visita domiciliaria",
         };
-        const conCobrador = nominas.filter(n => n.subadminId !== null);
-        const sinCobrador = nominas.find(n => n.subadminId === null);
+        const conCobrador = nominasVista.filter(n => n.subadminId !== null);
+        const sinCobrador = nominasVista.find(n => n.subadminId === null);
         const totalSemana = conCobrador.reduce((s, n) => s + n.total, 0);
         return (
           <div style={{ display: "grid", gap: 16 }}>
@@ -1838,7 +1861,7 @@ export default function ReportesView({ onNavigate }: Props) {
                           return (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", color: "var(--ok-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
                               ✓ Pagado {new Date(ci.created_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
-                              {ci.firma_url ? " · firmado" : ""}
+                              {ci.firma_url ? " · firmado" : " · SIN FIRMA"}
                             </span>
                           );
                         })()
@@ -1853,6 +1876,13 @@ export default function ReportesView({ onNavigate }: Props) {
                       🖨️ Desprendible
                     </button>
                   </div>
+                  {n.subadminId && derivaNomina.has(n.subadminId) && (
+                    <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.45 }}>
+                      Entró plata de esta semana <b>después</b> de pagarla. Se le pagó $ {fmt(n.total)};
+                      con lo de hoy daría $ {fmt(derivaNomina.get(n.subadminId)!)} —
+                      la diferencia de $ {fmt(Math.abs(derivaNomina.get(n.subadminId)! - n.total))} va en la próxima.
+                    </div>
+                  )}
                   {abierto && (
                     <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 8, maxHeight: "48vh", overflowY: "auto" }}>
                       {n.renglones.map((r, i) => (
@@ -1883,7 +1913,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
             {/* CERRAR Y PAGAR la semana de un cobrador (mig 120) */}
             {cerrando && (() => {
-              const n = conCobrador.find(x => x.subadminId === cerrando);
+              const n = nominas.find(x => x.subadminId === cerrando);   // se cierra con el cálculo VIVO
               if (!n) return null;
               const nombre = nombreDe(n.subadminId) ?? "COBRADOR";
               return (

@@ -466,18 +466,29 @@ export function nominaSemana(opts: {
     porCobrador.get(sub)!.push(r);
   }
 
-  return [...porCobrador.entries()].map(([subadminId, rs]) => {
-    rs.sort((a, b) => a.placa.localeCompare(b.placa) || a.fecha.localeCompare(b.fecha));
-    return {
-      subadminId,
-      renglones: rs,
-      ciclosATiempo: rs.filter(r => r.tipo === "ciclo").length,
-      ciclosAtrasados: rs.filter(r => r.tipo === "ciclo_atrasado").length,
-      prorrateos: rs.filter(r => r.tipo === "prorrateo").length,
-      retenciones: rs.filter(r => r.tipo === "retencion").length,
-      cuotasConvenio: rs.filter(r => r.tipo === "cuota_convenio").length,
-      visitas: rs.filter(r => r.tipo === "visita").length,
-      total: rs.reduce((s, r) => s + r.valor, 0),
-    };
-  }).sort((a, b) => b.total - a.total);
+  return [...porCobrador.entries()]
+    .map(([subadminId, rs]) => resumirRenglones(subadminId, rs))
+    .sort((a, b) => b.total - a.total);
+}
+
+/**
+ * Los renglones de un cobrador, contados y sumados.
+ *
+ * Vive aparte porque se usa DOS veces: para la nómina que se calcula en vivo, y para releer una
+ * semana YA CERRADA desde sus renglones congelados (mig 120). Si cada una contara por su lado,
+ * la misma semana podría decir "61 a tiempo" en un lado y otra cosa en el otro.
+ */
+export function resumirRenglones(subadminId: string | null, renglones: GestionNomina[]): NominaCobrador {
+  const rs = [...renglones].sort((a, b) => a.placa.localeCompare(b.placa) || a.fecha.localeCompare(b.fecha));
+  return {
+    subadminId,
+    renglones: rs,
+    ciclosATiempo: rs.filter(r => r.tipo === "ciclo").length,
+    ciclosAtrasados: rs.filter(r => r.tipo === "ciclo_atrasado").length,
+    prorrateos: rs.filter(r => r.tipo === "prorrateo").length,
+    retenciones: rs.filter(r => r.tipo === "retencion").length,
+    cuotasConvenio: rs.filter(r => r.tipo === "cuota_convenio").length,
+    visitas: rs.filter(r => r.tipo === "visita").length,
+    total: rs.reduce((s, r) => s + r.valor, 0),
+  };
 }

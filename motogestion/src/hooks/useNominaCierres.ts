@@ -25,16 +25,26 @@ export type NominaCierre = {
   created_at: string;
 };
 
-/** Sube un dataURL (firma o foto) al bucket `documentos` y devuelve su URL pública. */
-async function subir(dataUrl: string, ruta: string): Promise<string | null> {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  const { error } = await supabase.storage.from("documentos").upload(ruta, blob, {
-    contentType: blob.type || "image/png",
-    upsert: true,
-  });
-  if (error) return null;
-  return supabase.storage.from("documentos").getPublicUrl(ruta).data.publicUrl;
+/**
+ * Sube un dataURL (firma o foto) al bucket `documentos` y devuelve su URL pública.
+ *
+ * Devuelve el error en vez de tragárselo: un cierre NO se puede editar ni borrar después, así que
+ * si la firma no sube y guardáramos igual, ese pago quedaría para siempre sin la constancia de
+ * que el cobrador recibió — y sin forma de repararlo.
+ */
+async function subir(dataUrl: string, ruta: string): Promise<{ url: string | null; error: string | null }> {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const { error } = await supabase.storage.from("documentos").upload(ruta, blob, {
+      contentType: blob.type || "image/png",
+      upsert: true,
+    });
+    if (error) return { url: null, error: error.message };
+    return { url: supabase.storage.from("documentos").getPublicUrl(ruta).data.publicUrl, error: null };
+  } catch (e) {
+    return { url: null, error: e instanceof Error ? e.message : "no se pudo subir la imagen" };
+  }
 }
 
 export function useNominaCierres(semanaLunes: string, activo: boolean) {
@@ -66,11 +76,24 @@ export function useNominaCierres(semanaLunes: string, activo: boolean) {
     firmaDataUrl?: string | null;
     fotoDataUrl?: string | null;
     observacion?: string;
-    cerradoPor: string;
+    cerradoPor: string | null;
   }): Promise<{ error: string | null }> => {
     const base = `nomina/${opts.semanaLunes}/${opts.subadminId ?? "sin-cobrador"}`;
-    const firma_url = opts.firmaDataUrl ? await subir(opts.firmaDataUrl, `${base}/firma.png`) : null;
-    const foto_url  = opts.fotoDataUrl  ? await subir(opts.fotoDataUrl,  `${base}/desprendible.jpg`) : null;
+
+    // Primero las imágenes. Si alguna falla, NO se cierra nada: mejor que el funcionario vuelva a
+    // firmar hoy, a que quede un pago sin respaldo que ya no se puede corregir.
+    let firma_url: string | null = null;
+    let foto_url: string | null = null;
+    if (opts.firmaDataUrl) {
+      const r = await subir(opts.firmaDataUrl, `${base}/firma.png`);
+      if (r.error) return { error: `No se pudo guardar la firma (${r.error}). No se cerró la semana — vuelve a intentar.` };
+      firma_url = r.url;
+    }
+    if (opts.fotoDataUrl) {
+      const r = await subir(opts.fotoDataUrl, `${base}/desprendible.jpg`);
+      if (r.error) return { error: `No se pudo guardar la foto del desprendible (${r.error}). No se cerró la semana — vuelve a intentar.` };
+      foto_url = r.url;
+    }
 
     const { error } = await supabase.from("nomina_cierres").insert({
       semana_lunes: opts.semanaLunes,
@@ -81,7 +104,7 @@ export function useNominaCierres(semanaLunes: string, activo: boolean) {
       totales_grupo: opts.totalesGrupo,
       firma_url, foto_url,
       observacion: opts.observacion?.trim() || null,
-      cerrado_por: opts.cerradoPor,
+      cerrado_por: opts.cerradoPor || null,   // "" no es un uuid: reventaría con un error críptico
     });
     if (error) {
       // El candado de la BD: una semana se cierra UNA vez por cobrador.

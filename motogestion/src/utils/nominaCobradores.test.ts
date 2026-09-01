@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, lunesDe, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
+import { nominaSemana, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -464,5 +464,38 @@ describe("visitas domiciliarias", () => {
     expect(rechazada.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
     const sinQuien = nominaSemana({ ...base, contratos: [conEntrega()], visitas: [{ ...visita, realizada_por: null }] });
     expect(sinQuien.flatMap(x => x.renglones).filter(r => r.tipo === "visita")).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// SEMANA CERRADA (mig 120): al pagar, las cifras se CONGELAN. La pantalla vuelve a leerlas desde
+// los renglones guardados, así que releerlos tiene que dar exactamente lo mismo que se pagó —
+// si contara distinto, el sello diría "✓ Pagado $949.250" al lado de otro número.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe("releer una semana ya pagada da lo MISMO que se pagó", () => {
+  const visita = { id: "v1", cliente_id: "cl1", realizada_por: "vis1", fecha: "2026-08-10", estado: "Realizada" };
+
+  it("los renglones congelados reproducen total y conteos, tal cual", () => {
+    const vivo = nominaSemana({
+      ...SEMANA, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      contratos: [{ ...CONTRATO, fecha_entrega: "2026-08-19" }],
+      pagos: [pago("2026-08-17", 202000)],
+      visitas: [visita],
+    });
+    for (const n of vivo) {
+      const releido = resumirRenglones(n.subadminId, n.renglones);
+      expect(releido).toEqual(n);
+    }
+  });
+
+  it("el orden en que lleguen los renglones no cambia el resumen", () => {
+    const vivo = nominaSemana({
+      ...SEMANA, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      contratos: [{ ...CONTRATO, fecha_entrega: "2026-08-19" }],
+      pagos: [pago("2026-08-17", 202000)],
+      visitas: [visita],
+    });
+    const n = vivo.find(x => x.renglones.length > 1) ?? vivo[0];
+    expect(resumirRenglones(n.subadminId, [...n.renglones].reverse())).toEqual(n);
   });
 });

@@ -23,6 +23,7 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
+import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import ModalConvenio from "../components/ModalConvenio";
@@ -36,6 +37,9 @@ import { recepcionDelContrato } from "../utils/recepcionDelContrato";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
+function fmtFechaLarga(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+}
 
 const DIAS_LABEL  = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES_LABEL = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -95,7 +99,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { clientes }  = useClientes();
   const { motos }     = useMotos();
   const { pagos, registrarPago } = usePagos();
-  const { gestiones } = useGestiones();
+  const { gestiones, registrarGestion } = useGestiones();
   const { deudas, registrarDeuda } = useDeudas();
   const { convenios } = useConvenios();
   const { recepciones, acuerdos } = useUbicaciones();
@@ -111,6 +115,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const liqAbiertaDe = (contratoId: string) =>
     liquidaciones.find(l => l.contrato_id === contratoId && l.estado !== "cerrada") ?? null;
   const puedeCrearConvenio = puede("crear_convenio");
+  // Mismos roles que ya otorgan "plazo extra" en Cartera (ver ModalGestion). Decisión del dueño
+  // el 2-sep: consistente con lo que ya existe, no un permiso aparte.
+  const puedeDarPlazo = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL" || profile?.role === "SUBADMIN";
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");
@@ -280,6 +287,12 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     conveniable: number;         // otras deudas + cuotas atrasadas → la meta del convenio
     motorV2: boolean;
     convenioId: string | null;
+    /**
+     * Hasta cuándo tiene PLAZO para llevarse la moto debiendo (excepción del dueño, 2-sep).
+     * null = no tiene. Sale de la gestión `plazo_extra` más reciente del contrato — la misma
+     * figura que frena una recolección, así la campana ya avisa sola cuando se vence.
+     */
+    plazoHasta: string | null;
     diasRetenida: number;
     fechaRetencion: string | null; // día en que se guardó/registró (de la recolección o la recepción)
     listaParaLiquidar: boolean;
@@ -294,6 +307,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
 
   const motosRetenidas: MotoRetenida[] = useMemo(() => {
     const hoyMs = Date.now();
+    const hoyRetenidas = hoyISO();
     return contratos
       // Fuera de servicio: contratos Suspendidos (mora/temporal) + Activos cuya moto está
       // en taller (varada). Así el panel es el "pool" de todo lo que no está produciendo.
@@ -336,6 +350,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         const recoleccionG = gestiones
           .filter(g => g.contrato_id === c.id && g.tipo === "recoleccion")
           .sort((a, b) => b.fecha.localeCompare(a.fecha))[0] ?? null;
+
+        // El PLAZO vigente para llevarse la moto debiendo (2-sep): la fecha límite más lejana que
+        // todavía no haya pasado. Es la MISMA gestión `plazo_extra` que frena una recolección, así
+        // que la campana ya avisa sola el día que se vence — no hubo que inventar nada nuevo.
+        const plazoHasta = gestiones
+          .filter(g => g.contrato_id === c.id && g.tipo === "plazo_extra" && g.plazo_extra_fecha_limite)
+          .map(g => g.plazo_extra_fecha_limite!)
+          .filter(f => f >= hoyRetenidas)
+          .sort()
+          .pop() ?? null;
         // Cuál recepción es de este contrato lo decide `recepcionDelContrato` (una sola función,
         // con pruebas): muchas quedaron guardadas SOLO con la moto —sin contrato ni cliente— y
         // esta pantalla, que buscaba por contrato, decía "sin fecha registrada" aunque la fecha
@@ -384,6 +408,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           conveniable: (totalDeudas - multaDeuda) + cuotasAtrasadas,
           motorV2,
           convenioId: convenioAct?.id ?? null,
+          plazoHasta,
           diasRetenida,
           fechaRetencion: desdeISO,
           listaParaLiquidar: diasRetenida >= 7,
@@ -424,6 +449,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const [cobroProc, setCobroProc] = useState(false);
   const [cobroErr, setCobroErr] = useState<string | null>(null);
   const [convenioRec, setConvenioRec] = useState<MotoRetenida | null>(null);
+  const [plazoRec, setPlazoRec] = useState<MotoRetenida | null>(null);   // dar plazo para entregar debiendo
   const [entregaRec, setEntregaRec] = useState<MotoRetenida | null>(null);
   // Resolver tiempo (cobrar/rodar): reusado por TEMA A (reactivar temporal) y TEMA B (devolver préstamo).
   const [resolverRec, setResolverRec] = useState<{ contratoId: string; placa: string; clienteNombre: string; fechaEntrada: string; motivo: string } | null>(null);
@@ -431,7 +457,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // — antes del formulario del convenio si no tiene, antes de la entrega si ya tiene. Quien
   // opere decide (el subadmin también tiene permiso); lo sagrado es que TODO quede registrado:
   // qué se decidió, quién, cuándo y con qué documento.
-  const [preResolver, setPreResolver] = useState<{ m: MotoRetenida; luego: "entrega" | "convenio" } | null>(null);
+  const [preResolver, setPreResolver] = useState<{ m: MotoRetenida; luego: "entrega" | "convenio" | "plazo" } | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
@@ -519,8 +545,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // deuda vieja grande: nadie va a pagar $880.000 de contado para llevarse la moto, y el botón
   // de convenio tampoco aparecía. La regla del dueño siempre fue: la multa es el mínimo
   // obligatorio, el resto se convenía. Las TEMPORAL no son morosas: se reactivan siempre.
+  // El PLAZO (2-sep) es la tercera salida: al que está al día con sus semanas y ya pagó la multa,
+  // pero arrastra una deuda vieja que cancela en un par de días, se le puede dar 1-2 días en vez
+  // de quemarle uno de sus 3 convenios. La multa sigue siendo intocable: el plazo NO la salta.
   const puedeEntregar = (m: MotoRetenida) =>
-    m.esTemporal || (m.multaPendiente <= 0 && (m.conveniable <= 0 || m.convenioId != null));
+    m.esTemporal || (m.multaPendiente <= 0 && (m.conveniable <= 0 || m.convenioId != null || m.plazoHasta != null));
 
   async function handleCobrarRecuperar() {
     if (!cobroRec || cobroProc || !profile) return;
@@ -556,8 +585,17 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   function handleAbrirEntrega(m: MotoRetenida) {
     if (procesandoId) return;
     if (!puedeEntregar(m)) {
-      alert(`Para entregar la moto ${m.placa}: primero se debe pagar la multa/deudas ($${fmt(m.totalPendiente)}) y las cuotas atrasadas o dejarlas en un convenio. Usa "💵 Cobrar" o "📝 Convenio".`);
+      alert(`Para entregar la moto ${m.placa}: primero se debe pagar la multa/deudas ($${fmt(m.totalPendiente)}) y las cuotas atrasadas, dejarlas en un convenio, o darle un plazo. Usa "💵 Cobrar", "📝 Convenio" o "⏳ Dar plazo".`);
       return;
+    }
+    // Se va a soltar la moto DEBIENDO, amparado en un plazo. Se dice en la cara antes, con la
+    // fecha — el que entrega tiene que saber qué está autorizando (misma forma que la temporal).
+    if (!m.esTemporal && m.plazoHasta && m.conveniable > 0 && m.convenioId == null) {
+      if (!confirm(`${m.clienteNombre.toUpperCase()} se lleva la ${m.placa} debiendo $${fmt(m.conveniable)}.
+
+Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa si no ha pagado.
+
+¿Entregar la moto?`)) return;
     }
     // La guardada temporal se entrega siempre (el cliente no incumplió), pero si debe plata hay
     // que decirlo en la cara antes de soltar la moto — no bloquea, avisa: quien entrega decide.
@@ -1004,6 +1042,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                           {d.concepto === "multa_recoleccion" ? "Multa por recolección/inmovilización" : d.descripcion}: <strong>${fmt(d.monto_pendiente)}</strong>
                         </div>
                       ))}
+                      {/* El plazo se ve en la tarjeta hasta que pague: nadie tiene que acordarse
+                          de que esta moto salió debiendo. */}
+                      {m.plazoHasta && (
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 8, padding: "5px 9px" }}>
+                          ⏳ Plazo hasta el {fmtFechaLarga(m.plazoHasta)}
+                          {m.conveniable > 0 && <> · debe <strong>${fmt(m.conveniable)}</strong></>}
+                        </div>
+                      )}
                       {!m.soloInfoTaller && m.cuotasAtrasadas > 0 && (
                         <div style={{ fontSize: 12, color: m.convenioId != null ? "var(--accent-ink)" : "var(--bad-ink)" }}>
                           Cuotas atrasadas: <strong>${fmt(m.cuotasAtrasadas)}</strong>
@@ -1019,7 +1065,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                               ? "✓ Listo para entregar"
                               : faltaMulta
                                 ? `Primero la multa, en efectivo: $${fmt(m.multaPendiente)}`
-                                : `Falta $${fmt(m.conveniable)} — págalo o déjalo en un convenio`}
+                                : `Falta $${fmt(m.conveniable)} — págalo, déjalo en un convenio o dale un plazo`}
                       </div>
                       {/* Una moto guardada temporal se puede entregar SIEMPRE (el cliente no
                           incumplió: la dejó él mismo). Pero si además debe plata, esa deuda no
@@ -1111,11 +1157,27 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
                         📝 Convenio
                       </button>
                     )}
+                    {/* DAR PLAZO (2-sep): la salida para el que está al día y solo arrastra una
+                        deuda vieja que cancela en un par de días. Mismos candados que el convenio
+                        (la multa primero) y los mismos roles que ya dan plazo extra en Cartera. */}
+                    {puedeHacerConvenio && puedeDarPlazo && m.plazoHasta == null && (
+                      <button
+                        onClick={() => {
+                          if (!tiempoGuardadoResuelto(m.contratoId)) { setPreResolver({ m, luego: "plazo" }); return; }
+                          setPlazoRec(m);
+                        }}
+                        disabled={procesandoEsta}
+                        title="Darle 1 o 2 días para pagar, en vez de gastarle uno de sus 3 convenios"
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--warn-line)", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}
+                      >
+                        ⏳ Dar plazo
+                      </button>
+                    )}
                     {!m.soloInfoTaller && (
                       <button
                         onClick={() => handleAbrirEntrega(m)}
                         disabled={!entregable || procesandoEsta}
-                        title={!entregable ? `Falta el mínimo (multa) o dejar lo atrasado en convenio para poder entregar` : "Abre el formulario de entrega con fotos"}
+                        title={!entregable ? `Falta el mínimo (la multa), o dejar lo atrasado en un convenio o con un plazo, para poder entregar` : m.plazoHasta ? `Se entrega debiendo, con plazo hasta el ${fmtFechaLarga(m.plazoHasta)}` : "Abre el formulario de entrega con fotos"}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: (!entregable || procesandoEsta) ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 700, background: entregable ? "var(--ok-soft)" : "var(--soft)", color: entregable ? "var(--ok-ink)" : "var(--faint)", opacity: procesandoEsta ? 0.6 : 1 }}
                       >
                         {procesandoEsta ? "Procesando..." : m.esTemporal ? "✓ Reactivar / entregar" : "✓ Entregar moto"}
@@ -1327,11 +1389,32 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
               const { m, luego } = preResolver;
               setPreResolver(null);
               if (luego === "entrega") setEntregaRec(m);
+              else if (luego === "plazo") setPlazoRec(m);
               else setConvenioRec(m);
             }}
           />
         );
       })()}
+
+      {/* DAR PLAZO para entregar debiendo (2-sep) — registra una gestión `plazo_extra`. */}
+      {plazoRec && profile && (
+        <ModalPlazoEntrega
+          placa={plazoRec.placa}
+          clienteNombre={plazoRec.clienteNombre}
+          debe={plazoRec.conveniable}
+          autorizaNombre={profile.nombre ?? "—"}
+          onClose={() => setPlazoRec(null)}
+          onGuardar={async ({ dias, motivo, fechaLimite }) => {
+            const { error } = await registrarGestion(
+              plazoRec.contratoId, "plazo_extra",
+              `Plazo de ${dias} día${dias === 1 ? "" : "s"} para entregar la moto ${plazoRec.placa} debiendo $${fmt(plazoRec.conveniable)} — vence el ${fechaLimite}`,
+              profile.id,
+              { plazo_extra_dias: dias, plazo_extra_motivo: motivo, plazo_extra_fecha_limite: fechaLimite },
+            );
+            return { error };
+          }}
+        />
+      )}
 
       {/* Resolver el tiempo del que tuvo moto de reemplazo (su moto propia estuvo en taller). */}
       {resolverRec && (() => {

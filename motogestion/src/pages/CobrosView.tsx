@@ -1721,9 +1721,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         const add = (l: string, v: number | null | undefined) => { if ((v ?? 0) > 0) out.push(`${l} $ ${fmt(v!)}`); };
         add("Días rodados", p.aplicado_prorrateo);
         add("Cuota", p.aplicado_tarifa);
-        if ((p.aplicado_deuda ?? 0) > 0) out.push((p.aplicado_multa ?? 0) > 0
-          ? `Deuda $ ${fmt(p.aplicado_deuda!)} (multa $ ${fmt(p.aplicado_multa!)})`
-          : `Deuda $ ${fmt(p.aplicado_deuda!)}`);
+        if ((p.aplicado_deuda ?? 0) > 0) {
+          // Multa y lavada NO son renglones aparte: son pedazos de lo que fue a deudas.
+          const dentro = [
+            (p.aplicado_multa ?? 0) > 0 ? `multa $ ${fmt(p.aplicado_multa!)}` : null,
+            (p.aplicado_lavada ?? 0) > 0 ? `lavada $ ${fmt(p.aplicado_lavada!)}` : null,
+          ].filter(Boolean);
+          out.push(`Deuda $ ${fmt(p.aplicado_deuda!)}` + (dentro.length ? ` (${dentro.join(" · ")})` : ""));
+        }
         add("Convenio", p.aplicado_convenio);
         add("Base inicial", p.aplicado_base_inicial);
         add("Saldo a favor", p.aplicado_saldo_favor);
@@ -2560,6 +2565,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 // multas (el motor la guarda como least(aplicado_deuda, multas_pendientes)).
                 // Mostrarla suelta contaría la misma plata dos veces — por eso acompaña a la deuda.
                 const multaAp = p.aplicado_multa ?? 0;
+                // La LAVADA igual (mig 123): pedazo de `aplicado_deuda`, se cobra justo detrás de la multa.
+                const lavadaAp = p.aplicado_lavada ?? 0;
                 // El orden es el MISMO en que el motor reparte cada peso: días rodados → cuota →
                 // deuda → convenio → base → saldo a favor. Así el funcionario ve la regla, no solo
                 // el resultado. Faltaban prorrateo, multa y base inicial: un pago que iba entero a
@@ -2568,9 +2575,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 const partes: string[] = [];
                 if (prorrAp > 0) partes.push(`Días rodados $${fmt(prorrAp)}`);
                 if (cuota > 0) partes.push(`Cuota $${fmt(cuota)}`);
-                if (deudaAp > 0) partes.push(multaAp > 0
-                  ? `Deuda $${fmt(deudaAp)} · de eso multa $${fmt(multaAp)}`
-                  : `Deuda $${fmt(deudaAp)}`);
+                if (deudaAp > 0) {
+                  const dentro = [
+                    multaAp > 0 ? `multa $${fmt(multaAp)}` : null,
+                    lavadaAp > 0 ? `lavada $${fmt(lavadaAp)}` : null,
+                  ].filter(Boolean);
+                  partes.push(`Deuda $${fmt(deudaAp)}` + (dentro.length ? ` · de eso ${dentro.join(" y ")}` : ""));
+                }
                 if (convAp > 0) partes.push(`Convenio $${fmt(convAp)}`);
                 if (baseAp > 0) partes.push(`Base inicial $${fmt(baseAp)}`);
                 if (saldoAp > 0) partes.push(`Saldo a favor $${fmt(saldoAp)}`);

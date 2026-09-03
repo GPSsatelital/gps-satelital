@@ -105,7 +105,9 @@ export default function CajaView() {
     // Multas de recolección cobradas (mig 085): va DENTRO del total —es plata que entró igual—
     // pero se muestra aparte porque no es del arriendo: es el costo de ir a buscar la moto.
     const multas = conf.reduce((s, p) => s + (p.aplicado_multa ?? 0), 0);
-    return { efectivo, transfer, total: efectivo + transfer, multas, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
+    // Lavadas cobradas (mig 123): mismo trato que las multas — dentro del total, mostradas aparte.
+    const lavadas = conf.reduce((s, p) => s + (p.aplicado_lavada ?? 0), 0);
+    return { efectivo, transfer, total: efectivo + transfer, multas, lavadas, pendientes: pend, totalPendiente: pend.reduce((s, p) => s + p.valor, 0), confirmados: conf.length };
   }
 
   // resumen = lo que se muestra (filtrado por grupo). resumenDia = día completo (referencia).
@@ -415,6 +417,13 @@ export default function CajaView() {
           {resumen.multas > 0 && (
             <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, marginTop: 4 }}>
               🔒 De eso, multas de recolección: ${fmt(resumen.multas)}
+            </div>
+          )}
+          {/* Misma lógica que la multa (mig 123): la lavada entró en el cobrado, pero no es
+              arriendo — es lo que costó dejar la moto lista, y se quiere ver sola. */}
+          {resumen.lavadas > 0 && (
+            <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, marginTop: 4 }}>
+              🧼 De eso, lavadas: ${fmt(resumen.lavadas)}
             </div>
           )}
         </div>

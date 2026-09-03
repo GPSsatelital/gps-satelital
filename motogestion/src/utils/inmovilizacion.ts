@@ -34,8 +34,9 @@ export const MULTA_RECOLECCION = 30000;
 /**
  * Lavada del vehículo al recibirlo (pedido del dueño, 2-sep-2026): en el formulario de novedad
  * se marca "hay que mandarla a lavar" y nace sola una deuda por este valor, con el concepto
- * `lavada` que ya existía (mig 095). Se cobra en la fila de deudas justo detrás de la multa
- * (regla del dueño del mismo día; la parte del motor va en una migración aparte).
+ * `lavada` que ya existía (mig 095). El motor la cobra justo detrás de la multa —y, con la moto
+ * retenida, las dos ANTES que la semana— y anota cuánto fue a lavada en `pagos.aplicado_lavada`
+ * para que la caja la muestre aparte (mig 123; espejo en utils/repartoPago.ts).
  */
 export const VALOR_LAVADA = 15000;
 

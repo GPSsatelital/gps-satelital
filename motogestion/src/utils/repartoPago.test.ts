@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { repartirPagoV2, fechaConGraciaPrepago } from "./repartoPago";
+import { repartirPagoV2, fechaConGraciaPrepago, ordenarDeudasReparto, separarMultaYLavada } from "./repartoPago";
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 // PASO 1 DEL TOPE DEL PAQUETE: la FOTOGRAFÍA de cómo reparte el motor HOY.
@@ -229,5 +229,58 @@ describe("DANIEL, sus pagos reales de agosto — el reparto correcto", () => {
     }));
     expect(r.deuda).toBe(152_000);
     expect(r.saldo).toBe(17_000);
+  });
+});
+
+describe("la lavada (mig 123) — detrás de la multa, antes de las deudas viejas", () => {
+  // Caso tipo: deuda vieja del Excel $50.000 (la más antigua), y al recoger la moto nacen la multa
+  // $20.000 y la lavada $15.000. La lista llega como en la base: en orden de created_at.
+  const fila = () => [
+    { montoPendiente: 50_000 },
+    { montoPendiente: 20_000, esMulta: true },
+    { montoPendiente: 15_000, esLavada: true },
+  ];
+
+  it("el orden del motor es multa → lavada → las demás por antigüedad", () => {
+    const orden = ordenarDeudasReparto([
+      { montoPendiente: 1 }, { montoPendiente: 2 }, { montoPendiente: 3, esLavada: true },
+      { montoPendiente: 4, esMulta: true }, { montoPendiente: 5 },
+    ]).map(d => d.montoPendiente);
+    expect(orden).toEqual([4, 3, 1, 2, 5]);
+  });
+
+  it("semana cubierta y $30.000 para deudas: multa entera, $10.000 de lavada, la vieja espera", () => {
+    const r = repartirPagoV2(daniel({ monto: CAJA + 30_000, convenioPendiente: 0, deudas: fila() }));
+    expect(r.tarifa).toBe(CAJA);
+    expect(r.deuda).toBe(30_000);
+    // en el orden del motor: multa, lavada, vieja
+    expect(r.deudasRestantes.map(d => d.montoPendiente)).toEqual([0, 5_000, 50_000]);
+  });
+
+  it("retenida (contrato suspendido): multa y lavada van ANTES de la semana", () => {
+    const r = repartirPagoV2(daniel({ monto: 50_000, contratoSuspendido: true, deudas: fila() }));
+    expect(r.deuda).toBe(35_000);   // $20.000 multa + $15.000 lavada
+    expect(r.tarifa).toBe(15_000);  // el resto sí entra a la semana; la vieja sigue esperando
+    expect(r.deudasRestantes.map(d => d.montoPendiente)).toEqual([0, 0, 50_000]);
+  });
+
+  it("retenida y el pago no alcanza ni para la multa: nada a la lavada, nada a la semana", () => {
+    const r = repartirPagoV2(daniel({ monto: 12_000, contratoSuspendido: true, deudas: fila() }));
+    expect(r.deuda).toBe(12_000);
+    expect(r.tarifa).toBe(0);
+    expect(r.deudasRestantes.map(d => d.montoPendiente)).toEqual([8_000, 15_000, 50_000]);
+  });
+
+  it("lo que se anota como lavada es lo que quedó DESPUÉS de la multa (aplicado_lavada)", () => {
+    expect(separarMultaYLavada(30_000, 20_000, 15_000)).toEqual({ multa: 20_000, lavada: 10_000 });
+    expect(separarMultaYLavada(10_000, 20_000, 15_000)).toEqual({ multa: 10_000, lavada: 0 });
+    expect(separarMultaYLavada(100_000, 20_000, 15_000)).toEqual({ multa: 20_000, lavada: 15_000 });
+    expect(separarMultaYLavada(15_000, 0, 15_000)).toEqual({ multa: 0, lavada: 15_000 });
+    expect(separarMultaYLavada(0, 20_000, 15_000)).toEqual({ multa: 0, lavada: 0 });
+  });
+
+  it("sin lavada de por medio, el reparto es exactamente el de antes", () => {
+    const r = repartirPagoV2(daniel({ monto: 300_000, deudas: [{ montoPendiente: 80_000 }] }));
+    expect(r).toMatchObject({ tarifa: 195_000, deuda: 80_000, convenio: 25_000 });
   });
 });

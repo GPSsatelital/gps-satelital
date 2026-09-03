@@ -108,6 +108,8 @@ export type Pago = {
   // De lo que fue a deudas, cuánto era una multa de recolección (mig 085). Solo para informar:
   // la caja lo muestra aparte porque no es plata del arriendo, es el costo de ir a buscar la moto.
   aplicado_multa?: number | null;
+  /** De lo aplicado a deudas, cuánto fue a la lavada del vehículo (mig 123). Solo informativo. */
+  aplicado_lavada?: number | null;
   // A qué cuenta de la empresa cayó la transferencia (mig 087). NULL en efectivo, en los
   // movimientos internos y en todo pago anterior a esa migración.
   cuenta_id?: string | null;

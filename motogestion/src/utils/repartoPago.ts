@@ -19,7 +19,42 @@ export type DeudaReparto = {
   montoPendiente: number;
   /** Las multas de recolección se cobran antes que el resto (order by en el trigger). */
   esMulta?: boolean;
+  /** La lavada del vehículo va justo detrás de la multa (mig 123, pedido del dueño 2-sep). */
+  esLavada?: boolean;
 };
+
+/**
+ * El orden en que el motor recorre las deudas: multa → lavada → las demás, de la más antigua a
+ * la más nueva (la lista llega ya en orden de `created_at` y ese orden se respeta dentro de cada
+ * grupo). Espejo del `order by (concepto = 'multa_recoleccion') desc, (concepto = 'lavada') desc,
+ * created_at` del trigger.
+ *
+ * Por qué la lavada va segunda y no "por antigüedad": nace el día en que se recibe la moto, así
+ * que siempre sería la más nueva y esperaría detrás de cualquier deuda vieja del Excel. El dueño
+ * la quiere cobrada de primera junto con la multa.
+ */
+export function ordenarDeudasReparto<T extends DeudaReparto>(deudas: T[]): T[] {
+  const peso = (d: DeudaReparto) => (d.esMulta ? 0 : d.esLavada ? 1 : 2);
+  return deudas
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => peso(a.d) - peso(b.d) || a.i - b.i)
+    .map(x => x.d);
+}
+
+/**
+ * De lo que un pago aplicó a deudas, cuánto fue a la multa y cuánto a la lavada. Es lo que el
+ * motor anota en `pagos.aplicado_multa` (mig 085) y `pagos.aplicado_lavada` (mig 123) para que la
+ * caja diaria las muestre aparte.
+ *
+ * Funciona SOLO porque el motor las cobra en ese orden: la multa es lo primero que recibe el
+ * dinero de deudas, y la lavada lo segundo. Si algún día cambia el orden, esta cuenta miente.
+ */
+export function separarMultaYLavada(aplicadoDeuda: number, multaAntes: number, lavadaAntes: number): { multa: number; lavada: number } {
+  const deuda = Math.max(aplicadoDeuda, 0);
+  const multa = Math.min(deuda, Math.max(multaAntes, 0));
+  const lavada = Math.min(Math.max(deuda - multa, 0), Math.max(lavadaAntes, 0));
+  return { multa, lavada };
+}
 
 /**
  * Cuántas cuotas del convenio están EXIGIDAS a una fecha — el freno que le faltaba al motor.
@@ -148,6 +183,9 @@ export type ResultadoReparto = {
   /** Cómo queda el contrato después del pago. */
   cajasPagadas: number;
   cajaActualPagado: number;
+  /** Las deudas después del pago, en el ORDEN en que el motor las recorrió (multa → lavada →
+   *  demás). Sirve para probar a cuál le llegó cada peso, no solo el total. */
+  deudasRestantes: DeudaReparto[];
 };
 
 /** Ahorro que entra al llenar una caja de `pagado` a `pagado + delta`, con tarifa-primero:
@@ -160,10 +198,13 @@ function ahorroDelTramo(pagado: number, delta: number, valor: number, ahorroCaja
 }
 
 export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
+  // Copia ORDENADA como la recorre el motor (multa → lavada → demás por antigüedad).
+  const deudas = ordenarDeudasReparto((e.deudas ?? []).map(d => ({ ...d })));
   const r: ResultadoReparto = {
     prorrateo: 0, tarifa: 0, deuda: 0, convenio: 0, saldo: 0, ahorro: 0,
     cajasPagadas: e.cajasPagadas,
     cajaActualPagado: e.cajaActualPagado ?? 0,
+    deudasRestantes: deudas,
   };
   let monto = e.monto;
   if (monto <= 0) return r;
@@ -171,13 +212,14 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
   const cajaValor = e.cajaValor;
   const cajaAhorro = e.cajaAhorro ?? 0;
   const totalCajas = e.totalCajas ?? Number.MAX_SAFE_INTEGER;
-  const deudas = (e.deudas ?? []).map(d => ({ ...d }));
 
-  // 0) Contrato SUSPENDIDO: la multa de recolección se cobra antes que nada (recuperar la moto).
+  // 0) Contrato SUSPENDIDO (moto retenida): la multa de recolección y la lavada se cobran antes
+  //    que nada — son el costo de haber ido a buscar la moto, y el cliente la recupera más rápido
+  //    (lavada en este grupo: decisión del dueño, 3-sep-2026, mig 123).
   if (e.contratoSuspendido) {
     for (const d of deudas) {
       if (monto <= 0) break;
-      if (!d.esMulta || d.montoPendiente <= 0) continue;
+      if (!(d.esMulta || d.esLavada) || d.montoPendiente <= 0) continue;
       const delta = Math.min(monto, d.montoPendiente);
       d.montoPendiente -= delta;
       r.deuda += delta;
@@ -209,7 +251,8 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     if (r.cajaActualPagado >= cajaValor) { r.cajasPagadas += 1; r.cajaActualPagado = 0; }
   }
 
-  // 3) Deudas — la multa de recolección primero, después las más antiguas.
+  // 3) Deudas — multa de recolección primero, la lavada segunda, después las más antiguas
+  //    (`deudas` ya viene en ese orden, ver ordenarDeudasReparto).
   for (const d of deudas) {
     if (monto <= 0) break;
     if (d.montoPendiente <= 0) continue;

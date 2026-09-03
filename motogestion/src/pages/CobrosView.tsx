@@ -20,6 +20,7 @@ import PanelEmpalme from "../components/PanelEmpalme";
 import PanelGuardadoMoto from "../components/PanelGuardadoMoto";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { usePrestamos } from "../hooks/usePrestamos";
 import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
@@ -39,7 +40,7 @@ import ModalAmpliarConvenio from "../components/ModalAmpliarConvenio";
 import ModalPartituraConvenio from "../components/ModalPartituraConvenio";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { tiempoGuardadoPendiente } from "../utils/tiempoGuardado";
+import { tiempoGuardadoPendiente, tramosDePrestamos, tramoDeRetencion } from "../utils/tiempoGuardado";
 import { amortizarPartitura, plataAlConvenio } from "../utils/partituraConvenio";
 import Placa from "../components/Placa";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
@@ -567,6 +568,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  // Los préstamos de reemplazo también dejan la moto guardada (caso IEW64I, 3-sep): sin esto el
+  // tiempo sin resolver de un préstamo no aparecía por ningún lado.
+  const { prestamos } = usePrestamos();
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
@@ -2493,7 +2497,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       // con ese tiempo, se pregunta ANTES — así el convenio nace con la cifra
                       // real. Cancelar el pre-paso NO abre el convenio: no se puede saltar.
                       const pend = contratoDetalle
-                        ? tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO())
+                        ? tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO(), [...tramosDePrestamos(prestamos, contratoDetalle.id), ...tramoDeRetencion(motoDetalle)])
                         : null;
                       if (pend && pend.dias > 0) { setPreResolverConv(true); return; }
                       setMostrarFormConvenio(true);
@@ -2503,7 +2507,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     + Crear convenio
                   </button>
                   {preResolverConv && contratoDetalle && (() => {
-                    const pend = tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO());
+                    const pend = tiempoGuardadoPendiente(recepciones, acuerdos, contratoDetalle.id, contratoDetalle.moto_id, hoyISO(), [...tramosDePrestamos(prestamos, contratoDetalle.id), ...tramoDeRetencion(motoDetalle)]);
                     if (!pend) { setPreResolverConv(false); return null; }
                     return (
                       <ModalResolverTiempoFueraServicio

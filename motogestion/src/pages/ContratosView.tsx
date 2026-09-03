@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useContratos, calcularFechaFinContrato, ahorroTotal, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { usePrestamos } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -10,7 +11,7 @@ import ModalEditarContrato from "../components/ModalEditarContrato";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import { hoyISO } from "../utils/fecha";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { tiempoGuardadoSinResolver } from "../utils/tiempoGuardado";
+import { tiempoGuardadoSinResolver, tramosDePrestamos } from "../utils/tiempoGuardado";
 import ModalDocumentosContrato from "../components/ModalDocumentosContrato";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
@@ -133,6 +134,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
+  // Ver CobrosView: un préstamo de reemplazo guarda la moto y no deja recepción.
+  const { prestamos } = usePrestamos();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
@@ -539,7 +542,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             })()}
 
             {esAdminRol && c.estado === "Activo" && (() => {
-              const pendiente = tiempoGuardadoSinResolver(recepciones, acuerdos, c.id, c.moto_id);
+              const pendiente = tiempoGuardadoSinResolver(recepciones, acuerdos, c.id, c.moto_id, tramosDePrestamos(prestamos, c.id));
               return (
                 <>
                   {pendiente && (

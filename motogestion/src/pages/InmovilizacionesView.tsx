@@ -115,9 +115,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const liqAbiertaDe = (contratoId: string) =>
     liquidaciones.find(l => l.contrato_id === contratoId && l.estado !== "cerrada") ?? null;
   const puedeCrearConvenio = puede("crear_convenio");
-  // Mismos roles que ya otorgan "plazo extra" en Cartera (ver ModalGestion). Decisión del dueño
-  // el 2-sep: consistente con lo que ya existe, no un permiso aparte.
-  const puedeDarPlazo = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL" || profile?.role === "SUBADMIN";
+  // EL PLAZO EXIGE LO MISMO QUE EL CONVENIO (corregido 2-sep, auditoría previa a crear dos
+  // subadmins más). Primero se ató al rol —"igual que el plazo extra de Cartera"— y quedaba al
+  // revés: el SUBADMIN no puede crear convenios pero sí podía dar el plazo que SUELTA una moto
+  // retenida debiendo. Prohibido el camino normal, permitida la excepción.
+  // En Cartera el plazo extra solo frena una recolección; acá saca una moto del patio: mismo
+  // nombre, riesgo distinto. Son las dos salidas del mismo problema —cómo suelto esta moto sin
+  // que me paguen todo— así que quien pueda una puede la otra, y quien no pueda ninguna no suelta.
+  const puedeDarPlazo = puedeCrearConvenio;
 
   const [gestionId, setGestionId]     = useState<string | null>(null);
   const [gestionNombre, setGestionNombre] = useState("");

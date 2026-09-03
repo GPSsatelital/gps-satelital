@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { ordenarComoElMotor, alternarHasta, sumaPrefijo, loQueMarcariaElMotor } from "../utils/deudasAlConvenio";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useConvenios, type Convenio } from "../hooks/useConvenios";
 import { useDeudas } from "../hooks/useDeudas";
@@ -42,15 +43,34 @@ export default function ModalAmpliarConvenio({ convenio, clienteNombre, onClose,
   const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Cuántas deudas del inicio de la lista van al convenio (prefijo — ver deudasAlConvenio.ts). */
+  const [nSel, setNSel] = useState(0);
+  /** El motivo lo escribe el funcionario, pero si no lo tocó se rellena con lo que marcó: así el
+   *  rastro de la auditoría dice de qué era la plata sin obligarlo a repetirlo a mano. */
+  const [motivoTocado, setMotivoTocado] = useState(false);
 
   const fmt = (n: number) => Math.round(n).toLocaleString("es-CO");
   const contrato = contratos.find(c => c.id === convenio.contrato_id) ?? null;
 
   // Deudas del contrato que NO están dentro de este convenio: son las candidatas a agregar.
-  const sueltas = deudas.filter(d => d.contrato_id === convenio.contrato_id && d.estado === "pendiente" && d.monto_pendiente > 0);
+  // EN EL ORDEN DEL MOTOR (más vieja primero): la pantalla tiene que mostrar exactamente lo que
+  // el disparador va a marcar, o el funcionario elige una y el sistema se lleva otra.
+  const sueltas = useMemo(
+    () => ordenarComoElMotor(deudas.filter(d => d.contrato_id === convenio.contrato_id && d.estado === "pendiente" && d.monto_pendiente > 0)),
+    [deudas, convenio.contrato_id],
+  );
   const totalSueltas = sueltas.reduce((s, d) => s + d.monto_pendiente, 0);
+  const totalSeleccionado = sumaPrefijo(sueltas, nSel);
 
-  const extra = Number(monto) || 0;
+  // Lo escrito a mano es para deuda que TODAVÍA no está registrada. Se suma a lo marcado.
+  const manual = Number(monto) || 0;
+  const extra = totalSeleccionado + manual;
+  // Aviso honesto: si escribe un monto a mano, el motor lo usará para tragarse deudas sueltas
+  // que no marcó (de la más vieja a la más nueva). Hay que decírselo, no esconderlo.
+  const arrastradas = manual > 0 ? loQueMarcariaElMotor(sueltas.slice(nSel), manual) : [];
+
+  const motivoAuto = sueltas.slice(0, nSel).map(d => d.descripcion || d.concepto).join(", ");
+  const motivoFinal = motivoTocado ? motivo : (motivo || motivoAuto);
   const abonado = convenio.cuotas_pagadas * convenio.cuota_por_periodo;
   const nuevoTotal = convenio.deuda_total + extra;
   // Se mantiene la cuota firmada y se recalcula cuántas hacen falta. La última absorbe el resto,
@@ -71,13 +91,13 @@ export default function ModalAmpliarConvenio({ convenio, clienteNombre, onClose,
   async function handleGuardar() {
     if (guardando) return;
     if (!profile) { setError("Sesión no válida."); return; }
-    if (extra <= 0) { setError("Escribe cuánto vas a agregar al convenio."); return; }
-    if (!motivo.trim()) { setError("Escribe de qué es la deuda que estás agregando."); return; }
+    if (extra <= 0) { setError("Marca al menos una deuda, o escribe cuánto vas a agregar."); return; }
+    if (!motivoFinal.trim()) { setError("Escribe de qué es la deuda que estás agregando."); return; }
     if (pasaTope) { setError(`Quedaría en ${nuevasCuotas} cuotas y el máximo son 24. Si no alcanza a pagarlo, esto ya no es un convenio — procede liquidación.`); return; }
     setError(null);
     setGuardando(true);
     try {
-      const { error: err } = await ampliarConvenio(convenio, extra, nuevasCuotas, nuevaFechaLimite, motivo.trim(), profile.id);
+      const { error: err } = await ampliarConvenio(convenio, extra, nuevasCuotas, nuevaFechaLimite, motivoFinal.trim(), profile.id);
       if (err) { setError(err); return; }
       onDone?.(`Convenio ampliado a $ ${fmt(nuevoTotal)} — ahora son ${nuevasCuotas} cuotas.`);
       onClose();
@@ -114,26 +134,63 @@ export default function ModalAmpliarConvenio({ convenio, clienteNombre, onClose,
         </div>
 
         {sueltas.length > 0 && (
-          <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 10, padding: "9px 11px", lineHeight: 1.5 }}>
-            Tiene <strong>$ {fmt(totalSueltas)}</strong> de deuda por fuera del convenio:
-            <span style={{ display: "block", marginTop: 2 }}>
-              {sueltas.map(d => `${d.descripcion || d.concepto} $${fmt(d.monto_pendiente)}`).join(" · ")}
-            </span>
-            <button type="button" onClick={() => { setMonto(String(Math.round(totalSueltas))); if (!motivo.trim()) setMotivo(sueltas.map(d => d.descripcion || d.concepto).join(", ")); }}
-              style={{ background: "none", border: "none", padding: 0, marginTop: 4, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--accent-ink)", textAlign: "left" }}>
-              Usar ese monto
-            </button>
+          <div>
+            <div style={labelStyle}>¿Cuáles deudas entran al convenio?</div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
+              Entran de la más antigua a la más nueva: al marcar una, entran también las de arriba.
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {sueltas.map((d, i) => {
+                const dentro = i < nSel;
+                return (
+                  <button key={d.id} type="button" onClick={() => setNSel(alternarHasta(nSel, i))} style={{
+                    display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer",
+                    padding: "9px 11px", borderRadius: 10, minWidth: 0, boxSizing: "border-box",
+                    border: dentro ? "2px solid var(--accent)" : "1px solid var(--line2)",
+                    background: dentro ? "var(--accent-soft4)" : "var(--card)",
+                  }}>
+                    <span aria-hidden style={{
+                      width: 18, height: 18, flexShrink: 0, borderRadius: 5, display: "flex",
+                      alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800,
+                      border: dentro ? "none" : "1.5px solid var(--line2)",
+                      background: dentro ? "var(--accent)" : "transparent",
+                      color: "var(--on-ink)",
+                    }}>{dentro ? "✓" : ""}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text)" }}>
+                      {d.descripcion || d.concepto}
+                      <span style={{ display: "block", fontSize: 11, color: "var(--faint)" }}>{d.created_at.slice(0, 10)}</span>
+                    </span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: dentro ? "var(--accent-ink)" : "var(--muted2)", fontVariantNumeric: "tabular-nums" }}>
+                      $ {fmt(d.monto_pendiente)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 12, color: "var(--muted2)" }}>
+              <button type="button" onClick={() => setNSel(nSel === sueltas.length ? 0 : sueltas.length)}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--accent-ink)" }}>
+                {nSel === sueltas.length ? "Quitar todas" : `Entran todas — $ ${fmt(totalSueltas)}`}
+              </button>
+              <span>Marcadas: <strong style={{ color: "var(--text)" }}>$ {fmt(totalSeleccionado)}</strong></span>
+            </div>
           </div>
         )}
 
         <div>
-          <div style={labelStyle}>¿Cuánto le agregas?</div>
+          <div style={labelStyle}>¿Algo más que todavía no está registrado como deuda?</div>
           <MoneyInput value={monto} onChange={setMonto} />
+          {arrastradas.length > 0 && (
+            <div style={{ fontSize: 11.5, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 10, padding: "8px 10px", marginTop: 6, lineHeight: 1.5 }}>
+              Con ese monto el sistema también se llevará al convenio: <strong>{arrastradas.map(d => d.descripcion || d.concepto).join(", ")}</strong>.
+              Si no era la idea, márcalas arriba o cambia el monto.
+            </div>
+          )}
         </div>
 
         <div>
           <div style={labelStyle}>¿De qué es? *</div>
-          <input style={inputStyle} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ej: multa por recolección del 8 de agosto" />
+          <input style={inputStyle} value={motivoFinal} onChange={e => { setMotivoTocado(true); setMotivo(e.target.value); }} placeholder="Ej: multa por recolección del 8 de agosto" />
         </div>
 
         {extra > 0 && (

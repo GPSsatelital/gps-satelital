@@ -17,6 +17,9 @@ export type Deuda = {
   monto_pendiente: number;
   estado: EstadoDeuda;
   registrado_por: string | null;
+  /** A cuál convenio entró esta deuda (mig 124). Se conserva aunque el convenio termine: es el
+   *  rastro, no el estado. null = nunca entró a ninguno. Lo escriben los disparadores de la BD. */
+  convenio_id: string | null;
   created_at: string;
 };
 

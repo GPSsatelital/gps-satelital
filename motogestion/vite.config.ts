@@ -5,6 +5,10 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Vite no lee PORT por su cuenta: si el entorno asigna un puerto (la vista previa de la app
+  // lo hace cuando el 5173 está ocupado) hay que pasárselo, o levanta en otro y nadie lo
+  // encuentra. Sin PORT definido se comporta como siempre (5173, o el siguiente libre).
+  server: process.env.PORT ? { port: Number(process.env.PORT) } : undefined,
   resolve: {
     alias: {
       // @digitalpersona/devices hace `import 'WebSdk'` — el código real viene

@@ -298,6 +298,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
      * figura que frena una recolección, así la campana ya avisa sola cuando se vence.
      */
     plazoHasta: string | null;
+    /**
+     * Al recibirla, el cliente NO entregó su llave y hubo que ir con la copia de la empresa
+     * (mig 122, 2-sep). Se le quedó una llave: hay que pedírsela al devolverle la moto.
+     */
+    seFueConCopia: boolean;
     diasRetenida: number;
     fechaRetencion: string | null; // día en que se guardó/registró (de la recolección o la recepción)
     listaParaLiquidar: boolean;
@@ -369,9 +374,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         // con pruebas): muchas quedaron guardadas SOLO con la moto —sin contrato ni cliente— y
         // esta pantalla, que buscaba por contrato, decía "sin fecha registrada" aunque la fecha
         // existiera con sus 6 fotos. Caso real: ANTONIO MONTERROZA (IEW65I), recibida el 30-jul.
-        const recepcionFecha = recoleccionG ? null
-          : (recepcionDelContrato(recepciones, c, contratos.filter(x => x.moto_id === c.moto_id))
-              ?.created_at.slice(0, 10) ?? null);
+        const recepcionC = recepcionDelContrato(recepciones, c, contratos.filter(x => x.moto_id === c.moto_id));
+        const recepcionFecha = recoleccionG ? null : (recepcionC?.created_at.slice(0, 10) ?? null);
+        // Llave (mig 122): solo cuenta un `false` explícito. Las recepciones viejas traen null
+        // ("no se preguntó") y a esas no se les inventa una llave pendiente.
+        const seFueConCopia = recepcionC?.llave_entregada === false;
         const desdeISO = recoleccionG?.fecha ?? recepcionFecha;
         const diasRetenida = desdeISO
           ? Math.floor((hoyMs - new Date(desdeISO + "T00:00:00").getTime()) / 86400000)
@@ -414,6 +421,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motorV2,
           convenioId: convenioAct?.id ?? null,
           plazoHasta,
+          seFueConCopia,
           diasRetenida,
           fechaRetencion: desdeISO,
           listaParaLiquidar: diasRetenida >= 7,
@@ -1047,6 +1055,13 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           {d.concepto === "multa_recoleccion" ? "Multa por recolección/inmovilización" : d.descripcion}: <strong>${fmt(d.monto_pendiente)}</strong>
                         </div>
                       ))}
+                      {/* Llave pendiente (mig 122): se ve en la tarjeta para que, al entregarla,
+                          nadie tenga que acordarse de que el cliente se quedó con una llave. */}
+                      {m.seFueConCopia && (
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 8, padding: "5px 9px" }}>
+                          🔑 Se quedó con una llave (se recibió con la copia) — pedírsela al entregar
+                        </div>
+                      )}
                       {/* El plazo se ve en la tarjeta hasta que pague: nadie tiene que acordarse
                           de que esta moto salió debiendo. */}
                       {m.plazoHasta && (
@@ -1359,6 +1374,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
           clienteNombre={entregaRec.clienteNombre}
           motoId={entregaRec.motoId}
           placa={entregaRec.placa}
+          seFueConCopia={entregaRec.seFueConCopia}
           onClose={() => setEntregaRec(null)}
         />
       )}

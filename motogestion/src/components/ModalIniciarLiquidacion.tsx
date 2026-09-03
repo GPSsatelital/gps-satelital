@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { VALOR_LAVADA } from "../utils/inmovilizacion";
+import PreguntasRecepcion from "./PreguntasRecepcion";
 import { supabase } from "../lib/supabase";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useLiquidaciones, type MotivoLiquidacion } from "../hooks/useLiquidaciones";
@@ -66,6 +68,9 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
   const [condicion, setCondicion] = useState<CondicionVehiculo>("buena");
   const [danos, setDanos] = useState("");
   const [kilometros, setKilometros] = useState("");
+  // Las dos preguntas nuevas (2-sep): lavada (crea deuda) y cómo llegó la llave (rastro).
+  const [lavado, setLavado] = useState(false);
+  const [llaveEntregada, setLlaveEntregada] = useState<boolean | null>(null);
   const [fotos, setFotos] = useState<Partial<Record<AnguloFoto, string>>>({});
 
   const contrato = contratos.find(c => c.id === contratoId);
@@ -133,6 +138,8 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
       if (necesitaRecepcion && motoId) {
         // 1. Evidencia primero: sin las 6 fotos la liquidación no tiene con qué sostener
         //    los daños que el taller reporte más adelante.
+        // La llave se pregunta siempre que se recibe la moto de un cliente (2-sep).
+        if (llaveEntregada == null) { setError("Indica cómo llegó la llave: ¿la entregó el cliente o hubo que ir con la copia?"); return; }
         const { urls, fallidas } = await subirFotos();
         if (fallidas > 0) { setError(`No se pudieron subir ${fallidas} foto(s). Revisa la conexión e intenta de nuevo — la recepción necesita las 6 fotos como respaldo.`); return; }
 
@@ -151,6 +158,8 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
           nombre_entrega: clienteNombre,
           fotos: urls,
           observaciones: "Recibida para liquidar el contrato.",
+          lavado,
+          llave_entregada: llaveEntregada,
         });
         if (errRec) { setError("Error al registrar la recepción: " + errRec); return; }
 
@@ -166,6 +175,13 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
             contratoId, "multa_recoleccion", "Costo por movimiento de personal (recolección)", MULTA_RECOLECCION, profile.id,
           );
           if (errDeuda) { setError("La moto quedó recibida y el contrato suspendido, pero falló crear el costo de recolección: " + errDeuda); return; }
+        }
+        // Lavada (2-sep): también ANTES de iniciar la liquidación, para que entre en su detalle.
+        if (lavado) {
+          const { error: errLav } = await registrarDeuda(
+            contratoId, "lavada", "Lavada del vehículo al recibirlo", VALOR_LAVADA, profile.id,
+          );
+          if (errLav) { setError("La moto quedó recibida y el contrato suspendido, pero falló crear la deuda de la lavada: " + errLav); return; }
         }
       }
 
@@ -244,6 +260,12 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
               <div style={labelStyle}>Daños visibles (si aplica)</div>
               <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 50 }} value={danos} onChange={e => setDanos(e.target.value)} placeholder="Describe los daños si los hay..." />
             </div>
+
+            <PreguntasRecepcion
+              lavado={lavado} onLavado={setLavado}
+              llave={llaveEntregada} onLlave={setLlaveEntregada}
+              hayAQuienCobrar
+            />
 
             <div>
               <div style={labelStyle}>Kilometraje actual</div>

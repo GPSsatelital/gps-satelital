@@ -31,6 +31,14 @@ import type { EstadoCartera } from "./cicloPago";
  */
 export const MULTA_RECOLECCION = 30000;
 
+/**
+ * Lavada del vehículo al recibirlo (pedido del dueño, 2-sep-2026): en el formulario de novedad
+ * se marca "hay que mandarla a lavar" y nace sola una deuda por este valor, con el concepto
+ * `lavada` que ya existía (mig 095). Se cobra en la fila de deudas justo detrás de la multa
+ * (regla del dueño del mismo día; la parte del motor va en una migración aparte).
+ */
+export const VALOR_LAVADA = 15000;
+
 export type RazonInmovilizar = "mora" | "gabela" | "deuda";
 
 /** Rótulo corto para mostrar POR QUÉ se habilitó (queda en pantalla y en la gestión). */

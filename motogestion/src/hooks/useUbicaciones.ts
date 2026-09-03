@@ -49,6 +49,15 @@ export type RecepcionVehiculo = {
   nombre_entrega: string | null;
   fotos: string[];
   observaciones: string | null;
+  /**
+   * Pedido del dueño (2-sep-2026), mig 122. `null` = la recepción es anterior y no se preguntó:
+   * no se le inventa un dato a lo viejo.
+   *  · lavado: se marcó "hay que mandarla a lavar" → nació la deuda de VALOR_LAVADA.
+   *  · llave_entregada: true = el cliente entregó su llave · false = hubo que ir con la copia de
+   *    la empresa → al devolverle la moto hay que PEDÍRSELA (y cobrársela si liquida — pendiente).
+   */
+  lavado: boolean | null;
+  llave_entregada: boolean | null;
   created_at: string;
 };
 
@@ -136,6 +145,9 @@ export function useUbicaciones() {
     fotos?: string[];
     observaciones?: string;
     ubicacion_anterior?: string;
+    /** Ver `RecepcionVehiculo`: se guardan tal cual; sin responder = null, nunca se inventa. */
+    lavado?: boolean | null;
+    llave_entregada?: boolean | null;
   }) {
     const { error: errRec } = await supabase.from("recepciones_vehiculo").insert({
       moto_id: data.moto_id,
@@ -150,6 +162,8 @@ export function useUbicaciones() {
       nombre_entrega: data.nombre_entrega ?? null,
       fotos: data.fotos ?? [],
       observaciones: data.observaciones ?? null,
+      lavado: data.lavado ?? null,
+      llave_entregada: data.llave_entregada ?? null,
     });
     if (errRec) return { error: errRec.message };
 

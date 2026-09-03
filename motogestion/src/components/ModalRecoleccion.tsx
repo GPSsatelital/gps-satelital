@@ -2,7 +2,8 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useUbicaciones, type UbicacionFisica, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useContratos } from "../hooks/useContratos";
-import { MULTA_RECOLECCION } from "../utils/inmovilizacion";
+import { MULTA_RECOLECCION, VALOR_LAVADA } from "../utils/inmovilizacion";
+import PreguntasRecepcion from "./PreguntasRecepcion";
 import { useDeudas } from "../hooks/useDeudas";
 import { useGestiones } from "../hooks/useGestiones";
 import { useAuth } from "../contexts/AuthContext";
@@ -48,6 +49,9 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
+  // Las dos preguntas nuevas (2-sep): lavada (crea deuda) y cómo llegó la llave (rastro).
+  const [lavado, setLavado] = useState(false);
+  const [llaveEntregada, setLlaveEntregada] = useState<boolean | null>(null);
 
   async function subirFotos(): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
@@ -78,6 +82,9 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
     try {
       // 1. Recepción del vehículo con evidencia
       if (motoId) {
+        // La llave se pregunta SIEMPRE en una recolección: es justo el caso en que el cliente
+        // puede no estar y el funcionario llega con la copia. Sin respuesta no se guarda.
+        if (llaveEntregada == null) { setError("Indica cómo llegó la llave: ¿la entregó el cliente o hubo que ir con la copia?"); return; }
         const { urls: fotosUrls, fallidas } = await subirFotos();
         if (fallidas > 0) { setError(`No se pudieron subir ${fallidas} foto(s). Revisa la conexión e intenta de nuevo — la recolección necesita las 6 fotos como respaldo.`); return; }
         const { error: errRec } = await registrarRecepcion({
@@ -93,6 +100,8 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
           nombre_entrega: clienteNombre,
           fotos: fotosUrls,
           observaciones: observaciones || undefined,
+          lavado,
+          llave_entregada: llaveEntregada,
         });
         if (errRec) { setError("Error al registrar la recepción: " + errRec); return; }
       }
@@ -117,6 +126,15 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
         contratoId, "multa_recoleccion", "Multa por recolección/inmovilización", MULTA_RECOLECCION, profile.id,
       );
       if (errDeuda) { setError("Error al registrar la multa: " + errDeuda); return; }
+
+      // 5. Lavada (2-sep): si se marcó, nace la deuda sola — mismo concepto `lavada` que ya se
+      // podía crear a mano desde Cartera, ahora sin que nadie tenga que acordarse.
+      if (lavado) {
+        const { error: errLav } = await registrarDeuda(
+          contratoId, "lavada", "Lavada del vehículo al recibirlo", VALOR_LAVADA, profile.id,
+        );
+        if (errLav) { setError("La moto quedó recibida y la multa creada, pero falló crear la deuda de la lavada: " + errLav); return; }
+      }
 
       setExito(true);
       setTimeout(() => { onDone?.(); onClose(); }, 1200);
@@ -168,6 +186,12 @@ export default function ModalRecoleccion({ contratoId, clienteId, clienteNombre,
           <div style={labelStyle}>Daños visibles (si aplica)</div>
           <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 50 }} value={danos} onChange={e => setDanos(e.target.value)} placeholder="Describe los daños si los hay..." />
         </div>
+
+        <PreguntasRecepcion
+          lavado={lavado} onLavado={setLavado}
+          llave={llaveEntregada} onLlave={setLlaveEntregada}
+          hayAQuienCobrar
+        />
 
         <div>
           <div style={labelStyle}>Kilometraje actual</div>

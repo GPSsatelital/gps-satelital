@@ -24,7 +24,8 @@ import { useDeudas } from "../hooks/useDeudas";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
-import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL, MULTA_RECOLECCION } from "../utils/inmovilizacion";
+import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL, MULTA_RECOLECCION, VALOR_LAVADA } from "../utils/inmovilizacion";
+import PreguntasRecepcion from "../components/PreguntasRecepcion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import Placa from "../components/Placa";
 import ModalRecoleccion from "../components/ModalRecoleccion";
@@ -189,6 +190,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     ubicacion_destino: "bodega" as UbicacionFisica,
     nombre_entrega: "",
     observaciones: "",
+    // Las dos preguntas nuevas (2-sep): lavada (crea deuda) y cómo llegó la llave (rastro).
+    lavado: false,
+    llave_entregada: null as boolean | null,
   });
   // Fotos del estado del vehículo al recibirlo (dataURLs; se suben a Storage al guardar)
   // 6 fotos guiadas por ángulo (incl. la persona) — misma evidencia que la recolección,
@@ -407,6 +411,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (!selectedMoto || !profile) return;
     const faltanFotos = ANGULOS_FOTO.filter(a => !fotosRec[a.key]);
     if (faltanFotos.length > 0) { setMsgDetalle(`Falta la foto: ${faltanFotos.map(a => a.label).join(", ")}.`); return; }
+    // Misma regla que en recolección y liquidación (todas las puertas hacen lo mismo): si la moto
+    // venía de un cliente, hay que decir cómo llegó la llave antes de guardar.
+    if ((formRec.motivo === "entrega_voluntaria" || formRec.motivo === "liquidacion") && formRec.llave_entregada == null) {
+      setMsgDetalle("Indica cómo llegó la llave: ¿la entregó el cliente o hubo que ir con la copia?"); return;
+    }
     if (!confirm(`¿Registrar la recepción de la moto ${selectedMoto.placa}? Esto puede suspender el contrato activo.`)) return;
     setGuardando(true);
     const fotosUrls = await subirFotosRecepcion(selectedMoto.id);
@@ -422,6 +431,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       fotos: fotosUrls,
       observaciones: formRec.observaciones || undefined,
       ubicacion_anterior: (selectedMoto as any).ubicacion_fisica ?? undefined,
+      lavado: formRec.lavado,
+      llave_entregada: formRec.llave_entregada,
     });
     if (error) { setGuardando(false); setMsgDetalle(error); return; }
 
@@ -442,6 +453,20 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         }
       } else {
         msgFinal = "Recepción registrada (esta moto no tenía contrato activo).";
+      }
+    }
+
+    // Lavada (2-sep): si se marcó y hay a quién cobrársela, nace la deuda sola. Sin contrato
+    // activo queda anotada en la recepción (rastro) pero no se le cobra a nadie — se avisa.
+    if (formRec.lavado) {
+      const contratoActivo = contratos.find(c => c.moto_id === selectedMoto.id && (c.estado === "Activo" || c.estado === "Suspendido"));
+      if (contratoActivo) {
+        const { error: errLav } = await registrarDeuda(contratoActivo.id, "lavada", "Lavada del vehículo al recibirlo", VALOR_LAVADA, profile.id);
+        msgFinal += errLav
+          ? ` ⚠️ No se pudo crear la deuda de la lavada: ${errLav}`
+          : ` Lavada de $${VALOR_LAVADA.toLocaleString("es-CO")} cargada a su cuenta.`;
+      } else {
+        msgFinal += " Lavada anotada, pero sin contrato activo no hay a quién cobrársela.";
       }
     }
 
@@ -890,7 +915,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <h3 style={{ margin: "0 0 16px" }}>Formulario de recepción — {selectedMoto.placa}</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <Field label="Motivo de ingreso">
-                <select style={inputStyle} value={formRec.motivo} onChange={(e) => setFormRec((p) => ({ ...p, motivo: e.target.value as MotivoRecepcion }))}>
+                {/* Al cambiar el motivo se borra la respuesta de la llave: solo se pregunta en
+                    entrega voluntaria / liquidación, y no debe guardarse una respuesta vieja. */}
+                <select style={inputStyle} value={formRec.motivo} onChange={(e) => setFormRec((p) => ({ ...p, motivo: e.target.value as MotivoRecepcion, llave_entregada: null }))}>
                   <option value="nuevo_registro">Nuevo registro de moto</option>
                   {/* "Retención por mora" se quitó: el handler solo reacciona a entrega_voluntaria,
                       así que elegirla dejaba un REGISTRO FANTASMA — decía "Recepción registrada" en
@@ -938,6 +965,14 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 </select>
               </Field>
               <Field label="Descripción de daños visibles"><textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} placeholder="Describe los daños si aplica..." value={formRec.descripcion_danos} onChange={(e) => setFormRec((p) => ({ ...p, descripcion_danos: e.target.value }))} /></Field>
+              {/* Lavada y llave (2-sep). La llave solo se pregunta si la moto venía de un cliente
+                  (entrega voluntaria / liquidación); en un registro nuevo u "otro" no hay a quién. */}
+              <PreguntasRecepcion
+                lavado={formRec.lavado} onLavado={v => setFormRec(p => ({ ...p, lavado: v }))}
+                llave={formRec.llave_entregada} onLlave={v => setFormRec(p => ({ ...p, llave_entregada: v }))}
+                hayAQuienCobrar={contratos.some(c => c.moto_id === selectedMoto.id && (c.estado === "Activo" || c.estado === "Suspendido"))}
+                preguntarLlave={formRec.motivo === "entrega_voluntaria" || formRec.motivo === "liquidacion"}
+              />
               <Field label="Kilómetros actuales"><input type="number" style={inputStyle} placeholder="Ej: 12500" value={formRec.kilometros} onChange={(e) => setFormRec((p) => ({ ...p, kilometros: e.target.value }))} /></Field>
               <Field label="Ubicación donde queda almacenada">
                 <select style={inputStyle} value={formRec.ubicacion_destino} onChange={(e) => setFormRec((p) => ({ ...p, ubicacion_destino: e.target.value as UbicacionFisica }))}>

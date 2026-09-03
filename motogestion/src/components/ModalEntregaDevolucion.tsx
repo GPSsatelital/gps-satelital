@@ -21,9 +21,14 @@ interface Props {
   placa: string;
   onClose: () => void;
   onDone?: () => void;
+  /**
+   * Al recibirla, el cliente NO entregó su llave y se usó la copia de la empresa (mig 122).
+   * Se le quedó una llave: hay que pedírsela ahora. No bloquea la entrega — avisa y deja rastro.
+   */
+  seFueConCopia?: boolean;
 }
 
-export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteNombre, motoId, placa, onClose, onDone }: Props) {
+export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteNombre, motoId, placa, onClose, onDone, seFueConCopia = false }: Props) {
   const { registrarRecepcion } = useUbicaciones();
   const { reactivarContrato } = useContratos();
   const { profile } = useAuth();
@@ -35,6 +40,8 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
+  // ¿Devolvió ahora la llave que se había quedado? Solo se pregunta si `seFueConCopia`.
+  const [llaveDevuelta, setLlaveDevuelta] = useState<boolean | null>(null);
 
   async function subirFotos(): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
@@ -64,6 +71,13 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
     setError(null);
     setGuardando(true);
     try {
+      // 0. La llave que se quedó (mig 122): hay que responder, y si NO la devolvió se confirma en
+      //    la cara antes de soltar la moto. No bloquea — quien entrega decide, pero queda escrito.
+      if (seFueConCopia) {
+        if (llaveDevuelta == null) { setError("Responde si el cliente devolvió la llave que se había quedado."); return; }
+        if (llaveDevuelta === false && !confirm(`${clienteNombre.toUpperCase()} sigue con una llave de la ${placa}.\n\n¿Entregarle la moto igual? Quedará anotado que la llave sigue pendiente.`)) return;
+      }
+
       // 1. Evidencia de la entrega (fotos + km + condición)
       if (motoId) {
         const { urls: fotosUrls, fallidas } = await subirFotos();
@@ -79,7 +93,11 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
           quien_recibe: profile.id,
           nombre_entrega: clienteNombre,
           fotos: fotosUrls,
-          observaciones: `Entrega de moto al cliente tras pago de recuperación.${observaciones ? " " + observaciones : ""}`,
+          observaciones: `Entrega de moto al cliente tras pago de recuperación.${
+            seFueConCopia ? (llaveDevuelta ? " Llave que se había quedado: DEVUELTA en esta entrega." : " Llave que se había quedado: NO devuelta — sigue pendiente.") : ""
+          }${observaciones ? " " + observaciones : ""}`,
+          // Rastro en la propia fila (mig 122): true = ya no debe llave · false = sigue pendiente.
+          llave_entregada: seFueConCopia ? llaveDevuelta : null,
         });
         if (errRec) { setError("Error al registrar la evidencia de entrega: " + errRec); return; }
       }
@@ -117,6 +135,29 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
         <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--ok-soft)", fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>
           Al guardar: se archiva la evidencia de cómo y a quién se devolvió la moto, y el contrato vuelve a Activo.
         </div>
+
+        {/* La llave que se quedó (mig 122): en rojo y arriba, antes de las fotos — es lo que se
+            olvida. Dos botones, respuesta obligatoria, y si dice que no, se confirma al guardar. */}
+        {seFueConCopia && (
+          <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", display: "grid", gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--bad-ink)" }}>🔑 Este cliente se quedó con una llave</div>
+            <div style={{ fontSize: 12, color: "var(--bad-ink)", lineHeight: 1.45 }}>
+              Cuando se recibió la moto <b>no entregó su llave</b> y hubo que ir con la copia de la empresa. Pídesela antes de entregar.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([[true, "✓ Ya me la entregó"], [false, "✕ No la trajo"]] as [boolean, string][]).map(([val, label]) => (
+                <button key={String(val)} type="button" onClick={() => setLlaveDevuelta(val)}
+                  style={{
+                    flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 10, cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+                    border: llaveDevuelta === val ? "2px solid var(--bad-ink)" : "1px solid var(--bad-line)",
+                    background: llaveDevuelta === val ? "var(--card)" : "transparent", color: "var(--bad-ink)",
+                  }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <div style={labelStyle}>Condición general del vehículo</div>

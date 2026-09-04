@@ -2,81 +2,369 @@ import { useMemo, useState, useEffect } from "react";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
+import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
 import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
-import type { Pago } from "../hooks/usePagos";
-import { hoyISO, hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
+import { calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { resumenFlota, entregasRecientes, vencimientosProximos, recaudoPorMes } from "../utils/portalSocio";
+import { hoyISO, hoyDate, fmtFechaLarga } from "../utils/fecha";
+import Placa from "../components/Placa";
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// EL PORTAL DEL SOCIO — rediseñado el 3-sep-2026.
+//
+// El socio es un INVERSIONISTA, no un operador. Su pregunta no es "¿a quién cobro hoy?" sino
+// "¿mi plata está trabajando?". Antes esto era un panel de administrador en pequeño: KPIs de
+// gestión, protocolo de mora, tabla de contratos.
+//
+// 🔴 LAS DOS CIFRAS QUE ANTES MENTÍAN (y por qué este archivo ya no calcula nada de plata):
+//   1. La mora se sacaba con una regla propia — `diasSinPago > 2`. No sabía de día de pago, ni
+//      de gabela, ni de convenios, ni de plazo extra. Un cliente AL DÍA en Cartera podía salirle
+//      al socio en mora. Ahora sale de `calcularEstadoCartera`/`diasEnMora`, las mismas de
+//      Cartera y de la campana. Mismo patrón que arregló [[cartera-cuanto-debe-una-sola-funcion]].
+//   2. La "proyección mensual" era `tarifa × contratos × 26`. Ese número no existe en ningún otro
+//      lado del sistema (los domingos valen distinto y se trabaja por período, no por días).
+//      **Se eliminó**: no se le muestra al dueño de la plata una cifra que nadie puede confirmar.
+//
+// DECISIÓN DEL DUEÑO (3-sep): el socio SÍ ve nombres de sus clientes, incluida la lista de mora,
+// pero **sin un solo botón** — no cobra, no edita, no registra. El filtro por grupo ya está
+// garantizado en la BD (RLS), no solo acá.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
 
 type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
+type Seccion = "inicio" | "entregas" | "flota" | "recaudo";
 
-const GRUPO_NAMES: Record<GrupoMoto, string> = {
-  RASTREADOR: "Rastreador",
-  COSTA: "Costa",
-  PRADERA: "Pradera",
-  USADAS: "Usadas Club",
+const GRUPO_NOMBRE: Record<GrupoMoto, string> = {
+  RASTREADOR: "Rastreador", COSTA: "Costa", PRADERA: "Pradera", USADAS: "Usadas Club",
 };
 
-const GRUPO_COLOR: Record<GrupoMoto, string> = {
-  RASTREADOR: "var(--accent)",
-  COSTA: "#0d9488",
-  PRADERA: "var(--violet)",
-  USADAS: "var(--orange)",
+const SECCIONES: Array<{ id: Seccion; label: string }> = [
+  { id: "inicio", label: "Inicio" },
+  { id: "entregas", label: "Entregas" },
+  { id: "flota", label: "Flota" },
+  { id: "recaudo", label: "Recaudo" },
+];
+
+const fmt = (n: number) => Math.round(n).toLocaleString("es-CO");
+const ALTO_BARRA = 104;
+const MES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+// ── Átomos de la pantalla ───────────────────────────────────────────────────────────────────
+// Escala tipográfica del proyecto: 22 / 18 / 15 / 13 / 12 / 11. Grilla de 4px. Pesos 400-700.
+
+const card: React.CSSProperties = {
+  background: "var(--card)", border: "1px solid var(--line)", borderRadius: 14,
+  padding: 16, boxSizing: "border-box", minWidth: 0,
 };
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString("es-CO");
+function Rotulo({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--muted)" }}>{children}</div>;
 }
 
-const DIAS_ABREV = ["D", "L", "M", "X", "J", "V", "S"];
+function Nota({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginTop: 6 }}>{children}</div>;
+}
 
-function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
-  const hoy = hoyDate();
-  const barras = Array.from({ length: dias }, (_, i) => {
-    const d = new Date(hoy);
-    d.setDate(hoy.getDate() - (dias - 1 - i));
-    // fechaISO (hora de Colombia), no toISOString: este pasa a UTC y después de las 7pm
-    // las barras se corrían un día — el socio veía el recaudo de hoy bajo la fecha de mañana.
-    const fecha = fechaISO(d);
-    // esPagoDeCaja: la semana adelantada de la base y los saldos a favor aplicados son
-    // movimientos internos, no plata que entró ese día. Sin este filtro el socio veía
-    // ingresos inflados en su propio panel.
-    const total = pagosGrupo
-      .filter(p => fechaDeCaja(p) === fecha && p.estado === "Confirmado" && esPagoDeCaja(p))
-      .reduce((a, p) => a + p.valor, 0);
-    return { fecha, dow: d.getDay(), total, esHoy: i === dias - 1, label: d.getDate().toString() };
-  });
+function Vacio({ children }: { children: React.ReactNode }) {
+  return <div style={{ ...card, textAlign: "center", color: "var(--muted)", fontSize: 13, padding: 24, lineHeight: 1.6 }}>{children}</div>;
+}
 
-  const maximo = Math.max(...barras.map(b => b.total), 1);
+export default function SocioDashboard() {
+  const { profile, signOut } = useAuth();
+  const grupo = (profile?.grupo ?? "RASTREADOR") as GrupoMoto;
+
+  const [seccion, setSeccion] = useState<Seccion>("inicio");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+
+  const { motos } = useMotos();
+  const { contratos } = useContratos();
+  const { clientes } = useClientes();
+  const { pagos } = usePagos();
+  const { deudas } = useDeudas();
+  const { convenios } = useConvenios();
+
+  const hoy = hoyISO();
+  const ahora = hoyDate();
+  const inicioMes = hoy.slice(0, 7) + "-01";
+
+  const misMotos = useMemo(() => motos.filter(m => m.grupo === grupo), [motos, grupo]);
+  const idsMisMotos = useMemo(() => new Set(misMotos.map(m => m.id)), [misMotos]);
+
+  /** Contratos de MIS motos (todos, no solo activos: las entregas viejas también son mías). */
+  const misContratos = useMemo(
+    () => contratos.filter(c => c.moto_id && idsMisMotos.has(c.moto_id)),
+    [contratos, idsMisMotos],
+  );
+  const activos = useMemo(() => misContratos.filter(c => c.estado === "Activo"), [misContratos]);
+  const idsActivos = useMemo(() => new Set(activos.map(c => c.id)), [activos]);
+
+  // Plata que ENTRÓ de verdad. `esPagoDeCaja` deja fuera los movimientos internos (la semana
+  // adelantada de la base y los saldos a favor aplicados): esa plata ya se contó cuando entró.
+  const misPagos = useMemo(
+    () => pagos.filter(p => idsActivos.has(p.contrato_id) && p.estado === "Confirmado" && esPagoDeCaja(p)),
+    [pagos, idsActivos],
+  );
+  const entroEsteMes = misPagos.filter(p => fechaDeCaja(p) >= inicioMes).reduce((a, p) => a + p.valor, 0);
+
+  // ── El estado de cada cliente, con la MISMA cuenta que Cartera ────────────────────────────
+  const cuentas = useMemo(() => activos.map(c => {
+    const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
+    const convenio = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+    const cuotaConv = cuotaConvenioDelPeriodo(convenio, c, ahora);
+    const cubierto = !!(convenio?.cubre_periodo_hasta && convenio.cubre_periodo_hasta >= hoy);
+    const estado = calcularEstadoCartera(c, pagosC, ahora, cuotaConv, cubierto, convenio);
+    return {
+      contrato: c,
+      cliente: clientes.find(cl => cl.id === c.cliente_id),
+      moto: motos.find(m => m.id === c.moto_id),
+      estado,
+      dias: estado === "mora" ? diasEnMora(c, pagosC, ahora, cuotaConv, cubierto, convenio) : 0,
+      deuda: deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((a, d) => a + d.monto_pendiente, 0),
+    };
+  }), [activos, pagos, convenios, clientes, motos, deudas, ahora, hoy]);
+
+  const enMora = cuentas.filter(x => x.estado === "mora").sort((a, b) => b.dias - a.dias);
+  const enGabela = cuentas.filter(x => x.estado === "gabela");
+  const alDia = cuentas.filter(x => x.estado !== "mora" && x.estado !== "gabela");
+
+  const flota = useMemo(() => resumenFlota(misMotos), [misMotos]);
+  const entregas = useMemo(() => entregasRecientes(misContratos, 15), [misContratos]);
+  const vencimientos = useMemo(() => vencimientosProximos(misMotos, hoy), [misMotos, hoy]);
+  const porMes = useMemo(() => recaudoPorMes(misPagos.map(p => ({ fecha: fechaDeCaja(p), valor: p.valor })), hoy, 6), [misPagos, hoy]);
+
+  const ancho = isMobile ? "100%" : 760;
 
   return (
-    <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 120 }}>
-      {barras.map((b) => {
-        const pct = (b.total / maximo) * 100;
-        const isWeekend = b.dow === 0 || b.dow === 6;
-        return (
-          <div key={b.fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            {b.total > 0 && (
-              <div style={{ fontSize: 9, fontWeight: 700, color: b.esHoy ? "var(--accent)" : "var(--muted)", textAlign: "center", lineHeight: 1.2 }}>
-                ${fmt(b.total / 1000)}k
+    <div style={{ minHeight: "100vh", background: "var(--bg)", textAlign: "left" }}>
+      {/* Encabezado: quién es, de qué grupo, y que aquí solo se mira */}
+      <div style={{ background: "#0f172a", color: "#fff", padding: isMobile ? "14px 16px 0" : "18px 24px 0" }}>
+        <div style={{ maxWidth: ancho, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, letterSpacing: -0.2 }}>Grupo {GRUPO_NOMBRE[grupo]}</div>
+              <div style={{ fontSize: 12, opacity: 0.62, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                {profile?.nombre} · solo lectura
+              </div>
+            </div>
+            <button onClick={() => signOut()} style={{
+              flexShrink: 0, padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 700,
+              border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.8)", cursor: "pointer",
+            }}>Salir</button>
+          </div>
+          <div style={{ display: "flex", gap: 2, marginTop: 14 }}>
+            {SECCIONES.map(s => (
+              <button key={s.id} onClick={() => setSeccion(s.id)} style={{
+                flex: 1, padding: "9px 0", border: "none", cursor: "pointer", fontSize: 12,
+                borderRadius: "8px 8px 0 0", minWidth: 0,
+                fontWeight: seccion === s.id ? 700 : 500,
+                background: seccion === s.id ? "var(--bg)" : "transparent",
+                color: seccion === s.id ? "var(--text)" : "rgba(255,255,255,0.55)",
+              }}>{s.label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: ancho, margin: "0 auto", padding: isMobile ? "16px 12px 32px" : "20px 24px 40px", display: "grid", gap: 14 }}>
+
+        {seccion === "inicio" && (
+          <>
+            <div style={card}>
+              <Rotulo>Entró este mes</Rotulo>
+              <div style={{ fontSize: isMobile ? 32 : 36, fontWeight: 700, letterSpacing: -0.5, color: "var(--text)", fontVariantNumeric: "tabular-nums", marginTop: 4, lineHeight: 1.05 }}>
+                $ {fmt(entroEsteMes)}
+              </div>
+              <Nota>
+                De {flota.total} moto{flota.total === 1 ? "" : "s"},{" "}
+                <b style={{ color: "var(--text)" }}>{flota.produciendo} está{flota.produciendo === 1 ? "" : "n"} produciendo</b>.
+                {flota.paradas > 0 && <> Las otras {flota.paradas} no generaron nada.</>}
+              </Nota>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ ...card, flex: 1 }}>
+                <Rotulo>Produciendo</Rotulo>
+                <div style={{ fontSize: 28, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums", marginTop: 5, lineHeight: 1 }}>{flota.produciendo}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>con cliente</div>
+              </div>
+              <div style={{ ...card, flex: 1 }}>
+                <Rotulo>Paradas</Rotulo>
+                <div style={{ fontSize: 28, fontWeight: 700, color: flota.paradas > 0 ? "var(--warn-ink)" : "var(--muted)", fontVariantNumeric: "tabular-nums", marginTop: 5, lineHeight: 1 }}>{flota.paradas}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>
+                  {flota.motivos.length === 0 ? "ninguna" : flota.motivos.map(m => `${m.cuantas} ${m.motivo}`).join(" · ")}
+                </div>
+              </div>
+            </div>
+
+            <div style={card}>
+              <Rotulo>Cómo van pagando</Rotulo>
+              <Barra alDia={alDia.length} gabela={enGabela.length} mora={enMora.length} />
+              <Nota>Se cuenta igual que en Cartera: mismo día de pago, misma gabela, contando el convenio.</Nota>
+            </div>
+
+            {enMora.length > 0 && (
+              <div style={card}>
+                <Rotulo>Quiénes están en mora</Rotulo>
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {enMora.map(x => (
+                    <div key={x.contrato.id} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <Placa placa={x.moto?.placa ?? "—"} size="sm" />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {x.cliente?.nombre ?? "—"}
+                        </div>
+                        {x.deuda > 0 && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>debe además $ {fmt(x.deuda)}</div>}
+                      </div>
+                      <div style={{ flexShrink: 0, textAlign: "right" }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--bad-ink)", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{x.dias}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase" }}>día{x.dias === 1 ? "" : "s"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Nota>La empresa ya está gestionando cada caso. Aquí solo se informa.</Nota>
               </div>
             )}
-            <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
+
+            {entregas[0] && (
+              <div>
+                <Rotulo>Última entrega</Rotulo>
+                <div style={{ marginTop: 8 }}>
+                  <TarjetaEntrega c={entregas[0]} clientes={clientes} motos={motos} />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {seccion === "entregas" && (
+          entregas.length === 0
+            ? <Vacio>Todavía no hay entregas registradas en este grupo.<br />Cuando se entregue una moto, aparecerá aquí con sus fotos.</Vacio>
+            : <>
+                <Nota>Las motos de tu grupo que se han entregado, de la más reciente a la más antigua.</Nota>
+                {entregas.map(c => <TarjetaEntrega key={c.id} c={c} clientes={clientes} motos={motos} />)}
+              </>
+        )}
+
+        {seccion === "flota" && (
+          <>
+            {vencimientos.length > 0 && (
+              <div style={{ ...card, borderColor: "var(--warn-line)", background: "var(--warn-soft)" }}>
+                <Rotulo>Papeles por vencer</Rotulo>
+                <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                  {vencimientos.slice(0, 8).map((v, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--warn-ink)", minWidth: 0 }}>
+                      <Placa placa={v.placa} size="sm" />
+                      <span style={{ flex: 1, minWidth: 0 }}>{v.que}</span>
+                      <b style={{ flexShrink: 0 }}>{v.dias < 0 ? `vencido hace ${-v.dias} d` : v.dias === 0 ? "vence hoy" : `en ${v.dias} d`}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {misMotos.length === 0
+              ? <Vacio>Este grupo todavía no tiene motos registradas.</Vacio>
+              : <div style={card}>
+                  <Rotulo>Tus {misMotos.length} motos</Rotulo>
+                  <div style={{ display: "grid", gap: 8, marginTop: 10, maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto" }}>
+                    {misMotos.slice().sort((a, b) => a.placa.localeCompare(b.placa)).map(m => {
+                      const cta = cuentas.find(x => x.moto?.id === m.id);
+                      return (
+                        <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <Placa placa={m.placa} size="sm" />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {cta?.cliente?.nombre ?? <span style={{ color: "var(--muted)" }}>sin cliente</span>}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{m.marca} {m.modelo}</div>
+                          </div>
+                          <span style={{
+                            flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
+                            background: m.estado === "Asignada" ? "var(--ok-soft)" : "var(--soft2)",
+                            color: m.estado === "Asignada" ? "var(--ok-ink)" : "var(--muted2)",
+                          }}>{m.estado === "Asignada" ? "produciendo" : m.estado}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>}
+          </>
+        )}
+
+        {seccion === "recaudo" && (
+          <>
+            <div style={card}>
+              <Rotulo>Últimos 6 meses</Rotulo>
+              <Meses datos={porMes} />
+              <Nota>Solo plata que entró de verdad. No incluye la semana adelantada de la base ni los saldos a favor aplicados, que ya se contaron cuando entraron.</Nota>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ ...card, flex: 1 }}>
+                <Rotulo>Este mes</Rotulo>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", fontVariantNumeric: "tabular-nums", marginTop: 5 }}>$ {fmt(entroEsteMes)}</div>
+              </div>
+              <div style={{ ...card, flex: 1 }}>
+                <Rotulo>Contratos activos</Rotulo>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", fontVariantNumeric: "tabular-nums", marginTop: 5 }}>{activos.length}</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── La barra de cómo van pagando ────────────────────────────────────────────────────────────
+export function Barra({ alDia, gabela, mora }: { alDia: number; gabela: number; mora: number }) {
+  const total = Math.max(alDia + gabela + mora, 1);
+  const seg = (n: number, color: string) => n > 0
+    ? <div key={color} style={{ width: `${(n / total) * 100}%`, background: color, height: "100%" }} />
+    : null;
+  const punto = (color: string) => <span style={{ width: 7, height: 7, borderRadius: 999, background: color, display: "inline-block", marginRight: 5 }} />;
+  return (
+    <>
+      <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", background: "var(--line2)", marginTop: 10 }}>
+        {seg(alDia, "var(--ok-ink)")}{seg(gabela, "var(--warn-ink)")}{seg(mora, "var(--bad-ink)")}
+      </div>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--muted2)", marginTop: 9 }}>
+        <span>{punto("var(--ok-ink)")}{alDia} al día</span>
+        <span>{punto("var(--warn-ink)")}{gabela} con un día</span>
+        <span>{punto("var(--bad-ink)")}{mora} en mora</span>
+      </div>
+    </>
+  );
+}
+
+// ── Las barras del recaudo por mes ──────────────────────────────────────────────────────────
+export function Meses({ datos }: { datos: Array<{ mes: string; total: number }> }) {
+  const max = Math.max(...datos.map(d => d.total), 1);
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "flex-end", marginTop: 12 }}>
+      {datos.map((d, i) => {
+        const ultimo = i === datos.length - 1;
+        // Altura en PÍXELES, no en %: dentro de un item flex sin altura definida el porcentaje
+        // no resuelve y las barras salían como rayas de 2px.
+        const alto = d.total > 0 ? Math.max(Math.round((d.total / max) * ALTO_BARRA), 6) : 3;
+        return (
+          <div key={d.mes} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: ultimo ? "var(--accent-ink)" : "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
+              {d.total > 0 ? `${Math.round(d.total / 100000) / 10}M` : ""}
+            </div>
+            <div style={{ width: "100%", height: ALTO_BARRA, display: "flex", alignItems: "flex-end" }}>
               <div style={{
-                width: "100%",
-                height: `${Math.max(pct, b.total > 0 ? 6 : 2)}%`,
-                borderRadius: "3px 3px 0 0",
-                background: b.esHoy
-                  ? "var(--accent)"
-                  : isWeekend
-                  ? "var(--line2)"
-                  : b.total > 0
-                  ? "var(--accent-line)"
-                  : "var(--line)",
-                minHeight: 2,
+                width: "100%", borderRadius: "4px 4px 0 0", height: alto,
+                background: ultimo ? "var(--accent)" : d.total > 0 ? "var(--accent-line)" : "var(--line2)",
               }} />
             </div>
-            <div style={{ fontSize: 9, fontWeight: b.esHoy ? 800 : 500, color: b.esHoy ? "var(--accent)" : "var(--faint)" }}>
-              {DIAS_ABREV[b.dow]}
+            <div style={{ fontSize: 10.5, color: ultimo ? "var(--accent-ink)" : "var(--faint)", fontWeight: ultimo ? 700 : 500 }}>
+              {MES_CORTO[Number(d.mes.slice(5, 7)) - 1]}
             </div>
           </div>
         );
@@ -85,345 +373,54 @@ function BarChart({ pagosGrupo, dias }: { pagosGrupo: Pago[]; dias: number }) {
   );
 }
 
-export default function SocioDashboard() {
-  const { profile, signOut } = useAuth();
-  const grupo = (profile?.grupo ?? "RASTREADOR") as GrupoMoto;
-  const grupoColor = GRUPO_COLOR[grupo];
-
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 900);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
-
-  const { motos } = useMotos();
-  const { contratos } = useContratos();
-  const { clientes } = useClientes();
-  const { pagos } = usePagos();
-
-  const motosGrupo = useMemo(() => motos.filter(m => m.grupo === grupo), [motos, grupo]);
-
-  const contratosActivos = useMemo(() => {
-    const idsMotosGrupo = new Set(motosGrupo.map(m => m.id));
-    return contratos.filter(c => c.estado === "Activo" && c.moto_id && idsMotosGrupo.has(c.moto_id));
-  }, [contratos, motosGrupo]);
-
-  const hoy = hoyISO();
-  const inicioSemana = (() => {
-    const d = hoyDate(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-  })();
-  const inicioMes = hoy.slice(0, 7) + "-01";
-
-  const idsContratos = useMemo(() => new Set(contratosActivos.map(c => c.id)), [contratosActivos]);
-  const pagosGrupo = useMemo(() => pagos.filter(p => idsContratos.has(p.contrato_id)), [pagos, idsContratos]);
-
-  // Recaudo = plata que ENTRÓ. `esPagoDeCaja` deja fuera los movimientos internos (la semana
-  // adelantada que ya venía en la base inicial y los saldos a favor aplicados a una cuota):
-  // esa plata ya se contó cuando entró de verdad, sumarla otra vez le muestra al socio un
-  // ingreso que nadie trajo. Mismo criterio que Caja Diaria e Historial de Pagos.
-  const recaudadoSemana = pagosGrupo
-    .filter(p => fechaDeCaja(p) >= inicioSemana && p.estado === "Confirmado" && esPagoDeCaja(p))
-    .reduce((a, p) => a + p.valor, 0);
-
-  const recaudadoMes = pagosGrupo
-    .filter(p => fechaDeCaja(p) >= inicioMes && p.estado === "Confirmado" && esPagoDeCaja(p))
-    .reduce((a, p) => a + p.valor, 0);
-
-  const estadosPorContrato = useMemo(() => {
-    return contratosActivos.map(c => {
-      const pagosC = pagosGrupo.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
-      const ultimoPago = pagosC.sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-      const diasSinPago = ultimoPago
-        ? Math.floor((new Date().getTime() - new Date(ultimoPago.fecha + "T00:00:00").getTime()) / 86400000)
-        : 999;
-      const cliente = clientes.find(cl => cl.id === c.cliente_id);
-      const moto = motos.find(m => m.id === c.moto_id);
-      return { contrato: c, cliente, moto, diasSinPago, ultimoPago };
-    });
-  }, [contratosActivos, pagosGrupo, clientes, motos]);
-
-  const enMora = estadosPorContrato.filter(e => e.diasSinPago > 2);
-  const alDia = estadosPorContrato.filter(e => e.diasSinPago <= 1);
-
-  const tarifaPromedio = contratosActivos.length > 0
-    ? contratosActivos.reduce((a, c) => a + (c.tarifa_diaria ?? 27000), 0) / contratosActivos.length
-    : 0;
-  const proyeccionMensual = tarifaPromedio * contratosActivos.length * 26;
-
-  const cardBase: React.CSSProperties = {
-    background: "var(--card)",
-    borderRadius: 16,
-    padding: "18px 20px",
-    boxShadow: "0 2px 12px rgba(15,23,42,0.07)",
-  };
-
-  const kpis = [
-    {
-      label: "Motos activas",
-      value: motosGrupo.filter(m => m.estado === "Asignada").length,
-      total: motosGrupo.length,
-      sub: `de ${motosGrupo.length} en el grupo`,
-      color: grupoColor,
-      icon: "🏍️",
-    },
-    {
-      label: "Contratos activos",
-      value: contratosActivos.length,
-      sub: "generando ingreso",
-      color: "var(--ok-ink)",
-      icon: "📄",
-    },
-    {
-      label: "Clientes en mora",
-      value: enMora.length,
-      sub: enMora.length > 0 ? "requieren atención" : "todo al día",
-      color: enMora.length > 0 ? "var(--bad-ink)" : "var(--ok-ink)",
-      icon: enMora.length > 0 ? "⚠️" : "✅",
-    },
-    {
-      label: "Clientes al día",
-      value: alDia.length,
-      sub: `de ${contratosActivos.length} contratos`,
-      color: "var(--ok-ink)",
-      icon: "✓",
-    },
-  ];
+// ── La tarjeta de una entrega: la carta de presentación del socio ───────────────────────────
+// Fotos grandes, placa amarilla, nombre y lo pactado en tres datos. NADA técnico ni legal:
+// sin enlaces a documentos, sin marcas de si falta un papel. Eso es del administrador.
+export function TarjetaEntrega({ c, clientes, motos }: {
+  c: { id: string; cliente_id: string; moto_id: string | null; fecha_entrega: string | null; forma_pago?: string | null; valor_semanal?: number | null; meses?: number | null };
+  clientes: Array<{ id: string; nombre: string }>;
+  motos: Array<{ id: string; placa: string; marca?: string | null; modelo?: string | null; fotos_entrega?: Record<string, string> | null }>;
+}) {
+  const cliente = clientes.find(x => x.id === c.cliente_id);
+  const moto = motos.find(m => m.id === c.moto_id);
+  const fotos = Object.values(moto?.fotos_entrega ?? {}).filter(Boolean) as string[];
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "16px 12px" : "24px 20px" }}>
-      {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        marginBottom: 28, gap: 12, flexWrap: "wrap",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 16,
-            background: `linear-gradient(135deg, ${grupoColor}, ${grupoColor}aa)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 24, boxShadow: `0 4px 14px ${grupoColor}44`,
-          }}>
-            🏍️
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "var(--text)" }}>
-              Dashboard — Grupo {GRUPO_NAMES[grupo]}
-            </h2>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3, display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ textTransform: "uppercase", fontWeight: 700 }}>{profile?.nombre}</span>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--faint)", display: "inline-block" }} />
-              <span>Solo lectura</span>
-            </div>
-          </div>
+    <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+      <div style={{ position: "relative", height: 168, background: "var(--soft2)" }}>
+        {fotos[0]
+          ? <img src={fotos[0]} alt={`Entrega de la moto ${moto?.placa ?? ""}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)", fontSize: 12.5 }}>Sin fotos de la entrega</div>}
+        <div style={{ position: "absolute", left: 12, bottom: 12 }}>
+          <Placa placa={moto?.placa ?? "—"} size="md" />
         </div>
-        <button
-          onClick={() => signOut()}
-          style={{
-            padding: "8px 18px", borderRadius: 10, border: "1.5px solid var(--line)",
-            background: "var(--card)", cursor: "pointer", fontSize: 13, fontWeight: 700,
-            color: "var(--muted)", display: "flex", alignItems: "center", gap: 6,
-          }}
-        >
-          <span>⎋</span> Cerrar sesión
-        </button>
+        {fotos.length > 1 && (
+          <div style={{ position: "absolute", right: 12, bottom: 12, background: "rgba(15,23,42,0.72)", color: "#fff", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 999 }}>
+            {fotos.length} fotos
+          </div>
+        )}
       </div>
-
-      {/* Hero — recaudo semana */}
-      <div style={{
-        ...cardBase,
-        background: `linear-gradient(135deg, ${grupoColor} 0%, ${grupoColor}cc 100%)`,
-        color: "var(--card)", marginBottom: 20,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        flexWrap: "wrap", gap: 16,
-      }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", opacity: 0.8, letterSpacing: 0.5 }}>
-            Recaudo esta semana
-          </div>
-          <div style={{ fontSize: isMobile ? 34 : 42, fontWeight: 700, lineHeight: 1.1, marginTop: 6 }}>
-            ${fmt(recaudadoSemana)}
-          </div>
-          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>
-            ${fmt(recaudadoMes)} acumulado en el mes
-          </div>
+      <div style={{ padding: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.2 }}>{cliente?.nombre ?? "—"}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+          Entregada el {c.fecha_entrega ? fmtFechaLarga(c.fecha_entrega) : "—"}
+          {moto?.marca ? ` · ${moto.marca} ${moto.modelo ?? ""}`.trimEnd() : ""}
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", opacity: 0.8, letterSpacing: 0.5, marginBottom: 4 }}>
-            Proyección mensual
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>${fmt(proyeccionMensual)}</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>~26 días L–S</div>
+        <div style={{ display: "flex", gap: 16, marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", flexWrap: "wrap" }}>
+          <Pactado label="Paga cada" valor={c.forma_pago ?? "—"} />
+          <Pactado label="Cuota" valor={c.valor_semanal ? `$ ${fmt(c.valor_semanal)}` : "—"} />
+          <Pactado label="Por" valor={c.meses ? `${c.meses} meses` : "—"} />
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* KPI Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
-        gap: 12, marginBottom: 20,
-      }}>
-        {kpis.map(k => (
-          <div key={k.label} style={{ ...cardBase, borderTop: `3px solid ${k.color}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                {k.label}
-              </div>
-              <span style={{ fontSize: 18 }}>{k.icon}</span>
-            </div>
-            <div style={{ fontSize: 36, fontWeight: 700, color: k.color, lineHeight: 1.1, marginTop: 8 }}>
-              {k.value}
-            </div>
-            {k.sub && <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 4 }}>{k.sub}</div>}
-          </div>
-        ))}
-      </div>
-
-      {/* Recaudo 14 días */}
-      <div style={{ ...cardBase, marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Recaudo — últimos 14 días</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>
-            Total: <strong style={{ color: "var(--accent)" }}>${fmt(recaudadoMes)}</strong> este mes
-          </div>
-        </div>
-        <BarChart pagosGrupo={pagosGrupo} dias={14} />
-        <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11, color: "var(--faint)" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--accent)", display: "inline-block" }} /> Hoy
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--accent-line)", display: "inline-block" }} /> Día hábil
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--line2)", display: "inline-block" }} /> Fin de semana
-          </span>
-        </div>
-      </div>
-
-      {/* Estado de la flota */}
-      <div style={{ ...cardBase, marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Estado de la flota</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {(["Disponible", "Asignada", "En taller", "Recuperada", "Suspendida", "Fiscalía", "Tránsito", "Garantía"] as const).map(estado => {
-            const count = motosGrupo.filter(m => m.estado === estado).length;
-            if (count === 0) return null;
-            const colores: Record<string, { bg: string; color: string }> = {
-              "Asignada":    { bg: "var(--ok-soft)", color: "var(--ok-ink)" },
-              "Disponible":  { bg: "var(--accent-soft3)", color: "var(--accent-ink)" },
-              "En taller":   { bg: "var(--warn-soft)", color: "var(--warn-ink)" },
-              "Recuperada":  { bg: "var(--accent-soft)", color: "var(--accent-ink)" },
-              "Suspendida":  { bg: "var(--indigo-soft)", color: "var(--violet)" },
-              "Fiscalía":    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
-              "Tránsito":    { bg: "var(--bad-soft)", color: "var(--bad-ink)" },
-              "Garantía":    { bg: "#f3f4f6", color: "#6b7280" },
-            };
-            const c = colores[estado] ?? { bg: "var(--soft)", color: "var(--muted2)" };
-            return (
-              <div key={estado} style={{
-                background: c.bg, borderRadius: 12, padding: "10px 16px",
-                display: "flex", alignItems: "center", gap: 10,
-              }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: c.color }}>{count}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: c.color }}>{estado}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Clientes en mora */}
-      {enMora.length > 0 && (
-        <div style={{ ...cardBase, marginBottom: 20, borderLeft: "4px solid var(--bad)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 20 }}>⚠️</span>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--bad-ink)" }}>
-              Clientes en mora — {enMora.length}
-            </h3>
-          </div>
-          <div style={{ display: "grid", gap: 8 }}>
-            {enMora.sort((a, b) => b.diasSinPago - a.diasSinPago).map(({ contrato, cliente, moto, diasSinPago }) => {
-              const esCritico = diasSinPago > 7;
-              const deuda = Math.min(diasSinPago, 30) * (contrato.tarifa_diaria ?? 27000);
-              return (
-                <div key={contrato.id} style={{
-                  padding: "12px 14px", borderRadius: 12,
-                  background: esCritico ? "var(--bad-soft)" : "var(--warn-soft2)",
-                  border: `1px solid ${esCritico ? "var(--bad-line)" : "var(--warn-line)"}`,
-                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap",
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", color: "var(--text)" }}>
-                      {cliente?.nombre ?? "Sin cliente"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                      {moto?.placa ? `Placa: ${moto.placa} · ` : ""}
-                      {moto?.marca} {moto?.modelo}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 28, fontWeight: 700, color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)", lineHeight: 1 }}>
-                        {diasSinPago === 999 ? "∞" : diasSinPago}
-                      </div>
-                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deuda)}</div>
-                      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>adeudado</div>
-                    </div>
-                    <span style={{
-                      padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-                      background: esCritico ? "var(--bad-soft)" : "var(--warn-soft)",
-                      color: esCritico ? "var(--bad-ink)" : "var(--warn-ink)",
-                    }}>
-                      {esCritico ? "Crítico" : "Mora"}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Tabla contratos activos */}
-      <div style={{ ...cardBase }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Contratos activos</h3>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>{alDia.length} al día</span>
-            {enMora.length > 0 && <> · <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{enMora.length} en mora</span></>}
-          </div>
-        </div>
-        <div style={{ display: "grid", gap: 6, maxHeight: 420, overflowY: "auto" }}>
-          {estadosPorContrato.sort((a, b) => b.diasSinPago - a.diasSinPago).map(({ contrato, cliente, moto, diasSinPago, ultimoPago }) => {
-            const enM = diasSinPago > 2;
-            return (
-              <div key={contrato.id} style={{
-                padding: "10px 14px", borderRadius: 10,
-                background: enM ? "var(--bad-soft)" : "var(--soft2)",
-                border: `1px solid ${enM ? "var(--bad-line)" : "var(--line)"}`,
-                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap",
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase" }}>
-                    {moto?.placa ? `${moto.placa} · ` : ""}{cliente?.nombre ?? "Sin cliente"}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                    {contrato.tipo_ruta ?? contrato.forma_pago ?? "Contrato"}
-                    {ultimoPago ? ` · Último pago: ${fmtFechaLarga(ultimoPago.fecha)}` : " · Sin pagos"}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>${fmt(contrato.tarifa_diaria ?? 27000)}/día</div>
-                  {enM && <div style={{ fontSize: 11, color: "var(--bad-ink)", fontWeight: 700 }}>{diasSinPago === 999 ? "Sin pagos" : `${diasSinPago}d sin pago`}</div>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+function Pactado({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)" }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", fontVariantNumeric: "tabular-nums", marginTop: 1 }}>{valor}</div>
     </div>
   );
 }

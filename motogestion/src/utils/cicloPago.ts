@@ -25,6 +25,9 @@ export type ContratoCiclo = {
   prorrateo_pagado?: number;
   prorrateo_ahorro?: number;
   fecha_inicio_cajas?: string | null;
+  // Último día por el que se le exigen cuotas (mig 129). Se llena solo cuando la moto se le
+  // entregó a OTRO cliente: desde ahí el contador para. NULL = corre normal.
+  fecha_fin_cobro?: string | null;
 };
 
 export type EstadoCartera = "al-dia" | "gabela" | "mora";
@@ -677,6 +680,13 @@ export function totalCajasContrato(forma_pago: string, meses: number): number {
 // ("paga hoy lo que consumes desde hoy"). fecha_inicio_cajas ES el día que inicia
 // la caja 1. Espejo exacto de public.cajas_exigidas() de la mig 045.
 export function cajasExigidasHasta(contrato: ContratoCiclo, hoy: Date): number {
+  // 🔴 EL CONTADOR PARA CUANDO LA MOTO YA ES DE OTRO (mig 129). Antes contaba semanas desde
+  // `fecha_inicio_cajas` para siempre, sin mirar el estado ni la moto: a 12 clientes cuya moto ya
+  // se le había entregado a otro les seguía creciendo la deuda ($9.082.000 medidos el 7-sep, y
+  // subiendo cada semana). DANIEL DIAZ CARDONA (RNG53H) pasaba de "recibe" a "debe $1.052.000".
+  // Espejo exacto de public.cajas_exigidas — si se toca una, se toca la otra.
+  const fin = contrato.fecha_fin_cobro;
+  if (fin && fechaAISO(hoy) > fin) hoy = new Date(fin + "T00:00:00");
   const previas = contrato.cajas_previas ?? 0;
   // Cajas RODADAS al final por tiempo fuera de servicio (mig 078): se restan de la exigencia
   // pero NO se perdonan. La resta va ANTES del tope de total_cajas — si fuera después, las
@@ -890,6 +900,11 @@ export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseEx
 
 // Días desde que se exigió la caja MÁS VIEJA que sigue sin llenar (0 = hoy mismo).
 export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
+  // Si el contador paró (la moto ya es de otro, mig 129), los días de mora también se congelan:
+  // no hay moto que recolectar ni cuota que siga venciendo. Sin esto las cajas dejaban de crecer
+  // pero los días seguían subiendo, y el cliente escalaba solo en el protocolo de cobro.
+  const fin = contrato.fecha_fin_cobro;
+  if (fin && fechaAISO(hoy) > fin) hoy = new Date(fin + "T00:00:00");
   const inicio = contrato.fecha_inicio_cajas;
   if (!inicio) return 0;
   const pagadas = contrato.cajas_pagadas ?? 0;

@@ -1918,6 +1918,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           </div>
         </div>
 
+        {/* CONTADOR PARADO (mig 129): la moto se le entregó a otro cliente, así que su cuenta
+            quedó congelada ese día. Sin este aviso el funcionario ve una deuda que no crece y
+            cree que el sistema está fallando. */}
+        {contratoDetalle.fecha_fin_cobro && (
+          <div style={{ padding: "11px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line2)", fontSize: 13, color: "var(--muted2)", lineHeight: 1.5 }}>
+            <strong style={{ color: "var(--text)" }}>Su cuenta está congelada.</strong>{" "}
+            {contratoDetalle.motivo_fin_cobro ?? "La moto se le entregó a otro cliente."}
+            <div style={{ marginTop: 4 }}>
+              No se le siguen sumando semanas. Lo que aparece es lo que quedó debiendo hasta ese día;
+              su liquidación sale con esa cifra.
+            </div>
+          </div>
+        )}
+
         {/* Empalme de migrados: revisión de cifras viejas + confirmación (mig 043) */}
         {empalmePendiente(contratoDetalle) && (
           <PanelEmpalme

@@ -2,6 +2,17 @@ import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
 
 export type ContratoEstado = "En proceso" | "Activo" | "Finalizado" | "Cancelado" | "Suspendido";
+
+/**
+ * ¿A este contrato se le paró el contador? (mig 129)
+ *
+ * Pasa cuando la moto se le entregó a OTRO cliente: desde ese día no se le exigen más cuotas.
+ * Mientras la moto está guardada esperando que pague, el contador SIGUE — ese tiempo se le cobra
+ * o se le rueda, como siempre.
+ */
+export function contadorParado(c: { fecha_fin_cobro?: string | null }): boolean {
+  return !!c.fecha_fin_cobro;
+}
 export type FormaPago = "Diario" | "Semanal" | "Quincenal" | "Mensual";
 
 const DIAS_POR_PERIODO: Record<FormaPago, number> = {
@@ -61,6 +72,9 @@ export type Contrato = {
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;
   fecha_fin_contrato?: string | null;
+  /** Último día por el que se le exigen cuotas: la moto se le entregó a otro (mig 129). */
+  fecha_fin_cobro?: string | null;
+  motivo_fin_cobro?: string | null;
   // Validación post-entrega de dónde se guarda la moto (mig 060). El admin valida en el GPS
   // externo que la moto se guarda donde el cliente declaró; la tarea persiste hasta marcarse.
   ubicacion_moto_validada?: boolean;

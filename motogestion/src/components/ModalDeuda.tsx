@@ -9,12 +9,20 @@ import { useAuth } from "../contexts/AuthContext";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion" | "lavada";
+export type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion" | "lavada";
 
 interface Props {
   contratoId: string;
   clienteNombre: string;
   onClose: () => void;
+  // Valores iniciales opcionales, para cuando la deuda nace de otro lado (ej. el taller cobra el
+  // arreglo): llegan precargados pero el funcionario los puede cambiar. Sin ellos, la ventana se
+  // comporta exactamente igual que siempre.
+  tipoInicial?: TipoDeuda;
+  valorInicial?: number;
+  descripcionInicial?: string;
+  /** Se llama con el id de la deuda creada (null si no se pudo leer), ANTES de cerrar. */
+  onRegistrada?: (deudaId: string | null) => void;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -48,7 +56,7 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
   { value: "migracion", label: "📒 Deuda de migración (sistema viejo)" },
 ];
 
-export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props) {
+export default function ModalDeuda({ contratoId, clienteNombre, onClose, tipoInicial, valorInicial, descripcionInicial, onRegistrada }: Props) {
   useBloquearScrollFondo();
   const { registrarDeuda } = useDeudas();
   const { contratos } = useContratos();
@@ -57,9 +65,9 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
   // esa misma plata como deuda la cobraría dos veces.
   const contrato = contratos.find(c => c.id === contratoId) ?? null;
   const huecoCuotas = contrato ? huecoCuotasHoy(contrato, hoyDate()) : 0;
-  const [tipo, setTipo] = useState<TipoDeuda>("daño_vehiculo");
-  const [valor, setValor] = useState("");
-  const [descripcion, setDescripcion] = useState("");
+  const [tipo, setTipo] = useState<TipoDeuda>(tipoInicial ?? "daño_vehiculo");
+  const [valor, setValor] = useState(valorInicial && valorInicial > 0 ? String(Math.round(valorInicial)) : "");
+  const [descripcion, setDescripcion] = useState(descripcionInicial ?? "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
@@ -85,12 +93,13 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose }: Props
     // Mismo hook que usa Cartera (useDeudas): una sola puerta para crear deudas, y así
     // esta queda con su autor — antes se insertaba directo con registrado_por en null,
     // dejando sin rastro quién le cargó la deuda al cliente.
-    const { error: err } = await registrarDeuda(contratoId, tipo, descripcion.trim(), Number(valor), profile.id);
+    const { error: err, id } = await registrarDeuda(contratoId, tipo, descripcion.trim(), Number(valor), profile.id);
     setGuardando(false);
     if (err) {
       setError(err);
       return;
     }
+    onRegistrada?.(id);
     setExito(true);
     setTimeout(() => onClose(), 1500);
   }

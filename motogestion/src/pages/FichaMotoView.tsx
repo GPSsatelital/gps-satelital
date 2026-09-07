@@ -659,10 +659,17 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                       </span>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t.detalle}</div>
+                    {t.trabajo_realizado && (
+                      <div style={{ marginTop: 6, fontSize: 13, color: "var(--muted2)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--muted)" }}>Qué se le hizo</span>
+                        <br />{t.trabajo_realizado}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "var(--accent)" }}>${fmt(t.costo ?? 0)}</div>
                     <div style={{ fontSize: 11, color: "var(--faint)" }}>costo</div>
+                    {t.deuda_id && <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2 }}>cobrado al cliente</div>}
                   </div>
                 </div>
                 {t.repuestos && (

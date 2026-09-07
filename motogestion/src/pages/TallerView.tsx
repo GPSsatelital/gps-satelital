@@ -12,6 +12,16 @@ import MoneyInput from "../components/MoneyInput";
 import { Badge, type BadgeTone } from "../components/atomos";
 import { useBackGuard } from "../contexts/BackNav";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
+import { usePrestamos } from "../hooks/usePrestamos";
+import { useDeudas } from "../hooks/useDeudas";
+import ModalDeuda from "../components/ModalDeuda";
+import { contratoDeLaMoto, prestamoActivoDeOriginal } from "../utils/taller";
+import type { ViewKey } from "../App";
+
+// Quién puede cobrarle el arreglo al cliente desde el taller: los mismos cuatro roles a los que la
+// base les deja registrar deudas (mig 026). El mecánico anota el trabajo; cobrar es de la oficina.
+// Decisión del dueño, 7-sep-2026.
+const ROLES_COBRAN = ["ADMIN", "ADMIN_PRINCIPAL", "SECRETARIA", "SUBADMIN"];
 
 const TALLER_TONE: Record<TallerEstado, BadgeTone> = {
   Pendiente: "warn",
@@ -344,9 +354,10 @@ function ActualizarModal({
   item: TallerItem;
   motoLabel: string;
   onClose: () => void;
-  onActualizar: (id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string) => Promise<void>;
+  onActualizar: (id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string, trabajo: string) => Promise<void>;
 }) {
   const [nuevoEstado, setNuevoEstado] = useState<TallerEstado>(item.estado_tecnico);
+  const [trabajo, setTrabajo] = useState("");
   const [manoObraExtra, setManoObraExtra] = useState("");
   const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -355,14 +366,15 @@ function ActualizarModal({
   const costoExtra = (Number(manoObraExtra) || 0) + costoRepuestos;
 
   async function handleSubmit() {
+    if (saving) return;
     setSaving(true);
-    await onActualizar(item.id, nuevoEstado, costoExtra, repuestosToText(repuestosItems));
+    await onActualizar(item.id, nuevoEstado, costoExtra, repuestosToText(repuestosItems), trabajo);
     setSaving(false);
     onClose();
   }
 
   return (
-    <Modal onClose={onClose} title="Actualizar orden">
+    <Modal onClose={onClose} title="Registrar trabajo / repuestos">
       <div style={{ marginBottom: 16, padding: "10px 14px", background: "var(--soft2)", borderRadius: 10, fontSize: 14 }}>
         <strong>{motoLabel}</strong>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
@@ -370,6 +382,18 @@ function ActualizarModal({
         </div>
       </div>
       <div style={{ display: "grid", gap: 14 }}>
+        <div>
+          <label style={labelStyle}>¿Qué se le hizo?</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+            value={trabajo}
+            onChange={(e) => setTrabajo(e.target.value)}
+            placeholder="Ej: cambio de rodamientos del motor, ajuste de cadena, prueba de ruta"
+          />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            Queda anotado con la fecha de hoy, debajo de lo anterior. Es lo que sale en la orden impresa y en la ficha de la moto.
+          </div>
+        </div>
         <div>
           <label style={labelStyle}>Nuevo estado</label>
           <select style={inputStyle} value={nuevoEstado} onChange={(e) => setNuevoEstado(e.target.value as TallerEstado)}>
@@ -409,20 +433,34 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
 function DetallePanel({
   item,
   motoLabel,
+  clienteNombre,
+  enPrestamo,
+  cobro,
+  finLabel,
   onActualizar,
+  onCobrar,
   onFinalizar,
   onImprimir,
   onCambiarEstado,
 }: {
   item: TallerItem;
   motoLabel: string;
+  /** Dueño de la moto (por contrato vivo o por préstamo de reemplazo). null = sin cliente. */
+  clienteNombre: string | null;
+  /** Su cliente anda en una moto prestada mientras esta se arregla. */
+  enPrestamo: boolean;
+  /** Si este usuario puede cobrar y, si ya se cobró, cuánto quedó registrado. */
+  cobro: { puede: boolean; montoCobrado: number | null };
+  finLabel: string;
   onActualizar: () => void;
+  onCobrar: () => void;
   onFinalizar: () => void;
   onImprimir: () => void;
   onCambiarEstado: () => void;
 }) {
   const dias = diasEnTaller(item.fecha_ingreso, item.fecha_salida);
   const finalizado = item.estado_tecnico === "Finalizado";
+  const rotulo: React.CSSProperties = { fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 };
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -432,17 +470,29 @@ function DetallePanel({
       </div>
 
       <Row label="Moto" value={motoLabel} />
+      <Row label="Cliente" value={clienteNombre ? clienteNombre.toUpperCase() : "Sin cliente (moto de la flota)"} />
+      {enPrestamo && (
+        <div style={{ fontSize: 12.5, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "8px 12px", lineHeight: 1.45 }}>
+          Su cliente anda en una moto prestada. Al finalizar, esta queda esperando que se la devuelvan; no vuelve al pool.
+        </div>
+      )}
       <Row label="Dias en taller" value={`${dias} dia${dias !== 1 ? "s" : ""}`} />
       <Row label="Fecha ingreso" value={formatDate(item.fecha_ingreso)} />
       {finalizado && <Row label="Fecha salida" value={formatDate(item.fecha_salida)} />}
       <Row label="Costo acumulado" value={formatCOP(item.costo)} accent />
       <div>
-        <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Detalle técnico</div>
+        <div style={rotulo}>Con qué entró</div>
         <div style={{ fontSize: 14, color: "var(--text)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px" }}>{item.detalle}</div>
+      </div>
+      <div>
+        <div style={rotulo}>Qué se le hizo</div>
+        {item.trabajo_realizado
+          ? <div style={{ fontSize: 14, color: "var(--text)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{item.trabajo_realizado}</div>
+          : <div style={{ fontSize: 13, color: "var(--faint)", fontStyle: "italic" }}>Todavía no se ha anotado nada. Usa "Registrar trabajo / repuestos".</div>}
       </div>
       {item.repuestos && (
         <div>
-          <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Repuestos</div>
+          <div style={rotulo}>Repuestos</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {item.repuestos.split(",").map((r, i) => (
               <span key={i} style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "3px 10px", fontSize: 12, color: "var(--muted2)" }}>
@@ -452,12 +502,22 @@ function DetallePanel({
           </div>
         </div>
       )}
+      {cobro.montoCobrado !== null && (
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "8px 12px" }}>
+          Cobrado al cliente: {formatCOP(cobro.montoCobrado)} (quedó como deuda en su cuenta)
+        </div>
+      )}
 
       {!finalizado && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button onClick={onCambiarEstado} style={ghostBtn}>Cambiar estado</button>
-          <button onClick={onActualizar} style={{ ...ghostBtn, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}>+ Repuesto / costo</button>
-          <button onClick={onFinalizar} style={{ ...primaryBtn, fontSize: 13 }}>Finalizar y pasar a disponible</button>
+          <button onClick={onActualizar} style={{ ...ghostBtn, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}>Registrar trabajo / repuestos</button>
+          {cobro.puede && clienteNombre && cobro.montoCobrado === null && (
+            <button onClick={onCobrar} style={{ ...ghostBtn, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
+              Cobrarle a {clienteNombre.split(" ")[0].toUpperCase()}
+            </button>
+          )}
+          <button onClick={onFinalizar} style={{ ...primaryBtn, fontSize: 13 }}>{finLabel}</button>
         </div>
       )}
     </div>
@@ -466,7 +526,12 @@ function DetallePanel({
 
 // ─── Print helper ──────────────────────────────────────────────────────────────
 
-function imprimirOrden(item: TallerItem, motoLabel: string) {
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function imprimirOrden(item: TallerItem, motoLabel: string, extra: { clienteNombre?: string | null; montoCobrado?: number | null } = {}) {
+  const trabajoHtml = item.trabajo_realizado ? escapeHtml(item.trabajo_realizado).replace(/\n/g, "<br>") : "";
   const html = `
 <!DOCTYPE html>
 <html lang="es">
@@ -490,14 +555,17 @@ function imprimirOrden(item: TallerItem, motoLabel: string) {
 <div class="sub">Club Moteros Cartagena - ${new Date().toLocaleDateString("es-CO")}</div>
 <div class="grid">
   <div class="field"><div class="label">Moto</div><div class="value">${motoLabel}</div></div>
+  <div class="field"><div class="label">Cliente</div><div class="value">${extra.clienteNombre ? escapeHtml(extra.clienteNombre).toUpperCase() : "Sin cliente"}</div></div>
   <div class="field"><div class="label">Estado</div><div class="value">${item.estado_tecnico}</div></div>
   <div class="field"><div class="label">Fecha ingreso</div><div class="value">${formatDate(item.fecha_ingreso)}</div></div>
   <div class="field"><div class="label">Fecha salida</div><div class="value">${formatDate(item.fecha_salida)}</div></div>
   <div class="field"><div class="label">Dias en taller</div><div class="value">${diasEnTaller(item.fecha_ingreso, item.fecha_salida)}</div></div>
   <div class="field"><div class="label">Costo acumulado</div><div class="value"><strong>${formatCOP(item.costo)}</strong></div></div>
 </div>
-<div class="field"><div class="label">Detalle tecnico</div><div class="detalle">${item.detalle}</div></div>
-${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label">Repuestos utilizados</div><div class="detalle">${item.repuestos}</div></div>` : ""}
+<div class="field"><div class="label">Con que entro</div><div class="detalle">${escapeHtml(item.detalle)}</div></div>
+<div class="field" style="margin-top:16px"><div class="label">Que se le hizo</div><div class="detalle">${trabajoHtml || "Sin anotar"}</div></div>
+${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label">Repuestos utilizados</div><div class="detalle">${escapeHtml(item.repuestos)}</div></div>` : ""}
+${extra.montoCobrado != null ? `<div class="field" style="margin-top:16px"><div class="label">Cobrado al cliente</div><div class="value"><strong>${formatCOP(extra.montoCobrado)}</strong> (registrado como deuda en su cuenta)</div></div>` : ""}
 <div class="footer">Generado automaticamente por MotoGestion</div>
 <script>window.print();</script>
 </body>
@@ -508,15 +576,22 @@ ${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function TallerView() {
-  const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso } = useTaller();
+export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
+  const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso, anotarTrabajoOrden, vincularDeuda } = useTaller();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
+  const { prestamos } = usePrestamos();
+  const { deudas } = useDeudas();
   const { filtrarMotos } = useScope();
   const motos = filtrarMotos(todasMotos);
   const { profile } = useAuth();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const puedeCobrar = ROLES_COBRAN.includes(profile?.role ?? "");
+  const [showCobrar, setShowCobrar] = useState(false);
+  // Al cerrar la orden de una moto cuyo cliente anda en una prestada: la moto quedó lista pero
+  // todavía hay que devolvérsela (eso vive en Inmovilizaciones). Este aviso lo dice y lleva allá.
+  const [avisoDevolucion, setAvisoDevolucion] = useState<{ clienteNombre: string; placa: string } | null>(null);
 
   const [tab, setTab] = useState<"activas" | "historial">("activas");
   const [seleccionId, setSeleccionId] = useState<string | null>(null);
@@ -567,27 +642,64 @@ export default function TallerView() {
   // cuenta desde su fecha de ingreso, no desde la retención. Para llevarla a taller hay que darle
   // primero a "✅ Salida de …" en Motos y elegir ahí "pasa a taller": eso la deja en Mantenimiento,
   // resuelve el tiempo parado y entonces sí aparece en esta lista. Decisión del dueño, 27-jul-2026.
+  // Una moto con orden ABIERTA no se ofrece otra vez: se le agrega a la orden que ya tiene
+  // ("Registrar trabajo / repuestos"), no se le abre una segunda.
   const motosParaTaller = motos
     .filter((m) => ["Asignada", "Disponible", "Mantenimiento", "Recuperada"].includes(m.estado))
+    .filter((m) => !activas.some((t) => t.moto_id === m.id))
     .map((m) => ({ id: m.id, label: `${m.placa} - ${m.marca} ${m.modelo} (${m.estado})` }));
 
-  async function handleActualizarOrden(id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string) {
+  // De quién es la moto de la orden seleccionada. Pasa por el préstamo de reemplazo: mientras
+  // dura, el contrato del cliente apunta a la PRESTADA y no a esta.
+  const contratoSel = seleccionado ? contratoDeLaMoto(seleccionado.moto_id, contratos, prestamos) : null;
+  const clienteSel = contratoSel ? clientes.find((cl) => cl.id === contratoSel.cliente_id) ?? null : null;
+  const prestamoSel = seleccionado ? prestamoActivoDeOriginal(seleccionado.moto_id, prestamos) : null;
+  const deudaSel = seleccionado?.deuda_id ? deudas.find((d) => d.id === seleccionado.deuda_id) ?? null : null;
+  const motoSel = seleccionado ? motos.find((m) => m.id === seleccionado.moto_id) ?? null : null;
+  // Nombre y apellido para los botones: "JOSE SANMARTIN", no "JOSE DEL CARMEN SANMARTIN".
+  const nombreCorto = (() => {
+    if (!clienteSel) return "";
+    const partes = clienteSel.nombre.trim().split(/\s+/);
+    return (partes.length >= 2 ? `${partes[0]} ${partes[partes.length - 1]}` : partes[0]).toUpperCase();
+  })();
+  // El botón dice lo que de verdad va a pasar con la moto (antes decía siempre "pasar a disponible").
+  const finLabel = prestamoSel
+    ? `Finalizar: lista para devolvérsela a ${nombreCorto}`
+    : motoSel?.estado === "En traspaso"
+      ? "Finalizar (moto en traspaso)"
+      : contratoSel?.estado === "Activo" && contratoSel.moto_id === seleccionado?.moto_id
+        ? `Finalizar: vuelve con ${nombreCorto}`
+        : "Finalizar: queda disponible";
+
+  async function handleActualizarOrden(id: string, estado: TallerEstado, costoExtra: number, repuestosExtra: string, trabajo: string) {
     await actualizarEstadoTaller(id, estado);
-    if (costoExtra > 0 || repuestosExtra) {
-      const found = taller.find((t) => t.id === id);
-      if (found) {
-        const newCosto = found.costo + costoExtra;
-        const newRepuestos = [found.repuestos, repuestosExtra].filter(Boolean).join(", ");
-        await supabase.from("taller").update({ costo: newCosto, repuestos: newRepuestos }).eq("id", id);
-      }
+    const found = taller.find((t) => t.id === id);
+    if (found && (costoExtra > 0 || repuestosExtra)) {
+      const newCosto = found.costo + costoExtra;
+      const newRepuestos = [found.repuestos, repuestosExtra].filter(Boolean).join(", ");
+      await supabase.from("taller").update({ costo: newCosto, repuestos: newRepuestos }).eq("id", id);
+    }
+    if (found && trabajo.trim()) {
+      const { error: errT } = await anotarTrabajoOrden(id, found.trabajo_realizado, trabajo);
+      if (errT) alert("No se pudo guardar la anotación del trabajo: " + errT);
     }
   }
 
   async function handleFinalizar() {
     if (!seleccionado) return;
-    if (!confirm("¿Finalizar esta orden de taller? La moto saldrá del taller.")) return;
+    if (!seleccionado.trabajo_realizado?.trim() && !confirm("No has anotado qué se le hizo a la moto. ¿Finalizar igual?")) return;
+    const pregunta = prestamoSel
+      ? `¿Finalizar la orden? La moto queda lista para devolvérsela a ${nombreCorto}. Sigue marcada en taller hasta que se haga la devolución.`
+      : "¿Finalizar esta orden de taller? La moto saldrá del taller.";
+    if (!confirm(pregunta)) return;
     const fechaSalida = hoyISO();
-    await finalizarProceso(seleccionado.id, seleccionado.moto_id);
+    const { error: errFin, destino } = await finalizarProceso(seleccionado.id, seleccionado.moto_id);
+    if (errFin) { alert("No se pudo finalizar la orden: " + errFin); return; }
+    if (destino === "espera_devolucion") {
+      setAvisoDevolucion({ clienteNombre: nombreCorto, placa: motoSel?.placa ?? "" });
+      setSeleccionId(null);
+      return;
+    }
     // Solo ADMIN/AP deciden cobrar vs rodar (misma jerarquía que Editar contrato) — si otro
     // rol finaliza el taller, el tiempo queda pendiente de resolver manualmente después.
     if (esAdminOSuperior) {
@@ -693,7 +805,7 @@ export default function TallerView() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "var(--soft2)" }}>
-                    {["Moto", "Detalle", "Repuestos", "Costo", "Ingreso", "Salida", "Días", ""].map((h) => (
+                    {["Moto", "Con qué entró", "Qué se le hizo", "Repuestos", "Costo", "Ingreso", "Salida", "Días", ""].map((h) => (
                       <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--muted2)", borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -703,6 +815,10 @@ export default function TallerView() {
                     <tr key={item.id} style={{ borderBottom: "1px solid var(--soft)" }}>
                       <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text)" }}>{getMotoLabel(item.moto_id)}</td>
                       <td style={{ padding: "10px 12px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted2)" }}>{item.detalle}</td>
+                      <td style={{ padding: "10px 12px", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted2)" }} title={item.trabajo_realizado ?? ""}>
+                        {item.trabajo_realizado ? item.trabajo_realizado.replace(/\n/g, " · ") : "-"}
+                        {item.deuda_id && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--warn-ink)" }}>cobrado</span>}
+                      </td>
                       <td style={{ padding: "10px 12px", color: "var(--muted)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.repuestos || "-"}</td>
                       <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--accent)" }}>{formatCOP(item.costo)}</td>
                       <td style={{ padding: "10px 12px", color: "var(--muted)" }}>{formatDate(item.fecha_ingreso)}</td>
@@ -710,7 +826,12 @@ export default function TallerView() {
                       <td style={{ padding: "10px 12px", color: "var(--muted)" }}>{diasEnTaller(item.fecha_ingreso, item.fecha_salida)}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <button
-                          onClick={() => imprimirOrden(item, getMotoLabel(item.moto_id))}
+                          onClick={() => {
+                            const c = contratoDeLaMoto(item.moto_id, contratos, prestamos);
+                            const cl = c ? clientes.find((x) => x.id === c.cliente_id) : null;
+                            const d = item.deuda_id ? deudas.find((x) => x.id === item.deuda_id) : null;
+                            imprimirOrden(item, getMotoLabel(item.moto_id), { clienteNombre: cl?.nombre ?? null, montoCobrado: d?.monto ?? null });
+                          }}
                           style={{ ...ghostBtn, fontSize: 12, padding: "4px 10px" }}
                         >
                           Imprimir
@@ -757,10 +878,15 @@ export default function TallerView() {
               <DetallePanel
                 item={seleccionado}
                 motoLabel={getMotoLabel(seleccionado.moto_id)}
+                clienteNombre={clienteSel?.nombre ?? null}
+                enPrestamo={prestamoSel !== null}
+                cobro={{ puede: puedeCobrar, montoCobrado: deudaSel ? deudaSel.monto : null }}
+                finLabel={finLabel}
                 onCambiarEstado={() => setShowCambioEstado(true)}
                 onActualizar={() => setShowActualizar(true)}
+                onCobrar={() => setShowCobrar(true)}
                 onFinalizar={handleFinalizar}
-                onImprimir={() => imprimirOrden(seleccionado, getMotoLabel(seleccionado.moto_id))}
+                onImprimir={() => imprimirOrden(seleccionado, getMotoLabel(seleccionado.moto_id), { clienteNombre: clienteSel?.nombre ?? null, montoCobrado: deudaSel?.monto ?? null })}
               />
             </div>
             <div style={{ padding: "10px 16px", borderTop: "1px solid var(--line)" }}>
@@ -791,6 +917,47 @@ export default function TallerView() {
           onClose={() => setShowActualizar(false)}
           onActualizar={handleActualizarOrden}
         />
+      )}
+
+      {/* Cobrarle el arreglo al cliente: la MISMA ventana de deuda de Cartera, precargada con el
+          costo de la orden y lo que se le hizo. La orden queda ligada a la deuda (taller.deuda_id)
+          para que no se cobre dos veces y para que el rastro quede en los dos lados. */}
+      {showCobrar && seleccionado && contratoSel && clienteSel && (
+        <ModalDeuda
+          contratoId={contratoSel.id}
+          clienteNombre={clienteSel.nombre}
+          tipoInicial="daño_vehiculo"
+          valorInicial={seleccionado.costo}
+          descripcionInicial={
+            `Taller ${motoSel?.placa ?? ""} (${formatDate(seleccionado.fecha_ingreso)}): ${seleccionado.detalle}` +
+            (seleccionado.trabajo_realizado ? ` — ${seleccionado.trabajo_realizado.replace(/\n/g, " · ")}` : "")
+          }
+          onRegistrada={async (deudaId) => {
+            if (!deudaId) { alert("La deuda quedó registrada, pero no se pudo ligar a la orden. Revísala en Cartera."); return; }
+            const { error: errV } = await vincularDeuda(seleccionado.id, deudaId);
+            if (errV) alert("La deuda quedó registrada, pero no se pudo ligar a la orden: " + errV);
+          }}
+          onClose={() => setShowCobrar(false)}
+        />
+      )}
+
+      {avisoDevolucion && (
+        <Modal onClose={() => setAvisoDevolucion(null)} title="Orden cerrada">
+          <div style={{ display: "grid", gap: 14, fontSize: 14, color: "var(--text)", lineHeight: 1.5 }}>
+            <div>
+              La <strong>{avisoDevolucion.placa}</strong> quedó lista, pero <strong>{avisoDevolucion.clienteNombre}</strong> todavía anda en la moto prestada.
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted2)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px" }}>
+              Para entregársela: <strong>Inmovilizaciones → Préstamos activos → Devolver</strong>. Ahí el contrato vuelve a su placa, la prestada regresa al pool, el alquiler que falte queda como deuda y se decide qué pasa con los días de taller.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setAvisoDevolucion(null)} style={ghostBtn}>Después</button>
+              {onNavigate && (
+                <button onClick={() => { setAvisoDevolucion(null); onNavigate("inmovilizaciones"); }} style={primaryBtn}>Ir a devolverla</button>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
 
       {showCambioEstado && seleccionado && (

@@ -613,7 +613,7 @@ function Shell() {
       {ctx.view === "referidos"     && puedeVer("referidos") && <ReferidosView />}
       {ctx.view === "alertas"       && puedeVer("alertas") && <AlertasView onNavegar={navigate} />}
       {ctx.view === "inmovilizaciones" && puedeVer("inmovilizaciones") && <InmovilizacionesView onNavigate={navigate} />}
-      {ctx.view === "taller"        && puedeVer("taller") && <TallerView />}
+      {ctx.view === "taller"        && puedeVer("taller") && <TallerView onNavigate={navigate} />}
       {ctx.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
       {ctx.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
       {ctx.view === "configuracion"  && <ConfiguracionView />}

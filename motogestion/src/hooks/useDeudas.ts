@@ -28,8 +28,12 @@ const deudasStore = createTableStore<Deuda>("deudas");
 export function useDeudas() {
   const { data: deudas, loading, error } = deudasStore.useStore();
 
+  // Devuelve también el `id` de la deuda creada, para que quien la origina (ej. una orden de
+  // taller) pueda quedar ligado a ella. `maybeSingle` y no `single`: si la política de lectura
+  // no deja ver la fila recién insertada, el insert YA quedó hecho y no debe reportarse como
+  // error (un reintento la duplicaría); simplemente no se obtiene el id.
   async function registrarDeuda(contratoId: string, concepto: ConceptoDeuda, descripcion: string, monto: number, registradoPor: string) {
-    const { error } = await supabase.from("deudas").insert({
+    const { data, error } = await supabase.from("deudas").insert({
       contrato_id: contratoId,
       concepto,
       descripcion,
@@ -37,8 +41,8 @@ export function useDeudas() {
       monto_pendiente: monto,
       estado: "pendiente",
       registrado_por: registradoPor,
-    });
-    return { error: error?.message ?? null };
+    }).select("id").maybeSingle();
+    return { error: error?.message ?? null, id: (data?.id as string | undefined) ?? null };
   }
 
   async function marcarDeudaPagada(id: string) {

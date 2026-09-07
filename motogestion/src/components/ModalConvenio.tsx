@@ -84,7 +84,10 @@ const filaEntra: React.CSSProperties = {
 const CONCEPTO_TEXTO: Record<string, string> = {
   multa_recoleccion: "Multa por retención", lavada: "Lavada de la moto", tarifa_atrasada: "Arriendo atrasado",
   migracion: "Saldo del sistema anterior", "daño_vehiculo": "Daño al vehículo", prestamo_repuesto: "Repuesto prestado",
-  prestamo_eventualidad: "Préstamo por eventualidad", fotomulta: "Fotomulta", otro: "Otra deuda",
+  prestamo_eventualidad: "Préstamo por eventualidad", fotomulta: "Fotomulta",
+  // Mig 131: conceptos propios para lo que antes caía en "otro".
+  alquiler_reemplazo: "Alquiler de moto prestada", saldo_liquidacion: "Saldo de la liquidación",
+  base_inicial: "Base inicial pendiente", multa: "Multa", otro: "Otra deuda",
 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }

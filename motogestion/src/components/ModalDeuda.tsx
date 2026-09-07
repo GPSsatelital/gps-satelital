@@ -9,7 +9,9 @@ import { useAuth } from "../contexts/AuthContext";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
-export type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion" | "lavada";
+// Los que el funcionario puede elegir a mano. `alquiler_reemplazo` y `saldo_liquidacion` NO están
+// acá a propósito: los crea el sistema solo (devolver un préstamo, cerrar una liquidación).
+export type TipoDeuda = "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "tarifa_atrasada" | "migracion" | "lavada" | "multa" | "base_inicial";
 
 interface Props {
   contratoId: string;
@@ -56,6 +58,10 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
   // aparecieron 19 formas distintas de escribir lo mismo. Cuando la gente escribe a mano lo que
   // no puede marcar, el formulario está incompleto.
   { value: "migracion", label: "📒 Deuda de migración (sistema viejo)" },
+  // Mig 131: se agregaron porque 12 deudas ($3,6M) estaban marcadas "otro" siendo estas cosas.
+  // Cada una tiene su DESTINO en `zala.conceptos_deuda`: a dónde vuelve la plata al pagarse.
+  { value: "multa", label: "⚖️ Multa (comprobante falso, otra)" },
+  { value: "base_inicial", label: "🏁 Base inicial pendiente" },
 ];
 
 export default function ModalDeuda({ contratoId, clienteNombre, onClose, tipoInicial, valorInicial, descripcionInicial, onRegistrada, zIndex = 300 }: Props) {

@@ -519,7 +519,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
       if (p && cuenta && cuenta.saldo > 0 && profile) {
         const placaPrest = motos.find(m => m.id === p.moto_prestada_id)?.placa ?? "";
         await registrarDeuda(
-          p.contrato_id, "otro",
+          // Concepto propio desde la mig 131: antes caía en "otro" y su plata no se podía seguir.
+          // Su destino es el portafolio de la moto PRESTADA, que es la que se desgastó.
+          p.contrato_id, "alquiler_reemplazo",
           `Alquiler moto de reemplazo ${placaPrest} — ${cuenta.dias} día(s) × $${fmt(p.tarifa_dia)} (ya pagó $${fmt(cuenta.pagado)})`,
           cuenta.saldo, profile.id,
         );

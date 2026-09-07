@@ -5,7 +5,16 @@ import { createTableStore } from "./createTableStore";
 // funcionario no tenía dónde marcarlo y lo escribía en la descripción — se encontraron 19 formas
 // distintas de decir lo mismo ("EXCEL VIEJO", "EXCELO VIEJO", "Viene del EXCEL SISTEMA VIEJO"...).
 // Es una sola cifra ya calculada en el arqueo, NO una semana que se pueda partir en tarifa+ahorro.
-export type ConceptoDeuda = "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad" | "fotomulta" | "multa_recoleccion" | "migracion" | "lavada" | "otro";
+// Cada concepto tiene un DESTINO: a dónde vuelve la plata cuando el cliente la paga (mig 131,
+// catálogo `zala.conceptos_deuda`). Arriendo y saldos → al socio de la moto · alquiler de la
+// prestada → al socio de ESA moto · lo que la empresa adelantó (lavada, repuesto, grúa, daño,
+// fotomulta) → vuelve a la empresa · multas → ingreso de la empresa.
+// Si aparece una deuda que no cabe en la lista, se le crea concepto propio: cuando la gente no
+// puede marcar lo que es, escribe a mano y todo termina en "otro" (pasó con 12 deudas y $3,6M).
+export type ConceptoDeuda =
+  | "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad"
+  | "fotomulta" | "multa_recoleccion" | "migracion" | "lavada"
+  | "alquiler_reemplazo" | "saldo_liquidacion" | "base_inicial" | "multa" | "otro";
 export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada";
 
 export type Deuda = {

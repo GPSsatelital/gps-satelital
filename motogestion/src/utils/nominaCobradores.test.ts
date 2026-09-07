@@ -499,3 +499,36 @@ describe("releer una semana ya pagada da lo MISMO que se pagó", () => {
     expect(resumirRenglones(n.subadminId, [...n.renglones].reverse())).toEqual(n);
   });
 });
+
+describe("la retención absorbe su semana (regla del dueño, 7-sep-2026)", () => {
+  // "Se le paga solamente lo de la retención, que son los $17.500; ahí va el pago de su semana en
+  // gestión. Y si llega y paga la semana para que se la devuelvan, no se le paga algo más."
+  const RETENCION = [{ moto_id: "m1", motivo: "retencion_mora", created_at: "2026-08-18T09:00:00Z" }];
+
+  it("retener y que pague la semana atrasada ese mismo lapso vale $17.500, no $17.500 + $2.250", () => {
+    const n = correr([pago("2026-08-20", 202000)], RETENCION);
+    expect(n[0].total).toBe(VALOR_RETENCION);
+    expect(n[0].renglones.map(r => r.tipo)).toEqual(["retencion"]);
+  });
+
+  it("sin retención esa semana, la semana cobrada se paga normal", () => {
+    const n = correr([pago("2026-08-17", 202000)]);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("la retención sola, sin que pague nada, vale igual $17.500", () => {
+    const n = correr([], RETENCION);
+    expect(n[0].total).toBe(VALOR_RETENCION);
+  });
+
+  it("una visita de esa misma semana SÍ se sigue pagando: es otro trabajo y otra persona", () => {
+    const n = nominaSemana({
+      ...SEMANA, contratos: [{ ...CONTRATO, fecha_entrega: "2026-08-19" }],
+      pagos: [], motos: MOTOS, recepciones: RETENCION, clientesPorId: CLIENTES,
+      visitas: [{ id: "v1", cliente_id: "cl1", fecha: "2026-08-01", estado: "Aprobado", realizada_por: "LUMAR" }],
+    });
+    const lumar = n.find(x => x.subadminId === "LUMAR");
+    expect(lumar?.total).toBe(VALOR_VISITA);
+    expect(n.find(x => x.subadminId === "PEDRO")?.total).toBe(VALOR_RETENCION);
+  });
+});

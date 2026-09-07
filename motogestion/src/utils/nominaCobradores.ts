@@ -458,9 +458,29 @@ export function nominaSemana(opts: {
     });
   }
 
+  // ── 2c) LA RETENCIÓN ABSORBE SU SEMANA ──────────────────────────────────────────────────────
+  //
+  // 🔴 REGLA DEL DUEÑO (7-sep-2026, textual): "se le paga solamente lo de la retención, que son
+  // los $17.500; ahí va el pago de su semana en gestión. Y si llega y paga la semana para que se
+  // la devuelvan, no se le paga algo más, porque ya se le pagó. Los que no tengan todo el dinero
+  // se les entrega con convenio y de ahí en adelante seguiría otro ciclo: ya se paga es por la
+  // gestión de la SIGUIENTE semana."
+  //
+  // O sea: en la semana en que se retuvo esa moto, los $17.500 cubren TODO lo de ese contrato —
+  // aunque el cliente pague ahí mismo la semana atrasada para recuperarla. Sin esto se pagaban
+  // $17.500 + $2.250 por el mismo trabajo. Desde la semana siguiente todo corre normal (y para
+  // los que quedaron con convenio, la pata del convenio va dentro del paquete, como siempre).
+  const semanaDeRetencion = new Set<string>();
+  for (const r of renglones) {
+    if (r.tipo === "retencion") semanaDeRetencion.add(r.motoId + "|" + lunesDe(r.fecha));
+  }
+  const renglonesFinales = semanaDeRetencion.size === 0 ? renglones : renglones.filter(r =>
+    r.tipo === "retencion" || r.tipo === "visita"
+    || !semanaDeRetencion.has(r.motoId + "|" + lunesDe(r.fecha)));
+
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────
   const porCobrador = new Map<string | null, GestionNomina[]>();
-  for (const r of renglones) {
+  for (const r of renglonesFinales) {
     const sub = r.cobradorId !== undefined ? r.cobradorId : (motoDe.get(r.motoId)?.subadmin_id ?? null);
     if (!porCobrador.has(sub)) porCobrador.set(sub, []);
     porCobrador.get(sub)!.push(r);

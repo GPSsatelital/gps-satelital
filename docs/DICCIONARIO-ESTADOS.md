@@ -289,6 +289,36 @@ Cada respuesta cambia una fila de arriba. Se responden de a una.
 
 ---
 
+## Parte 5 — La vitrina (esquema `zala`, migración 126)
+
+Lo único que ZALA puede ver. Cinco vistas y una tabla, todas de solo lectura, con el resultado
+ya cocinado y en palabras del negocio. El catálogo columna por columna vive en la tabla
+`zala.diccionario` (es la fuente; este documento la resume):
+
+| Vista | Una fila por | Lo que trae |
+|---|---|---|
+| `zala.cliente` | contrato vivo (Activo o Suspendido) | **`debe_hoy`** (la cifra, ya resta lo pagado) y su desglose `cuota_falta` + `acuerdo_falta` + `deudas_falta`; `debe_hoy_detalle` en palabras; `estado_cartera` (al-dia / gabela / mora) y `estado_texto`; `dias_mora`; `balde_hoy`; `plazo_extra_vigente`; `proximo_pago_fecha/monto`; `ultimo_pago_*`; `pagos_por_confirmar`; `saldo_a_favor` (se muestra, nunca se resta); su moto (`placa`, `su_moto_estado`, `placa_que_usa`, `en_prestamo`); `encargado`; `va_cajas` de `total_cajas`. Los Diario traen `debe_hoy` en null: su cuenta se consulta en la oficina |
+| `zala.moto` | moto | `estado` en palabras, `cliente`, `encargado`, `prestamo`, `retencion_fecha`, `en_taller_desde`, SOAT y tecnomecánica con días |
+| `zala.pagos` | pago de los últimos 120 días | fecha de pago, valor, método, `estado_texto` (confirmado / en verificación / rechazado), `es_plata_real` |
+| `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado, `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
+| `zala.deudas` | deuda pendiente o en convenio | `que_es` en palabras, `falta`, `estado_texto` |
+| `zala.diccionario` | columna | `significado`, `valores`, **`zala_lo_dice`** (sí / no / solo si pregunta / por confirmar), `confirmado_por_dueno` |
+
+**Cómo se calcula:** las funciones `zala.*` son el espejo SQL de `cicloPago.ts` (`loQueDebe`,
+`faltaDelAcuerdo`, `cuotaConvenioDelPeriodo`, `periodosConvenioExigidos`, `desgloseExigible`,
+`diasEnMoraV2`, `calcularEstadoCartera`) y del balde del panel Hoy. La exigencia de cajas no se
+duplica: se reusa `public.cajas_exigidas`, la del motor. La prueba espejo
+(`motogestion/scripts/vitrina-espejo.browser.js`) compara pantalla y base contrato por contrato.
+
+**Quién entra:** el rol `zala_lector` (USAGE en `zala`, SELECT en sus vistas, nada más). Nace sin
+contraseña; la pone el dueño a mano. Desde la app, `public.zala_vitrina('cliente')` devuelve la
+vista como JSON solo a ADMIN / ADMIN_PRINCIPAL / ANALISTA (para la prueba y los informes).
+
+**Pendiente de la palabra del dueño** (marcado `por confirmar` en el diccionario): si ZALA
+menciona el saldo a favor, el nombre del encargado, el plazo extra y la promesa de pago.
+Recomendación cargada: saldo a favor y encargado sí (informativo); plazo y promesa solo si ya
+existen y nunca como oferta.
+
 ## Parte 4 — Regla de ahora en adelante
 
 Toda función nueva que cree un estado, un valor posible o una cifra que se muestre, entrega

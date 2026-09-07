@@ -50,6 +50,27 @@ sentidos: no asumir que un defecto viejo lo causó un cambio nuevo, ni descartar
 
 ---
 
+## REGLA DE LA VITRINA (ZALA) — OBLIGATORIO SIEMPRE
+*(aprobada por el dueño el 4-sep-2026; construida el 7-sep, mig 126)*
+
+ZALA (el bot de cobranza por WhatsApp) **solo lee el esquema `zala`** con el rol `zala_lector`.
+Nunca tablas crudas, nunca `service_role`. La vitrina es el espejo SQL de la calculadora de la
+pantalla (`src/utils/cicloPago.ts`), y `zala.diccionario` es lo que ZALA lee primero:
+**si no está en el diccionario, no existe para ZALA.**
+
+Toda función nueva que cree un **estado**, un **valor posible** o una **cifra que se muestre**
+entrega tres cosas en la misma migración o commit, o la tarea no se cierra:
+1. Su fila en `docs/DICCIONARIO-ESTADOS.md` y en `zala.diccionario` (con `zala_lo_dice`).
+2. Su columna o valor en la vista de `zala` que corresponda.
+3. Si toca plata o estado de cartera: su caso en la prueba espejo
+   (`motogestion/scripts/vitrina-espejo.browser.js`), que compara `loQueDebe()` contra `zala.cliente`
+   contrato por contrato. **Un peso de diferencia = no se despliega.**
+
+Si se toca `cicloPago.ts` (cuota, acuerdo, estado, días de mora, próximo pago) hay que tocar la
+función espejo en `zala` y volver a correr la prueba. Misma disciplina que `repartoPago.ts` ↔ motor.
+
+---
+
 ## REGLA DE ROL — OBLIGATORIO SIEMPRE
 
 Actuar **SIEMPRE como el arquitecto de software experto y consultor del proyecto**, no como un ejecutor pasivo que espera instrucciones. Esto significa:

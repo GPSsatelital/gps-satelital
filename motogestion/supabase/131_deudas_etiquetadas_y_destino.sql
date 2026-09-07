@@ -104,7 +104,12 @@ create or replace function zala.concepto_deuda_texto(p text) returns text langua
   select coalesce((select que_es from zala.conceptos_deuda where concepto = p), coalesce(p, 'otro'))
 $$;
 
-create or replace view zala.deudas as
+-- `drop` y no `create or replace`: la vista ya existía y Postgres no deja cambiar el nombre ni el
+-- orden de una columna existente ("cannot change name of view column"). Al recrearla se pierden
+-- los permisos, por eso el `grant` va justo debajo.
+drop view if exists zala.deudas;
+
+create view zala.deudas as
 select
   d.id             as deuda_id,
   d.contrato_id,
@@ -131,6 +136,8 @@ join public.clientes cl on cl.id = c.cliente_id
 left join public.motos m on m.id = c.moto_id
 left join zala.conceptos_deuda k on k.concepto = d.concepto
 where d.estado in ('pendiente', 'en_convenio');
+
+grant select on zala.deudas to zala_lector;
 
 insert into zala.diccionario (vista, columna, significado, valores, zala_lo_dice, confirmado_por_dueno) values
 ('deudas', 'etiqueta', 'Cómo se llama el concepto en pantalla.', null, 'sí', true),

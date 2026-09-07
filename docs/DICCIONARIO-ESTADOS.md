@@ -162,7 +162,9 @@ sabe de quién) / `asignado` (ya se casó con un pago). `[verificar nombre exact
 | `cubre_periodo_hasta` | Hasta esa fecha las semanas están **financiadas dentro del convenio**: no se cobra cuota normal aparte | sí |
 | `created_at` | Desde cuándo corre. **No corre durante el prorrateo** | interno |
 | `periodos_exonerados` | Cuotas del convenio que se le rodaron | interno |
-| Regla | Máximo 3 por contrato. Siempre encima del pago normal, nunca lo reemplaza | sí |
+| `deudas_incluidas` (mig 128) | Las deudas que el funcionario marcó con casilla al firmar. `null` = todas las pendientes de ese momento (acuerdos anteriores al 7-sep). Una deuda sin casilla se quedó por fuera y se cobra aparte | interno |
+| `partitura` (mig 116) | La lista en pesos de qué financia el acuerdo: semanas, deudas y el sobrante pactado. Desde la mig 128 la base se niega a firmar un acuerdo por menos de lo que envuelve | interno |
+| Regla | Máximo 3 por contrato. Siempre encima del pago normal, nunca lo reemplaza. **El total no se escribe a mano: se suma de lo que entra** | sí |
 
 ### 7. Gestión de cobro — `gestiones_cobro.tipo`
 

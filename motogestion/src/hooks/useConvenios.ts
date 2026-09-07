@@ -6,6 +6,8 @@ export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado";
 
 export type Convenio = {
   id: string;
+  /** Deudas marcadas con casilla al firmar (mig 128). null = todas las pendientes de ese momento (acuerdos viejos). */
+  deudas_incluidas?: string[] | null;
   contrato_id: string;
   numero_convenio: number;
   deuda_total: number;

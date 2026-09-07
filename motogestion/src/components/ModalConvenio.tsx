@@ -7,17 +7,19 @@ import { useAuth } from "../contexts/AuthContext";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
-import { useDeudas } from "../hooks/useDeudas";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo, financiarSemanas } from "../utils/cicloPago";
 import { hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
+import { sumarLoQueEntra, deudasMarcadas as soloMarcadas, type QueEntra } from "../utils/convenioQueEntra";
 
 interface Props {
   contratoId: string;
   clienteNombre: string;
   onClose: () => void;
-  // Monto fijo que el convenio debe cubrir (ej. base inicial incompleta al crear el
-  // contrato) — si no viene, la meta se precarga con la deuda pendiente del contrato.
+  // Monto que trae EL SISTEMA y que no es una deuda registrada: la base inicial que le falta al
+  // cliente nuevo del wizard. Entra al acuerdo como un renglón bloqueado. Desde la mig 128 el
+  // total ya no se escribe a mano: se SUMA de las semanas que la base asume, las deudas que el
+  // funcionario marca con casilla y este monto (decisión del dueño, 7-sep-2026, caso ESTARLIS).
   metaFija?: number;
   /**
    * La meta que llega YA trae las cuotas atrasadas adentro. Con `true` el selector de semanas
@@ -66,6 +68,23 @@ const labelStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
   color: "var(--muted2)",
+};
+
+// La lista de "qué entra al acuerdo": cabeceras por tipo y una fila por renglón.
+const cabeceraEntra: React.CSSProperties = {
+  padding: "7px 12px", background: "var(--soft2)", fontSize: 11, fontWeight: 700,
+  color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4,
+};
+const filaEntra: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+  borderTop: "1px solid var(--line)", fontSize: 13, color: "var(--text)", minWidth: 0,
+};
+
+// El concepto de la deuda en palabras, para la lista (la descripción libre va debajo).
+const CONCEPTO_TEXTO: Record<string, string> = {
+  multa_recoleccion: "Multa por retención", lavada: "Lavada de la moto", tarifa_atrasada: "Arriendo atrasado",
+  migracion: "Saldo del sistema anterior", "daño_vehiculo": "Daño al vehículo", prestamo_repuesto: "Repuesto prestado",
+  prestamo_eventualidad: "Préstamo por eventualidad", fotomulta: "Fotomulta", otro: "Otra deuda",
 };
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -156,11 +175,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // puerta por la que entraras. Unificado — decisión del dueño, 31-jul: "un convenio es un
   // convenio, no veo por qué habría alguna diferencia".
   const [financiarN, setFinanciarN] = useState(0);
-  // Deuda que NO entra acá por estar ya dentro de otro convenio activo. Se muestra para que el
-  // funcionario entienda por qué el monto precargado es menor que el "debe" de Cartera.
-  const [deudaEnOtroConvenio, setDeudaEnOtroConvenio] = useState(0);
-  const [metaManual, setMetaManual] = useState("");
-  const [metaCargada, setMetaCargada] = useState(false);
+  // LO QUE ENTRA AL ACUERDO lo dice LA BASE (rpc `convenio_que_entra`), no la pantalla: la lista
+  // que ve el funcionario es exactamente lo que el trigger va a meter al firmar. Antes la
+  // pantalla calculaba por su lado y el monto de deudas se escribía a mano; así se firmó el
+  // acuerdo de ESTARLIS por $368.000 envolviendo $563.000 (7-sep-2026).
+  const [queEntra, setQueEntra] = useState<QueEntra | null>(null);
+  const [errorQueEntra, setErrorQueEntra] = useState<string | null>(null);
+  // Deudas marcadas con casilla. Todas vienen marcadas; quitar una la deja por fuera del
+  // acuerdo (se le sigue cobrando aparte). `null` = todavía no cargó la lista.
+  const [deudasSel, setDeudasSel] = useState<Set<string> | null>(null);
   const [modoFijar, setModoFijar] = useState<"cuotas" | "cuota">("cuotas");
   // Pasar de las 24 normales no se bloquea, pero hay que marcarlo a propósito (ver los DOS TOPES).
   const [excepcionConfirmada, setExcepcionConfirmada] = useState(false);
@@ -181,7 +204,6 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { motos } = useMotos();
-  const { deudas } = useDeudas();
   const { profile } = useAuth();
   const clienteDelContrato = (() => {
     const c = contratos.find(x => x.id === contratoId);
@@ -204,37 +226,6 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     }
     verificar();
   }, [contratoId]);
-
-  // Si no hay meta fija (caso general, no el de base inicial), se precarga con la
-  // deuda pendiente ya registrada del contrato — el funcionario puede ajustarla.
-  useEffect(() => {
-    // `metaFija` (recuperar moto retenida, base inicial del wizard) ya NO bloquea el monto: viene
-    // PRECARGADO y editable, igual que en Cartera. Antes lo dejaba de solo lectura y además
-    // escondía la opción de financiar semanas — el mismo convenio se comportaba distinto según
-    // por dónde entraras. Decisión del dueño, 31-jul: "un convenio es un convenio".
-    if (metaFija != null) { setMetaManual(String(Math.round(metaFija))); setMetaCargada(true); return; }
-    async function cargarDeuda() {
-      // Solo deuda EXIGIBLE. Con `neq('pagada')` entraban también las 'en_convenio': un
-      // convenio NUEVO nacía cubriendo plata que un convenio ANTERIOR ya financiaba, y el
-      // cliente terminaba pagándola dos veces. Es el mismo error que corrigió la mig 070,
-      // por otra puerta.
-      const { data } = await supabase
-        .from("deudas")
-        .select("monto_pendiente, estado")
-        .eq("contrato_id", contratoId)
-        .in("estado", ["pendiente", "en_convenio"]);
-      const filas = data ?? [];
-      const total = filas.filter(d => d.estado === "pendiente").reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0);
-      // Cuánta deuda queda AFUERA por estar ya dentro de otro convenio. Sin decirlo, la ventana
-      // precargaba $0 en silencio y el funcionario creía que el sistema se equivocaba: Cartera le
-      // mostraba $530.000 y acá salía cero (caso WILLINGTON, DQW26I). Es correcto no volver a
-      // meterla —se cobraría dos veces— pero hay que decir POR QUÉ.
-      setDeudaEnOtroConvenio(filas.filter(d => d.estado === "en_convenio").reduce((acc, d) => acc + (d.monto_pendiente ?? 0), 0));
-      setMetaManual(String(total));
-      setMetaCargada(true);
-    }
-    cargarDeuda();
-  }, [contratoId, metaFija]);
 
   // ── Financiar cuotas del arriendo dentro del convenio (alivio único) ──────────────────────
   // Todo se calcula ACÁ, desde el contrato. Antes dependía de que cada pantalla pasara
@@ -301,7 +292,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // Todo el cálculo (semana parcial + ahorro que viaja adentro) vive en cicloPago.ts, probado.
   const fin = contratoActual ? financiarSemanas(contratoActual, hoyDate(), nFinanciadas) : { primera: 0, total: 0, ahorro: 0 };
   const primeraFinanciada = fin.primera;
-  const cuotaSemana = fin.total;
+  // El monto de las semanas lo dice LA BASE (lo que de verdad va a marcar); la cuenta local queda
+  // solo como respaldo mientras carga y para el ahorro que viaja adentro.
+  const cuotaSemana = queEntra ? Number(queEntra.semanas_total) : fin.total;
   const ahorroFinanciado = fin.ahorro;
 
   // Lo que queda de arriendo SIN cubrir con lo escogido. Si es > 0, decir "paga $0 de arriendo"
@@ -326,8 +319,37 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     ? finPeriodoISO
     : (contratoActual ? fechaCubrePeriodo(contratoActual, hoyDate(), nFinanciadas, semanasVencidas) : null);
 
-  const metaBase = Number(metaManual) || 0;
-  const meta = metaBase + cuotaSemana;
+  // Lo que se le manda a la base y lo que se guarda: solo hay cobertura si se financió ≥1 semana.
+  const cubreParaBase = nFinanciadas >= 1 ? cubreHasta : null;
+
+  // La pantalla le PREGUNTA a la base qué entra (semanas según la cobertura + deudas pendientes).
+  // Se vuelve a preguntar cada vez que cambia la cobertura: las semanas dependen de ella.
+  useEffect(() => {
+    let vivo = true;
+    setQueEntra(null);
+    setErrorQueEntra(null);
+    supabase.rpc("convenio_que_entra", { p_contrato_id: contratoId, p_cubre_hasta: cubreParaBase })
+      .then(({ data, error: e }) => {
+        if (!vivo) return;
+        if (e || !data) { setErrorQueEntra(e?.message ?? "La base no respondió qué entra al acuerdo."); return; }
+        const q = data as QueEntra;
+        setQueEntra(q);
+        // Todas marcadas al cargar por primera vez; si el funcionario ya tocó casillas, se respeta.
+        setDeudasSel(prev => prev ?? new Set(q.deudas.map(d => d.id)));
+      });
+    return () => { vivo = false; };
+  }, [contratoId, cubreParaBase]);
+
+  const deudasQueEntran = soloMarcadas(queEntra?.deudas ?? [], deudasSel);
+  const suma = sumarLoQueEntra({
+    base: metaFija ?? 0,
+    deudas: deudasQueEntran.map(d => Number(d.monto_pendiente)),
+    semanas: cuotaSemana,
+  });
+  // `metaBase` = lo que NO es semana (deudas + monto del sistema): es lo que se guarda en
+  // `monto_deudas`, la parte del acuerdo que no genera ahorro.
+  const metaBase = suma.base + suma.deudas;
+  const meta = suma.total;
   const { cuotas: cuotasCalc, cuota: cuotaCalc, ultima: ultimaCuota, total: totalCalculado } =
     repartirConvenio(meta, modoFijar, modoFijar === "cuotas" ? Number(cuotasInput) || 0 : Number(cuotaInput) || 0);
 
@@ -364,7 +386,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   async function handleGuardar() {
     if (guardando) return;
     if (!motivo.trim()) { setError("Escribe el motivo del convenio."); return; }
-    if (meta <= 0) { setError("La meta a pagar debe ser mayor a cero."); return; }
+    if (!queEntra) { setError("Todavía no se cargó qué entra al acuerdo. Espera un momento y vuelve a intentar."); return; }
+    if (meta <= 0) { setError("El acuerdo no tiene nada adentro: marca al menos una deuda o financia semanas."); return; }
     if (cuotasCalc <= 0) { setError(modoFijar === "cuotas" ? "Ingresa el número de cuotas." : "Ingresa una cuota válida."); return; }
     // TOPE DURO: esto no es un convenio largo, es un error de dedo (ver los DOS TOPES arriba).
     if (cuotasCalc > TOPE_DURO_CUOTAS) {
@@ -434,6 +457,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       monto_semanas: cuotaSemana,
       ahorro_semanas: ahorroFinanciado,
       cajas_financiadas: nFinanciadas,
+      // Las deudas que el funcionario dejó marcadas: la base mete SOLO estas (mig 128). Vacío =
+      // ninguna entra; nunca null (null sería "todas", el comportamiento viejo).
+      deudas_incluidas: deudasQueEntran.map(d => d.id),
       cuota_por_periodo: cuotaCalc,
       numero_cuotas: cuotasCalc,
       cuotas_pagadas: 0,
@@ -449,7 +475,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       // lo que guarda es el autor. La ventana insertaba `null` porque no pasaba por el hook
       // `crearConvenio`, que sí lo guardaba, y se perdía el rastro de quién lo hizo.
       aprobado_por: profile?.id ?? null,
-      cubre_periodo_hasta: cuotaSemana > 0 ? cubreHasta : null,
+      // La MISMA cobertura con la que la base calculó la lista que el funcionario vio.
+      cubre_periodo_hasta: cuotaSemana > 0 ? cubreParaBase : null,
       firma_url: firmaUrl,
     });
 
@@ -493,8 +520,12 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             : "⚠️ El convenio se paga ENCIMA del pago normal. No reemplaza la cuota."}
         </div>
 
-        {verificando || (metaFija == null && !metaCargada) ? (
+        {verificando || (!queEntra && !errorQueEntra) ? (
           <div style={{ color: "var(--muted)", fontSize: 14 }}>Cargando datos del contrato...</div>
+        ) : errorQueEntra ? (
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 14, color: "var(--bad-ink)", fontWeight: 600, lineHeight: 1.5 }}>
+            No se pudo consultar qué entra al acuerdo: {errorQueEntra}. Cierra esta ventana y vuelve a intentar.
+          </div>
         ) : totalConvenios !== null && totalConvenios >= 3 ? (
           <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 14, color: "var(--bad-ink)", fontWeight: 700 }}>
             Este contrato ya tiene 3 convenios (máximo permitido). No se pueden crear más.
@@ -516,36 +547,88 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             </div>
 
             <div>
-              {/* Decía "Meta a pagar (total del convenio)" y NO era el total: las semanas
-                  financiadas se suman aparte y el funcionario tenía que hacer la cuenta de
-                  cabeza. El total real se muestra ahora abajo, apenas se escogen las semanas. */}
-              <div style={labelStyle}>Deuda a financiar</div>
+              {/* QUÉ ENTRA AL ACUERDO. Antes acá había una casilla donde se ESCRIBÍA el monto de
+                  deudas: así se firmó el acuerdo de ESTARLIS por $368.000 envolviendo $563.000
+                  (7-sep-2026). Ahora la lista la trae la base (la misma cuenta del trigger), las
+                  deudas se marcan con casilla y el total se suma solo. Regla del dueño: "las
+                  deudas nacen donde se crean; por el convenio no entra plata escrita a mano". */}
+              <div style={labelStyle}>Qué entra al acuerdo</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                Marca lo que se financia. El total se suma solo; no se escribe a mano.
+              </div>
               {/* Sin esto la ventana mostraba $0 en silencio y parecía un error del sistema:
                   Cartera decía "debe $530.000" y acá salía cero (caso WILLINGTON, DQW26I). */}
-              {deudaEnOtroConvenio > 0 && (
+              {queEntra && queEntra.deudas_en_otro_convenio > 0 && (
                 <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "9px 11px", marginBottom: 8, lineHeight: 1.5 }}>
-                  ⚠️ Este cliente ya tiene <strong>$ {fmt(deudaEnOtroConvenio)}</strong> de deuda dentro de otro convenio activo.
-                  Esa plata <strong>no se vuelve a incluir acá</strong> para no cobrársela dos veces — por eso el monto sale
-                  más bajo que el "debe" de Cartera.
+                  ⚠️ Este cliente ya tiene <strong>$ {fmt(queEntra.deudas_en_otro_convenio)}</strong> de deuda dentro de otro convenio.
+                  Esa plata <strong>no aparece acá</strong> para no cobrársela dos veces — por eso la lista sale
+                  más corta que el "debe" de Cartera.
                   <span style={{ display: "block", marginTop: 4 }}>
                     Si lo que quieres es reacomodarle TODA la deuda, primero elimina el convenio viejo desde su ficha
                     (sus deudas vuelven solas a quedar disponibles) y vuelve a entrar acá.
                   </span>
                 </div>
               )}
-              {metaFija != null && (
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                  {metaBloqueada
-                    ? <>Son <strong>$ {fmt(metaFija)}</strong> — {metaNota ?? "lo que tiene pendiente"}. Lo calcula el sistema y no se puede cambiar.</>
-                    : <>Sugerido: <strong>$ {fmt(metaFija)}</strong> — {metaNota ?? "lo que tiene pendiente"}. Puedes ajustarlo.</>}
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
+                {queEntra && queEntra.semanas.length > 0 && (
+                  <>
+                    <div style={cabeceraEntra}>Semanas de arriendo (según lo escogido abajo)</div>
+                    {queEntra.semanas.map(s => (
+                      <div key={s.caja_numero} style={filaEntra}>
+                        <input type="checkbox" checked disabled readOnly style={{ width: 18, height: 18, flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0 }}>{s.etiqueta}</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, flexShrink: 0 }}>$ {fmt(Number(s.monto))}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                <div style={{ ...cabeceraEntra, borderTop: queEntra && queEntra.semanas.length > 0 ? "1px solid var(--line)" : "none" }}>Deudas registradas</div>
+                {queEntra && queEntra.deudas.length === 0 && (
+                  <div style={{ ...filaEntra, color: "var(--muted)" }}>No tiene deudas pendientes por fuera de un acuerdo.</div>
+                )}
+                {queEntra?.deudas.map(d => {
+                  const on = !!deudasSel?.has(d.id);
+                  return (
+                    <label key={d.id} style={{ ...filaEntra, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={e => setDeudasSel(prev => {
+                          const n = new Set(prev ?? queEntra.deudas.map(x => x.id));
+                          if (e.target.checked) n.add(d.id); else n.delete(d.id);
+                          return n;
+                        })}
+                        style={{ width: 18, height: 18, flexShrink: 0, cursor: "pointer" }}
+                      />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontWeight: 600, color: on ? "var(--text)" : "var(--muted)", textDecoration: on ? "none" : "line-through", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {CONCEPTO_TEXTO[d.concepto] ?? d.concepto}
+                        </span>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {d.descripcion ? `${d.descripcion} · ` : ""}{fmtFechaLarga(d.fecha)}
+                        </span>
+                      </span>
+                      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, flexShrink: 0, color: on ? "var(--text)" : "var(--muted)" }}>$ {fmt(Number(d.monto_pendiente))}</span>
+                    </label>
+                  );
+                })}
+                {metaFija != null && (
+                  <>
+                    <div style={{ ...cabeceraEntra, borderTop: "1px solid var(--line)" }}>{metaNota ?? "Monto que trae el sistema"}</div>
+                    <div style={filaEntra}>
+                      <input type="checkbox" checked disabled readOnly style={{ width: 18, height: 18, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, color: "var(--muted2)" }}>
+                        {metaBloqueada ? "Lo calcula el sistema y no se puede cambiar." : "Lo trae el sistema."}
+                      </span>
+                      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, flexShrink: 0 }}>$ {fmt(metaFija)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              {queEntra && queEntra.deudas.length > 0 && deudasQueEntran.length < queEntra.deudas.length && (
+                <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "8px 11px", marginTop: 8, lineHeight: 1.5 }}>
+                  Lo que dejaste sin casilla se queda <strong>por fuera</strong> del acuerdo y se le sigue cobrando aparte.
                 </div>
-              )}
-              {metaBloqueada ? (
-                <div style={{ padding: "12px 14px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--soft2)", fontSize: 17, fontWeight: 700, color: "var(--text)" }}>
-                  $ {fmt(metaBase)}
-                </div>
-              ) : (
-                <MoneyInput label="" value={metaManual} onChange={setMetaManual} placeholder="$ 0" />
               )}
             </div>
 
@@ -603,11 +686,13 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Total del convenio</div>
                 <div style={{ fontSize: 26, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>$ {fmt(meta)}</div>
-                {cuotaSemana > 0 && (
-                  <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>
-                    Deuda $ {fmt(metaBase)} + {nFinanciadas} semana{nFinanciadas > 1 ? "s" : ""} $ {fmt(cuotaSemana)}
-                  </div>
-                )}
+                <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>
+                  {[
+                    suma.semanas > 0 ? `${nFinanciadas} semana${nFinanciadas > 1 ? "s" : ""} $ ${fmt(suma.semanas)}` : null,
+                    suma.deudas > 0 ? `${deudasQueEntran.length} deuda${deudasQueEntran.length > 1 ? "s" : ""} $ ${fmt(suma.deudas)}` : null,
+                    suma.base > 0 ? `${metaNota ?? "monto del sistema"} $ ${fmt(suma.base)}` : null,
+                  ].filter(Boolean).join(" + ")}
+                </div>
               </div>
             )}
 
@@ -777,7 +862,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                   dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(
                     clienteDelContrato,
                     (contratoActual.moto_id ? motos.find(m => m.id === contratoActual.moto_id) : null) ?? null,
-                    deudas.filter(d => d.contrato_id === contratoId && d.estado !== "pagada"),
+                    // Solo las deudas que quedaron MARCADAS: es lo que el cliente va a firmar.
+                    deudasQueEntran.map(d => ({ concepto: d.concepto, monto_pendiente: Number(d.monto_pendiente) })),
                     { deuda_total: meta, cuota_por_periodo: cuotaCalc, numero_cuotas: cuotasCalc, firma_url: firma },
                     infoFinContrato(contratoActual),
                   ) }} />
@@ -810,10 +896,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               )}
               <button
                 onClick={handleGuardar}
-                disabled={guardando || exito || !firma || (huellaResuelta && !tieneHuella)}
-                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !firma || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
+                disabled={guardando || exito || !firma || !queEntra || (huellaResuelta && !tieneHuella)}
+                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !firma || !queEntra || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
               >
-                {guardando ? "Guardando..." : "Crear convenio"}
+                {guardando ? "Guardando..." : meta > 0 ? `Firmar acuerdo por $ ${fmt(meta)}` : "Firmar acuerdo"}
               </button>
             </div>
           </>

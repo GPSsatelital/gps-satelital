@@ -1356,11 +1356,10 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
         <ModalConvenio
           contratoId={convenioRec.contratoId}
           clienteNombre={convenioRec.clienteNombre}
-          metaFija={convenioRec.otrasDeudas}
+          // Ya no se le pasa un monto: desde la mig 128 la ventana le pregunta a la base qué
+          // deudas tiene pendientes y las lista con casilla (la multa nunca está acá porque este
+          // botón solo aparece cuando ya se pagó). Las cuotas atrasadas entran por el selector.
           metaTraeSemanas={false}
-          // Acá SÍ se ajusta a propósito: la regla del dueño es que el mínimo obligatorio es la
-          // multa y el resto se financia pidiéndole lo máximo que pueda dar.
-          metaNota="sus deudas viejas (las cuotas atrasadas se agregan abajo)"
           motivoInicial="Convenio para recuperar moto retenida"
           onClose={() => setConvenioRec(null)}
         />

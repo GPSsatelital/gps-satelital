@@ -56,6 +56,22 @@ export type DestinoLiberacion = "taller" | "operacion";
 // vuelve a "Asignada" (el cliente la sigue esperando). Solo si no hay contrato activo
 // queda "Disponible" para asignarse a otro. Evita que una moto quede "Disponible"
 // mientras un contrato sigue Activo apuntándola (podría entregarse a dos clientes).
+/**
+ * ¿Esta moto es la moto PROPIA de un cliente que ahora anda en una prestada?
+ *
+ * Si lo es, no puede volver al pool: su dueño la está esperando y la devolución del préstamo es
+ * la que se la regresa. Mismo hueco que se cerró en el taller el 7-sep (caso DQF56I): como el
+ * préstamo deja el contrato apuntando a la moto prestada, `estadoMotoTrasLiberar` no encontraba
+ * contrato y la mandaba a "Disponible" — la moto de un cliente quedaba libre para asignársela a
+ * otro.
+ */
+export async function esperaDevolucionDePrestamo(motoId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("prestamos_reemplazo").select("id")
+    .eq("moto_original_id", motoId).eq("estado", "activo").limit(1);
+  return !!data && data.length > 0;
+}
+
 export async function estadoMotoTrasLiberar(motoId: string): Promise<"Asignada" | "Disponible" | "En traspaso"> {
   // "En traspaso" es un estado FINAL: la moto ya es del cliente (cumplió su contrato) y nunca
   // vuelve a la flota. Sin este candado, cerrar la orden de taller que quedó vinculada a la
@@ -102,7 +118,11 @@ export function useMotos() {
   // segundo ganaba). Al exigirlo, el compilador obliga a que cada sitio diga qué pasa con la moto
   // y se resuelve todo en UN solo update: o va a revisión, o vuelve a operar.
   async function liberarRetencion(id: string, destino: DestinoLiberacion) {
-    const estado: MotoStatus = destino === "taller" ? "Mantenimiento" : await estadoMotoTrasLiberar(id);
+    // Si su dueño anda en una moto PRESTADA, esta no vuelve al pool aunque se libere: queda en
+    // taller esperando la devolución, que es la que se la regresa (igual que al cerrar la orden
+    // de taller, 7-sep). Sin esto se soltaba como "Disponible" y el wizard podía dársela a otro.
+    const enPrestamo = destino !== "taller" && await esperaDevolucionDePrestamo(id);
+    const estado: MotoStatus = (destino === "taller" || enPrestamo) ? "Mantenimiento" : await estadoMotoTrasLiberar(id);
     const { error } = await supabase.from("motos").update({
       estado,
       retencion_fecha: null,

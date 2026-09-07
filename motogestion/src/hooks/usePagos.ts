@@ -407,14 +407,46 @@ export function usePagos() {
   // qué pago era) para no perder el rastro aunque la fila desaparezca de "pagos". El trigger
   // de BD (aplicar_pago_confirmado) resta automáticamente el ahorro/convenio que ese pago
   // ya le había sumado al contrato, si estaba Confirmado.
+  /**
+   * Borrar un pago (solo ADMIN_PRINCIPAL). Deja rastro COMPLETO antes de borrar.
+   *
+   * 🔴 LO QUE FALTABA (7-sep-2026): el rastro guardaba valor, método, estado y fecha — pero no
+   * A QUÉ SE HABÍA APLICADO esa plata (cuota, ahorro, deuda, convenio, saldo a favor), ni la
+   * referencia de la transferencia, ni el comprobante. Al borrarlo, el motor des-llena cajas y
+   * baja el ahorro, y después no había forma de reconstruir por qué las cifras del cliente
+   * cambiaron: un movimiento de plata que no se podía auditar. Ahora queda todo escrito.
+   */
   async function eliminarPago(pago: Pago, eliminadoPor: string) {
-    await supabase.from("contratos_auditoria").insert({
+    const money = (n: number | null | undefined) => `$${Math.round(n ?? 0).toLocaleString("es-CO")}`;
+    const aplicado = [
+      (pago.aplicado_tarifa ?? 0) > 0 ? `cuota ${money(pago.aplicado_tarifa)}` : null,
+      (pago.aplicado_ahorro ?? 0) > 0 ? `ahorro ${money(pago.aplicado_ahorro)}` : null,
+      (pago.aplicado_deuda ?? 0) > 0 ? `deuda ${money(pago.aplicado_deuda)}` : null,
+      (pago.aplicado_convenio ?? 0) > 0 ? `acuerdo ${money(pago.aplicado_convenio)}` : null,
+      (pago.aplicado_saldo_favor ?? 0) !== 0 ? `saldo a favor ${money(pago.aplicado_saldo_favor)}` : null,
+    ].filter(Boolean).join(" · ");
+    const extras = [
+      pago.tipo_registro && pago.tipo_registro !== "normal" ? `tipo ${pago.tipo_registro}` : null,
+      pago.referencia ? `ref ${pago.referencia}` : null,
+      pago.comprobante_url ? "con comprobante" : null,
+      pago.folio ? `folio ${pago.folio}` : null,
+    ].filter(Boolean).join(" · ");
+
+    const { error: errAud } = await supabase.from("contratos_auditoria").insert({
       contrato_id: pago.contrato_id,
       campo: "Pago eliminado",
-      valor_anterior: `$${pago.valor.toLocaleString("es-CO")} · ${pago.metodo} · ${pago.estado} · ${pago.fecha}`,
+      valor_anterior: [
+        `${money(pago.valor)} · ${pago.metodo} · ${pago.estado} · pagó ${pago.fecha}`,
+        extras || null,
+        aplicado ? `se había aplicado a: ${aplicado}` : "sin aplicación registrada",
+        pago.comprobante_url ?? null,
+      ].filter(Boolean).join("\n"),
       valor_nuevo: "(borrado)",
       editado_por: eliminadoPor,
     });
+    // Sin rastro no se borra: un movimiento de plata que no se puede auditar no debe existir.
+    if (errAud) return { error: "No se pudo dejar el rastro de la eliminación: " + errAud.message };
+
     await liberarDineroSinDuenio(pago.id);
     const { error } = await supabase.from("pagos").delete().eq("id", pago.id);
     return { error: error?.message ?? null };

@@ -29,6 +29,22 @@ export function prestamoActivoDeOriginal<P extends PrestamoMin>(motoId: string, 
 }
 
 /**
+ * Días que la moto lleva (o estuvo) en el taller: del ingreso a la salida, o a hoy si sigue adentro.
+ *
+ * Se cuenta con las fechas como texto "YYYY-MM-DD" leídas como día local. Antes se hacía
+ * `new Date("2026-09-04")` (medianoche UTC) contra `new Date()` (el instante actual): en Colombia
+ * el ingreso caía en el día anterior y la cuenta salía corrida. `hoy` entra como parámetro para
+ * poder probarlo con una fecha fija.
+ */
+export function diasEnTaller(fechaIngreso: string | null | undefined, fechaSalida: string | null | undefined, hoyISO: string): number {
+  if (!fechaIngreso) return 0;
+  const ini = new Date(fechaIngreso.slice(0, 10) + "T00:00:00").getTime();
+  const fin = new Date((fechaSalida ?? hoyISO).slice(0, 10) + "T00:00:00").getTime();
+  if (isNaN(ini) || isNaN(fin)) return 0;
+  return Math.max(0, Math.round((fin - ini) / 86400000));
+}
+
+/**
  * Anota qué se le hizo, con la fecha, DEBAJO de lo anterior. Nunca borra lo ya escrito: la orden
  * es la historia del arreglo y cada anotación queda con su día.
  */

@@ -23,6 +23,8 @@ interface Props {
   descripcionInicial?: string;
   /** Se llama con el id de la deuda creada (null si no se pudo leer), ANTES de cerrar. */
   onRegistrada?: (deudaId: string | null) => void;
+  /** Para abrirla ENCIMA de otra capa flotante (el detalle de la orden de taller usa 1000). Por defecto 300, como siempre. */
+  zIndex?: number;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -56,7 +58,7 @@ const TIPOS: { value: TipoDeuda; label: string }[] = [
   { value: "migracion", label: "📒 Deuda de migración (sistema viejo)" },
 ];
 
-export default function ModalDeuda({ contratoId, clienteNombre, onClose, tipoInicial, valorInicial, descripcionInicial, onRegistrada }: Props) {
+export default function ModalDeuda({ contratoId, clienteNombre, onClose, tipoInicial, valorInicial, descripcionInicial, onRegistrada, zIndex = 300 }: Props) {
   useBloquearScrollFondo();
   const { registrarDeuda } = useDeudas();
   const { contratos } = useContratos();
@@ -106,7 +108,7 @@ export default function ModalDeuda({ contratoId, clienteNombre, onClose, tipoIni
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 300 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex }}
       onClick={onClose}
     >
       <div

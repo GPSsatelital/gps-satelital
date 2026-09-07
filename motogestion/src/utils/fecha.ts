@@ -46,6 +46,19 @@ export function hoyMasDias(n: number): string {
 // NO se usa en la descarga a Excel (ahí manda "2026-08-04", que es lo que Excel sabe
 // ordenar y filtrar como fecha) ni en el recibo impreso de 80mm (se partiría en dos
 // líneas). Decisión del dueño, 6-ago-2026.
+// "4/9/2026" — fecha corta para listas y tablas.
+//
+// El bug que esto corrige (taller, 7-sep-2026): `new Date("2026-09-04").toLocaleDateString()`
+// toma el texto como medianoche UTC, y en Colombia (UTC−5) eso es las 7 pm del día ANTERIOR:
+// la orden que entró el 4 salía "3/9/2026" y los días en taller se contaban desde el 3.
+// Con "T00:00:00" la fecha se lee como día local y sale el día que es.
+export function fmtFechaCorta(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  const d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("es-CO");
+}
+
 export function fmtFechaLarga(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);

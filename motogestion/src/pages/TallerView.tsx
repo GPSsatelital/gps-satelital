@@ -5,7 +5,7 @@ import { useContratos, type Contrato } from "../hooks/useContratos";
 import { supabase } from "../lib/supabase";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { hoyISO } from "../utils/fecha";
+import { hoyISO, fmtFechaCorta } from "../utils/fecha";
 import { useClientes } from "../hooks/useClientes";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import MoneyInput from "../components/MoneyInput";
@@ -15,7 +15,7 @@ import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { useDeudas } from "../hooks/useDeudas";
 import ModalDeuda from "../components/ModalDeuda";
-import { contratoDeLaMoto, prestamoActivoDeOriginal } from "../utils/taller";
+import { contratoDeLaMoto, prestamoActivoDeOriginal, diasEnTaller as diasEnTallerUtil } from "../utils/taller";
 import type { ViewKey } from "../App";
 
 // Quién puede cobrarle el arreglo al cliente desde el taller: los mismos cuatro roles a los que la
@@ -88,17 +88,10 @@ const ESTADO_COLORS: Record<TallerEstado, { bg: string; color: string }> = {
   Finalizado: { bg: "var(--line)", color: "var(--muted2)" },
 };
 
-function formatDate(date: string | null) {
-  if (!date) return "-";
-  return new Date(date).toLocaleDateString("es-CO");
-}
-
-function diasEnTaller(fechaIngreso: string | null, fechaSalida: string | null): number {
-  if (!fechaIngreso) return 0;
-  const fin = fechaSalida ? new Date(fechaSalida) : new Date();
-  const ini = new Date(fechaIngreso);
-  return Math.max(0, Math.floor((fin.getTime() - ini.getTime()) / 86400000));
-}
+// Las dos leen la fecha como día local (ver `fmtFechaCorta` en utils/fecha.ts): con el parse
+// UTC de antes, la orden del 4 salía "3/9/2026" y con un día de menos en taller.
+const formatDate = (date: string | null) => fmtFechaCorta(date);
+const diasEnTaller = (fechaIngreso: string | null, fechaSalida: string | null) => diasEnTallerUtil(fechaIngreso, fechaSalida, hoyISO());
 
 function formatCOP(value: number) {
   return "$ " + value.toLocaleString("es-CO");
@@ -173,7 +166,10 @@ function OrdenCard({
 function Modal({ onClose, title, children }: { onClose: () => void; title: string; children: React.ReactNode }) {
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 80 }}
+      // zIndex 1100: estas ventanas se abren DESDE el detalle de la orden, que flota con 1000.
+      // Con el 80 de antes se dibujaban detrás del detalle: el botón "funcionaba" pero no se veía
+      // nada (así lo reportó el dueño el 7-sep con "Registrar trabajo" y "Cobrarle a JOSE").
+      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 1100 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 520, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
@@ -552,7 +548,7 @@ function imprimirOrden(item: TallerItem, motoLabel: string, extra: { clienteNomb
 </head>
 <body>
 <h1>Orden de Taller</h1>
-<div class="sub">Club Moteros Cartagena - ${new Date().toLocaleDateString("es-CO")}</div>
+<div class="sub">Club Moteros Cartagena - ${fmtFechaCorta(hoyISO())}</div>
 <div class="grid">
   <div class="field"><div class="label">Moto</div><div class="value">${motoLabel}</div></div>
   <div class="field"><div class="label">Cliente</div><div class="value">${extra.clienteNombre ? escapeHtml(extra.clienteNombre).toUpperCase() : "Sin cliente"}</div></div>
@@ -612,13 +608,12 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
   const enReparacion = activas.filter((t) => t.estado_tecnico === "En reparación").length;
   const listoSalida = activas.filter((t) => t.estado_tecnico === "Listo para salida").length;
 
+  // Mes de ingreso comparado como texto "YYYY-MM": sin pasar por Date (el parse UTC corría al
+  // mes anterior una orden del día 1 vista de noche).
   const costoMes = useMemo(() => {
-    const now = new Date();
+    const mesActual = hoyISO().slice(0, 7);
     return taller
-      .filter((t) => {
-        const d = new Date(t.fecha_ingreso);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      })
+      .filter((t) => (t.fecha_ingreso ?? "").slice(0, 7) === mesActual)
       .reduce((sum, t) => sum + (t.costo ?? 0), 0);
   }, [taller]);
 
@@ -938,6 +933,7 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
             if (errV) alert("La deuda quedó registrada, pero no se pudo ligar a la orden: " + errV);
           }}
           onClose={() => setShowCobrar(false)}
+          zIndex={1100}
         />
       )}
 

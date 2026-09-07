@@ -1,5 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { contratoDeLaMoto, prestamoActivoDeOriginal, anotarTrabajo } from "./taller";
+import { contratoDeLaMoto, prestamoActivoDeOriginal, anotarTrabajo, diasEnTaller } from "./taller";
+import { fmtFechaCorta } from "./fecha";
+
+describe("las fechas del taller no se corren un día", () => {
+  // Caso real (7-sep-2026): DQF56I entró el 4 y la pantalla decía "3/9/2026" y "3 días".
+  it("la orden que entró el 4 dice 4, no 3", () => {
+    expect(fmtFechaCorta("2026-09-04")).toBe("4/9/2026");
+  });
+
+  it("sin fecha muestra un guion", () => {
+    expect(fmtFechaCorta(null)).toBe("-");
+    expect(fmtFechaCorta("")).toBe("-");
+  });
+
+  it("del 4 al 7 son 3 días si sigue adentro", () => {
+    expect(diasEnTaller("2026-09-04", null, "2026-09-07")).toBe(3);
+  });
+
+  it("si ya salió, cuenta hasta la salida y no hasta hoy", () => {
+    expect(diasEnTaller("2026-09-04", "2026-09-05", "2026-09-30")).toBe(1);
+  });
+
+  it("entró y salió el mismo día: 0", () => {
+    expect(diasEnTaller("2026-09-04", "2026-09-04", "2026-09-04")).toBe(0);
+  });
+
+  it("sin fecha de ingreso no inventa días", () => {
+    expect(diasEnTaller(null, null, "2026-09-07")).toBe(0);
+  });
+
+  it("acepta una marca de tiempo completa y se queda con el día", () => {
+    expect(diasEnTaller("2026-09-04T16:17:23.027Z", null, "2026-09-07")).toBe(3);
+  });
+});
 
 // Caso real que destapó esto (7-sep-2026): DQF56I en taller, su cliente JOSE anda en la YAT46H
 // prestada, y el contrato de JOSE apunta a la YAT46H mientras dura el préstamo.

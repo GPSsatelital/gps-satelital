@@ -27,6 +27,7 @@ import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosN
 import { useCuentasBancarias, cuentasDelGrupo, textoCuentas } from "../hooks/useCuentasBancarias";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
+import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -286,6 +287,8 @@ function calcEstadoCuenta(
 
 // ─── Panel de recibo ─────────────────────────────────────────────────────────
 type DatosRecibo = {
+  /** Para anotar la gestión del envío (mig 133). Null solo si el pago quedó sin contrato. */
+  contratoId: string | null;
   folio: string;
   fecha: string;
   clienteNombre: string;
@@ -335,6 +338,7 @@ function ticketPagoData(datos: DatosRecibo): TicketData {
 }
 
 function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
+  const { enviar } = useEnvioMensaje();
   const [fase, setFase] = useState<"ver" | "whatsapp">("ver");
   const [otroNum, setOtroNum] = useState("");
   const { render } = useMensajesWhatsapp();
@@ -371,18 +375,33 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
       fecha: new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO"),
       detalle,
     });
-    return encodeURIComponent(texto);
-  }
-
-  function limpiarNum(n: string) {
-    const d = n.replace(/\D/g, "");
-    return d.startsWith("57") ? d : `57${d}`;
+    return texto;
   }
 
   function abrirWA(numero: string) {
-    const n = limpiarNum(numero);
-    if (n.replace(/\D/g, "").length < 7) return;
-    window.open(`https://wa.me/${n}?text=${buildMsg()}`, "_blank");
+    const m = (n: number) => `$${Math.round(n).toLocaleString("es-CO")}`;
+    // Dos momentos distintos (corrección del dueño, 8-sep): si el pago aún está PENDIENTE (una
+    // transferencia reportada) lo que va es el ACUSE — "lo recibimos, lo estamos verificando" —;
+    // el RECIBO solo cuando quedó confirmado. Por ZALA sale la plantilla con sus variables y, como
+    // texto dentro de la ventana de 24 h, el detalle completo (el desglose no cabe en Meta).
+    const pendiente = datos.estado === "Pendiente";
+    void enviar({
+      contratoId: datos.contratoId,
+      telefono: numero,
+      clave: pendiente ? "acuse_comprobante" : "recibo",
+      vars: pendiente
+        ? { nombre: datos.clienteNombre.toUpperCase(), valor: m(datos.valor), placa: datos.placa }
+        : {
+            folio: datos.folio,
+            fecha: new Date(datos.fecha + "T00:00:00").toLocaleDateString("es-CO"),
+            nombre: datos.clienteNombre.toUpperCase(),
+            placa: datos.placa,
+            valor: m(datos.valor),
+            pendiente: m(datos.pendienteDespues),
+          },
+      textoLibre: buildMsg(),
+      resultado: pendiente ? "Acuse de comprobante recibido" : "Recibo de pago enviado por WhatsApp",
+    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
   }
 
   const telRegistrado = datos.clienteWhatsapp || datos.clienteTel;
@@ -576,7 +595,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
   const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, guardarPartitura } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
-  const { render: renderMsg } = useMensajesWhatsapp();
+  // Todos los mensajes de esta pantalla salen por la tubería única (plantilla + variables, con
+  // rastro real); el render del texto vive adentro de `enviar`.
+  const { enviar } = useEnvioMensaje();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
@@ -1003,19 +1024,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (!profile) return;
     const cliente = clientes.find(cl => cl.id === c.cliente_id);
     const moto = motos.find(m => m.id === c.moto_id);
-    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
-    const num = tel.startsWith("57") ? tel : `57${tel}`;
     // El mensaje cambia según el estado: al día → recordatorio del día de pago,
     // gabela → aviso de día de gracia, mora → aviso de mora. Plantilla editable en Config.
     const clave = c.estadoCartera === "mora" ? "mora" : c.estadoCartera === "gabela" ? "gabela" : "dia_pago";
-    const texto = renderMsg(clave, {
-      nombre: (cliente?.nombre ?? "").toUpperCase(),
-      placa: moto?.placa ?? "",
-      dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago,
-      valor: `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`,
+    // Una sola tubería para todos los botones de mensaje (useEnvioMensaje): manda plantilla +
+    // variables y anota la gestión con el estado REAL. Antes se anotaba "enviado" sin saber si la
+    // persona presionó enviar en WhatsApp.
+    const r = await enviar({
+      contratoId: c.id,
+      telefono: cliente?.whatsapp || cliente?.telefono,
+      clave,
+      vars: {
+        nombre: (cliente?.nombre ?? "").toUpperCase(),
+        placa: moto?.placa ?? "",
+        dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago,
+        valor: `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`,
+      },
+      tipoGestion: "mensaje_recordatorio",
+      resultado: "Mensaje de recordatorio",
     });
-    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${encodeURIComponent(texto)}`, "_blank");
-    await registrarGestion(c.id, "mensaje_recordatorio", "Mensaje de recordatorio enviado", profile.id);
+    if (r.canal === "ninguno" && r.motivo) alert(r.motivo);
   }
   async function tareaLlamar(c: typeof resumenContratos[number]) {
     if (!profile) return;
@@ -1357,6 +1385,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // Efectivo = confirmado al instante → mostrar recibo
       setModalPago(false);
       setReciboData({
+        contratoId: modalContratoId ?? null,
         folio,
         fecha: hoyISO(),
         clienteNombre: cliente?.nombre ?? "",
@@ -1486,19 +1515,22 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   function enviarReciboCampo(r: typeof resumenContratos[number], monto: number, folio: string) {
     const cliente = clientes.find(cl => cl.id === r.cliente_id);
     const moto = motos.find(m => m.id === r.moto_id);
-    const tel = (cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
-    const num = tel.startsWith("57") ? tel : `57${tel}`;
-    const lineas = [
-      "🧾 *CLUB MOTEROS CARTAGENA — Recibo provisional (cobro en campo)*",
-      `Folio: ${folio}`,
-      `Fecha: ${new Date().toLocaleDateString("es-CO")}`,
-      `Cliente: ${(cliente?.nombre ?? "").toUpperCase()}`,
-      moto ? `Placa: ${moto.placa}` : "",
-      `Monto recibido: $${fmt(monto)}`,
-      "",
-      "⏳ Pago recibido en campo. Pendiente de validación en caja. Conserve este comprobante.",
-    ].filter(Boolean).join("\n");
-    if (num.length >= 9) window.open(`https://wa.me/${num}?text=${encodeURIComponent(lineas)}`, "_blank");
+    // Antes el texto estaba escrito aquí mismo, fuera de las plantillas — Meta jamás lo habría
+    // aprobado y nadie podía editarlo. Ahora es la clave `recibo_campo` (Configuración), por la
+    // misma tubería que todos los mensajes.
+    void enviar({
+      contratoId: r.id,
+      telefono: cliente?.whatsapp || cliente?.telefono,
+      clave: "recibo_campo",
+      vars: {
+        folio,
+        fecha: new Date().toLocaleDateString("es-CO"),
+        nombre: (cliente?.nombre ?? "").toUpperCase(),
+        placa: moto?.placa ?? "",
+        valor: `$${fmt(monto)}`,
+      },
+      resultado: "Recibo provisional de cobro en campo",
+    });
   }
 
   // Valida y abre la ventana flotante de confirmación (en vez de registrar directo).
@@ -1791,10 +1823,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
     function abrirWhatsApp(texto: string) {
       if (!clienteDetalle) return;
-      const num = (clienteDetalle.whatsapp || clienteDetalle.telefono || "").replace(/\D/g, "");
-      const full = num.length === 10 ? `57${num}` : num;
-      if (full.length >= 11) window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
-      else alert("El cliente no tiene un número de WhatsApp válido registrado.");
+      // Texto libre: el estado de cuenta cambia por cliente y no puede ser plantilla de Meta. Por
+      // ZALA solo sale dentro de la ventana de 24 h; si está cerrada, ZALA lo dice y aquí se avisa.
+      void enviar({
+        contratoId: contratoDetalle?.id ?? null,
+        telefono: clienteDetalle.whatsapp || clienteDetalle.telefono,
+        textoLibre: texto,
+        resultado: "Estado de cuenta enviado por WhatsApp",
+      }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
     }
 
     function enviarEstadoCuentaWhatsApp() {
@@ -1813,11 +1849,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           : "Este contrato no tiene moto asignada, así que no se sabe a qué grupo pertenece.");
         return;
       }
-      abrirWhatsApp(renderMsg("cuentas_pago", {
-        nombre: clienteDetalle.nombre,
-        placa: motoDetalle?.placa ?? "",
-        cuentas: textoCuentas(cuentasDelCliente),
-      }));
+      // Por la tubería con su CLAVE (no como texto libre): así por ZALA sale la plantilla
+      // `cuentas_para_pagar_v1` aunque la ventana de 24 h esté cerrada.
+      void enviar({
+        contratoId: contratoDetalle?.id ?? null,
+        telefono: clienteDetalle.whatsapp || clienteDetalle.telefono,
+        clave: "cuentas_pago",
+        vars: {
+          nombre: clienteDetalle.nombre,
+          placa: motoDetalle?.placa ?? "",
+          cuentas: textoCuentas(cuentasDelCliente),
+        },
+        resultado: "Cuentas para pagar enviadas por WhatsApp",
+      }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
     }
 
     return (
@@ -3176,6 +3220,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
                         const convenioActivo = contratoResumen?.convenioActivo ?? null;
                         setReciboData({
+                          contratoId: p.contrato_id,
                           folio: p.folio ?? "—",
                           fecha: p.fecha,
                           clienteNombre: cliente?.nombre ?? "",
@@ -3338,6 +3383,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
                           const convenioActivo = contratoResumen?.convenioActivo ?? null;
                           setReciboData({
+                            contratoId: p.contrato_id,
                             folio: p.folio ?? "—",
                             fecha: p.fecha,
                             clienteNombre: cliente?.nombre ?? "",

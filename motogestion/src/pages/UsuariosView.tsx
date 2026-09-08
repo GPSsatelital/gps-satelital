@@ -11,7 +11,7 @@ const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16,
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "#0f172a", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" };
 
 type GrupoSocio = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS";
-type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null; email: string | null };
+type PerfilUsuario = { id: string; nombre: string; role: Role; grupo: GrupoSocio | null; permisos: string[] | null; email: string | null; whatsapp?: string | null };
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "SECRETARIA", label: "Secretaria" },
@@ -110,6 +110,7 @@ export default function UsuariosView() {
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [role, setRole] = useState<Role>("SECRETARIA");
   const [grupo, setGrupo] = useState<GrupoSocio>("RASTREADOR");
   const [accesos, setAccesos] = useState<ViewKey[]>(ACCESOS_SUGERIDOS.SECRETARIA);
@@ -131,9 +132,14 @@ export default function UsuariosView() {
       setListError(error);
     } else {
       const lista = (data?.usuarios as PerfilUsuario[]) ?? [];
-      const sorted = lista.sort((a, b) =>
-        ROLE_ORDER.indexOf(a.role as Role) - ROLE_ORDER.indexOf(b.role as Role)
-      );
+      // El WhatsApp se completa directo desde profiles (policy de ADMIN_PRINCIPAL, mig 049): así la
+      // marca "Sin WhatsApp registrado" dice la verdad aunque la Edge Function `manage-users` aún no
+      // devuelva ese campo — se actualiza a mano y puede ir detrás de la app.
+      const { data: wa } = await supabase.from("profiles").select("id, whatsapp");
+      const waPorId = new Map((wa ?? []).map((p: { id: string; whatsapp: string | null }) => [p.id, p.whatsapp]));
+      const sorted = lista
+        .map(u => ({ ...u, whatsapp: u.whatsapp ?? waPorId.get(u.id) ?? null }))
+        .sort((a, b) => ROLE_ORDER.indexOf(a.role as Role) - ROLE_ORDER.indexOf(b.role as Role));
       setUsuarios(sorted);
       setListError(null);
     }
@@ -162,6 +168,7 @@ export default function UsuariosView() {
     const { error } = await invocar({
       action: "create",
       nombre: nombre.trim(), email: email.trim(), password, role,
+      whatsapp: whatsapp.replace(/\D/g, ""),
       ...(role === "SOCIO" ? { grupo } : {}),
       permisos: role === "SOCIO" ? [] : accesos,
     });
@@ -194,6 +201,13 @@ export default function UsuariosView() {
             <div>
               <div style={labelStyle}>Correo electrónico</div>
               <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" />
+            </div>
+            <div>
+              <div style={labelStyle}>WhatsApp del funcionario</div>
+              <input type="tel" inputMode="numeric" style={inputStyle} value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="3001234567" />
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                A este número ZALA le reenvía los comprobantes de las motos a su cargo. Solo dígitos; el 57 se pone solo.
+              </div>
             </div>
             <div>
               <div style={labelStyle}>Contraseña temporal</div>
@@ -256,6 +270,11 @@ export default function UsuariosView() {
                       <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
                         {u.role === "SOCIO" ? u.grupo : nAccesos === null ? "Accesos por defecto" : `${nAccesos} módulos`}
                       </div>
+                      {/* Se ve de un golpe a quién le falta el número (pedido del dueño, 8-sep): sin él,
+                          un comprobante de sus motos no tiene a dónde reenviarse. */}
+                      {u.role !== "SOCIO" && u.role !== "MECANICO" && !u.whatsapp && (
+                        <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2 }}>Sin WhatsApp registrado</div>
+                      )}
                     </div>
                     <span style={{ padding: "4px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.color, whiteSpace: "nowrap" }}>{roleLabel(u.role)}</span>
                     <button onClick={() => setEditando(u)} style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--card)", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--muted2)", whiteSpace: "nowrap" }}>✏️</button>
@@ -379,6 +398,9 @@ function SelectorPermisos({ role, accesos, onToggleModulo, overrides, onSetAccio
 function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario; onClose: () => void; onGuardado: () => void }) {
   const [nombre, setNombre] = useState(usuario.nombre);
   const [email, setEmail] = useState(usuario.email ?? "");
+  // El WhatsApp del funcionario vive en su usuario (decisión del dueño, 8-sep; mig 132): de aquí lo
+  // lee ZALA para reenviarle los comprobantes de sus motos. Reemplaza el archivo a mano de ZALA.
+  const [whatsapp, setWhatsapp] = useState(usuario.whatsapp ?? "");
   const [role, setRole] = useState<Role>(usuario.role);
   const [grupo, setGrupo] = useState<GrupoSocio>((usuario.grupo as GrupoSocio) ?? "RASTREADOR");
   const [accesos, setAccesos] = useState<ViewKey[]>(
@@ -394,8 +416,14 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   const [accionesOv, setAccionesOv] = useState<AccionesUsuario>({});
   useEffect(() => {
     let vivo = true;
-    supabase.from("profiles").select("acciones").eq("id", usuario.id).single()
-      .then(({ data }) => { if (vivo && data?.acciones) setAccionesOv(data.acciones as AccionesUsuario); });
+    // El WhatsApp se lee directo de profiles, igual que las acciones: así funciona aunque la Edge
+    // Function `manage-users` todavía no devuelva ese campo (se actualiza a mano, y a veces tarda).
+    supabase.from("profiles").select("acciones, whatsapp").eq("id", usuario.id).single()
+      .then(({ data }) => {
+        if (!vivo) return;
+        if (data?.acciones) setAccionesOv(data.acciones as AccionesUsuario);
+        if (typeof data?.whatsapp === "string") setWhatsapp(data.whatsapp);
+      });
     return () => { vivo = false; };
   }, [usuario.id]);
   function cambiarAccion(key: string, estado: EstadoAccion | null) {
@@ -433,14 +461,19 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
     const { error } = await invocar({
       action: "update",
       id: usuario.id, nombre: nombre.trim(), email: email.trim(), role,
+      whatsapp: whatsapp.replace(/\D/g, ""),
       ...(isSocio ? { grupo } : {}),
       permisos: isSocio ? [] : accesos,
     });
     if (error) { setGuardando(false); setError(error); return; }
     // Guardar los overrides de acciones directo (SOCIO no usa acciones).
     if (!isSocio) {
-      const { error: errAcc } = await supabase.from("profiles").update({ acciones: accionesOv }).eq("id", usuario.id);
-      if (errAcc) { setGuardando(false); setError("Usuario guardado, pero falló guardar los permisos de acciones: " + errAcc.message); return; }
+      // El WhatsApp va en el mismo update directo (la policy de ADMIN_PRINCIPAL lo permite, mig 049):
+      // así se guarda aunque la Edge Function aún no conozca el campo. Solo dígitos, con el 57.
+      const d = whatsapp.replace(/\D/g, "");
+      const wa = d.length === 10 ? "57" + d : d || null;
+      const { error: errAcc } = await supabase.from("profiles").update({ acciones: accionesOv, whatsapp: wa }).eq("id", usuario.id);
+      if (errAcc) { setGuardando(false); setError("Usuario guardado, pero falló guardar los permisos de acciones o el WhatsApp: " + errAcc.message); return; }
     }
     setGuardando(false);
     onGuardado();
@@ -478,6 +511,13 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
           <div>
             <div style={labelStyle}>Correo electrónico</div>
             <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" />
+          </div>
+          <div>
+            <div style={labelStyle}>WhatsApp del funcionario</div>
+            <input type="tel" inputMode="numeric" style={inputStyle} value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="3001234567" />
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+              A este número ZALA le reenvía los comprobantes de las motos a su cargo. Solo dígitos; el 57 se pone solo.
+            </div>
           </div>
           <div>
             <div style={labelStyle}>Rol</div>

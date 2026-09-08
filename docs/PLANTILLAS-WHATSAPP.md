@@ -11,10 +11,34 @@ no sabe qué plantilla usar.
   texto normal; si está cerrada, lo manda como plantilla aprobada. **El cliente lee lo mismo.**
 - **ZALA es quien registra las plantillas en Meta.** Este documento es lo que hay que registrar.
 
-> ⚠️ **Antes de registrar nada en Meta:** los textos de abajo son los que están en el código como
-> respaldo (`MENSAJES_DEFAULT` en `src/hooks/useMensajesWhatsapp.ts`). Si alguien los editó desde
-> Configuración → Mensajes de WhatsApp, **los reales son los de la base** (`mensajes_whatsapp`).
-> Hay que abrir esa pantalla y confirmar uno por uno antes de darlos por buenos.
+> ⚠️ **VERIFICADO el 8-sep contra la base: los textos reales NO son los del código.** Tres fueron
+> editados desde Configuración el 7-jul-2026, con otra voz (tuteo, cercana, con emojis) — **esos son
+> los que valen** y los borradores de abajo hay que reescribirlos con ese tono, con las
+> conversaciones reales que va a pasar el dueño:
+>
+> - `dia_pago` (real): *"¡Hola, motero {nombre}! 🏍️ Bendiciones. Te saludamos de Club Moteros para
+>   recordarte que hoy vence el plazo de tu pago. Realizarlo a tiempo te permite seguir disfrutando de
+>   todos tus beneficios y rodar sin ninguna preocupación. 🏁 📌 Nota: Si ya pagaste, ¡muchas gracias
+>   por tu puntualidad! Puedes ignorar este mensaje."*
+> - `gabela` (real): *"¡Hola! {nombre} 🏁 En Club Moteros valoramos mucho que sigas con nosotros.
+>   Notamos que tu fecha de pago fue ayer, ¡pero no te preocupes! Te damos el día de hoy como plazo
+>   extra para que te pongas al día y evites cualquier reporte o pausa en el uso de tu vehículo.
+>   ¡Hagamos que esa moto siga rodando! 🚀 Si ya realizaste el pago, por favor compártenos tu
+>   comprobante para actualizar tu estado de inmediato."*
+> - `mora` (real): *"Estimado {nombre}, miembro de Club Moteros 🚨 Tu cuenta presenta un saldo
+>   pendiente {valor} y queremos ayudarte a evitar medidas incómodas. Es muy importante realizar tu
+>   pago hoy mismo, ya que de lo contrario, el reglamento interno nos obliga a proceder con la
+>   inmovilización y recolección del vehículo. 📑 ¡Queremos verte rodar tranquilo y con todo al día!
+>   Comunícate ya mismo con nosotros para reportar tu pago o darte una solución rápida. 🤝"*
+> - `recoleccion` y `recibo` (reales): siguen siendo los del código viejo y **todavía dicen "GPS
+>   Satelital"** — hay que cambiarlos a Club Moteros.
+> - `cuentas_pago`: no existía en la base (usaba el respaldo del código). La mig 133 la crea.
+>
+> Los tres reales usan `{nombre}` y `{valor}` pero no `{placa}` ni `{dias}`; el orden de variables
+> sembrado en la mig 133 es provisional hasta que se aprueben los textos finales — en ese momento
+> se ajusta la columna `variables` de cada fila, sin código. Y `{dias}` hoy viaja como número
+> (`3`) porque el texto real de recolección ya trae la palabra ("{dias} días de mora"); si el texto
+> final la quita, se cambia a "3 días" en un solo lugar (`diasTexto`, `utils/mensajeria.ts`).
 
 ---
 
@@ -362,6 +386,51 @@ coincidan letra por letra.
 - **Al cliente con la moto retenida sí se le escribe**, para gestionar cuándo la retira (8-sep).
 - **Aprobación de envíos:** al principio solo ADMIN_PRINCIPAL; después se reparte por persona con
   el sistema de permisos que ya existe. Todo envío deja rastro de quién lo pidió (8-sep).
+
+---
+
+## Cómo quedó construida la tubería (Fase 1, 8-sep-2026)
+
+**Una sola función para todos los mensajes:** `useEnvioMensaje().enviar()` (`src/hooks/useEnvioMensaje.ts`),
+con las piezas puras y probadas en `src/utils/mensajeria.ts`. Los 8 sitios que abrían `wa.me` ahora
+la llaman: Panel Hoy, Cobro Diario, Inmovilizaciones, recibo de pago, recibo de cobro en campo,
+estado de cuenta, cuentas para pagar y la campana de alertas. El único que no pasa por ahí es el
+enlace de Mis Visitas (abre el chat con un prospecto, sin texto: no es un mensaje de plantilla).
+
+| Pieza | Qué hace |
+|---|---|
+| `mensajes_whatsapp.plantilla_meta` / `variables` / `activa` (mig 133) | La clave conoce su plantilla vigente en Meta y el orden de sus variables. **El código nunca nombra una plantilla.** |
+| `gestiones_cobro.plantilla_usada` … `mensaje_estado` (mig 133) | Qué versión se usó (congelada) y qué pasó de verdad con el mensaje. Estados en `docs/DICCIONARIO-ESTADOS.md` §7b |
+| Acciones `enviar_mensaje` y `enviar_masivo` (`src/lib/acciones.ts`) | Ningún rol las trae por defecto: solo ADMIN_PRINCIPAL, hasta que las reparta por persona en Usuarios |
+| Edge Function `enviar-mensaje` | La única puerta hacia ZALA. Guarda la llave del lado del servidor y verifica el permiso con `puede_accion()` en la base |
+| `profiles.whatsapp` (mig 132) + campo en Usuarios | El número de cada funcionario, para que ZALA le reenvíe comprobantes. La lista marca "Sin WhatsApp registrado" |
+| Configuración → Mensajes | Bajo cada texto: a qué plantilla de Meta corresponde y sus variables en orden |
+
+**El interruptor:** `VITE_ZALA_ENVIO=on` en el entorno de la app. Mientras no esté, todo sigue
+abriendo WhatsApp como siempre — pero la gestión dice `abierto_whatsapp` ("se abrió WhatsApp; el
+envío no está confirmado") en vez de "enviado". Con el interruptor puesto: solo quien tenga el
+permiso envía, por ZALA, y **sin respaldo por wa.me** (ese fue el camino que bloqueó el número).
+
+**Lo que ZALA tiene que implementar para que esto funcione** (su §6.1, con dos campos más):
+
+```
+POST {ZALA_URL}/api/enviar        cabecera X-Llave
+{ "contrato_id": "…" | null,
+  "telefono":    "573001234567",          ← ya normalizado
+  "plantilla":   "cobro_mora_v1" | null,   ← la vigente para la clave; null = solo texto
+  "variables":   ["KEVIN", "RLY45H", "3", "$404.000"],
+  "texto":       "Hola KEVIN, …",          ← el mismo mensaje armado, para mandarlo como texto
+                                            si la ventana de 24 h está abierta (sin gastar plantilla)
+  "clave":       "mora",
+  "quien_pide":  "correo@clubmoteros.com" }
+→ { "id": "…", "estado": "en_cola" | "enviado" | "rechazado", "motivo": "…" }
+```
+
+**Secretos** (Supabase → Edge Functions → Secrets, nunca en el repo): `ZALA_URL`, `ZALA_LLAVE`.
+
+**Para ponerla en marcha, en orden:** correr la mig 133 → desplegar `manage-users` (campo WhatsApp)
+y `enviar-mensaje` → desplegar la app → registrar el WhatsApp de los 4 encargados en Usuarios →
+cuando ZALA abra su API y Meta apruebe las plantillas: secretos + `VITE_ZALA_ENVIO=on`.
 
 ---
 

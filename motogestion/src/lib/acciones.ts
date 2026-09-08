@@ -28,6 +28,13 @@ export const ACCIONES: AccionDef[] = [
   { key: "aplicar_saldo_favor",    label: "Aplicar saldo a favor",              modulo: "cobros" },
   { key: "editar_deuda",           label: "Editar / eliminar deudas",           modulo: "cobros" },
   { key: "crear_convenio",         label: "Crear convenio",                     modulo: "cobros" },
+  // Mensajes por el canal oficial (ZALA → Meta). Decisión del dueño (8-sep-2026): al principio
+  // solo ADMIN_PRINCIPAL (le da el bypass) — ningún rol los trae por defecto; se reparten por
+  // persona desde Usuarios cuando el canal esté probado. Mientras ZALA no esté conectada, los
+  // botones siguen abriendo WhatsApp como siempre y este permiso no se consulta. Como ningún rol
+  // lo tiene por defecto, `_acciones_default()` en SQL (mig 110) no necesita espejo.
+  { key: "enviar_mensaje",         label: "Enviar mensajes por el canal oficial (ZALA)", modulo: "cobros" },
+  { key: "enviar_masivo",          label: "Enviar mensajes masivos",            modulo: "cobros" },
   // Caja
   { key: "cerrar_caja",            label: "Cerrar caja diaria",                 modulo: "caja" },
   // Contratos

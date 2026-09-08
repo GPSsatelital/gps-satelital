@@ -20,6 +20,16 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+// WhatsApp del funcionario (mig 132): solo dígitos, con el 57 delante. Vacío → null.
+// `undefined` = el cliente no mandó el campo (versión vieja de la app): no se toca lo guardado.
+function normalizarWhatsapp(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  const d = String(v ?? "").replace(/\D/g, "");
+  if (!d) return null;
+  if (d.length === 10) return "57" + d;
+  return d;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -54,7 +64,7 @@ Deno.serve(async (req: Request) => {
     if (action === "list") {
       const { data: profiles, error: profilesError } = await adminClient
         .from("profiles")
-        .select("id, nombre, role, grupo, permisos");
+        .select("id, nombre, role, grupo, permisos, whatsapp");
       if (profilesError) return json({ error: profilesError.message }, 400);
 
       const { data: authList, error: authError } = await adminClient.auth.admin.listUsers({ perPage: 200 });
@@ -93,11 +103,13 @@ Deno.serve(async (req: Request) => {
         if (emailError) return json({ error: emailError.message }, 400);
       }
 
+      const whatsapp = normalizarWhatsapp(body.whatsapp);
       const { error } = await adminClient.from("profiles").update({
         nombre,
         role,
         grupo: role === "SOCIO" ? grupo : null,
         permisos,
+        ...(whatsapp !== undefined ? { whatsapp } : {}),
       }).eq("id", id);
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true });
@@ -126,12 +138,14 @@ Deno.serve(async (req: Request) => {
     // Asegura el perfil con accesos (el trigger pudo crearlo ya; upsert lo completa)
     const id = created.user?.id;
     if (id) {
+      const whatsapp = normalizarWhatsapp(body.whatsapp);
       await adminClient.from("profiles").upsert({
         id,
         nombre,
         role,
         grupo: role === "SOCIO" ? grupo : null,
         permisos,
+        ...(whatsapp !== undefined ? { whatsapp } : {}),
       });
     }
 

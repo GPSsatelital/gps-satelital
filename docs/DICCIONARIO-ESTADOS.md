@@ -182,6 +182,25 @@ Lo que un cobrador hizo con un cliente. **El botón es el registro.**
 | `otro` | — | — |
 | `fecha_compromiso` (en cualquier gestión) | Prometió pagar el día X | sí `[dueño]` |
 
+### 7b. Estado real de un mensaje — `gestiones_cobro.mensaje_estado` (mig 133)
+
+Desde la tubería única de envío (8-sep-2026) toda gestión que es un mensaje guarda qué plantilla
+se usó (`plantilla_usada`, congelada aunque la clave cambie de versión) y qué pasó con él de verdad.
+Antes el sistema anotaba "mensaje enviado" al abrir WhatsApp, sin saber si la persona presionó enviar.
+
+| Valor | En palabras del negocio | De dónde sale |
+|---|---|---|
+| `abierto_whatsapp` | Se abrió WhatsApp en el equipo con el texto listo; **el envío no está confirmado** | Respaldo mientras ZALA no está conectada |
+| `en_cola` | ZALA lo recibió y lo va a mandar (esperando horario legal o aprobación) | ZALA |
+| `enviado` | Salió por el canal oficial | ZALA (acuse de Meta) |
+| `entregado` | Llegó al teléfono del cliente | ZALA (acuse de Meta) |
+| `leido` | El cliente lo abrió | ZALA (acuse de Meta) |
+| `fallo` | No salió: número sin WhatsApp, fuera de ventana sin plantilla, rechazado. El porqué va en `mensaje_motivo` | ZALA |
+| *(sin fila)* | El mensaje no salió y **no se anotó gestión**: sin número válido, sin permiso, plantilla desactivada. Se le avisa al funcionario en el momento | MotoGestión |
+
+`mensaje_estado` NULL = una gestión que no es mensaje (llamada, sirena, plazo…) o anterior a la
+migración. ZALA: no lee esta tabla (los estados salen de ella misma).
+
 ### 8. Visita domiciliaria — `visitas`
 
 | Campo | Valor | Significado |

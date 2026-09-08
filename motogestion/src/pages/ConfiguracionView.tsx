@@ -809,7 +809,7 @@ function SeccionCuentasBancarias() {
 }
 
 function SeccionMensajesWhatsapp() {
-  const { plantilla, guardar } = useMensajesWhatsapp();
+  const { plantilla, guardar, meta } = useMensajesWhatsapp();
   const [borradores, setBorradores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState<ClaveMensaje | null>(null);
   const [guardado, setGuardado] = useState<ClaveMensaje | null>(null);
@@ -858,6 +858,24 @@ function SeccionMensajesWhatsapp() {
                 </button>
               ))}
             </div>
+            {/* A qué plantilla de Meta corresponde esta clave (mig 133). Es informativo: el nombre
+                lo administra la base, no esta pantalla — así un cambio de versión nunca depende de
+                que alguien recuerde tocar el código. */}
+            {(() => {
+              const mt = meta(m.clave);
+              return (
+                <div style={{ marginTop: 8, fontSize: 11, color: "var(--faint)", lineHeight: 1.6 }}>
+                  Plantilla en Meta:{" "}
+                  <strong style={{ fontFamily: "monospace", color: mt.plantilla_meta ? "var(--text)" : "var(--warn-ink)" }}>
+                    {mt.plantilla_meta ?? "todavía no registrada (solo sale como texto dentro de la ventana de 24 h)"}
+                  </strong>
+                  {mt.variables.length > 0 && (
+                    <> · variables en orden: <span style={{ fontFamily: "monospace" }}>{mt.variables.join(" · ")}</span></>
+                  )}
+                  {!mt.activa && <strong style={{ color: "var(--bad-ink)" }}> · DESACTIVADA: no se envía por ningún canal</strong>}
+                </div>
+              );
+            })()}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
               <button
                 onClick={() => handleGuardar(m.clave)}

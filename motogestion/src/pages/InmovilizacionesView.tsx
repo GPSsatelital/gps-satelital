@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import type { ViewKey } from "../App";
 import { useContratos, ahorroTotal } from "../hooks/useContratos";
-import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
+import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { usePagos, calcularCuotaDia, APLICADO_LO_REPARTE_LA_BD } from "../hooks/usePagos";
@@ -105,7 +105,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   const { recepciones, acuerdos } = useUbicaciones();
   const { prestamos, devolverReemplazo } = usePrestamos();
   const { profile, puede } = useAuth();
-  const { render: renderMsg } = useMensajesWhatsapp();
+  const { enviar } = useEnvioMensaje();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   // Liquidar a los 7 días sigue siendo decisión del ADMIN (regla local), pero además se le
   // puede recortar por persona. El convenio de recuperación exige el permiso crear_convenio.
@@ -633,17 +633,19 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
   // firmado — ya no un simple finalizarContrato() sin dejar rastro de la cuenta.
   const [liquidacionModal, setLiquidacionModal] = useState<MotoRetenida | null>(null);
 
-  function abrirWA(tel: string, nombre: string, dias: number, placa: string, valor: number) {
+  function abrirWA(contratoId: string, tel: string, nombre: string, dias: number, placa: string, valor: number) {
     if (!tel) return;
     // Inmovilizaciones = último aviso antes de recoger la moto. Plantilla editable en Config.
-    const texto = renderMsg("recoleccion", {
-      nombre,
-      placa,
-      dias,
-      valor: `$${Math.round(valor).toLocaleString("es-CO")}`,
-    });
-    const num = tel.replace(/\D/g, "");
-    window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(texto)}`, "_blank");
+    // Una sola tubería para todos los botones de mensaje (useEnvioMensaje). Antes esta pantalla
+    // abría WhatsApp sin dejar gestión — el aviso más serio del protocolo no quedaba en ningún lado.
+    void enviar({
+      contratoId,
+      telefono: tel,
+      clave: "recoleccion",
+      vars: { nombre, placa, dias, valor: `$${Math.round(valor).toLocaleString("es-CO")}` },
+      tipoGestion: "mensaje_recordatorio",
+      resultado: "Aviso de recolección",
+    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [
@@ -879,7 +881,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           📞 Llamar
                         </button>
                         <button
-                          onClick={() => abrirWA(f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal)}
+                          onClick={() => abrirWA(f.contratoId, f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal)}
                           style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
                         >
                           💬 WA

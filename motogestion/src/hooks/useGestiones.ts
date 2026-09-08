@@ -25,6 +25,20 @@ export type Gestion = {
   registrado_por: string | null;
   fecha: string;
   created_at: string;
+  // Rastro del mensaje (mig 133): qué plantilla se usó y qué pasó con él de verdad. NULL en las
+  // gestiones que no son mensajes y en las anteriores a la migración.
+  plantilla_usada?: string | null;
+  variables_usadas?: unknown;
+  mensaje_id?: string | null;
+  mensaje_estado?: string | null;
+  mensaje_motivo?: string | null;
+  aprobado_por?: string | null;
+};
+
+export type ExtrasGestion = {
+  plazo_extra_dias?: number; plazo_extra_motivo?: string; plazo_extra_fecha_limite?: string; fecha_compromiso?: string;
+  plantilla_usada?: string | null; variables_usadas?: unknown; mensaje_id?: string | null;
+  mensaje_estado?: string | null; mensaje_motivo?: string | null; aprobado_por?: string | null;
 };
 
 // VENTANA DE 120 DÍAS. `gestiones_cobro` es la tabla que más crece (~36.000 filas al año con
@@ -42,8 +56,20 @@ export function useGestiones() {
     tipo: TipoGestion,
     resultado: string,
     registradoPor: string,
-    extras?: { plazo_extra_dias?: number; plazo_extra_motivo?: string; plazo_extra_fecha_limite?: string; fecha_compromiso?: string },
+    extras?: ExtrasGestion,
   ) {
+    // Las columnas del mensaje solo van si vienen: así una gestión normal (llamada, sirena…)
+    // sigue insertando exactamente lo mismo que antes.
+    const rastroMensaje = extras && (extras.plantilla_usada !== undefined || extras.mensaje_estado !== undefined)
+      ? {
+          plantilla_usada: extras.plantilla_usada ?? null,
+          variables_usadas: extras.variables_usadas ?? null,
+          mensaje_id: extras.mensaje_id ?? null,
+          mensaje_estado: extras.mensaje_estado ?? null,
+          mensaje_motivo: extras.mensaje_motivo ?? null,
+          aprobado_por: extras.aprobado_por ?? null,
+        }
+      : {};
     const { error } = await supabase.from("gestiones_cobro").insert({
       contrato_id: contratoId,
       tipo,
@@ -54,6 +80,7 @@ export function useGestiones() {
       plazo_extra_motivo: extras?.plazo_extra_motivo ?? null,
       plazo_extra_fecha_limite: extras?.plazo_extra_fecha_limite ?? null,
       fecha_compromiso: extras?.fecha_compromiso ?? null,
+      ...rastroMensaje,
     });
     return { error: error?.message ?? null };
   }

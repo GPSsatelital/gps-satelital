@@ -6,6 +6,7 @@ import { useMotos } from "../hooks/useMotos";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
+import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useCesiones } from "../hooks/useCesiones";
 import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
@@ -124,6 +125,7 @@ export default function AlertasView({ onNavegar }: Props) {
   const { pagos,     loading: lP  } = usePagos();
   const { convenios } = useConvenios();
   const { gestiones } = useGestiones();
+  const { enviar } = useEnvioMensaje();
   const { prestamos: prestamosDoc } = usePrestamosDoc();
   const { pendientes: ingresosNI } = useIngresosNoIdentificados();
   const { cesiones } = useCesiones();
@@ -156,13 +158,22 @@ export default function AlertasView({ onNavegar }: Props) {
     return c?.whatsapp ?? c?.telefono ?? "";
   }
 
-  function abrirWA(clienteId: string | undefined, nombre: string, detalle: string) {
-    const tel = getTel(clienteId);
+  function abrirWA(a: { clienteId?: string; contratoId?: string; motoId?: string; titulo: string }) {
+    const tel = getTel(a.clienteId);
     if (!tel) return;
-    const n = nombre.split(" ")[0];
-    const msg = `Hola ${n}, le contactamos del equipo Club Moteros Cartagena. ${detalle}. Por favor comuníquese con nosotros.`;
-    const num = tel.replace(/\D/g, "");
-    window.open(`https://wa.me/${num.startsWith("57") ? num : `57${num}`}?text=${encodeURIComponent(msg)}`, "_blank");
+    // Antes el texto se armaba aquí con el detalle de la alerta — fuera de las plantillas — y
+    // saludaba con la primera palabra del TÍTULO ("Hola Plazo" cuando decía "Plazo extra vencido —
+    // KEVIN"). Ahora es la clave `contacto_general` (Configuración), sin detalle variable a
+    // propósito: Meta no aprueba un cuerpo que sea una variable; el detalle se dice en la
+    // conversación. Sin contrato (alerta de una moto suelta) el mensaje sale igual pero no queda
+    // gestión — no hay a quién colgársela.
+    void enviar({
+      contratoId: a.contratoId ?? null,
+      telefono: tel,
+      clave: "contacto_general",
+      vars: { nombre: (getCliente(a.clienteId)?.nombre ?? "").toUpperCase(), placa: getMoto(a.motoId)?.placa ?? "" },
+      resultado: `Contacto por alerta: ${a.titulo}`,
+    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
   }
 
   function llamar(clienteId?: string) {
@@ -287,7 +298,7 @@ export default function AlertasView({ onNavegar }: Props) {
                 <button onClick={() => llamar(a.clienteId)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--accent-soft3)", color: "var(--accent-ink)" }}>
                   📞 Llamar
                 </button>
-                <button onClick={() => abrirWA(a.clienteId, a.titulo, a.detalle)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
+                <button onClick={() => abrirWA(a)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
                   💬 WhatsApp
                 </button>
               </>

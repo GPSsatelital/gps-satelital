@@ -8,7 +8,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useCaja } from "../hooks/useCaja";
 import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/usePrestamos";
-import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
+import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import { useAuth } from "../contexts/AuthContext";
 import {
   esDiaDePago,
@@ -153,7 +153,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [msgCaja, setMsgCaja] = useState<string | null>(null);
 
   const { profile, puede } = useAuth();
-  const { render: renderMsg } = useMensajesWhatsapp();
+  const { enviar } = useEnvioMensaje();
   // Permisos por persona (rol = techo). Antes esta pantalla usaba un chequeo de rol
   // quemado, así que activar/quitar "registrar efectivo" a alguien no tenía efecto aquí.
   const esSecretaria = puede("registrar_efectivo");
@@ -266,15 +266,21 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (!f.clienteTel) return;
     // El mensaje cambia según el estado (día de pago / gabela / mora). Plantillas editables en Config.
     const clave = f.estadoLabel === "Mora" ? "mora" : f.estadoLabel === "Pendiente" ? "gabela" : "dia_pago";
-    const texto = renderMsg(clave, {
-      nombre: f.clienteNombre,
-      placa: f.placa ?? "",
-      dias: f.diasSinPago >= 999 ? 0 : f.diasSinPago,
-      valor: `$${Math.round(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo).toLocaleString("es-CO")}`,
-    });
-    const num = f.clienteTel.replace(/\D/g, "");
-    const full = num.startsWith("57") ? num : `57${num}`;
-    window.open(`https://wa.me/${full}?text=${encodeURIComponent(texto)}`, "_blank");
+    // Una sola tubería para todos los botones de mensaje (useEnvioMensaje). Antes esta pantalla
+    // abría WhatsApp y no dejaba ninguna gestión: el envío era invisible para el sistema.
+    void enviar({
+      contratoId: f.contratoId,
+      telefono: f.clienteTel,
+      clave,
+      vars: {
+        nombre: f.clienteNombre,
+        placa: f.placa ?? "",
+        dias: f.diasSinPago >= 999 ? 0 : f.diasSinPago,
+        valor: `$${Math.round(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo).toLocaleString("es-CO")}`,
+      },
+      tipoGestion: "mensaje_recordatorio",
+      resultado: "Mensaje de recordatorio (Cobro Diario)",
+    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
   }
 
   function abrirLlamada(tel: string) {

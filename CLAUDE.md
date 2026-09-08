@@ -667,7 +667,7 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
   3. **Apagado remoto o Recolección física** (vehículo detenido)
   - Los 3 pasos están disponibles desde el primer día de mora — el funcionario decide cuándo escalar según la respuesta obtenida, **puede pasar los 3 el mismo día** si no hay respuesta. No hay bloqueo por tiempo.
 - **Plazo extra** (chance al cliente) → ADMIN, ADMIN_PRINCIPAL o SUBADMIN pueden otorgar 1-2 días adicionales con motivo escrito obligatorio. Mientras esté vigente, el contrato sale del balde "Recolección" (no se puede recolectar durante ese margen). Al vencer sin pago, vuelve automáticamente a la cola.
-- **Recolección física** → al confirmarla: `contratos.estado → "Suspendido"`, `motos.estado → "Recuperada"`, y se crea automáticamente una deuda de **$20.000** (concepto `multa_recoleccion`, "Multa por recolección/inmovilización") — se cobra cada vez que se recolecta, no una sola vez de por vida.
+- **Recolección física** → al confirmarla: `contratos.estado → "Suspendido"`, `motos.estado → "Recuperada"`, y se crea automáticamente una deuda de **$30.000** (concepto `multa_recoleccion`, "Multa por recolección/inmovilización"; constante `MULTA_RECOLECCION` en `utils/inmovilizacion.ts`) — se cobra cada vez que se recolecta, no una sola vez de por vida. **Regla del dueño (8-sep-2026): la multa es siempre $30.000; solo varía si hay que salir de la ciudad** — hoy el sistema no tiene dónde poner ese valor distinto (pendiente chico). La lavada ($15.000) va aparte y se cobra junto con la multa.
 - **Devolver la moto** → el cliente la recupera solo cuando salda **toda deuda pendiente del contrato** (multa + cuota atrasada que se registre como deuda `tarifa_atrasada`). Se gestiona desde Inmovilizaciones → sección "Motos retenidas".
 - **Si el cliente se demora mucho en resolver** → el ADMIN/ADMIN_PRINCIPAL puede reasignar la moto a otro cliente (la moto nunca debe dejar de producir) — finaliza el contrato anterior a la fecha de retención y libera la moto para un nuevo contrato.
 
@@ -1156,7 +1156,7 @@ Detalle completo en `sunny-brewing-island.md` (TEMA 3). Resumen de las decisione
 - Cuotas del convenio **avanzan automáticamente** al confirmar pagos (desde acumulado de `aplicado_convenio`).
 - El convenio **cuenta para la mora igual que la cuota normal** — hoy `calcularEstadoCartera()` solo mira la cuota del período y muestra "al día" aunque falte la del convenio.
 - **Pago parcial del convenio cuenta como abono** (resta de la deuda total) pero sigue EN MORA hasta completar.
-- **Incumplido automático** solo al vencerse las cuotas pactadas (no al recolectar). Para recuperar moto retenida: cuota normal + cuota del convenio + multa $20.000 (pagar todo el convenio es opcional).
+- **Incumplido automático** solo al vencerse las cuotas pactadas (no al recolectar). Para recuperar moto retenida: cuota normal + cuota del convenio + multa $30.000 (pagar todo el convenio es opcional).
 - **3er incumplido:** alerta 🔔 + marca "requiere liquidación", el admin la inicia (no automática).
 - Panel Hoy debe mostrar desglose "Cuota: $X + Convenio: $Y".
 - Nueva fase de implementación agregada al plan.

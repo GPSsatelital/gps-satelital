@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe } from "./mensajeria";
+import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda } from "./mensajeria";
+
+describe("envío masivo — el balde del panel Hoy decide el mensaje (mismo mapa que zala.cliente.plantilla_hoy)", () => {
+  it("cada chip manda su plantilla", () => {
+    expect(claveParaBalde("pagan-hoy")).toBe("dia_pago");
+    expect(claveParaBalde("gabela")).toBe("gabela");
+    expect(claveParaBalde("mora")).toBe("mora");
+    expect(claveParaBalde("recoleccion")).toBe("recoleccion");
+  });
+  it("el resumen cuenta bien lo que salió, lo que quedó en cola y lo que falló", () => {
+    const r = resumirTanda([
+      { canal: "zala", estado: "enviado" }, { canal: "zala", estado: "leido" },
+      { canal: "zala", estado: "en_cola" },
+      { canal: "zala", estado: "fallo", motivo: "número sin WhatsApp" }, { canal: "zala", estado: "sin_conexion" },
+      { canal: "ninguno", estado: "sin_numero" },
+    ]);
+    expect(r).toEqual({ salieron: 2, enCola: 1, fallaron: 2, noSalieron: 1 });
+  });
+});
 
 describe("normalizarWhatsapp — un solo criterio para los 8 botones", () => {
   it("celular colombiano de 10 dígitos → le pone el 57", () => {

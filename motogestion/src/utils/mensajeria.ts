@@ -2,6 +2,21 @@
 // normalizar el número, ordenar las variables para Meta, y decidir por qué canal sale un mensaje.
 // La parte que habla con la base y con ZALA vive en hooks/useEnvioMensaje.ts.
 
+import type { ClaveMensaje } from "../hooks/useMensajesWhatsapp";
+
+/** Los baldes del panel Hoy (los chips). Cada uno tiene su mensaje — el mismo mapa que la vitrina
+ *  usa para `plantilla_hoy` (mig 134): si se cambia aquí, se cambia allá. */
+export type BaldeHoy = "recoleccion" | "mora" | "gabela" | "pagan-hoy";
+
+export function claveParaBalde(balde: BaldeHoy): ClaveMensaje {
+  switch (balde) {
+    case "recoleccion": return "recoleccion";
+    case "mora": return "mora";
+    case "gabela": return "gabela";
+    case "pagan-hoy": return "dia_pago";
+  }
+}
+
 /** Estado real de un mensaje. Los cinco primeros los devuelve ZALA (acuses de Meta); el resto
  *  son de esta app. `abierto_whatsapp` = se abrió WhatsApp en el equipo con el texto listo, pero
  *  nadie sabe si la persona presionó enviar — es el respaldo mientras ZALA no está conectada, y
@@ -80,6 +95,18 @@ export function ordenarVariables(
  *     wa.me — ese es justamente el camino que bloqueó el número.
  *   · Una clave desactivada no sale por ningún lado.
  */
+/** Resumen de una tanda masiva, para decirle a quien la mandó qué pasó con cada grupo. */
+export function resumirTanda(resultados: ResultadoEnvio[]): { salieron: number; enCola: number; fallaron: number; noSalieron: number } {
+  let salieron = 0, enCola = 0, fallaron = 0, noSalieron = 0;
+  for (const r of resultados) {
+    if (r.estado === "enviado" || r.estado === "entregado" || r.estado === "leido") salieron++;
+    else if (r.estado === "en_cola") enCola++;
+    else if (r.estado === "fallo" || r.estado === "sin_conexion") fallaron++;
+    else noSalieron++;   // sin_numero · sin_permiso · sin_plantilla · abierto_whatsapp (no debería pasar en masivo)
+  }
+  return { salieron, enCola, fallaron, noSalieron };
+}
+
 export function decidirCanal(x: {
   zalaActivo: boolean;
   tienePermiso: boolean;

@@ -28,6 +28,8 @@ import { useCuentasBancarias, cuentasDelGrupo, textoCuentas } from "../hooks/use
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
+import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
+import { claveParaBalde, type BaldeHoy } from "../utils/mensajeria";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -597,7 +599,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { gestiones, registrarGestion } = useGestiones();
   // Todos los mensajes de esta pantalla salen por la tubería única (plantilla + variables, con
   // rastro real); el render del texto vive adentro de `enviar`.
-  const { enviar } = useEnvioMensaje();
+  const { enviar, zalaConectada } = useEnvioMensaje();
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
@@ -1141,6 +1143,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const puedeEliminarPago = puede("eliminar_pago");
   const puedeEditarDeuda = puede("editar_deuda");
   const puedeAplicarSaldo = puede("aplicar_saldo_favor");
+  // Envío masivo: al principio solo el administrador principal (decisión del dueño, 8-sep); se
+  // reparte por persona desde Usuarios cuando el canal oficial esté probado.
+  const puedeEnviarMasivo = puede("enviar_masivo");
   const puedeCrearConvenio = puede("crear_convenio");
   const puedeRecolectar = puede("recolectar_moto");
   const puedeCobroCampo = esAdmin || esSubadmin;
@@ -1148,6 +1153,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [fabOpen, setFabOpen] = useState(false);
   type FiltroHoy = "todos" | "recoleccion" | "mora" | "gabela" | "pagan-hoy";
   const [filtroHoy, setFiltroHoy] = useState<FiltroHoy>("todos");
+  const [envioMasivo, setEnvioMasivo] = useState<{ filas: DestinatarioMasivo[]; titulo: string; omitidos: number } | null>(null);
   const [busquedaHoy, setBusquedaHoy] = useState("");
   const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
 
@@ -3011,6 +3017,52 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 style={{ ...inputStyle, background: "var(--card)" }}
               />
             </div>
+
+            {/* ENVÍO MASIVO (Fase 2, 8-sep-2026): el grupo lo definen el chip de arriba y el buscador —
+                no hay casillas por tarjeta a propósito, es lo práctico en el celular. Cada uno recibe
+                el mensaje de SU balde (mismo mapa que zala.cliente.plantilla_hoy). No se repite a
+                quien ya recibió mensaje hoy. Solo con el canal oficial conectado y con el permiso. */}
+            {puedeEnviarMasivo && totalTareasHoy > 0 && (() => {
+              const pendientes = listaOrdenada.filter(c => !gestionHechaHoy(c.id, "mensaje_recordatorio"));
+              const yaHoy = listaOrdenada.length - pendientes.length;
+              const etiqueta = CHIPS_HOY.find(ch => ch.key === filtroHoy)?.label ?? "Todos";
+              const armar = (): DestinatarioMasivo[] => pendientes.map(c => {
+                const cliente = clientes.find(cl => cl.id === c.cliente_id);
+                const moto = motos.find(m => m.id === c.moto_id);
+                const balde = (GRUPOS_HOY.find(g => g.lista.some(x => x.id === c.id))?.key ?? "mora") as BaldeHoy;
+                const nombre = (cliente?.nombre ?? "").toUpperCase();
+                const valorTexto = `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`;
+                return {
+                  contratoId: c.id, nombre, placa: moto?.placa ?? "",
+                  telefono: cliente?.whatsapp || cliente?.telefono,
+                  clave: claveParaBalde(balde),
+                  vars: { nombre, placa: moto?.placa ?? "", dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago, valor: valorTexto },
+                  valorTexto,
+                };
+              });
+              const deshabilitado = !zalaConectada || pendientes.length === 0;
+              return (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setEnvioMasivo({ filas: armar(), titulo: etiqueta, omitidos: yaHoy })}
+                    disabled={deshabilitado}
+                    title={!zalaConectada
+                      ? "Solo con el canal oficial (ZALA) conectado: por WhatsApp normal no se pueden abrir tantos chats"
+                      : pendientes.length === 0 ? "Todos los de este filtro ya recibieron mensaje hoy" : `Cada uno recibe el mensaje que le toca (${etiqueta})`}
+                    style={{ padding: "9px 14px", borderRadius: 12, border: "none", fontSize: 13, fontWeight: 700,
+                      background: deshabilitado ? "var(--soft)" : "var(--accent-ink)", color: deshabilitado ? "var(--faint)" : "var(--card)",
+                      cursor: deshabilitado ? "not-allowed" : "pointer" }}
+                  >
+                    📨 Enviar mensaje a los {pendientes.length} de {etiqueta}
+                  </button>
+                  {yaHoy > 0 && <span style={{ fontSize: 11, color: "var(--muted)" }}>{yaHoy} ya recibieron mensaje hoy · no se repite</span>}
+                  {!zalaConectada && <span style={{ fontSize: 11, color: "var(--muted)" }}>Canal oficial aún no conectado</span>}
+                </div>
+              );
+            })()}
+            {envioMasivo && (
+              <ModalEnvioMasivo destinatarios={envioMasivo.filas} titulo={envioMasivo.titulo} omitidos={envioMasivo.omitidos} onClose={() => setEnvioMasivo(null)} />
+            )}
 
             {/* Lista en recuadro con scroll — igual que Contratos */}
             {totalTareasHoy === 0 ? (

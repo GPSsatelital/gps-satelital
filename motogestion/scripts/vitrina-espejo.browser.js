@@ -28,7 +28,10 @@
   const contratos = await q("contratos?estado=in.(Activo,Suspendido)&select=*");
   const ids = contratos.map(c => c.id);
   const porLotes = async (path) => { const out = []; for (let i = 0; i < ids.length; i += 50) { out.push(...await q(path.replace("{IDS}", ids.slice(i, i + 50).join(",")))); } return out; };
-  const pagos = await porLotes("pagos?estado=eq.Confirmado&contrato_id=in.({IDS})&select=contrato_id,fecha,valor,aplicado_convenio,aplicado_saldo_favor");
+  // `created_at` va porque `faltaDelAcuerdo` corta los abonos por la firma del acuerdo con ese
+  // campo (mig 132) — igual que la pantalla, que pasa el pago completo. Sin él, la prueba
+  // ejercitaría el respaldo por `fecha` y no el camino real.
+  const pagos = await porLotes("pagos?estado=eq.Confirmado&contrato_id=in.({IDS})&select=contrato_id,fecha,created_at,valor,aplicado_convenio,aplicado_saldo_favor");
   const deudas = await porLotes("deudas?estado=eq.pendiente&contrato_id=in.({IDS})&select=contrato_id,monto,monto_pendiente");
   const convenios = await q("convenios?estado=eq.activo&select=*");
   const vitrina = await rpc("zala_vitrina", { p_vista: "cliente" });

@@ -262,3 +262,51 @@ describe("JUAN CARLOS — las cuotas del convenio de las semanas guardadas se co
     expect(r.acuerdo).toMatchObject({ toca: 0, falta: 0 });
   });
 });
+
+// ── BRADER GUZMAN (YAL65H) — el primer contrato con DOS convenios ───────────────
+// 8-sep-2026. Su convenio #1 (8-ago, $943.500) se borró para rehacerlo; había abonado
+// $148.000, que se le aplicaron a sus deudas por SQL. El mismo día firmó el convenio #2.
+// El motor (mig 119) cuenta lo abonado a un convenio SOLO con pagos posteriores a su firma.
+// Esta función sumaba TODOS los pagos del contrato: al #2 le contaba los $148.000 del #1
+// y el lunes 14 le habría dicho "no debe nada del acuerdo" teniendo una cuota vencida.
+const BRADER: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 202000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 104, cajas_pagadas: 29, caja_actual_pagado: 0, cajas_previas: 24,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+  cajas_exoneradas: 1,   // la semana del 7-sep, rodada al entregarle la moto
+};
+// Sus pagos reales de julio y agosto: $148.000 fueron al convenio #1 (ya borrado).
+const PAGOS_BRADER = [
+  { fecha: "2026-07-30", valor: 200000, aplicado_convenio: 0 },
+  { fecha: "2026-08-07", valor: 200000, aplicado_convenio: 0 },
+  { fecha: "2026-08-12", valor: 252000, aplicado_convenio: 50000 },
+  { fecha: "2026-08-19", valor: 252000, aplicado_convenio: 50000 },
+  { fecha: "2026-08-25", valor: 250000, aplicado_convenio: 48000 },
+];
+// Convenio #2, firmado el 8-sep. La cuota es hipotética: lo que se prueba no depende de ella.
+const CONV_BRADER_2 = {
+  cuota_por_periodo: 100000, deuda_total: 1008500,
+  created_at: "2026-09-08T22:30:00Z", cubre_periodo_hasta: "2026-09-07",
+};
+
+describe("BRADER — un convenio nuevo arranca en cero, aunque el contrato tenga abonos de uno anterior", () => {
+  it("🔴 EL DEFECTO: los $148.000 del convenio #1 NO cuentan para el #2", () => {
+    const r = loQueDebe(BRADER, PAGOS_BRADER, [], CONV_BRADER_2, D("2026-09-16"));
+    expect(r.acuerdo?.toca).toBeGreaterThan(0);        // ya venció su primera cuota
+    expect(r.acuerdo?.pagado).toBe(0);                 // y no ha abonado nada al #2
+    expect(r.acuerdo?.falta).toBe(r.acuerdo?.toca);    // debe la cuota completa
+  });
+
+  it("lo que pague DESPUÉS de firmar el #2 sí cuenta", () => {
+    const conAbono = [...PAGOS_BRADER, { fecha: "2026-09-14", valor: 302000, aplicado_convenio: 100000 }];
+    const r = loQueDebe(BRADER, conAbono, [], CONV_BRADER_2, D("2026-09-16"));
+    expect(r.acuerdo?.pagado).toBe(100000);
+  });
+
+  it("un pago del MISMO día de la firma cuenta (se firma y paga en la misma sentada)", () => {
+    const mismoDia = [...PAGOS_BRADER, { fecha: "2026-09-08", valor: 100000, aplicado_convenio: 100000 }];
+    const r = loQueDebe(BRADER, mismoDia, [], CONV_BRADER_2, D("2026-09-16"));
+    expect(r.acuerdo?.pagado).toBe(100000);
+  });
+});

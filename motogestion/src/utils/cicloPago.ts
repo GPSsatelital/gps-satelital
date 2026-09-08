@@ -424,14 +424,26 @@ export function loQueDebe(
 export function faltaDelAcuerdo(
   convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null } | null | undefined,
   contrato: ContratoCiclo,
-  pagosConfirmados: Array<{ aplicado_convenio?: number | null }>,
+  pagosConfirmados: Array<{ aplicado_convenio?: number | null; created_at?: string | null; fecha?: string | null }>,
   hoy: Date,
 ): (ParteDebe & { cuotaDelPeriodo: number }) | null {
   const cuotaPeriodo = convenio?.cuota_por_periodo ?? 0;
   if (!convenio || cuotaPeriodo <= 0) return null;
   const periodos = periodosConvenioExigidos(convenio, contrato, hoy);
   const exigido = Math.min(periodos * cuotaPeriodo, convenio.deuda_total ?? Infinity);
-  const abonado = pagosConfirmados.reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+  // Solo cuentan los abonos hechos DESDE la firma de ESTE convenio — el mismo corte que usa el
+  // motor (mig 119: `created_at >= convenio.created_at`) y la nómina. Antes se sumaban todos los
+  // del contrato: el primer cliente con dos convenios (BRADER, YAL65H, 8-sep-2026) habría visto
+  // los $148.000 de su convenio borrado acreditados al nuevo. Con `created_at` el corte es exacto;
+  // si solo hay `fecha` (pruebas), se compara por día e incluye el mismo día de la firma.
+  const firma = convenio.created_at ?? null;
+  const desdeLaFirma = (p: { created_at?: string | null; fecha?: string | null }) => {
+    if (!firma) return true;
+    if (p.created_at) return p.created_at >= firma;
+    if (p.fecha) return p.fecha >= firma.slice(0, 10);
+    return true;
+  };
+  const abonado = pagosConfirmados.filter(desdeLaFirma).reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
   return {
     toca: exigido,
     pagado: Math.min(abonado, exigido),

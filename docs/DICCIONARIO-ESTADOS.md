@@ -299,10 +299,10 @@ ya cocinado y en palabras del negocio. El catálogo columna por columna vive en 
 
 | Vista | Una fila por | Lo que trae |
 |---|---|---|
-| `zala.cliente` | contrato vivo (Activo o Suspendido) | **`debe_hoy`** (la cifra, ya resta lo pagado) y su desglose `cuota_falta` + `acuerdo_falta` + `deudas_falta`; `debe_hoy_detalle` en palabras; `estado_cartera` (al-dia / gabela / mora) y `estado_texto`; `dias_mora`; `balde_hoy`; `plazo_extra_vigente`; `proximo_pago_fecha/monto`; `ultimo_pago_*`; `pagos_por_confirmar`; `saldo_a_favor` (se muestra, nunca se resta); su moto (`placa`, `su_moto_estado`, `placa_que_usa`, `en_prestamo`); `encargado`; `va_cajas` de `total_cajas`. Los Diario traen `debe_hoy` en null: su cuenta se consulta en la oficina |
+| `zala.cliente` | contrato vivo (Activo o Suspendido) | **`debe_hoy`** (la cifra, ya resta lo pagado) y su desglose `cuota_falta` + `acuerdo_falta` + `deudas_falta`; `debe_hoy_detalle` en palabras; `estado_cartera` (al-dia / gabela / mora) y `estado_texto`; `dias_mora`; `balde_hoy`; `plazo_extra_vigente`; `proximo_pago_fecha/monto`; `ultimo_pago_*`; `pagos_por_confirmar`; `saldo_a_favor` (se muestra, nunca se resta); su moto (`placa`, `su_moto_estado`, `placa_que_usa`, `en_prestamo`); `encargado`, **`encargado_id`** y **`encargado_whatsapp`** (mig 132: el reparto de ZALA va por id, y el número sale del usuario en MotoGestión); `convenio_abonado` cuenta **solo los pagos desde la firma del acuerdo vigente** (mig 132); `va_cajas` de `total_cajas`. Los Diario traen `debe_hoy` en null: su cuenta se consulta en la oficina |
 | `zala.moto` | moto | `estado` en palabras, `cliente`, `encargado`, `prestamo`, `retencion_fecha`, `en_taller_desde`, SOAT y tecnomecánica con días |
 | `zala.pagos` | pago de los últimos 120 días | fecha de pago, valor, método, `estado_texto` (confirmado / en verificación / rechazado), `es_plata_real` |
-| `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado, `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
+| `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado (solo pagos desde la firma de ESE acuerdo — mig 132), `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
 | `zala.deudas` | deuda pendiente o en convenio | `que_es` en palabras, `falta`, `estado_texto` |
 | `zala.diccionario` | columna | `significado`, `valores`, **`zala_lo_dice`** (sí / no / solo si pregunta / por confirmar), `confirmado_por_dueno` |
 
@@ -311,6 +311,13 @@ ya cocinado y en palabras del negocio. El catálogo columna por columna vive en 
 `diasEnMoraV2`, `calcularEstadoCartera`) y del balde del panel Hoy. La exigencia de cajas no se
 duplica: se reusa `public.cajas_exigidas`, la del motor. La prueba espejo
 (`motogestion/scripts/vitrina-espejo.browser.js`) compara pantalla y base contrato por contrato.
+
+**Lo abonado a un acuerdo se cuenta desde su firma** (mig 132, 8-sep-2026): solo pagos con
+`created_at >= convenio.created_at`, el mismo corte del motor (mig 119) y de la nómina. Antes
+Cartera y la vitrina sumaban todos los pagos del contrato — iguales entre sí, distintas del motor,
+y la prueba espejo no podía verlo. Se destapó con el primer contrato con dos acuerdos (BRADER
+GUZMAN, YAL65H): el segundo nacía con los $148.000 del primero acreditados. Hay prueba en
+`loQueDebe.test.ts`.
 
 **Quién entra:** el rol `zala_lector` (USAGE en `zala`, SELECT en sus vistas, nada más). Nace sin
 contraseña; la pone el dueño a mano. Desde la app, `public.zala_vitrina('cliente')` devuelve la

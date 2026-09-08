@@ -273,11 +273,23 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
               </div>
             )}
             {/* Cobrar es el default del negocio, pero la decisión igual queda REGISTRADA (quién,
-                cuándo, por qué) — sin registro, el sistema no sabría que alguien lo decidió. */}
+                cuándo, por qué) — sin registro, el sistema no sabría que alguien lo decidió.
+                LA TRAMPA (8-sep-2026, BRADER YAL65H): este botón cerraba la decisión de un solo toque,
+                sin preguntar, y después la ventana no volvía a ofrecer rodar — la persona que iba a
+                rodar tocó "se cobra normal" creyendo que era el paso obligado, y hubo que borrar el
+                acuerdo por SQL. Ahora dice lo que hace, pide confirmación, y no se disfraza de "listo". */}
             {!decision && (
-              <button onClick={confirmarCobroV2} disabled={guardando || exito}
+              <button
+                onClick={() => {
+                  const sem = periodosCompletos >= 1
+                    ? `${periodosCompletos} semana${periodosCompletos !== 1 ? "s" : ""} guardada${periodosCompletos !== 1 ? "s" : ""} se le siguen cobrando y DESPUÉS YA NO SE PODRÁ RODAR.`
+                    : "Estos días se le siguen cobrando (no completan un período para rodar).";
+                  if (!confirm(`NO RODAR — ${clienteNombre.toUpperCase()} · ${motoPlaca}\n\n${sem}\n\nEsta decisión queda registrada y es definitiva. Si la idea era rodarle la semana, cancela y elige "Rodar al final".\n\n¿Confirmar que se cobra normal?`)) return;
+                  void confirmarCobroV2();
+                }}
+                disabled={guardando || exito}
                 style={{ ...secondaryBtn, width: "100%", opacity: guardando || exito ? 0.6 : 1 }}>
-                {guardando ? "Registrando..." : "✅ Se cobra normal (no rodar) — registrar la decisión"}
+                {guardando ? "Registrando..." : "No rodar: se le cobran esas semanas (definitivo)"}
               </button>
             )}
           </div>

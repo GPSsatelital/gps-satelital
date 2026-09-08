@@ -289,6 +289,98 @@ poder acreditarle el pago. Club Moteros Cartagena.
 
 ---
 
+## Los textos con la voz real — versión 2 (8-sep, tras leer conversaciones reales)
+
+Los borradores de arriba estaban en "usted" formal. **La empresa habla de tú, cálida, con
+"Bendiciones", y firme en la regla.** Estos reemplazan a los de arriba; ver la voz completa en
+`docs/GUIA-CONVERSACION-ZALA.md`. Respetan las reglas de Meta (ninguna variable al inicio ni al
+final, ninguna pegada, ninguna con salto de línea). **Siguen siendo para aprobación del dueño.**
+
+**1 · `dia_pago` → `cobro_dia_pago_v1`** · variables: nombre · placa · valor
+```
+¡Hola, {nombre}! Bendiciones 🏍️
+Hoy es tu día de pago de la moto {placa}. Tu cuota de hoy es {valor}.
+Puedes pagar en la oficina o por transferencia; si transfieres, envíanos la foto del comprobante con la placa y tu nombre.
+Si ya pagaste, ¡gracias por tu puntualidad! Quedamos atentos.
+```
+
+**2 · `gabela` → `cobro_gabela_v1`** · variables: nombre · placa · valor
+```
+Hola, {nombre}. Bendiciones.
+Tu pago de la moto {placa} venció ayer y hoy es tu día de gracia: tienes hasta hoy para ponerte al día con {valor} y no entrar en mora.
+Si ya pagaste, envíanos el comprobante con la placa y tu nombre para actualizarte de inmediato. Quedamos atentos.
+```
+> `[dueño]` ¿Se pone la hora? Los chats dicen "hasta las 3 entran al sistema". Si es regla, va aquí:
+> "tienes hasta las 3:00 p. m. de hoy".
+
+**3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · valor
+```
+Hola, {nombre}. Bendiciones.
+Tu moto {placa} lleva {dias} días sin pago y hoy debes {valor}. Los pagos son los lunes; mientras no se complete, el sistema te mantiene en mora y puede programar el apagado del vehículo.
+Escríbenos hoy para reportar tu pago o cuadrar cómo te pones al día. Quedamos atentos.
+```
+> `{dias}` viaja como número; en mora siempre son 2 o más, así que "días" en plural nunca falla.
+
+**4 · `recoleccion` → `aviso_recoleccion_v1`** · variables: nombre · placa · dias · valor
+```
+Hola, {nombre}. Bendiciones.
+Tu moto {placa} lleva {dias} días en mora y debes {valor}. Por reglamento, si hoy no recibimos el pago, el sistema procede con el apagado y la recolección del vehículo, y eso genera un costo adicional de inmovilización.
+Aún estás a tiempo: envíanos el comprobante o escríbenos ahora para cuadrarlo. Quedamos atentos.
+```
+
+**5 · `moto_retenida` → `moto_retenida_v1`** · variables: nombre · placa · valor
+```
+Hola, {nombre}. Bendiciones.
+Tu moto {placa} está en nuestras instalaciones. Para entregártela nuevamente debes ponerte al día con {valor}; si no lo tienes completo, en la oficina podemos revisar un acuerdo de pago contigo.
+Escríbenos para cuadrar cuándo la retiras. Quedamos atentos.
+```
+
+**6 · `acuse_comprobante` → `acuse_comprobante_v1`** · variables: nombre · valor · placa
+```
+Hola, {nombre}. Recibimos tu comprobante por {valor} para la moto {placa}. Lo estamos verificando; apenas quede registrado te confirmamos. Gracias.
+```
+
+**7 · `recibo` → `recibo_pago_v1`** · variables: nombre · folio · fecha · placa · valor · pendiente
+```
+¡Gracias por tu pago, {nombre}! Bendiciones.
+Recibo {folio} del {fecha} · Moto {placa} · Valor recibido: {valor}.
+Te queda pendiente: {pendiente}.
+Club Moteros Cartagena.
+```
+> Los chats cierran con "Próximo pago el día LUNES 7 de septiembre" — a los clientes les sirve. Para
+> una `_v2`: agregar `{proximo_pago}` (la vitrina ya lo tiene: `proximo_pago_fecha`).
+
+**8 · `recibo_campo` → `recibo_campo_v1`** · variables: nombre · valor · placa · folio · fecha
+```
+Hola, {nombre}. Bendiciones.
+Recibimos tu pago en efectivo de {valor} por la moto {placa} (recibo provisional {folio}, {fecha}). Queda pendiente de validación en caja; te confirmamos apenas se registre. Conserva este comprobante.
+```
+
+**9 · `cuentas_pago` → `cuentas_para_pagar_v1`** · variables: nombre · placa · cuentas
+```
+Hola, {nombre}. Estas son las cuentas para el pago de tu moto {placa}: {cuentas}.
+Cuando transfieras, envíanos la foto del comprobante junto con la placa y tu nombre, para acreditarlo rápido. Quedamos atentos.
+```
+> `{cuentas}` en **una sola línea** para Meta ("Bancolombia Ahorros 000 (Titular) / Nequi 300 (Titular)").
+> Como texto libre dentro de la ventana puede ir con viñetas. Pendiente en código: mandar la versión
+> de una línea en `variables` y la de viñetas en `texto` (hoy van iguales).
+
+**10 · `contacto_general` → `contacto_general_v1`** · variables: nombre · placa
+```
+Hola, {nombre}. Bendiciones. Te escribimos de Club Moteros Cartagena por un tema de tu moto {placa}. Por favor comunícate con nosotros por este medio. Quedamos atentos.
+```
+
+**Recomendación fuerte (sale de los chats):** firmar con el nombre del encargado — *"Te escribe
+Brandon, tu encargado en Club Moteros"* — porque los clientes preguntan "¿quién es mi
+administrador?" y en la oficina les piden el nombre. Sería una variable más (`{encargado}`, que la
+vitrina ya trae) en `dia_pago`, `mora` y `moto_retenida`. Decisión del dueño.
+
+**Al aprobar estos textos:** se actualiza `mensajes_whatsapp.texto` desde Configuración (o por SQL)
+y, donde el orden de variables cambió respecto a la mig 133 (`recibo`, `recibo_campo`), la columna
+`variables` — un `update` de dos filas. ZALA los registra en Meta con esos mismos nombres `_v1`.
+
+---
+
 ## Tabla de correspondencia (lo que se guarda en la base)
 
 `mensajes_whatsapp` gana dos columnas: `plantilla_meta` y el orden de las variables.
@@ -428,9 +520,38 @@ POST {ZALA_URL}/api/enviar        cabecera X-Llave
 
 **Secretos** (Supabase → Edge Functions → Secrets, nunca en el repo): `ZALA_URL`, `ZALA_LLAVE`.
 
-**Para ponerla en marcha, en orden:** correr la mig 133 → desplegar `manage-users` (campo WhatsApp)
-y `enviar-mensaje` → desplegar la app → registrar el WhatsApp de los 4 encargados en Usuarios →
-cuando ZALA abra su API y Meta apruebe las plantillas: secretos + `VITE_ZALA_ENVIO=on`.
+**Para ponerla en marcha, en orden:** ✅ mig 133 · ✅ app desplegada (`a1437ee`) · ✅ WhatsApp de los
+4 encargados registrado → cuando ZALA abra su API y Meta apruebe las plantillas: desplegar
+`manage-users` y `enviar-mensaje` (el dueño entra una vez con `npx supabase login`, el resto por
+comando) + secretos `ZALA_URL` / `ZALA_LLAVE` + `VITE_ZALA_ENVIO=on` en Vercel.
+
+---
+
+## Cómo arma ZALA la tanda del día (mig 134) — sin una sola cuenta de su lado
+
+Desde la mig 134 la vitrina no solo da la cifra: **dice a quién escribir y con qué mensaje.** La
+decisión la toma MotoGestión; ZALA la obedece.
+
+```
+1. select * from zala.cliente where cobro_automatico
+2. por cada fila:  clave = plantilla_hoy          (dia_pago · gabela · mora · recoleccion)
+3. select plantilla_meta, variables, texto from zala.plantillas where clave = …
+4. variables desde LA MISMA FILA, en el orden que dice `variables`:
+      nombre → cliente · placa → placa · valor → debe_hoy_texto · dias → dias_mora
+5. enviar: plantilla si la ventana de 24 h está cerrada; `texto` con los comodines
+   reemplazados si está abierta. El cliente lee lo mismo.
+```
+
+| Columna nueva en `zala.cliente` | Qué dice |
+|---|---|
+| `zala_puede_escribir` | Si se le puede escribir. **No** si está en lista negra o su número no sirve. A la moto retenida **sí** (decisión del dueño) |
+| `no_escribir_porque` | El motivo, en palabras, cuando es `false` |
+| `cobro_automatico` | Si entra en la tanda automática: puede escribir ∧ contrato Activo ∧ cifra verificada ∧ **sin plazo extra vigente ∧ sin promesa de pago pendiente** (un cobro automático contradiría lo que un funcionario ya acordó). La retenida no entra: a esa se le escribe a mano, como gestión |
+| `plantilla_hoy` | La **clave** del mensaje de hoy. `moto_retenida` para las retenidas (fuera de la tanda automática, para el funcionario) |
+| `debe_hoy_texto` | La cifra ya escrita: `$202.000`. Es `{valor}` |
+
+`zala.plantillas` es la traducción clave → plantilla de Meta, con el texto editable y `activa`. Y
+`zala.pagos` ganó `registrado_por` (quién digitó el pago), que ZALA pidió para cruzar comprobantes.
 
 ---
 

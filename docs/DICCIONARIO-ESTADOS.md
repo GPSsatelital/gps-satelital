@@ -310,7 +310,7 @@ Cada respuesta cambia una fila de arriba. Se responden de a una.
 
 ---
 
-## Parte 5 — La vitrina (esquema `zala`, migración 126)
+## Parte 5 — La vitrina (esquema `zala`, migraciones 126 · 131 · 132 · 134)
 
 Lo único que ZALA puede ver. Cinco vistas y una tabla, todas de solo lectura, con el resultado
 ya cocinado y en palabras del negocio. El catálogo columna por columna vive en la tabla
@@ -318,9 +318,10 @@ ya cocinado y en palabras del negocio. El catálogo columna por columna vive en 
 
 | Vista | Una fila por | Lo que trae |
 |---|---|---|
-| `zala.cliente` | contrato vivo (Activo o Suspendido) | **`debe_hoy`** (la cifra, ya resta lo pagado) y su desglose `cuota_falta` + `acuerdo_falta` + `deudas_falta`; `debe_hoy_detalle` en palabras; `estado_cartera` (al-dia / gabela / mora) y `estado_texto`; `dias_mora`; `balde_hoy`; `plazo_extra_vigente`; `proximo_pago_fecha/monto`; `ultimo_pago_*`; `pagos_por_confirmar`; `saldo_a_favor` (se muestra, nunca se resta); su moto (`placa`, `su_moto_estado`, `placa_que_usa`, `en_prestamo`); `encargado`, **`encargado_id`** y **`encargado_whatsapp`** (mig 132: el reparto de ZALA va por id, y el número sale del usuario en MotoGestión); `convenio_abonado` cuenta **solo los pagos desde la firma del acuerdo vigente** (mig 132); `va_cajas` de `total_cajas`. Los Diario traen `debe_hoy` en null: su cuenta se consulta en la oficina |
+| `zala.cliente` | contrato vivo (Activo o Suspendido) | **`debe_hoy`** (la cifra, ya resta lo pagado) y su desglose `cuota_falta` + `acuerdo_falta` + `deudas_falta`; `debe_hoy_detalle` en palabras; `estado_cartera` (al-dia / gabela / mora) y `estado_texto`; `dias_mora`; `balde_hoy`; `plazo_extra_vigente`; `proximo_pago_fecha/monto`; `ultimo_pago_*`; `pagos_por_confirmar`; `saldo_a_favor` (se muestra, nunca se resta); su moto (`placa`, `su_moto_estado`, `placa_que_usa`, `en_prestamo`); `encargado`, **`encargado_id`** y **`encargado_whatsapp`** (mig 132: el reparto de ZALA va por id, y el número sale del usuario en MotoGestión); `convenio_abonado` cuenta **solo los pagos desde la firma del acuerdo vigente** (mig 132); `va_cajas` de `total_cajas`. **Para la tanda (mig 134):** `zala_puede_escribir` + `no_escribir_porque` (la decisión la toma MotoGestión: lista negra o número inválido = no; retenida = sí), `cobro_automatico` (Activo ∧ cifra verificada ∧ sin plazo ni promesa pendientes), `plantilla_hoy` (la clave del mensaje de hoy), `debe_hoy_texto` (`$202.000`). Los Diario traen `debe_hoy` en null: su cuenta se consulta en la oficina |
 | `zala.moto` | moto | `estado` en palabras, `cliente`, `encargado`, `prestamo`, `retencion_fecha`, `en_taller_desde`, SOAT y tecnomecánica con días |
-| `zala.pagos` | pago de los últimos 120 días | fecha de pago, valor, método, `estado_texto` (confirmado / en verificación / rechazado), `es_plata_real` |
+| `zala.pagos` | pago de los últimos 120 días | fecha de pago, valor, método, `referencia`, `estado_texto` (confirmado / en verificación / rechazado), `es_plata_real`, `registrado_por` (mig 134) |
+| `zala.plantillas` (mig 134) | mensaje | `clave` → `plantilla_meta` vigente en Meta, `variables` en orden para `{{1}}…{{n}}`, `texto` con comodines (para la ventana de 24 h), `activa`. El código nunca nombra una plantilla: la base traduce |
 | `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado (solo pagos desde la firma de ESE acuerdo — mig 132), `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
 | `zala.deudas` | deuda pendiente o en convenio | `que_es` en palabras, `falta`, `estado_texto` |
 | `zala.diccionario` | columna | `significado`, `valores`, **`zala_lo_dice`** (sí / no / solo si pregunta / por confirmar), `confirmado_por_dueno` |
@@ -357,3 +358,43 @@ Toda función nueva que cree un estado, un valor posible o una cifra que se mues
 3. Su caso en la prueba espejo (`loQueDebe()` de la pantalla contra `zala.cliente` de la base).
 
 Sin las tres, la tarea no se cierra.
+
+## Parte 6 — Respuestas al contrato de ZALA (8-sep-2026)
+
+El proyecto ZALA mandó su `CONTRATO-CON-MOTOGESTION.md` con una lista de pedidos (§5) y 12
+preguntas (§5.6). Esto es lo que se respondió y dónde vive cada cosa. **Regla: ZALA no lee
+`public`; todo lo que necesita está en `zala.*`.**
+
+### Los pedidos del §5
+
+| Pedido | Respuesta |
+|---|---|
+| 5.1 `encargado_id` | ✅ `zala.cliente.encargado_id` y `encargado_whatsapp` (mig 132). El encargado es el SUBADMIN de la moto **original** (si anda en una prestada, el de la suya). Nunca visitador ni admin. El número sale de `profiles.whatsapp` (Usuarios → editar); reemplaza el `equipo.json` |
+| 5.2 `proximo_pago_fecha` siempre | ✅ Ya viene para todo contrato con motor; **no depende de `dia_pago`** (sale del calendario de cajas). Los únicos vacíos son Diario y sin motor — a esos no se les manda cobro automático (`cobro_automatico = false`) |
+| 5.3 ¿a quién no se le escribe? | ✅ `zala_puede_escribir` + `no_escribir_porque` (mig 134). `contratos.en_lista_negra` **no existe**: la lista negra vive en `clientes.lista_negra` y ya está resuelta en la columna |
+| 5.4 pagos con referencia y quién registró | ✅ `zala.pagos`: `referencia`, `valor` (no `monto`), `fecha_pago`, `placa`, `contrato_id`, `registrado_por` (mig 134) |
+| 5.5 GPS / llaves / visitas de cobranza / apagado | **GPS y apagado remoto: no existen en MotoGestión** (ni un campo; pedido del dueño del 2-sep, sin construir). **Llaves: sí existe** desde el 3-sep (`recepciones_vehiculo.llave_entregada`: si el cliente no entregó la llave y hubo que ir con la copia). **"Visitar para cobrar" no existe como paso**: aquí se visita para retener; lo que hay es `gestiones_cobro` (mensaje · llamada · sirena · plazo · recolección) — ese ES el cuaderno de gestión. Reparto acordado: estado del activo en MotoGestión; conversación y acuses en ZALA |
+| 6.1 aprobación de envíos | Decisión del dueño: al principio solo ADMIN_PRINCIPAL; después por persona. Se resuelve con el sistema de permisos existente (`enviar_mensaje`, `enviar_masivo`), sin cola nueva. Todo envío guarda quién pidió, quién aprobó y el acuse (`gestiones_cobro.mensaje_*`, mig 133) |
+| 7 tecnología | React 19 + TypeScript + Vite, base en Supabase, **desplegada en Vercel** (no corre en un PC). Está en git: `GPSsatelital/gps-satelital`. La llamada a ZALA sale de la Edge Function `enviar-mensaje` — la llave nunca está en el navegador |
+
+### Las 12 preguntas del §5.6
+
+| # | Pregunta | Respuesta corta | Dónde vive |
+|---|---|---|---|
+| 1 | `contratos.estado = Suspendido` (58) | La moto está guardada en la empresa. Tres causas: recogida por mora, entregada temporalmente por el cliente (incapacidad, viaje), o varada en taller. `motivo_suspension` lo dice. Vuelve a Activo al entregársela | `zala.cliente.moto_retenida`, `motivo_suspension`, `su_moto_estado` |
+| 2 | Finalizado vs Cancelado | **Finalizado** = terminó bien (liquidación por cumplimiento o retiro voluntario). **Cancelado** = se activó y se cerró mal (liquidación por incumplimiento). Un contrato "En proceso" que se cancela **se borra**, no queda | No están en `zala.cliente` (solo vivos). Parte 1 §3 |
+| 3 | `motos.estado = Recuperada` (36) | La moto volvió a poder de la empresa después de estar con un cliente — por recolección o porque la entregó. No distingue la causa; la causa está en el contrato (`motivo_suspension`) | `zala.moto.estado` en palabras |
+| 4 | Recorrido de `clientes.estado` | En proceso → Listo para visita → Pendiente evaluación → Aprobado → Activo → (En mora / En riesgo) → Retirado / Egresado / Rechazado / Lista negra. Registran secretaria o admin; visita el visitador o subadmin asignado; aprueba el admin; el wizard de contrato lo pone Activo | Parte 1 §1 |
+| 5 | Las cajas | Una caja = un período de arriendo ($202.000 la semana: $176.000 empresa + $26.000 ahorro). El contrato se termina al llenar `total_cajas`, **por pagos, no por tiempo**. `cajas_pagadas` = llenas; `cajas_previas` = las que traía del sistema viejo; `cajas_exoneradas` = períodos **rodados** (la moto estuvo guardada por causa ajena al cliente): no se perdonan, se corren al final | `va_cajas` de `total_cajas`, `cajas_exigidas` |
+| 6 | El ahorro | Es del cliente: $26.000 de cada semana pagada (más `ahorro_apertura` si venía del sistema viejo). Se le devuelve al liquidar o se le abona al graduarse a otra moto. **No es cuota ni descuento** | No está en `zala.cliente` a propósito: no se le dice por WhatsApp |
+| 7 | Prorrateo | Los días entre la entrega de la moto y su primer día de pago. Se cobra el primer día de pago, día por día (domingo aparte). Solo aplica a contratos nuevos del wizard | `prorrateo_pendiente` |
+| 8 | `empalme_cerrado` (12 de 211) | El visto bueno **del cliente** sobre su saldo migrado: checklist + firma + huella, con él presente. **No es señal de cuentas cuadradas** — la señal es `debe_hoy is not null` (espejo: 322 contratos, 0 diferencias). ZALA puede ignorar esta columna | — |
+| 9 | Motivos de deudas | 12 conceptos, cada uno con **destino** (a qué bolsillo vuelve la plata): socio · socio de la prestada · reembolso a la empresa · ingreso de la empresa | `zala.deudas.que_es`, `destino`; catálogo `zala.conceptos_deuda` |
+| 10 | Los 4 portafolios | COSTA, PRADERA, RASTREADOR (del fundador), USADAS (del club). Cada uno es una inversión independiente con recaudo y reportes aparte. **Cuentas bancarias sí son por grupo** (las de pago salen del grupo de la moto del cliente, nunca de otro). **El encargado NO es por grupo: es por moto** (`subadmin_id`) | `zala.cliente.grupo`, `encargado` |
+| 11 | `ubicacion_fisica` (283 en bodega) | Campo informativo de Motos que **no se actualiza de forma confiable**. Para saber dónde está una moto usar `zala.moto.estado`, `zala.cliente.moto_retenida` y `en_taller_desde` | `zala.moto` |
+| 12 | Liquidaciones "en taller" (21) | Etapa 2 de las 6 de una liquidación (Iniciada → **En taller** → Calculada → Documento → Firmada → Cerrada): la moto se revisa para valorar daños antes de cerrar la cuenta. Es interno; ZALA no interviene | — |
+
+### Lo que sigue pendiente de la palabra del dueño
+Los 4 `por confirmar` del diccionario: si ZALA menciona el saldo a favor, el nombre del encargado,
+el plazo extra y la promesa de pago. Y los textos finales de las 10 plantillas, con la voz real
+(ver `docs/PLANTILLAS-WHATSAPP.md`).

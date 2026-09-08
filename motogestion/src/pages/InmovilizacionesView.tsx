@@ -1021,7 +1021,12 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
             // Las demás deudas SÍ entran al convenio (van en `conveniable`), que es lo que
             // permite entregarle la moto a alguien que arrastra una deuda vieja grande.
             const faltaMulta = m.multaPendiente > 0;
-            const puedeHacerConvenio = !m.soloInfoTaller && !m.esTemporal && m.conveniable > 0 && m.convenioId == null && !faltaMulta;
+            // Las guardadas TEMPORALES también pueden necesitar convenio (BRADER, YAL65H, 8-sep-2026:
+            // entregó la moto por su cuenta, debía $791.500 de migración + una semana, y el botón no
+            // aparecía por `!m.esTemporal` — hubo que hacerlo por Cartera, donde no existe el pre-paso
+            // del tiempo guardado, y casi se le cobra la semana que se le iba a rodar). La condición
+            // que sí manda es si debe algo conveniable; "temporal" solo dice que no es morosa.
+            const puedeHacerConvenio = !m.soloInfoTaller && m.conveniable > 0 && m.convenioId == null && !faltaMulta;
             const procesandoEsta = procesandoId === m.contratoId;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
@@ -1175,7 +1180,9 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           setConvenioRec(m);
                         }}
                         disabled={procesandoEsta}
-                        title="Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"
+                        title={m.esTemporal
+                          ? "Dejar lo que debe en un convenio antes de entregarle la moto (primero se resuelve el tiempo guardado)"
+                          : "Financiar las cuotas atrasadas en un convenio (pide lo máximo que pueda dar; el mínimo para llevarse la moto es la multa)"}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-ink)", color: "var(--card)" }}
                       >
                         📝 Convenio

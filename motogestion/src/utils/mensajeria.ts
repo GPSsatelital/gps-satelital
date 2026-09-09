@@ -55,6 +55,33 @@ export function urlWaMe(numero: string, texto: string): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
 }
 
+const PARTICULAS = new Set(["de", "del", "la", "las", "los", "y", "da", "do", "dos", "das", "van", "von", "san", "santa"]);
+
+/**
+ * Cómo se le habla al cliente: por las DOS primeras palabras de su nombre registrado, con mayúscula
+ * inicial — "Jose Alberto" o "Kevin Ortega", no "JOSE ALBERTO DORIA RODRIGUEZ" (regla del dueño,
+ * 8-sep: "el nombre que salga con el primer apellido o segundo nombre"). Las partículas ("de",
+ * "del", "la"…) no cuentan como palabra: "MARIA DE LOS ANGELES PEREZ" → "Maria de los Angeles".
+ * Mismo criterio que `zala.nombre_corto()` en la vitrina (mig 134): si se toca uno, se toca el otro.
+ */
+export function nombreCorto(nombre: string | null | undefined): string {
+  const t = (nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  if (t.length === 0) return "";
+  const out: string[] = [t[0]];
+  let i = 1;
+  while (i < t.length && (out.length < 2 || PARTICULAS.has(t[i - 1].toLowerCase()))) {
+    out.push(t[i]);
+    i++;
+    if (out.length >= 2 && !PARTICULAS.has(t[i - 1].toLowerCase())) break;
+  }
+  return out
+    .map((w, k) => {
+      const l = w.toLowerCase();
+      return k > 0 && PARTICULAS.has(l) ? l : l.charAt(0).toUpperCase() + l.slice(1);
+    })
+    .join(" ");
+}
+
 /** "$202.000" — el formato en que el cliente lee la plata en todos los mensajes. */
 export function fmtPesos(n: number): string {
   return `$${Math.round(n).toLocaleString("es-CO")}`;
@@ -65,6 +92,24 @@ export function fmtPesos(n: number): string {
 export function diasTexto(n: number): string {
   const d = Math.max(0, Math.round(n));
   return `${d} ${d === 1 ? "día" : "días"}`;
+}
+
+/** Los comodines, dichos como los entiende quien cobra — para que un mensaje bloqueado explique
+ *  QUÉ dato falta, no un nombre de variable. */
+const PALABRA_VAR: Record<string, string> = {
+  nombre: "el nombre del cliente",
+  placa: "la placa",
+  valor: "el valor a pagar",
+  dias: "los días desde su último pago registrado",
+  vencida: "los días que lleva vencida la cuota",
+  folio: "el número de recibo",
+  fecha: "la fecha del pago",
+  pendiente: "lo que le queda pendiente",
+  cuentas: "las cuentas del grupo de su moto",
+};
+
+export function faltanEnPalabras(faltan: string[]): string {
+  return faltan.map(v => PALABRA_VAR[v] ?? v).join(", ");
 }
 
 /**

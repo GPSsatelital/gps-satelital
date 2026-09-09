@@ -36,9 +36,7 @@ no sabe qué plantilla usar.
 >
 > Los tres reales usan `{nombre}` y `{valor}` pero no `{placa}` ni `{dias}`; el orden de variables
 > sembrado en la mig 133 es provisional hasta que se aprueben los textos finales — en ese momento
-> se ajusta la columna `variables` de cada fila, sin código. Y `{dias}` hoy viaja como número
-> (`3`) porque el texto real de recolección ya trae la palabra ("{dias} días de mora"); si el texto
-> final la quita, se cambia a "3 días" en un solo lugar (`diasTexto`, `utils/mensajeria.ts`).
+> se ajusta la columna `variables` de cada fila, sin código. **La mig 135 hace exactamente eso.**
 
 ---
 
@@ -300,44 +298,67 @@ aprobación del dueño**; la mig 135 los deja en la base cuando él la corra.
 **1 · `dia_pago` → `cobro_dia_pago_v1`** · variables: nombre · placa · valor
 ```
 Hola, {nombre}. Bendiciones 🏍️
-Hoy es su día de pago de la moto {placa}. Su cuota de hoy es {valor}.
-Puede pagar en la oficina o por transferencia; si transfiere, envíenos la foto del comprobante con la placa y su nombre.
-Si ya pagó, ¡gracias por su puntualidad! Quedamos atentos.
+Hoy es su día de pago de la moto {placa}. Su cuota del día de hoy es {valor}.
+Puede realizar el pago en la oficina o por transferencia; si transfiere, envíenos la foto del comprobante con la placa y su nombre.
+Si ya realizó el pago, ¡gracias por su puntualidad! Quedamos atentos.
 ```
 
 **2 · `gabela` → `cobro_gabela_v1`** · variables: nombre · placa · valor
 ```
 Hola, {nombre}. Bendiciones.
-Su pago de la moto {placa} venció ayer y hoy es su día de gracia: tiene hasta hoy para ponerse al día con {valor} y no entrar en mora.
-Si ya pagó, envíenos el comprobante con la placa y su nombre para actualizarlo de inmediato. Quedamos atentos.
+Su pago de la moto {placa} venció ayer y hoy es su día de gracia: le podemos dar el día de hoy para ponerse al día con {valor} y no entrar en mora.
+Si ya realizó el pago, envíenos el comprobante con la placa y su nombre para actualizarlo de inmediato. Quedamos atentos.
 ```
+> Regla del dueño (8-sep): **la gabela OFRECE el día, no lo impone** — "le podemos dar el día de hoy".
+> Es el único mensaje que concede plazo.
 > `[dueño]` ¿Se pone la hora? Los chats dicen "hasta las 3 entran al sistema". Si es regla, va aquí:
-> "tienes hasta las 3:00 p. m. de hoy".
+> "le podemos dar hasta las 3:00 p. m. del día de hoy".
 
-**3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · valor
+**3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · vencida · valor
 ```
 Hola, {nombre}. Bendiciones.
-Su moto {placa} lleva {dias} días sin pago y hoy debe {valor}. Los pagos son los lunes; mientras el pago no se complete, su cuenta sigue en mora.
-Tiene hasta hoy para ponerse al día. Después de eso, el sistema puede apagar el vehículo en cualquier momento, y si en la hora siguiente no hay pago ni respuesta, se procede a recogerlo.
-Escríbanos hoy para reportar su pago o acordar cómo se pone al día. Quedamos atentos.
+Su último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; hoy debe {valor}. Mientras el pago no se complete, su cuenta sigue en mora.
+Le recordamos que, estando en mora, el sistema puede realizar el apagado del vehículo en cualquier momento y proceder con su recolección.
+Póngase al día lo más pronto posible para seguir rodando tranquilo. Escríbanos para reportar su pago o para acordar cómo se pone al día. Quedamos atentos.
 ```
-> Redacción acordada con el dueño (8-sep): límite claro para la oportunidad, sin prometer la hora del
-> apagado; y el apagado no es la última instancia — la recolección sí.
-> `{dias}` viaja como número; en mora siempre son 2 o más, así que "días" en plural nunca falla.
+> Regla del dueño (8-sep): **en mora ya no se da más plazo.** No se le ofrece "hasta hoy" (ese día ya
+> fue la gabela): se le informa su estado, se le advierte que desde ese día el apagado y la
+> recolección pueden ocurrir en cualquier momento — sin decir cuándo — y se le motiva a ponerse al
+> día *para seguir rodando tranquilo*.
+> Se quitó "Los pagos son los lunes": no todos pagan lunes (hay miércoles, quincenales y mensuales),
+> y la frase habría salido falsa para buena parte de la cartera.
 
-**4 · `recoleccion` → `aviso_recoleccion_v1`** · variables: nombre · placa · dias · valor
+**4 · `recoleccion` → `aviso_recoleccion_v1`** · variables: nombre · placa · dias · vencida · valor
 ```
 Hola, {nombre}. Bendiciones.
-Su moto {placa} lleva {dias} días en mora y debe {valor}. Se agotaron los plazos: por reglamento, el vehículo pasa a recolección, y eso genera un costo adicional de inmovilización.
-Todavía puede evitarlo hoy: envíenos el comprobante o escríbanos ahora para acordar el pago. Quedamos atentos.
+Su último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; debe {valor}. Se agotaron los plazos y su caso pasó a recolección, lo que genera un costo adicional de inmovilización.
+Aún está a tiempo de evitarlo si se pone al día de inmediato: envíenos el comprobante o escríbanos ahora mismo para acordar el pago. Quedamos atentos.
 ```
 
-**5 · `moto_retenida` → `moto_retenida_v1`** · variables: nombre · placa · valor
+**Los días van en DOS cifras (decisión del dueño, 8-sep).** No son lo mismo y por eso cada una lleva
+su palabra:
+
+| Comodín | Qué mide | De dónde sale |
+|---|---|---|
+| `{dias}` | Desde su **último pago registrado** — el cliente lo reconoce, pero **un abono parcial la reinicia** | app: último pago confirmado · vitrina: `dias_texto` |
+| `{vencida}` | Lo que lleva **vencida la cuota** — esa no la mueve un abono, y es la que manda para recoger | app: `diasEnMora()` · vitrina: `vencida_texto` |
+
+> Ejemplo: quien debe 3 semanas y abonó $50.000 ayer → "su último pago fue hace **1 día** y su cuota
+> lleva **16 días** de vencida". Con una sola cifra, el mensaje se quedaba corto o se contradecía.
+> Las dos viajan **con la palabra adentro** ("20 días"), porque Meta no deja ponerla afuera sin que
+> quede "1 días".
+> **Al que NUNCA registró un pago no se le manda este mensaje**: no hay último pago que nombrar. La
+> tubería lo bloquea con un aviso y la vitrina lo deja fuera de la tanda — ese caso es de llamada.
+
+**5 · `moto_retenida` → `moto_retenida_v1`** · variables: nombre · placa
 ```
 Hola, {nombre}. Bendiciones.
-Su moto {placa} está en nuestras instalaciones. Para entregársela nuevamente debe ponerse al día con {valor}; si no lo tiene completo, en la oficina podemos revisar un acuerdo de pago con usted.
-Escríbanos para acordar cuándo la retira. Quedamos atentos.
+Su moto {placa} está guardada en nuestras instalaciones y queremos verlo rodando nuevamente con ella. Cuéntenos cómo desea proceder: en la oficina revisamos con usted las opciones para devolverle su vehículo lo antes posible.
+Comuníquese con nosotros por este medio. Quedamos atentos.
 ```
+> Regla del dueño (8-sep): **no se le impone la cifra.** El mensaje invita a volver a rodar y le
+> pregunta qué desea hacer; la plata se conversa en la oficina, donde además cabe el acuerdo de pago.
+> Por eso ya no lleva `{valor}`.
 
 **6 · `acuse_comprobante` → `acuse_comprobante_v1`** · variables: nombre · valor · placa
 ```
@@ -362,7 +383,7 @@ Recibimos su pago en efectivo de {valor} por la moto {placa} (recibo provisional
 
 **9 · `cuentas_pago` → `cuentas_para_pagar_v1`** · variables: nombre · placa · cuentas
 ```
-Hola, {nombre}. Estas son las cuentas para el pago de su moto {placa}: {cuentas}.
+Hola, {nombre}. Estas son las cuentas para realizar el pago de su moto {placa}: {cuentas}.
 Cuando transfiera, envíenos la foto del comprobante junto con la placa y su nombre, para acreditarlo rápido. Quedamos atentos.
 ```
 > `{cuentas}` en **una sola línea** para Meta ("Bancolombia Ahorros 000 (Titular) / Nequi 300 (Titular)").
@@ -396,12 +417,21 @@ y, donde el orden de variables cambió respecto a la mig 133 (`recibo`, `recibo_
 |---|---|---|
 | `dia_pago` | `cobro_dia_pago_v1` | nombre · placa · valor |
 | `gabela` | `cobro_gabela_v1` | nombre · placa · valor |
-| `mora` | `cobro_mora_v1` | nombre · placa · dias · valor |
-| `recoleccion` | `aviso_recoleccion_v1` | nombre · placa · dias · valor |
-| `moto_retenida` | `moto_retenida_v1` | nombre · placa · valor |
+| `mora` | `cobro_mora_v1` | nombre · placa · dias · vencida · valor |
+| `recoleccion` | `aviso_recoleccion_v1` | nombre · placa · dias · vencida · valor |
+| `moto_retenida` | `moto_retenida_v1` | nombre · placa |
 | `acuse_comprobante` | `acuse_comprobante_v1` | nombre · valor · placa |
-| `recibo` | `recibo_pago_v1` | folio · fecha · nombre · placa · valor · pendiente |
+| `recibo` | `recibo_pago_v1` | nombre · folio · fecha · placa · valor · pendiente |
+| `recibo_campo` | `recibo_campo_v1` | nombre · valor · placa · folio · fecha |
 | `cuentas_pago` | `cuentas_para_pagar_v1` | nombre · placa · cuentas |
+| `contacto_general` | `contacto_general_v1` | nombre · placa |
+
+**`{nombre}` siempre llega corto: "Jose Alberto", no "JOSE ALBERTO DORIA RODRIGUEZ"** (regla del
+dueño, 8-sep). Son las dos primeras palabras del nombre registrado, con mayúscula inicial; las
+partículas no cuentan como palabra ("MARIA DE LOS ANGELES PEREZ" → "Maria de los Angeles"). Lo
+calculan `nombreCorto()` (`utils/mensajeria.ts`) en la app y `zala.nombre_corto()` en la vitrina
+(columna `cliente_corto`): **si se toca uno hay que tocar el otro**, o el mismo cliente se llamaría
+distinto según de dónde salga el mensaje.
 
 El texto editable en Configuración **se conserva**: sirve para que se vea cómo queda el mensaje y
 para enviarlo tal cual cuando la ventana de 24 h está abierta. Lo que se agrega es a qué plantilla

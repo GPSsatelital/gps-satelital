@@ -23,6 +23,7 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
+import { diasTexto } from "../utils/mensajeria";
 import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
@@ -633,7 +634,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
   // firmado — ya no un simple finalizarContrato() sin dejar rastro de la cuenta.
   const [liquidacionModal, setLiquidacionModal] = useState<MotoRetenida | null>(null);
 
-  function abrirWA(contratoId: string, tel: string, nombre: string, dias: number, placa: string, valor: number) {
+  function abrirWA(contratoId: string, tel: string, nombre: string, dias: number, placa: string, valor: number, ultimoPago: string | null) {
     if (!tel) return;
     // Inmovilizaciones = último aviso antes de recoger la moto. Plantilla editable en Config.
     // Una sola tubería para todos los botones de mensaje (useEnvioMensaje). Antes esta pantalla
@@ -642,7 +643,14 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       contratoId,
       telefono: tel,
       clave: "recoleccion",
-      vars: { nombre, placa, dias, valor: `$${Math.round(valor).toLocaleString("es-CO")}` },
+      // Las dos cifras: desde su último pago registrado y lo que lleva vencida la cuota. `dias`
+      // vacío si nunca pagó → la tubería bloquea el mensaje y pide gestionarlo a mano.
+      vars: {
+        nombre, placa,
+        dias: ultimoPago ? diasTexto(Math.floor((Date.parse(hoyISO() + "T00:00:00") - Date.parse(ultimoPago + "T00:00:00")) / 86400000)) : "",
+        vencida: diasTexto(dias),
+        valor: `$${Math.round(valor).toLocaleString("es-CO")}`,
+      },
       tipoGestion: "mensaje_recordatorio",
       resultado: "Aviso de recolección",
     }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
@@ -881,7 +889,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           📞 Llamar
                         </button>
                         <button
-                          onClick={() => abrirWA(f.contratoId, f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal)}
+                          onClick={() => abrirWA(f.contratoId, f.clienteTel, f.clienteNombre, f.diasMora, f.placa, f.deudaReal, f.ultimoPago)}
                           style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}
                         >
                           💬 WA

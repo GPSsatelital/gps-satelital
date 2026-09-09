@@ -22,7 +22,8 @@
 -- CÓMO ARMA ZALA LA TANDA con esto (cero cuentas de su lado):
 --   select * from zala.cliente where cobro_automatico  →  por cada fila, plantilla_hoy  →
 --   zala.plantillas (plantilla_meta + variables)  →  variables desde la misma fila:
---   nombre = cliente · placa · valor = debe_hoy_texto · dias = dias_mora  →  enviar.
+--   nombre = cliente_corto · placa · valor = debe_hoy_texto · dias = dias_texto ·
+--   vencida = vencida_texto  →  enviar. Si alguna viene NULL, NO se manda: se gestiona a mano.
 
 -- ── 0) Un número de WhatsApp que sirve: 10 dígitos que empiezan por 3, o 12 que empiezan por 57 ─
 create or replace function zala.whatsapp_valido(p text) returns boolean language sql immutable as $$
@@ -32,6 +33,28 @@ create or replace function zala.whatsapp_valido(p text) returns boolean language
     when length(regexp_replace(p, '\D', '', 'g')) = 12 and left(regexp_replace(p, '\D', '', 'g'), 2) = '57' then true
     else false end
 $$;
+
+-- ── 0b) El nombre corto: cómo se le habla al cliente ─────────────────────────────────────────
+-- Regla del dueño (8-sep): las DOS primeras palabras del nombre registrado, con mayúscula inicial
+-- ("Jose Alberto", "Kevin Ortega"), no el nombre completo en mayúsculas. Las partículas (de, del,
+-- la…) no cuentan como palabra. Espejo exacto de `nombreCorto()` en utils/mensajeria.ts.
+create or replace function zala.nombre_corto(p text) returns text language plpgsql immutable as $$
+declare
+  t text[]; salida text[]; i int; n int;
+  part text[] := array['de','del','la','las','los','y','da','do','dos','das','van','von','san','santa'];
+begin
+  if p is null then return null; end if;
+  t := regexp_split_to_array(btrim(p), '\s+');
+  n := coalesce(array_length(t, 1), 0);
+  if n = 0 or t[1] = '' then return ''; end if;
+  salida := array[t[1]]; i := 2;
+  while i <= n and (array_length(salida, 1) < 2 or lower(t[i-1]) = any(part)) loop
+    salida := salida || t[i]; i := i + 1;
+    exit when array_length(salida, 1) >= 2 and not (lower(t[i-1]) = any(part));
+  end loop;
+  return (select string_agg(case when k > 1 and lower(w) = any(part) then lower(w) else initcap(w) end, ' ' order by k)
+          from unnest(salida) with ordinality as u(w, k));
+end $$;
 
 -- ── 1) zala.plantillas — la clave y su plantilla vigente en Meta ──────────────────────────────
 create or replace view zala.plantillas as
@@ -140,6 +163,14 @@ select
     else 'al día' end                              as estado_texto,
   coalesce(q.r_dias_mora, 0)                      as dias_mora,
   dsp.dias                                        as dias_sin_pago,
+  -- ★ 134: las DOS cifras de días ya escritas con su palabra, que es como viajan a Meta (una
+  -- variable no puede dejar la palabra afuera sin que quede "1 días"). Van las dos porque miden
+  -- cosas distintas: `dias_texto` es desde su último pago (un abono parcial la reinicia) y
+  -- `vencida_texto` es lo que lleva vencida la cuota (esa no la mueve un abono). dias_texto es
+  -- NULL si nunca registró un pago: no se puede nombrar un último pago que no existe.
+  case when pg.ultimo_confirmado is not null and dsp.dias < 999
+       then dsp.dias || ' día' || case when dsp.dias = 1 then '' else 's' end end as dias_texto,
+  coalesce(q.r_dias_mora, 0) || ' día' || case when coalesce(q.r_dias_mora, 0) = 1 then '' else 's' end as vencida_texto,
   plazo.hasta                                     as plazo_extra_hasta,
   (plazo.hasta is not null and plazo.hasta >= h.d) as plazo_extra_vigente,
   promesa.fecha                                   as promesa_pago_fecha,
@@ -174,18 +205,26 @@ select
      and c.estado = 'Activo'
      and q.r_cuota_falta is not null
      and not (plazo.hasta is not null and plazo.hasta >= h.d)
-     and not (promesa.fecha is not null and promesa.fecha >= h.d)) as cobro_automatico,
+     and not (promesa.fecha is not null and promesa.fecha >= h.d)
+     -- En mora sin NINGÚN pago registrado no hay tanda: el mensaje nombra "su último pago
+     -- registrado" y ese cliente no tiene ninguno. Ese caso se gestiona por llamada.
+     and not (q.r_estado_cartera = 'mora' and pg.ultimo_confirmado is null)) as cobro_automatico,
   -- ★ 134: la CLAVE del mensaje de hoy. La plantilla de Meta se busca en zala.plantillas.
   case
     when c.estado = 'Suspendido' then 'moto_retenida'
     when q.r_estado_cartera is null then null
+    -- Sin pago registrado no hay plantilla de mora: las dos nombran su último pago. Sale null
+    -- para que ZALA no mande nada y el caso quede para llamada.
+    when q.r_estado_cartera = 'mora' and pg.ultimo_confirmado is null then null
     when q.r_estado_cartera = 'mora' and dsp.dias > 3 and dsp.dias < 999 and not (plazo.hasta is not null and plazo.hasta >= h.d) then 'recoleccion'
     when q.r_estado_cartera = 'mora' then 'mora'
     when q.r_estado_cartera = 'gabela' then 'gabela'
     when zala.es_dia_de_pago(c, h.d) then 'dia_pago'
     else null end                                as plantilla_hoy,
   case when q.r_cuota_falta is null then null
-       else zala.pesos(q.r_cuota_falta + coalesce(q.r_acuerdo_falta, 0) + coalesce(de.pend_falta, 0)) end as debe_hoy_texto
+       else zala.pesos(q.r_cuota_falta + coalesce(q.r_acuerdo_falta, 0) + coalesce(de.pend_falta, 0)) end as debe_hoy_texto,
+  -- ★ 134: el nombre con que se le habla ("Jose Alberto"). Es la variable {nombre} de las plantillas.
+  zala.nombre_corto(cl.nombre)                    as cliente_corto
 from public.contratos c
 join public.clientes cl on cl.id = c.cliente_id
 cross join h
@@ -255,11 +294,15 @@ insert into zala.diccionario (vista, columna, significado, valores, zala_lo_dice
 ('cliente', 'cobro_automatico', 'Si entra en la tanda automática de cobro: puede escribir ∧ contrato Activo ∧ cuenta en motor (cifra verificada) ∧ sin plazo extra vigente ∧ sin promesa de pago para hoy o después. La retenida NO entra: se le escribe a mano, como gestión.', 'true · false', 'no', true),
 ('cliente', 'plantilla_hoy', 'La CLAVE del mensaje que le toca hoy según su estado. La plantilla de Meta se busca en zala.plantillas por esta clave. Vacío = hoy no le toca ningún mensaje automático.', 'dia_pago · gabela · mora · recoleccion · moto_retenida', 'no', true),
 ('cliente', 'debe_hoy_texto', 'debe_hoy ya escrito como lo lee el cliente ("$202.000"). Es la variable {valor} de las plantillas. Vacío en Diario/sin motor.', null, 'sí', true),
+('cliente', 'cliente_corto', 'El nombre con que se le habla al cliente: las dos primeras palabras de su nombre, con mayúscula inicial ("Jose Alberto"). Es la variable {nombre} de las plantillas. Regla del dueño 8-sep.', null, 'sí', true),
+('cliente', 'dias_sin_pago', 'Días desde su último pago confirmado (en migrados, desde el corte de su grupo). 999 = nunca ha pagado y no tiene fecha de entrega.', null, 'sí', true),
+('cliente', 'dias_texto', 'Los días desde su último pago, ya escritos ("20 días"). Es la variable {dias} de mora y recolección: "su último pago registrado fue hace 20 días". NULL = nunca registró un pago; en ese caso plantilla_hoy va vacía y el caso se gestiona por llamada.', null, 'sí', true),
+('cliente', 'vencida_texto', 'Los días que lleva VENCIDA la cuota, ya escritos ("3 días"). Es la variable {vencida}: "su cuota lleva 3 días de vencida". Van las dos cifras porque un abono parcial reinicia dias_texto pero no esta.', null, 'sí', true),
 ('pagos', 'registrado_por', 'Nombre del funcionario que digitó el pago en MotoGestión (contrato ZALA §5.4).', null, 'no', true),
 ('plantillas', 'clave', 'La clave estable de cada mensaje. Es lo que trae zala.cliente.plantilla_hoy.', 'dia_pago · gabela · mora · recoleccion · moto_retenida · acuse_comprobante · recibo · recibo_campo · cuentas_pago · contacto_general', 'no', true),
 ('plantillas', 'plantilla_meta', 'Nombre de la plantilla aprobada en Meta que hoy está vigente para la clave. Cambiarla en MotoGestión = ZALA la usa al instante. Vacío = aún no registrada: solo texto dentro de la ventana de 24 h.', null, 'no', true),
-('plantillas', 'variables', 'Orden de los comodines para {{1}}, {{2}}… de Meta. Los valores salen de zala.cliente: nombre = cliente · placa · valor = debe_hoy_texto · dias = dias_mora.', null, 'no', true),
-('plantillas', 'texto', 'El mismo mensaje con comodines {nombre} {placa} {valor} {dias}, para mandarlo como texto cuando la ventana de 24 h está abierta. Lo edita el dueño en Configuración.', null, 'no', true),
+('plantillas', 'variables', 'Orden de los comodines para {{1}}, {{2}}… de Meta. Los valores salen de zala.cliente: nombre = cliente_corto · placa · valor = debe_hoy_texto · dias = dias_texto · vencida = vencida_texto.', null, 'no', true),
+('plantillas', 'texto', 'El mismo mensaje con comodines {nombre} {placa} {valor} {dias} {vencida}, para mandarlo como texto cuando la ventana de 24 h está abierta. Lo edita el dueño en Configuración.', null, 'no', true),
 ('plantillas', 'activa', 'false = no se manda por ningún canal.', 'true · false', 'no', true)
 on conflict (vista, columna) do update set
   significado = excluded.significado, valores = excluded.valores, zala_lo_dice = excluded.zala_lo_dice, actualizado = now();
@@ -267,7 +310,7 @@ on conflict (vista, columna) do update set
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- VERIFICACIÓN
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- a) 72 columnas (67 + 5) y 10 plantillas.
+-- a) 75 columnas (67 + 8) y 10 plantillas.
 select (select count(*) from information_schema.columns where table_schema = 'zala' and table_name = 'cliente') as columnas_cliente,
        (select count(*) from zala.plantillas) as plantillas;
 
@@ -281,5 +324,5 @@ select coalesce(plantilla_hoy, '(ninguno)') as plantilla_hoy,
 select coalesce(no_escribir_porque, '(sí se puede)') as motivo, count(*) from zala.cliente group by 1 order by 2 desc;
 
 -- d) Una fila de muestra de la tanda, con todo lo que ZALA necesita para mandar.
-select cliente, placa, whatsapp, encargado, plantilla_hoy, debe_hoy_texto, dias_mora
-  from zala.cliente where cobro_automatico order by dias_mora desc limit 3;
+select cliente_corto, placa, whatsapp, encargado, plantilla_hoy, debe_hoy_texto, dias_texto, vencida_texto
+  from zala.cliente where cobro_automatico order by dias_sin_pago desc limit 3;

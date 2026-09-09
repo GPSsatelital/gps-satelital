@@ -22,10 +22,14 @@ export type MetaPlantilla = { plantilla_meta: string | null; variables: string[]
 
 export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: string; comodines: string[] }[] = [
   { clave: "dia_pago",    label: "Día de pago",  descripcion: "Recordatorio el día que le toca pagar.", comodines: ["{nombre}", "{placa}", "{valor}"] },
-  { clave: "gabela",      label: "Gabela",       descripcion: "El día de gracia (1 día después del pago sin pagar).", comodines: ["{nombre}", "{placa}", "{dias}", "{valor}"] },
-  { clave: "mora",        label: "Mora",         descripcion: "Cuando ya está en mora (después de la gabela).", comodines: ["{nombre}", "{placa}", "{dias}", "{valor}"] },
-  { clave: "recoleccion", label: "Recolección",  descripcion: "Último aviso antes de recoger la moto.", comodines: ["{nombre}", "{placa}", "{dias}", "{valor}"] },
-  { clave: "moto_retenida", label: "Moto retenida", descripcion: "Al cliente cuya moto está en la empresa: qué debe para retirarla y que se comunique. Decisión del dueño (8-sep): a estos sí se les escribe.", comodines: ["{nombre}", "{placa}", "{valor}"] },
+  { clave: "gabela",      label: "Gabela",       descripcion: "El día de gracia (1 día después del pago sin pagar). Le OFRECE el día de hoy, no se lo impone.", comodines: ["{nombre}", "{placa}", "{valor}"] },
+  // {dias} y {vencida} son cosas distintas y por eso van las dos (regla del dueño, 8-sep): {dias} =
+  // desde su último pago registrado (el cliente lo reconoce), {vencida} = lo que lleva vencida la
+  // cuota (la que manda para recoger). Con una sola, un abono parcial de ayer haría ver "1 día"
+  // a quien debe tres semanas.
+  { clave: "mora",        label: "Mora",         descripcion: "Cuando ya está en mora. NO ofrece más plazo: le informa su estado y le advierte que desde hoy el apagado y la recolección pueden pasar en cualquier momento.", comodines: ["{nombre}", "{placa}", "{dias}", "{vencida}", "{valor}"] },
+  { clave: "recoleccion", label: "Recolección",  descripcion: "Último aviso antes de recoger la moto.", comodines: ["{nombre}", "{placa}", "{dias}", "{vencida}", "{valor}"] },
+  { clave: "moto_retenida", label: "Moto retenida", descripcion: "Al cliente cuya moto está en la empresa: lo invita a volver a rodar y le pregunta cómo desea proceder — sin imponerle la cifra (decisión del dueño, 8-sep).", comodines: ["{nombre}", "{placa}"] },
   { clave: "acuse_comprobante", label: "Comprobante recibido", descripcion: "Cuando llega la foto de una transferencia: 'lo recibimos, lo estamos verificando'. NO dice que el pago quedó acreditado.", comodines: ["{nombre}", "{valor}", "{placa}"] },
   { clave: "recibo",      label: "Recibo de pago", descripcion: "Comprobante que se envía cuando el pago queda CONFIRMADO. {detalle} inserta el desglose automático (solo sale como texto, dentro de la ventana de 24 h).", comodines: ["{nombre}", "{valor}", "{folio}", "{fecha}", "{placa}", "{pendiente}", "{detalle}"] },
   { clave: "recibo_campo", label: "Recibo de cobro en campo", descripcion: "Recibo provisional cuando un funcionario recibe efectivo en la calle: pendiente de validación en caja.", comodines: ["{nombre}", "{placa}", "{valor}", "{folio}", "{fecha}"] },
@@ -36,11 +40,11 @@ export const MENSAJES_META: { clave: ClaveMensaje; label: string; descripcion: s
 // Texto por defecto — respaldo si la tabla aún no tiene el mensaje. Los que valen son los de la
 // base (editables en Configuración); estos solo evitan mandar un mensaje vacío.
 export const MENSAJES_DEFAULT: Record<ClaveMensaje, string> = {
-  dia_pago:    "Hola {nombre}, le recordamos su pago de hoy en Club Moteros Cartagena. Cualquier duda estamos atentos. ¡Gracias! 🏍️",
-  gabela:      "Hola {nombre}, su pago venció y está en día de gracia. Por favor póngase al día hoy para evitar la mora. Club Moteros Cartagena 🏍️",
-  mora:        "Hola {nombre}, lleva {dias} de mora. Por favor comuníquese urgente con nosotros para regularizar su pago. Club Moteros Cartagena ⚠️",
-  recoleccion: "Hola {nombre}, su moto de placa {placa} presenta {dias} de mora. Le informamos que se procederá con la RECOLECCIÓN del vehículo. Para evitarlo, comuníquese HOY y realice su pago. Club Moteros Cartagena ⚠️",
-  moto_retenida: "Hola {nombre}, su moto {placa} está en nuestras instalaciones. Para entregársela nuevamente debe ponerse al día: {valor}. Comuníquese con nosotros para acordar cómo y cuándo la retira. Club Moteros Cartagena.",
+  dia_pago:    "Hola, {nombre}. Bendiciones 🏍️\nHoy es su día de pago de la moto {placa}. Su cuota del día de hoy es {valor}.\nPuede realizar el pago en la oficina o por transferencia; si transfiere, envíenos la foto del comprobante con la placa y su nombre.\nSi ya realizó el pago, ¡gracias por su puntualidad! Quedamos atentos.",
+  gabela:      "Hola, {nombre}. Bendiciones.\nSu pago de la moto {placa} venció ayer y hoy es su día de gracia: le podemos dar el día de hoy para ponerse al día con {valor} y no entrar en mora.\nSi ya realizó el pago, envíenos el comprobante con la placa y su nombre para actualizarlo de inmediato. Quedamos atentos.",
+  mora:        "Hola, {nombre}. Bendiciones.\nSu último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; hoy debe {valor}. Mientras el pago no se complete, su cuenta sigue en mora.\nLe recordamos que, estando en mora, el sistema puede realizar el apagado del vehículo en cualquier momento y proceder con su recolección.\nPóngase al día lo más pronto posible para seguir rodando tranquilo. Escríbanos para reportar su pago o para acordar cómo se pone al día. Quedamos atentos.",
+  recoleccion: "Hola, {nombre}. Bendiciones.\nSu último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; debe {valor}. Se agotaron los plazos y su caso pasó a recolección, lo que genera un costo adicional de inmovilización.\nAún está a tiempo de evitarlo si se pone al día de inmediato: envíenos el comprobante o escríbanos ahora mismo para acordar el pago. Quedamos atentos.",
+  moto_retenida: "Hola, {nombre}. Bendiciones.\nSu moto {placa} está guardada en nuestras instalaciones y queremos verlo rodando nuevamente con ella. Cuéntenos cómo desea proceder: en la oficina revisamos con usted las opciones para devolverle su vehículo lo antes posible.\nComuníquese con nosotros por este medio. Quedamos atentos.",
   acuse_comprobante: "Hola {nombre}, recibimos su comprobante de pago por {valor} para la moto {placa}. Lo estamos verificando y le confirmamos apenas quede registrado. Club Moteros Cartagena.",
   recibo:      "🧾 *CLUB MOTEROS CARTAGENA — Comprobante de pago*{detalle}",
   recibo_campo: "Club Moteros Cartagena — recibo provisional de cobro en campo. Recibo {folio} del {fecha}. Cliente {nombre}, moto {placa}. Valor recibido: {valor}. Pendiente de validación en caja; conserve este comprobante.",

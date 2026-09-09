@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda } from "./mensajeria";
+import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda, nombreCorto, faltanEnPalabras } from "./mensajeria";
+
+describe("nombreCorto — cómo se le habla al cliente (regla del dueño, 8-sep)", () => {
+  it("dos primeras palabras, con mayúscula inicial", () => {
+    expect(nombreCorto("JOSE ALBERTO DORIA RODRIGUEZ")).toBe("Jose Alberto");
+    expect(nombreCorto("KEVIN ORTEGA")).toBe("Kevin Ortega");
+    expect(nombreCorto("brader guzman watson")).toBe("Brader Guzman");
+  });
+  it("las partículas no cuentan como palabra y van en minúscula", () => {
+    expect(nombreCorto("MARIA DE LOS ANGELES PEREZ")).toBe("Maria de los Angeles");
+    expect(nombreCorto("JUAN DE LA CRUZ MORA")).toBe("Juan de la Cruz");
+  });
+  it("un solo nombre, vacío o con espacios de más", () => {
+    expect(nombreCorto("BRADER")).toBe("Brader");
+    expect(nombreCorto("  ANA   MARIA  ")).toBe("Ana Maria");
+    expect(nombreCorto("")).toBe("");
+    expect(nombreCorto(null)).toBe("");
+  });
+});
 
 describe("envío masivo — el balde del panel Hoy decide el mensaje (mismo mapa que zala.cliente.plantilla_hoy)", () => {
   it("cada chip manda su plantilla", () => {
@@ -44,6 +62,13 @@ describe("ordenarVariables — de comodines con nombre a {{1}} {{2}} de Meta", (
   it("avisa cuál falta (Meta rechaza variables vacías)", () => {
     const r = ordenarVariables({ nombre: "KEVIN" }, ["nombre", "placa", "valor"]);
     expect(r.faltan).toEqual(["placa", "valor"]);
+  });
+  it("el que nunca registró un pago no puede armar el mensaje de mora", () => {
+    // `dias` vacío = no hay último pago que nombrar. El mensaje se bloquea y se explica con palabras.
+    const r = ordenarVariables({ nombre: "Jose Alberto", placa: "RLY45H", dias: "", vencida: "3 días", valor: "$202.000" },
+                               ["nombre", "placa", "dias", "vencida", "valor"]);
+    expect(r.faltan).toEqual(["dias"]);
+    expect(faltanEnPalabras(r.faltan)).toBe("los días desde su último pago registrado");
   });
 });
 

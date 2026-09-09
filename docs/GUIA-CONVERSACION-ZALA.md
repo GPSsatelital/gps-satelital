@@ -155,9 +155,10 @@ se rueda la semana por eso. La salida real es otra:
 Caso delicado. ZALA no controla el apagado. **La escalera real (dueño, 8-sep):** aviso en la tanda de
 la mañana → apagado (solo con el vehículo detenido) → **una hora** → si no hay pago ni respuesta, se
 va a buscar y retener el vehículo. El apagado **no es la última instancia**: después de apagado
-todavía puede pagar y evitar la recolección. Por eso el mensaje de mora dice "tiene hasta hoy;
-después el sistema puede apagar en cualquier momento" — límite claro, sin prometer la hora exacta
-(el dueño no quiere que sepan el momento).
+todavía puede pagar y evitar la recolección. **El plazo se ofrece en la gabela, no en la mora**: en
+mora el mensaje ya no concede día — informa el estado y advierte que desde ese día el apagado y la
+recolección pueden ocurrir en cualquier momento, sin decir cuándo (el dueño no quiere que sepan el
+momento exacto), y lo motiva a ponerse al día *para seguir rodando tranquilo*.
 > "{nombre}, lo comunicamos ahora mismo con su encargado de zona, que es quien maneja el encendido.
 > Mientras tanto: hoy debe {debe_hoy_texto}; si ya pagó, envíenos el comprobante con la placa y su
 > nombre para verlo de inmediato."
@@ -219,7 +220,7 @@ después el sistema puede apagar en cualquier momento" — límite claro, sin pr
 
 ---
 
-## 5. Las 7 reglas — confirmadas por el dueño (8-sep-2026)
+## 5. Las 10 reglas — confirmadas por el dueño (8-sep-2026)
 
 1. **Hora límite de pagos:** es **presión, no regla**. Lo que importa es que pague hoy. ZALA puede
    decir "hoy" y apurar, pero nunca "después de las 3 no entra" como si fuera una norma.
@@ -233,12 +234,20 @@ después el sistema puede apagar en cualquier momento" — límite claro, sin pr
 5. **Firma:** **no** en los mensajes automáticos. ZALA habla como la empresa, por áreas. La persona
    se presenta con nombre y área solo cuando toma la conversación de verdad.
 6. **Aviso previo al apagado:** se avisa la mañana del mismo día (la tanda) o de un día para otro,
-   con límite claro pero **sin decir el momento exacto**. Texto acordado: *"tiene hasta hoy para
-   ponerse al día; después de eso el sistema puede apagar el vehículo en cualquier momento, y si en
-   la hora siguiente no hay pago ni respuesta, se procede a recogerlo."* Ni "chance" ni "última
-   oportunidad": el apagado no es la última instancia, la recolección sí.
+   **sin decir el momento exacto**. El plazo se ofrece **solo en la gabela** (*"le podemos dar el
+   día de hoy"*); en mora ya no se da más tiempo: *"estando en mora, el sistema puede realizar el
+   apagado del vehículo en cualquier momento y proceder con su recolección… póngase al día lo más
+   pronto posible para seguir rodando tranquilo"*. Ni "chance" ni "última oportunidad": el apagado
+   no es la última instancia, la recolección sí.
 7. **Siempre de usted, con respeto.** Nunca tutear. Vale para los 10 textos automáticos
    (`docs/PLANTILLAS-WHATSAPP.md`, mig 135) y para toda la conversación.
+8. **El nombre, corto:** "Jose Alberto", no el nombre completo en mayúsculas (`cliente_corto`).
+9. **Los días, en dos cifras:** desde su último pago registrado (`dias_texto`) y lo que lleva
+   vencida la cuota (`vencida_texto`). Un abono parcial reinicia la primera, no la segunda; por eso
+   van las dos. Si `dias_texto` viene vacío, ese cliente **nunca ha registrado un pago**: no se le
+   manda mensaje automático de mora, va para llamada.
+10. **La moto retenida se invita, no se le impone la cifra:** se le dice que queremos verlo rodando
+   otra vez y se le pregunta cómo desea proceder; la plata se conversa en la oficina.
 
 ---
 

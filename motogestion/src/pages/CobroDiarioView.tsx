@@ -21,7 +21,10 @@ import {
   inicioVentanaPagosISO,
   formatDiaPago,
   loQueDebe,
+  diasEnMora,
+  cuotaConvenioDelPeriodo,
 } from "../utils/cicloPago";
+import { diasTexto } from "../utils/mensajeria";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
@@ -94,6 +97,10 @@ type Fila = {
   valorPactado: number;
   valorPeriodo: number;
   diasSinPago: number;
+  /** Fecha del último pago confirmado — el mensaje de mora la nombra ("hace X días"). */
+  ultimoPagoFecha: string | null;
+  /** Días que lleva VENCIDA la cuota (no la reinicia un abono parcial). */
+  diasMora: number;
   deudaEstimada: number;
   deudaReal: number;
   cuotaConvenioFila: number;
@@ -201,6 +208,18 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         // Solo deuda EXIGIBLE (pendiente) — las 'en_convenio' se cobran vía la cuota del convenio.
         const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((s, d) => s + d.monto_pendiente, 0);
         const convActivo = convenioActivoDelContrato(c.id);
+        // Las dos cifras que lleva el mensaje de mora. Se calculan con las MISMAS funciones que
+        // Cartera (cicloPago) para que el mismo cliente el mismo día no vea dos números distintos
+        // según por dónde le escriban.
+        const confirmadosFila = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
+        const ultimoPagoFecha = confirmadosFila[0]?.fecha ?? null;
+        const hoyD = new Date(hoy + "T00:00:00");
+        const diasMora = diasEnMora(
+          c, confirmadosFila, hoyD,
+          cuotaConvenioDelPeriodo(convActivo, c, hoyD),
+          !!(convActivo?.cubre_periodo_hasta && convActivo.cubre_periodo_hasta >= hoy),
+          convActivo,
+        );
 
         return {
           contratoId: c.id,
@@ -217,6 +236,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           valorPactado,
           valorPeriodo,
           diasSinPago: dias,
+          ultimoPagoFecha,
+          diasMora,
           // Incluye la deuda ya registrada (ej. saldo de apertura migrado), no solo el estimado
           // por días sin pago — antes un migrado con deuda real mostraba $0 hasta su primer pago.
           deudaEstimada: deudaReal + (dias > 0 && dias < 999 ? Math.min(dias, 30) * valorPactado : 0),
@@ -275,7 +296,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       vars: {
         nombre: f.clienteNombre,
         placa: f.placa ?? "",
-        dias: f.diasSinPago >= 999 ? 0 : f.diasSinPago,
+        // Solo la de mora las usa. `dias` vacío = nunca registró un pago → la tubería bloquea el
+        // mensaje (no se puede nombrar un último pago que no existe) y pide gestionarlo a mano.
+        dias: f.ultimoPagoFecha ? diasTexto(Math.floor((Date.parse(hoy + "T00:00:00") - Date.parse(f.ultimoPagoFecha + "T00:00:00")) / 86400000)) : "",
+        vencida: diasTexto(f.diasMora),
         valor: `$${Math.round(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo).toLocaleString("es-CO")}`,
       },
       tipoGestion: "mensaje_recordatorio",

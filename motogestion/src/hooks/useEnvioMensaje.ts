@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useGestiones, type TipoGestion } from "./useGestiones";
 import { useMensajesWhatsapp, type ClaveMensaje } from "./useMensajesWhatsapp";
-import { decidirCanal, normalizarWhatsapp, ordenarVariables, urlWaMe, type ResultadoEnvio, type MensajeEstado } from "../utils/mensajeria";
+import { decidirCanal, faltanEnPalabras, normalizarWhatsapp, nombreCorto, ordenarVariables, urlWaMe, type ResultadoEnvio, type MensajeEstado } from "../utils/mensajeria";
 
 // LA TUBERÍA ÚNICA DE ENVÍO (Fase 1 de la integración con ZALA, 8-sep-2026).
 //
@@ -65,15 +65,28 @@ export function useEnvioMensaje() {
   async function enviar(o: OpcionesEnvio): Promise<ResultadoEnvio> {
     const numero = normalizarWhatsapp(o.telefono);
     const m = o.clave ? meta(o.clave) : null;
-    const texto = o.textoLibre ?? (o.clave ? render(o.clave, o.vars ?? {}) : "");
+    // Al cliente se le habla por su nombre corto ("Jose Alberto"), venga como venga desde la pantalla
+    // (las pantallas siguen mandando el nombre completo en mayúsculas, que es como lo guardan).
+    const vars: Record<string, string | number> = { ...(o.vars ?? {}) };
+    if (vars.nombre !== undefined) vars.nombre = nombreCorto(String(vars.nombre));
+    const texto = o.textoLibre ?? (o.clave ? render(o.clave, vars) : "");
     const zalaActivo = zalaConectada();
-
-    const d = decidirCanal({ zalaActivo, tienePermiso: puede("enviar_mensaje"), plantillaActiva: m ? m.activa : true, numero });
-    if (d.canal === "ninguno") return { canal: "ninguno", estado: d.estado!, motivo: d.motivo };
 
     // Qué se congela en la gestión: la plantilla de Meta vigente, o la clave si aún no hay.
     const plantilla = m?.plantilla_meta ?? o.clave ?? null;
-    const { valores: variables, faltan } = m ? ordenarVariables(o.vars ?? {}, m.variables) : { valores: [], faltan: [] };
+    const { valores: variables, faltan } = m ? ordenarVariables(vars, m.variables) : { valores: [], faltan: [] };
+
+    // Un dato que falta NO sale por ningún canal. Meta rechaza variables vacías, y por wa.me
+    // saldría un mensaje con un hueco ("su último pago fue hace  y su cuota…"). El caso real que
+    // obliga a esto: el cliente que nunca ha registrado un pago y el mensaje de mora nombra su
+    // último pago. Ese se gestiona por llamada, no con un mensaje a medias.
+    if (faltan.length > 0) {
+      return { canal: "ninguno", estado: "sin_plantilla", plantilla,
+               motivo: `No se puede armar el mensaje: falta ${faltanEnPalabras(faltan)}. Gestione este caso a mano (llamada) o registre ese dato primero.` };
+    }
+
+    const d = decidirCanal({ zalaActivo, tienePermiso: puede("enviar_mensaje"), plantillaActiva: m ? m.activa : true, numero });
+    if (d.canal === "ninguno") return { canal: "ninguno", estado: d.estado!, motivo: d.motivo };
 
     if (d.canal === "whatsapp_web") {
       // `window.open` ANTES de cualquier `await`: fuera del gesto del usuario el navegador lo bloquea.
@@ -85,10 +98,6 @@ export function useEnvioMensaje() {
     }
 
     // ── ZALA ──
-    if (faltan.length > 0) {
-      return { canal: "ninguno", estado: "sin_plantilla", plantilla,
-               motivo: `A la plantilla le faltan datos: ${faltan.join(", ")}. Meta no acepta variables vacías.` };
-    }
     const { data: { session } } = await supabase.auth.getSession();
     const { data, error } = await supabase.functions.invoke("enviar-mensaje", {
       body: { contrato_id: o.contratoId ?? null, telefono: numero, clave: o.clave ?? null, plantilla: m?.plantilla_meta ?? null, variables, texto },

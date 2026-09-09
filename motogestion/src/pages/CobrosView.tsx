@@ -29,7 +29,20 @@ import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
-import { claveParaBalde, type BaldeHoy } from "../utils/mensajeria";
+import { claveParaBalde, diasTexto, type BaldeHoy } from "../utils/mensajeria";
+
+// Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
+// adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
+//   dias    = desde su último pago registrado — el cliente lo reconoce, pero un abono parcial la reinicia.
+//   vencida = lo que lleva vencida la cuota — esa no la mueve un abono, y es la que manda para recoger.
+// `dias` va vacío si nunca registró un pago: no se puede nombrar un último pago que no existe, así
+// que la tubería bloquea el mensaje y pide gestionarlo por llamada.
+function varsDeDias(c: { ultimoPagoFecha: string | null; diasSinPago: number; diasMora: number }) {
+  return {
+    dias: c.ultimoPagoFecha && c.diasSinPago < 999 ? diasTexto(c.diasSinPago) : "",
+    vencida: diasTexto(c.diasMora),
+  };
+}
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -70,6 +83,7 @@ import {
   totalPagadoPeriodoActual,
   inicioVentanaPagosISO,
   valorPeriodoReal,
+  diasEnMora,
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
@@ -857,6 +871,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // abonado su cuota en semanas anteriores salía EN MORA con $0 de deuda, y entraba a la
       // cola de recolección. (DANIEL MILLAN, RLT87H: $61.000 abonados contra $33.500 de cuota.)
       const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
+      // Días que lleva VENCIDA la cuota — distinto de `diasSinPago` (que un abono parcial reinicia).
+      // Los mensajes de mora y recolección llevan las dos cifras, cada una con su palabra.
+      const diasMora = diasEnMora(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       // Una sola función para todo el sistema (usePagos): la liquidación necesita esta misma
@@ -875,6 +892,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         cuotaConvenio,
         pendientesCount: pendientes.length,
         diasSinPago,
+        diasMora,
+        ultimoPagoFecha,
         ultimaGestion,
         saldoAFavor,
         sinPagosNunca,
@@ -1039,7 +1058,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       vars: {
         nombre: (cliente?.nombre ?? "").toUpperCase(),
         placa: moto?.placa ?? "",
-        dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago,
+        // Solo la de mora las usa. `dias` va vacío si NUNCA registró un pago: el mensaje nombra
+        // "su último pago registrado" y ese cliente no tiene ninguno — la tubería lo bloquea y
+        // avisa que se gestione por llamada, en vez de mandarle una frase falsa.
+        ...varsDeDias(c),
         valor: `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`,
       },
       tipoGestion: "mensaje_recordatorio",
@@ -3036,7 +3058,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   contratoId: c.id, nombre, placa: moto?.placa ?? "",
                   telefono: cliente?.whatsapp || cliente?.telefono,
                   clave: claveParaBalde(balde),
-                  vars: { nombre, placa: moto?.placa ?? "", dias: c.diasSinPago >= 999 ? 0 : c.diasSinPago, valor: valorTexto },
+                  vars: { nombre, placa: moto?.placa ?? "", ...varsDeDias(c), valor: valorTexto },
                   valorTexto,
                 };
               });

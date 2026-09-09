@@ -8,7 +8,7 @@ import { useContratos } from "../hooks/useContratos";
 import { useTaller, type TallerItem } from "../hooks/useTaller";
 import { useAuth } from "../contexts/AuthContext";
 import { useScope } from "../contexts/SubadminScopeContext";
-import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
+import { imprimirLiquidacion, htmlLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiquidacion";
 import ModalFirmaLiquidacion from "../components/ModalFirmaLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
@@ -340,12 +340,40 @@ export default function LiquidacionesView() {
   /** Reimprimir. Si ya firmó, sale CON su firma y su huella; si no, sale como borrador. */
   function handleReimprimir(l: Liquidacion) {
     const yaFirmo = !!l.firma_cliente_url;
+    // Sin firma sale en modo PARA FIRMAR, no en borrador: este es el papel que el cliente firma.
+    // Antes salía atravesado con "BORRADOR" y la frase "no tiene valor" — y era justo el que se le
+    // mandaba a firmar al que no podía venir (defecto reportado por el dueño, 9-sep-2026). El
+    // borrador con marca de agua sigue existiendo donde tiene sentido: la vista previa del modal
+    // de firma en pantalla, que es cuando el cliente lo está LEYENDO antes de aceptar.
     imprimirLiquidacion(l, datosCliente(l), datosMoto(l), {
-      borrador: !yaFirmo,
+      paraFirmar: !yaFirmo,
       firmaUrl: l.firma_cliente_url,
       huellaUrl: l.huella_cliente_url,
       fechaFirma: l.fecha_firma,
     });
+  }
+
+  /** Baja el documento como PDF, para mandárselo al cliente que no puede venir a la oficina. */
+  async function handleDescargarParaFirmar(l: Liquidacion) {
+    setGuardando(true);
+    try {
+      const { htmlAPdfBlob } = await import("../utils/pdf");
+      const html = htmlLiquidacion(l, datosCliente(l), datosMoto(l), { paraFirmar: true });
+      const blob = await htmlAPdfBlob(html);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Liquidacion-${l.numero}-${datosMoto(l)?.placa ?? "sin-placa"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMsg("Documento descargado. Mándaselo, y cuando lo devuelva firmado súbelo aquí mismo.");
+    } catch (e) {
+      setMsg("No se pudo armar el PDF: " + ((e as Error).message ?? "error inesperado"), true);
+    } finally {
+      setGuardando(false);
+    }
   }
 
   function handleReciboEgreso(l: Liquidacion) {
@@ -734,7 +762,9 @@ export default function LiquidacionesView() {
                     liquidación con el cliente ahí parado. */}
                 <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px dashed var(--line)" }}>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>
-                    ¿El lector no responde o el cliente prefiere el papel? Imprime, que firme a mano y sube la foto.
+                    ¿El lector no responde, el cliente prefiere el papel, o <b>no puede venir</b>? Imprime o
+                    descarga el documento, que lo firme a mano, y sube la foto o el PDF cuando lo devuelva.
+                    Mientras tanto la liquidación queda <b>pendiente por firmar</b> y no se puede cerrar.
                   </div>
                   {sel.documento_firmado_url && (
                     <div style={{ marginBottom: 10 }}>
@@ -743,7 +773,11 @@ export default function LiquidacionesView() {
                   )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)" }} onClick={() => handleReimprimir(sel)}>
-                      🖨️ Imprimir
+                      🖨️ Imprimir para firmar
+                    </button>
+                    <button style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--line)", opacity: guardando ? 0.6 : 1 }}
+                      disabled={guardando} onClick={() => handleDescargarParaFirmar(sel)}>
+                      {guardando ? "Armando PDF..." : "📄 Descargar para enviar"}
                     </button>
                     <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                       📷 Cámara

@@ -77,4 +77,18 @@ describe("la tabla del documento cuadra sola", () => {
     expect(firmado).not.toContain('<div class="marca-borrador">');
     expect(firmado).toContain('alt="Firma del cliente"');
   });
+
+  // El defecto que reportó el dueño (9-sep-2026): al que no podía venir a la oficina se le mandaba
+  // a firmar el BORRADOR — un papel atravesado con esa palabra y con la frase "no tiene valor".
+  // Son dos documentos distintos: uno es para que LEA, el otro para que FIRME.
+  it("el documento para firmar sale limpio y dice cuándo empieza a valer", () => {
+    const paraFirmar = htmlLiquidacion(LIQ, CLIENTE, null, { paraFirmar: true });
+    expect(paraFirmar).not.toContain('<div class="marca-borrador">');
+    expect(paraFirmar).not.toContain("no tiene valor");
+    expect(paraFirmar).toContain("tiene validez una vez firmado");
+    // Los espacios de firma van en blanco: es el cliente quien la pone, a mano.
+    expect(paraFirmar).not.toContain('alt="Firma del cliente"');
+    // Y dice la misma cuenta que el firmado — el papel que firma no puede decir otra cosa.
+    expect(filas(paraFirmar)).toEqual(filas(htmlLiquidacion(LIQ, CLIENTE, null)));
+  });
 });

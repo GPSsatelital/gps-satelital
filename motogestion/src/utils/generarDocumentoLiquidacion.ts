@@ -3,6 +3,8 @@ import type { Liquidacion } from "../hooks/useLiquidaciones";
 // EL DOCUMENTO DE LIQUIDACIÓN, EN TRES MODOS, DESDE UN SOLO HTML.
 //
 //   · borrador  → marca de agua "BORRADOR", firmas en blanco. Es lo que el cliente LEE antes.
+//   · paraFirmar → limpio, firmas en blanco, con la nota de cuándo empieza a valer. Es el que se
+//                  imprime o se ENVÍA para que lo firme a mano (el que no puede venir a la oficina).
 //   · firmado   → con la firma y la huella incrustadas. Es lo que se guarda y vale.
 //   · reimpresión → el mismo firmado, cuando haya que volver a sacarlo.
 //
@@ -42,6 +44,17 @@ function renglon(d: { concepto: string; monto: number; auto?: boolean }) {
 export type OpcionesDocumento = {
   /** Marca de agua "BORRADOR" y aviso de que todavía no vale. */
   borrador?: boolean;
+  /**
+   * El documento que el cliente va a FIRMAR a mano — presente o a distancia. Limpio: sin marca de
+   * agua y sin el aviso de "no tiene valor", con los espacios de firma en blanco y una línea al
+   * pie que dice cuándo empieza a valer.
+   *
+   * Nace de un defecto real (9-sep-2026): "Imprimir" en el paso de firma salía en modo BORRADOR,
+   * así que al cliente que no podía venir se le mandaba a firmar un papel atravesado con la
+   * palabra BORRADOR y la frase "no tiene valor". Son dos documentos distintos y se estaban
+   * usando como si fueran uno: el borrador es para que LEA, este es para que FIRME.
+   */
+  paraFirmar?: boolean;
   /** dataURL o URL de la firma capturada en pantalla. */
   firmaUrl?: string | null;
   /** dataURL o URL de la huella capturada con el lector. */
@@ -56,7 +69,7 @@ export function htmlLiquidacion(
   moto: Moto | null,
   opts: OpcionesDocumento = {}
 ) {
-  const { borrador = false, firmaUrl = null, huellaUrl = null, fechaFirma = null } = opts;
+  const { borrador = false, paraFirmar = false, firmaUrl = null, huellaUrl = null, fechaFirma = null } = opts;
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -112,6 +125,7 @@ export function htmlLiquidacion(
   .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: #64748b; }
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
   .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; font-weight: 700; text-align: center; }
+  .nota-validez { border-top: 1px solid #cbd5e1; padding-top: 10px; margin-bottom: 14px; font-size: 11px; color: #475569; text-align: center; line-height: 1.5; }
   .contenido { position: relative; z-index: 1; }
   /* Al imprimir manda el margen de @page; el padding del body lo sumaría encima y comería
      otros 80px de alto, que es justo lo que hacía que no cupiera en una hoja. */
@@ -185,6 +199,10 @@ ${borrador ? `<div class="aviso-borrador">
 </div>
 
 <div class="cierre">
+${paraFirmar ? `<div class="nota-validez">
+  Este documento tiene validez una vez firmado por el cliente y el responsable de la empresa.
+  Fírmelo en los espacios de abajo y devuélvalo a Club Moteros Cartagena.
+</div>` : ""}
 <div class="firmas">
   <div class="firma-box">
     <div class="firma-trazo"></div>

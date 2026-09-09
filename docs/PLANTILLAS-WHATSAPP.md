@@ -293,7 +293,18 @@ poder acreditarle el pago. Club Moteros Cartagena.
 cálida, con "Bendiciones", firme en la regla y sin coloquialismos. Estos reemplazan a los de arriba;
 ver la voz completa en `docs/GUIA-CONVERSACION-ZALA.md`. Respetan las reglas de Meta (ninguna
 variable al inicio ni al final, ninguna pegada, ninguna con salto de línea). **Siguen siendo para
-✅ **APROBADOS Y VIVOS EN LA BASE**: el dueño corrió la mig 135 el 8-sep-2026 (correrla era
+✅ **DEFINITIVOS Y VIVOS EN LA BASE** (migs 135 · 137 · 138 · 139, todas corridas). Últimos ajustes
+del dueño el 9-sep, hechos **antes** de que ZALA los registrara en Meta — a propósito: una plantilla
+aprobada por Meta **no se edita**, hay que crear otra versión con otro nombre y esperar aprobación
+otra vez.
+
+**La regla del emoji:** uno al inicio en los mensajes **amables** (día de pago 🏍️ · recibo ✅ ·
+recibo de campo 🧾 · comprobante recibido 👍 · cuentas para pagar 🏦), y **ninguno** en mora,
+recolección, moto retenida, gabela y contacto general. En esos un emoji le quita peso justo al
+mensaje que necesita tenerlo. El emoji va **antes del saludo**, así ninguna variable queda al inicio
+(regla de Meta).
+
+Historial: el dueño corrió la mig 135 el 8-sep-2026 (correrla era
 aprobarlos). Verificado: 10 filas actualizadas, ninguna tutea, el orden de `variables` quedó como
 dice la tabla de abajo. Editables desde Configuración; **el que cambie un texto debe cambiar también
 la plantilla en Meta** (o al revés, el mensaje sale distinto por cada canal).
@@ -301,7 +312,7 @@ la plantilla en Meta** (o al revés, el mensaje sale distinto por cada canal).
 **1 · `dia_pago` → `cobro_dia_pago_v1`** · variables: nombre · placa · valor
 ```
 Hola, {nombre}. Bendiciones 🏍️
-Hoy es su día de pago de la moto {placa}. Su cuota del día de hoy es {valor}.
+Le recordamos que hoy es su día de pago de la moto {placa}. Su cuota del día de hoy es {valor}.
 Puede realizar el pago en la oficina o por transferencia; si transfiere, envíenos la foto del comprobante con la placa y su nombre.
 Si ya realizó el pago, ¡gracias por su puntualidad! Quedamos atentos.
 ```
@@ -309,7 +320,7 @@ Si ya realizó el pago, ¡gracias por su puntualidad! Quedamos atentos.
 **2 · `gabela` → `cobro_gabela_v1`** · variables: nombre · placa · valor · dia_pago
 ```
 Hola, {nombre}. Bendiciones.
-Su pago de la moto {placa} venció ayer y hoy es su día de gracia: le podemos dar el día de hoy para ponerse al día con {valor} y no entrar en mora.
+Su plazo de la moto {placa} venció ayer y hoy es su día de gracia: le podemos dar el día de hoy para ponerse al día con {valor} y no entrar en mora.
 Recuerde que su pago se realiza {dia_pago}: el día de gracia es solo para terminar de completarlo, no para dejarlo para después.
 Si ya realizó el pago, envíenos el comprobante con la placa y su nombre para actualizarlo de inmediato. Quedamos atentos.
 ```
@@ -323,7 +334,7 @@ Si ya realizó el pago, envíenos el comprobante con la placa y su nombre para a
 Hola, {nombre}. Bendiciones.
 Su último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; hoy debe {valor}. Su pago se realiza {dia_pago} y ese mismo día debe quedar cubierto; mientras el pago no se complete, su cuenta sigue en mora.
 Le recordamos que, estando en mora, el sistema puede realizar el apagado del vehículo en cualquier momento y proceder con su recolección.
-Póngase al día lo más pronto posible para seguir rodando tranquilo. Escríbanos para reportar su pago o para acordar cómo se pone al día. Quedamos atentos.
+Le recomendamos colocarse al día lo más pronto posible para seguir rodando tranquilo. Escríbanos para reportar su pago o para acordar cómo se pone al día. Quedamos atentos.
 ```
 > Regla del dueño (8-sep): **en mora ya no se da más plazo.** No se le ofrece "hasta hoy" (ese día ya
 > fue la gabela): se le informa su estado, se le advierte que desde ese día el apagado y la
@@ -370,12 +381,12 @@ Comuníquese con nosotros por este medio. Quedamos atentos.
 
 **6 · `acuse_comprobante` → `acuse_comprobante_v1`** · variables: nombre · valor · placa
 ```
-Hola, {nombre}. Recibimos su comprobante por {valor} para la moto {placa}. Lo estamos verificando; apenas quede registrado le confirmamos. Gracias.
+👍 Hola, {nombre}. Recibimos su comprobante por {valor} para la moto {placa}. Lo estamos verificando; apenas quede registrado le confirmamos. Gracias.
 ```
 
 **7 · `recibo` → `recibo_pago_v1`** · variables: nombre · folio · fecha · placa · valor · pendiente
 ```
-¡Gracias por su pago, {nombre}! Bendiciones.
+✅ ¡Gracias por su pago, {nombre}! Bendiciones.
 Recibo {folio} del {fecha} · Moto {placa} · Valor recibido: {valor}.
 Le queda pendiente: {pendiente}.
 Club Moteros Cartagena.
@@ -385,13 +396,13 @@ Club Moteros Cartagena.
 
 **8 · `recibo_campo` → `recibo_campo_v1`** · variables: nombre · valor · placa · folio · fecha
 ```
-Hola, {nombre}. Bendiciones.
+🧾 Hola, {nombre}. Bendiciones.
 Recibimos su pago en efectivo de {valor} por la moto {placa} (recibo provisional {folio}, {fecha}). Queda pendiente de validación en caja; le confirmamos apenas se registre. Conserve este comprobante.
 ```
 
 **9 · `cuentas_pago` → `cuentas_para_pagar_v1`** · variables: nombre · placa · cuentas
 ```
-Hola, {nombre}. Estas son las cuentas para realizar el pago de su moto {placa}: {cuentas}.
+🏦 Hola, {nombre}. Estas son las cuentas para realizar el pago de su moto {placa}: {cuentas}.
 Cuando transfiera, envíenos la foto del comprobante junto con la placa y su nombre, para acreditarlo rápido. Quedamos atentos.
 ```
 > `{cuentas}` en **una sola línea** para Meta ("Bancolombia Ahorros 000 (Titular) / Nequi 300 (Titular)").

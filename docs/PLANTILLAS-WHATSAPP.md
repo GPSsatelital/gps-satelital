@@ -316,16 +316,19 @@ Si ya pagaste, envíanos el comprobante con la placa y tu nombre para actualizar
 **3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · valor
 ```
 Hola, {nombre}. Bendiciones.
-Tu moto {placa} lleva {dias} días sin pago y hoy debes {valor}. Los pagos son los lunes; mientras no se complete, el sistema te mantiene en mora y puede programar el apagado del vehículo.
-Escríbenos hoy para reportar tu pago o cuadrar cómo te pones al día. Quedamos atentos.
+Tu moto {placa} lleva {dias} días sin pago y hoy debes {valor}. Los pagos son los lunes; mientras el pago no se complete, tu cuenta sigue en mora.
+Tienes hasta hoy para ponerte al día. Después de eso, el sistema puede apagar el vehículo en cualquier momento, y si en la hora siguiente no hay pago ni respuesta, se procede a recogerlo.
+Escríbenos hoy para reportar tu pago o acordar cómo te pones al día. Quedamos atentos.
 ```
+> Redacción acordada con el dueño (8-sep): límite claro para la oportunidad, sin prometer la hora del
+> apagado; y el apagado no es la última instancia — la recolección sí.
 > `{dias}` viaja como número; en mora siempre son 2 o más, así que "días" en plural nunca falla.
 
 **4 · `recoleccion` → `aviso_recoleccion_v1`** · variables: nombre · placa · dias · valor
 ```
 Hola, {nombre}. Bendiciones.
-Tu moto {placa} lleva {dias} días en mora y debes {valor}. Por reglamento, si hoy no recibimos el pago, el sistema procede con el apagado y la recolección del vehículo, y eso genera un costo adicional de inmovilización.
-Aún estás a tiempo: envíanos el comprobante o escríbenos ahora para cuadrarlo. Quedamos atentos.
+Tu moto {placa} lleva {dias} días en mora y debes {valor}. Se agotaron los plazos: por reglamento, el vehículo pasa a recolección, y eso genera un costo adicional de inmovilización.
+Todavía puedes evitarlo hoy: envíanos el comprobante o escríbenos ahora para acordar el pago. Quedamos atentos.
 ```
 
 **5 · `moto_retenida` → `moto_retenida_v1`** · variables: nombre · placa · valor
@@ -370,10 +373,13 @@ Cuando transfieras, envíanos la foto del comprobante junto con la placa y tu no
 Hola, {nombre}. Bendiciones. Te escribimos de Club Moteros Cartagena por un tema de tu moto {placa}. Por favor comunícate con nosotros por este medio. Quedamos atentos.
 ```
 
-**Recomendación fuerte (sale de los chats):** firmar con el nombre del encargado — *"Te escribe
-Brandon, tu encargado en Club Moteros"* — porque los clientes preguntan "¿quién es mi
-administrador?" y en la oficina les piden el nombre. Sería una variable más (`{encargado}`, que la
-vitrina ya trae) en `dia_pago`, `mora` y `moto_retenida`. Decisión del dueño.
+**Decisión del dueño sobre la firma (8-sep): NO se firma con el nombre del encargado.** Los mensajes
+automáticos hablan como la empresa ("En Club Moteros…", "Quedamos atentos") y se refieren a áreas,
+no a personas. Una persona se presenta con nombre y área **solo cuando toma la conversación** desde
+Chatwoot ("Le habla Brandon, del área de cartera"). Razón: profesionalismo, que el cliente no le
+cargue la culpa a un administrador, y que el funcionario pueda pedir tiempo cuando el proceso
+depende de otra área. **Vocabulario:** nunca coloquial ("manito", "dale", "porfa", "chance");
+correcto y sencillo, que lo entienda cualquiera.
 
 **Al aprobar estos textos:** se actualiza `mensajes_whatsapp.texto` desde Configuración (o por SQL)
 y, donde el orden de variables cambió respecto a la mig 133 (`recibo`, `recibo_campo`), la columna

@@ -1189,6 +1189,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const puedeRecolectar = puede("recolectar_moto");
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
+  // Qué saldo se acaba de aplicar y a qué contrato. Sirve para NO volver a ofrecer el botón
+  // mientras la pantalla todavía muestra el saldo viejo: la aplicación tarda unos segundos en
+  // reflejarse (el servidor reparte y el aviso vuelve), y en ese rato el funcionario veía el saldo
+  // intacto y lo aplicaba otra vez — así se duplicó el de DRO38I el 9-sep-2026. Se limpia solo
+  // cuando el dato cambia, no con un reloj: si el refresco demora 10 segundos, el botón sigue
+  // guardado 10 segundos.
+  const [saldoAplicado, setSaldoAplicado] = useState<{ contratoId: string; monto: number } | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
   type FiltroHoy = "todos" | "recoleccion" | "mora" | "gabela" | "pagan-hoy";
   const [filtroHoy, setFiltroHoy] = useState<FiltroHoy>("todos");
@@ -1477,8 +1484,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
       );
       if (error) { alert(error); return; }
+      setSaldoAplicado({ contratoId: contratoSeleccionadoId, monto: saldo });
       setSaldoExito(true);
-      setTimeout(() => setSaldoExito(false), 3000);
+      setTimeout(() => setSaldoExito(false), 6000);
     } finally {
       setProcesando(false);
     }
@@ -2295,11 +2303,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase" }}>Saldo a favor</div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>$ {fmt(contratoDetalle.saldoAFavor ?? 0)}</div>
                 </div>
-                {puedeAplicarSaldo && (
-                  <button onClick={handleAplicarSaldo} style={{ background: "var(--accent)", color: "#0f172a", border: "none", borderRadius: 10, padding: "9px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    Aplicar a lo que debe
-                  </button>
-                )}
+                {puedeAplicarSaldo && (() => {
+                  // Este botón mueve plata: candado anti-doble-clic (regla del proyecto) MÁS la
+                  // espera al refresco. `yaAplicado` es cierto mientras la pantalla siga mostrando
+                  // el mismo saldo que acabamos de aplicar — o sea, mientras el dato esté viejo.
+                  const yaAplicado = saldoAplicado?.contratoId === contratoSeleccionadoId
+                    && saldoAplicado.monto === (contratoDetalle.saldoAFavor ?? 0);
+                  const bloqueado = procesando || yaAplicado;
+                  return (
+                    <button onClick={handleAplicarSaldo} disabled={bloqueado} style={{
+                      background: "var(--accent)", color: "#0f172a", border: "none", borderRadius: 10,
+                      padding: "9px 16px", fontWeight: 700, fontSize: 13,
+                      cursor: bloqueado ? "default" : "pointer", opacity: bloqueado ? 0.6 : 1,
+                    }}>
+                      {procesando ? "Aplicando..." : yaAplicado ? "Aplicado ✓" : "Aplicar a lo que debe"}
+                    </button>
+                  );
+                })()}
               </div>
               <div style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5, color: "var(--accent-ink)" }}>
                 Plata que el cliente <b>ya pagó</b> y quedó guardada a su favor (esa plata <b>ya está contada

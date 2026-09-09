@@ -1,11 +1,14 @@
 -- 138 — LA CIFRA SOLO A QUIEN TIENE LA CUENTA CONFIABLE + los 3 cambios de texto del dueño
 --
--- DECISIÓN DEL DUEÑO (9-sep-2026), dicha al proyecto ZALA: los montos siguen apagados SALVO para
--- dos grupos, y solo esos dos:
+-- DECISIÓN DEL DUEÑO (9-sep-2026): los montos siguen apagados SALVO para tres grupos, y solo tres.
+-- Lo que los tres tienen en común es que el cliente YA VIO ese número:
 --   1. Los que NACIERON en MotoGestión (no migrados): toda su historia la construyó el sistema.
---   2. Los que tienen un ACUERDO DE PAGO FIRMADO: esa cifra el cliente ya la vio y la aceptó.
--- El migrado sin acuerdo arrastra un saldo de apertura que nadie ha revisado con él; a ese se le
--- sigue escribiendo, pero SIN número, hasta que le cierren su empalme o firme un acuerdo.
+--   2. Los que tienen un ACUERDO DE PAGO FIRMADO: esa cifra la firmó él.
+--   3. Los que tienen el EMPALME CERRADO: su saldo de apertura se revisó CON él y lo aceptó.
+-- El migrado que no cumple ninguno arrastra un saldo que nadie ha revisado con él; a ese se le
+-- sigue escribiendo, pero SIN número, hasta que le cierren su empalme o firme un acuerdo. Eso le
+-- da además un motivo concreto al funcionario para sentarse a cerrar empalmes: cada uno que
+-- cierre, ese cliente empieza a recibir su cifra solo.
 --
 -- ZALA lo pidió como una sola columna que resuelva las dos cosas, para no tener que razonar nada:
 -- "cuenta_confiable". Va AL FINAL de la vista ("create or replace" solo deja agregar al final).
@@ -172,11 +175,14 @@ select
   case when pg.ultimo_confirmado is not null and dsp.dias < 999
        then dsp.dias || ' día' || case when dsp.dias = 1 then '' else 's' end end as dias_texto,
   coalesce(q.r_dias_mora, 0) || ' día' || case when coalesce(q.r_dias_mora, 0) = 1 then '' else 's' end as vencida_texto,
-  -- 138: LA CUENTA ES CONFIABLE PARA DECIRLE LA CIFRA AL CLIENTE (decision del dueno, 9-sep-2026).
-  -- Dos casos, y solo dos: nacio en MotoGestion (toda su historia la construyo el sistema) o tiene
-  -- un acuerdo de pago FIRMADO (esa cifra el cliente ya la vio y la acepto). El migrado sin acuerdo
-  -- todavia arrastra un saldo de apertura que nadie ha revisado con el: a ese no se le manda cifra.
-  (not coalesce(c.es_migrado, false) or cv.id is not null) as cuenta_confiable
+  -- 138: LA CUENTA ES CONFIABLE PARA DECIRLE LA CIFRA AL CLIENTE (decisión del dueño, 9-sep-2026).
+  -- Tres casos, y solo tres. Los tres tienen lo mismo en común: el cliente YA VIO ese número.
+  --   1. Nació en MotoGestión: toda su historia la construyó el sistema, no hay saldo heredado.
+  --   2. Tiene un acuerdo de pago FIRMADO: esa cifra la firmó él.
+  --   3. Tiene el EMPALME CERRADO: su saldo de apertura se revisó CON él y lo aceptó con firma.
+  -- El migrado que no cumple ninguno arrastra un saldo que nadie ha revisado con él: a ese se le
+  -- escribe igual, pero SIN número, hasta que le cierren el empalme o firme un acuerdo.
+  (not coalesce(c.es_migrado, false) or cv.id is not null or coalesce(c.empalme_cerrado, false)) as cuenta_confiable
 from public.contratos c
 join public.clientes cl on cl.id = c.cliente_id
 cross join h
@@ -213,7 +219,7 @@ grant select on zala.cliente to zala_lector;
 
 -- ── El diccionario: si no está aquí, no existe para ZALA ────────────────────────────────────
 insert into zala.diccionario (vista, columna, significado, valores, zala_lo_dice, confirmado_por_dueno) values
-('cliente', 'cuenta_confiable', 'Si a este cliente se le puede decir la CIFRA exacta que debe. true = nació en MotoGestión (su historia completa la construyó el sistema) o tiene un acuerdo de pago firmado (esa cifra ya la vio y la aceptó). false = migrado sin acuerdo: su saldo de apertura todavía no se ha revisado con él, así que se le escribe SIN número. Decisión del dueño, 9-sep-2026.', 'true · false', 'no', true)
+('cliente', 'cuenta_confiable', 'Si a este cliente se le puede decir la CIFRA exacta que debe. true = el cliente YA VIO ese número, por una de tres razones: nació en MotoGestión (su historia completa la construyó el sistema), tiene un acuerdo de pago firmado, o tiene el empalme cerrado (su saldo de apertura se revisó con él y lo aceptó). false = migrado sin ninguna de las tres: su saldo todavía no se ha revisado con él, así que se le escribe SIN número. Decisión del dueño, 9-sep-2026.', 'true · false', 'no', true)
 on conflict (vista, columna) do update set
   significado = excluded.significado, valores = excluded.valores,
   zala_lo_dice = excluded.zala_lo_dice, actualizado = now();

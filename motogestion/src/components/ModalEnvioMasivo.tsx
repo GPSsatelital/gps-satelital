@@ -73,6 +73,8 @@ export default function ModalEnvioMasivo({ destinatarios, titulo, omitidos, onCl
           vars: d.vars,
           tipoGestion: "mensaje_recordatorio",
           resultado: `Mensaje masivo (${CLAVE_LABEL[d.clave] ?? d.clave})`,
+          // La tanda entra a la cola de aprobación del dueño; los botones sueltos salen directo.
+          origen: "masivo",
         });
         setFilas(prev => prev.map((f, j) => (j === i ? { ...f, resultado: r } : f)));
         setProgreso(i + 1);

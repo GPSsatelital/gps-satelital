@@ -6,7 +6,10 @@
 //
 // Contrato con ZALA (docs/PLANTILLAS-WHATSAPP.md y su CONTRATO-CON-MOTOGESTION.md, §6.1):
 //   POST {ZALA_URL}/api/enviar   cabecera X-Llave
-//   cuerpo: { contrato_id, telefono, plantilla, variables, texto, quien_pide }
+//   cuerpo: { contrato_id, telefono, clave, plantilla, variables, texto, origen, quien_pide }
+//     - `origen`: "individual" (un botón: sale directo) o "masivo" (una tanda: entra a la cola de
+//       aprobación del dueño). Regla suya del 9-sep-2026; cuando el sistema esté consolidado, los
+//       masivos también saldrán directo y solo hay que cambiarlo del lado de ZALA.
 //     - `plantilla` + `variables`: la plantilla aprobada por Meta y sus {{1}}…{{n}} en orden.
 //     - `texto`: el mismo mensaje ya armado, para que ZALA lo mande como texto si la ventana de
 //       24 h está abierta (sin gastar plantilla). Si no hay `plantilla` y la ventana está cerrada,
@@ -72,6 +75,10 @@ Deno.serve(async (req: Request) => {
         variables,
         texto,
         clave: body.clave ?? null,
+        // Decisión del dueño (9-sep-2026): los INDIVIDUALES salen directo; los MASIVOS entran a su
+        // cola y él los revisa antes de que salgan — hasta que el sistema esté consolidado, y ahí
+        // también saldrán directo. ZALA no puede adivinar cuál es cuál: se lo decimos en cada envío.
+        origen: body.origen === "masivo" ? "masivo" : "individual",
         quien_pide: userData.user.email ?? userData.user.id,
       }),
     });

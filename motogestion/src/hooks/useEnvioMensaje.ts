@@ -38,6 +38,11 @@ export type OpcionesEnvio = {
   tipoGestion?: TipoGestion;
   /** Lo que lee el funcionario en el historial ("Mensaje de recordatorio", "Recibo de pago"…). */
   resultado?: string;
+  /** Uno solo (un botón) o una tanda. Decisión del dueño (9-sep-2026): los INDIVIDUALES salen
+   *  directo; los MASIVOS entran a su cola de aprobación y él los revisa antes de que salgan —
+   *  hasta que el sistema esté consolidado, y ahí también saldrán directo. ZALA no puede adivinar
+   *  cuál es cuál: se lo decimos en cada envío. */
+  origen?: "individual" | "masivo";
 };
 
 function zalaConectada(): boolean {
@@ -100,7 +105,7 @@ export function useEnvioMensaje() {
     // ── ZALA ──
     const { data: { session } } = await supabase.auth.getSession();
     const { data, error } = await supabase.functions.invoke("enviar-mensaje", {
-      body: { contrato_id: o.contratoId ?? null, telefono: numero, clave: o.clave ?? null, plantilla: m?.plantilla_meta ?? null, variables, texto },
+      body: { contrato_id: o.contratoId ?? null, telefono: numero, clave: o.clave ?? null, plantilla: m?.plantilla_meta ?? null, variables, texto, origen: o.origen ?? "individual" },
       headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
     });
     const respuesta = (data ?? {}) as { ok?: boolean; id?: string | null; estado?: string; motivo?: string | null; error?: string };

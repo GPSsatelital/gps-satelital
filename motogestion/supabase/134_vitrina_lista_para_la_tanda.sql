@@ -180,14 +180,6 @@ select
     else 'al día' end                              as estado_texto,
   coalesce(q.r_dias_mora, 0)                      as dias_mora,
   dsp.dias                                        as dias_sin_pago,
-  -- ★ 134: las DOS cifras de días ya escritas con su palabra, que es como viajan a Meta (una
-  -- variable no puede dejar la palabra afuera sin que quede "1 días"). Van las dos porque miden
-  -- cosas distintas: `dias_texto` es desde su último pago (un abono parcial la reinicia) y
-  -- `vencida_texto` es lo que lleva vencida la cuota (esa no la mueve un abono). dias_texto es
-  -- NULL si nunca registró un pago: no se puede nombrar un último pago que no existe.
-  case when pg.ultimo_confirmado is not null and dsp.dias < 999
-       then dsp.dias || ' día' || case when dsp.dias = 1 then '' else 's' end end as dias_texto,
-  coalesce(q.r_dias_mora, 0) || ' día' || case when coalesce(q.r_dias_mora, 0) = 1 then '' else 's' end as vencida_texto,
   plazo.hasta                                     as plazo_extra_hasta,
   (plazo.hasta is not null and plazo.hasta >= h.d) as plazo_extra_vigente,
   promesa.fecha                                   as promesa_pago_fecha,
@@ -243,7 +235,17 @@ select
   -- ★ 134: el nombre con que se le habla ("Jose Alberto"). Es la variable {nombre} de las plantillas.
   zala.nombre_corto(cl.nombre)                    as cliente_corto,
   -- ★ 134: su día de pago dentro de la frase ("los lunes"). Es la variable {dia_pago}.
-  zala.dia_pago_frase(c)                          as dia_pago_frase
+  zala.dia_pago_frase(c)                          as dia_pago_frase,
+  -- ★ 134: las DOS cifras de días ya escritas con su palabra, que es como viajan a Meta (una
+  -- variable no puede dejar la palabra afuera sin que quede "1 días"). Van las dos porque miden
+  -- cosas distintas: `dias_texto` es desde su último pago (un abono parcial la reinicia) y
+  -- `vencida_texto` es lo que lleva vencida la cuota (esa no la mueve un abono). dias_texto es
+  -- NULL si nunca registró un pago: no se puede nombrar un último pago que no existe.
+  -- Van AL FINAL a propósito: `create or replace view` solo deja agregar columnas al final
+  -- (meter una en la mitad falla con "cannot change name of view column" — lección de la mig 131).
+  case when pg.ultimo_confirmado is not null and dsp.dias < 999
+       then dsp.dias || ' día' || case when dsp.dias = 1 then '' else 's' end end as dias_texto,
+  coalesce(q.r_dias_mora, 0) || ' día' || case when coalesce(q.r_dias_mora, 0) = 1 then '' else 's' end as vencida_texto
 from public.contratos c
 join public.clientes cl on cl.id = c.cliente_id
 cross join h

@@ -582,7 +582,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
 }
 
 type TabKey = "hoy" | "contratos" | "dinero" | "historial";
-type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio" | "retenidos";
+type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio" | "retenidos" | "empalme";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
 /** `dias` = días que lleva VENCIDA la cuota (`diasMora`), no días desde el último pago: el paso 4
@@ -953,6 +953,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const enGabela = operativos.filter(r => r.estadoCartera === "gabela");
   const alDia = operativos.filter(r => r.estadoCartera === "al-dia");
   const conConvenio = operativos.filter(r => r.convenioActivo);
+  // Los que están ESPERANDO el empalme para poder recibir su cifra (9-sep-2026). Es la misma
+  // cuenta que `zala.cliente.cuenta_confiable = false`: migrado, sin empalme cerrado Y SIN
+  // CONVENIO. El `!convenioActivo` no sobra — hay 69 con el empalme pendiente que YA reciben la
+  // cifra porque el convenio se lo firmaron ellos mismos; meterlos aquí sería decirles a los
+  // funcionarios que están bloqueados cuando no lo están.
+  // Es una lista de TRABAJO, no una alerta: cerrar el empalme es lo único que le falta a esta
+  // persona para que el mensaje empiece a llevarle su número. Incluye los retenidos: a esos
+  // también hay que cuadrarles la cuenta, y son los que más deben.
+  const conEmpalme = resumenContratos.filter(r => empalmePendiente(r) && !r.convenioActivo);
   // La plata SÍ cuenta aunque la moto esté retenida: si el cliente abonó para recuperarla, eso
   // entró a la caja igual y el recaudo del día tiene que reflejarlo.
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
@@ -1117,6 +1126,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     else if (filtroContratos === "pagan-hoy") base = [...paganHoyDiario, ...paganHoyPeriodico];
     else if (filtroContratos === "convenio") base = conConvenio;
     else if (filtroContratos === "retenidos") base = retenidos;
+    else if (filtroContratos === "empalme") base = conEmpalme;
     else base = resumenContratos;  // "Todos" SÍ los incluye: no se pueden esconder, hay que poder ajustarles la cuenta
 
     if (filtroGrupoContratos !== "todos") {
@@ -1138,11 +1148,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // Las RETENIDAS van al final aunque sean las que más días acumulan: a esas no se les sale a
     // cobrar (la moto ya está en el patio, se gestionan desde Inmovilizaciones) y si se quedaran
     // arriba, los 59 retenidos taparían justamente a los que sí se pueden cobrar hoy.
+    // En "Empalme" manda la PLATA, no los días: es una lista de trabajo y se empieza por el que
+    // más tiene en juego. En el resto manda la mora, y las retenidas van al final.
+    if (filtroContratos === "empalme") {
+      return [...filtrada].sort((a, b) => calcularPendienteContrato(b) - calcularPendienteContrato(a));
+    }
     return [...filtrada].sort((a, b) => {
       if (a.suspendido !== b.suspendido) return a.suspendido ? 1 : -1;
       return b.diasMora - a.diasMora;
     });
-  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, conEmpalme, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -2927,6 +2942,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     { key: "pagan-hoy", label: "🔵 Pagan hoy", count: totalPaganHoy },
     { key: "convenio", label: "🤝 Convenio", count: conConvenio.length },
     { key: "retenidos", label: "🔒 Retenidos", count: retenidos.length },
+    { key: "empalme", label: "⚠️ Empalme", count: conEmpalme.length },
   ];
 
   return (
@@ -3730,6 +3746,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 </Chip>
               ))}
             </div>
+            {/* El chip de Empalme es una lista de TRABAJO, no una alerta: hay que decir qué se hace
+                con ella y qué gana el cliente, o el funcionario no sabe por qué está ahí. */}
+            {filtroContratos === "empalme" && (
+              <div style={{ marginBottom: isMobile ? 6 : 12, padding: "8px 10px", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, fontSize: 11.5, lineHeight: 1.5, color: "var(--warn-ink)" }}>
+                Les falta cerrar el empalme: revisar su saldo de apertura <b>con el cliente</b> y que lo
+                firme. Mientras no se cierre, a esta persona el mensaje le llega <b>sin la cifra</b> de lo
+                que debe. Van del que más debe al que menos.
+              </div>
+            )}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: isMobile ? 6 : 12 }}>
               {(["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"] as ("todos" | GrupoMoto)[]).map(g => (
                 <Chip key={g} activo={filtroGrupoContratos === g} onClick={() => setFiltroGrupoContratos(g)}>

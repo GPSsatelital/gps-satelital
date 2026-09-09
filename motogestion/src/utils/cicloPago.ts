@@ -97,6 +97,23 @@ export function valorPeriodoReal(contrato: ContratoCiclo): number {
   return 4 * valorSemanal + 2 * pagoDiaLS; // Mensual
 }
 
+/**
+ * El día de pago dicho como se lo decimos al cliente en un mensaje: "los lunes", "los días 15 y 30
+ * de cada mes". `formatDiaPago` es la etiqueta de pantalla ("Lunes", "Días 15 y 30") y no encaja
+ * dentro de una frase. Se usa en la variable {dia_pago} de los mensajes de gabela y mora: cada
+ * quien tiene SU día, así que el texto no puede decir "los pagos son los lunes" (regla del dueño,
+ * 8-sep: el día de pago es uno solo; la gabela es solo para terminar de completar).
+ * Espejo de `zala.dia_pago_frase()` en la vitrina (mig 134): si se toca uno, se toca el otro.
+ */
+export function diaPagoFrase(contrato: ContratoCiclo): string {
+  if (contrato.forma_pago === "Diario") return "todos los días";
+  if (esCalendario(contrato)) {
+    const dias = diasPagoMes(contrato);
+    return dias.length > 1 ? `los días ${dias.join(" y ")} de cada mes` : `el día ${dias[0]} de cada mes`;
+  }
+  return `los ${(contrato.dia_pago ?? "").toLowerCase()}`.trimEnd();
+}
+
 // Texto para mostrar en pantalla.
 export function formatDiaPago(contrato: ContratoCiclo): string {
   if (contrato.forma_pago === "Diario") return "Diario";

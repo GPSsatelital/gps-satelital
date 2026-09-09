@@ -23,6 +23,7 @@ import {
   loQueDebe,
   diasEnMora,
   cuotaConvenioDelPeriodo,
+  diaPagoFrase,
 } from "../utils/cicloPago";
 import { diasTexto } from "../utils/mensajeria";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
@@ -92,6 +93,8 @@ type Fila = {
   marca: string;
   tipoRuta: string;
   diaPago: string;
+  /** El día de pago dicho dentro de una frase ("los lunes") — variable {dia_pago} del mensaje. */
+  diaPagoTexto: string;
   tarifaDiaria: number;
   ahorroDiario: number;
   valorPactado: number;
@@ -231,6 +234,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           marca: moto ? `${moto.marca} ${moto.modelo}` : "",
           tipoRuta,
           diaPago,
+          diaPagoTexto: diaPagoFrase(c),
           tarifaDiaria: tarifa,
           ahorroDiario: ahorro,
           valorPactado,
@@ -300,6 +304,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         // mensaje (no se puede nombrar un último pago que no existe) y pide gestionarlo a mano.
         dias: f.ultimoPagoFecha ? diasTexto(Math.floor((Date.parse(hoy + "T00:00:00") - Date.parse(f.ultimoPagoFecha + "T00:00:00")) / 86400000)) : "",
         vencida: diasTexto(f.diasMora),
+        dia_pago: f.diaPagoTexto,
         valor: `$${Math.round(f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo).toLocaleString("es-CO")}`,
       },
       tipoGestion: "mensaje_recordatorio",

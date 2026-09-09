@@ -303,10 +303,11 @@ Puede realizar el pago en la oficina o por transferencia; si transfiere, envíen
 Si ya realizó el pago, ¡gracias por su puntualidad! Quedamos atentos.
 ```
 
-**2 · `gabela` → `cobro_gabela_v1`** · variables: nombre · placa · valor
+**2 · `gabela` → `cobro_gabela_v1`** · variables: nombre · placa · valor · dia_pago
 ```
 Hola, {nombre}. Bendiciones.
 Su pago de la moto {placa} venció ayer y hoy es su día de gracia: le podemos dar el día de hoy para ponerse al día con {valor} y no entrar en mora.
+Recuerde que su pago se realiza {dia_pago}: el día de gracia es solo para terminar de completarlo, no para dejarlo para después.
 Si ya realizó el pago, envíenos el comprobante con la placa y su nombre para actualizarlo de inmediato. Quedamos atentos.
 ```
 > Regla del dueño (8-sep): **la gabela OFRECE el día, no lo impone** — "le podemos dar el día de hoy".
@@ -314,10 +315,10 @@ Si ya realizó el pago, envíenos el comprobante con la placa y su nombre para a
 > `[dueño]` ¿Se pone la hora? Los chats dicen "hasta las 3 entran al sistema". Si es regla, va aquí:
 > "le podemos dar hasta las 3:00 p. m. del día de hoy".
 
-**3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · vencida · valor
+**3 · `mora` → `cobro_mora_v1`** · variables: nombre · placa · dias · vencida · valor · dia_pago
 ```
 Hola, {nombre}. Bendiciones.
-Su último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; hoy debe {valor}. Mientras el pago no se complete, su cuenta sigue en mora.
+Su último pago registrado de la moto {placa} fue hace {dias} y su cuota lleva {vencida} de vencida; hoy debe {valor}. Su pago se realiza {dia_pago} y ese mismo día debe quedar cubierto; mientras el pago no se complete, su cuenta sigue en mora.
 Le recordamos que, estando en mora, el sistema puede realizar el apagado del vehículo en cualquier momento y proceder con su recolección.
 Póngase al día lo más pronto posible para seguir rodando tranquilo. Escríbanos para reportar su pago o para acordar cómo se pone al día. Quedamos atentos.
 ```
@@ -325,8 +326,12 @@ Póngase al día lo más pronto posible para seguir rodando tranquilo. Escríban
 > fue la gabela): se le informa su estado, se le advierte que desde ese día el apagado y la
 > recolección pueden ocurrir en cualquier momento — sin decir cuándo — y se le motiva a ponerse al
 > día *para seguir rodando tranquilo*.
-> Se quitó "Los pagos son los lunes": no todos pagan lunes (hay miércoles, quincenales y mensuales),
-> y la frase habría salido falsa para buena parte de la cartera.
+> En vez de "Los pagos son los lunes" (falso para miércoles, quincenales y mensuales) va
+> **`{dia_pago}`: el día de ESE cliente**, dicho dentro de la frase — "los lunes", "los días 15 y 30
+> de cada mes", "todos los días". Regla del dueño (8-sep): *el día de pago es uno solo; la gabela
+> existe por si no alcanzó a completar, para no tener que ir a apagar la moto, pero el deber ser es
+> pagar el mismo día*. Lo calculan `diaPagoFrase()` (app) y `zala.dia_pago_frase()` → columna
+> `dia_pago_frase` (vitrina): espejo, se tocan los dos o ninguno.
 
 **4 · `recoleccion` → `aviso_recoleccion_v1`** · variables: nombre · placa · dias · vencida · valor
 ```
@@ -416,8 +421,8 @@ y, donde el orden de variables cambió respecto a la mig 133 (`recibo`, `recibo_
 | Nuestra clave | Plantilla en Meta | Variables, en orden |
 |---|---|---|
 | `dia_pago` | `cobro_dia_pago_v1` | nombre · placa · valor |
-| `gabela` | `cobro_gabela_v1` | nombre · placa · valor |
-| `mora` | `cobro_mora_v1` | nombre · placa · dias · vencida · valor |
+| `gabela` | `cobro_gabela_v1` | nombre · placa · valor · dia_pago |
+| `mora` | `cobro_mora_v1` | nombre · placa · dias · vencida · valor · dia_pago |
 | `recoleccion` | `aviso_recoleccion_v1` | nombre · placa · dias · vencida · valor |
 | `moto_retenida` | `moto_retenida_v1` | nombre · placa |
 | `acuse_comprobante` | `acuse_comprobante_v1` | nombre · valor · placa |

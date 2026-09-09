@@ -9,8 +9,25 @@ import {
   cuotaConvenioDelPeriodo,
   proximaCuotaConvenio,
   fechaCubrePeriodo,
+  diaPagoFrase,
   type ContratoCiclo,
 } from "./cicloPago";
+
+describe("diaPagoFrase — el día de pago dicho dentro del mensaje (regla del dueño, 8-sep)", () => {
+  // El día de pago de cada cliente es UNO SOLO: el mensaje no puede decir "los pagos son los lunes".
+  const base = { forma_pago: "Semanal", dia_pago: "Lunes" } as ContratoCiclo;
+  it("semanal: el día del contrato, en minúscula y en plural", () => {
+    expect(diaPagoFrase(base)).toBe("los lunes");
+    expect(diaPagoFrase({ ...base, dia_pago: "Miércoles" })).toBe("los miércoles");
+  });
+  it("quincenal y mensual: las fechas reales del mes", () => {
+    expect(diaPagoFrase({ ...base, forma_pago: "Quincenal", dias_pago_mes: [15, 30] } as ContratoCiclo)).toBe("los días 15 y 30 de cada mes");
+    expect(diaPagoFrase({ ...base, forma_pago: "Mensual", dias_pago_mes: [5] } as ContratoCiclo)).toBe("el día 5 de cada mes");
+  });
+  it("diario: todos los días", () => {
+    expect(diaPagoFrase({ ...base, forma_pago: "Diario" })).toBe("todos los días");
+  });
+});
 
 // Batería de pruebas del MOTOR DE DINERO (cicloPago.ts). Cada caso es una situación REAL que
 // ya diagnosticamos y arreglamos; su "respuesta correcta" es conocida. Si un cambio futuro

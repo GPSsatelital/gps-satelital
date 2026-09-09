@@ -84,6 +84,7 @@ import {
   inicioVentanaPagosISO,
   valorPeriodoReal,
   diasEnMora,
+  diaPagoFrase,
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
@@ -1062,6 +1063,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         // "su último pago registrado" y ese cliente no tiene ninguno — la tubería lo bloquea y
         // avisa que se gestione por llamada, en vez de mandarle una frase falsa.
         ...varsDeDias(c),
+        dia_pago: diaPagoFrase(c),
         valor: `$${Math.round(calcularPendienteContrato(c)).toLocaleString("es-CO")}`,
       },
       tipoGestion: "mensaje_recordatorio",
@@ -3058,7 +3060,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   contratoId: c.id, nombre, placa: moto?.placa ?? "",
                   telefono: cliente?.whatsapp || cliente?.telefono,
                   clave: claveParaBalde(balde),
-                  vars: { nombre, placa: moto?.placa ?? "", ...varsDeDias(c), valor: valorTexto },
+                  vars: { nombre, placa: moto?.placa ?? "", ...varsDeDias(c), dia_pago: diaPagoFrase(c), valor: valorTexto },
                   valorTexto,
                 };
               });

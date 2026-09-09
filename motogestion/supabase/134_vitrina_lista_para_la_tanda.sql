@@ -23,7 +23,8 @@
 --   select * from zala.cliente where cobro_automatico  →  por cada fila, plantilla_hoy  →
 --   zala.plantillas (plantilla_meta + variables)  →  variables desde la misma fila:
 --   nombre = cliente_corto · placa · valor = debe_hoy_texto · dias = dias_texto ·
---   vencida = vencida_texto  →  enviar. Si alguna viene NULL, NO se manda: se gestiona a mano.
+--   vencida = vencida_texto · dia_pago = dia_pago_frase  →  enviar.
+--   Si alguna viene NULL, NO se manda: se gestiona a mano.
 
 -- ── 0) Un número de WhatsApp que sirve: 10 dígitos que empiezan por 3, o 12 que empiezan por 57 ─
 create or replace function zala.whatsapp_valido(p text) returns boolean language sql immutable as $$
@@ -55,6 +56,22 @@ begin
   return (select string_agg(case when k > 1 and lower(w) = any(part) then lower(w) else initcap(w) end, ' ' order by k)
           from unnest(salida) with ordinality as u(w, k));
 end $$;
+
+-- ── 0c) El día de pago dicho dentro de una frase ─────────────────────────────────────────────
+-- `dia_pago` es la etiqueta de pantalla ("Lunes", "Días 15 y 30") y no encaja en una oración. Esta
+-- devuelve "los lunes" / "los días 15 y 30 de cada mes" / "el día 15 de cada mes" / "todos los
+-- días", que es la variable {dia_pago} de gabela y mora. El día de pago de cada cliente es UNO
+-- SOLO (regla del dueño, 8-sep): por eso el mensaje ya no dice "los pagos son los lunes".
+-- Espejo de `diaPagoFrase()` en src/utils/cicloPago.ts.
+create or replace function zala.dia_pago_frase(c public.contratos) returns text language sql immutable as $$
+  select case
+    when c.forma_pago = 'Diario' then 'todos los días'
+    when zala._es_calendario(c) then
+      case when cardinality(zala._dias_pago_mes(c)) > 1
+        then 'los días ' || array_to_string(zala._dias_pago_mes(c), ' y ') || ' de cada mes'
+        else 'el día ' || (zala._dias_pago_mes(c))[1] || ' de cada mes' end
+    else 'los ' || lower(c.dia_pago) end
+$$;
 
 -- ── 1) zala.plantillas — la clave y su plantilla vigente en Meta ──────────────────────────────
 create or replace view zala.plantillas as
@@ -224,7 +241,9 @@ select
   case when q.r_cuota_falta is null then null
        else zala.pesos(q.r_cuota_falta + coalesce(q.r_acuerdo_falta, 0) + coalesce(de.pend_falta, 0)) end as debe_hoy_texto,
   -- ★ 134: el nombre con que se le habla ("Jose Alberto"). Es la variable {nombre} de las plantillas.
-  zala.nombre_corto(cl.nombre)                    as cliente_corto
+  zala.nombre_corto(cl.nombre)                    as cliente_corto,
+  -- ★ 134: su día de pago dentro de la frase ("los lunes"). Es la variable {dia_pago}.
+  zala.dia_pago_frase(c)                          as dia_pago_frase
 from public.contratos c
 join public.clientes cl on cl.id = c.cliente_id
 cross join h
@@ -298,10 +317,11 @@ insert into zala.diccionario (vista, columna, significado, valores, zala_lo_dice
 ('cliente', 'dias_sin_pago', 'Días desde su último pago confirmado (en migrados, desde el corte de su grupo). 999 = nunca ha pagado y no tiene fecha de entrega.', null, 'sí', true),
 ('cliente', 'dias_texto', 'Los días desde su último pago, ya escritos ("20 días"). Es la variable {dias} de mora y recolección: "su último pago registrado fue hace 20 días". NULL = nunca registró un pago; en ese caso plantilla_hoy va vacía y el caso se gestiona por llamada.', null, 'sí', true),
 ('cliente', 'vencida_texto', 'Los días que lleva VENCIDA la cuota, ya escritos ("3 días"). Es la variable {vencida}: "su cuota lleva 3 días de vencida". Van las dos cifras porque un abono parcial reinicia dias_texto pero no esta.', null, 'sí', true),
+('cliente', 'dia_pago_frase', 'Su día de pago dicho dentro de una frase: "los lunes", "los días 15 y 30 de cada mes", "todos los días". Es la variable {dia_pago} de gabela y mora ("su pago se realiza los lunes"). El día de pago de cada cliente es UNO SOLO; la gabela es solo para terminar de completar.', null, 'sí', true),
 ('pagos', 'registrado_por', 'Nombre del funcionario que digitó el pago en MotoGestión (contrato ZALA §5.4).', null, 'no', true),
 ('plantillas', 'clave', 'La clave estable de cada mensaje. Es lo que trae zala.cliente.plantilla_hoy.', 'dia_pago · gabela · mora · recoleccion · moto_retenida · acuse_comprobante · recibo · recibo_campo · cuentas_pago · contacto_general', 'no', true),
 ('plantillas', 'plantilla_meta', 'Nombre de la plantilla aprobada en Meta que hoy está vigente para la clave. Cambiarla en MotoGestión = ZALA la usa al instante. Vacío = aún no registrada: solo texto dentro de la ventana de 24 h.', null, 'no', true),
-('plantillas', 'variables', 'Orden de los comodines para {{1}}, {{2}}… de Meta. Los valores salen de zala.cliente: nombre = cliente_corto · placa · valor = debe_hoy_texto · dias = dias_texto · vencida = vencida_texto.', null, 'no', true),
+('plantillas', 'variables', 'Orden de los comodines para {{1}}, {{2}}… de Meta. Los valores salen de zala.cliente: nombre = cliente_corto · placa · valor = debe_hoy_texto · dias = dias_texto · vencida = vencida_texto · dia_pago = dia_pago_frase.', null, 'no', true),
 ('plantillas', 'texto', 'El mismo mensaje con comodines {nombre} {placa} {valor} {dias} {vencida}, para mandarlo como texto cuando la ventana de 24 h está abierta. Lo edita el dueño en Configuración.', null, 'no', true),
 ('plantillas', 'activa', 'false = no se manda por ningún canal.', 'true · false', 'no', true)
 on conflict (vista, columna) do update set
@@ -310,7 +330,7 @@ on conflict (vista, columna) do update set
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- VERIFICACIÓN
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- a) 75 columnas (67 + 8) y 10 plantillas.
+-- a) 76 columnas (67 + 9) y 10 plantillas.
 select (select count(*) from information_schema.columns where table_schema = 'zala' and table_name = 'cliente') as columnas_cliente,
        (select count(*) from zala.plantillas) as plantillas;
 

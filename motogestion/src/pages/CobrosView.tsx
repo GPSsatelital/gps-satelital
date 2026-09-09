@@ -585,6 +585,8 @@ type TabKey = "hoy" | "contratos" | "dinero" | "historial";
 type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio" | "retenidos";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
+/** `dias` = días que lleva VENCIDA la cuota (`diasMora`), no días desde el último pago: el paso 4
+ *  es la misma decisión que el balde Recolección del panel Hoy y tienen que coincidir. */
 function calcProtocoloStep(dias: number): ProtocoloStep {
   if (dias <= 0) return { paso: 1, label: "Recordatorio", color: "var(--accent)", bg: "var(--accent-soft)", accionRecomendada: "mensaje_recordatorio" };
   if (dias === 1) return { paso: 2, label: "Llamada + Sirena", color: "var(--warn-ink)", bg: "var(--warn-soft)", accionRecomendada: "llamada" };
@@ -1030,9 +1032,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // `operativos`, no `resumenContratos`: al que ya le retuvieron la moto no se le sale a cobrar
     // ni se le manda a recolectar de nuevo. Su cuenta se ajusta desde la pestaña Contratos.
     operativos.forEach(c => {
-      // Recolección: solo mora real con >3 días (estadoCartera ya descarta contratos nuevos/prorrateo)
+      // Recolección: más de 3 días con la CUOTA VENCIDA (decisión del dueño, 9-sep-2026).
+      // Antes contaba `diasSinPago` (días desde el último pago), y como el de lunes ya lleva 9 días
+      // desde el pago anterior cuando entra en mora el miércoles, caía en recolección el PRIMER día:
+      // 137 en la cola en vez de 64. La cuenta correcta es `diasMora`, que es la que respeta el
+      // protocolo (mensaje → llamada → apagado o recolección) y no la reinicia un abono parcial.
       // Si tiene un plazo extra vigente, se queda en Mora — no se puede recolectar durante ese margen.
-      if (c.estadoCartera === "mora" && c.diasSinPago > 3 && c.diasSinPago < 999 && !contratosConPlazoVigente.has(c.id)) recoleccion.push(c);
+      if (c.estadoCartera === "mora" && c.diasMora > 3 && !contratosConPlazoVigente.has(c.id)) recoleccion.push(c);
       else if (c.estadoCartera === "mora") mora.push(c);
       else if (c.estadoCartera === "gabela") gabela.push(c);
       else if (idsPaganHoy.has(c.id)) paganHoy.push(c);
@@ -1691,7 +1697,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // de verdad en mora (mismo criterio que el Panel Hoy). Antes se mostraba con "días
     // desde el último pago" > 0, que es > 0 aunque esté al día → salía "Paso 4 Recolección"
     // a clientes al día (ej. migrados que pagaron hace unos días).
-    const protocolo = contratoDetalle.estadoCartera === "mora" ? calcProtocoloStep(contratoDetalle.diasSinPago) : null;
+    const protocolo = contratoDetalle.estadoCartera === "mora" ? calcProtocoloStep(contratoDetalle.diasMora) : null;
     // Con convenio: la deuda la paga el convenio → NO se suma completa (contaría doble).
     // A pagar este período = cuota pendiente + cuota del convenio. Si está al día, 0.
     // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
@@ -2752,7 +2758,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           const cliente = clientes.find(cl => cl.id === c.cliente_id);
           const moto = motos.find(m => m.id === c.moto_id);
           const seleccionado = c.id === contratoSeleccionadoId;
-          const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasSinPago) : null;
+          const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasMora) : null;
 
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           // Fuente única (ledger + convenio + deuda) — misma cifra que el detalle y Panel Hoy.

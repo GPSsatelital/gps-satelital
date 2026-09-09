@@ -936,7 +936,7 @@ Ahora:
 
 ### Completado — Panel HOY ✅
 - Pestaña **"📋 Hoy"** (por defecto) en CobrosView, organizada por TAREA no por estado.
-- Agrupa por urgencia sin duplicar: Recolección (mora real >3d) → Mora → Gabela → Pagan hoy. Solo muestra pendientes (Al día no aparece).
+- Agrupa por urgencia sin duplicar: Recolección (**más de 3 días con la CUOTA VENCIDA** — `diasMora`, no días desde el último pago; decisión del dueño 9-sep-2026, ver mig 136) → Mora → Gabela → Pagan hoy. Solo muestra pendientes (Al día no aparece).
 - Tareas como botones: Mensaje (abre WhatsApp + registra), Llamar (abre `tel:` + registra), Sirena (registra, 3 seg, GPS real pendiente), Recolección (registra orden).
 - "Tarea hecha hoy" = existe gestión de ese tipo con `fecha=hoy` → check verde. Todo queda en `gestiones_cobro`.
 - Hereda filtrado SUBADMIN (cada quien ve solo tareas de sus motos).

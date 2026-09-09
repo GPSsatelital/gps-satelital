@@ -293,7 +293,10 @@ poder acreditarle el pago. Club Moteros Cartagena.
 cálida, con "Bendiciones", firme en la regla y sin coloquialismos. Estos reemplazan a los de arriba;
 ver la voz completa en `docs/GUIA-CONVERSACION-ZALA.md`. Respetan las reglas de Meta (ninguna
 variable al inicio ni al final, ninguna pegada, ninguna con salto de línea). **Siguen siendo para
-aprobación del dueño**; la mig 135 los deja en la base cuando él la corra.
+✅ **APROBADOS Y VIVOS EN LA BASE**: el dueño corrió la mig 135 el 8-sep-2026 (correrla era
+aprobarlos). Verificado: 10 filas actualizadas, ninguna tutea, el orden de `variables` quedó como
+dice la tabla de abajo. Editables desde Configuración; **el que cambie un texto debe cambiar también
+la plantilla en Meta** (o al revés, el mensaje sale distinto por cada canal).
 
 **1 · `dia_pago` → `cobro_dia_pago_v1`** · variables: nombre · placa · valor
 ```
@@ -408,9 +411,10 @@ cargue la culpa a un administrador, y que el funcionario pueda pedir tiempo cuan
 depende de otra área. **Vocabulario:** nunca coloquial ("manito", "dale", "porfa", "chance");
 correcto y sencillo, que lo entienda cualquiera.
 
-**Al aprobar estos textos:** se actualiza `mensajes_whatsapp.texto` desde Configuración (o por SQL)
-y, donde el orden de variables cambió respecto a la mig 133 (`recibo`, `recibo_campo`), la columna
-`variables` — un `update` de dos filas. ZALA los registra en Meta con esos mismos nombres `_v1`.
+**Ya aprobados (mig 135 corrida el 8-sep).** Lo que sigue es del lado de ZALA: registrar estos 10
+textos en Meta con los nombres `_v1` de la tabla de abajo, en categoría UTILITY y con las variables
+en ese mismo orden. Mientras Meta no los apruebe, solo pueden salir como texto dentro de la ventana
+de 24 h.
 
 ---
 

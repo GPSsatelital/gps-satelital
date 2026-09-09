@@ -167,11 +167,14 @@ export function useUbicaciones() {
     });
     if (errRec) return { error: errRec.message };
 
-    await supabase.from("motos").update({
+    // Estas dos fallaban EN SILENCIO: si el permiso no alcanzaba, la recepción quedaba guardada
+    // pero la moto seguía figurando donde estaba y el historial se perdía, sin que nadie se
+    // enterara. Ahora se avisan (la recepción SÍ quedó, así que no es un error que la deshaga).
+    const { error: errMoto } = await supabase.from("motos").update({
       ubicacion_fisica: data.ubicacion_destino,
     }).eq("id", data.moto_id);
 
-    await supabase.from("historial_ubicaciones").insert({
+    const { error: errHist } = await supabase.from("historial_ubicaciones").insert({
       moto_id: data.moto_id,
       ubicacion_anterior: data.ubicacion_anterior ?? null,
       ubicacion_nueva: data.ubicacion_destino,
@@ -179,7 +182,12 @@ export function useUbicaciones() {
       registrado_por: data.quien_recibe,
     });
 
-    return { error: null };
+    const avisos = [
+      errMoto ? `no se pudo cambiar la ubicación de la moto (${errMoto.message})` : null,
+      errHist ? `no quedó el registro en el historial de ubicaciones (${errHist.message})` : null,
+    ].filter(Boolean);
+
+    return { error: null, aviso: avisos.length ? `La recepción quedó guardada, pero ${avisos.join(" y ")}.` : null };
   }
 
   async function crearAcuerdoTiempo(data: {

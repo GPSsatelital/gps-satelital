@@ -167,6 +167,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [guardando, setGuardando] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
+  // El error de un modal se muestra DENTRO del modal. `msgDetalle` se pinta en el panel de detalle,
+  // que queda TAPADO por el modal abierto — y encima en verde, con cara de mensaje bueno. Por eso
+  // el funcionario llenaba el formulario de recepción, tocaba Guardar y "no pasaba nada": el error
+  // estaba ahí, detrás, y parecía un éxito (reportado el 9-sep-2026 con un SUBADMIN).
+  const [modalError, setModalError] = useState<string | null>(null);
   const [editandoMoto, setEditandoMoto] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Moto & { color: string }>>({});
   const [editError, setEditError] = useState<string | null>(null);
@@ -410,16 +415,17 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   async function handleRegistrarRecepcion() {
     if (!selectedMoto || !profile) return;
     const faltanFotos = ANGULOS_FOTO.filter(a => !fotosRec[a.key]);
-    if (faltanFotos.length > 0) { setMsgDetalle(`Falta la foto: ${faltanFotos.map(a => a.label).join(", ")}.`); return; }
+    setModalError(null);
+    if (faltanFotos.length > 0) { setModalError(`Falta la foto: ${faltanFotos.map(a => a.label).join(", ")}.`); return; }
     // Misma regla que en recolección y liquidación (todas las puertas hacen lo mismo): si la moto
     // venía de un cliente, hay que decir cómo llegó la llave antes de guardar.
     if ((formRec.motivo === "entrega_voluntaria" || formRec.motivo === "liquidacion") && formRec.llave_entregada == null) {
-      setMsgDetalle("Indica cómo llegó la llave: ¿la entregó el cliente o hubo que ir con la copia?"); return;
+      setModalError("Indica cómo llegó la llave: ¿la entregó el cliente o hubo que ir con la copia?"); return;
     }
     if (!confirm(`¿Registrar la recepción de la moto ${selectedMoto.placa}? Esto puede suspender el contrato activo.`)) return;
     setGuardando(true);
     const fotosUrls = await subirFotosRecepcion(selectedMoto.id);
-    const { error } = await registrarRecepcion({
+    const { error, aviso } = await registrarRecepcion({
       moto_id: selectedMoto.id,
       motivo: formRec.motivo,
       condicion_general: formRec.condicion_general,
@@ -434,17 +440,17 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       lavado: formRec.lavado,
       llave_entregada: formRec.llave_entregada,
     });
-    if (error) { setGuardando(false); setMsgDetalle(error); return; }
+    if (error) { setGuardando(false); setModalError("No se pudo guardar la recepción: " + error); return; }
 
     // Entrega voluntaria: el contrato se suspende y la moto queda guardada (reloj de 7 días).
     // El costo (MULTA_RECOLECCION) SOLO aplica si hubo que ir a buscarla (movimiento de personal);
     // si el cliente la trajo, no se cobra nada.
-    let msgFinal = "Recepción registrada.";
+    let msgFinal = aviso ? `⚠️ ${aviso}` : "Recepción registrada.";
     if (formRec.motivo === "entrega_voluntaria") {
       const contratoActivo = contratos.find(c => c.moto_id === selectedMoto.id && c.estado === "Activo");
       if (contratoActivo) {
         const { error: errSusp } = await suspenderContrato(contratoActivo.id, selectedMoto.id, "temporal");
-        if (errSusp) { setGuardando(false); setMsgDetalle("Recepción registrada, pero falló suspender el contrato: " + errSusp); return; }
+        if (errSusp) { setGuardando(false); setModalError("La recepción SÍ quedó registrada, pero no se pudo suspender el contrato: " + errSusp); return; }
         if (recFueBuscada) {
           await registrarDeuda(contratoActivo.id, "multa_recoleccion", "Costo por movimiento de personal (recolección)", MULTA_RECOLECCION, profile.id);
           msgFinal = `Entrega registrada, contrato suspendido y costo de $${MULTA_RECOLECCION.toLocaleString("es-CO")} aplicado (se fue a buscar).`;
@@ -479,6 +485,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
 
   async function handleCambiarUbicacion() {
     if (!selectedMoto || !profile) return;
+    setModalError(null);
     setGuardando(true);
     const { error } = await cambiarUbicacion(
       selectedMoto.id,
@@ -489,14 +496,15 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       profile.id
     );
     setGuardando(false);
-    if (error) { setMsgDetalle(error); return; }
+    if (error) { setModalError("No se pudo cambiar la ubicación: " + error); return; }
     setMsgDetalle("Ubicación actualizada.");
     setOpenUbicacion(false);
   }
 
   async function handleRegistrarRetencion() {
     if (!selectedMoto) return;
-    if (!formRetencion.fecha) { setMsgDetalle("Ingresa la fecha de retención."); return; }
+    setModalError(null);
+    if (!formRetencion.fecha) { setModalError("Ingresa la fecha de retención."); return; }
     if (!confirm(`¿Marcar la moto ${selectedMoto.placa} como ${ESTADO_LABEL[formRetencion.tipo]}?`)) return;
     setGuardando(true);
     const datos: RetencionData = {
@@ -506,7 +514,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     };
     const { error } = await registrarRetencion(selectedMoto.id, formRetencion.tipo, datos);
     setGuardando(false);
-    if (error) { setMsgDetalle(error); return; }
+    if (error) { setModalError("No se pudo registrar la retención: " + error); return; }
     setMsgDetalle(`Moto marcada como ${ESTADO_LABEL[formRetencion.tipo]}.`);
     setOpenRetencion(false);
   }
@@ -535,7 +543,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
       );
       // 2. Limpiar la retención y fijar el estado destino en UN solo update (ver useMotos.liberarRetencion).
       const { error, estado } = await liberarRetencion(selectedMoto.id, destinoLiberar);
-      if (error) { setMsgDetalle(error); return; }
+      if (error) { setModalError("No se pudo liberar la retención: " + error); return; }
       // 3. El tiempo que estuvo parada se le cobra o se le rueda al cliente — se resuelve aparte.
       abrirResolverTiempoSiAplica(selectedMoto, motivoLbl, fechaEntrada);
       setMsgDetalle(
@@ -673,15 +681,15 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         {msgDetalle && !editandoMoto && <div style={{ padding: 10, borderRadius: 10, background: "var(--ok-soft)", color: "var(--ok)", fontSize: 13, fontWeight: 600 }}>{msgDetalle}</div>}
         {!editandoMoto && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
+            <button onClick={() => { setOpenUbicacion(true); setMsgDetalle(null); setModalError(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>📍 Ubicación</button>
             <button onClick={() => { setOpenDocsMoto(true); setMsgDetalle(null); }} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px" }}>🪪 Documentos</button>
-            <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
+            <button onClick={() => { setOpenNovedad(true); setMsgDetalle(null); setModalError(null); }} style={{ ...primaryBtn, fontSize: 12, padding: "8px 12px" }}>🏍️ Registrar novedad</button>
             {/* Liberar retención (Opción B): botón aparte, solo visible cuando la moto YA está retenida.
                 Los 3 motivos (Fiscalía/Tránsito/Garantía) abren la MISMA ventana — antes Fiscalía
                 tenía la suya y los otros dos un confirm() suelto que se comportaba distinto. */}
             {["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado) && (
               <button
-                onClick={() => { setDestinoLiberar("taller"); setUbicacionSalidaRetencion("bodega"); setOpenLiberarRetencion(true); setMsgDetalle(null); }}
+                onClick={() => { setDestinoLiberar("taller"); setUbicacionSalidaRetencion("bodega"); setOpenLiberarRetencion(true); setMsgDetalle(null); setModalError(null); }}
                 style={{ ...secondaryBtn, fontSize: 12, padding: "8px 12px", color: "var(--ok-ink)" }}
               >
                 ✅ Salida de {ESTADO_LABEL[selectedMoto.estado]}
@@ -900,8 +908,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             <div style={{ marginTop: 12 }}>
               <Field label="Motivo del cambio"><input style={inputStyle} placeholder="Ej: Entrega voluntaria por el cliente" value={formUbic.motivo} onChange={(e) => setFormUbic((p) => ({ ...p, motivo: e.target.value }))} /></Field>
             </div>
+            <AvisoModal texto={modalError} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setOpenUbicacion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenUbicacion(false); setModalError(null); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleCambiarUbicacion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Actualizar ubicación"}</button>
             </div>
           </div>
@@ -1036,8 +1045,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 </div>
               </Field>
             </div>
+            <AvisoModal texto={modalError} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => { setOpenRecepcion(false); setFotosRec({}); }} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenRecepcion(false); setFotosRec({}); setModalError(null); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleRegistrarRecepcion} disabled={guardando} style={primaryBtn}>{guardando ? "Guardando..." : "Registrar recepción"}</button>
             </div>
           </div>
@@ -1122,8 +1132,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 </div>
               )}
             </div>
+            <AvisoModal texto={modalError} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setOpenRetencion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenRetencion(false); setModalError(null); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleRegistrarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "var(--warn-ink)" }}>
                 {guardando ? "Guardando..." : "Registrar retención"}
               </button>
@@ -1218,8 +1229,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
                 </div>
               )}
             </div>
+            <AvisoModal texto={modalError} />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}>
-              <button onClick={() => setOpenLiberarRetencion(false)} style={secondaryBtn}>Cancelar</button>
+              <button onClick={() => { setOpenLiberarRetencion(false); setModalError(null); }} style={secondaryBtn}>Cancelar</button>
               <button onClick={handleLiberarRetencion} disabled={guardando} style={{ ...primaryBtn, background: "var(--ok-ink)", opacity: guardando ? 0.6 : 1 }}>
                 {guardando ? "Registrando..." : "Confirmar salida"}
               </button>
@@ -1396,6 +1408,21 @@ function InfoBox({ label, value }: { label: string; value: string }) {
     <div style={{ background: "var(--soft2)", borderRadius: 16, padding: 14 }}>
       <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase" }}>{label}</div>
       <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+}
+
+/** Aviso de error DENTRO del modal, en rojo. Nace porque los errores se estaban pintando en el
+ *  panel de detalle —tapado por el modal y en verde— y el funcionario veía "que no pasaba nada". */
+function AvisoModal({ texto }: { texto: string | null }) {
+  if (!texto) return null;
+  return (
+    <div role="alert" style={{
+      marginTop: 14, padding: "10px 12px", borderRadius: 10,
+      background: "var(--bad-soft)", border: "1px solid var(--bad-line)",
+      color: "var(--bad-ink)", fontSize: 13, fontWeight: 600,
+    }}>
+      {texto}
     </div>
   );
 }

@@ -267,10 +267,11 @@ de la pantalla (`src/utils/cicloPago.ts` y compañía). Es la razón de la vitri
 | # | Nombre | Valores | De dónde sale | Lo que ZALA hace hoy en su lugar |
 |---|---|---|---|---|
 | C1 | **Estado de cartera** | `al-dia` / `gabela` / `mora` | `calcularEstadoCartera`: día de pago, gabela de 1 día, cuota del convenio, período cubierto, caja exigida sin llenar (motor v2). Los Diario tienen su propia regla | Cuenta días desde el último pago |
-| C2 | **Días en mora** | número | `diasEnMora`: desde la caja MÁS VIEJA sin llenar, menos la gabela | Ídem |
+| C2 | **Días en mora** | número | `diasEnMora`: desde el día que le tocaba pagar su ciclo y no lo completó (la caja MÁS VIEJA sin llenar, menos la gabela). **Un abono parcial NO la reinicia** | Ídem |
+| C2b | **Días desde su último pago** | número | `diasSinPago`: desde el último abono confirmado, sea del monto que sea (en migrados, desde el corte de su grupo). **Cualquier abono la reinicia** | Ídem |
 | C3 | **Cuánto debe hoy** | `cuota {toca, pagado, falta}` + `acuerdo {toca, pagado, falta, cuotaDelPeriodo}` + `deudas {toca, pagado, falta}` + `totalFalta` + `saldoAFavor` | `loQueDebe()` — la única función. **El saldo a favor se muestra, nunca se resta** | Suma tablas a mano (Kevin, Andry) |
 | C4 | **Cuota del convenio de este período** | monto o 0 | `cuotaConvenioDelPeriodo`: 0 durante el prorrateo, 0 si el período está cubierto | No lo sabe |
-| C5 | **Balde del día** | `Recolección` / `Mora` / `Gabela` / `Pagan hoy` / `Al día` | Panel Hoy: Recolección = mora de más de 3 días **sin plazo extra vigente** | No lo sabe |
+| C5 | **Balde del día** | `Recolección` / `Mora` / `Gabela` / `Pagan hoy` / `Al día` | Panel Hoy: Recolección = más de 3 días **con la cuota vencida** (C2, no C2b) y **sin plazo extra vigente** | `zala.cliente.balde_hoy` |
 | C6 | **Plazo extra vigente** | sí / no + fecha límite | Última gestión `plazo_extra` con `fecha_limite >= hoy` | No lo sabe |
 | C7 | **Paso del protocolo** | mensaje → llamada → sirena / apagado → recolección | Qué gestiones se hicieron hoy | No lo sabe |
 | C8 | **Empalme pendiente** | sí / no | `es_migrado` y no `empalme_cerrado` | No lo sabe |
@@ -283,6 +284,20 @@ de la pantalla (`src/utils/cicloPago.ts` y compañía). Es la razón de la vitri
 | C15 | **Base inicial** | requerida / pagada / falta | `$308.000 + valor del período` contra `ingreso_inicial` + abonos | — |
 | C16 | **Las 19 alertas** | `mora_critica`, `gabela`, `base_completada`, `soat_vence`, `tecno_vence`, `plazo_extra_vence`, `transferencia_pendiente`, `contrato_sin_activar`, `moto_retenida`, `traspaso_proximo`, `convenio_incumplido_3`, `convenio_por_vencer`, `moto_taller_demorada`, `validar_ubicacion_moto`, `promesa_pago_vence`, `prestamo_doc_vence`, `dinero_sin_identificar`, `cesion_pendiente` | `useAlertas`, al vuelo, **sin dueño ni estado** (el motor de pendientes está en diseño) | — |
 | C17 | **Encargado** | nombre | `motos.subadmin_id` → `profiles.nombre` | — |
+
+### 🔴 Las DOS cuentas de días — nunca se confunden (regla del dueño, 9-sep-2026)
+
+| | **Días en mora** (C2) | **Días desde su último pago** (C2b) |
+|---|---|---|
+| Desde cuándo cuenta | Desde el día que le tocaba pagar su ciclo y **no lo pagó o no lo completó** | Desde el último día que **abonó algo**, del monto que sea |
+| ¿Un abono parcial la reinicia? | **No.** Sigue corriendo hasta que complete la cuota | **Sí.** Vuelve a cero con cualquier abono |
+| En el código | `diasEnMora()` · `zala.cliente.dias_mora` · `vencida_texto` | `diasSinPago` · `zala.cliente.dias_sin_pago` · `dias_texto` |
+| En pantalla dice | "6d en mora" · "En mora hace 6 días (desde el día que le tocaba pagar)" | "Último pago hace 13 días" |
+| Para qué se usa | **Manda:** decide recolección, ordena la lista de Cartera y el panel Hoy, y marca el paso del protocolo | Informativa: se le nombra al cliente en el mensaje porque él la reconoce |
+
+Ejemplo que las separa: quien debe 3 semanas y abonó $50.000 ayer lleva **1 día** desde su último
+pago y **16 días** en mora. Por eso la lista se ordena por la segunda y no por la primera, y por eso
+el mensaje de mora lleva las dos, cada una con su palabra.
 
 **La regla que manda sobre todo esto:** el número que se cobra siempre resta lo ya pagado; si ya
 pagó, dice $0. "Le falta por pagar", "total del acuerdo" y "deuda registrada" son tres cosas

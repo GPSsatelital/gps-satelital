@@ -658,6 +658,19 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 - **Listas dentro de recuadros** (`maxHeight ~64vh + overflowY:auto`) para que no ocupen toda la pantalla.
 - Mora/Gabela/Pagan-hoy/Recolección/Protocolo ya NO son pestañas: viven dentro de **Hoy** (tareas) o como **filtro de Contratos**. Cero funcionalidad perdida.
 
+### 🔴 LAS DOS CUENTAS DE DÍAS — no se confunden (regla del dueño, 9-sep-2026)
+- **Días en mora** (`diasEnMora()` · `zala.cliente.dias_mora`): desde el día que le tocaba pagar su
+  ciclo y **no lo pagó o no lo completó**. Un abono parcial **NO** la reinicia. **Es la que manda:**
+  decide quién entra a Recolección (>3 días), ordena la lista de Cartera y el panel Hoy, y marca el
+  paso del protocolo. En pantalla: *"6d en mora"*.
+- **Días desde su último pago** (`diasSinPago` · `zala.cliente.dias_sin_pago`): desde el último
+  abono confirmado, del monto que sea. **Cualquier abono la reinicia.** Es informativa; se le nombra
+  al cliente en el mensaje porque él la reconoce. En pantalla: *"Último pago hace 13 días"*.
+- Quien debe 3 semanas y abonó ayer lleva **1 día** desde su último pago y **16 en mora**. Nunca
+  usar una donde va la otra ni etiquetar una con el nombre de la otra (fue el defecto de
+  *"Xd sin pagar"*, que mostraba la segunda con nombre de la primera). Detalle en
+  `docs/DICCIONARIO-ESTADOS.md` → Parte 2.
+
 ### Protocolo de mora (escalación por respuesta, no por días fijos)
 - **Día de pago** → mensaje WhatsApp durante la mañana
 - **Día de gabela** (1 día sin pagar) → sigue el mensaje

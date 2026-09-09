@@ -1124,14 +1124,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     }
 
     const q = busqueda.toLowerCase();
-    if (!q) return base;
-    return base.filter(c => {
+    const filtrada = !q ? base : base.filter(c => {
       const cliente = clientes.find(cl => cl.id === c.cliente_id);
       const moto = motos.find(m => m.id === c.moto_id);
       return (
         (cliente?.nombre ?? "").toLowerCase().includes(q) ||
         (moto?.placa ?? "").toLowerCase().includes(q)
       );
+    });
+    // El que más días lleva en mora, de primero (pedido del dueño, 9-sep-2026). Antes salía en
+    // orden de creación del contrato y los Al día tapaban a los atrasados. `sort` es estable, así
+    // que los que no están en mora (diasMora = 0) conservan el orden que traían.
+    // Las RETENIDAS van al final aunque sean las que más días acumulan: a esas no se les sale a
+    // cobrar (la moto ya está en el patio, se gestionan desde Inmovilizaciones) y si se quedaran
+    // arriba, los 59 retenidos taparían justamente a los que sí se pueden cobrar hoy.
+    return [...filtrada].sort((a, b) => {
+      if (a.suspendido !== b.suspendido) return a.suspendido ? 1 : -1;
+      return b.diasMora - a.diasMora;
     });
   }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
@@ -2046,6 +2055,26 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             )}
           </div>
 
+          {/* LAS DOS CIFRAS DE DÍAS, dichas completas — son distintas y se confundían (regla del
+              dueño, 9-sep-2026). "En mora" cuenta desde el día que le tocaba pagar su ciclo y no lo
+              completó, y un abono NO la reinicia. "Último pago" cuenta desde el último abono, sea
+              del monto que sea. La que manda para recolectar es la primera. */}
+          {(contratoDetalle.estadoCartera === "mora" || ec.ultimoPago) && (
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              {contratoDetalle.estadoCartera === "mora" && (
+                <span style={{ color: "var(--bad-ink)" }}>
+                  En mora hace <strong>{contratoDetalle.diasMora} {contratoDetalle.diasMora === 1 ? "día" : "días"}</strong> (desde el día que le tocaba pagar)
+                </span>
+              )}
+              {contratoDetalle.estadoCartera === "mora" && ec.ultimoPago && <span>·</span>}
+              {ec.ultimoPago && contratoDetalle.diasSinPago < 999 && (
+                <span>
+                  Último pago hace <strong>{contratoDetalle.diasSinPago} {contratoDetalle.diasSinPago === 1 ? "día" : "días"}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <div style={{ background: "var(--soft2)", borderRadius: 10, padding: "8px 10px" }}>
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase" }}>
@@ -2781,16 +2810,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               subtitulo={<>
                 {c.suspendido && <span style={{ color: "var(--muted2)", fontWeight: 700 }}>🔒 Moto retenida · </span>}
                 {c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}
-                {!c.suspendido && c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia" && (
-                  <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}> · {c.diasSinPago}d sin pagar</span>
+                {/* "Xd en mora" = desde el día que le tocaba pagar su ciclo y no lo completó. NO es
+                    "días sin pagar" (desde su último abono), que es lo que decía antes y confundía. */}
+                {!c.suspendido && c.estadoCartera === "mora" && c.diasMora > 0 && (
+                  <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}> · {c.diasMora}d en mora</span>
+                )}
+                {!c.suspendido && c.estadoCartera === "gabela" && (
+                  <span style={{ color: "var(--warn-ink)", fontWeight: 600 }}> · día de gracia</span>
                 )}
               </>}
               right={<>
                 <div style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: montoColor, whiteSpace: "nowrap", lineHeight: 1.1 }}>
                   {pendiente > 0 ? `$${fmt(pendiente)}` : "✓ Al día"}
                 </div>
+                {/* Naranja, no gris: la retenida va al final de la lista y hay que poder ubicarla de
+                    un vistazo (pedido del dueño, 9-sep-2026). Naranja y no rojo ni amarillo, que ya
+                    significan mora y gabela. El candado y la palabra siguen ahí: el color no es lo
+                    único que lo dice. */}
                 {c.suspendido
-                  ? <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted2)", background: "var(--soft)", borderRadius: 999, padding: "2px 8px" }}>🔒 Retenida</span>
+                  ? <span style={{ fontSize: 10, fontWeight: 700, color: "var(--orange-ink)", background: "var(--orange-soft)", borderRadius: 999, padding: "2px 8px" }}>🔒 Retenida</span>
                   : <EstadoBadge estado={c.estadoCartera} />}
               </>}
               rielColor={rielColor}
@@ -2993,7 +3031,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           const bHecha = tareasDe(b).every(t => gestionHechaHoy(b.id, t.tipo));
           if (aHecha && !bHecha) return 1;
           if (!aHecha && bHecha) return -1;
-          return 0;
+          // (II) entre los que siguen pendientes, el que más días lleva en mora va primero.
+          return b.diasMora - a.diasMora;
         });
 
         const CHIPS_HOY: { key: FiltroHoy; label: string; count: number }[] = [
@@ -3143,8 +3182,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           </div>
                           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                             {moto && <><Placa placa={moto.placa} grupo={moto.grupo} size="sm" /><span> · </span></>}
-                            {c.diasSinPago > 0 && c.diasSinPago < 999 && c.estadoCartera !== "al-dia"
-                              ? <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{c.diasSinPago}d sin pagar</span>
+                            {c.estadoCartera === "mora" && c.diasMora > 0
+                              ? <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>{c.diasMora}d en mora</span>
+                              : c.estadoCartera === "gabela"
+                              ? <span style={{ color: "var(--warn-ink)", fontWeight: 700 }}>día de gracia</span>
                               : <span>{c.forma_pago === "Diario" ? "Diario" : `Paga ${formatDiaPago(c)}`}</span>
                             }
                           </div>

@@ -10,6 +10,7 @@ import { card, primaryBtn, secondaryBtn, listaConScroll } from "../styles/shared
 import ModalAsignarTarea from "../components/ModalAsignarTarea";
 import ModalResolverTarea from "../components/ModalResolverTarea";
 import PanelEquipo from "../components/PanelEquipo";
+import AvisosCelular from "../components/AvisosCelular";
 import PanelDelDia from "../components/PanelDelDia";
 import Placa from "../components/Placa";
 import { fmtFechaCorta } from "../utils/fecha";
@@ -216,6 +217,10 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
       {msg && (
         <div style={{ ...card, padding: "10px 12px", marginBottom: 12, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 13, fontWeight: 600 }}>{msg}</div>
       )}
+
+      {/* El interruptor de los avisos al celular. Se muestra solo mientras haya algo que hacer:
+          cuando ya están prendidos, la franja desaparece sola. */}
+      <AvisosCelular />
 
       {/* EL DUEÑO LEE PRIMERO LA PLATA. Va antes que su propia lista de pendientes a propósito:
           es el orden que él pidió (plata → decisiones → alarmas). */}

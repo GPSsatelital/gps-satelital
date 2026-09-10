@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
 import { useAuth } from "../contexts/AuthContext";
 import { useTareas, tareaVencida, EVIDENCIA_LABEL, type Tarea } from "../hooks/useTareas";
+import { usePendientes } from "../hooks/usePendientes";
 import { useMotos } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useSubadmins } from "../hooks/useSubadmins";
@@ -11,11 +12,15 @@ import ModalResolverTarea from "../components/ModalResolverTarea";
 import Placa from "../components/Placa";
 import { fmtFechaCorta } from "../utils/fecha";
 
-// MI DÍA — las tareas que me asignaron y las que yo mandé (fase 1 de `docs/FLUJO-DIARIO.md`).
+// MI DÍA — lo que le toca hoy a esta persona. Dos cosas distintas, juntas por primera vez:
 //
-// El bloque de cobro del día NO se duplica acá a propósito: vive en Cartera → Para hacer hoy, y
-// tener la misma lista calculada en dos pantallas es como nacen las dos verdades que este proyecto
-// ya pagó caro. Se unen en la fase 2, cuando los pendientes del sistema se muden al servidor.
+//   1. Los PENDIENTES que el servidor calcula solo (mora, gabela, papeles, taller…) — mig 142.
+//      No se duplica el cálculo de Cartera: la vista los deduce de los mismos datos, así que no
+//      pueden decir cosas distintas. Ese era el riesgo de las dos verdades que este proyecto ya
+//      pagó caro, y por eso se calculan en UN solo lugar: el servidor.
+//   2. Las TAREAS que alguien le montó a mano — mig 140.
+//
+// Ver docs/FLUJO-DIARIO.md: el día del subadmin arranca validando esta lista.
 
 export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
   const { profile, puede } = useAuth();
@@ -38,6 +43,18 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
 
   const uid = profile?.id ?? "";
   const puedeAsignar = puede("asignar_tarea");
+
+  // Los pendientes que el servidor calculó y que le tocan a esta persona (mig 142). Los ya
+  // atendidos se quedan a la vista, tachados: al final del día vale ver lo que se hizo.
+  const { error: errorPend, marcarAtendido, estaAtendido, mios } = usePendientes();
+  const misPendientes = useMemo(() => mios(uid, profile?.role), [mios, uid, profile?.role]);
+  const porHacer = misPendientes.filter(p => !estaAtendido(p.clave));
+
+  async function handleAtender(clave: string) {
+    if (!profile) return;
+    const { error } = await marcarAtendido(clave, profile.id);
+    if (error) { setMsg("No se pudo marcar: " + error); setTimeout(() => setMsg(null), 5000); }
+  }
 
   const { mias, resueltasHoy, mandadas } = useMemo(() => {
     const hoy = new Date().toISOString().slice(0, 10);
@@ -171,17 +188,65 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
         <div style={{ ...card, padding: "10px 12px", marginBottom: 12, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 13, fontWeight: 600 }}>{msg}</div>
       )}
 
-      {/* El cobro del día no se duplica: se manda a Cartera, que es donde se calcula. */}
-      <div style={{ ...card, padding: "12px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Llamar y escribir</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
-            Lo primero del día: los cobros de hoy están en Cartera, en “Para hacer hoy”.
+      {/* LO PRIMERO DEL DÍA: los pendientes que el servidor calculó (mig 142). Ya no es un enlace
+          a Cartera: la lista existe de verdad, con dueño, y se puede marcar atendida. */}
+      <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+        <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: misPendientes.length ? "1px solid var(--line)" : "none" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+              Pendientes de hoy {porHacer.length > 0 && <span style={{ color: "var(--bad-ink)" }}>({porHacer.length})</span>}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
+              {errorPend
+                ? "No se pudieron cargar."
+                : porHacer.length === 0
+                  ? "Nada pendiente por ahora."
+                  : "Lo que te toca hoy. Al marcarlo atendido desaparece hasta mañana."}
+            </div>
           </div>
+          <button onClick={() => onNavigate?.("cobros")} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 14px", whiteSpace: "nowrap" }}>
+            Ir a Cartera
+          </button>
         </div>
-        <button onClick={() => onNavigate?.("cobros")} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 14px", whiteSpace: "nowrap" }}>
-          Ir a Cartera
-        </button>
+
+        {errorPend && (
+          <div role="alert" style={{ padding: "10px 12px", background: "var(--bad-soft)", color: "var(--bad-ink)", fontSize: 12.5, lineHeight: 1.45 }}>
+            {errorPend}
+          </div>
+        )}
+
+        {misPendientes.length > 0 && (
+          <div style={listaConScroll(isMobile)}>
+            {misPendientes.map(p => {
+              const hecho = estaAtendido(p.clave);
+              const color = p.nivel === "critico" ? "var(--bad)" : p.nivel === "alerta" ? "var(--warn2)" : "var(--accent)";
+              return (
+                <div key={p.clave} style={{
+                  padding: "10px 12px", borderBottom: "1px solid var(--line)",
+                  borderLeft: `3px solid ${hecho ? "transparent" : color}`,
+                  opacity: hecho ? 0.55 : 1,
+                  display: "flex", gap: 8, alignItems: "flex-start",
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: hecho ? "line-through" : "none" }}>
+                      {p.titulo}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>{p.detalle}</div>
+                  </div>
+                  <button
+                    onClick={() => handleAtender(p.clave)}
+                    disabled={hecho}
+                    style={{
+                      ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
+                      opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
+                    }}>
+                    {hecho ? "✓ Atendido" : "Marcar atendido"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>

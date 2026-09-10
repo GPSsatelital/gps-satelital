@@ -1,15 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { useMotos } from "../hooks/useMotos";
-import { useContratos } from "../hooks/useContratos";
-import { useClientes } from "../hooks/useClientes";
-import { usePagos } from "../hooks/usePagos";
-import { useConvenios } from "../hooks/useConvenios";
-import { useGestiones } from "../hooks/useGestiones";
-import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
-import { useCesiones } from "../hooks/useCesiones";
-import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
-import { useAlertas, type Alerta } from "../hooks/useAlertas";
-import { useScope } from "../contexts/SubadminScopeContext";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { usePendientes } from "../hooks/usePendientes";
+import { comoAlertas, type Alerta } from "../utils/pendienteComoAlerta";
 import type { ViewKey } from "../App";
 
 const NIVEL_STYLE: Record<Alerta["nivel"], { bg: string; color: string; border: string; dot: string }> = {
@@ -53,25 +44,15 @@ export default function CampanaAlertas({ onNavegar }: { onNavegar?: (v: ViewKey)
   const [abierto, setAbierto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const { filtrarMotos, filtrarContratos, filtrarPorCliente, filtrarPorContrato } = useScope();
-  const { motos: todasMotos } = useMotos();
-  const { contratos: todosContratos } = useContratos();
-  const { clientes: todosClientes } = useClientes();
-  const { pagos: todosPagos } = usePagos();
-  const { convenios: todosConvenios } = useConvenios();
-  const { gestiones } = useGestiones();
-  const { prestamos: prestamosDoc } = usePrestamosDoc();
-  const { pendientes: ingresosNI } = useIngresosNoIdentificados();
-  const { cesiones } = useCesiones();
-
-  const motos = filtrarMotos(todasMotos);
-  const contratos = filtrarContratos(todosContratos);
-  const clientes = filtrarPorCliente(todosClientes);
-  const pagos = filtrarPorContrato(todosPagos);
-  const convenios = filtrarPorContrato(todosConvenios);
-
-  // gestiones no se filtran: useAlertas solo las cruza contra contratos ya scopeados.
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI, cesiones });
+  // Los avisos vienen del SERVIDOR (migs 142-145), ya no se calculan acá.
+  //
+  // Dos cosas que se ganan con el cambio, además de que por fin tengan dueño:
+  //  · Ya no hace falta `useScope()`: la vista respeta la RLS, así que el SUBADMIN recibe solo lo
+  //    suyo desde la base. Antes se traía TODO y se filtraba en el navegador.
+  //  · El encabezado deja de cargar nueve tablas completas (motos, contratos, clientes, pagos,
+  //    convenios, gestiones, préstamos, ingresos, cesiones) solo para pintar un número.
+  const { pendientes } = usePendientes();
+  const alertas = useMemo(() => comoAlertas(pendientes), [pendientes]);
   const criticos = alertas.filter(a => a.nivel === "critico").length;
   const total = alertas.length;
 

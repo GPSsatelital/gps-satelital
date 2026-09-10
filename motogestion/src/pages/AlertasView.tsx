@@ -1,16 +1,10 @@
 import { useMemo, useState, useEffect } from "react";
-import { useAlertas, type Alerta } from "../hooks/useAlertas";
-import { useContratos } from "../hooks/useContratos";
+import { usePendientes } from "../hooks/usePendientes";
+import { comoAlertas, type Alerta } from "../utils/pendienteComoAlerta";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
-import { usePagos } from "../hooks/usePagos";
-import { useConvenios } from "../hooks/useConvenios";
-import { useGestiones } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import { textoDelEnvio } from "../utils/mensajeria";
-import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
-import { useCesiones } from "../hooks/useCesiones";
-import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
 import type { ViewKey } from "../App";
 
 interface Props {
@@ -120,18 +114,15 @@ export default function AlertasView({ onNavegar }: Props) {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  const { contratos, loading: lCt } = useContratos();
-  const { clientes,  loading: lCl } = useClientes();
-  const { motos,     loading: lM  } = useMotos();
-  const { pagos,     loading: lP  } = usePagos();
-  const { convenios } = useConvenios();
-  const { gestiones } = useGestiones();
+  // Los avisos vienen del SERVIDOR (migs 142-145). Clientes y motos se siguen cargando porque
+  // esta pantalla necesita el teléfono para escribir o llamar, y la placa para mostrarla — eso
+  // no cabe en la lista de pendientes y no vale la pena meterlo ahí.
+  const { clientes, loading: lCl } = useClientes();
+  const { motos,    loading: lM  } = useMotos();
   const { enviar } = useEnvioMensaje();
-  const { prestamos: prestamosDoc } = usePrestamosDoc();
-  const { pendientes: ingresosNI } = useIngresosNoIdentificados();
-  const { cesiones } = useCesiones();
-  const cargando = lCt || lCl || lM || lP;
-  const alertas = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI, cesiones });
+  const { pendientes, loading: lPe } = usePendientes();
+  const cargando = lCl || lM || lPe;
+  const alertas = useMemo(() => comoAlertas(pendientes), [pendientes]);
 
   const [tab, setTab]           = useState<TabKey>("todas");
   const [vistas, setVistas]     = useState<Set<string>>(new Set());
@@ -183,9 +174,10 @@ export default function AlertasView({ onNavegar }: Props) {
     window.open(`tel:+57${tel.replace(/\D/g, "")}`);
   }
 
+  // Los días de mora los cuenta el servidor (`zala.dias_mora`, la misma cuenta de Cartera).
   function diasMora(a: Alerta): number | null {
-    const m = a.detalle.match(/^(\d+) días sin pago/);
-    return m ? parseInt(m[1]) : null;
+    if (a.tipo !== "mora_critica") return null;
+    return a.dias != null && a.dias > 0 ? a.dias : null;
   }
 
   function diasVencimiento(a: Alerta): number | null {
@@ -268,7 +260,12 @@ export default function AlertasView({ onNavegar }: Props) {
                       <div style={{ fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>
                         {dias === 999 ? "∞" : dias}
                       </div>
-                      <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días sin pago</div>
+                      {/* 🔴 "en mora", NO "sin pago": son dos cuentas distintas y esta es la que
+                          manda (desde que le tocaba pagar y no lo hizo; un abono parcial NO la
+                          reinicia). La otra —días desde su último pago— sí la reinicia cualquier
+                          abono. Regla del dueño del 9-sep-2026; esta etiqueta estaba mal desde
+                          antes y solo se hizo visible ahora que el número por fin aparece. */}
+                      <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>días en mora</div>
                     </div>
                   )}
                   {dVenc !== null && (

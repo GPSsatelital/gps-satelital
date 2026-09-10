@@ -5,11 +5,7 @@ import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../ho
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
-import { useGestiones } from "../hooks/useGestiones";
-import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
-import { useCesiones } from "../hooks/useCesiones";
-import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
-import { useAlertas } from "../hooks/useAlertas";
+import { usePendientes } from "../hooks/usePendientes";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
 import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
@@ -70,10 +66,6 @@ export default function DashboardView({ onNavigate }: {
   const { pagos: todosPagos, loading: lP } = usePagos();
   const { taller: todoTaller, loading: lT } = useTaller();
   const { convenios: todosConvenios } = useConvenios();
-  const { gestiones } = useGestiones();
-  const { prestamos: prestamosDoc } = usePrestamosDoc();
-  const { pendientes: ingresosNI } = useIngresosNoIdentificados();
-  const { cesiones } = useCesiones();
 
   const motos = filtrarMotos(todasMotos);
   const clientes = filtrarPorCliente(todosClientes);
@@ -82,8 +74,9 @@ export default function DashboardView({ onNavigate }: {
   const taller = esSubadmin ? todoTaller.filter(t => t.moto_id != null && misMotoIds.has(t.moto_id)) : todoTaller;
   const convenios = filtrarPorContrato(todosConvenios);
 
-  // Misma fuente de alertas que la campana y la vista de Alertas
-  const alertasSistema = useAlertas({ contratos, clientes, motos, pagos, convenios, gestiones, prestamosDoc, ingresosNI, cesiones });
+  // Misma fuente de alertas que la campana y la vista de Alertas — desde el 10-sep-2026 esa
+  // fuente es el SERVIDOR (`public.pendientes`, migs 142-145) y no un cálculo del navegador.
+  const { pendientes: alertasSistema } = usePendientes();
 
   const loading = lM || lC || lCt || lP || lT;
 

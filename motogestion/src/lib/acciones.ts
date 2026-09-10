@@ -35,6 +35,11 @@ export const ACCIONES: AccionDef[] = [
   // lo tiene por defecto, `_acciones_default()` en SQL (mig 110) no necesita espejo.
   { key: "enviar_mensaje",         label: "Enviar mensajes por el canal oficial (ZALA)", modulo: "cobros" },
   { key: "enviar_masivo",          label: "Enviar mensajes masivos",            modulo: "cobros" },
+  // Tareas asignadas (mig 140). Techo en ADMIN y ADMIN_PRINCIPAL — decisión del dueño (10-sep):
+  // "por ahora solo yo y Sergio, pero más adelante hay que contemplar que también lo haga la
+  // secretaria". Por eso es una ACCIÓN y no un rol quemado: dárselo a Ángela será marcarle esta
+  // casilla en Usuarios, sin tocar código ni volver a desplegar.
+  { key: "asignar_tarea",          label: "Montarle una tarea a alguien",       modulo: "cobros", dbEnforced: true },
   // Caja
   { key: "cerrar_caja",            label: "Cerrar caja diaria",                 modulo: "caja" },
   // Contratos

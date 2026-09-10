@@ -1,0 +1,233 @@
+import { useEffect, useMemo, useState } from "react";
+import type { ViewKey } from "../App";
+import { useAuth } from "../contexts/AuthContext";
+import { useTareas, tareaVencida, EVIDENCIA_LABEL, type Tarea } from "../hooks/useTareas";
+import { useMotos } from "../hooks/useMotos";
+import { useClientes } from "../hooks/useClientes";
+import { useSubadmins } from "../hooks/useSubadmins";
+import { card, primaryBtn, secondaryBtn, listaConScroll } from "../styles/shared";
+import ModalAsignarTarea from "../components/ModalAsignarTarea";
+import ModalResolverTarea from "../components/ModalResolverTarea";
+import Placa from "../components/Placa";
+import { fmtFechaCorta } from "../utils/fecha";
+
+// MI DÍA — las tareas que me asignaron y las que yo mandé (fase 1 de `docs/FLUJO-DIARIO.md`).
+//
+// El bloque de cobro del día NO se duplica acá a propósito: vive en Cartera → Para hacer hoy, y
+// tener la misma lista calculada en dos pantallas es como nacen las dos verdades que este proyecto
+// ya pagó caro. Se unen en la fase 2, cuando los pendientes del sistema se muden al servidor.
+
+export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
+  const { profile, puede } = useAuth();
+  // Mismo criterio que el resto de las vistas: 900px es el punto de quiebre de la app.
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  useEffect(() => {
+    const f = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", f);
+    return () => window.removeEventListener("resize", f);
+  }, []);
+  const { tareas, loading, cancelarTarea } = useTareas();
+  const { motos } = useMotos();
+  const { clientes } = useClientes();
+  const { nombreSubadmin } = useSubadmins();
+
+  const [asignando, setAsignando] = useState(false);
+  const [resolviendo, setResolviendo] = useState<Tarea | null>(null);
+  const [verMandadas, setVerMandadas] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const uid = profile?.id ?? "";
+  const puedeAsignar = puede("asignar_tarea");
+
+  const { mias, resueltasHoy, mandadas } = useMemo(() => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const deUno = tareas.filter(t => t.asignada_a === uid);
+    return {
+      // Las vencidas primero, y dentro de eso la más vieja arriba: la que lleva más esperando.
+      mias: deUno.filter(t => t.estado === "pendiente").sort((a, b) => {
+        const va = tareaVencida(a) ? 0 : 1, vb = tareaVencida(b) ? 0 : 1;
+        return va - vb || a.created_at.localeCompare(b.created_at);
+      }),
+      resueltasHoy: deUno.filter(t => t.estado !== "pendiente" && (t.resuelta_el ?? "").slice(0, 10) === hoy),
+      mandadas: tareas.filter(t => t.asignada_por === uid && t.estado !== "cancelada")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    };
+  }, [tareas, uid]);
+
+  function contexto(t: Tarea) {
+    const moto = t.moto_id ? motos.find(m => m.id === t.moto_id) : null;
+    const cliente = t.cliente_id ? clientes.find(c => c.id === t.cliente_id) : null;
+    return { moto, cliente };
+  }
+
+  async function handleCancelar(t: Tarea) {
+    if (!profile) return;
+    if (!confirm(`¿Cancelar la tarea "${t.titulo}"? Queda el rastro de que se pidió.`)) return;
+    const { error } = await cancelarTarea(t.id, profile.id);
+    setMsg(error ? "No se pudo cancelar: " + error : "Tarea cancelada.");
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  function Tarjeta({ t, mostrarQuien }: { t: Tarea; mostrarQuien: "de" | "para" }) {
+    const { moto, cliente } = contexto(t);
+    const vencida = tareaVencida(t);
+    const resuelta = t.estado !== "pendiente";
+    const tono = t.estado === "cumplida" ? "ok" : t.estado === "no_se_pudo" ? "bad" : vencida ? "bad" : "muted";
+    return (
+      <div style={{
+        padding: "11px 12px", borderBottom: "1px solid var(--line)",
+        opacity: resuelta ? 0.62 : 1,
+        borderLeft: `3px solid ${vencida && !resuelta ? "var(--bad)" : "transparent"}`,
+      }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)", textDecoration: t.estado === "cumplida" ? "line-through" : "none" }}>
+              {t.titulo}
+            </div>
+            {t.detalle && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>{t.detalle}</div>}
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              {moto && <Placa placa={moto.placa} grupo={moto.grupo} size="sm" />}
+              {cliente && <span style={{ textTransform: "uppercase" }}>{cliente.nombre}</span>}
+              <span>
+                {mostrarQuien === "de"
+                  ? `lo pidió ${nombreSubadmin(t.asignada_por) ?? "—"}`
+                  : `para ${nombreSubadmin(t.asignada_a) ?? "—"}`}
+              </span>
+              {t.fecha_limite && (
+                <span style={{ color: vencida && !resuelta ? "var(--bad-ink)" : "var(--muted)", fontWeight: vencida && !resuelta ? 700 : 400 }}>
+                  · {vencida && !resuelta ? "venció el" : "para el"} {fmtFechaCorta(t.fecha_limite)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+            {!resuelta && t.evidencias_requeridas.length > 0 && (
+              <span style={{ fontSize: 10, background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap" }}>
+                Pide {t.evidencias_requeridas.map(e => EVIDENCIA_LABEL[e].toLowerCase()).join(" + ")}
+              </span>
+            )}
+            {resuelta && (
+              <span style={{
+                fontSize: 10, borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap",
+                background: tono === "ok" ? "var(--ok-soft)" : "var(--bad-soft)",
+                color: tono === "ok" ? "var(--ok-ink)" : "var(--bad-ink)",
+              }}>
+                {t.estado === "cumplida" ? "Lista" : t.estado === "no_se_pudo" ? "No se pudo" : "Cancelada"}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Lo que dejó al resolverla. Se muestra siempre: es la prueba de que se hizo. */}
+        {t.estado === "no_se_pudo" && t.motivo_no_se_pudo && (
+          <div style={{ marginTop: 7, fontSize: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", borderRadius: 8, padding: "7px 9px", lineHeight: 1.45 }}>
+            No se pudo: {t.motivo_no_se_pudo}
+          </div>
+        )}
+        {t.estado === "cumplida" && (t.resultado_comentario || t.resultado_fotos.length > 0 || t.resultado_ubicacion || t.resultado_firma_url) && (
+          <div style={{ marginTop: 7, fontSize: 11.5, color: "var(--muted)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {t.resultado_comentario && <span style={{ flex: "1 1 100%", lineHeight: 1.45 }}>“{t.resultado_comentario}”</span>}
+            {t.resultado_fotos.map((f, i) => (
+              <a key={i} href={f} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Foto {i + 1}</a>
+            ))}
+            {t.resultado_ubicacion && (
+              <a href={`https://maps.google.com/?q=${t.resultado_ubicacion.lat},${t.resultado_ubicacion.lng}`}
+                 target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Ver ubicación</a>
+            )}
+            {t.resultado_firma_url && (
+              <a href={t.resultado_firma_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Firma</a>
+            )}
+          </div>
+        )}
+
+        {!resuelta && (
+          <div style={{ display: "flex", gap: 8, marginTop: 9, flexWrap: "wrap" }}>
+            {t.asignada_a === uid && (
+              <button onClick={() => setResolviendo(t)} style={{ ...primaryBtn, fontSize: 12, padding: "7px 14px" }}>
+                Resolver
+              </button>
+            )}
+            {t.asignada_por === uid && (
+              <button onClick={() => handleCancelar(t)} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 14px" }}>
+                Cancelar
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const lista = verMandadas ? mandadas : mias;
+
+  return (
+    <div>
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Mi día</h2>
+      <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, marginBottom: 14 }}>
+        {profile?.nombre ?? ""} · {mias.length === 0 ? "sin tareas pendientes" : `${mias.length} ${mias.length === 1 ? "tarea pendiente" : "tareas pendientes"}`}
+      </div>
+
+      {msg && (
+        <div style={{ ...card, padding: "10px 12px", marginBottom: 12, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 13, fontWeight: 600 }}>{msg}</div>
+      )}
+
+      {/* El cobro del día no se duplica: se manda a Cartera, que es donde se calcula. */}
+      <div style={{ ...card, padding: "12px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Llamar y escribir</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
+            Lo primero del día: los cobros de hoy están en Cartera, en “Para hacer hoy”.
+          </div>
+        </div>
+        <button onClick={() => onNavigate?.("cobros")} style={{ ...secondaryBtn, fontSize: 12, padding: "8px 14px", whiteSpace: "nowrap" }}>
+          Ir a Cartera
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+        <button onClick={() => setVerMandadas(false)} style={{ ...(verMandadas ? secondaryBtn : primaryBtn), fontSize: 12, padding: "7px 14px" }}>
+          Mis tareas {mias.length > 0 && `(${mias.length})`}
+        </button>
+        {puedeAsignar && (
+          <button onClick={() => setVerMandadas(true)} style={{ ...(verMandadas ? primaryBtn : secondaryBtn), fontSize: 12, padding: "7px 14px" }}>
+            Las que mandé {mandadas.filter(t => t.estado === "pendiente").length > 0 && `(${mandadas.filter(t => t.estado === "pendiente").length})`}
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
+        {puedeAsignar && (
+          <button onClick={() => setAsignando(true)} style={{ ...primaryBtn, fontSize: 12, padding: "8px 14px" }}>
+            + Montar una tarea
+          </button>
+        )}
+      </div>
+
+      <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+        <div style={listaConScroll(isMobile)}>
+          {loading && <div style={{ padding: 18, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Cargando...</div>}
+          {!loading && lista.length === 0 && (
+            <div style={{ padding: 22, textAlign: "center", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>
+              {verMandadas
+                ? "No has montado ninguna tarea todavía."
+                : "No tienes tareas asignadas. Tus cobros del día están en Cartera."}
+            </div>
+          )}
+          {lista.map(t => <Tarjeta key={t.id} t={t} mostrarQuien={verMandadas ? "para" : "de"} />)}
+
+          {/* Lo que resolviste hoy se queda a la vista: al final del día vale ver lo que hiciste,
+              no solo lo que falta. */}
+          {!verMandadas && resueltasHoy.length > 0 && (
+            <>
+              <div style={{ padding: "9px 12px", fontSize: 11, fontWeight: 700, letterSpacing: .4, textTransform: "uppercase", color: "var(--muted2)", background: "var(--soft2)" }}>
+                Resueltas hoy
+              </div>
+              {resueltasHoy.map(t => <Tarjeta key={t.id} t={t} mostrarQuien="de" />)}
+            </>
+          )}
+        </div>
+      </div>
+
+      {asignando && <ModalAsignarTarea onClose={() => setAsignando(false)} onHecho={() => { setAsignando(false); setMsg("Tarea asignada."); setTimeout(() => setMsg(null), 4000); }} />}
+      {resolviendo && <ModalResolverTarea tarea={resolviendo} onClose={() => setResolviendo(null)} onHecho={(t) => { setResolviendo(null); setMsg(t); setTimeout(() => setMsg(null), 4000); }} />}
+    </div>
+  );
+}

@@ -25,7 +25,9 @@ export const MODULOS_ASIGNABLES: ModuloAsignable[] = [
 ];
 
 // Vistas siempre accesibles, sin importar permisos personalizados
-export const MODULOS_SIEMPRE: ViewKey[] = ["dashboard", "configuracion", "ficha_cliente", "ficha_moto"];
+// "mi_dia" va acá: son las tareas que a UNO le asignaron. Esconderla por permisos dejaría a
+// alguien con trabajo montado y sin dónde verlo.
+export const MODULOS_SIEMPRE: ViewKey[] = ["dashboard", "configuracion", "ficha_cliente", "ficha_moto", "mi_dia"];
 
 // Sugerencia de accesos por rol — precarga los checkboxes al elegir un rol.
 // Es solo una plantilla; el admin puede ajustar libremente.

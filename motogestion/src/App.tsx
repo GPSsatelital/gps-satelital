@@ -19,6 +19,7 @@ import CampanaAlertas from "./components/CampanaAlertas";
 const MotosView = lazy(() => import("./pages/MotosView"));
 const ClientesView = lazy(() => import("./pages/ClientesView"));
 const MisVisitasView = lazy(() => import("./pages/MisVisitasView"));
+const MiDiaView = lazy(() => import("./pages/MiDiaView"));
 const ContratosView = lazy(() => import("./pages/ContratosView"));
 const CobrosView = lazy(() => import("./pages/CobrosView"));
 const TallerView = lazy(() => import("./pages/TallerView"));
@@ -43,7 +44,7 @@ export type ViewKey =
   | "cobros" | "caja" | "reportes" | "taller" | "usuarios" | "liquidaciones" | "configuracion"
   | "referidos" | "cobro_diario" | "alertas" | "inmovilizaciones" | "importacion"
   | "ficha_cliente" | "ficha_moto" | "historial_pagos" | "tarjetas_llaves"
-  | "mis_visitas";
+  | "mis_visitas" | "mi_dia";
 
 export type NavContext = { view: ViewKey; filter: string };
 
@@ -81,6 +82,7 @@ const SIDE_GROUPS: SideGroup[] = [
     items: [
       // Pantalla del VISITADOR. Los demás roles no la ven (puedeVer la cierra): ellos gestionan
       // las visitas desde el módulo Clientes, que es donde viven junto al resto del expediente.
+      { key: "mi_dia", label: "Mi Día", icon: "📌" },
       { key: "mis_visitas", label: "Mis Visitas", icon: "🏠" },
       {
         key: "clientes", label: "Clientes", icon: "👥",
@@ -160,7 +162,7 @@ const VIEW_TITLE: Record<ViewKey, string> = {
   configuracion: "Configuración", referidos: "Referidos", cobro_diario: "Cobro Diario",
   alertas: "Alertas", inmovilizaciones: "Inmovilizaciones", importacion: "Importación Excel",
   ficha_cliente: "Ficha de Cliente", ficha_moto: "Ficha de Moto", historial_pagos: "Historial de Pagos",
-  tarjetas_llaves: "Tarjetas y Llaves", mis_visitas: "Mis Visitas",
+  tarjetas_llaves: "Tarjetas y Llaves", mis_visitas: "Mis Visitas", mi_dia: "Mi Día",
 };
 
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
@@ -301,6 +303,14 @@ function MasSheet({
 }) {
   // Módulos agrupados por sección — misma taxonomía que el sidebar desktop
   const secciones: Array<{ titulo: string; items: Array<{ key: ViewKey; icon: string; label: string; desc: string }> }> = [
+    {
+      // Va de PRIMERA a propósito: es lo primero que el subadmin mira en la mañana
+      // (ver docs/FLUJO-DIARIO.md — su día arranca validando su lista de pendientes).
+      titulo: "MI TRABAJO",
+      items: [
+        { key: "mi_dia", icon: "📌", label: "Mi Día", desc: "Las tareas que te asignaron" },
+      ],
+    },
     {
       titulo: "COBROS & DINERO",
       items: [
@@ -602,6 +612,7 @@ function Shell() {
     >
       <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
       {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
+      {ctx.view === "mi_dia"        && <MiDiaView onNavigate={navigate} />}
       {ctx.view === "mis_visitas"   && puedeVer("mis_visitas") && <MisVisitasView />}
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}

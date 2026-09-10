@@ -78,14 +78,35 @@ Deno.serve(async (req: Request) => {
         // Decisión del dueño (9-sep-2026): los INDIVIDUALES salen directo; los MASIVOS entran a su
         // cola y él los revisa antes de que salgan — hasta que el sistema esté consolidado, y ahí
         // también saldrán directo. ZALA no puede adivinar cuál es cuál: se lo decimos en cada envío.
+        // El campo que su API lee se llama `tanda` (booleano); `origen` va de acompañante porque
+        // es más legible en sus registros. Si se manda solo `origen`, TODO les llegaría marcado
+        // como envío suelto y los masivos se saltarían la revisión del dueño.
+        tanda: body.origen === "masivo",
         origen: body.origen === "masivo" ? "masivo" : "individual",
         quien_pide: userData.user.email ?? userData.user.id,
       }),
     });
-    const out = await r.json().catch(() => ({})) as { id?: string; estado?: string; motivo?: string; error?: string };
-    if (!r.ok) return json({ error: out.error ?? out.motivo ?? `ZALA respondió ${r.status}` }, 502);
+    const out = await r.json().catch(() => ({})) as { ok?: boolean; id?: string; tarea?: string; estado?: string; motivo?: string; error?: string };
 
-    return json({ ok: true, id: out.id ?? null, estado: out.estado ?? "en_cola", motivo: out.motivo ?? null });
+    // ZALA distingue dos cosas que no hay que confundir:
+    //   · La PETICIÓN venía mal o sin llave (400 / 401) → es un problema NUESTRO de configuración:
+    //     se devuelve como error y no se anota gestión.
+    //   · El MENSAJE no salió (200 con ok:false y estado "fallo") → sí hubo envío, y su resultado
+    //     tiene que quedar en el historial del cliente con su motivo. Devolverlo como error
+    //     borraría ese rastro, que es justo lo que este sistema vino a arreglar.
+    const estadosConocidos = ["en_cola", "enviado", "entregado", "leido", "fallo"];
+    if (!r.ok && !estadosConocidos.includes(out.estado ?? "")) {
+      return json({ error: out.error ?? out.motivo ?? `ZALA respondió ${r.status}` }, 502);
+    }
+
+    return json({
+      ok: true,
+      // El id de Meta cuando ya salió, o el de la tarea (`t-…`) mientras espera aprobación. Los dos
+      // sirven para consultarle después el acuse real a `/api/enviar/estado`.
+      id: out.id ?? out.tarea ?? null,
+      estado: out.estado ?? "en_cola",
+      motivo: out.motivo || null,
+    });
   } catch (err) {
     return json({ error: (err as Error).message ?? "Error inesperado" }, 500);
   }

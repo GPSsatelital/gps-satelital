@@ -5,3 +5,9 @@
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
+
+# Manual de operación: las capturas y el PDF llevan nombres, cédulas y teléfonos de clientes
+# reales. Misma regla que los archivos de migración: se generan en el momento, no se versionan.
+# Para rehacerlos: motogestion/scripts/manual/recibe-sesion.mjs + capturas.mjs, y luego el PDF.
+docs/manual/img/
+docs/manual/*.pdf

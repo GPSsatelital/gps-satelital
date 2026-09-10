@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual de operación — MotoGestión</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #0f172a; margin: 0; font-size: 12.5pt; line-height: 1.55;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .pag { page-break-after: always; }
+  .pag:last-child { page-break-after: auto; }
+
+  /* ── Portada ───────────────────────────────────────────────── */
+  .portada { height: 258mm; display: flex; flex-direction: column; justify-content: center; }
+  .placa {
+    display: inline-block; background: #FFD100; color: #0f172a;
+    border: 3px solid #0f172a; border-radius: 8px;
+    padding: 8px 22px; font-size: 26pt; font-weight: 800; letter-spacing: 3px;
+  }
+  .portada h1 { font-size: 40pt; margin: 26px 0 6px; line-height: 1.05; }
+  .portada .sub { font-size: 16pt; color: #334155; margin: 0 0 4px; }
+  .portada .fecha { font-size: 12pt; color: #64748b; margin-top: 22px; }
+  .aviso {
+    margin-top: 34px; background: #fef3c7; border-left: 6px solid #f59e0b;
+    padding: 14px 18px; font-size: 11.5pt; color: #78350f;
+  }
+
+  h2 {
+    font-size: 20pt; margin: 0 0 2px; color: #0f172a;
+    border-bottom: 3px solid #FFD100; padding-bottom: 6px;
+  }
+  h3 { font-size: 14pt; margin: 18px 0 6px; color: #0f172a; }
+  .paraque {
+    background: #e0f2fe; border-left: 6px solid #0284c7;
+    padding: 9px 14px; margin: 12px 0 14px; font-size: 12pt; color: #075985;
+  }
+  .fila { display: flex; gap: 14px; align-items: flex-start; }
+  .fila img {
+    width: 64mm; border: 1.5px solid #cbd5e1; border-radius: 10px; flex-shrink: 0;
+  }
+  .fila .texto { flex: 1; min-width: 0; }
+  ol.notas { margin: 0; padding-left: 20px; }
+  ol.notas li { margin-bottom: 9px; }
+  ul.simple { margin: 6px 0; padding-left: 20px; }
+  ul.simple li { margin-bottom: 6px; }
+  b.res { background: #fef3c7; padding: 0 3px; }
+  .ojo {
+    background: #fee2e2; border-left: 6px solid #dc2626;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #7f1d1d;
+  }
+  .bien {
+    background: #dcfce7; border-left: 6px solid #16a34a;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #14532d;
+  }
+  table.reglas { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11.5pt; }
+  table.reglas td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+  table.reglas td.n {
+    width: 28px; text-align: center; font-weight: 800; background: #0f172a; color: #fff;
+  }
+  .indice li { margin-bottom: 7px; font-size: 13pt; }
+  .pie { margin-top: 20px; font-size: 10.5pt; color: #64748b; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ PORTADA ═══════════════ -->
+<section class="pag portada">
+  <div><span class="placa">MOTOGESTIÓN</span></div>
+  <h1>Manual de<br>operación</h1>
+  <p class="sub">Cómo se usa el sistema, pantalla por pantalla.</p>
+  <p class="sub">Club de Moteros — Cartagena</p>
+  <p class="fecha">10 de septiembre de 2026 · Versión 1</p>
+
+  <div class="aviso">
+    <b>Este manual es interno.</b><br>
+    Las fotos son de la aplicación de verdad, con clientes de verdad.
+    No lo comparta con nadie de afuera de la empresa.
+  </div>
+</section>
+
+<!-- ═══════════════ CÓMO LEERLO ═══════════════ -->
+<section class="pag">
+  <h2>Antes de empezar</h2>
+
+  <div class="paraque">
+    Este manual está hecho para leerlo despacio, una página a la vez.
+    No hay que aprendérselo. Se busca la pantalla y se lee lo de esa página.
+  </div>
+
+  <h3>Cómo está armado</h3>
+  <p>Cada página tiene dos cosas:</p>
+  <ul class="simple">
+    <li>A la izquierda, <b>la foto de la pantalla</b> tal como se ve en el celular.</li>
+    <li>A la derecha, <b>los números</b> que explican qué es cada cosa.</li>
+  </ul>
+
+  <h3>Qué necesita</h3>
+  <ul class="simple">
+    <li>Un celular con internet.</li>
+    <li>Su correo y su clave. <b>Se las da el administrador.</b></li>
+  </ul>
+
+  <div class="ojo">
+    <b>Su clave es suya. No se presta.</b><br>
+    Todo lo que se hace en el sistema queda guardado con el nombre de quien lo hizo.
+    Si usted presta su clave y alguien registra un pago que no era,
+    el sistema va a decir que fue usted.
+  </div>
+
+  <h3>Lo que va a encontrar</h3>
+  <ol class="indice">
+    <li>Cómo entrar</li>
+    <li>La barra de abajo: el mapa de la aplicación</li>
+    <li>Panel: cómo va el negocio hoy</li>
+    <li>Mi día: lo que le toca a usted</li>
+    <li>Cartera: el corazón del sistema</li>
+    <li>Cómo registrar un pago, paso a paso</li>
+    <li>Clientes, Motos y Contratos</li>
+    <li>El menú Más</li>
+    <li>Alertas, Caja, Taller y Liquidaciones</li>
+    <li>Las 7 reglas que no se rompen</li>
+    <li>Si algo sale mal</li>
+  </ol>
+</section>
+
+<!-- ═══════════════ 1. ENTRAR ═══════════════ -->
+<section class="pag">
+  <h2>1. Cómo entrar</h2>
+  <div class="paraque">Para qué sirve: es la puerta. Sin esto no se ve nada.</div>
+
+  <div class="fila">
+    <img src="img/01-login.png" alt="Pantalla para entrar">
+    <div class="texto">
+      <ol class="notas">
+        <li>Escriba su <b>correo electrónico</b>. Es el que le dio el administrador.</li>
+        <li>Escriba su <b>contraseña</b>. Al escribirla se ven puntitos: es normal, es para que nadie la vea por encima del hombro.</li>
+        <li>Toque el botón verde <b>Entrar</b>.</li>
+      </ol>
+
+      <div class="bien">
+        <b>Consejo:</b> si el celular le pregunta si quiere guardar la clave, diga que sí.
+        Así no la tiene que escribir todos los días.
+      </div>
+
+      <div class="ojo">
+        <b>Si dice que la clave está mala:</b> revise que no le haya quedado un espacio al final,
+        y que no esté escribiendo con mayúsculas sin querer.
+        Si sigue igual, pídale al administrador que se la cambie.
+        <b>Nunca le pida la clave a un compañero.</b>
+      </div>
+
+      <p><b>La primera vez</b> puede salir arriba un aviso azul que dice
+      «Instala MotoGestión en tu celular». Si toca <b>Instalar</b>, le queda el icono
+      en la pantalla del celular como cualquier otra aplicación. Es más cómodo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2. LA BARRA ═══════════════ -->
+<section class="pag">
+  <h2>2. La barra de abajo</h2>
+  <div class="paraque">Para qué sirve: es el mapa. Desde ahí se llega a todo.</div>
+
+  <div class="fila">
+    <img src="img/02-panel.png" alt="Panel general con la barra de abajo">
+    <div class="texto">
+      <p>Mire <b>la fila de dibujos de abajo del todo</b>. Está siempre, en toda la aplicación.
+      Son seis botones:</p>
+      <ol class="notas">
+        <li><b>Panel</b> — el resumen del negocio. Cuánto entró hoy, cuántas motos hay.</li>
+        <li><b>Clientes</b> — la lista de la gente. Para buscar a alguien o meter uno nuevo.</li>
+        <li><b>Cartera</b> — <b class="res">el cobro</b>. Aquí se pasa la mayor parte del día.</li>
+        <li><b>Motos</b> — la lista de las motos y en qué anda cada una.</li>
+        <li><b>Contratos</b> — los contratos firmados.</li>
+        <li><b>Más</b> — todo lo demás: caja, taller, alertas, liquidaciones.</li>
+      </ol>
+
+      <div class="bien">
+        <b>Si se pierde, toque «Panel».</b> Siempre lo devuelve al principio.
+      </div>
+
+      <p>Arriba a la derecha hay tres cosas:</p>
+      <ul class="simple">
+        <li>La <b>lupa</b>: busca un cliente o una placa en todo el sistema.</li>
+        <li>La <b>campanita</b>: los avisos. El número rojo es cuántos hay.</li>
+        <li>El <b>círculo con su letra</b>: su cuenta, y para salir.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 3. PANEL ═══════════════ -->
+<section class="pag">
+  <h2>3. Panel: cómo va el negocio</h2>
+  <div class="paraque">Para qué sirve: ver de un vistazo cómo va el día. No se toca nada, solo se mira.</div>
+
+  <div class="fila">
+    <img src="img/02-panel.png" alt="Panel general">
+    <div class="texto">
+      <ol class="notas">
+        <li><b>Recaudo del día</b> — la plata que entró hoy.</li>
+        <li><b>Clientes activos</b> — cuánta gente tiene moto rodando ahora mismo.</li>
+        <li><b>Motos en campo</b> — cuántas motos están trabajando.</li>
+        <li><b>En mora</b> — cuántos no han pagado lo que les tocaba. <b>Este número debe bajar, no subir.</b></li>
+        <li><b>Contratos activos</b> — cuántos contratos hay firmados y andando.</li>
+      </ol>
+
+      <p>Los recuadros <b>se pueden tocar</b>. Si toca «En mora», lo lleva
+      directo a la lista de los que están en mora.</p>
+
+      <div class="bien">
+        <b>Cómo se lee rápido:</b><br>
+        Verde = va bien. Amarillo = ojo. Rojo = hay que hacer algo hoy.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 4. MI DÍA ═══════════════ -->
+<section class="pag">
+  <h2>4. Mi día: lo que le toca a usted</h2>
+  <div class="paraque">
+    Para qué sirve: es <b>su lista de trabajo</b>. Lo primero que se abre en la mañana.
+  </div>
+
+  <div class="fila">
+    <img src="img/03-mi-dia.png" alt="Pantalla Mi día">
+    <div class="texto">
+      <p>Se llega por <b>Más → Mi Día</b>.</p>
+
+      <p>La lista sale repartida en cuatro grupos, siempre en el mismo orden:</p>
+      <ol class="notas">
+        <li><b>Cobro</b> — a quién hay que llamarle o escribirle hoy. <b>Se empieza por aquí.</b></li>
+        <li><b>Plata por resolver</b> — pagos que están esperando que alguien diga que sí.</li>
+        <li><b>Motos y papeles</b> — SOAT vencido, moto varada en el taller, revisar dónde duerme una moto.</li>
+        <li><b>Contratos</b> — cosas de contratos que llevan días trabadas.</li>
+      </ol>
+
+      <p>Cada renglón tiene un botón <b>«Marcar atendido»</b>. Se toca cuando ya lo hizo.
+      Se tacha, y <b>mañana vuelve a salir si el problema sigue</b>.</p>
+
+      <div class="ojo">
+        <b>No marque atendido lo que no hizo.</b> El jefe ve quién marcó qué.
+        Si algo no se pudo hacer, se deja sin marcar: no pasa nada, para eso está la lista.
+      </div>
+
+      <p>Más abajo están <b>las tareas</b> que alguien le montó a usted a mano.
+      Esas tienen dos botones: <b>«La cumplí»</b> y <b>«No se pudo»</b>.
+      Si no se pudo, hay que escribir por qué. Las dos son respuestas buenas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 5. CARTERA ═══════════════ -->
+<section class="pag">
+  <h2>5. Cartera: el corazón</h2>
+  <div class="paraque">
+    Para qué sirve: aquí se ve quién debe, cuánto debe, y aquí se registran los pagos.
+    Es la pantalla más importante de todas.
+  </div>
+
+  <div class="fila">
+    <img src="img/04-cartera.png" alt="Pantalla de Cartera">
+    <div class="texto">
+      <ol class="notas">
+        <li><b>Los cuatro recuadros de arriba</b>: cuántos pagan hoy, cuánto se ha recaudado,
+        cuántos están en gabela y cuántos en mora. <b>Se pueden tocar</b> para filtrar la lista.</li>
+        <li><b>Los botones de colores</b> (Mora, Gabela, Al día, Pagan hoy…) filtran la lista.
+        El número al lado dice cuántos hay.</li>
+        <li><b>La caja de buscar</b>: escriba el nombre o la placa y lo encuentra.</li>
+        <li><b>Cada tarjeta es un cliente.</b> Trae la placa amarilla, el nombre,
+        qué día paga, y en rojo grande <b>cuánto debe</b>.</li>
+        <li>El botón <b>«Pagar»</b> abre la ventana para registrar la plata.</li>
+      </ol>
+
+      <div class="ojo">
+        <b>Las dos cuentas de días — no se confunden nunca:</b><br>
+        <b>«42 días en mora»</b> = desde el día que le tocaba pagar y no pagó.
+        Un abono chiquito <u>no</u> la borra. <b>Esta es la que manda.</b><br><br>
+        <b>«3 días sin pago»</b> = desde la última vez que abonó algo, así haya sido poquito.
+        Cualquier abono la vuelve a cero. Esta es solo para saber.
+      </div>
+
+      <p>Por eso una persona puede tener <b>3 días sin pago y 42 en mora al mismo tiempo</b>:
+      abonó ayer, pero todavía debe seis semanas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 6. REGISTRAR UN PAGO ═══════════════ -->
+<section class="pag">
+  <h2>6. Registrar un pago</h2>
+  <div class="paraque">
+    Para qué sirve: meter al sistema la plata que le entregó un cliente.
+    <b>Esto toca hacerlo bien. Es plata.</b>
+  </div>
+
+  <div class="fila">
+    <img src="img/13-pagar.png" alt="Ventana de registrar pago">
+    <div class="texto">
+      <ol class="notas">
+        <li><b>Revise arriba que sea la persona correcta.</b> Mire la placa y el nombre.
+        Si no es, toque la equis y busque otra vez.</li>
+        <li><b>Mire los tres recuadros:</b> lo que le toca este período,
+        lo que ya pagó, y <b>lo que le falta</b> (el rojo).</li>
+        <li>Si hay un recuadro naranja que dice <b>«Deuda»</b>, es plata vieja que también debe.</li>
+        <li><b>Últimos pagos</b>: para revisar que el de hoy no esté ya metido.</li>
+        <li>En <b>«Valor recibido»</b> escriba <b class="res">exactamente lo que le dieron</b>.
+        Ni más ni menos.</li>
+        <li>Escoja el <b>método</b>: Efectivo o Transferencia.</li>
+        <li>Toque <b>Registrar</b>. Sale una ventana para confirmar. <b>Léala.</b></li>
+      </ol>
+
+      <div class="ojo">
+        <b>Nunca toque «Registrar» dos veces.</b> Si el botón se pone gris y dice
+        «Guardando...», es que ya está trabajando. Espere.
+        Tocar dos veces mete el pago dos veces.
+      </div>
+
+      <div class="bien">
+        <b>Si se equivocó:</b> no lo arregle usted por su cuenta.
+        Avise de una vez. Un pago mal metido daña la cuenta del cliente
+        y después cuesta el doble arreglarlo.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 7. CLIENTES ═══════════════ -->
+<section class="pag">
+  <h2>7. Clientes</h2>
+  <div class="paraque">Para qué sirve: buscar a alguien, ver sus papeles, o meter un cliente nuevo.</div>
+
+  <div class="fila">
+    <img src="img/05-clientes.png" alt="Lista de clientes">
+    <div class="texto">
+      <ol class="notas">
+        <li><b>Los botones de arriba</b> filtran por el estado del cliente.</li>
+        <li><b>La caja de buscar</b>: nombre, cédula o placa.</li>
+        <li><b>Cada renglón</b> es una persona, con el estado en que va.</li>
+      </ol>
+
+      <h3>Por dónde pasa un cliente nuevo</h3>
+      <p>Siempre en este orden. <b>No se salta ningún paso.</b></p>
+      <ol class="notas">
+        <li><b>En proceso</b> — se registró y pagó algo de entrada.</li>
+        <li><b>Listo para visita</b> — ya entregó todos los papeles.</li>
+        <li><b>Pendiente evaluación</b> — ya le hicieron la visita a la casa.</li>
+        <li><b>Aprobado</b> — el jefe dijo que sí. <b>Hasta aquí no hay moto.</b></li>
+        <li><b>Activo</b> — firmó el contrato y se llevó la moto.</li>
+      </ol>
+
+      <div class="ojo">
+        <b>Sin visita a la casa no hay moto.</b> Nunca. No importa quién lo recomiende.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 8. MOTOS Y CONTRATOS ═══════════════ -->
+<section class="pag">
+  <h2>8. Motos y Contratos</h2>
+
+  <div class="fila">
+    <img src="img/06-motos.png" alt="Lista de motos">
+    <div class="texto">
+      <h3>Motos</h3>
+      <p>La lista de toda la flota. Cada moto tiene su <b>placa amarilla</b> y su estado:</p>
+      <ul class="simple">
+        <li><b>Disponible</b> — está libre, se le puede entregar a alguien.</li>
+        <li><b>Asignada</b> — la tiene un cliente, está trabajando.</li>
+        <li><b>Mantenimiento</b> — está en el taller.</li>
+        <li><b>Recuperada</b> — se la quitamos a alguien.</li>
+        <li><b>Fiscalía / Tránsito / Garantía</b> — está retenida y no está produciendo.</li>
+      </ul>
+      <div class="bien">
+        <b>La regla de oro del negocio:</b> la moto nunca debe dejar de producir.
+        Una moto quieta es plata que no entra.
+      </div>
+    </div>
+  </div>
+
+  <div class="fila" style="margin-top:16px;">
+    <img src="img/07-contratos.png" alt="Lista de contratos">
+    <div class="texto">
+      <h3>Contratos</h3>
+      <p>Cada contrato une <b>un cliente</b> con <b>una moto</b>.</p>
+      <ul class="simple">
+        <li><b>En proceso</b> — se está armando, todavía no está firmado del todo.</li>
+        <li><b>Activo</b> — firmado y andando.</li>
+        <li><b>Suspendido</b> — la moto está guardada por algún motivo.</li>
+        <li><b>Finalizado</b> — se acabó y quedó al día.</li>
+      </ul>
+      <p>Aquí también se le adjuntan al contrato las fotos del papel firmado.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 9. EL MENÚ MÁS ═══════════════ -->
+<section class="pag">
+  <h2>9. El menú Más</h2>
+  <div class="paraque">Para qué sirve: todo lo que no cupo en la barra de abajo.</div>
+
+  <div class="fila">
+    <img src="img/08-mas.png" alt="Menú Más">
+    <div class="texto">
+      <p>Se abre con el botón <b>Más</b> (las tres rayitas), abajo a la derecha.
+      Está ordenado por temas:</p>
+
+      <ol class="notas">
+        <li><b>MI TRABAJO</b> — «Mi Día»: su lista de pendientes y tareas.</li>
+        <li><b>COBROS Y DINERO</b> — Cobro Diario, Historial de Pagos y Caja Diaria.</li>
+        <li><b>FLOTA Y TALLER</b> — Taller, Tarjetas y Llaves, Liquidaciones.</li>
+        <li><b>SEGUIMIENTO</b> — Alertas, Inmovilizaciones, Reportes, Referidos.</li>
+        <li><b>ADMINISTRACIÓN</b> — Usuarios y Configuración. <b>Solo para el jefe.</b></li>
+      </ol>
+
+      <div class="bien">
+        <b>Si no ve alguna de estas opciones, no está dañado.</b>
+        Cada persona ve solo lo que le toca según su cargo.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 10. ALERTAS Y CAMPANA ═══════════════ -->
+<section class="pag">
+  <h2>10. Alertas: lo que el sistema le avisa</h2>
+  <div class="paraque">
+    Para qué sirve: el sistema revisa todo solo y le avisa lo que se está saliendo de control.
+  </div>
+
+  <div class="fila">
+    <img src="img/09-alertas.png" alt="Pantalla de alertas">
+    <div class="texto">
+      <p>Se llega por la <b>campanita</b> de arriba, o por <b>Más → Alertas</b>.</p>
+
+      <p>Hay tres colores, y significan cosas distintas:</p>
+      <ol class="notas">
+        <li><b style="color:#991b1b">Crítico (rojo)</b> — hay que hacer algo <b>hoy</b>.</li>
+        <li><b style="color:#92400e">Alerta (amarillo)</b> — hay que hacer algo esta semana.</li>
+        <li><b style="color:#075985">Info (azul)</b> — para tenerlo presente, no corre prisa.</li>
+      </ol>
+
+      <p>Cada tarjeta trae botones para actuar de una vez:
+      <b>Llamar</b>, <b>WhatsApp</b>, <b>Ver cliente</b>, <b>Ver moto</b> y <b>Cartera</b>.</p>
+
+      <div class="bien">
+        <b>Usted solo ve las alertas de lo suyo.</b> Si usted maneja 60 motos,
+        ve las alertas de esas 60. No las de las otras.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 11. CAJA, TALLER, LIQUIDACIONES ═══════════════ -->
+<section class="pag">
+  <h2>11. Caja, Taller y Liquidaciones</h2>
+
+  <div class="fila">
+    <img src="img/10-caja.png" alt="Caja diaria">
+    <div class="texto">
+      <h3>Caja diaria</h3>
+      <p>Es el cuadre de la plata del día. Muestra lo que entró en efectivo,
+      lo que entró por transferencia, y lo que todavía está sin confirmar.</p>
+      <div class="ojo">
+        <b>La caja se cierra cuando NO queda nada sin confirmar</b> y cuando el efectivo
+        de la calle ya lo recibió la secretaria. Si algo no cuadra, <b>no se cierra</b>: se avisa.
+      </div>
+    </div>
+  </div>
+
+  <div class="fila" style="margin-top:16px;">
+    <img src="img/11-taller.png" alt="Taller">
+    <div class="texto">
+      <h3>Taller</h3>
+      <p>Las órdenes de arreglo. Cuando una moto entra al taller queda registrada aquí,
+      con lo que se le hizo y cuánto costó.</p>
+      <p><b>Mientras la moto está en el taller no está produciendo.</b>
+      Por eso el sistema avisa cuando una lleva más de una semana adentro.</p>
+    </div>
+  </div>
+
+  <div class="fila" style="margin-top:16px;">
+    <img src="img/12-liquidacion.png" alt="Liquidaciones">
+    <div class="texto">
+      <h3>Liquidaciones</h3>
+      <p>Es el cierre de un contrato: se hace la cuenta final entre lo que el cliente
+      ahorró y lo que debe.</p>
+      <p>Pasa por seis etapas, en orden: <b>Iniciada → En taller → Calculada →
+      Documento generado → Firmada → Cerrada</b>.</p>
+      <div class="ojo">
+        <b>El papel solo vale cuando está firmado.</b> Mientras no esté firmado,
+        el documento dice que es un borrador y no sirve como prueba.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 12. LAS REGLAS ═══════════════ -->
+<section class="pag">
+  <h2>12. Las 7 reglas que no se rompen</h2>
+  <div class="paraque">
+    Si se le olvida todo lo demás, estas siete no. Son las que cuestan plata.
+  </div>
+
+  <table class="reglas">
+    <tr>
+      <td class="n">1</td>
+      <td><b>Su clave no se presta.</b> Todo queda firmado con su nombre.</td>
+    </tr>
+    <tr>
+      <td class="n">2</td>
+      <td><b>El pago se registra el mismo día, por el valor exacto.</b>
+      Ni redondeado, ni «después lo meto».</td>
+    </tr>
+    <tr>
+      <td class="n">3</td>
+      <td><b>Nunca toque «Registrar» dos veces.</b> Si el botón está gris, está trabajando.</td>
+    </tr>
+    <tr>
+      <td class="n">4</td>
+      <td><b>Solo la secretaria confirma la plata.</b> El que cobra en la calle registra
+      y entrega; ella confirma. Son dos personas a propósito.</td>
+    </tr>
+    <tr>
+      <td class="n">5</td>
+      <td><b>Sin visita a la casa no hay moto.</b> Sin excepciones.</td>
+    </tr>
+    <tr>
+      <td class="n">6</td>
+      <td><b>«Días en mora» y «días sin pago» son cosas distintas.</b>
+      La de mora es la que manda para recoger una moto.</td>
+    </tr>
+    <tr>
+      <td class="n">7</td>
+      <td><b>Si se equivocó, avise de una vez.</b> Un error contado a tiempo se arregla en
+      cinco minutos. Escondido, daña la cuenta del cliente por meses.</td>
+    </tr>
+  </table>
+
+  <h3>El día de un administrador, en orden</h3>
+  <ol class="notas">
+    <li>Abrir <b>Mi Día</b> y mirar la lista.</li>
+    <li><b>Llamar y escribir primero.</b> Es lo que más recupera plata.</li>
+    <li>Después, las tareas que le montaron.</li>
+    <li>Salir a la calle <b>solo si toca</b>: una moto que hay que buscar o una emergencia.</li>
+    <li>Al final del día, entregar el efectivo a la secretaria.</li>
+  </ol>
+</section>
+
+<!-- ═══════════════ 13. SI ALGO SALE MAL ═══════════════ -->
+<section class="pag">
+  <h2>13. Si algo sale mal</h2>
+
+  <table class="reglas">
+    <tr>
+      <td class="n">?</td>
+      <td><b>La aplicación se ve rara o no carga.</b><br>
+      Cierre y vuelva a abrir. Si sigue igual, apague y prenda el internet del celular.</td>
+    </tr>
+    <tr>
+      <td class="n">?</td>
+      <td><b>Sale un aviso «Hay una versión nueva».</b><br>
+      Tóquelo. Se actualiza sola en unos segundos. <b>Hágalo siempre.</b></td>
+    </tr>
+    <tr>
+      <td class="n">?</td>
+      <td><b>Registré un pago que no era.</b><br>
+      No lo borre usted. Avise de una vez y diga la placa, el valor y la hora.</td>
+    </tr>
+    <tr>
+      <td class="n">?</td>
+      <td><b>Un cliente dice que pagó y no aparece.</b><br>
+      Pídale la foto del comprobante. Búsquelo en <b>Cartera → Confirmar</b>.
+      Puede estar esperando confirmación.</td>
+    </tr>
+    <tr>
+      <td class="n">?</td>
+      <td><b>No veo una pantalla que un compañero sí ve.</b><br>
+      No está dañado: cada cargo ve lo suyo. Si de verdad la necesita, pídala.</td>
+    </tr>
+    <tr>
+      <td class="n">?</td>
+      <td><b>El número de la pantalla no cuadra con lo que yo tengo apuntado.</b><br>
+      <b>No lo arregle por su cuenta.</b> Avise con la placa y el número que a usted le da.</td>
+    </tr>
+  </table>
+
+  <div class="ojo" style="margin-top:22px;">
+    <b>La regla que resume todo:</b><br>
+    Cuando tenga una duda con plata, <b>pare y pregunte</b>.
+    Nunca adivine. Nunca «lo arreglo después».
+  </div>
+
+  <p class="pie">
+    Manual de operación de MotoGestión · Club de Moteros, Cartagena ·
+    10 de septiembre de 2026 · Las fotos son de la aplicación real de ese día.
+    Documento interno.
+  </p>
+</section>
+
+</body>
+</html>

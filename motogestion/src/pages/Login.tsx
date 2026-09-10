@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { inputStyle } from "../styles/shared";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -26,7 +27,9 @@ export default function Login() {
           MotoGestión
         </div>
 
-        <h1 style={{ fontSize: 24, margin: "16px 0 4px" }}>Iniciar sesión</h1>
+        {/* color explícito: el h1 heredaba el color de la plantilla original de Vite y en modo
+            claro quedaba casi blanco sobre la tarjeta blanca — el título no se leía. */}
+        <h1 style={{ fontSize: 24, margin: "16px 0 4px", color: "var(--text)" }}>Iniciar sesión</h1>
         <p style={{ marginTop: 0, marginBottom: 4, color: "var(--muted)", fontSize: 13 }}>
           Las cuentas las crea un administrador desde el panel de Usuarios.
         </p>
@@ -74,13 +77,3 @@ export default function Login() {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: 12,
-  border: "1px solid var(--line2)",
-  outline: "none",
-  fontSize: 14,
-  boxSizing: "border-box",
-};

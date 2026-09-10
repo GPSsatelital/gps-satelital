@@ -93,21 +93,34 @@ export default function DashboardView({ onNavigate }: {
     const contratosEnProceso = contratos.filter(c => c.estado === "En proceso").length;
 
     const clientesActivos   = clientes.filter(c => c.estado === "Activo").length;
-    const clientesMora      = clientes.filter(c => ["En mora","En riesgo"].includes(c.estado)).length;
-    // Conteo REAL de gabela desde la cartera (misma fuente que el Panel Hoy). Antes la tarjeta
-    // "En gabela" mostraba el número de mora (bug de etiqueta).
+    // Cuántos están en mora / en gabela, contados desde la CARTERA (misma fuente que el Panel Hoy
+    // y que Cartera). Los dos salen de un solo recorrido para que no puedan discrepar.
+    //
+    // 🔴 La tarjeta "En mora" contaba antes por `clientes.estado`, un campo que nadie mantiene:
+    // marcaba CERO mientras Cartera decía 123, y al tocarla abría una lista vacía. Es el mismo
+    // defecto que ya se había corregido en la tarjeta "En gabela" — una cifra con la etiqueta
+    // correcta pero sacada del lugar equivocado, que es igual de caro que una cifra mal calculada.
     const ahoraCartera = hoyDate();
-    const contratosGabela = contratos.filter(c => {
-      if (c.estado !== "Activo") return false;
-      const pc = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado").map(p => ({ fecha: p.fecha, valor: p.valor }));
-      // Misma fórmula que la cartera (CobrosView): la cuota del convenio cuenta para la mora y,
-      // si el convenio ya cubrió el período, ese período va al día. Sin esto el conteo del
-      // dashboard divergía del de Cartera para contratos con convenio.
-      const conv = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
-      const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
-      const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
-      return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv) === "gabela";
-    }).length;
+    const estadosCartera = contratos
+      .filter(c => c.estado === "Activo")
+      .map(c => {
+        // 🔴 El pago COMPLETO, no un recorte {fecha, valor}: `calcularEstadoCartera` también mira
+        // `aplicado_convenio` para saber si la cuota del acuerdo de este período ya quedó abonada.
+        // Recortándolo, quien ya había pagado su acuerdo salía EN MORA — daba 139 donde Cartera
+        // decía 123. Dos cuentas de lo mismo que no coinciden es justo lo que no puede pasar.
+        const pc = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
+        // La cuota del convenio cuenta para la mora y, si el convenio ya cubrió el período, ese
+        // período va al día. Sin esto el conteo divergía de Cartera en los que tienen convenio.
+        const conv = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+        const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
+        const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
+        return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv);
+      });
+    const contratosGabela = estadosCartera.filter(e => e === "gabela").length;
+    const contratosMora   = estadosCartera.filter(e => e === "mora").length;
+    // Se conserva el conteo por estado del cliente SOLO para el embudo de ingreso, donde la suma
+    // de las etapas tiene que dar el total de clientes.
+    const clientesMora      = clientes.filter(c => ["En mora","En riesgo"].includes(c.estado)).length;
     const clientesProceso   = clientes.filter(c => c.estado === "En proceso").length;
     const clientesVisita    = clientes.filter(c => c.estado === "Listo para visita").length;
     const clientesPendEval  = clientes.filter(c => c.estado === "Pendiente evaluación").length;
@@ -148,12 +161,12 @@ export default function DashboardView({ onNavigate }: {
       Mensual:   activos.filter(c => c.forma_pago === "Mensual").length,
     };
 
-    const alertasTotal = pagosPendientes + clientesMora + motosRetencion;
+    const alertasTotal = pagosPendientes + contratosMora + motosRetencion;
 
     const prevMotosAsignadas = motosAsignadas;
     const prevContratosActivos = contratosActivos;
     const prevClientesActivos = clientesActivos;
-    const prevClientesMora = clientesMora;
+    const prevClientesMora = contratosMora;
 
     const recuperadasSemana = motos.filter(m => m.estado === "Recuperada").length;
 
@@ -177,7 +190,7 @@ export default function DashboardView({ onNavigate }: {
     return {
       motosAsignadas, motosDisponibles, motosTaller, motosRetencion,
       contratosActivos, contratosEnProceso,
-      clientesActivos, clientesMora, contratosGabela, clientesProceso, clientesVisita,
+      clientesActivos, clientesMora, contratosMora, contratosGabela, clientesProceso, clientesVisita,
       clientesPendEval, clientesAprobados,
       pagosPendientes, recaudoHoy, recaudoSemana, recaudoSemanaAnterior,
       tallerActivo, porGrupo, porModalidad, alertasTotal,
@@ -485,10 +498,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
             delta: calcDelta(stats.motosAsignadas, stats.prevMotosAsignadas),
           },
           {
-            icon: "🚨", label: "En mora", value: stats.clientesMora,
+            icon: "🚨", label: "En mora", value: stats.contratosMora,
             sub: "requieren acción", color: "var(--bad-ink)",
-            bg: "var(--bad-soft)", onClick: () => onNavigate("clientes", "mora"),
-            delta: calcDelta(stats.clientesMora, stats.prevClientesMora),
+            bg: "var(--bad-soft)", onClick: () => onNavigate("cobros"),
+            delta: calcDelta(stats.contratosMora, stats.prevClientesMora),
           },
           {
             icon: "📄", label: "Contratos activos", value: stats.contratosActivos,
@@ -618,10 +631,10 @@ const grupoActualStats = grupoSeleccionado === "todos"
           },
           {
             label: "En mora",
-            value: stats.clientesMora,
+            value: stats.contratosMora,
             icon: "🔴",
             color: "var(--bad-ink)", bg: "var(--bad-soft)",
-            onClick: () => onNavigate("clientes", "mora"),
+            onClick: () => onNavigate("cobros"),
           },
           {
             label: "Recuperadas (sem.)",

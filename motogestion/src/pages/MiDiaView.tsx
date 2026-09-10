@@ -2,25 +2,36 @@ import { useEffect, useMemo, useState } from "react";
 import type { ViewKey } from "../App";
 import { useAuth } from "../contexts/AuthContext";
 import { useTareas, tareaVencida, EVIDENCIA_LABEL, type Tarea } from "../hooks/useTareas";
-import { usePendientes } from "../hooks/usePendientes";
+import { usePendientes, bloqueDe, BLOQUE_LABEL, type Bloque, type Pendiente } from "../hooks/usePendientes";
 import { useMotos } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { card, primaryBtn, secondaryBtn, listaConScroll } from "../styles/shared";
 import ModalAsignarTarea from "../components/ModalAsignarTarea";
 import ModalResolverTarea from "../components/ModalResolverTarea";
+import PanelEquipo from "../components/PanelEquipo";
+import PanelDelDia from "../components/PanelDelDia";
 import Placa from "../components/Placa";
 import { fmtFechaCorta } from "../utils/fecha";
 
 // MI DÍA — lo que le toca hoy a esta persona. Dos cosas distintas, juntas por primera vez:
 //
-//   1. Los PENDIENTES que el servidor calcula solo (mora, gabela, papeles, taller…) — mig 142.
+//   1. Los PENDIENTES que el servidor calcula solo (mora, gabela, papeles, taller…) — migs 142/144.
 //      No se duplica el cálculo de Cartera: la vista los deduce de los mismos datos, así que no
 //      pueden decir cosas distintas. Ese era el riesgo de las dos verdades que este proyecto ya
 //      pagó caro, y por eso se calculan en UN solo lugar: el servidor.
 //   2. Las TAREAS que alguien le montó a mano — mig 140.
 //
 // Ver docs/FLUJO-DIARIO.md: el día del subadmin arranca validando esta lista.
+//
+// 🔴 LA MISMA PANTALLA SE LEE DISTINTO SEGÚN EL PUESTO, porque el día de cada quien es distinto:
+//   · Subadmin y secretaria: sus pendientes primero, después sus tareas.
+//   · Sergio (ADMIN): arriba CÓMO VA EL EQUIPO — *"su trabajo principal es supervisar el trabajo
+//     de los demás admins"*. Su lista propia queda debajo.
+//   · El dueño: arriba EL DÍA — la plata, después lo que espera su decisión, después lo que va mal.
+// No son tres pantallas: es una sola con los bloques en el orden que cada quien necesita.
+
+const ORDEN_BLOQUES: Bloque[] = ["cobro", "plata", "motos", "contratos"];
 
 export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
   const { profile, puede } = useAuth();
@@ -46,9 +57,23 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
 
   // Los pendientes que el servidor calculó y que le tocan a esta persona (mig 142). Los ya
   // atendidos se quedan a la vista, tachados: al final del día vale ver lo que se hizo.
-  const { error: errorPend, marcarAtendido, estaAtendido, mios } = usePendientes();
+  const { pendientes, atendidos, error: errorPend, marcarAtendido, estaAtendido, mios } = usePendientes();
   const misPendientes = useMemo(() => mios(uid, profile?.role), [mios, uid, profile?.role]);
   const porHacer = misPendientes.filter(p => !estaAtendido(p.clave));
+
+  // Los cuatro frentes del día, en orden. Con 19 tipos distintos una sola pila se vuelve ilegible:
+  // el cobro (lo primero de la mañana) quedaba revuelto con un SOAT por vencer.
+  const grupos = useMemo(() => {
+    const m = new Map<Bloque, Pendiente[]>();
+    for (const p of misPendientes) {
+      const b = bloqueDe(p.tipo);
+      if (!m.has(b)) m.set(b, []);
+      m.get(b)!.push(p);
+    }
+    return ORDEN_BLOQUES.filter(b => m.has(b)).map(b => ({ bloque: b, items: m.get(b)! }));
+  }, [misPendientes]);
+
+  const esJefe = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
 
   async function handleAtender(clave: string) {
     if (!profile) return;
@@ -188,8 +213,15 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
         <div style={{ ...card, padding: "10px 12px", marginBottom: 12, background: "var(--ok-soft)", color: "var(--ok-ink)", fontSize: 13, fontWeight: 600 }}>{msg}</div>
       )}
 
-      {/* LO PRIMERO DEL DÍA: los pendientes que el servidor calculó (mig 142). Ya no es un enlace
-          a Cartera: la lista existe de verdad, con dueño, y se puede marcar atendida. */}
+      {/* EL DUEÑO LEE PRIMERO LA PLATA. Va antes que su propia lista de pendientes a propósito:
+          es el orden que él pidió (plata → decisiones → alarmas). */}
+      {profile?.role === "ADMIN_PRINCIPAL" && <PanelDelDia pendientes={pendientes} onNavegar={onNavigate} />}
+
+      {/* SERGIO LEE PRIMERO AL EQUIPO. Su lista propia queda debajo. */}
+      <PanelEquipo pendientes={pendientes} atendidos={atendidos} tareas={tareas} activo={esJefe} />
+
+      {/* LO PRIMERO DEL DÍA: los pendientes que el servidor calculó (migs 142/144). Ya no es un
+          enlace a Cartera: la lista existe de verdad, con dueño, y se puede marcar atendida. */}
       <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14 }}>
         <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: misPendientes.length ? "1px solid var(--line)" : "none" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -217,34 +249,45 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
 
         {misPendientes.length > 0 && (
           <div style={listaConScroll(isMobile)}>
-            {misPendientes.map(p => {
-              const hecho = estaAtendido(p.clave);
-              const color = p.nivel === "critico" ? "var(--bad)" : p.nivel === "alerta" ? "var(--warn2)" : "var(--accent)";
-              return (
-                <div key={p.clave} style={{
-                  padding: "10px 12px", borderBottom: "1px solid var(--line)",
-                  borderLeft: `3px solid ${hecho ? "transparent" : color}`,
-                  opacity: hecho ? 0.55 : 1,
-                  display: "flex", gap: 8, alignItems: "flex-start",
+            {grupos.map(({ bloque, items }) => (
+              <div key={bloque}>
+                <div style={{
+                  padding: "7px 12px", fontSize: 11, fontWeight: 700, letterSpacing: .4,
+                  textTransform: "uppercase", color: "var(--muted2)", background: "var(--soft2)",
+                  position: "sticky", top: 0, zIndex: 1,
                 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: hecho ? "line-through" : "none" }}>
-                      {p.titulo}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>{p.detalle}</div>
-                  </div>
-                  <button
-                    onClick={() => handleAtender(p.clave)}
-                    disabled={hecho}
-                    style={{
-                      ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
-                      opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
-                    }}>
-                    {hecho ? "✓ Atendido" : "Marcar atendido"}
-                  </button>
+                  {BLOQUE_LABEL[bloque]} ({items.filter(p => !estaAtendido(p.clave)).length})
                 </div>
-              );
-            })}
+                {items.map(p => {
+                  const hecho = estaAtendido(p.clave);
+                  const color = p.nivel === "critico" ? "var(--bad)" : p.nivel === "alerta" ? "var(--warn2)" : "var(--accent)";
+                  return (
+                    <div key={p.clave} style={{
+                      padding: "10px 12px", borderBottom: "1px solid var(--line)",
+                      borderLeft: `3px solid ${hecho ? "transparent" : color}`,
+                      opacity: hecho ? 0.55 : 1,
+                      display: "flex", gap: 8, alignItems: "flex-start",
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: hecho ? "line-through" : "none" }}>
+                          {p.titulo}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>{p.detalle}</div>
+                      </div>
+                      <button
+                        onClick={() => handleAtender(p.clave)}
+                        disabled={hecho}
+                        style={{
+                          ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
+                          opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
+                        }}>
+                        {hecho ? "✓ Atendido" : "Marcar atendido"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

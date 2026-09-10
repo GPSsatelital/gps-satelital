@@ -155,4 +155,50 @@ existen. Por eso:
 
 ---
 
+## 7 · Lo construido (10-sep-2026)
+
+### Fase 1 — Las tareas · mig 140 y 141
+`public.tareas` + el permiso `asignar_tarea` + la pantalla **Mi día**. Las reglas viven en la BASE,
+no en la pantalla: el motivo del "no se pudo" lo exige un CHECK, crear exige el permiso **y** firmar
+con el propio id, y no hay DELETE — una tarea se CANCELA, para que quede el rastro de que se pidió.
+
+### Fase 2 — Los pendientes en el servidor · migs 142, 143 y 144
+`public.pendientes` (una VISTA) + `public.pendientes_atendidos` (una tabla chica).
+
+🔴 **No se guardan las alertas como filas.** Guardar "Nelson está en mora" obliga a acordarse de
+borrarlo cuando pague, y ahí nace un segundo lugar donde vive la verdad. Se separó en dos:
+- **Lo que se DEDUCE de los datos → se calcula** (la vista). Imposible de desincronizar.
+- **Lo que NO se deduce → se guarda**, y es poquito: quién lo atendió, y por DÍA. Lo atendido hoy
+  vuelve mañana si sigue vigente.
+
+Los **19 avisos** ya están en el servidor con su dueño. Cada uno le toca **a una persona**
+(`dueno_id`, el encargado de la moto) o **a un puesto** (`dueno_rol`: las transferencias son de la
+secretaria). Si la moto no tiene encargado, el aviso pasa al rol ADMIN en vez de quedar huérfano.
+
+Se reusó la **calculadora de la vitrina** (`zala.*`), que ya es espejo verificado de `cicloPago.ts`.
+Escribir la mora otra vez habría sido una tercera versión de la misma cuenta.
+
+### Fase 3 — Cómo va el equipo (Sergio) · `PanelEquipo`
+Arriba de su propia lista: por persona, cuánto le falta hoy, cuántos urgentes, cuántas tareas tiene
+y cuántas se le vencieron, y cuánto resolvió hoy. Ordenado por quién tiene más encima, que es lo que
+destapa el desbalance. Muestra también a quien **no tiene nada asignado** — eso tampoco se veía.
+
+### Fase 4 — El día del dueño · `PanelDelDia`
+Los tres bloques en el orden que él pidió: **la plata** (vencido sin cobrar · esperando confirmación
+· en el banco sin dueño) → **lo que espera su decisión** (liquidar, traspasos, graduar, cesiones,
+contratos sin activar) → **lo que va mal** (recolección, papeles vencidos, retenidas, taller).
+
+🔴 **Cada cifra dice qué pregunta responde.** "Vencido sin cobrar" es **la cuota y el acuerdo
+vencidos**, no la deuda total del cliente — esa incluiría las deudas registradas y las multas, y
+sería otra cifra con otro nombre. Y solo se suman `recoleccion` y `mora`, que son excluyentes:
+sumar además el plazo y la promesa vencidos contaría dos veces al mismo cliente.
+
+### Lo que queda de esta sección
+- **Apagar la campana vieja** (`useAlertas` en el navegador). Se deja prendida a propósito hasta
+  comparar aviso por aviso contra la vista: hay que conservar una contra la cual medir.
+- **Fase 5 — notificaciones y APK.** Ya tiene su cimiento: los pendientes existen sin que nadie
+  tenga la app abierta.
+
+---
+
 *Escrito con el dueño el 9/10-sep-2026. Las decisiones de aquí no se vuelven a preguntar.*

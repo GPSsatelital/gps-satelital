@@ -5,8 +5,14 @@ import { useAuth } from "../contexts/AuthContext";
 import ModalRegistrarGuardado from "./ModalRegistrarGuardado";
 
 // Fase 2 — validación post-entrega de dónde se guarda la moto, en el detalle del contrato.
-// Solo ADMIN/ADMIN_PRINCIPAL. La tarea persiste (alerta) hasta que el admin la marca. La app
-// no tiene el GPS del vehículo: el admin compara en su plataforma externa y marca ✅/❌.
+// La tarea persiste (alerta) hasta que se marca. La app no tiene el GPS del vehículo: se compara
+// en la plataforma externa y se marca ✅/❌.
+//
+// 🔴 EL SUBADMIN TAMBIÉN LA MARCA (10-sep-2026). Antes era solo ADMIN/ADMIN_PRINCIPAL, y eso
+// dejaba 192 validaciones sin hacer desde hace hasta 838 días. Al mudar los pendientes al
+// servidor, el aviso quedó asignado al encargado de la moto — que sí entra al GPS (confirmado por
+// el dueño) — pero el botón para cerrarlo no le aparecía: la tarea le salía todos los días y no
+// tenía con qué resolverla. La base ya lo permitía desde la mig 035, acotado a SUS contratos.
 interface Props {
   contrato: Contrato;
   clienteNombre: string;
@@ -20,9 +26,10 @@ export default function PanelGuardadoMoto({ contrato, clienteNombre, placa }: Pr
   const [procesando, setProcesando] = useState(false);
   const [modalReg, setModalReg] = useState(false);
 
-  const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
-  // Solo para contratos activos (entregados) y para admin.
-  if (!esAdmin || contrato.estado !== "Activo") return null;
+  const puedeValidar = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL"
+    || profile?.role === "SUBADMIN";
+  // Solo para contratos activos (entregados) y para quien revisa el GPS.
+  if (!puedeValidar || contrato.estado !== "Activo") return null;
   // No mostrar si el campo aún no existe (antes de correr la mig 060 = undefined) ni para los
   // contratos existentes backfilleados (validada=true SIN fecha real de validación): esos se
   // marcaron true solo para no inundar de alertas, nunca pasaron por este flujo.

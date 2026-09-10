@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { ViewKey } from "../App";
 import { card, fmtMoney } from "../styles/shared";
+import { useColaUbicacion } from "../hooks/useColaUbicacion";
 import type { Pendiente } from "../hooks/usePendientes";
 
 // EL DÍA DEL DUEÑO — fase 4 de docs/FLUJO-DIARIO.md.
@@ -21,6 +22,11 @@ export default function PanelDelDia({
   pendientes: Pendiente[];
   onNavegar?: (v: ViewKey) => void;
 }) {
+  // La fila de validaciones de ubicación no cabe en la lista de pendientes (solo salen 5 por
+  // persona, mig 145). El total va acá para que la deuda de trabajo baje a la vista y no se
+  // vuelva a olvidar por dos años, que es lo que llevaba la más vieja.
+  const { total: porValidar } = useColaUbicacion();
+
   const d = useMemo(() => {
     const de = (...tipos: string[]) => pendientes.filter(p => tipos.includes(p.tipo));
     const plata = (ps: Pendiente[]) => ps.reduce((s, p) => s + (p.monto ?? 0), 0);
@@ -47,7 +53,7 @@ export default function PanelDelDia({
   }, [pendientes]);
 
   const decisiones = d.traspaso + d.liquidar + d.graduar + d.cesion + d.sinActivar;
-  const alarmas = d.recoleccion + d.papelesVencidos + d.retenidas + d.taller;
+  const alarmas = d.recoleccion + d.papelesVencidos + d.retenidas + d.taller + (porValidar > 0 ? 1 : 0);
 
   return (
     <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14 }}>
@@ -100,6 +106,7 @@ export default function PanelDelDia({
         <Item n={d.papelesVencidos} texto="motos rodando con SOAT o tecno VENCIDA" tono="bad" onClick={() => onNavegar?.("motos")} />
         <Item n={d.retenidas} texto="motos retenidas (fiscalía, tránsito, garantía)" tono="bad" onClick={() => onNavegar?.("inmovilizaciones")} />
         <Item n={d.taller} texto="motos paradas en el taller hace más de una semana" tono="warn" onClick={() => onNavegar?.("taller")} />
+        <Item n={porValidar} texto="motos sin validar dónde duermen — van 5 por día a cada encargado" tono="warn" />
       </Bloque>
     </div>
   );

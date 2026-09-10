@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { card } from "../styles/shared";
 import { useEquipo } from "../hooks/useEquipo";
+import { useColaUbicacion } from "../hooks/useColaUbicacion";
 import { tareaVencida, type Tarea } from "../hooks/useTareas";
 import type { Pendiente, Atendido } from "../hooks/usePendientes";
 
@@ -39,6 +40,7 @@ type Fila = {
   atendidosHoy: number;
   tareasPend: number;
   tareasVencidas: number;
+  porValidar: number;
   huerfano: boolean;
 };
 
@@ -51,6 +53,10 @@ export default function PanelEquipo({
   activo: boolean;
 }) {
   const { equipo, loading } = useEquipo(activo);
+  // La fila de validaciones de ubicación va aparte: en la lista de pendientes solo salen 5 por
+  // persona (el cupo diario, mig 145), así que el total solo se ve acá. Es lo que permite notar
+  // que alguien lleva días sin mover su cupo.
+  const { faltanDe } = useColaUbicacion(activo);
 
   const { filas, sinNadie } = useMemo(() => {
     const hechas = new Set(atendidos.map(a => a.clave));
@@ -72,6 +78,7 @@ export default function PanelEquipo({
           atendidosHoy: atendidos.filter(a => a.atendido_por === p.id).length,
           tareasPend: misTareas.length,
           tareasVencidas: misTareas.filter(tareaVencida).length,
+          porValidar: faltanDe(p.id),
           huerfano: p.role === "SUBADMIN" && suyos.length === 0 && misTareas.length === 0,
         };
       })
@@ -81,7 +88,7 @@ export default function PanelEquipo({
     const sinNadie = pendientes.filter(pe => pe.dueno_rol && !rolesOcupados.has(pe.dueno_rol));
 
     return { filas, sinNadie };
-  }, [equipo, pendientes, atendidos, tareas]);
+  }, [equipo, pendientes, atendidos, tareas, faltanDe]);
 
   if (!activo || loading || filas.length === 0) return null;
 
@@ -113,6 +120,7 @@ export default function PanelEquipo({
               {f.criticos > 0 && <Cifra n={f.criticos} que="urgentes" tono="bad" />}
               {f.tareasPend > 0 && <Cifra n={f.tareasPend} que={f.tareasPend === 1 ? "tarea" : "tareas"} tono="neutro" />}
               {f.tareasVencidas > 0 && <Cifra n={f.tareasVencidas} que="vencidas" tono="bad" />}
+              {f.porValidar > 0 && <Cifra n={f.porValidar} que="por validar" tono="neutro" />}
               <Cifra n={f.atendidosHoy} que="hechos hoy" tono={f.atendidosHoy > 0 ? "ok" : "neutro"} />
             </div>
           </div>

@@ -2063,7 +2063,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           />
         )}
 
-        {/* Validar dónde se guarda la moto (post-entrega) — solo ADMIN/AP (mig 060) */}
+        {/* Validar dónde se guarda la moto (post-entrega, mig 060). Quién lo ve lo decide el
+            propio panel: ADMIN, ADMIN_PRINCIPAL y —desde el 10-sep— el SUBADMIN de esa moto. */}
         <PanelGuardadoMoto
           contrato={contratoDetalle}
           clienteNombre={clienteDetalle?.nombre ?? ""}

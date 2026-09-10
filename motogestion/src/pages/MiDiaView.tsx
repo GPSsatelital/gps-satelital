@@ -203,7 +203,11 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
   const lista = verMandadas ? mandadas : mias;
 
   return (
-    <div>
+    // textAlign explícito: `#root` trae `text-align: center` desde la plantilla original de Vite y
+    // toda la app lo hereda. Sin esto, los nombres y las cifras salen centrados y la lista se lee
+    // como un aviso, no como una tabla de trabajo. Se corrige acá y no en el CSS global para no
+    // mover de sitio el texto de las demás pantallas, que ya lo pelean cada una por su lado.
+    <div style={{ textAlign: "left" }}>
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Mi día</h2>
       <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, marginBottom: 14 }}>
         {profile?.nombre ?? ""} · {mias.length === 0 ? "sin tareas pendientes" : `${mias.length} ${mias.length === 1 ? "tarea pendiente" : "tareas pendientes"}`}
@@ -218,7 +222,7 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
       {profile?.role === "ADMIN_PRINCIPAL" && <PanelDelDia pendientes={pendientes} onNavegar={onNavigate} />}
 
       {/* SERGIO LEE PRIMERO AL EQUIPO. Su lista propia queda debajo. */}
-      <PanelEquipo pendientes={pendientes} atendidos={atendidos} tareas={tareas} activo={esJefe} />
+      <PanelEquipo pendientes={pendientes} atendidos={atendidos} tareas={tareas} activo={esJefe} isMobile={isMobile} />
 
       {/* LO PRIMERO DEL DÍA: los pendientes que el servidor calculó (migs 142/144). Ya no es un
           enlace a Cartera: la lista existe de verdad, con dueño, y se puede marcar atendida. */}

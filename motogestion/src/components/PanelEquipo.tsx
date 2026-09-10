@@ -45,12 +45,13 @@ type Fila = {
 };
 
 export default function PanelEquipo({
-  pendientes, atendidos, tareas, activo,
+  pendientes, atendidos, tareas, activo, isMobile,
 }: {
   pendientes: Pendiente[];
   atendidos: Atendido[];
   tareas: Tarea[];
   activo: boolean;
+  isMobile: boolean;
 }) {
   const { equipo, loading } = useEquipo(activo);
   // La fila de validaciones de ubicación va aparte: en la lista de pendientes solo salen 5 por
@@ -93,7 +94,8 @@ export default function PanelEquipo({
   if (!activo || loading || filas.length === 0) return null;
 
   return (
-    <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+    // textAlign explícito: `#root` hereda `text-align: center` de la plantilla de Vite.
+    <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14, textAlign: "left" }}>
       <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Cómo va el equipo</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
@@ -115,7 +117,10 @@ export default function PanelEquipo({
                 {f.huerfano && <span style={{ color: "var(--warn-ink)", fontWeight: 600 }}> · sin motos ni tareas asignadas</span>}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {/* En el celular las cifras caen bajo el nombre: alineadas a la derecha quedaban
+                colgando lejos de la persona a la que pertenecen. En pantalla ancha van a la
+                derecha, que es donde el ojo las busca cuando la fila es larga. */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: isMobile ? "flex-start" : "flex-end" }}>
               <Cifra n={f.porHacer} que="por hacer" tono={f.porHacer === 0 ? "ok" : "neutro"} />
               {f.criticos > 0 && <Cifra n={f.criticos} que="urgentes" tono="bad" />}
               {f.tareasPend > 0 && <Cifra n={f.tareasPend} que={f.tareasPend === 1 ? "tarea" : "tareas"} tono="neutro" />}

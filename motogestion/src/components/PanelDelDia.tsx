@@ -56,7 +56,8 @@ export default function PanelDelDia({
   const alarmas = d.recoleccion + d.papelesVencidos + d.retenidas + d.taller + (porValidar > 0 ? 1 : 0);
 
   return (
-    <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+    // textAlign explícito: `#root` hereda `text-align: center` de la plantilla de Vite.
+    <div style={{ ...card, padding: 0, overflow: "hidden", marginBottom: 14, textAlign: "left" }}>
       <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>El día</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>

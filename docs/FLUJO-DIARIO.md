@@ -70,4 +70,89 @@ final del día se ve **lo que hizo**, no solo lo que le falta.
 
 ---
 
-*Documento vivo. Se completa con el día de la secretaria y el del administrador antes de construir.*
+## 3 · La secretaria (Ángela)
+
+### Lo primero al abrir: **lo que está esperando confirmación**
+
+Las transferencias con comprobante y el efectivo que los subadmin entregaron. Es lo que está
+**detenido esperando que ella diga sí o no** — y mientras no lo confirme, esa plata no cuenta en
+ninguna cuenta: entró de verdad, pero el sistema no la ve. Por eso es lo primero.
+
+### Lo que NO se puede quedar sin hacer al cerrar
+
+1. **Confirmar todo lo que quedó pendiente** — ni una transferencia ni un efectivo de campo sin
+   resolver. Lo que queda sin confirmar queda en el limbo.
+2. **Recibir el efectivo de los subadmin** — que cada uno haya entregado físicamente lo que
+   recogió y ella lo haya recibido. Si alguien se va con la plata en el bolsillo, al día siguiente
+   nadie sabe cuánto era.
+
+### 🔴 La caja de transferencias se cierra AL DÍA SIGUIENTE
+
+> *«Yo pienso que el cerrar la caja, por lo menos lo de transferencias, lo cierre al día siguiente,
+> cuando ya hayan ingresado todos los pagos que entran por la noche.»*
+
+El efectivo se cuadra el mismo día, pero **las transferencias siguen llegando de noche**: cerrar la
+caja de transferencias antes de que entren deja el día corto y el siguiente inflado. Se enlaza con
+la regla de la fecha del banco (ver la memoria `caja-fecha-del-banco`).
+
+⚠️ **Sin verificar contra el código:** falta revisar cómo cierra hoy `CajaView` / `useCaja` y si ya
+distingue efectivo de transferencias. No dar por hecho que funciona así.
+
+---
+
+## 4 · El administrador (Sergio)
+
+> *«Tiene su propia lista, pero el trabajo principal es supervisar el trabajo de los demás admins:
+> él cuida que todo marche y se haga bien.»*
+
+**Su panel se lee al revés que el de un subadmin: primero cómo van los DEMÁS, después lo suyo.**
+
+Necesita ver, por persona: qué le falta, qué no hizo, qué se le venció, qué marcó "no se pudo".
+**Eso hoy no existe en ninguna pantalla** — no hay forma de ver el trabajo de alguien más sin
+entrar contrato por contrato.
+
+Su lista propia son las decisiones que solo él toma: aprobar visitas, autorizar recolecciones,
+revisar liquidaciones, resolver el tiempo que una moto estuvo guardada.
+
+---
+
+## 5 · El administrador principal (el dueño)
+
+Los tres bloques, **en este orden**:
+
+1. **La plata** — cuánto entró hoy y en la semana, por portafolio. Si la operación está produciendo.
+2. **Lo que espera su decisión** — lo que nadie más puede resolver: aprobar tandas de mensajes,
+   autorizar recolecciones, revisar liquidaciones, decidir excepciones. Si él no lo toca, se queda.
+3. **Lo que está saliendo mal** — motos guardadas sin producir, clientes disparados en mora, cosas
+   trabadas hace días, gente que no hizo su trabajo.
+
+---
+
+## 6 · Lo que esto implica para construir
+
+### 🔴 El problema de fondo: hoy los pendientes viven en el navegador
+
+Las 19 alertas se calculan **en el navegador, al vuelo** (`useAlertas`), y **no tienen dueño ni
+estado**: nadie sabe quién debe resolverlas ni si alguien ya las atendió. Sin la app abierta, no
+existen. Por eso:
+
+- No se le puede **asignar** una alerta a nadie.
+- No se puede saber qué **quedó sin hacer** ayer.
+- Sergio no puede supervisar lo que no queda registrado.
+- **Y no puede haber notificaciones ni APK**: si nadie tiene la app abierta, no hay quién avise.
+
+**Los pendientes tienen que mudarse al servidor.** Es el cimiento de todo lo demás.
+
+### Orden propuesto
+
+| Fase | Qué | Por qué en ese orden |
+|---|---|---|
+| **1** | Tabla de tareas + asignarlas + "Mi día" del subadmin | Es lo que el dueño pidió y lo que hoy no existe de ninguna forma |
+| **2** | Los pendientes del sistema (las 19 alertas) mudados al servidor, con dueño y estado | Sin esto no hay supervisión ni notificaciones |
+| **3** | El panel de Sergio: cómo va cada persona | Necesita que la fase 2 esté hecha |
+| **4** | El panel del dueño: plata → decisiones → alarmas | Se arma con lo de las fases anteriores |
+| **5** | Notificaciones y APK | Último: sin pendientes en el servidor no hay nada que notificar |
+
+---
+
+*Escrito con el dueño el 9/10-sep-2026. Las decisiones de aquí no se vuelven a preguntar.*

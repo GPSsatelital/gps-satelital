@@ -69,36 +69,32 @@ create index if not exists tareas_contrato_idx on public.tareas (contrato_id);
 -- definición VIVA de la base para no perder nada de lo que otras migraciones le agregaron — la
 -- lección de la mig 124, que reescribió dos triggers copiándolos de un archivo viejo y borró lo
 -- que la 116 les había puesto. Acá solo se AÑADE 'asignar_tarea' a ADMIN y ADMIN_PRINCIPAL.
-do $$
-declare def text; nueva text;
-begin
-  select pg_get_functiondef(p.oid) into def
-    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and p.proname = '_acciones_default';
-
-  if def is null then
-    raise exception 'No existe public._acciones_default — revisar la mig 048 antes de seguir.';
-  end if;
-
-  if def like '%asignar_tarea%' then
-    raise notice 'asignar_tarea ya estaba: no se toca.';
-    return;
-  end if;
-
-  -- Se engancha al final de los arreglos de ADMIN_PRINCIPAL y ADMIN, que hoy cierran con
-  -- 'editar_configuracion'. Todo lo demás de la función queda intacto porque se parte de su
-  -- definición VIVA, no de una copia.
-  nueva := replace(def, '''editar_configuracion'']', '''editar_configuracion'',''asignar_tarea'']');
-
-  -- Si el ancla ya no existe (otra migración cambió el final de esos arreglos), FALLA en vez de
-  -- dejar el permiso a medias en silencio: sin esto, Sergio no podría asignar y nadie sabría por qué.
-  if nueva = def then
-    raise exception 'No se encontró dónde enganchar asignar_tarea en _acciones_default. Revisar su definición actual y hacerlo a mano.';
-  end if;
-
-  execute nueva;
-  raise notice 'asignar_tarea agregado a ADMIN_PRINCIPAL y ADMIN.';
-end $$;
+-- 🔴 Copiada de `pg_get_functiondef` de la base VIVA el 10-sep-2026, NO de la mig 048: entre
+-- aquella y hoy le agregaron `ceder_contrato` y `entregar_premio` a los dos primeros arreglos, y
+-- `entregar_premio`/`iniciar_liquidacion` a SECRETARIA. Copiarla del archivo viejo los habría
+-- borrado en silencio — es exactamente lo que pasó con la mig 124 y costó tres días descubrirlo.
+-- Lo ÚNICO que cambia acá es `asignar_tarea` al final de ADMIN_PRINCIPAL y ADMIN.
+-- Espejo del frontend: `DEFAULT_ACCIONES` en src/lib/acciones.ts. Si se toca una, se toca la otra.
+create or replace function public._acciones_default(p_role text)
+returns text[] language sql immutable as $$
+  select case p_role
+    when 'ADMIN_PRINCIPAL' then array[
+      'registrar_efectivo','confirmar_transferencia','eliminar_pago','cerrar_caja','aplicar_saldo_favor',
+      'crear_contrato','editar_contrato','editar_deuda','crear_convenio',
+      'recolectar_moto','cambiar_grupo_moto','iniciar_liquidacion','aprobar_visita','lista_negra','editar_configuracion',
+      'ceder_contrato','entregar_premio','asignar_tarea']
+    when 'ADMIN' then array[
+      'registrar_efectivo','aplicar_saldo_favor',
+      'crear_contrato','editar_contrato','editar_deuda','crear_convenio',
+      'recolectar_moto','cambiar_grupo_moto','iniciar_liquidacion','aprobar_visita','lista_negra','editar_configuracion',
+      'ceder_contrato','entregar_premio','asignar_tarea']
+    when 'SECRETARIA' then array[
+      'registrar_efectivo','confirmar_transferencia','cerrar_caja','aplicar_saldo_favor','crear_convenio',
+      'entregar_premio','iniciar_liquidacion']
+    when 'SUBADMIN' then array['recolectar_moto','iniciar_liquidacion']
+    else array[]::text[]
+  end;
+$$;
 
 -- ── RLS ──────────────────────────────────────────────────────────────────────────────────────
 -- Sin esto cualquiera con sesión abierta leería y escribiría tareas de otros desde el navegador.

@@ -99,6 +99,9 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion", "ceder_contrato",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
     "exportar_datos", "devolver_base", "entregar_premio",
+    // Decisión del dueño (10-sep): "por ahora solo yo y Sergio". Espejo en `_acciones_default()`
+    // de la mig 140: si se toca acá, tocar allá.
+    "asignar_tarea",
   ],
   SECRETARIA: [
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",

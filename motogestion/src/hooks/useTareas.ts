@@ -69,6 +69,12 @@ export type NuevaTarea = {
 export function useTareas() {
   const { data: tareas, loading } = tareasStore.useStore();
 
+  // Cinturón y tirantes: después de cada escritura se pide la tabla, sin esperar el aviso del
+  // servidor. El realtime ya la refresca (mig 141), pero si ese canal se cae —o la tabla se sale
+  // de la publicación, que fue justo lo que pasó al estrenar esto— la persona vería una pantalla
+  // que no reacciona y volvería a hacer lo mismo. Ya pasó con un cobro duplicado esta semana.
+  const refrescar = () => { void tareasStore.refetch(); };
+
   async function crearTarea(t: NuevaTarea, asignadaPor: string) {
     if (!t.titulo.trim()) return { error: "Escribe qué hay que hacer." };
     // `asignada_por` va explícito porque la política de la base exige que coincida con quien está
@@ -84,6 +90,7 @@ export function useTareas() {
       fecha_limite: t.fecha_limite ?? null,
       evidencias_requeridas: t.evidencias_requeridas ?? [],
     });
+    if (!error) refrescar();
     return { error: error?.message ?? null };
   }
 
@@ -112,6 +119,7 @@ export function useTareas() {
       resuelta_el: new Date().toISOString(),
       resuelta_por: quien,
     }).eq("id", t.id);
+    if (!error) refrescar();
     return { error: error?.message ?? null };
   }
 
@@ -128,6 +136,7 @@ export function useTareas() {
       resuelta_el: new Date().toISOString(),
       resuelta_por: quien,
     }).eq("id", tareaId);
+    if (!error) refrescar();
     return { error: error?.message ?? null };
   }
 
@@ -136,6 +145,7 @@ export function useTareas() {
     const { error } = await supabase.from("tareas").update({
       estado: "cancelada", resuelta_el: new Date().toISOString(), resuelta_por: quien,
     }).eq("id", tareaId);
+    if (!error) refrescar();
     return { error: error?.message ?? null };
   }
 

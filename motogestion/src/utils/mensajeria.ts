@@ -113,6 +113,33 @@ export function faltanEnPalabras(faltan: string[]): string {
 }
 
 /**
+ * Qué leer después de tocar un botón de mensaje, dicho como lo entiende quien cobra.
+ *
+ * Existe porque el botón se quedó MUDO al prender el canal oficial (9-sep-2026): mientras el
+ * respaldo abría WhatsApp, esa ventana era la señal de que algo pasó; con ZALA el envío ocurre por
+ * debajo y el funcionario se quedaba mirando una pantalla que no reacciona — sin saber si mandó,
+ * si falló, o si tocó dos veces. Un mensaje a un cliente no puede salir en silencio.
+ *
+ * Uno solo para las cuatro pantallas que mandan mensajes: si cada una escribiera el suyo, el mismo
+ * resultado se explicaría distinto según por dónde se cobre.
+ */
+export function textoDelEnvio(nombre: string, r: ResultadoEnvio): { texto: string; bueno: boolean } {
+  if (r.canal === "whatsapp_web") {
+    return { texto: `Se abrió WhatsApp con el mensaje para ${nombre}. Revisa que lo hayas enviado.`, bueno: true };
+  }
+  switch (r.estado) {
+    case "enviado":
+    case "entregado":
+    case "leido":
+      return { texto: `Mensaje enviado a ${nombre}.`, bueno: true };
+    case "en_cola":
+      return { texto: `El mensaje para ${nombre} quedó en cola, esperando aprobación. Sale cuando lo aprueben.`, bueno: true };
+    default:
+      return { texto: `No se pudo enviar el mensaje a ${nombre}. ${r.motivo ?? ""}`.trim(), bueno: false };
+  }
+}
+
+/**
  * De los comodines con nombre ({nombre}, {valor}…) a la lista posicional de Meta ({{1}}, {{2}}…),
  * en el orden que dice `mensajes_whatsapp.variables` para esa clave. Un comodín que la plantilla
  * pide y no vino llega vacío: Meta rechaza variables vacías, así que el que llama debe mandar

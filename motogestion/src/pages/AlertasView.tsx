@@ -7,6 +7,7 @@ import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { useGestiones } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
+import { textoDelEnvio } from "../utils/mensajeria";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useCesiones } from "../hooks/useCesiones";
 import { useIngresosNoIdentificados } from "../hooks/useIngresosNoIdentificados";
@@ -173,7 +174,7 @@ export default function AlertasView({ onNavegar }: Props) {
       clave: "contacto_general",
       vars: { nombre: (getCliente(a.clienteId)?.nombre ?? "").toUpperCase(), placa: getMoto(a.motoId)?.placa ?? "" },
       resultado: `Contacto por alerta: ${a.titulo}`,
-    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+    }).then(r => alert(textoDelEnvio((getCliente(a.clienteId)?.nombre ?? "el cliente").toUpperCase(), r).texto));
   }
 
   function llamar(clienteId?: string) {

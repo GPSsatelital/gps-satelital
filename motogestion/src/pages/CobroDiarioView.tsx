@@ -25,7 +25,7 @@ import {
   cuotaConvenioDelPeriodo,
   diaPagoFrase,
 } from "../utils/cicloPago";
-import { diasTexto } from "../utils/mensajeria";
+import { diasTexto, textoDelEnvio } from "../utils/mensajeria";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
@@ -309,7 +309,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       },
       tipoGestion: "mensaje_recordatorio",
       resultado: "Mensaje de recordatorio (Cobro Diario)",
-    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+    }).then(r => alert(textoDelEnvio(f.clienteNombre.toUpperCase(), r).texto));
   }
 
   function abrirLlamada(tel: string) {

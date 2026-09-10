@@ -29,7 +29,7 @@ import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
-import { claveParaBalde, diasTexto, type BaldeHoy } from "../utils/mensajeria";
+import { claveParaBalde, diasTexto, textoDelEnvio, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
 
 // Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
 // adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
@@ -418,7 +418,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
           },
       textoLibre: buildMsg(),
       resultado: pendiente ? "Acuse de comprobante recibido" : "Recibo de pago enviado por WhatsApp",
-    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+    }).then(r => alert(textoDelEnvio(datos.clienteNombre.toUpperCase(), r).texto));
   }
 
   const telRegistrado = datos.clienteWhatsapp || datos.clienteTel;
@@ -1084,7 +1084,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       tipoGestion: "mensaje_recordatorio",
       resultado: "Mensaje de recordatorio",
     });
-    if (r.canal === "ninguno" && r.motivo) alert(r.motivo);
+    // El botón TIENE que decir qué pasó. Mientras el respaldo abría WhatsApp, esa ventana era la
+    // señal; con el canal oficial prendido el envío ocurre por debajo y el funcionario se queda
+    // mirando una pantalla que no reacciona — no sabe si mandó, si falló, o si tocó dos veces
+    // (reportado por el dueño el 9-sep, al prender el interruptor). Un mensaje al cliente no puede
+    // salir en silencio.
+    setAvisoEnvio({ nombre: (cliente?.nombre ?? "el cliente").toUpperCase(), r });
+    setTimeout(() => setAvisoEnvio(null), 6000);
   }
   async function tareaLlamar(c: typeof resumenContratos[number]) {
     if (!profile) return;
@@ -1204,6 +1210,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const puedeRecolectar = puede("recolectar_moto");
   const puedeCobroCampo = esAdmin || esSubadmin;
   const [saldoExito, setSaldoExito] = useState(false);
+  /** Qué pasó con el último mensaje enviado desde un botón suelto. Ver `tareaMensaje`. */
+  const [avisoEnvio, setAvisoEnvio] = useState<{ nombre: string; r: ResultadoEnvio } | null>(null);
   // Qué saldo se acaba de aplicar y a qué contrato. Sirve para NO volver a ofrecer el botón
   // mientras la pantalla todavía muestra el saldo viejo: la aplicación tarda unos segundos en
   // reflejarse (el servidor reparte y el aviso vuelve), y en ese rato el funcionario veía el saldo
@@ -1898,7 +1906,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         telefono: clienteDetalle.whatsapp || clienteDetalle.telefono,
         textoLibre: texto,
         resultado: "Estado de cuenta enviado por WhatsApp",
-      }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+      }).then(r => alert(textoDelEnvio((clienteDetalle.nombre ?? "el cliente").toUpperCase(), r).texto));
     }
 
     function enviarEstadoCuentaWhatsApp() {
@@ -1929,7 +1937,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           cuentas: textoCuentas(cuentasDelCliente),
         },
         resultado: "Cuentas para pagar enviadas por WhatsApp",
-      }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+      }).then(r => alert(textoDelEnvio((clienteDetalle.nombre ?? "el cliente").toUpperCase(), r).texto));
     }
 
     return (
@@ -3840,6 +3848,25 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           onDone={(msg) => alert(msg)}
         />
       )}
+
+      {/* Qué pasó con el último mensaje. Flotante porque el botón puede quedar en cualquier punto
+          de una lista larga: si el aviso saliera dentro de la tarjeta, el funcionario no lo vería. */}
+      {avisoEnvio && (() => {
+        const { texto, bueno } = textoDelEnvio(avisoEnvio.nombre, avisoEnvio.r);
+        return (
+          <div role="status" onClick={() => setAvisoEnvio(null)} style={{
+            position: "fixed", left: 12, right: 12, bottom: isMobile ? 88 : 24, zIndex: 300,
+            margin: "0 auto", maxWidth: 460, cursor: "pointer",
+            background: bueno ? "var(--ok-soft)" : "var(--bad-soft)",
+            border: `1px solid ${bueno ? "var(--ok-line)" : "var(--bad-line)"}`,
+            color: bueno ? "var(--ok-ink)" : "var(--bad-ink)",
+            borderRadius: 12, padding: "12px 14px", fontSize: 13, fontWeight: 600, lineHeight: 1.45,
+            boxShadow: "0 6px 24px rgba(0,0,0,.25)",
+          }}>
+            {texto}
+          </div>
+        );
+      })()}
 
       {modalPago && (
         <div

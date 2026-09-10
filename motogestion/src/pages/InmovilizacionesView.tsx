@@ -23,7 +23,7 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
-import { diasTexto } from "../utils/mensajeria";
+import { diasTexto, textoDelEnvio } from "../utils/mensajeria";
 import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
@@ -653,7 +653,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       },
       tipoGestion: "mensaje_recordatorio",
       resultado: "Aviso de recolección",
-    }).then(r => { if (r.canal === "ninguno" && r.motivo) alert(r.motivo); });
+    }).then(r => alert(textoDelEnvio(nombre.toUpperCase(), r).texto));
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [

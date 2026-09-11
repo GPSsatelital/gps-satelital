@@ -28,6 +28,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   prestamo_doc_vence:     "🪪",
   dinero_sin_identificar: "💰",
   cesion_pendiente:      "🔁",
+  liquidacion_sin_firma: "✍️",
 };
 
 function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
@@ -36,7 +37,7 @@ function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
   if (tipo === "soat_vence" || tipo === "tecno_vence" || tipo === "moto_retenida") return "motos";
   if (tipo === "moto_taller_demorada") return "taller";
   if (tipo === "prestamo_doc_vence") return "tarjetas_llaves";
-  if (tipo === "convenio_incumplido_3") return "liquidaciones";
+  if (tipo === "convenio_incumplido_3" || tipo === "liquidacion_sin_firma") return "liquidaciones";
   return "alertas";
 }
 

@@ -46,6 +46,7 @@ export const BLOQUE_DE: Record<string, Bloque> = {
   soat_vence: "motos", tecno_vence: "motos", moto_retenida: "motos",
   taller_demorado: "motos", prestamo_doc_vence: "motos", validar_ubicacion_moto: "motos",
   contrato_sin_activar: "contratos", cesion_pendiente: "contratos",
+  liquidacion_sin_firma: "contratos",
   base_completada: "contratos", traspaso_proximo: "contratos",
 };
 

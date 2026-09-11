@@ -43,6 +43,7 @@ const TIPO_ICON: Record<Alerta["tipo"], string> = {
   prestamo_doc_vence:     "🪪",
   dinero_sin_identificar: "💰",
   cesion_pendiente:      "🔁",
+  liquidacion_sin_firma: "✍️",
 };
 
 const TIPO_LABEL: Record<Alerta["tipo"], string> = {
@@ -64,6 +65,7 @@ const TIPO_LABEL: Record<Alerta["tipo"], string> = {
   prestamo_doc_vence:     "Tarjeta/llave",
   dinero_sin_identificar: "Sin identificar",
   cesion_pendiente:      "Cesión pendiente",
+  liquidacion_sin_firma: "Falta firma",
 };
 
 // ── Category tab definitions ──────────────────────────────────────────────────
@@ -85,7 +87,7 @@ function viewParaAlerta(tipo: Alerta["tipo"]): ViewKey {
   if (tipo === "moto_taller_demorada") return "taller";
   if (tipo === "prestamo_doc_vence") return "tarjetas_llaves";
   if (tipo === "dinero_sin_identificar") return "caja";
-  if (tipo === "convenio_incumplido_3") return "liquidaciones";
+  if (tipo === "convenio_incumplido_3" || tipo === "liquidacion_sin_firma") return "liquidaciones";
   return "alertas";
 }
 
@@ -97,7 +99,7 @@ function alertaMatchesTab(a: Alerta, tab: TabKey): boolean {
                                || a.tipo === "transferencia_pendiente" || a.tipo === "contrato_sin_activar"
                                || a.tipo === "traspaso_proximo" || a.tipo === "dinero_sin_identificar";
   if (tab === "flota")     return a.tipo === "moto_retenida" || a.tipo === "moto_taller_demorada" || a.tipo === "validar_ubicacion_moto" || a.tipo === "prestamo_doc_vence";
-  if (tab === "convenios") return a.tipo === "convenio_incumplido_3" || a.tipo === "convenio_por_vencer";
+  if (tab === "convenios") return a.tipo === "convenio_incumplido_3" || a.tipo === "convenio_por_vencer" || a.tipo === "liquidacion_sin_firma";
   return false;
 }
 

@@ -10,7 +10,7 @@ export type AlertaTipo =
   | "plazo_extra_vence" | "transferencia_pendiente" | "contrato_sin_activar" | "moto_retenida"
   | "traspaso_proximo" | "convenio_incumplido_3" | "convenio_por_vencer" | "moto_taller_demorada"
   | "validar_ubicacion_moto" | "promesa_pago_vence" | "prestamo_doc_vence"
-  | "dinero_sin_identificar" | "cesion_pendiente";
+  | "dinero_sin_identificar" | "cesion_pendiente" | "liquidacion_sin_firma";
 
 export type Alerta = {
   id: string;
@@ -61,6 +61,7 @@ const TIPO_VIEJO: Record<string, AlertaTipo> = {
   contrato_sin_activar:   "contrato_sin_activar",
   cesion_pendiente:       "cesion_pendiente",
   base_completada:        "base_completada",
+  liquidacion_sin_firma:  "liquidacion_sin_firma",
   traspaso_proximo:       "traspaso_proximo",
 };
 

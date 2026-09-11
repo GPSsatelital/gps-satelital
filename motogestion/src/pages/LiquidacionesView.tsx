@@ -78,6 +78,11 @@ function Stepper({ estado }: { estado: string }) {
 export default function LiquidacionesView() {
   const { profile } = useAuth();
   const role = profile?.role ?? "SECRETARIA";
+  // Cerrar sin la firma del cliente: ADMIN, ADMIN_PRINCIPAL y SECRETARIA (ella es quien recibe
+  // los documentos cuando el cliente los trae). Se deja como rol y no como permiso por persona
+  // para no tocar `_acciones_default()` en SQL, que es delicada; si algún día hay que repartirlo
+  // persona por persona, se convierte en una acción del catálogo.
+  const puedeCerrarSinFirma = role === "ADMIN" || role === "ADMIN_PRINCIPAL" || role === "SECRETARIA";
   // SECRETARIA entra con el flujo COMPLETO, cierre incluido (decisión del dueño, 22-ago): ella
   // maneja la plata de oficina, el lector de huella está en su PC, y sin ella el cliente firmado
   // quedaba esperando a que un admin diera el clic del cierre. La RLS ya la dejaba desde la mig
@@ -428,7 +433,10 @@ export default function LiquidacionesView() {
     }
   }
 
-  async function handleCerrar() {
+  // `sinFirma` = el camino de excepción: el cliente no pudo venir, se cierra igual para que la
+  // moto no se quede amarrada, y el papel firmado entra después. La base nunca exigió la firma
+  // para cerrar (solo rechaza cerrar dos veces); lo que faltaba era la puerta en la pantalla.
+  async function handleCerrar(sinFirma = false) {
     if (!sel || !profile) return;
     if (sigueConEmpresa && baseNueva + saldoParaNueva > sel.saldo_final) {
       setMsg("Base + saldo a favor no pueden sumar más de lo que el cliente tiene a favor.", true);
@@ -437,7 +445,10 @@ export default function LiquidacionesView() {
     const base = sigueConEmpresa ? Math.max(baseNueva, 0) : 0;
     const paraNueva = sigueConEmpresa ? Math.max(saldoParaNueva, 0) : 0;
     if (!confirm(
-      "¿Cerrar definitivamente esta liquidación?\n\n"
+      (sinFirma
+        ? "CERRAR SIN LA FIRMA DEL CLIENTE\n\nLa empresa se queda sin el papel firmado hasta que él lo traiga. La liquidación va a quedar marcada como «pendiente por firmar» y te la van a seguir recordando todos los días hasta que se suba.\n\n"
+        : "")
+      + "¿Cerrar definitivamente esta liquidación?\n\n"
       + "Se define el saldo final, se cierra el contrato, se saldan sus deudas y su convenio, y se decide el destino de la moto. No se puede deshacer.\n\n"
       + (sigueConEmpresa
           ? `Marcaste que el cliente SIGUE con la empresa: queda listo para su contrato nuevo.${(base > 0 || paraNueva > 0) ? `\nBase moto nueva: $${base.toLocaleString("es-CO")} · a favor del contrato nuevo: $${paraNueva.toLocaleString("es-CO")} · en efectivo: $${(sel.saldo_final - base - paraNueva).toLocaleString("es-CO")}.` : ""}`
@@ -450,9 +461,12 @@ export default function LiquidacionesView() {
     else {
       // Si el ahorro no alcanzó, se dice cuánto quedó debiendo y que esa plata sigue viva. Antes
       // solo decía "Liquidación cerrada" y nadie sabía que el cliente quedaba con una deuda.
+      const cola = sinFirma
+        ? " Queda PENDIENTE POR FIRMAR: cuando el cliente traiga el papel, súbelo desde esta misma pantalla."
+        : "";
       setMsg(avisoDeuda
-        ? `Liquidación cerrada. ${avisoDeuda}`
-        : "Liquidación cerrada. Sus deudas y su convenio quedaron saldados.");
+        ? `Liquidación cerrada. ${avisoDeuda}${cola}`
+        : `Liquidación cerrada. Sus deudas y su convenio quedaron saldados.${cola}`);
       setSel(null);
     }
   }
@@ -522,9 +536,18 @@ export default function LiquidacionesView() {
               const cliente = clienteDe(l);
               return (
                 <div key={l.id} onClick={() => seleccionar(l)} style={{ padding: "10px 12px", borderRadius: 12, cursor: "pointer", background: sel?.id === l.id ? "var(--soft2)" : "transparent", marginBottom: 6, border: sel?.id === l.id ? "2px solid var(--line)" : "2px solid transparent" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                     <span style={{ fontWeight: 600, fontSize: 13, color: "var(--muted)" }}>{l.numero}</span>
-                    <Badge estado={l.estado} />
+                    <span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                      {/* Cerrada pero sin el papel firmado. Entre veinte cerradas todas iguales,
+                          la que le falta el documento se pierde — por eso lleva su propia marca. */}
+                      {!l.documento_firmado_url && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)", borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap" }}>
+                          Falta firma
+                        </span>
+                      )}
+                      <Badge estado={l.estado} />
+                    </span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
                 </div>
@@ -788,6 +811,30 @@ export default function LiquidacionesView() {
                       <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSubirFirmado(f); }} />
                     </label>
                   </div>
+
+                  {/* LA SALIDA CUANDO EL CLIENTE NO VA A VENIR (11-sep-2026).
+                      Antes esto era un callejón: la liquidación se quedaba trancada acá y la moto
+                      amarrada al contrato esperando una firma que a veces no llegaba en semanas.
+                      Va ABAJO, en gris y detrás de una línea, a propósito: es la excepción, no una
+                      alternativa al mismo nivel que firmar. Y al cerrar así queda un pendiente
+                      diario hasta que el papel entre — sin eso, esta puerta sería por donde se
+                      escapan los documentos sin que nadie se entere.
+                      Quién puede: ADMIN, ADMIN_PRINCIPAL y SECRETARIA (decisión del dueño). */}
+                  {puedeCerrarSinFirma && (
+                    <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px dashed var(--line)" }}>
+                      <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>
+                        ¿El cliente <b>no va a venir</b> y la moto se necesita? Puedes cerrarla ya y subir
+                        el papel firmado cuando aparezca. Queda <b>finalizada, con el documento pendiente
+                        por firmar</b>, y el sistema te lo va a recordar hasta que lo subas.
+                      </div>
+                      <button
+                        style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--warn-line)", opacity: guardando ? 0.6 : 1 }}
+                        disabled={guardando}
+                        onClick={() => handleCerrar(true)}>
+                        {guardando ? "Cerrando..." : "Cerrar sin firma — el cliente firma después"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -880,7 +927,7 @@ export default function LiquidacionesView() {
                   })()}
                   </>
                 )}
-                <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={handleCerrar} disabled={guardando}>
+                <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={() => handleCerrar(false)} disabled={guardando}>
                   {guardando ? "Cerrando..." : "Confirmar y cerrar liquidación"}
                 </button>
               </div>

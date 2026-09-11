@@ -5,8 +5,14 @@
 //   1. { prueba: true, endpoint }  → manda UN aviso de prueba a ese aparato. Es el botón "Probar"
 //      de Mi Día, para que la persona confirme con el celular en la mano que sí le suena.
 //
-//   2. { resumen: true }           → el resumen de la mañana: mira `public.pendientes`, agrupa por
-//      dueño y le manda a cada quien lo suyo. Esta la llama el despertador (cron), no una persona.
+//   2. { resumen: true, momento }  → el resumen. Va DOS VECES AL DÍA (decisión del dueño, 10-sep):
+//      en la mañana la lista completa, y a media tarde **solo lo que sigue sin hacerse**. La
+//      llama el despertador (cron), no una persona.
+//
+//      La cuenta es la MISMA en los dos momentos: siempre se descuenta lo que la persona ya marcó
+//      como atendido hoy. A las 7am eso está vacío (sale la lista completa) y a las 2pm ya no.
+//      No hay dos lógicas: hay una, mirada a dos horas distintas. Lo único que cambia es cómo se
+//      dice, porque un mensaje idéntico dos veces al día se vuelve ruido y se deja de mirar.
 //
 // 🔴 A QUIEN NO TIENE NADA NO SE LE MANDA NADA. Un aviso que dice "no tienes pendientes" enseña
 // a ignorar los avisos, y el día que llegue uno de verdad nadie lo va a mirar.
@@ -56,7 +62,8 @@ Deno.serve(async (req) => {
     if (!esperado || req.headers.get("x-cron-llave") !== esperado) {
       return json({ ok: false, mensaje: "No autorizado." }, 401);
     }
-    return await resumenDelDia(admin);
+    const momento = cuerpo.momento === "tarde" ? "tarde" : "manana";
+    return await resumenDelDia(admin, momento as "manana" | "tarde");
   }
 
   // ── La prueba ─────────────────────────────────────────────────────────────
@@ -79,8 +86,8 @@ Deno.serve(async (req) => {
   return json({ ok: false, mensaje: "No entendí qué hay que mandar." }, 400);
 });
 
-// ── El resumen de la mañana ─────────────────────────────────────────────────
-async function resumenDelDia(admin: ReturnType<typeof createClient>) {
+// ── El resumen (mañana y tarde) ─────────────────────────────────────────────────
+async function resumenDelDia(admin: ReturnType<typeof createClient>, momento: "manana" | "tarde") {
   const hoy = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Bogota" }))
     .toISOString().slice(0, 10);
 
@@ -104,24 +111,34 @@ async function resumenDelDia(admin: ReturnType<typeof createClient>) {
 
     const urgentes = suyos.filter((p: { nivel: string }) => p.nivel === "critico").length;
     const nombre = (persona.nombre ?? "").split(" ")[0];
-    const texto = `Hoy tienes ${suyos.length} pendiente${suyos.length === 1 ? "" : "s"}`
-      + (urgentes > 0 ? `, ${urgentes} urgente${urgentes === 1 ? "" : "s"}.` : ".");
+    const cola = urgentes > 0 ? `, ${urgentes} urgente${urgentes === 1 ? "" : "s"}.` : ".";
+
+    const titulo = momento === "manana"
+      ? (nombre ? `Buenos días ${nombre}` : "Buenos días")
+      : (nombre ? `${nombre}, te falta cerrar el día` : "Te falta cerrar el día");
+
+    const texto = momento === "manana"
+      ? `Hoy tienes ${suyos.length} pendiente${suyos.length === 1 ? "" : "s"}${cola}`
+      : `Te quedan ${suyos.length} sin hacer${cola}`;
 
     const sus = (aparatos ?? []).filter((a: Aparato) => a.usuario_id === persona.id) as Aparato[];
     if (sus.length === 0) { saltados++; continue; }
 
     for (const ap of sus) {
       const r = await mandar(admin, ap, {
-        titulo: nombre ? `Buenos días ${nombre}` : "Buenos días",
+        titulo,
         cuerpo: texto,
         url: "/",
-        tag: "resumen",   // el de hoy reemplaza al de ayer, no se apilan
+        // Mismo `tag` en los dos: el de la tarde REEMPLAZA al de la mañana, y el de mañana al de
+        // hoy. Nunca se apilan tres resúmenes viejos en la barra de avisos; el que está siempre
+        // es el más reciente, que es el único que sirve.
+        tag: "resumen",
       });
       r.ok ? enviados++ : fallidos++;
     }
   }
 
-  return json({ ok: true, enviados, saltados, fallidos });
+  return json({ ok: true, momento, enviados, saltados, fallidos });
 }
 
 // ── El envío en sí ──────────────────────────────────────────────────────────

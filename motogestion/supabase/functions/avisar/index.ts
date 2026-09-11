@@ -129,6 +129,9 @@ async function resumenDelDia(admin: ReturnType<typeof createClient>, momento: "m
         titulo,
         cuerpo: texto,
         url: "/",
+        // Con urgentes, el celular vibra distinto. El patrón lo decide el ayudante (sw.js);
+        // acá solo se dice SI hay algo urgente, que es lo que el servidor sabe y él no.
+        urgente: urgentes > 0,
         // Mismo `tag` en los dos: el de la tarde REEMPLAZA al de la mañana, y el de mañana al de
         // hoy. Nunca se apilan tres resúmenes viejos en la barra de avisos; el que está siempre
         // es el más reciente, que es el único que sirve.
@@ -145,7 +148,7 @@ async function resumenDelDia(admin: ReturnType<typeof createClient>, momento: "m
 async function mandar(
   admin: ReturnType<typeof createClient>,
   ap: Aparato,
-  carga: { titulo: string; cuerpo: string; url: string; tag: string },
+  carga: { titulo: string; cuerpo: string; url: string; tag: string; urgente?: boolean },
 ): Promise<{ ok: boolean; detalle?: string }> {
   try {
     await webpush.sendNotification(

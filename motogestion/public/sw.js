@@ -19,6 +19,20 @@ self.addEventListener("push", event => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = {}; }
 
+  // LA VIBRACIÓN ES LO ÚNICO DEL SONIDO QUE CONTROLA EL SISTEMA (11-sep-2026).
+  //
+  // Un archivo de sonido propio NO se puede mandar: en los avisos web el sonido lo pone Android,
+  // no nosotros. Lo que sí se puede es el RITMO, y con eso alcanza para que la gente distinga
+  // sin sacar el celular del bolsillo:
+  //   · normal  → un toque corto.
+  //   · urgente → tres toques seguidos (hay recolección, SOAT vencido, cosas de hoy).
+  // Los patrones viven acá y no en el mensaje: si el día de mañana hay que cambiarlos, se cambia
+  // un solo sitio y no hay que tocar quien manda.
+  //
+  // (El sonido propio sí se puede, pero lo pone cada persona en los ajustes de su celular, y solo
+  //  si tiene la app INSTALADA — ahí Android le da su propio canal. Va explicado en el volante.)
+  const vibrar = d.urgente ? [120, 80, 120, 80, 120] : [200];
+
   const titulo = d.titulo || "MotoGestión";
   const opciones = {
     body: d.cuerpo || "",
@@ -28,6 +42,7 @@ self.addEventListener("push", event => {
     // Sin esto, tres días sin abrir la app dejan tres resúmenes viejos amontonados.
     tag: d.tag || "motogestion",
     renotify: true,
+    vibrate: vibrar,
     data: { url: d.url || "/" },
   };
 

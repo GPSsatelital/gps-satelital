@@ -7,8 +7,9 @@
   @page { size: A4; margin: 10mm 14mm; }
   * { box-sizing: border-box; }
   body {
+    font-size: 11.5pt;
     font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
-    color: #0f172a; margin: 0; font-size: 12pt; line-height: 1.5;
+    color: #0f172a; margin: 0; line-height: 1.36;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .placa {
@@ -16,7 +17,7 @@
     border: 2.5px solid #0f172a; border-radius: 6px;
     padding: 3px 14px; font-size: 13pt; font-weight: 800; letter-spacing: 2px;
   }
-  h1 { font-size: 24pt; margin: 8px 0 2px; line-height: 1.08; }
+  h1 { font-size: 22pt; margin: 6px 0 2px; line-height: 1.06; }
   .sub { font-size: 12.5pt; color: #334155; margin: 0 0 10px; }
   .cols { display: flex; gap: 16px; align-items: flex-start; }
   .izq { flex: 1.35; min-width: 0; }
@@ -25,8 +26,8 @@
   .pie-img { font-size: 9.5pt; color: #64748b; margin-top: 4px; text-align: center; }
   ol { margin: 0; padding-left: 0; list-style: none; counter-reset: p; }
   ol li {
-    counter-increment: p; position: relative; padding-left: 34px; margin-bottom: 9px;
-    font-size: 12.5pt;
+    counter-increment: p; position: relative; padding-left: 32px; margin-bottom: 7px;
+    font-size: 11.5pt;
   }
   ol li::before {
     counter-increment: none; content: counter(p);
@@ -37,33 +38,35 @@
   }
   .aviso {
     background: #dcfce7; border-left: 5px solid #16a34a;
-    padding: 9px 13px; margin: 12px 0 0; font-size: 11pt; color: #14532d;
+    padding: 8px 12px; margin: 10px 0 0; font-size: 10.5pt; color: #14532d;
   }
   .ojo {
     background: #fef3c7; border-left: 5px solid #f59e0b;
-    padding: 9px 13px; margin-top: 10px; font-size: 11pt; color: #78350f;
+    padding: 8px 12px; margin-top: 8px; font-size: 10.5pt; color: #78350f;
   }
   .noti {
-    border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc;
-    padding: 8px 12px; margin-top: 7px;
+    border: 1.5px solid #cbd5e1; border-radius: 9px; background: #f8fafc;
+    padding: 7px 11px; margin-top: 6px;
   }
   .noti .app { font-size: 9.5pt; color: #64748b; text-transform: uppercase; letter-spacing: .6px; }
   .noti .tit { font-size: 12.5pt; font-weight: 700; margin-top: 2px; }
   .noti .txt { font-size: 11.5pt; color: #334155; }
-  h2 { font-size: 14pt; margin: 12px 0 5px; border-bottom: 2.5px solid #FFD100; padding-bottom: 4px; }
-  .pie { margin-top: 10px; font-size: 9.5pt; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 7px; }
+  h2 { font-size: 13pt; margin: 10px 0 4px; border-bottom: 2.5px solid #FFD100; padding-bottom: 4px; }
+  .pie { margin-top: 6px; font-size: 9.5pt; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 7px; }
 </style>
 </head>
 <body>
 
 <div><span class="placa">MOTOGESTIÓN</span></div>
 <h1>Prende los avisos<br>en tu celular</h1>
-<p class="sub">Son 5 toques. Se hace una sola vez.</p>
+<p class="sub">Se hace una sola vez, y son dos minutos.</p>
 
 <div class="cols">
   <div class="izq">
     <ol>
-      <li>Abre <b>MotoGestión</b> en tu celular.</li>
+      <li>Abre <b>MotoGestión</b> en tu celular. Si arriba sale un aviso azul que dice
+          <b>«Instala MotoGestión»</b>, toca <b>Instalar</b>. <b>Este paso importa</b> — abajo
+          te explico por qué.</li>
       <li>Abajo a la derecha toca <b>Más</b> (las tres rayitas).</li>
       <li>Toca <b>Mi Día</b>.</li>
       <li>Arriba sale una franja azul que dice <b>«Activa los avisos en este celular»</b>.
@@ -85,11 +88,18 @@
   <div class="der">
     <img src="img/avisos-franja.png" alt="La franja azul para activar los avisos">
     <div class="pie-img">Así se ve la franja en el paso 4.</div>
+
+    <h2 style="margin-top:14px;">Tres cosas que saber</h2>
+    <ul style="margin:0; padding-left: 17px; font-size: 11pt;">
+      <li style="margin-bottom:4px;">Es <b>por celular</b>. Si usas otro teléfono, hay que prenderlo también ahí.</li>
+      <li style="margin-bottom:4px;">Sin internet, el aviso <b>llega cuando vuelva</b>. No se pierde.</li>
+      <li>El de la tarde solo cuenta <b>lo que sigue sin hacerse</b>. Si marcaste todo, no te llega.</li>
+    </ul>
   </div>
 </div>
 
 <h2>¿Qué te va a llegar?</h2>
-<p style="margin:0 0 4px;">Dos avisos al día, <b>solo si tienes cosas pendientes</b>.
+<p style="margin:0 0 3px; font-size:11pt;">Dos avisos al día, <b>solo si tienes cosas pendientes</b>.
 Si no tienes nada, no te llega nada.</p>
 
 <div class="noti">
@@ -104,14 +114,18 @@ Si no tienes nada, no te llega nada.</p>
   <div class="txt">Te quedan 6 sin hacer, 2 urgentes.</div>
 </div>
 
-<p style="margin-top:8px; margin-bottom:0;">Al tocar el aviso se abre <b>Mi Día</b> con tu lista.</p>
+<p style="margin-top:6px; margin-bottom:0; font-size:11pt;">Al tocar el aviso se abre <b>Mi Día</b> con tu lista.</p>
 
-<h2>Tres cosas que hay que saber</h2>
-<ul style="margin:0; padding-left: 20px;">
-  <li style="margin-bottom:5px;">Es <b>por celular</b>. Si usas otro teléfono, hay que prenderlo también ahí.</li>
-  <li style="margin-bottom:5px;">Si el celular está sin internet, el aviso <b>llega cuando vuelva</b>. No se pierde.</li>
-  <li>El de la tarde solo cuenta <b>lo que sigue sin hacerse</b>. Si marcaste todo, no te llega.</li>
-</ul>
+<h2>¿Quieres tu propio sonido?</h2>
+<p style="margin:0 0 5px; font-size:11pt;">Se puede, pero <b>solo si instalaste la app</b> (el paso 1).
+Ahí el celular la trata como una aplicación aparte y le puedes poner el sonido que quieras,
+<b>sin cambiar el de las demás</b>. Además el aviso llega con el nombre y el dibujo de
+MotoGestión; si no la instalas, llega como «Chrome» y se pierde entre los otros.</p>
+<div class="noti" style="background:#fff;">
+  <b>En Android:</b> Ajustes → Aplicaciones → <b>MotoGestión</b> → Notificaciones → Sonido.<br>
+  <b>Y aunque no le pongas sonido, vibra distinto:</b> un toque corto si es el resumen normal,
+  <b>tres toques seguidos si hay algo urgente</b>. Lo distingues sin sacarlo del bolsillo.
+</div>
 
 <div class="pie">
   MotoGestión · Club de Moteros, Cartagena · Si no te funciona, avísale al administrador.

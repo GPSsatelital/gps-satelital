@@ -284,3 +284,147 @@ describe("la lavada (mig 123) — detrás de la multa, antes de las deudas vieja
     expect(r).toMatchObject({ tarifa: 195_000, deuda: 80_000, convenio: 25_000 });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// MIG 149 — LA VENTANA DE PREPAGO VA AL FINAL DE LA FILA (11-sep-2026).
+//
+// El caso: EDINSON MOSQUERA (IEW58I). Semana $202.000 (ahorro $26.000) · acuerdo $679.000 en 12
+// cuotas de $58.000, creado el 25-ago · paga LUNES → su paquete es $260.000. Pagó exactamente
+// eso el domingo 6-sep y el viernes 11-sep, y el motor guardó "semana $260.000 · acuerdo $0" las
+// dos veces. Todo lo de abajo está verificado contra la base el 11-sep.
+//
+// 🔴 Las pruebas de arriba NO se tocaron y siguen en verde: quien no manda la ventana aparte
+// reparte exactamente como antes. Lo único que cambia es a dónde va la plata cuando la semana
+// del lunes siguiente entra por la ventana Y el acuerdo todavía tiene cuotas exigidas sin pagar.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const CAJA_E = 202_000;
+const AHORRO_E = 26_000;
+const CUOTA_E = 58_000;
+
+function edinson(over: Partial<Parameters<typeof repartirPagoV2>[0]> = {}) {
+  return {
+    monto: CAJA_E + CUOTA_E,
+    cajaValor: CAJA_E,
+    cajaAhorro: AHORRO_E,
+    cajasPagadas: 10,            // el acuerdo del 25-ago dejó marcadas las semanas 8, 9 y 10
+    cajaActualPagado: 0,
+    totalCajas: 104,
+    convenioPendiente: 679_000,
+    convenioAbonado: 0,
+    cajasExigidas: 11,
+    convenioExigido: CUOTA_E,
+    ...over,
+  };
+}
+
+describe("🔴 mig 149 — EDINSON: el paquete se reparte parejo aunque pague viernes o domingo", () => {
+  it("domingo 6-sep: semana $202.000 + acuerdo $58.000, y la semana del lunes NO se cuela", () => {
+    const r = repartirPagoV2(edinson({
+      cajasExigidas: 11,         // la semana del 31-ago, vencida a la fecha real
+      cajasExigidasVentana: 12,  // el lunes 7-sep entra por la ventana (6 + 3 = 9-sep)
+      convenioExigido: 1 * CUOTA_E,
+      convenioExigidoVentana: 2 * CUOTA_E,
+    }));
+    expect(r.tarifa).toBe(CAJA_E);
+    expect(r.convenio).toBe(CUOTA_E);
+    expect(r.saldo).toBe(0);
+    expect(r.ahorro).toBe(AHORRO_E);
+    expect(r.cajasPagadas).toBe(11);
+    expect(r.cajaActualPagado).toBe(0);   // antes quedaban $58.000 adelantados aquí
+  });
+
+  it("viernes 11-sep, tal como estaba la base (la semana 12 ya con $58.000 mal adelantados): da EXACTO el recibo impreso", () => {
+    // El recibo decía: a la cuota $144.000 · a deuda $45.000 · a convenio $116.000 · pendiente $0.
+    // Ese es el reparto correcto, y es el que el motor tiene que producir.
+    const r = repartirPagoV2(edinson({
+      monto: 305_000,
+      contratoSuspendido: true,  // la moto estaba recogida: multa y lavada van de primeras
+      deudas: [{ montoPendiente: 30_000, esMulta: true }, { montoPendiente: 15_000, esLavada: true }],
+      cajasPagadas: 11, cajaActualPagado: 58_000,   // el adelanto que dejó el defecto el 6-sep
+      cajasExigidas: 12,          // la semana del 7-sep, vencida
+      cajasExigidasVentana: 13,   // el lunes 14-sep entra por la ventana (11 + 3)
+      convenioExigido: 2 * CUOTA_E,      // 31-ago y 7-sep
+      convenioExigidoVentana: 3 * CUOTA_E,
+      convenioAbonado: 0,
+    }));
+    expect(r.deuda).toBe(45_000);
+    expect(r.tarifa).toBe(144_000);
+    expect(r.convenio).toBe(116_000);
+    expect(r.saldo).toBe(0);
+    expect(r.cajasPagadas).toBe(12);
+    expect(r.cajaActualPagado).toBe(0);
+  });
+
+  it("viernes 11-sep en el mundo ya corregido (el 6-sep quedó bien): $202.000 + $58.000 + deudas", () => {
+    const r = repartirPagoV2(edinson({
+      monto: 305_000, contratoSuspendido: true,
+      deudas: [{ montoPendiente: 30_000, esMulta: true }, { montoPendiente: 15_000, esLavada: true }],
+      cajasPagadas: 11, cajaActualPagado: 0,
+      cajasExigidas: 12, cajasExigidasVentana: 13,
+      convenioExigido: 2 * CUOTA_E, convenioExigidoVentana: 3 * CUOTA_E,
+      convenioAbonado: CUOTA_E,   // la cuota del 6-sep ya está en el acuerdo
+    }));
+    expect(r).toMatchObject({ deuda: 45_000, tarifa: CAJA_E, convenio: CUOTA_E, saldo: 0 });
+  });
+
+  it("si paga de MÁS, la ventana sí adelanta la semana siguiente — después del acuerdo, no antes", () => {
+    const r = repartirPagoV2(edinson({
+      monto: CAJA_E + CUOTA_E + 100_000,
+      cajasExigidas: 11, cajasExigidasVentana: 12,
+      convenioExigido: CUOTA_E, convenioExigidoVentana: 2 * CUOTA_E,
+    }));
+    expect(r.tarifa).toBe(CAJA_E + 100_000);   // $100.000 adelantados a la semana del lunes
+    expect(r.convenio).toBe(CUOTA_E);          // el acuerdo cobró lo suyo ANTES
+    expect(r.cajaActualPagado).toBe(100_000);
+    expect(r.saldo).toBe(0);
+  });
+
+  it("si le sobra hasta para la cuota del acuerdo de la semana adelantada, también la toma — y el resto queda a favor", () => {
+    const r = repartirPagoV2(edinson({
+      monto: 2 * (CAJA_E + CUOTA_E) + 10_000,
+      cajasExigidas: 11, cajasExigidasVentana: 12,
+      convenioExigido: CUOTA_E, convenioExigidoVentana: 2 * CUOTA_E,
+    }));
+    expect(r.tarifa).toBe(2 * CAJA_E);
+    expect(r.convenio).toBe(2 * CUOTA_E);
+    expect(r.saldo).toBe(10_000);
+  });
+
+  it("la ventana no pasa de la semana siguiente: lo que sobra después de ella queda a favor, no en cajas futuras", () => {
+    const r = repartirPagoV2(edinson({
+      monto: 3 * CAJA_E,
+      cajasExigidas: 11, cajasExigidasVentana: 12,
+      convenioExigido: 0, convenioExigidoVentana: 0, convenioPendiente: 0,
+    }));
+    expect(r.cajasPagadas).toBe(12);
+    expect(r.saldo).toBe(CAJA_E);
+  });
+});
+
+describe("mig 149 — DANIEL sigue funcionando: el sábado su paquete cae entero por la ventana, parejo", () => {
+  it("sábado 29-ago, nada vencido a la fecha real: semana $195.000 + cuota $35.000 por la ventana", () => {
+    const r = repartirPagoV2(daniel({
+      monto: PAQUETE,
+      cajasExigidas: 56, cajasExigidasVentana: 57,          // el lunes 31 entra por la ventana
+      convenioExigido: 105_000, convenioExigidoVentana: 140_000, convenioAbonado: 105_000,
+    }));
+    expect(r).toMatchObject({ tarifa: 195_000, convenio: 35_000, ahorro: 26_000, saldo: 0 });
+  });
+
+  it("y si el sábado además trae una cuota del acuerdo ATRASADA, esa se cobra ANTES que la semana del lunes", () => {
+    const r = repartirPagoV2(daniel({
+      monto: PAQUETE,   // $230.000, pero debe 1 cuota vieja + la semana del lunes + su cuota: le faltan $35.000
+      cajasExigidas: 56, cajasExigidasVentana: 57,
+      convenioExigido: 105_000, convenioExigidoVentana: 140_000, convenioAbonado: 70_000,
+    }));
+    expect(r.convenio).toBe(35_000);   // la atrasada, en la pasada estricta (paso 4)
+    expect(r.tarifa).toBe(195_000);    // la semana del lunes, por la ventana (paso 2b)
+    expect(r.saldo).toBe(0);           // la cuota del lunes queda para el lunes: no alcanzó
+  });
+
+  it("quien no manda la ventana aparte reparte exactamente como antes", () => {
+    const r = repartirPagoV2(daniel({ monto: PAQUETE, cajasExigidas: 57, convenioExigido: 140_000, convenioAbonado: 105_000 }));
+    expect(r).toMatchObject({ tarifa: 195_000, convenio: 35_000, ahorro: 26_000, saldo: 0 });
+  });
+});

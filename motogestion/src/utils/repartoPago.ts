@@ -162,13 +162,22 @@ export type EntradaReparto = {
   cajasPagadas: number;
   cajaActualPagado?: number;
   totalCajas?: number | null;
-  /** Lo que devuelve `cajas_exigidas(contrato, fecha_del_pago)`. */
+  /** Lo que devuelve `cajas_exigidas(contrato, fecha_del_pago)` — a la fecha REAL, sin ventana. */
   cajasExigidas: number;
+  /**
+   * Lo que devuelve `cajas_exigidas(contrato, fecha_del_pago + 3)`: la VENTANA DE PREPAGO (mig 119).
+   * Desde la mig 149 va al FINAL de la fila: solo con lo que sobre después de semanas vencidas,
+   * deudas y cuotas exigidas del acuerdo se adelanta la semana que arranca en los próximos días.
+   * Si no viene, se asume igual a `cajasExigidas` y la segunda pasada no hace nada.
+   */
+  cajasExigidasVentana?: number;
   deudas?: DeudaReparto[];
   /** Saldo que le falta al convenio: `deuda_total − abonado_total`. */
   convenioPendiente?: number;
-  /** Lo que el convenio tiene EXIGIDO a la fecha del pago (de `cuotasConvenioExigidas`). */
+  /** Lo que el convenio tiene EXIGIDO a la fecha REAL del pago (de `cuotasConvenioExigidas`). */
   convenioExigido?: number;
+  /** Lo exigido a `fecha_del_pago + 3` — la cuota de la semana que la ventana adelanta. Opcional. */
+  convenioExigidoVentana?: number;
   /** Lo que ya se le abonó al convenio ANTES de este pago. */
   convenioAbonado?: number;
 };
@@ -239,7 +248,8 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     monto -= delta;
   }
 
-  // 2) Cajas FIFO — SOLO hasta las exigidas hoy. El excedente NO llena cajas futuras.
+  // 2) Cajas FIFO — SOLO hasta las exigidas a la fecha REAL del pago. El excedente NO llena cajas
+  //    futuras. (La ventana de prepago ya no entra aquí: va al final, paso 2b — mig 149.)
   let exigidas = e.cajasExigidas;
   if (e.tipoRegistro === "adelanto_base") exigidas = Math.max(exigidas, r.cajasPagadas + 1);
   while (monto > 0 && r.cajasPagadas < totalCajas && r.cajasPagadas < exigidas && cajaValor > 0) {
@@ -280,6 +290,40 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     );
     r.convenio = Math.min(monto, puedeRecibir);
     monto -= r.convenio;
+  }
+
+  // 2b / 4b) LA VENTANA DE PREPAGO, AL FINAL DE LA FILA (mig 149, 11-sep-2026).
+  //
+  // La ventana (pagar hasta 3 días antes del lunes cuenta como pagar el lunes — DANIEL MILLÁN,
+  // mig 119) estaba en el paso 2, junto con las semanas vencidas. Resultado: cuando alguien pagaba
+  // su paquete (semana + cuota del acuerdo) un viernes o un domingo, la semana del LUNES
+  // SIGUIENTE se colaba adelante del acuerdo y se llevaba su cuota. Caso real EDINSON MOSQUERA
+  // (IEW58I): pagó $260.000 = $202.000 + $58.000 dos veces, y el motor guardó "semana $260.000 ·
+  // acuerdo $0" las dos veces; el acuerdo quedó en 0 de 12 apareciendo en mora, y $116.000
+  // adelantados a una semana que no había empezado. El recibo impreso decía otra cosa.
+  //
+  // Ahora: primero TODO lo vencido a la fecha real (semanas, deudas, acuerdo), y solo con lo que
+  // sobre, la semana que arranca dentro de la ventana y su cuota del acuerdo. DANIEL sigue igual:
+  // el sábado no tiene nada vencido, así que su paquete cae entero acá, parejo. Regla del dueño
+  // (24-ago): "todo se paga parejo, semana + convenio". Esto la cumple por los DOS lados.
+  const exigidasVentana = Math.max(e.cajasExigidasVentana ?? exigidas, exigidas);
+  while (monto > 0 && r.cajasPagadas < totalCajas && r.cajasPagadas < exigidasVentana && cajaValor > 0) {
+    const delta = Math.min(monto, cajaValor - r.cajaActualPagado);
+    r.ahorro += ahorroDelTramo(r.cajaActualPagado, delta, cajaValor, cajaAhorro);
+    r.cajaActualPagado += delta;
+    r.tarifa += delta;
+    monto -= delta;
+    if (r.cajaActualPagado >= cajaValor) { r.cajasPagadas += 1; r.cajaActualPagado = 0; }
+  }
+  const convExigidoVentana = Math.max(e.convenioExigidoVentana ?? (e.convenioExigido ?? 0), e.convenioExigido ?? 0);
+  if (monto > 0 && pendConv - r.convenio > 0) {
+    const puedeRecibir = Math.max(
+      Math.min(convExigidoVentana - (e.convenioAbonado ?? 0) - r.convenio, pendConv - r.convenio),
+      0,
+    );
+    const delta = Math.min(monto, puedeRecibir);
+    r.convenio += delta;
+    monto -= delta;
   }
 
   // 5) Lo que sobre queda a favor del cliente (se aplica a mano — regla del dueño, 12-ago).

@@ -23,7 +23,8 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
-import { diasTexto, textoDelEnvio } from "../utils/mensajeria";
+import { diasTexto } from "../utils/mensajeria";
+import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
 import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
 import ModalGestion from "../components/ModalGestion";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
@@ -89,6 +90,9 @@ type FiltroP = "todos" | "criticos" | "en_proceso" | "mora" | "gabela" | "deuda"
 // Los pasos ya no dependen de un número fijo de días — se gestionan desde el Panel Hoy de Cartera.
 
 export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
+  // Cómo le fue al último mensaje. Se muestra en una tarjeta de color abajo, no en el
+  // cuadro gris del navegador: el color dice el resultado antes de leer.
+  const [avisoEnvio, setAvisoEnvio] = useState<AvisoDeEnvio | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 900);
@@ -653,7 +657,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       },
       tipoGestion: "mensaje_recordatorio",
       resultado: "Aviso de recolección",
-    }).then(r => alert(textoDelEnvio(nombre.toUpperCase(), r).texto));
+    }).then(r => setAvisoEnvio({ nombre: nombre.toUpperCase(), r }));
   }
 
   const filtroBtns: { key: FiltroP; label: string; count: number }[] = [
@@ -666,6 +670,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
   ];
 
   return (
+    <>
     <div>
       {/* Header — subtítulo solo en desktop para ahorrar alto en móvil */}
       <div style={{ marginBottom: isMobile ? 10 : 22 }}>
@@ -1472,5 +1477,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
         );
       })()}
     </div>
+      <AvisoEnvio aviso={avisoEnvio} onCerrar={() => setAvisoEnvio(null)} isMobile={isMobile} />
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { comoAlertas, type Alerta } from "../utils/pendienteComoAlerta";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
-import { textoDelEnvio } from "../utils/mensajeria";
+import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
 import type { ViewKey } from "../App";
 
 interface Props {
@@ -126,6 +126,9 @@ export default function AlertasView({ onNavegar }: Props) {
   const cargando = lCl || lM || lPe;
   const alertas = useMemo(() => comoAlertas(pendientes), [pendientes]);
 
+  // Cómo le fue al último mensaje. Se muestra en una tarjeta de color abajo, no en el
+  // cuadro gris del navegador: el color dice el resultado antes de leer.
+  const [avisoEnvio, setAvisoEnvio] = useState<AvisoDeEnvio | null>(null);
   const [tab, setTab]           = useState<TabKey>("todas");
   const [vistas, setVistas]     = useState<Set<string>>(new Set());
 
@@ -167,7 +170,7 @@ export default function AlertasView({ onNavegar }: Props) {
       clave: "contacto_general",
       vars: { nombre: (getCliente(a.clienteId)?.nombre ?? "").toUpperCase(), placa: getMoto(a.motoId)?.placa ?? "" },
       resultado: `Contacto por alerta: ${a.titulo}`,
-    }).then(r => alert(textoDelEnvio((getCliente(a.clienteId)?.nombre ?? "el cliente").toUpperCase(), r).texto));
+    }).then(r => setAvisoEnvio({ nombre: (getCliente(a.clienteId)?.nombre ?? "el cliente").toUpperCase(), r }));
   }
 
   function llamar(clienteId?: string) {
@@ -380,6 +383,7 @@ export default function AlertasView({ onNavegar }: Props) {
   }
 
   return (
+    <>
     <div>
       {/* Header */}
       <div style={{ marginBottom: 22 }}>
@@ -492,5 +496,7 @@ export default function AlertasView({ onNavegar }: Props) {
         </div>
       )}
     </div>
+      <AvisoEnvio aviso={avisoEnvio} onCerrar={() => setAvisoEnvio(null)} isMobile={isMobile} />
+    </>
   );
 }

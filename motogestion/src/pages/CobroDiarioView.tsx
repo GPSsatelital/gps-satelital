@@ -25,7 +25,8 @@ import {
   cuotaConvenioDelPeriodo,
   diaPagoFrase,
 } from "../utils/cicloPago";
-import { diasTexto, textoDelEnvio } from "../utils/mensajeria";
+import { diasTexto } from "../utils/mensajeria";
+import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
 import { hoyISO, hoyMasDias } from "../utils/fecha";
 import ModalGestion from "../components/ModalGestion";
 import ModalDeuda from "../components/ModalDeuda";
@@ -123,6 +124,9 @@ const PRIORIDAD: Record<string, { bg: string; color: string; border: string; lab
 };
 
 export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
+  // Cómo le fue al último mensaje. Se muestra en una tarjeta de color abajo, no en el
+  // cuadro gris del navegador: el color dice el resultado antes de leer.
+  const [avisoEnvio, setAvisoEnvio] = useState<AvisoDeEnvio | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -309,7 +313,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       },
       tipoGestion: "mensaje_recordatorio",
       resultado: "Mensaje de recordatorio (Cobro Diario)",
-    }).then(r => alert(textoDelEnvio(f.clienteNombre.toUpperCase(), r).texto));
+    }).then(r => setAvisoEnvio({ nombre: f.clienteNombre.toUpperCase(), r }));
   }
 
   function abrirLlamada(tel: string) {
@@ -701,6 +705,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   ];
 
   return (
+    <>
     <div style={{ paddingBottom: 40 }}>
 
       {/* ── Hero ── */}
@@ -1107,5 +1112,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
       {deudaId && <ModalDeuda contratoId={deudaId} clienteNombre={filas.find(f => f.contratoId === deudaId)?.clienteNombre ?? ""} onClose={() => setDeudaId(null)} />}
       {convenioId && puedeCrearConvenio && <ModalConvenio contratoId={convenioId} clienteNombre={filas.find(f => f.contratoId === convenioId)?.clienteNombre ?? ""} onClose={() => setConvenioId(null)} />}
     </div>
+      <AvisoEnvio aviso={avisoEnvio} onCerrar={() => setAvisoEnvio(null)} isMobile={isMobile} />
+    </>
   );
 }

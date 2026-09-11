@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { textoCuentas } from "../hooks/useCuentasBancarias";
 import { normalizarWhatsapp, ordenarVariables, decidirCanal, diasTexto, fmtPesos, urlWaMe, claveParaBalde, resumirTanda, nombreCorto, faltanEnPalabras } from "./mensajeria";
 
 describe("nombreCorto — cómo se le habla al cliente (regla del dueño, 8-sep)", () => {
@@ -104,5 +105,42 @@ describe("formatos que lee el cliente", () => {
   });
   it("el enlace de respaldo codifica el texto", () => {
     expect(urlWaMe("573045342428", "hola mundo")).toBe("https://wa.me/573045342428?text=hola%20mundo");
+  });
+});
+
+// ── Las cuentas van en UN renglón (11-sep-2026) ──────────────────────────────
+// Meta rechaza una variable de plantilla con salto de línea, y COSTA es el único grupo con dos
+// cuentas: por eso era el único cuyo mensaje se caía o llegaba con una sola. La prueba amarra
+// eso para que nadie vuelva a poner un "\n" ahí sin darse cuenta.
+describe("textoCuentas", () => {
+  const cuenta = (banco: string, numero: string, titular: string) => ({
+    id: banco, banco, tipo: "Ahorros", numero, titular,
+    grupos: ["COSTA"], activa: true, orden: 0, created_at: "",
+  });
+
+  it("nunca mete un salto de línea, ni con varias cuentas", () => {
+    const t = textoCuentas([
+      cuenta("Bancolombia", "78400006116", "Club moteros de la costa"),
+      cuenta("Nequi", "3128317132", "Yeiner acosta"),
+    ]);
+    expect(t).not.toContain("\n");
+    expect(t).toContain("78400006116");
+    expect(t).toContain("3128317132");
+  });
+
+  it("las une con «y» para que se lean dentro de la frase", () => {
+    const t = textoCuentas([
+      cuenta("Bancolombia", "111", "Club"),
+      cuenta("Nequi", "222", "Yeiner"),
+    ]);
+    expect(t).toBe("Bancolombia ahorros 111 (Club) y Nequi ahorros 222 (Yeiner)");
+  });
+
+  it("con una sola cuenta no inventa conectores", () => {
+    expect(textoCuentas([cuenta("Nequi", "333", "Yeny")])).toBe("Nequi ahorros 333 (Yeny)");
+  });
+
+  it("sin cuentas devuelve vacío en vez de reventar", () => {
+    expect(textoCuentas([])).toBe("");
   });
 });

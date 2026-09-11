@@ -123,19 +123,39 @@ export function faltanEnPalabras(faltan: string[]): string {
  * Uno solo para las cuatro pantallas que mandan mensajes: si cada una escribiera el suyo, el mismo
  * resultado se explicaría distinto según por dónde se cobre.
  */
-export function textoDelEnvio(nombre: string, r: ResultadoEnvio): { texto: string; bueno: boolean } {
+export type TonoAviso = "ok" | "espera" | "mal";
+
+/**
+ * Qué se le dice al funcionario después de mandar un mensaje.
+ *
+ * Se devuelve partido en TÍTULO y DETALLE, y con un TONO, porque el aviso ya no es el cuadro gris
+ * del navegador: es una tarjeta de color. El funcionario tiene que saber cómo le fue **antes de
+ * leer** — verde salió, amarillo espera turno, rojo hay que hacer algo. Pedido del dueño
+ * (11-sep-2026): *"que sean más bonitas, ya que se ven solo como un texto y a los funcionarios
+ * les da pereza leer"*.
+ *
+ * `texto` se conserva para quien todavía muestre una sola línea.
+ */
+export function textoDelEnvio(nombre: string, r: ResultadoEnvio): {
+  texto: string; bueno: boolean; titulo: string; detalle: string; tono: TonoAviso;
+} {
+  const armar = (titulo: string, detalle: string, tono: TonoAviso) => ({
+    titulo, detalle, tono, bueno: tono !== "mal",
+    texto: detalle ? `${titulo}. ${detalle}` : `${titulo}.`,
+  });
+
   if (r.canal === "whatsapp_web") {
-    return { texto: `Se abrió WhatsApp con el mensaje para ${nombre}. Revisa que lo hayas enviado.`, bueno: true };
+    return armar("Se abrió WhatsApp", `${nombre} · revisa que lo hayas enviado`, "espera");
   }
   switch (r.estado) {
     case "enviado":
     case "entregado":
     case "leido":
-      return { texto: `Mensaje enviado a ${nombre}.`, bueno: true };
+      return armar("Mensaje enviado", nombre, "ok");
     case "en_cola":
-      return { texto: `El mensaje para ${nombre} quedó en cola, esperando aprobación. Sale cuando lo aprueben.`, bueno: true };
+      return armar("Quedó en cola", `${nombre} · sale cuando lo aprueben`, "espera");
     default:
-      return { texto: `No se pudo enviar el mensaje a ${nombre}. ${r.motivo ?? ""}`.trim(), bueno: false };
+      return armar("No se pudo enviar", `${nombre}${r.motivo ? ` · ${r.motivo}` : ""}`, "mal");
   }
 }
 

@@ -25,11 +25,12 @@ import { useDeudas, type ConceptoDeuda, type Deuda } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useIngresosNoIdentificados, normalizarRef } from "../hooks/useIngresosNoIdentificados";
 import { useCuentasBancarias, cuentasDelGrupo, textoCuentas } from "../hooks/useCuentasBancarias";
+import AvisoEnvio from "../components/AvisoEnvio";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
-import { claveParaBalde, diasTexto, textoDelEnvio, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
+import { claveParaBalde, diasTexto, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
 
 // Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
 // adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
@@ -354,7 +355,12 @@ function ticketPagoData(datos: DatosRecibo): TicketData {
   };
 }
 
-function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => void }) {
+function ReciboPanel({ datos, onCerrar, onAviso }: {
+  datos: DatosRecibo;
+  onCerrar: () => void;
+  /** Cómo le fue al mensaje. Se avisa hacia arriba porque el aviso flotante vive en la vista. */
+  onAviso: (a: { nombre: string; r: ResultadoEnvio }) => void;
+}) {
   const { enviar } = useEnvioMensaje();
   const [fase, setFase] = useState<"ver" | "whatsapp">("ver");
   const [otroNum, setOtroNum] = useState("");
@@ -418,7 +424,7 @@ function ReciboPanel({ datos, onCerrar }: { datos: DatosRecibo; onCerrar: () => 
           },
       textoLibre: buildMsg(),
       resultado: pendiente ? "Acuse de comprobante recibido" : "Recibo de pago enviado por WhatsApp",
-    }).then(r => alert(textoDelEnvio(datos.clienteNombre.toUpperCase(), r).texto));
+    }).then(r => onAviso({ nombre: datos.clienteNombre.toUpperCase(), r }));
   }
 
   const telRegistrado = datos.clienteWhatsapp || datos.clienteTel;
@@ -1089,8 +1095,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // mirando una pantalla que no reacciona — no sabe si mandó, si falló, o si tocó dos veces
     // (reportado por el dueño el 9-sep, al prender el interruptor). Un mensaje al cliente no puede
     // salir en silencio.
+    // Sin `setTimeout` a mano: el aviso decide solo cuánto dura. El rojo NO se va hasta que lo
+    // cierren — un fallo que se desvanece deja al funcionario creyendo que el mensaje salió.
     setAvisoEnvio({ nombre: (cliente?.nombre ?? "el cliente").toUpperCase(), r });
-    setTimeout(() => setAvisoEnvio(null), 6000);
   }
   async function tareaLlamar(c: typeof resumenContratos[number]) {
     if (!profile) return;
@@ -1906,7 +1913,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         telefono: clienteDetalle.whatsapp || clienteDetalle.telefono,
         textoLibre: texto,
         resultado: "Estado de cuenta enviado por WhatsApp",
-      }).then(r => alert(textoDelEnvio((clienteDetalle.nombre ?? "el cliente").toUpperCase(), r).texto));
+      }).then(r => setAvisoEnvio({ nombre: (clienteDetalle.nombre ?? "el cliente").toUpperCase(), r }));
     }
 
     function enviarEstadoCuentaWhatsApp() {
@@ -1937,7 +1944,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           cuentas: textoCuentas(cuentasDelCliente),
         },
         resultado: "Cuentas para pagar enviadas por WhatsApp",
-      }).then(r => alert(textoDelEnvio((clienteDetalle.nombre ?? "el cliente").toUpperCase(), r).texto));
+      }).then(r => setAvisoEnvio({ nombre: (clienteDetalle.nombre ?? "el cliente").toUpperCase(), r }));
     }
 
     return (
@@ -3852,22 +3859,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
       {/* Qué pasó con el último mensaje. Flotante porque el botón puede quedar en cualquier punto
           de una lista larga: si el aviso saliera dentro de la tarjeta, el funcionario no lo vería. */}
-      {avisoEnvio && (() => {
-        const { texto, bueno } = textoDelEnvio(avisoEnvio.nombre, avisoEnvio.r);
-        return (
-          <div role="status" onClick={() => setAvisoEnvio(null)} style={{
-            position: "fixed", left: 12, right: 12, bottom: isMobile ? 88 : 24, zIndex: 300,
-            margin: "0 auto", maxWidth: 460, cursor: "pointer",
-            background: bueno ? "var(--ok-soft)" : "var(--bad-soft)",
-            border: `1px solid ${bueno ? "var(--ok-line)" : "var(--bad-line)"}`,
-            color: bueno ? "var(--ok-ink)" : "var(--bad-ink)",
-            borderRadius: 12, padding: "12px 14px", fontSize: 13, fontWeight: 600, lineHeight: 1.45,
-            boxShadow: "0 6px 24px rgba(0,0,0,.25)",
-          }}>
-            {texto}
-          </div>
-        );
-      })()}
+      <AvisoEnvio aviso={avisoEnvio} onCerrar={() => setAvisoEnvio(null)} isMobile={isMobile} />
 
       {modalPago && (
         <div
@@ -4255,7 +4247,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       })()}
 
       {/* Panel de recibo */}
-      {reciboData && <ReciboPanel datos={reciboData} onCerrar={() => setReciboData(null)} />}
+      {reciboData && <ReciboPanel datos={reciboData} onCerrar={() => setReciboData(null)} onAviso={setAvisoEnvio} />}
 
       {/* Formulario combinado de recolección por mora */}
       {recoleccionModal && (

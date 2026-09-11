@@ -41,11 +41,23 @@ export function cuentasDelGrupo(cuentas: CuentaBancaria[], grupo: string | null 
     .sort((a, b) => a.orden - b.orden || a.banco.localeCompare(b.banco));
 }
 
-/** Las cuentas listas para pegar en un mensaje de WhatsApp, una por línea. */
+/**
+ * Las cuentas listas para meter en un mensaje de WhatsApp, EN UN SOLO RENGLÓN.
+ *
+ * 🔴 SIN SALTOS DE LÍNEA, y no es un capricho de estilo: Meta **rechaza** una variable de
+ * plantilla que traiga un salto de línea. Como COSTA es el único grupo con DOS cuentas, era el
+ * único cuyo mensaje se caía o le llegaba al cliente con una sola — los demás tienen una sola y
+ * nunca hubo salto. Verificado el 11-sep-2026 contra el historial de envíos: la app mandaba las
+ * dos cuentas completas, se perdían más abajo.
+ *
+ * Por eso además se leen como parte de la frase ("…para pagar su moto XXX: Bancolombia … y
+ * Nequi …") y no como lista con viñetas, que sin renglones queda ilegible.
+ */
 export function textoCuentas(cuentas: CuentaBancaria[]): string {
-  return cuentas
-    .map(c => `• ${c.banco}${c.tipo ? ` (${c.tipo})` : ""}: ${c.numero}${c.titular ? ` — ${c.titular}` : ""}`)
-    .join("\n");
+  const partes = cuentas.map(c =>
+    `${c.banco}${c.tipo ? ` ${c.tipo.toLowerCase()}` : ""} ${c.numero}${c.titular ? ` (${c.titular})` : ""}`);
+  if (partes.length <= 1) return partes[0] ?? "";
+  return partes.slice(0, -1).join(", ") + " y " + partes[partes.length - 1];
 }
 
 export function useCuentasBancarias() {

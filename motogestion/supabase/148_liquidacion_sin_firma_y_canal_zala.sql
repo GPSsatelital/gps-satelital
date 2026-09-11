@@ -1,4 +1,4 @@
--- 148 — UN PENDIENTE MÁS: la liquidación que se cerró sin la firma del cliente
+-- 148 — DOS PENDIENTES MÁS: la firma que falta, y abrir el canal con ZALA
 --
 -- Desde el 11-sep-2026 se puede cerrar una liquidación aunque el cliente no haya podido venir:
 -- la moto se libera, la plata se salda, y el papel firmado entra después. Es lo correcto — antes
@@ -11,9 +11,58 @@
 --
 -- Es del puesto de SECRETARIA: ella es quien recibe los documentos cuando el cliente los trae.
 --
+-- ── Y EL SEGUNDO: ABRIR EL CANAL CON ZALA (pedido del dueño, 11-sep-2026) ────────────────────
+-- WhatsApp solo deja mandar texto libre durante 24 horas después de que el otro te escribe.
+-- Mientras nadie le escriba a ZALA, ella no le puede reenviar a cada quien los comprobantes que
+-- van llegando: solo podría mandar plantillas aprobadas, que no sirven para eso.
+--
+-- Palabras del dueño: *"que en los pendientes lo primero sea escribirle a ZALA para poder activar
+-- la ventana de 24 h, y que el botón despliegue automáticamente WhatsApp con el mensaje
+-- preescrito para que solo sea darle enviar"*. Por eso va con `orden` 0 — antes que el cobro.
+--
+-- Es un pendiente que NO se deduce de ningún dato: no hay forma de saber desde acá si la persona
+-- ya le escribió. Por eso sale todos los días para todo el que trabaja con ZALA, y se apaga
+-- cuando ella misma lo marca (`pendientes_atendidos` es por DÍA: mañana vuelve). Es justo el
+-- reparto que la mig 142 dejó montado: lo que se deduce se calcula, lo que no, se marca.
+--
 -- Lo demás de la vista queda IGUAL que en la mig 145 (una vista se redefine entera). Sus reglas
 -- están explicadas allá y en la 144.
 
+-- ── 1) DÓNDE VIVE EL NÚMERO DE ZALA ──────────────────────────────────────────────────────────
+-- Una tabla de dos columnas para los datos sueltos de configuración. Nace con el número de ZALA
+-- y el texto del mensaje, porque el dueño avisó que el número es "el de ahorita": si mañana
+-- cambia, se edita acá y no hay que tocar código ni volver a desplegar.
+create table if not exists public.ajustes (
+  clave text primary key,
+  valor text not null,
+  descripcion text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.ajustes enable row level security;
+
+drop policy if exists "Ajustes: los lee cualquiera con sesión" on public.ajustes;
+create policy "Ajustes: los lee cualquiera con sesión"
+  on public.ajustes for select to authenticated using (true);
+
+-- Solo el jefe los cambia: el número de ZALA decide a dónde sale un mensaje.
+drop policy if exists "Ajustes: los cambia el jefe" on public.ajustes;
+create policy "Ajustes: los cambia el jefe"
+  on public.ajustes for all to authenticated
+  using (public.mi_rol() in ('ADMIN', 'ADMIN_PRINCIPAL'))
+  with check (public.mi_rol() in ('ADMIN', 'ADMIN_PRINCIPAL'));
+
+insert into public.ajustes (clave, valor, descripcion) values
+  ('zala_whatsapp', '573019058986',
+   'Número de WhatsApp de ZALA. Sin el «+» ni espacios. A este número le escriben los admin cada mañana para abrir la ventana de 24 horas.'),
+  ('zala_saludo', 'Hola ZALA, soy {nombre}. Abro el canal de hoy para recibir los comprobantes.',
+   'El mensaje que sale preescrito al tocar el botón. {nombre} se reemplaza por el nombre de quien escribe.')
+on conflict (clave) do nothing;
+
+comment on table public.ajustes is
+  'Datos sueltos de configuración (clave/valor). Los lee cualquiera con sesión; los cambia ADMIN o ADMIN_PRINCIPAL.';
+
+-- ── 2) La lista de pendientes ────────────────────────────────────────────────────────────────
 drop view if exists public.pendientes;
 
 create view public.pendientes with (security_invoker = true) as
@@ -49,18 +98,37 @@ act as (
   where c.estado = 'Activo'
 )
 
+-- 🔴 LO PRIMERO DEL DÍA (orden 0): abrir el canal con ZALA.
+-- Uno por persona y por día. No se puede deducir si ya le escribió, así que sale siempre y se
+-- apaga cuando ella lo marca. Solo para quien trabaja con los comprobantes.
 select
-  'recoleccion:' || contrato_id                     as clave,
-  'recoleccion'                                     as tipo,
-  'Recolección — ' || cliente                       as titulo,
-  'Lleva ' || dias_mora || ' días con la cuota vencida. Se agotaron los plazos.' as detalle,
-  'critico'                                         as nivel,
-  subadmin_id                                       as dueno_id,
-  (case when subadmin_id is null then 'ADMIN' end)::text as dueno_rol,
+  'canal_zala:' || p.id || ':' || (select d from h) as clave,
+  'abrir_canal_zala'                                as tipo,
+  'Escríbele a ZALA para abrir el canal de hoy'     as titulo,
+  'Mientras nadie le escriba, ZALA no te puede reenviar los comprobantes que lleguen hoy. Es un toque: se abre WhatsApp con el mensaje listo y solo le das enviar.' as detalle,
+  'alerta'                                          as nivel,
+  p.id                                              as dueno_id,
+  null::text                                        as dueno_rol,
+  null::uuid, null::uuid, null::uuid, null::text,
+  null::int                                         as dias,
+  0                                                 as orden,
+  null::numeric                                     as monto
+from public.profiles p
+where p.role in ('ADMIN', 'ADMIN_PRINCIPAL', 'SUBADMIN', 'SECRETARIA')
+
+union all
+select
+  'recoleccion:' || contrato_id,
+  'recoleccion',
+  'Recolección — ' || cliente,
+  'Lleva ' || dias_mora || ' días con la cuota vencida. Se agotaron los plazos.',
+  'critico',
+  subadmin_id,
+  case when subadmin_id is null then 'ADMIN' end,
   contrato_id, moto_id, cliente_id, placa,
-  dias_mora::int                                    as dias,
-  1                                                 as orden,
-  falta::numeric                                    as monto
+  dias_mora::int,
+  1,
+  falta
 from cartera
 where estado = 'mora' and dias_mora > 3 and not (plazo_hasta is not null and plazo_hasta >= (select d from h))
 
@@ -308,9 +376,12 @@ grant select on public.pendientes to authenticated;
 revoke all on public.pendientes from anon;
 
 comment on view public.pendientes is
-  'Todo lo que hay que hacer hoy, calculado en el servidor: los 20 avisos con su dueño. NO guarda alertas, las deduce de los datos. `monto` en los avisos de cobro es la CUOTA Y EL ACUERDO vencidos, no la deuda total. Ver docs/FLUJO-DIARIO.md.';
+  'Todo lo que hay que hacer hoy, calculado en el servidor: los 21 avisos con su dueño. NO guarda alertas, las deduce de los datos. `monto` en los avisos de cobro es la CUOTA Y EL ACUERDO vencidos, no la deuda total. Ver docs/FLUJO-DIARIO.md.';
 
 -- ═══ VERIFICACIÓN ═══
+-- 0) El número de ZALA quedó guardado y editable.
+select clave, valor from public.ajustes where clave like 'zala%' order by clave;
+
 -- a) Cuántas liquidaciones cerradas están sin el papel firmado (las viejas también salen: si
 --    alguna ya no hace falta perseguirla, se le sube el documento o se revisa caso por caso).
 select count(*) as liquidaciones_sin_firma from public.pendientes where tipo = 'liquidacion_sin_firma';

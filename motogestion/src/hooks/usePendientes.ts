@@ -36,9 +36,10 @@ export type Atendido = { clave: string; fecha: string; atendido_por: string; not
 
 /** Los cuatro frentes del día. El orden de la lista lo manda `orden` (que viene del servidor);
  *  esto solo agrupa para que 19 tipos distintos no se lean como una sola pila revuelta. */
-export type Bloque = "cobro" | "plata" | "motos" | "contratos";
+export type Bloque = "inicio" | "cobro" | "plata" | "motos" | "contratos";
 
 export const BLOQUE_DE: Record<string, Bloque> = {
+  abrir_canal_zala: "inicio",
   recoleccion: "cobro", mora: "cobro", gabela: "cobro",
   plazo_vencido: "cobro", promesa_vencida: "cobro",
   convenio_por_vencer: "cobro", convenio_incumplido_3: "cobro",
@@ -51,6 +52,7 @@ export const BLOQUE_DE: Record<string, Bloque> = {
 };
 
 export const BLOQUE_LABEL: Record<Bloque, string> = {
+  inicio: "Para empezar",
   cobro: "Cobro",
   plata: "Plata por resolver",
   motos: "Motos y papeles",

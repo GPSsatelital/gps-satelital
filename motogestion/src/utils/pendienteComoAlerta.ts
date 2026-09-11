@@ -79,8 +79,18 @@ export function pendienteComoAlerta(p: Pendiente): Alerta {
   };
 }
 
-/** La lista completa, con lo urgente primero — que es como se leía la campana. */
+/**
+ * La lista completa, con lo urgente primero — que es como se leía la campana.
+ *
+ * 🔴 Se deja FUERA "abrir el canal con ZALA": es una tarea personal del día (una por persona y
+ * por día), no un aviso del negocio. Metida en la campana, al jefe le saldrían cuatro o cinco
+ * repetidas todas las mañanas y le taparían lo que sí importa. Vive donde tiene que vivir: de
+ * primera en Mi Día, con su botón.
+ */
 export function comoAlertas(pendientes: Pendiente[]): Alerta[] {
   const orden = { critico: 0, alerta: 1, info: 2 } as const;
-  return pendientes.map(pendienteComoAlerta).sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+  return pendientes
+    .filter(p => p.tipo !== "abrir_canal_zala")
+    .map(pendienteComoAlerta)
+    .sort((a, b) => orden[a.nivel] - orden[b.nivel]);
 }

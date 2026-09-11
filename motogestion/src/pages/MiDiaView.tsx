@@ -13,6 +13,7 @@ import PanelEquipo from "../components/PanelEquipo";
 import AvisosCelular from "../components/AvisosCelular";
 import PanelDelDia from "../components/PanelDelDia";
 import Placa from "../components/Placa";
+import { useAjustes, enlaceZala } from "../hooks/useAjustes";
 import { fmtFechaCorta } from "../utils/fecha";
 
 // MI DÍA — lo que le toca hoy a esta persona. Dos cosas distintas, juntas por primera vez:
@@ -32,7 +33,7 @@ import { fmtFechaCorta } from "../utils/fecha";
 //   · El dueño: arriba EL DÍA — la plata, después lo que espera su decisión, después lo que va mal.
 // No son tres pantallas: es una sola con los bloques en el orden que cada quien necesita.
 
-const ORDEN_BLOQUES: Bloque[] = ["cobro", "plata", "motos", "contratos"];
+const ORDEN_BLOQUES: Bloque[] = ["inicio", "cobro", "plata", "motos", "contratos"];
 
 export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
   const { profile, puede } = useAuth();
@@ -47,6 +48,7 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
   const { motos } = useMotos();
   const { clientes } = useClientes();
   const { nombreSubadmin } = useSubadmins();
+  const { valor: ajuste } = useAjustes();
 
   const [asignando, setAsignando] = useState(false);
   const [resolviendo, setResolviendo] = useState<Tarea | null>(null);
@@ -80,6 +82,26 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
     if (!profile) return;
     const { error } = await marcarAtendido(clave, profile.id);
     if (error) { setMsg("No se pudo marcar: " + error); setTimeout(() => setMsg(null), 5000); }
+  }
+
+  // Abrir el canal con ZALA: se abre WhatsApp con el mensaje ya escrito y, en el mismo toque, el
+  // pendiente queda marcado. Dos botones para una sola acción serían dos oportunidades de que se
+  // quede a medias — y el que abre WhatsApp y no marca, mañana vuelve a ver el pendiente igual.
+  //
+  // `window.open` ANTES del `await`: fuera del gesto del usuario el navegador bloquea la ventana.
+  function handleAbrirZala(clave: string) {
+    const url = enlaceZala(
+      ajuste("zala_whatsapp"),
+      ajuste("zala_saludo", "Hola ZALA, soy {nombre}. Abro el canal de hoy."),
+      (profile?.nombre ?? "").split(" ")[0],
+    );
+    if (!url) {
+      setMsg("No hay número de ZALA guardado. Pídeselo al administrador para poder escribirle.");
+      setTimeout(() => setMsg(null), 6000);
+      return;
+    }
+    window.open(url, "_blank");
+    void handleAtender(clave);
   }
 
   const { mias, resueltasHoy, mandadas } = useMemo(() => {
@@ -283,15 +305,23 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
                         </div>
                         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>{p.detalle}</div>
                       </div>
-                      <button
-                        onClick={() => handleAtender(p.clave)}
-                        disabled={hecho}
-                        style={{
-                          ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
-                          opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
-                        }}>
-                        {hecho ? "✓ Atendido" : "Marcar atendido"}
-                      </button>
+                      {p.tipo === "abrir_canal_zala" && !hecho ? (
+                        <button
+                          onClick={() => handleAbrirZala(p.clave)}
+                          style={{ ...primaryBtn, fontSize: 11.5, padding: "7px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          Escribirle a ZALA
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAtender(p.clave)}
+                          disabled={hecho}
+                          style={{
+                            ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
+                            opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
+                          }}>
+                          {hecho ? "✓ Atendido" : "Marcar atendido"}
+                        </button>
+                      )}
                     </div>
                   );
                 })}

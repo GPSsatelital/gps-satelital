@@ -109,7 +109,13 @@ select
   'alerta'                                          as nivel,
   p.id                                              as dueno_id,
   null::text                                        as dueno_rol,
-  null::uuid, null::uuid, null::uuid, null::text,
+  -- Con nombre, las cuatro. Es la PRIMERA rama del union y es la que bautiza las columnas de la
+  -- vista: sin alias, Postgres las llama a todas por su tipo («uuid») y se cae con
+  -- «column "uuid" specified more than once». No es adorno, es lo que la hace existir.
+  null::uuid                                        as contrato_id,
+  null::uuid                                        as moto_id,
+  null::uuid                                        as cliente_id,
+  null::text                                        as placa,
   null::int                                         as dias,
   0                                                 as orden,
   null::numeric                                     as monto

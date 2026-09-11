@@ -369,6 +369,60 @@ export function useLiquidaciones() {
     }
   }
 
+  /**
+   * DEVOLVER una liquidación de "firmada" a "pendiente de firma" (11-sep-2026).
+   *
+   * 🔴 POR QUÉ EXISTE. Subir el documento marca la liquidación como firmada **solo porque alguien
+   * subió un archivo** — el sistema no puede mirar adentro del PDF a ver si trae firma. Y justo
+   * al lado está "Descargar para enviar", que produce el documento SIN firmar. Pasó de verdad
+   * (LIQ-0046, JHEFERSON GARCIA SILVA): se subió el documento en blanco y quedó dada por firmada,
+   * sin manera de devolverla. Ni se podía cerrar —porque no estaba firmada de verdad— ni
+   * corregir, porque "volver a calcular" tiene candado desde que se firma.
+   *
+   * La CUENTA no se toca: vuelve al paso anterior, que es donde estaba. Lo que se borra es el
+   * archivo equivocado, para que no quede pegado haciéndose pasar por el bueno.
+   *
+   * 🔴 El candado `estado = 'firmada'`: desde 'cerrada' NO se devuelve. Ahí el cierre ya movió
+   * plata, contrato y moto; retroceder el estado dejaría la pantalla diciendo una cosa y la base
+   * otra. Esa liquidación se arregla con el botón de adjuntar la firma, no devolviéndola.
+   */
+  async function devolverAPendienteDeFirma(liquidacionId: string, quien: string, motivo: string) {
+    const liq = liquidaciones.find(l => l.id === liquidacionId);
+
+    const { error } = await supabase.from("liquidaciones").update({
+      estado: "documento_generado",
+      documento_firmado_url: null,
+      firma_cliente_url: null,
+      huella_cliente_url: null,
+      fecha_firma: null,
+    }).eq("id", liquidacionId).eq("estado", "firmada");
+    if (error) return { error: error.message };
+
+    // El archivo malo se quita del Storage. Si falla no se frena: lo importante ya pasó — la
+    // liquidación dejó de estar marcada como firmada. Un archivo huérfano no engaña a nadie
+    // porque ya no está colgado de ninguna liquidación.
+    const url = liq?.documento_firmado_url;
+    if (url) {
+      const i = url.indexOf("/documentos/");
+      if (i >= 0) await supabase.storage.from("documentos").remove([url.slice(i + "/documentos/".length)]);
+    }
+
+    // Queda el rastro: quién la devolvió y por qué. Sin esto, mañana nadie sabría si el documento
+    // nunca existió o si alguien lo quitó.
+    if (liq?.contrato_id) {
+      await supabase.from("contratos_auditoria").insert({
+        contrato_id: liq.contrato_id,
+        campo: `liquidación ${liq.numero}`,
+        valor_anterior: "firmada",
+        valor_nuevo: `pendiente de firma — ${motivo}`,
+        editado_por: quien,
+      });
+    }
+
+    await fetchLiquidaciones();
+    return { error: null };
+  }
+
   async function subirDocumentoFirmado(liquidacionId: string, file: File) {
     const ext = file.name.split(".").pop();
     const path = `liquidaciones/${liquidacionId}/firmado.${ext}`;
@@ -440,6 +494,7 @@ export function useLiquidaciones() {
     volverACalcular,
     cambiarMotivo,
     subirDocumentoFirmado,
+    devolverAPendienteDeFirma,
     adjuntarFirmaACerrada,
     firmarDigital,
     confirmarCierre,

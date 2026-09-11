@@ -83,6 +83,9 @@ export default function LiquidacionesView() {
   // para no tocar `_acciones_default()` en SQL, que es delicada; si algún día hay que repartirlo
   // persona por persona, se convierte en una acción del catálogo.
   const puedeCerrarSinFirma = role === "ADMIN" || role === "ADMIN_PRINCIPAL" || role === "SECRETARIA";
+  // Devolver una liquidación mal marcada como firmada. Misma gente: la secretaria es la que sube
+  // los documentos y la que primero se da cuenta del error (decisión del dueño, 11-sep-2026).
+  const puedeDevolverFirma = puedeCerrarSinFirma;
   // SECRETARIA entra con el flujo COMPLETO, cierre incluido (decisión del dueño, 22-ago): ella
   // maneja la plata de oficina, el lector de huella está en su PC, y sin ella el cliente firmado
   // quedaba esperando a que un admin diera el clic del cierre. La RLS ya la dejaba desde la mig
@@ -90,7 +93,7 @@ export default function LiquidacionesView() {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL" || role === "SECRETARIA";
 
   const { filtrarMotos } = useScope();
-  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();
+  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, devolverAPendienteDeFirma, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();
   const [firmando, setFirmando] = useState(false);
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
@@ -394,7 +397,26 @@ export default function LiquidacionesView() {
 
   async function handleSubirFirmado(file: File) {
     if (!sel) return;
-    if (!confirm("¿Subir este documento firmado a la liquidación?")) return;
+
+    // 🔴 EL AVISO QUE FALTABA (11-sep-2026). Subir un archivo marca la liquidación como FIRMADA, y
+    // el sistema no puede mirar adentro del PDF a ver si trae firma. Antes preguntaba "¿subir este
+    // documento firmado?", que es fácil de contestar que sí sin pensar. Ahora dice qué archivo es
+    // y qué va a pasar.
+    //
+    // Y hay un candado concreto: "Descargar para enviar" genera el archivo con el nombre
+    // `Liquidacion-LIQ-00XX-PLACA.pdf` y SIN firma. Si el que suben se llama así, casi seguro es
+    // ese mismo — es exactamente el error de LIQ-0046. Se avisa con nombre propio.
+    const esElQueDescargamos = file.name.toLowerCase().startsWith(`liquidacion-${sel.numero.toLowerCase()}`);
+    const aviso = esElQueDescargamos
+      ? `OJO: «${file.name}» es el nombre del archivo que genera «Descargar para enviar», y ese sale SIN FIRMA.\n\n`
+        + "Si es el documento que el cliente ya firmó y volviste a guardar con ese nombre, sigue. Si no, cancela.\n\n"
+      : `Archivo: ${file.name}\n\n`;
+
+    if (!confirm(
+      aviso
+      + "¿Este archivo TIENE la firma del cliente?\n\n"
+      + "Al subirlo, la liquidación queda dada por FIRMADA y lista para cerrar. El sistema no "
+      + "puede revisar si la firma está: se fía de lo que tú digas acá.")) return;
     setGuardando(true);
     const { error } = await subirDocumentoFirmado(sel.id, file);
     setGuardando(false);
@@ -469,6 +491,23 @@ export default function LiquidacionesView() {
         : `Liquidación cerrada. Sus deudas y su convenio quedaron saldados.${cola}`);
       setSel(null);
     }
+  }
+
+  async function handleDevolverFirma() {
+    if (!sel || !profile) return;
+    const motivo = prompt(
+      "¿Por qué se devuelve esta liquidación?\n\n"
+      + "Queda escrito en el historial del contrato. Ejemplo: «se subió el documento sin firmar».");
+    if (motivo === null) return;
+    if (!motivo.trim()) { setMsg("Hay que decir por qué se devuelve.", true); return; }
+    if (!confirm(
+      `¿Devolver ${sel.numero} a pendiente de firma?\n\n`
+      + "La cuenta NO se toca: vuelve al paso anterior, esperando la firma del cliente. "
+      + "El archivo que se había subido se borra, para que no quede haciéndose pasar por el bueno.")) return;
+    setGuardando(true);
+    const { error } = await devolverAPendienteDeFirma(sel.id, profile.id, motivo.trim());
+    setGuardando(false);
+    setMsg(error ?? `${sel.numero} volvió a quedar pendiente de firma. El documento anterior se borró.`, !!error);
   }
 
   // Paz y Salvo — constancia de cumplimiento y transferencia de la moto al cliente.
@@ -930,6 +969,25 @@ export default function LiquidacionesView() {
                 <button style={btn(sel.saldo_final < 0 ? "var(--bad)" : "var(--ok)")} onClick={() => handleCerrar(false)} disabled={guardando}>
                   {guardando ? "Cerrando..." : "Confirmar y cerrar liquidación"}
                 </button>
+
+                {/* LA MARCHA ATRÁS (11-sep-2026). Subir el documento la marca como firmada solo
+                    porque alguien subió un archivo — el sistema no puede mirar adentro del PDF. Y
+                    justo al lado está "Descargar para enviar", que produce el documento SIN firmar:
+                    subir ese por equivocación es facilísimo. Pasó con LIQ-0046 y no había cómo
+                    devolverla. Va abajo y en gris: es deshacer, no un paso del flujo. */}
+                {puedeDevolverFirma && (
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 9, lineHeight: 1.5 }}>
+                      ¿Se subió el documento <b>sin firmar</b>, o se subió el archivo equivocado?
+                      Devuélvela al paso de la firma. La cuenta no se toca.
+                    </div>
+                    <button
+                      style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--warn-line)", opacity: guardando ? 0.6 : 1 }}
+                      disabled={guardando} onClick={handleDevolverFirma}>
+                      {guardando ? "Devolviendo..." : "Se subió por error — devolver a pendiente de firma"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

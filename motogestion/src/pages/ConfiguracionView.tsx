@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAjustes } from "../hooks/useAjustes";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import type { Role } from "../contexts/AuthContext";
@@ -235,6 +236,69 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 // ── Vista principal ────────────────────────────────────────────────────────────
+// ── El canal con ZALA ────────────────────────────────────────────────────────
+// El dueño avisó que el número es "el de ahorita": va a cambiar. Por eso vive en la base y se
+// edita desde acá, no quemado en el código — quemado sería un despliegue cada vez que cambie.
+function SeccionCanalZala() {
+  const { valor, guardar, loading } = useAjustes();
+  const [numero, setNumero] = useState("");
+  const [saludo, setSaludo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [tocado, setTocado] = useState(false);
+
+  // Se cargan una vez; si la persona ya empezó a escribir, no se le pisa lo que lleva.
+  useEffect(() => {
+    if (loading || tocado) return;
+    setNumero(valor("zala_whatsapp"));
+    setSaludo(valor("zala_saludo"));
+  }, [loading, tocado, valor]);
+
+  async function handleGuardar() {
+    if (guardando) return;
+    setGuardando(true);
+    try {
+      const a = await guardar("zala_whatsapp", numero.replace(/\D/g, ""));
+      const b = await guardar("zala_saludo", saludo);
+      setMsg(a.error ?? b.error ?? "Guardado.");
+      setTimeout(() => setMsg(null), 4000);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div style={card}>
+      <div style={sectionTitle}>💬 El canal con ZALA</div>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12, lineHeight: 1.5 }}>
+        A este número le escriben los admin cada mañana, desde el botón que sale de primero en
+        Mi Día. Ese mensaje abre la ventana de 24 horas para que ZALA pueda reenviarles los
+        comprobantes durante el día.
+      </div>
+
+      <label style={labelStyle}>Número de WhatsApp de ZALA</label>
+      <input style={inputStyle} value={numero} inputMode="tel"
+        onChange={e => { setTocado(true); setNumero(e.target.value); }}
+        placeholder="573019058986" />
+      <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "4px 0 12px" }}>
+        Con el indicativo del país y sin el «+». Ejemplo: 573019058986.
+      </div>
+
+      <label style={labelStyle}>Mensaje que sale escrito</label>
+      <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={saludo}
+        onChange={e => { setTocado(true); setSaludo(e.target.value); }} />
+      <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "4px 0 12px" }}>
+        Donde diga <b>{"{nombre}"}</b> se pone el nombre de quien escribe.
+      </div>
+
+      <button style={{ ...primaryBtn, opacity: guardando ? 0.6 : 1 }} disabled={guardando} onClick={handleGuardar}>
+        {guardando ? "Guardando..." : "Guardar"}
+      </button>
+      {msg && <span style={{ marginLeft: 10, fontSize: 12.5, color: "var(--ok-ink)" }}>{msg}</span>}
+    </div>
+  );
+}
+
 export default function ConfiguracionView() {
   const { profile, puede } = useAuth();
   const esAdmin = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
@@ -564,6 +628,9 @@ export default function ConfiguracionView() {
 
       {/* ── Mensajes de WhatsApp (solo admins) ── */}
       {puedeEditarConfig && <SeccionMensajesWhatsapp />}
+
+      {/* ── El canal con ZALA (solo admins) ── */}
+      {puedeEditarConfig && <SeccionCanalZala />}
 
       {/* ── Acerca de ── */}
       <div style={{ ...card, marginBottom: 0 }}>

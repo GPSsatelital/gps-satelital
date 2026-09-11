@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prende los avisos en tu celular — MotoGestión</title>
+<style>
+  @page { size: A4; margin: 10mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #0f172a; margin: 0; font-size: 12pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .placa {
+    display: inline-block; background: #FFD100; color: #0f172a;
+    border: 2.5px solid #0f172a; border-radius: 6px;
+    padding: 3px 14px; font-size: 13pt; font-weight: 800; letter-spacing: 2px;
+  }
+  h1 { font-size: 24pt; margin: 8px 0 2px; line-height: 1.08; }
+  .sub { font-size: 12.5pt; color: #334155; margin: 0 0 10px; }
+  .cols { display: flex; gap: 16px; align-items: flex-start; }
+  .izq { flex: 1.35; min-width: 0; }
+  .der { flex: 1; min-width: 0; }
+  .der img { width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; }
+  .pie-img { font-size: 9.5pt; color: #64748b; margin-top: 4px; text-align: center; }
+  ol { margin: 0; padding-left: 0; list-style: none; counter-reset: p; }
+  ol li {
+    counter-increment: p; position: relative; padding-left: 34px; margin-bottom: 9px;
+    font-size: 12.5pt;
+  }
+  ol li::before {
+    counter-increment: none; content: counter(p);
+    position: absolute; left: 0; top: 0;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #0284c7; color: #fff; font-weight: 800; font-size: 12pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .aviso {
+    background: #dcfce7; border-left: 5px solid #16a34a;
+    padding: 9px 13px; margin: 12px 0 0; font-size: 11pt; color: #14532d;
+  }
+  .ojo {
+    background: #fef3c7; border-left: 5px solid #f59e0b;
+    padding: 9px 13px; margin-top: 10px; font-size: 11pt; color: #78350f;
+  }
+  .noti {
+    border: 1.5px solid #cbd5e1; border-radius: 10px; background: #f8fafc;
+    padding: 8px 12px; margin-top: 7px;
+  }
+  .noti .app { font-size: 9.5pt; color: #64748b; text-transform: uppercase; letter-spacing: .6px; }
+  .noti .tit { font-size: 12.5pt; font-weight: 700; margin-top: 2px; }
+  .noti .txt { font-size: 11.5pt; color: #334155; }
+  h2 { font-size: 14pt; margin: 12px 0 5px; border-bottom: 2.5px solid #FFD100; padding-bottom: 4px; }
+  .pie { margin-top: 10px; font-size: 9.5pt; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 7px; }
+</style>
+</head>
+<body>
+
+<div><span class="placa">MOTOGESTIÓN</span></div>
+<h1>Prende los avisos<br>en tu celular</h1>
+<p class="sub">Son 5 toques. Se hace una sola vez.</p>
+
+<div class="cols">
+  <div class="izq">
+    <ol>
+      <li>Abre <b>MotoGestión</b> en tu celular.</li>
+      <li>Abajo a la derecha toca <b>Más</b> (las tres rayitas).</li>
+      <li>Toca <b>Mi Día</b>.</li>
+      <li>Arriba sale una franja azul que dice <b>«Activa los avisos en este celular»</b>.
+          Toca el botón <b>Activar</b>.</li>
+      <li>El celular te pregunta si permites los avisos. <b>Toca «Permitir».</b></li>
+    </ol>
+
+    <div class="aviso">
+      <b>Ya está.</b> La franja se pone verde y dice «Avisos activados».
+      Toca <b>Probar</b> y te debe sonar el celular ahí mismo.
+    </div>
+
+    <div class="ojo">
+      <b>Si tocaste «Bloquear» sin querer</b>, el celular ya no vuelve a preguntar.
+      La misma franja te dice cómo devolverlo desde los ajustes. Léela y sigue los pasos.
+    </div>
+  </div>
+
+  <div class="der">
+    <img src="img/avisos-franja.png" alt="La franja azul para activar los avisos">
+    <div class="pie-img">Así se ve la franja en el paso 4.</div>
+  </div>
+</div>
+
+<h2>¿Qué te va a llegar?</h2>
+<p style="margin:0 0 4px;">Dos avisos al día, <b>solo si tienes cosas pendientes</b>.
+Si no tienes nada, no te llega nada.</p>
+
+<div class="noti">
+  <div class="app">MotoGestión · 7:00 a.m.</div>
+  <div class="tit">Buenos días Brandon</div>
+  <div class="txt">Hoy tienes 14 pendientes, 3 urgentes.</div>
+</div>
+
+<div class="noti">
+  <div class="app">MotoGestión · 2:00 p.m.</div>
+  <div class="tit">Brandon, te falta cerrar el día</div>
+  <div class="txt">Te quedan 6 sin hacer, 2 urgentes.</div>
+</div>
+
+<p style="margin-top:8px; margin-bottom:0;">Al tocar el aviso se abre <b>Mi Día</b> con tu lista.</p>
+
+<h2>Tres cosas que hay que saber</h2>
+<ul style="margin:0; padding-left: 20px;">
+  <li style="margin-bottom:5px;">Es <b>por celular</b>. Si usas otro teléfono, hay que prenderlo también ahí.</li>
+  <li style="margin-bottom:5px;">Si el celular está sin internet, el aviso <b>llega cuando vuelva</b>. No se pierde.</li>
+  <li>El de la tarde solo cuenta <b>lo que sigue sin hacerse</b>. Si marcaste todo, no te llega.</li>
+</ul>
+
+<div class="pie">
+  MotoGestión · Club de Moteros, Cartagena · Si no te funciona, avísale al administrador.
+</div>
+
+</body>
+</html>

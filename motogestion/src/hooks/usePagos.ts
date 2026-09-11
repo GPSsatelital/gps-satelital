@@ -75,6 +75,38 @@ export const APLICADO_LO_REPARTE_LA_BD: AplicadoPago = {
   tarifa: 0, baseInicial: 0, deuda: 0, convenio: 0, ahorro: 0, saldo: 0,
 };
 
+/**
+ * EL REPARTO QUE LA BASE GUARDÓ para un pago — lo único que un recibo puede imprimir.
+ *
+ * 🔴 EL CASO (EDINSON MOSQUERA, IEW58I, 11-sep-2026): el recibo impreso decía "a la cuota
+ * $144.000 · a convenio $116.000 · le queda pendiente $0", y la base había guardado "cuota
+ * $260.000 · convenio $0". El cliente se fue con un papel firmado por la empresa que no coincidía
+ * con la cuenta. ¿Por qué? El recibo se armaba con la VISTA PREVIA que la pantalla calcula antes
+ * de registrar, y para el motor v2 el reparto real lo hace la base al confirmar — que puede
+ * repartir distinto. Dos calculadoras, dos verdades, y la que quedó en papel era la equivocada.
+ *
+ * Regla desde hoy: la vista previa sirve para que el funcionario vea qué va a pasar; el PAPEL
+ * sale de esta lectura, después de que la base repartió. Si la base y la previa difieren, el
+ * papel dice lo de la base — y la diferencia se arregla en el motor, no maquillando el recibo.
+ *
+ * "A la cuota" incluye los días rodados (el prorrateo es la primera cuota, la caja 0): el recibo
+ * no tiene un renglón aparte para eso y partirlo confundiría más de lo que aclara.
+ */
+export type RepartoPago = { tarifa: number; deuda: number; convenio: number; saldo: number; ahorro: number };
+
+export function repartoDelPago(p: {
+  aplicado_tarifa?: number | null; aplicado_prorrateo?: number | null; aplicado_deuda?: number | null;
+  aplicado_convenio?: number | null; aplicado_saldo_favor?: number | null; aplicado_ahorro?: number | null;
+}): RepartoPago {
+  return {
+    tarifa: (p.aplicado_tarifa ?? 0) + (p.aplicado_prorrateo ?? 0),
+    deuda: p.aplicado_deuda ?? 0,
+    convenio: p.aplicado_convenio ?? 0,
+    saldo: p.aplicado_saldo_favor ?? 0,
+    ahorro: p.aplicado_ahorro ?? 0,
+  };
+}
+
 export type AplicadoPago = {
   tarifa: number;
   baseInicial: number; // cuota de base inicial pendiente (entre cuota pactada y deuda)
@@ -395,6 +427,19 @@ export function usePagos() {
     return { error: null };
   }
 
+  /**
+   * Relee de la BASE el reparto de un pago ya confirmado. Se usa justo después de registrar en
+   * efectivo o de confirmar una transferencia — cuando el trigger ya repartió — y antes de
+   * imprimir el recibo. Devuelve null si no se pudo leer; quien llama decide qué mostrar.
+   */
+  async function leerReparto(pagoId: string): Promise<{ reparto: RepartoPago | null; error: string | null }> {
+    const { data, error } = await supabase.from("pagos")
+      .select("aplicado_tarifa, aplicado_prorrateo, aplicado_deuda, aplicado_convenio, aplicado_saldo_favor, aplicado_ahorro")
+      .eq("id", pagoId).single();
+    if (error || !data) return { reparto: null, error: error?.message ?? "No se encontró el pago." };
+    return { reparto: repartoDelPago(data), error: null };
+  }
+
   async function rechazarPago(id: string) {
     const { error } = await supabase.from("pagos").update({ estado: "Rechazado" }).eq("id", id);
     if (error) return { error: error.message };
@@ -550,6 +595,7 @@ export function usePagos() {
     loading,
     error,
     registrarPago,
+    leerReparto,
     aplicarSaldoFavor,
     subirComprobante,
     registrarCobroCampo,

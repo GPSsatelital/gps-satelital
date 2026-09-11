@@ -10,6 +10,7 @@ import {
   fechaDeCaja,
   saldoAFavorDe,
   APLICADO_LO_REPARTE_LA_BD,
+  repartoDelPago,
   type MetodoPago,
   type PagoEstado,
   type AplicadoPago,
@@ -606,7 +607,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { filtrarContratos } = useScope();
   const { nombreSubadmin } = useSubadmins();
 
-  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
+  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, leerReparto, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
   const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
   const contratos = filtrarContratos(todosContratos);
@@ -1464,7 +1465,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     setModalValor(""); setModalComprobante(null); limpiarDatosTransferencia();
 
     if (modalMetodo === "Efectivo") {
-      // Efectivo = confirmado al instante → mostrar recibo
+      // Efectivo = confirmado al instante → mostrar recibo.
+      //
+      // 🔴 EL RECIBO SALE DE LO QUE LA BASE GUARDÓ, no de `modalDesglose` (la vista previa).
+      // Caso EDINSON (IEW58I, 11-sep): la previa decía "convenio $116.000", el motor guardó
+      // "convenio $0", y el papel que se llevó el cliente era el de la previa. Si la lectura
+      // falla se cae a la previa, pero es la excepción, no el camino.
+      const leido = pagoId ? await leerReparto(pagoId) : { reparto: null, error: "sin id" };
+      const rep = leido.reparto ?? modalDesglose;
       setModalPago(false);
       setReciboData({
         contratoId: modalContratoId ?? null,
@@ -1479,14 +1487,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         metodo: "Efectivo",
         estado: "Confirmado",
         debiaTotal: modalContrato ? desgloseDebe(modalContrato).totalFalta : modalCuotaPendiente,
-        aplicadoTarifa: modalDesglose.tarifa,
-        aplicadoDeuda: modalDesglose.deuda,
-        aplicadoConvenio: modalDesglose.convenio,
-        aplicadoSaldoFavor: modalDesglose.saldo,
+        aplicadoTarifa: rep.tarifa,
+        aplicadoDeuda: rep.deuda,
+        aplicadoConvenio: rep.convenio,
+        aplicadoSaldoFavor: rep.saldo,
         pendienteDespues: Math.max((modalContrato ? desgloseDebe(modalContrato).totalFalta : modalCuotaPendiente) - modalMonto, 0),
-        convenioAbonado: modalContrato?.convenioActivo ? modalDesglose.convenio : null,
+        convenioAbonado: modalContrato?.convenioActivo ? rep.convenio : null,
         convenioRestante: modalContrato?.convenioActivo
-          ? Math.max(modalContrato.convenioActivo.deuda_total - sumaAbonadoConvenio(modalContrato.convenioActivo.id) - modalDesglose.convenio, 0)
+          ? Math.max(modalContrato.convenioActivo.deuda_total - sumaAbonadoConvenio(modalContrato.convenioActivo.id) - rep.convenio, 0)
           : null,
       });
     } else {
@@ -3388,6 +3396,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     onClick={async () => {
                       const { error: errConf } = await confirmarPago(p.id);
                       if (!errConf) {
+                        // `p` es el pago de ANTES de confirmar: para el motor v2 trae ceros, porque
+                        // la base reparte justo al confirmar. Se relee para que el recibo diga lo
+                        // que quedó guardado y no lo que había antes.
+                        const rep = (await leerReparto(p.id)).reparto ?? repartoDelPago(p);
                         const contrato = contratos.find(c => c.id === p.contrato_id);
                         const cliente = contrato ? clientes.find(cl => cl.id === contrato.cliente_id) : null;
                         const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
@@ -3407,12 +3419,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           metodo: p.metodo,
                           estado: "Confirmado",
                           debiaTotal: pendienteDespues + p.valor,
-                          aplicadoTarifa: p.aplicado_tarifa ?? 0,
-                          aplicadoDeuda: p.aplicado_deuda ?? 0,
-                          aplicadoConvenio: p.aplicado_convenio ?? 0,
-                          aplicadoSaldoFavor: p.aplicado_saldo_favor ?? 0,
+                          aplicadoTarifa: rep.tarifa,
+                          aplicadoDeuda: rep.deuda,
+                          aplicadoConvenio: rep.convenio,
+                          aplicadoSaldoFavor: rep.saldo,
                           pendienteDespues,
-                          convenioAbonado: convenioActivo ? (p.aplicado_convenio ?? 0) : null,
+                          convenioAbonado: convenioActivo ? rep.convenio : null,
                           convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
                         });
                       }
@@ -3570,12 +3582,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                             metodo: p.metodo,
                             estado: "Confirmado",
                             debiaTotal: pendienteDespues + p.valor,
-                            aplicadoTarifa: p.aplicado_tarifa ?? 0,
-                            aplicadoDeuda: p.aplicado_deuda ?? 0,
-                            aplicadoConvenio: p.aplicado_convenio ?? 0,
-                            aplicadoSaldoFavor: p.aplicado_saldo_favor ?? 0,
+                            aplicadoTarifa: repartoDelPago(p).tarifa,
+                            aplicadoDeuda: repartoDelPago(p).deuda,
+                            aplicadoConvenio: repartoDelPago(p).convenio,
+                            aplicadoSaldoFavor: repartoDelPago(p).saldo,
                             pendienteDespues,
-                            convenioAbonado: convenioActivo ? (p.aplicado_convenio ?? 0) : null,
+                            convenioAbonado: convenioActivo ? repartoDelPago(p).convenio : null,
                             convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
                           });
                         }}

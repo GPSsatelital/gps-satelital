@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Cliente } from "../hooks/useClientes";
 import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
+import { useLiquidaciones } from "../hooks/useLiquidaciones";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado, type FirmasDoc } from "../hooks/useDocumentos";
 import { htmlAPdfBlob, urlADataUrl } from "../utils/pdf";
 import MoneyInput from "../components/MoneyInput";
@@ -149,6 +150,29 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
   const clienteActual = clientes.find(c => c.id === (contratoData?.cliente_id ?? form.cliente_id));
   const motoActual = motos.find(m => m.id === motoId);
+  // 🔴 LA LIQUIDACIÓN VIEJA QUE QUEDÓ SIN CERRAR (11-sep-2026).
+  //
+  // Pregunta del dueño: *"¿qué pasa si deja una liquidación pendiente porque sabe que va a quedar
+  // debiendo, y llega después a pedir otra pensando que nadie se acordaría?"*. Hoy no pasaba
+  // nada: el sistema no lo miraba. Estaba bloqueado por ACCIDENTE —el cliente queda en estado
+  // "Activo" y el wizard solo ofrece los "Aprobado"— así que el día que alguien lo aprobara para
+  // devolverle una moto, se la entregaba sin decir una palabra.
+  //
+  // Y ya estaba pasando: 9 liquidaciones sin cerrar donde el cliente queda debiendo, $5.362.000.
+  //
+  // La regla (decisión del dueño): si la vieja lo deja DEBIENDO, no hay moto nueva hasta
+  // resolverla — es plata de la empresa. Si quedó a favor o en ceros y solo falta la firma, sale
+  // el aviso pero se puede seguir: no se frena un negocio bueno por un papel.
+  const { liquidaciones } = useLiquidaciones();
+  const liqPendienteDelCliente = useMemo(() => {
+    if (!form.cliente_id) return null;
+    const abiertas = liquidaciones.filter(l => l.cliente_id === form.cliente_id && l.estado !== "cerrada");
+    if (abiertas.length === 0) return null;
+    // Si hay varias, manda la que lo deje debiendo más: es la que decide si se bloquea.
+    return abiertas.sort((a, b) => a.saldo_final - b.saldo_final)[0];
+  }, [liquidaciones, form.cliente_id]);
+  const quedaDebiendo = !!liqPendienteDelCliente && liqPendienteDelCliente.saldo_final < 0;
+
   const clientesAprobados = clientes.filter(c => {
     if (c.estado !== "Aprobado") return false;
     const tieneContrato = contratos.some(ct => ct.cliente_id === c.id && (ct.estado === "Activo" || ct.estado === "En proceso") && ct.id !== contratoId);
@@ -293,6 +317,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     const cliente = clientes.find(c => c.id === form.cliente_id);
     if (!cliente) { setError("Cliente no encontrado."); return; }
     if (cliente.estado !== "Aprobado") { setError("El cliente debe estar en estado 'Aprobado' para crear un contrato."); return; }
+    if (quedaDebiendo && liqPendienteDelCliente) {
+      setError(
+        `No se le puede entregar otra moto: tiene la liquidación ${liqPendienteDelCliente.numero} sin cerrar y queda debiendo `
+        + `$${Math.abs(liqPendienteDelCliente.saldo_final).toLocaleString("es-CO")}. `
+        + "Ciérrala primero en Liquidaciones (cobrando o dejando la deuda registrada) y vuelve.");
+      return;
+    }
 
     const diaPago = form.forma_pago === "Diario" ? "Diario" : form.forma_pago === "Semanal" ? form.dia_pago : form.forma_pago;
     const diasPagoMes = form.forma_pago === "Quincenal" || form.forma_pago === "Mensual" ? form.dias_pago_mes : null;
@@ -616,6 +647,30 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                   <option value="">Seleccionar cliente aprobado</option>
                   {clientesAprobados.map(c => <option key={c.id} value={c.id}>{c.nombre.toUpperCase()} · {c.cedula}</option>)}
                 </select>
+
+                {/* El aviso va JUNTO AL SELECTOR, no al final: si sale cuando ya llenó tarifas,
+                    días de pago y meses, el funcionario ya perdió el trabajo — y la próxima vez
+                    aprende a ignorarlo. Rojo si debe (no va a poder seguir), amarillo si solo
+                    falta la firma (puede seguir, pero que quede sabiendo). */}
+                {liqPendienteDelCliente && (
+                  <div style={{
+                    marginTop: 10, padding: "11px 13px", borderRadius: 12, fontSize: 13, lineHeight: 1.5,
+                    background: quedaDebiendo ? "var(--bad-soft)" : "var(--warn-soft)",
+                    border: `1px solid ${quedaDebiendo ? "var(--bad-line)" : "var(--warn-line)"}`,
+                    color: quedaDebiendo ? "var(--bad-ink)" : "var(--warn-ink)",
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 3 }}>
+                      {quedaDebiendo
+                        ? `Tiene la liquidación ${liqPendienteDelCliente.numero} sin cerrar y queda debiendo $${Math.abs(liqPendienteDelCliente.saldo_final).toLocaleString("es-CO")}`
+                        : `Tiene la liquidación ${liqPendienteDelCliente.numero} sin cerrar`}
+                    </div>
+                    {quedaDebiendo
+                      ? <>No se le puede entregar otra moto hasta resolverla. Ciérrala en Liquidaciones
+                         —cobrando, o dejando la deuda registrada— y vuelve.</>
+                      : <>No lo frena: no quedó debiendo, solo falta terminarla. Pero ciérrala, porque
+                         mientras tanto su moto anterior sigue amarrada a ese contrato.</>}
+                  </div>
+                )}
               </div>
 
               <div>

@@ -8,12 +8,13 @@
 -- en el historial de la moto, no pegadas al arreglo. Y una petición ("hay que cambiar la cadena,
 -- vale $85.000") no tenía dónde escribirse ni cómo autorizarse: se hablaba por teléfono.
 --
--- CUATRO CAMPOS, NADA MÁS. No toca el motor de dinero, ni las deudas, ni el flujo de devolución
+-- CINCO CAMPOS, NADA MÁS. No toca el motor de dinero, ni las deudas, ni el flujo de devolución
 -- del préstamo de reemplazo, ni el estado de la moto.
 --
 --   fotos_entrada  — las 6 guiadas de cómo entró    {delantera: url, lateral_izquierdo: url, ...}
 --   fotos_salida   — las 6 guiadas de cómo salió    (mismo formato)
 --   fotos_libres   — las del daño y los repuestos   [{url, nota, fecha, por}]
+--   llegada        — 'la_trajo' | 'fue_buscada' (null en las órdenes viejas)
 --   peticiones     — lo que se pide y quién lo autoriza
 --                    [{id, texto, pedida_por, fecha, estado, resuelta_por, resuelta_fecha, nota}]
 --                    estado: 'pendiente' | 'autorizada' | 'rechazada'
@@ -29,7 +30,8 @@ alter table public.taller
   add column if not exists fotos_entrada jsonb not null default '{}'::jsonb,
   add column if not exists fotos_salida  jsonb not null default '{}'::jsonb,
   add column if not exists fotos_libres  jsonb not null default '[]'::jsonb,
-  add column if not exists peticiones    jsonb not null default '[]'::jsonb;
+  add column if not exists peticiones    jsonb not null default '[]'::jsonb,
+  add column if not exists llegada       text;
 
 comment on column public.taller.fotos_entrada is
   'Las 6 fotos guiadas de cómo entró la moto, por ángulo (mig 150).';
@@ -37,10 +39,12 @@ comment on column public.taller.fotos_salida is
   'Las 6 fotos guiadas de cómo salió la moto, por ángulo (mig 150).';
 comment on column public.taller.fotos_libres is
   'Fotos sueltas del arreglo (el daño, el repuesto viejo, el tablero), cada una con su nota (mig 150).';
+comment on column public.taller.llegada is
+  'Cómo llegó la moto al taller: la_trajo (sin costo) o fue_buscada (deuda de $30.000 por movimiento de personal, igual que la entrega voluntaria). Decisión del dueño, 12-sep-2026.';
 comment on column public.taller.peticiones is
   'Lo que se pide durante el arreglo y quién lo autorizó. El mecánico pide; autoriza ADMIN, ADMIN_PRINCIPAL, SECRETARIA o SUBADMIN (mig 150).';
 
--- VERIFICACIÓN — pegar después, esperar 4:
+-- VERIFICACIÓN — pegar después, esperar 5:
 --   select count(*) from information_schema.columns
 --   where table_schema = 'public' and table_name = 'taller'
---     and column_name in ('fotos_entrada', 'fotos_salida', 'fotos_libres', 'peticiones');
+--     and column_name in ('fotos_entrada', 'fotos_salida', 'fotos_libres', 'peticiones', 'llegada');

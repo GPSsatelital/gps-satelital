@@ -9,6 +9,16 @@
 // Al guardar: crea la orden, sube las 6 fotos guiadas de cómo entró (obligatorias — decisión del
 // dueño, 12-sep-2026), las fotos libres del daño, y deja anotada la primera petición si la hay.
 // useTaller deja la moto "En taller" sola.
+//
+// NO PREGUNTA PLATA (12-sep-2026). El formulario traía "Mano de obra" y "Repuestos" desde antes:
+// cuando la moto ENTRA nadie sabe cuánto va a costar, y los mismos dos campos ya están en
+// "Registrar trabajo / repuestos", que los suma a la orden cuando el mecánico ya revisó. La prueba
+// de que nadie los usaba: de 20 órdenes abiertas, casi todas en $0. El dueño: "de resto quita todo".
+//
+// Lo único que se agregó es la pregunta que hacen los demás flujos: **¿la trajo el cliente o hubo
+// que ir a buscarla?** — y si hubo que buscarla se le registra la deuda de $30.000 por movimiento
+// de personal, igual que en la entrega voluntaria (decisión del dueño, 12-sep-2026). Si la moto no
+// tiene contrato activo no hay a quién cobrarle: queda solo el registro.
 
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -18,7 +28,11 @@ import MoneyInput from "./MoneyInput";
 import { ANGULOS_FOTO, GridFotosAngulos, type AnguloFoto } from "./FotosAngulos";
 import { GridFotosLibres, type FotoLibreLocal } from "./FotosLibres";
 import { agregarPeticion, type FotoLibreTaller, type PeticionTaller } from "../utils/taller";
-import type { TallerEstado, NuevoTallerItem } from "../hooks/useTaller";
+import type { TallerEstado, NuevoTallerItem, LlegadaTaller } from "../hooks/useTaller";
+import { useAuth } from "../contexts/AuthContext";
+import { useContratos } from "../hooks/useContratos";
+import { useDeudas } from "../hooks/useDeudas";
+import { MULTA_RECOLECCION } from "../utils/inmovilizacion";
 
 // ─── Piezas compartidas (vivían en TallerView; se mudaron para que las use también Motos) ──────
 
@@ -146,9 +160,8 @@ export default function ModalIngresoTaller({
   const [motoId, setMotoId] = useState(motoFija?.id ?? "");
   const [estadoInicial, setEstadoInicial] = useState<TallerEstado>("Pendiente");
   const [fechaIngreso, setFechaIngreso] = useState(hoyISO());
-  const [costoManoObra, setCostoManoObra] = useState("");
   const [detalle, setDetalle] = useState("");
-  const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
+  const [llegada, setLlegada] = useState<LlegadaTaller>("la_trajo");
   const [fotosEntrada, setFotosEntrada] = useState<Partial<Record<AnguloFoto, string>>>({});
   const [fotosLibres, setFotosLibres] = useState<FotoLibreLocal[]>([]);
   const [peticion, setPeticion] = useState("");
@@ -156,9 +169,13 @@ export default function ModalIngresoTaller({
   const [saving, setSaving] = useState(false);
   const [paso, setPaso] = useState<string>("");
 
-  const costoRepuestos = repuestosToTotal(repuestosItems);
-  const costoTotal = (Number(costoManoObra) || 0) + costoRepuestos;
   const faltanFotos = ANGULOS_FOTO.filter(a => !fotosEntrada[a.key]);
+  const { profile } = useAuth();
+  const { contratos } = useContratos();
+  const { registrarDeuda } = useDeudas();
+  // A quién cobrarle el movimiento de personal: el dueño de la moto hoy. Sin contrato activo
+  // (moto de la flota) no hay a quién, y la respuesta queda solo como registro.
+  const contratoActivo = contratos.find(c => c.moto_id === motoId && c.estado === "Activo") ?? null;
 
   async function handleSubmit() {
     if (saving) return;
@@ -173,9 +190,11 @@ export default function ModalIngresoTaller({
         moto_id: motoId,
         estado_tecnico: estadoInicial,
         detalle: detalle.trim(),
-        costo: costoTotal,
-        repuestos: repuestosToText(repuestosItems) || null,
+        // La orden nace en $0: el costo se anota con "Registrar trabajo / repuestos", cuando se sabe.
+        costo: 0,
+        repuestos: null,
         fecha_ingreso: fechaIngreso,
+        llegada,
       });
       if (error) { setFormError(error); return; }
       if (!id) {
@@ -191,6 +210,20 @@ export default function ModalIngresoTaller({
       const peticiones: PeticionTaller[] = agregarPeticion([], {
         id: nuevoId(), texto: peticion, pedidaPor: quienRegistra, fechaISO: hoyISO(),
       });
+
+      // Hubo que ir a buscarla: movimiento de personal, se le cobra igual que en la entrega
+      // voluntaria. Va DESPUÉS de crear la orden a propósito: si falla la deuda, la orden ya
+      // quedó y el aviso dice que hay que registrarla a mano (nunca al revés).
+      if (llegada === "fue_buscada" && contratoActivo && profile) {
+        const { error: errD } = await registrarDeuda(
+          contratoActivo.id, "multa_recoleccion",
+          "Costo por movimiento de personal (se fue a buscar para el taller)",
+          MULTA_RECOLECCION, profile.id);
+        if (errD) {
+          setFormError(`La orden quedó creada, pero NO se pudo registrar el costo de $${MULTA_RECOLECCION.toLocaleString("es-CO")}: ${errD}. Regístralo a mano en Cartera.`);
+          return;
+        }
+      }
 
       setPaso("Guardando...");
       const { error: errUp } = await supabase.from("taller").update({
@@ -244,6 +277,35 @@ export default function ModalIngresoTaller({
           </div>
         </div>
 
+        {/* La misma pregunta de la entrega voluntaria, con el mismo costo. */}
+        <div style={{ background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-ink)", marginBottom: 8 }}>¿Cómo llegó la moto?</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {([["la_trajo", "🙋 La trajo el cliente", "Sin costo"],
+               ["fue_buscada", "🚚 Se fue a buscar", `+ $${MULTA_RECOLECCION.toLocaleString("es-CO")} por movimiento de personal`]] as [LlegadaTaller, string, string][])
+              .map(([val, label, sub]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setLlegada(val)}
+                  style={{
+                    textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                    border: llegada === val ? "2px solid var(--accent)" : "1px solid var(--line2)",
+                    background: llegada === val ? "var(--accent-soft)" : "var(--card)",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{label}</div>
+                  <div style={{ fontSize: 12, color: llegada === val ? "var(--accent-ink)" : "var(--muted)" }}>{sub}</div>
+                </button>
+              ))}
+          </div>
+          {llegada === "fue_buscada" && !contratoActivo && (
+            <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 8 }}>
+              Esta moto no tiene contrato activo: no hay a quién cobrarle. Queda solo el registro.
+            </div>
+          )}
+        </div>
+
         <div>
           <label style={{ ...labelStyle, display: "block" }}>Con qué entró *</label>
           <textarea
@@ -276,19 +338,6 @@ export default function ModalIngresoTaller({
             placeholder="Ej: hay que cambiar la cadena, vale $85.000. Queda pendiente de autorizar."
           />
         </div>
-
-        <div>
-          <label style={{ ...labelStyle, display: "block" }}>Mano de obra</label>
-          <MoneyInput value={costoManoObra} onChange={setCostoManoObra} placeholder="$ 0" />
-        </div>
-
-        <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
-
-        {costoTotal > 0 && (
-          <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "right" }}>
-            Costo total: <strong style={{ color: "var(--text)" }}>${costoTotal.toLocaleString("es-CO")}</strong>
-          </div>
-        )}
 
         {formError && (
           <div style={{ background: "var(--bad-soft)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 12px", fontSize: 13 }}>{formError}</div>

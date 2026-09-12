@@ -4,6 +4,9 @@ import { estadoMotoTrasLiberar } from "./useMotos";
 import { hoyISO } from "../utils/fecha";
 import { anotarTrabajo, type FotoLibreTaller, type PeticionTaller } from "../utils/taller";
 
+/** Cómo llegó la moto al taller. `fue_buscada` le cuesta al cliente (movimiento de personal). */
+export type LlegadaTaller = "la_trajo" | "fue_buscada";
+
 export type TallerEstado = "Pendiente" | "En diagnóstico" | "En reparación" | "Listo para salida" | "Finalizado";
 
 export type TallerItem = {
@@ -25,6 +28,8 @@ export type TallerItem = {
   fotos_libres: FotoLibreTaller[] | null;
   /** Lo que se pidió durante el arreglo y quién lo autorizó (mig 150). */
   peticiones: PeticionTaller[] | null;
+  /** Cómo llegó: la trajo el cliente, o hubo que ir a buscarla y se le cobró (mig 150). */
+  llegada: LlegadaTaller | null;
   fecha_ingreso: string;
   fecha_salida: string | null;
   created_at: string;
@@ -40,6 +45,7 @@ export type NuevoTallerItem = {
   costo: number;
   repuestos: string | null;
   fecha_ingreso: string;
+  llegada: LlegadaTaller;
 };
 
 export function useTaller() {

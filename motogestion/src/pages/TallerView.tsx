@@ -15,6 +15,7 @@ import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { useDeudas } from "../hooks/useDeudas";
 import ModalDeuda from "../components/ModalDeuda";
+import { MULTA_RECOLECCION } from "../utils/inmovilizacion";
 import { contratoDeLaMoto, prestamoActivoDeOriginal, diasEnTaller as diasEnTallerUtil,
          agregarPeticion, resolverPeticion, peticionesPendientes,
          type FotoLibreTaller } from "../utils/taller";
@@ -422,6 +423,14 @@ function DetallePanel({
       )}
       <Row label="Dias en taller" value={`${dias} dia${dias !== 1 ? "s" : ""}`} />
       <Row label="Fecha ingreso" value={formatDate(item.fecha_ingreso)} />
+      {item.llegada && (
+        <Row
+          label="Cómo llegó"
+          value={item.llegada === "fue_buscada"
+            ? `Se fue a buscar (se le cobró $${MULTA_RECOLECCION.toLocaleString("es-CO")})`
+            : "La trajo el cliente"}
+        />
+      )}
       {finalizado && <Row label="Fecha salida" value={formatDate(item.fecha_salida)} />}
       <Row label="Costo acumulado" value={formatCOP(item.costo)} accent />
       <div>
@@ -565,6 +574,7 @@ function imprimirOrden(item: TallerItem, motoLabel: string, extra: { clienteNomb
   <div class="field"><div class="label">Moto</div><div class="value">${motoLabel}</div></div>
   <div class="field"><div class="label">Cliente</div><div class="value">${extra.clienteNombre ? escapeHtml(extra.clienteNombre).toUpperCase() : "Sin cliente"}</div></div>
   <div class="field"><div class="label">Estado</div><div class="value">${item.estado_tecnico}</div></div>
+<div class="field"><div class="label">Como llego</div><div class="value">${item.llegada === "fue_buscada" ? "Se fue a buscar (se le cobro el movimiento de personal)" : item.llegada === "la_trajo" ? "La trajo el cliente" : "-"}</div></div>
   <div class="field"><div class="label">Fecha ingreso</div><div class="value">${formatDate(item.fecha_ingreso)}</div></div>
   <div class="field"><div class="label">Fecha salida</div><div class="value">${formatDate(item.fecha_salida)}</div></div>
   <div class="field"><div class="label">Dias en taller</div><div class="value">${diasEnTaller(item.fecha_ingreso, item.fecha_salida)}</div></div>

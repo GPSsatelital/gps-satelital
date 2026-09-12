@@ -195,9 +195,14 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [fechaLimite, setFechaLimite] = useState("");
   const [firma, setFirma] = useState<string | null>(null);
   // LA ACOMPAÑANTE COMO CODEUDORA SOLIDARIA (mig 151, pedido del dueño 12-sep-2026): responde por
-  // la deuda en las mismas condiciones que el titular. Es OPCIONAL y solo aparece si ese cliente
-  // tiene acompañante registrada; su huella se muestra si la tiene, pero no bloquea (a diferencia
-  // de la del titular, que sí es requisito desde el 28-jul).
+  // la deuda en las mismas condiciones que el titular. Solo aparece si ese cliente tiene
+  // acompañante registrada; su huella se muestra si la tiene, pero no bloquea.
+  //
+  // BASTA CON LA FIRMA DE UNO DE LOS DOS (segunda decisión del dueño, 12-sep): "si uno no está, el
+  // otro también puede hacer el proceso por él". Relaja la regla del 28-jul (firma del titular
+  // obligatoria): ahora se exige AL MENOS UNA. Si firma solo ella, el acuerdo sale con su firma en
+  // representación del titular — sin línea en blanco ni marca de pendiente (decisión suya).
+  // La HUELLA del titular sigue siendo requisito: esa regla no se tocó.
   const [conAcompanante, setConAcompanante] = useState(false);
   const [firmaAcomp, setFirmaAcomp] = useState<string | null>(null);
   const [verAcuerdo, setVerAcuerdo] = useState(false);
@@ -421,9 +426,14 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       setError(`${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
       return;
     }
-    if (!firma) { setError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
     if (conAcompanante && !firmaAcomp) {
       setError(`Marcaste que ${acompNombre.toUpperCase()} también firma, pero falta su firma. Fírmala o desmarca la casilla.`);
+      return;
+    }
+    if (!firma && !firmaAcomp) {
+      setError(hayAcompanante
+        ? `Falta la firma del acuerdo. Puede firmar ${clienteNombre.toUpperCase()} o ${acompNombre.toUpperCase()}, pero alguno de los dos tiene que firmar.`
+        : "Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio.");
       return;
     }
     if (totalConvenios !== null && totalConvenios >= 3) { setError("Este contrato ya tiene 3 convenios (máximo permitido)."); return; }
@@ -455,11 +465,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
 
     // La firma va a Storage antes del insert: si falla la subida, el convenio no se crea —
     // preferible a dejar un convenio sin su respaldo. Mismo bucket y ruta que usa Cartera.
-    const path = `convenios/${contratoId}/acuerdo_${Date.now()}.png`;
-    const blob = await (await fetch(firma)).blob();
-    const { error: errSub } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/png", upsert: true });
-    if (errSub) { setError("No se pudo subir la firma: " + errSub.message); setGuardando(false); return; }
-    const firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
+    // Puede venir sin firma del titular: si él no estaba, firmó ella y basta con eso.
+    let firmaUrl: string | null = null;
+    if (firma) {
+      const path = `convenios/${contratoId}/acuerdo_${Date.now()}.png`;
+      const blob = await (await fetch(firma)).blob();
+      const { error: errSub } = await supabase.storage.from("documentos").upload(path, blob, { contentType: "image/png", upsert: true });
+      if (errSub) { setError("No se pudo subir la firma: " + errSub.message); setGuardando(false); return; }
+      firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
+    }
 
     // La de la codeudora va por el mismo camino: si falla la subida, el convenio no se crea.
     let firmaAcompUrl: string | null = null;
@@ -914,7 +928,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             <div>
               <div style={labelStyle}>Firma del cliente</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                El cliente firma aceptando el acuerdo de pago. Sin firma no se crea el convenio.
+                {hayAcompanante
+                  ? "El cliente firma aceptando el acuerdo. Si no está, puede firmar la acompañante por él — pero alguno de los dos tiene que firmar."
+                  : "El cliente firma aceptando el acuerdo de pago. Sin firma no se crea el convenio."}
               </div>
               <CanvasFirma key="firma-convenio" label="Firma del cliente" modal opcional={false} onChange={setFirma} />
             </div>
@@ -931,10 +947,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                     style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0, cursor: "pointer" }}
                   />
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>La acompañante también firma este acuerdo</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>La acompañante firma este acuerdo</span>
                     <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
                       Firma como <strong>codeudora solidaria</strong>: responde por la deuda en las mismas
-                      condiciones que el titular.
+                      condiciones que el titular. Si él no está, ella puede firmar sola y el acuerdo queda hecho.
                     </span>
                   </span>
                 </label>
@@ -977,8 +993,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               )}
               <button
                 onClick={handleGuardar}
-                disabled={guardando || exito || !firma || !queEntra || (huellaResuelta && !tieneHuella)}
-                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !firma || !queEntra || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
+                // Basta con la firma de UNO de los dos (12-sep): el botón se habilita con la del
+                // titular o con la de la acompañante. Antes exigía la del titular y por eso, si él
+                // no estaba, no había forma de cerrar el acuerdo.
+                disabled={guardando || exito || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !tieneHuella)}
+                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
               >
                 {guardando ? "Guardando..." : meta > 0 ? `Firmar acuerdo por $ ${fmt(meta)}` : "Firmar acuerdo"}
               </button>

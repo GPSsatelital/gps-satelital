@@ -582,6 +582,10 @@ export function generarHTMLAcuerdoPago(
   // La acompañante firma como codeudora solidaria (mig 151). Sin su firma el papel sale igual
   // que siempre: no se le imprime una línea en blanco a nadie.
   const firmoAcompanante = !!convenio.firma_acompanante_url && !!convenio.acompanante_nombre;
+  // Firmó SOLO ella porque el titular no estaba (decisión del dueño, 12-sep: basta con uno de los
+  // dos). En ese caso no se imprime la caja del titular — y sobre todo NO se cae al respaldo de su
+  // firma de registro, que haría parecer que firmó este acuerdo cuando no lo hizo.
+  const soloFirmoAcompanante = firmoAcompanante && !convenio.firma_url;
   // Agrupa las deudas pendientes por concepto.
   const porConcepto = new Map<string, number>();
   for (const d of deudas) {
@@ -642,10 +646,12 @@ export function generarHTMLAcuerdoPago(
 
       ${firmoAcompanante ? `
       <div style="text-align:justify;margin-bottom:14px">
-        Firma igualmente el/la señor(a) <strong>${(convenio.acompanante_nombre ?? "").toUpperCase()}</strong> con
+        Firma ${soloFirmoAcompanante ? "" : "igualmente "}el/la señor(a) <strong>${(convenio.acompanante_nombre ?? "").toUpperCase()}</strong> con
         C.C. <strong>${convenio.acompanante_cedula ?? ""}</strong>, en calidad de
         <strong>CODEUDOR(A) SOLIDARIO(A)</strong>, respondiendo por esta obligación en las mismas
-        condiciones que el titular.
+        condiciones que el titular${soloFirmoAcompanante
+          ? ", y suscribe el presente acuerdo también en representación del titular"
+          : ""}.
       </div>` : ""}
 
       <div style="text-align:justify;margin-bottom:14px">
@@ -655,6 +661,7 @@ export function generarHTMLAcuerdoPago(
 
       <div style="margin:20px 0 30px">Acepto cabalmente.</div>
 
+      ${soloFirmoAcompanante ? "" : `
       <div style="display:flex;gap:24px;align-items:flex-end;margin-top:20px">
         <div style="flex:1;text-align:center">
           ${cajaFirma(convenio.firma_url ?? cliente.autorizacion_datos_firma_url)}
@@ -666,7 +673,7 @@ export function generarHTMLAcuerdoPago(
           <div style="font-size:10px;color:#64748b;margin-bottom:4px">Huella</div>
           ${cajaHuella(cliente.autorizacion_datos_huella_url)}
         </div>
-      </div>
+      </div>`}
 
       ${firmoAcompanante ? `
       <div style="display:flex;gap:24px;align-items:flex-end;margin-top:26px">

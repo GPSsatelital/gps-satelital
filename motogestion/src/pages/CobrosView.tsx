@@ -2222,6 +2222,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 saldo_favor_apertura: contratoDetalle.saldo_favor_apertura ?? 0,
               }}
               clienteNombre={clienteDetalle?.nombre ?? ""}
+              esMigrado={!!contratoDetalle.es_migrado}
               saldoDisponible={contratoDetalle.saldoAFavor ?? 0}
               onClose={() => setMoverPlata(false)}
               onMover={async (campos, motivo, resumen) => {

@@ -11,7 +11,8 @@ import { useState } from "react";
 import { card, inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import MoneyInput from "./MoneyInput";
 import {
-  calcularMovimiento, movibleDelAhorro, pisoAhorro, ahorroDelContrato,
+  calcularMovimiento, movibleDelAhorro, movibleDeLaBase, movibleGanadoPagando,
+  pisoAhorro,
   type ContratoPlata, type Direccion,
 } from "../utils/moverPlata";
 
@@ -41,8 +42,9 @@ export default function ModalMoverPlata({
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
-  const ahorro = ahorroDelContrato(contrato);
   const piso = pisoAhorro(contrato);
+  const deLaBase = movibleDeLaBase(contrato);
+  const ganado = movibleGanadoPagando(contrato);
   const movible = movibleDelAhorro(contrato);
   const tope = direccion === "ahorro_a_saldo" ? movible : saldoDisponible;
   const valor = Number(monto) || 0;
@@ -78,16 +80,21 @@ export default function ModalMoverPlata({
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteNombre}</div>
         </div>
 
-        {/* Las dos bolsas, con lo que significa cada una. */}
+        {/* Las dos clases de ahorro, SEPARADAS: la base tiene piso, lo ganado pagando no. */}
         <div style={{ display: "grid", gap: 8 }}>
-          <Bolsa titulo="Ahorro" valor={ahorro} nota="Es suyo, se le entrega al final" />
+          <Bolsa titulo="Base inicial" valor={contrato.ahorro_apertura ?? 0} nota={piso !== null ? `No puede bajar de $ ${fmt(piso)}` : "La base que está juntando"} />
+          <Bolsa titulo="Ahorro ganado pagando" valor={contrato.ahorro_acumulado ?? 0} nota="Es suyo entero, sin piso" />
           <Bolsa titulo="Saldo a favor" valor={saldoDisponible} nota="Lo puede usar ya para pagar" />
         </div>
 
         {piso !== null && (
-          <div style={{ fontSize: 12, color: "var(--muted2)", background: "var(--soft2)", borderRadius: 10, padding: "8px 12px", lineHeight: 1.45 }}>
-            Su ahorro no puede quedar por debajo de <strong>$ {fmt(piso)}</strong>, así que de ahí se
-            pueden mover <strong style={{ color: movible > 0 ? "var(--ok-ink)" : "var(--muted)" }}>$ {fmt(movible)}</strong>.
+          <div style={{ fontSize: 12, color: "var(--muted2)", background: "var(--soft2)", borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>
+            Se pueden mover <strong style={{ color: movible > 0 ? "var(--ok-ink)" : "var(--muted)" }}>$ {fmt(movible)}</strong>
+            {movible > 0 && (
+              <>: <strong>$ {fmt(ganado)}</strong> que ganó pagando{deLaBase > 0 ? <> y <strong>$ {fmt(deLaBase)}</strong> que le sobran de la base</> : null}</>
+            )}
+            {movible === 0 && <> — no ha ganado ahorro pagando y su base ya está en el mínimo.</>}
+            {movible > 0 && <>. Su base tiene que conservar <strong>$ {fmt(piso)}</strong>.</>}
           </div>
         )}
 

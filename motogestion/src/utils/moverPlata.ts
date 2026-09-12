@@ -10,9 +10,18 @@
 // posibles": una ventana que mueva plata de una bolsa a la otra, en las dos direcciones y en
 // cualquier momento, con motivo y rastro.
 //
-// 🔴 EL PISO DEL AHORRO (regla del dueño, 12-sep-2026): "nunca pueden quedar en la base inicial
-// menos de 308, y menos de 305 para los más viejos". El ahorro es la garantía de la empresa: de
-// ahí para abajo no se toca. Solo se puede pasar a saldo a favor lo que esté POR ENCIMA del piso.
+// 🔴 DOS AHORROS DISTINTOS, Y EL PISO ES SOLO DEL PRIMERO (regla del dueño, 12-sep-2026):
+// "nunca pueden quedar en la BASE INICIAL menos de 308, y menos de 305 para los más viejos".
+//
+//   · LA BASE INICIAL (`ahorro_apertura`) — los $308.000 que puso al entrar, después de que sus
+//     $202.000 pagaran la primera semana. Es la garantía de la empresa: NO puede bajar del piso.
+//   · EL AHORRO QUE GANA PAGANDO (`ahorro_acumulado`) — $26.000 por cada semana llena. Arranca en
+//     cero y lo construye él. **Ese no tiene piso: se puede mover completo.**
+//
+// El dueño me corrigió acá mismo ("¿no estás confundiendo ahorros normales con ahorros de base
+// inicial?"): yo había puesto el piso contra la SUMA de las dos, y eso dejaba trancada plata que
+// el cliente sí puede usar. Es la misma corrección del 21-ago: "la base es base".
+// Ver la memoria [[base-inicial-vs-ahorro-acumulado]].
 
 export const PISO_AHORRO_NUEVO = 308_000;   // contratos con semana de $202.000
 export const PISO_AHORRO_VIEJO = 305_000;   // los viejos, con semana de $195.000
@@ -42,11 +51,22 @@ export function ahorroDelContrato(c: Pick<ContratoPlata, "ahorro_apertura" | "ah
   return (c.ahorro_apertura ?? 0) + (c.ahorro_acumulado ?? 0);
 }
 
-/** Cuánto del ahorro se puede pasar a saldo a favor sin bajar del piso. */
-export function movibleDelAhorro(c: ContratoPlata): number {
+/** Lo que sobra de la BASE por encima del piso. Cero si está justo en el piso o por debajo. */
+export function movibleDeLaBase(c: ContratoPlata): number {
   const piso = pisoAhorro(c);
   if (piso === null) return 0;
-  return Math.max(ahorroDelContrato(c) - piso, 0);
+  return Math.max((c.ahorro_apertura ?? 0) - piso, 0);
+}
+
+/** El ahorro que ganó pagando. Es suyo entero: no tiene piso. */
+export function movibleGanadoPagando(c: ContratoPlata): number {
+  if (pisoAhorro(c) === null) return 0;
+  return Math.max(c.ahorro_acumulado ?? 0, 0);
+}
+
+/** Todo lo que se puede pasar a saldo a favor: lo ganado pagando + lo que sobre de la base. */
+export function movibleDelAhorro(c: ContratoPlata): number {
+  return movibleGanadoPagando(c) + movibleDeLaBase(c);
 }
 
 export type ResultadoMovimiento =
@@ -84,10 +104,10 @@ export function calcularMovimiento(
     }
     const movible = movibleDelAhorro(c);
     if (movible <= 0) {
-      return { ok: false, error: `Su ahorro es de $${miles(ahorroDelContrato(c))} y el mínimo que debe conservar es $${miles(piso)}. No hay nada que se pueda mover.` };
+      return { ok: false, error: `No hay nada que se pueda mover: no ha ganado ahorro pagando, y su base es de $${miles(apertura)} — no puede bajar de $${miles(piso)}.` };
     }
     if (monto > movible) {
-      return { ok: false, error: `Solo se pueden mover $${miles(movible)}: por debajo de $${miles(piso)} de ahorro no puede quedar.` };
+      return { ok: false, error: `Solo se pueden mover $${miles(movible)}: $${miles(movibleGanadoPagando(c))} que ganó pagando y $${miles(movibleDeLaBase(c))} que le sobran de la base (esa no baja de $${miles(piso)}).` };
     }
     const deAcumulado = Math.min(monto, acumulado);
     const deApertura = monto - deAcumulado;

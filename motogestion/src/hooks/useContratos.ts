@@ -423,47 +423,6 @@ export function useContratos() {
     return { error: null };
   }
 
-  /**
-   * MOVER PLATA ENTRE LAS BOLSAS DEL CLIENTE (ahorro ↔ saldo a favor), 12-sep-2026.
-   *
-   * Los topes y el piso del ahorro los calcula `utils/moverPlata.ts` (con pruebas); acá solo se
-   * escribe y se deja el rastro. El motivo es obligatorio y va como una fila más de auditoría:
-   * sin él, dentro de tres meses nadie sabe por qué el ahorro de alguien bajó.
-   */
-  async function moverPlataDelCliente(
-    contratoActual: Contrato,
-    campos: { ahorro_apertura: number; ahorro_acumulado: number; saldo_favor_apertura: number },
-    motivo: string,
-    resumen: string,
-    quien: string,
-  ) {
-    const { error } = await supabase.from("contratos").update(campos).eq("id", contratoActual.id);
-    if (error) return { error: error.message };
-
-    const filas = [
-      { campo: "Ahorro de apertura", antes: contratoActual.ahorro_apertura ?? 0, despues: campos.ahorro_apertura },
-      { campo: "Ahorro acumulado", antes: contratoActual.ahorro_acumulado ?? 0, despues: campos.ahorro_acumulado },
-      { campo: "Saldo a favor de apertura", antes: contratoActual.saldo_favor_apertura ?? 0, despues: campos.saldo_favor_apertura },
-    ]
-      .filter(f => f.antes !== f.despues)
-      .map(f => ({
-        contrato_id: contratoActual.id,
-        campo: f.campo,
-        valor_anterior: String(f.antes),
-        valor_nuevo: String(f.despues),
-        editado_por: quien,
-      }));
-    filas.push({
-      contrato_id: contratoActual.id,
-      campo: "Movimiento de plata",
-      valor_anterior: "",
-      valor_nuevo: `${resumen} — ${motivo}`,
-      editado_por: quien,
-    });
-    await supabase.from("contratos_auditoria").insert(filas);
-    return { error: null };
-  }
-
   const DOCUMENTO_LABEL: Record<TipoDocumentoContrato, string> = {
     contrato_pdf_url: "Documento: contrato firmado",
     pagare_pdf_url: "Documento: pagaré firmado",
@@ -534,7 +493,6 @@ export function useContratos() {
     finalizarContrato,
     actualizarAhorro,
     editarContrato,
-    moverPlataDelCliente,
     adjuntarDocumentoContrato,
     cerrarEmpalme,
     obtenerAuditoria,

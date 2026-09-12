@@ -842,6 +842,16 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                           {baseSuficiente ? "✅ suficiente" : `falta $ ${fmt(baseRequerida - ahorroEntregado)}`}
                         </div>
                       )}
+                      {/* Entregó de MÁS: esa plata se va toda al ahorro. Se dice acá, porque el
+                          cliente suele preguntar por ella y el funcionario no sabía qué contestar.
+                          Se puede pasar a saldo a favor después, desde Cartera (12-sep-2026). */}
+                      {form.cliente_id && valorSemanal > 0 && baseRequerida > 0 && ahorroEntregado > baseRequerida && (
+                        <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted2)", lineHeight: 1.4 }}>
+                          Entregó <strong style={{ color: "var(--text)" }}>$ {fmt(ahorroEntregado - baseRequerida)}</strong> de más:
+                          quedan en su ahorro. Si los quiere usar para pagar semanas, se pasan a saldo a
+                          favor desde Cartera (⇄ Mover plata).
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>

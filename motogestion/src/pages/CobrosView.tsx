@@ -90,6 +90,7 @@ import {
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
+import ModalMoverPlata from "../components/ModalMoverPlata";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
@@ -610,7 +611,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
   const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, leerReparto, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
-  const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
+  const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme, moverPlataDelCliente } = useContratos();
+  // Mover plata entre el ahorro y el saldo a favor: lo hacen los mismos que responden por la
+  // cuenta del cliente — ADMIN, ADMIN_PRINCIPAL y la SECRETARIA, que es la que lo atiende en la
+  // oficina (decisión del dueño, 12-sep-2026).
+  const [moverPlata, setMoverPlata] = useState(false);
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -2197,7 +2202,34 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               <span style={{ color: "var(--muted2)" }}>Por pagos <strong style={{ color: "var(--text)" }}>$ {fmt(contratoDetalle.ahorro_acumulado ?? 0)}</strong></span>
               <span style={{ color: "var(--muted2)" }}>Total <strong style={{ color: "var(--ok-ink)" }}>$ {fmt((contratoDetalle.ahorro_apertura ?? 0) + (contratoDetalle.ahorro_acumulado ?? 0))}</strong></span>
             </div>
+            {(esAdmin || esSecretaria) && (
+              <button
+                onClick={() => setMoverPlata(true)}
+                style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "none", border: "1px dashed var(--accent-line)", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}
+              >
+                ⇄ Mover plata entre bolsas
+              </button>
+            )}
           </div>
+
+          {moverPlata && (
+            <ModalMoverPlata
+              contrato={{
+                forma_pago: contratoDetalle.forma_pago,
+                valor_semanal: contratoDetalle.valor_semanal ?? 0,
+                ahorro_apertura: contratoDetalle.ahorro_apertura ?? 0,
+                ahorro_acumulado: contratoDetalle.ahorro_acumulado ?? 0,
+                saldo_favor_apertura: contratoDetalle.saldo_favor_apertura ?? 0,
+              }}
+              clienteNombre={clienteDetalle?.nombre ?? ""}
+              saldoDisponible={contratoDetalle.saldoAFavor ?? 0}
+              onClose={() => setMoverPlata(false)}
+              onMover={async (campos, motivo, resumen) => {
+                if (!profile) return { error: "Sesión no válida." };
+                return moverPlataDelCliente(contratoDetalle, campos, motivo, resumen, profile.id);
+              }}
+            />
+          )}
 
           {/* Desglose por fecha (motor de cajas): qué períodos debe y de qué fecha — para que el
               funcionario sepa de un vistazo qué cobrar. Respeta lo que el convenio ya cubre y el

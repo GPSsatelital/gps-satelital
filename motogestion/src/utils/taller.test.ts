@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { contratoDeLaMoto, prestamoActivoDeOriginal, anotarTrabajo, diasEnTaller } from "./taller";
+import { contratoDeLaMoto, prestamoActivoDeOriginal, anotarTrabajo, diasEnTaller,
+         agregarPeticion, resolverPeticion, peticionesPendientes, type PeticionTaller } from "./taller";
 import { fmtFechaCorta } from "./fecha";
 
 describe("las fechas del taller no se corren un día", () => {
@@ -97,5 +98,50 @@ describe("anotar qué se le hizo", () => {
 
   it("recorta espacios sobrantes del texto nuevo", () => {
     expect(anotarTrabajo(null, "  Ajuste de cadena  ", "2026-09-07")).toBe("[07/09/2026] Ajuste de cadena");
+  });
+});
+
+describe("peticiones de la orden de taller (mig 150)", () => {
+  const base: PeticionTaller[] = [];
+
+  it("una petición nace pendiente, con quién la pidió y el día", () => {
+    const l = agregarPeticion(base, { id: "p1", texto: "  Cambiar la cadena, $85.000  ", pedidaPor: "MECÁNICO", fechaISO: "2026-09-12" });
+    expect(l).toHaveLength(1);
+    expect(l[0]).toMatchObject({ id: "p1", texto: "Cambiar la cadena, $85.000", pedida_por: "MECÁNICO", fecha: "2026-09-12", estado: "pendiente" });
+  });
+
+  it("una petición vacía no se guarda", () => {
+    expect(agregarPeticion(base, { id: "p1", texto: "   ", pedidaPor: "X", fechaISO: "2026-09-12" })).toHaveLength(0);
+  });
+
+  it("autorizar deja quién y cuándo, y no toca las demás", () => {
+    let l = agregarPeticion(base, { id: "p1", texto: "Cadena", pedidaPor: "MECÁNICO", fechaISO: "2026-09-12" });
+    l = agregarPeticion(l, { id: "p2", texto: "Freno", pedidaPor: "ÁNGELA", fechaISO: "2026-09-12" });
+    l = resolverPeticion(l, "p1", "autorizada", "FREDY", "2026-09-13");
+    expect(l[0]).toMatchObject({ estado: "autorizada", resuelta_por: "FREDY", resuelta_fecha: "2026-09-13" });
+    expect(l[1].estado).toBe("pendiente");
+  });
+
+  it("rechazar guarda el motivo si se escribió", () => {
+    let l = agregarPeticion(base, { id: "p1", texto: "Cadena", pedidaPor: "MECÁNICO", fechaISO: "2026-09-12" });
+    l = resolverPeticion(l, "p1", "rechazada", "FREDY", "2026-09-13", "  Se le cobra al cliente primero  ");
+    expect(l[0]).toMatchObject({ estado: "rechazada", nota: "Se le cobra al cliente primero" });
+  });
+
+  it("una petición resuelta NUNCA se borra: queda escrita con su respuesta", () => {
+    let l = agregarPeticion(base, { id: "p1", texto: "Cadena", pedidaPor: "MECÁNICO", fechaISO: "2026-09-12" });
+    l = resolverPeticion(l, "p1", "rechazada", "FREDY", "2026-09-13");
+    l = agregarPeticion(l, { id: "p2", texto: "Otra cosa", pedidaPor: "MECÁNICO", fechaISO: "2026-09-14" });
+    expect(l).toHaveLength(2);
+    expect(l[0].texto).toBe("Cadena");
+  });
+
+  it("cuenta solo las que esperan respuesta", () => {
+    let l = agregarPeticion(base, { id: "p1", texto: "A", pedidaPor: "M", fechaISO: "2026-09-12" });
+    l = agregarPeticion(l, { id: "p2", texto: "B", pedidaPor: "M", fechaISO: "2026-09-12" });
+    expect(peticionesPendientes(l)).toBe(2);
+    l = resolverPeticion(l, "p1", "autorizada", "F", "2026-09-13");
+    expect(peticionesPendientes(l)).toBe(1);
+    expect(peticionesPendientes(null)).toBe(0);
   });
 });

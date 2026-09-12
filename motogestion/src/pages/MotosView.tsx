@@ -33,6 +33,8 @@ import ModalDocumentosMoto from "../components/ModalDocumentosMoto";
 import ModalDescargar, { type ColumnaDescarga } from "../components/ModalDescargar";
 import AvisoPrestamosMoto from "../components/AvisoPrestamosMoto";
 import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
+import ModalIngresoTaller from "../components/ModalIngresoTaller";
+import { useTaller } from "../hooks/useTaller";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
@@ -112,6 +114,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const { deudas, registrarDeuda } = useDeudas();
   const { pagos } = usePagos();
   const { convenios } = useConvenios();
+  const { taller, registrarIngreso } = useTaller();
+  // Una moto con orden ABIERTA no entra otra vez: se le agrega a la que ya tiene.
+  const ordenAbiertaMoto = selectedMotoOrdenAbierta(taller);
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: import("../hooks/useContratos").Contrato; motoPlaca: string; clienteNombre: string; motivo: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
@@ -148,6 +153,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [openLiberarRetencion, setOpenLiberarRetencion] = useState(false);
   // Router "Registrar novedad": una sola puerta que enruta al flujo correcto.
   const [openNovedad, setOpenNovedad] = useState(false);
+  // Meter la moto al taller desde aquí abre EXACTAMENTE el mismo formulario del módulo Taller
+  // (12-sep-2026). Antes no había opción: el funcionario le cambiaba el estado a mano y la moto
+  // quedaba en taller SIN orden — invisible para el mecánico, sin diagnóstico, sin costo y sin
+  // rastro del arreglo.
+  const [openTaller, setOpenTaller] = useState(false);
   const [openDocsMoto, setOpenDocsMoto] = useState(false);
   const [recoleccionMoto, setRecoleccionMoto] = useState<Moto | null>(null);
   const [liquidacionMoto, setLiquidacionMoto] = useState<Moto | null>(null);
@@ -158,6 +168,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   useBackGuard(tiempoFueraModal !== null, () => setTiempoFueraModal(null));
   useBackGuard(asignarMotoId !== null, () => setAsignarMotoId(null));
   useBackGuard(openNovedad, () => setOpenNovedad(false));
+  useBackGuard(openTaller, () => setOpenTaller(false));
   useBackGuard(openRetencion, () => setOpenRetencion(false));
   useBackGuard(openLiberarRetencion, () => setOpenLiberarRetencion(false));
   useBackGuard(openUbicacion, () => setOpenUbicacion(false));
@@ -1299,11 +1310,33 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         );
       })()}
 
+      {/* El MISMO formulario del módulo Taller, con la moto ya elegida. */}
+      {openTaller && selectedMoto && (
+        <ModalIngresoTaller
+          motos={[]}
+          motoFija={{ id: selectedMoto.id, label: `${selectedMoto.placa} - ${selectedMoto.marca} ${selectedMoto.modelo}` }}
+          quienRegistra={profile?.nombre ?? "SISTEMA"}
+          onClose={() => setOpenTaller(false)}
+          onRegistrar={registrarIngreso}
+          onCreada={() => setMsgDetalle(`${selectedMoto.placa} entró al taller. El mecánico ya la ve en su lista.`)}
+        />
+      )}
+
       {/* ── Router "Registrar novedad": una sola puerta que enruta al flujo correcto ── */}
       {openNovedad && selectedMoto && (() => {
         const yaRetenida = ["Fiscalia","Transito","Garantia"].includes(selectedMoto.estado);
         const contratoActivo = contratoMoto?.estado === "Activo";
+        const ordenAbierta = ordenAbiertaMoto(selectedMoto.id);
         const opciones: { icono: string; titulo: string; desc: string; enabled: boolean; motivoOff?: string; onClick: () => void }[] = [
+          {
+            icono: "🔧", titulo: "Ingresar a taller",
+            enabled: !ordenAbierta && !["Fiscalia", "Transito", "Garantia"].includes(selectedMoto.estado),
+            desc: "Abre la orden con las 6 fotos de cómo entró. El mecánico la ve en su lista y queda el rastro del arreglo.",
+            motivoOff: ordenAbierta
+              ? "Ya tiene una orden abierta en taller: agrégale el trabajo ahí"
+              : "Está retenida por un tercero. Primero dale \"Salida de ...\" y elige \"pasa a taller\"",
+            onClick: () => { setOpenTaller(true); setOpenNovedad(false); },
+          },
           {
             icono: "🚚", titulo: "Inmovilizar por incumplimiento",
             enabled: puedeRecolectar && !!contratoActivo && !!razonInmovilizarMoto?.razon,
@@ -1434,3 +1467,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, var(--accent) 0%, var(--ok2) 100%)", color: "#0f172a", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" };
 const secondaryBtn: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)" };
+
+/** Devuelve una función que dice si esa moto ya tiene una orden de taller ABIERTA. */
+function selectedMotoOrdenAbierta(taller: { moto_id: string; estado_tecnico: string }[]) {
+  return (motoId: string) => taller.some(t => t.moto_id === motoId && t.estado_tecnico !== "Finalizado");
+}

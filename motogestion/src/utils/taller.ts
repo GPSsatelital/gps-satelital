@@ -56,3 +56,67 @@ export function anotarTrabajo(previo: string | null | undefined, texto: string, 
   const linea = `[${d}/${m}/${y}] ${limpio}`;
   return base ? `${base}\n${linea}` : linea;
 }
+
+// ── Peticiones y autorizaciones de la orden (mig 150) ─────────────────────────────────────────
+// Lo que se pide durante el arreglo ("hay que cambiar la cadena, vale $85.000", "el cliente pide
+// que le revisen el freno") y quién lo resolvió. El mecánico PIDE; autoriza quien tiene la plata
+// en la mano (ADMIN, ADMIN_PRINCIPAL, SECRETARIA, SUBADMIN). Igual que `anotarTrabajo`: nada se
+// borra nunca — una petición rechazada queda escrita, con quién la rechazó y cuándo.
+
+export type EstadoPeticion = "pendiente" | "autorizada" | "rechazada";
+
+export type PeticionTaller = {
+  id: string;
+  texto: string;
+  /** Nombre de quien la pidió, tal como se muestra. */
+  pedida_por: string;
+  fecha: string;
+  estado: EstadoPeticion;
+  resuelta_por?: string;
+  resuelta_fecha?: string;
+  /** Lo que dijo quien la resolvió (opcional). */
+  nota?: string;
+};
+
+/** Una foto suelta del arreglo: el daño, el repuesto viejo, el tablero. */
+export type FotoLibreTaller = {
+  url: string;
+  nota: string;
+  fecha: string;
+  por: string;
+};
+
+export function agregarPeticion(
+  previas: PeticionTaller[] | null | undefined,
+  datos: { id: string; texto: string; pedidaPor: string; fechaISO: string },
+): PeticionTaller[] {
+  const texto = datos.texto.trim();
+  const lista = previas ?? [];
+  if (!texto) return lista;
+  return [...lista, {
+    id: datos.id,
+    texto,
+    pedida_por: datos.pedidaPor,
+    fecha: datos.fechaISO.slice(0, 10),
+    estado: "pendiente",
+  }];
+}
+
+export function resolverPeticion(
+  previas: PeticionTaller[] | null | undefined,
+  id: string,
+  estado: Exclude<EstadoPeticion, "pendiente">,
+  resueltaPor: string,
+  fechaISO: string,
+  nota?: string,
+): PeticionTaller[] {
+  return (previas ?? []).map(p =>
+    p.id === id
+      ? { ...p, estado, resuelta_por: resueltaPor, resuelta_fecha: fechaISO.slice(0, 10), ...(nota?.trim() ? { nota: nota.trim() } : {}) }
+      : p);
+}
+
+/** Cuántas quedan esperando respuesta — es lo que se muestra en el chip de la lista. */
+export function peticionesPendientes(lista: PeticionTaller[] | null | undefined): number {
+  return (lista ?? []).filter(p => p.estado === "pendiente").length;
+}

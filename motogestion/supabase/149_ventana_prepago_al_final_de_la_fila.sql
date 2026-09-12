@@ -38,7 +38,7 @@
 --   select
 --     (length(d) - length(replace(d, 'v_exigidas := public.cajas_exigidas(v_contrato, coalesce(v_row.fecha, current_date) + 3);', ''))) / 89 as ancla_cajas,
 --     (length(d) - length(replace(d, 'v_contrato, v_conv_tipado, coalesce(v_row.fecha, current_date) + 3);', ''))) / 68 as ancla_convenio,
---     (length(d) - length(replace(d, '-- 5) Lo que sobre', ''))) / 18 as ancla_paso5,
+--     (length(d) - length(replace(d, 'v_ap_saldo := v_monto;', ''))) / 22 as ancla_paso5,
 --     (length(d) - length(replace(d, 'current_date) + 3', ''))) / 17 as ventanas
 --   from (select pg_get_functiondef('public.aplicar_pago_confirmado'::regproc) d) f;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -48,7 +48,7 @@ declare
   v_def   text;
   v_a     text := 'v_exigidas := public.cajas_exigidas(v_contrato, coalesce(v_row.fecha, current_date) + 3);';
   v_b     text := 'v_contrato, v_conv_tipado, coalesce(v_row.fecha, current_date) + 3);';
-  v_c     text := '-- 5) Lo que sobre';
+  v_c     text := 'v_ap_saldo := v_monto;';
   v_bloque text;
   v_n_a   int;
   v_n_b   int;
@@ -72,7 +72,8 @@ begin
   v_def := replace(v_def, v_b, 'v_contrato, v_conv_tipado, coalesce(v_row.fecha, current_date));');
 
   -- C: la ventana, al final de la fila (2b cajas, 4b convenio), antes del saldo a favor.
-  v_bloque := $blq$-- 2b) LA VENTANA DE PREPAGO, AL FINAL DE LA FILA (mig 149, 11-sep-2026).
+  v_bloque := $blq$
+        -- 2b) LA VENTANA DE PREPAGO, AL FINAL DE LA FILA (mig 149, 11-sep-2026).
         --   Pagar hasta 3 días antes del lunes cuenta como pagar el lunes (DANIEL, mig 119), pero
         --   SOLO con lo que sobre después de todo lo vencido: semanas, deudas y cuotas del acuerdo.
         --   Antes esta ventana vivía en el paso 2 y la semana del lunes siguiente se tragaba la
@@ -99,13 +100,23 @@ begin
         end loop;
 
         -- 4b) Y la cuota del acuerdo de esa semana adelantada, si todavía sobra.
-        --   Si llegó plata hasta aquí, el paso 4 ya corrió (v_monto solo baja) y v_convenio,
-        --   v_conv_tipado, v_abonado_total y v_pend_conv están cargados.
+        --   Vuelve a leer el convenio en vez de confiar en lo que dejó el paso 4: así este bloque
+        --   se vale por sí mismo y no puede reventar por un `record` sin asignar.
+        --   El tope resta lo que el paso 4 YA le dio en este mismo pago (v_ap_conv).
         if v_monto > 0 then
+          select * into v_convenio from public.convenios
+            where contrato_id = v_row.contrato_id and estado = 'activo' limit 1;
           if v_convenio.id is not null then
+            select coalesce(sum(aplicado_convenio), 0) into v_abonado_total
+              from public.pagos
+              where contrato_id = v_row.contrato_id and estado = 'Confirmado'
+                and created_at >= v_convenio.created_at and id <> v_row.id;
+            v_pend_conv := greatest(coalesce(v_convenio.deuda_total, 0) - v_abonado_total, 0);
+            select * into v_conv_tipado from public.convenios where id = v_convenio.id;
             v_conv_exigido := public.cuotas_convenio_exigidas(
               v_contrato, v_conv_tipado, coalesce(v_row.fecha, current_date) + 3);
-            v_puede_conv := greatest(least(v_conv_exigido - v_abonado_total - v_ap_conv, v_pend_conv - v_ap_conv), 0);
+            v_puede_conv := greatest(least(v_conv_exigido - v_abonado_total - v_ap_conv,
+                                           v_pend_conv - v_ap_conv), 0);
             v_delta := least(v_monto, v_puede_conv);
             v_ap_conv := v_ap_conv + v_delta;
             v_monto := v_monto - v_delta;

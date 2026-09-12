@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useTaller, type TallerEstado, type TallerItem, type NuevoTallerItem } from "../hooks/useTaller";
+import { useTaller, type TallerEstado, type TallerItem } from "../hooks/useTaller";
 import { useMotos } from "../hooks/useMotos";
 import { useContratos, type Contrato } from "../hooks/useContratos";
 import { supabase } from "../lib/supabase";
@@ -15,7 +15,15 @@ import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { useDeudas } from "../hooks/useDeudas";
 import ModalDeuda from "../components/ModalDeuda";
-import { contratoDeLaMoto, prestamoActivoDeOriginal, diasEnTaller as diasEnTallerUtil } from "../utils/taller";
+import { contratoDeLaMoto, prestamoActivoDeOriginal, diasEnTaller as diasEnTallerUtil,
+         agregarPeticion, resolverPeticion, peticionesPendientes,
+         type FotoLibreTaller } from "../utils/taller";
+import ModalIngresoTaller, {
+  ModalTaller, RepuestosEditor, repuestosToText, repuestosToTotal, type RepuestoItem,
+  subirAngulosTaller, subirLibresTaller, nuevoId,
+} from "../components/ModalIngresoTaller";
+import { GridFotosLibres, GaleriaFotos, type FotoLibreLocal } from "../components/FotosLibres";
+import { ANGULOS_FOTO, GridFotosAngulos, type AnguloFoto } from "../components/FotosAngulos";
 import type { ViewKey } from "../App";
 
 // Quién puede cobrarle el arreglo al cliente desde el taller: los mismos cuatro roles a los que la
@@ -161,185 +169,10 @@ function OrdenCard({
   );
 }
 
-// ─── Modal wrapper ─────────────────────────────────────────────────────────────
-
-function Modal({ onClose, title, children }: { onClose: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <div
-      // zIndex 1100: estas ventanas se abren DESDE el detalle de la orden, que flota con 1000.
-      // Con el 80 de antes se dibujaban detrás del detalle: el botón "funcionaba" pero no se veía
-      // nada (así lo reportó el dueño el 7-sep con "Registrar trabajo" y "Cobrarle a JOSE").
-      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 1100 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ background: "var(--card)", borderRadius: 20, padding: 24, width: "100%", maxWidth: 520, maxHeight: "calc(100dvh - 160px)", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>{title}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--muted)", lineHeight: 1 }}>x</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// ─── Repuestos Editor ──────────────────────────────────────────────────────────
-
-type RepuestoItem = { nombre: string; cantidad: number; costo: number };
-
-function RepuestosEditor({ items, onChange }: { items: RepuestoItem[]; onChange: (items: RepuestoItem[]) => void }) {
-  function agregar() {
-    onChange([...items, { nombre: "", cantidad: 1, costo: 0 }]);
-  }
-  function eliminar(i: number) {
-    onChange(items.filter((_, idx) => idx !== i));
-  }
-  function actualizar(i: number, field: keyof RepuestoItem, value: string | number) {
-    const copia = items.map((item, idx) => idx === i ? { ...item, [field]: value } : item);
-    onChange(copia);
-  }
-  const totalRepuestos = items.reduce((s, r) => s + r.costo * r.cantidad, 0);
-  return (
-    <div>
-      <label style={labelStyle}>Repuestos utilizados</label>
-      {items.length === 0 && (
-        <div style={{ fontSize: 12, color: "var(--faint)", marginBottom: 6 }}>Sin repuestos agregados.</div>
-      )}
-      {items.map((item, i) => (
-        <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-          <input
-            style={{ ...inputStyle, flex: 3 }}
-            value={item.nombre}
-            onChange={e => actualizar(i, "nombre", e.target.value)}
-            placeholder="Nombre del repuesto"
-          />
-          <input
-            type="number"
-            style={{ ...inputStyle, flex: 1, minWidth: 50 }}
-            value={item.cantidad}
-            min={1}
-            onChange={e => actualizar(i, "cantidad", Number(e.target.value) || 1)}
-            title="Cantidad"
-          />
-          <MoneyInput
-            style={{ flex: 2, minWidth: 70 }}
-            value={item.costo ? String(item.costo) : ""}
-            onChange={v => actualizar(i, "costo", Number(v) || 0)}
-            placeholder="$ costo u."
-          />
-          <button onClick={() => eliminar(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--faint)", fontSize: 18, padding: "0 2px", flexShrink: 0 }}>✕</button>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-        <button onClick={agregar} type="button" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "none", border: "1px dashed var(--accent-line)", borderRadius: 8, padding: "5px 12px", cursor: "pointer" }}>
-          + Agregar repuesto
-        </button>
-        {items.length > 0 && (
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            Total repuestos: <strong style={{ color: "var(--text)" }}>${items.reduce((s, r) => s + r.costo * r.cantidad, 0).toLocaleString("es-CO")}</strong>
-          </span>
-        )}
-      </div>
-      {totalRepuestos > 0 && <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>El costo de repuestos se suma al costo total de la orden.</div>}
-    </div>
-  );
-}
-
-function repuestosToText(items: RepuestoItem[]): string {
-  return items.filter(r => r.nombre.trim()).map(r => r.cantidad > 1 ? `${r.nombre.trim()} (x${r.cantidad})` : r.nombre.trim()).join(", ");
-}
-
-function repuestosToTotal(items: RepuestoItem[]): number {
-  return items.reduce((s, r) => s + r.costo * r.cantidad, 0);
-}
-
-// ─── Nueva Orden Modal ─────────────────────────────────────────────────────────
-
-function NuevaOrdenModal({ motos, onClose, onRegistrar }: {
-  motos: { id: string; label: string }[];
-  onClose: () => void;
-  onRegistrar: (data: NuevoTallerItem) => Promise<{ error: string | null }>;
-}) {
-  const [motoId, setMotoId] = useState("");
-  const [estadoInicial, setEstadoInicial] = useState<TallerEstado>("Pendiente");
-  const [fechaIngreso, setFechaIngreso] = useState(hoyISO());
-  const [costoManoObra, setCostoManoObra] = useState("");
-  const [detalle, setDetalle] = useState("");
-  const [repuestosItems, setRepuestosItems] = useState<RepuestoItem[]>([]);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const costoRepuestos = repuestosToTotal(repuestosItems);
-  const costoTotal = (Number(costoManoObra) || 0) + costoRepuestos;
-
-  async function handleSubmit() {
-    if (!motoId) { setFormError("Selecciona la moto."); return; }
-    if (!detalle.trim()) { setFormError("Ingresa el detalle técnico."); return; }
-    setSaving(true);
-    const { error } = await onRegistrar({
-      moto_id: motoId,
-      estado_tecnico: estadoInicial,
-      detalle: detalle.trim(),
-      costo: costoTotal,
-      repuestos: repuestosToText(repuestosItems) || null,
-      fecha_ingreso: fechaIngreso,
-    });
-    setSaving(false);
-    if (error) { setFormError(error); return; }
-    onClose();
-  }
-
-  return (
-    <Modal onClose={onClose} title="Registrar ingreso a taller">
-      <div style={{ display: "grid", gap: 14 }}>
-        <div>
-          <label style={labelStyle}>Moto *</label>
-          <select style={inputStyle} value={motoId} onChange={(e) => setMotoId(e.target.value)}>
-            <option value="">Seleccionar moto...</option>
-            {motos.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Estado técnico inicial</label>
-          <select style={inputStyle} value={estadoInicial} onChange={(e) => setEstadoInicial(e.target.value as TallerEstado)}>
-            {ESTADOS.filter((e) => e !== "Finalizado").map((e) => <option key={e} value={e}>{e}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={labelStyle}>Fecha ingreso</label>
-          <input type="date" style={inputStyle} value={fechaIngreso} onChange={(e) => setFechaIngreso(e.target.value)} />
-        </div>
-        <div>
-          <label style={labelStyle}>Detalle técnico *</label>
-          <textarea
-            style={{ ...inputStyle, minHeight: 90, resize: "vertical" }}
-            value={detalle}
-            onChange={(e) => setDetalle(e.target.value)}
-            placeholder="Describe el problema o trabajo a realizar"
-          />
-        </div>
-        <RepuestosEditor items={repuestosItems} onChange={setRepuestosItems} />
-        <MoneyInput label="Mano de obra" value={costoManoObra} onChange={setCostoManoObra} />
-        {costoTotal > 0 && (
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)", fontSize: 13 }}>
-            <span style={{ color: "var(--muted)" }}>Repuestos: <strong>${costoRepuestos.toLocaleString("es-CO")}</strong></span>
-            <span style={{ color: "var(--muted)", margin: "0 10px" }}>+</span>
-            <span style={{ color: "var(--muted)" }}>Mano de obra: <strong>${(Number(costoManoObra) || 0).toLocaleString("es-CO")}</strong></span>
-            <span style={{ color: "var(--muted)", margin: "0 10px" }}>=</span>
-            <span style={{ color: "var(--accent)", fontWeight: 700 }}>Total: ${costoTotal.toLocaleString("es-CO")}</span>
-          </div>
-        )}
-        {formError && <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{formError}</div>}
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <button onClick={onClose} style={ghostBtn}>Cancelar</button>
-          <button onClick={handleSubmit} style={primaryBtn} disabled={saving}>{saving ? "Guardando..." : "Registrar ingreso"}</button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// ─── Actualización Modal ───────────────────────────────────────────────────────
+// El wrapper de ventana, el editor de repuestos y el formulario de ingreso se mudaron a
+// `components/ModalIngresoTaller.tsx` (12-sep-2026): desde Motos → "Registrar novedad" →
+// "Ingresar a taller" se abre EL MISMO formulario, para que no haya dos maneras de meter una
+// moto al taller. Se importan arriba.
 
 function ActualizarModal({
   item,
@@ -370,7 +203,7 @@ function ActualizarModal({
   }
 
   return (
-    <Modal onClose={onClose} title="Registrar trabajo / repuestos">
+    <ModalTaller onClose={onClose} title="Registrar trabajo / repuestos">
       <div style={{ marginBottom: 16, padding: "10px 14px", background: "var(--soft2)", borderRadius: 10, fontSize: 14 }}>
         <strong>{motoLabel}</strong>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
@@ -409,7 +242,7 @@ function ActualizarModal({
           <button onClick={handleSubmit} style={primaryBtn} disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>
         </div>
       </div>
-    </Modal>
+    </ModalTaller>
   );
 }
 
@@ -426,6 +259,112 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
 
 // ─── Detalle Panel ─────────────────────────────────────────────────────────────
 
+// ─── Evidencias y peticiones (mig 150) ─────────────────────────────────────────────────────────
+
+/** Agregar fotos sueltas del arreglo a una orden que ya existe. */
+function ModalFotosLibres({ onClose, onGuardar }: { onClose: () => void; onGuardar: (fotos: FotoLibreLocal[]) => Promise<void> }) {
+  const [fotos, setFotos] = useState<FotoLibreLocal[]>([]);
+  const [guardando, setGuardando] = useState(false);
+  return (
+    <ModalTaller onClose={onClose} title="Fotos del arreglo">
+      <div style={{ display: "grid", gap: 14, textAlign: "left" }}>
+        <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.45 }}>
+          El daño, el repuesto viejo, cómo quedó. Quedan pegadas a esta orden.
+        </div>
+        <GridFotosLibres fotos={fotos} onChange={setFotos} />
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} disabled={guardando} style={ghostBtn}>Cancelar</button>
+          <button
+            onClick={async () => { if (guardando) return; setGuardando(true); try { await onGuardar(fotos); } finally { setGuardando(false); } }}
+            disabled={guardando || fotos.length === 0}
+            style={{ ...primaryBtn, fontSize: 13, opacity: guardando || fotos.length === 0 ? 0.6 : 1 }}
+          >
+            {guardando ? "Subiendo..." : `Guardar ${fotos.length || ""}`.trim()}
+          </button>
+        </div>
+      </div>
+    </ModalTaller>
+  );
+}
+
+/** Escribir una petición: lo que hay que autorizar para poder seguir. */
+function ModalPeticion({ onClose, onGuardar }: { onClose: () => void; onGuardar: (texto: string) => Promise<void> }) {
+  const [texto, setTexto] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  return (
+    <ModalTaller onClose={onClose} title="Nueva petición">
+      <div style={{ display: "grid", gap: 14, textAlign: "left" }}>
+        <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.45 }}>
+          Lo que se necesita para seguir con el arreglo, o lo que pidió el cliente. Queda con tu
+          nombre y la fecha, esperando respuesta de la oficina.
+        </div>
+        <textarea
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          placeholder="Ej: hay que cambiar la cadena, vale $85.000."
+          style={{ ...inputStyle, minHeight: 90, resize: "vertical", fontFamily: "inherit" }}
+        />
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} disabled={guardando} style={ghostBtn}>Cancelar</button>
+          <button
+            onClick={async () => { if (guardando || !texto.trim()) return; setGuardando(true); try { await onGuardar(texto); } finally { setGuardando(false); } }}
+            disabled={guardando || !texto.trim()}
+            style={{ ...primaryBtn, fontSize: 13, opacity: guardando || !texto.trim() ? 0.6 : 1 }}
+          >
+            {guardando ? "Guardando..." : "Guardar petición"}
+          </button>
+        </div>
+      </div>
+    </ModalTaller>
+  );
+}
+
+/**
+ * Cerrar la orden. Las 6 fotos de cómo salió se piden AQUÍ, no después: es la última vez que la
+ * moto está en el taller para fotografiarla, y son la prueba del estado en que se entregó.
+ */
+function ModalCerrarOrden({ finLabel, motoLabel, onClose, onCerrar }: {
+  finLabel: string;
+  motoLabel: string;
+  onClose: () => void;
+  onCerrar: (fotos: Partial<Record<AnguloFoto, string>>) => Promise<void>;
+}) {
+  const [fotos, setFotos] = useState<Partial<Record<AnguloFoto, string>>>({});
+  const [guardando, setGuardando] = useState(false);
+  const faltan = ANGULOS_FOTO.filter(a => !fotos[a.key]);
+  return (
+    <ModalTaller onClose={onClose} title="Cerrar la orden">
+      <div style={{ display: "grid", gap: 14, textAlign: "left" }}>
+        <div style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.45 }}>
+          <strong>{motoLabel}</strong><br />{finLabel.replace("Finalizar: ", "")}
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)", marginBottom: 4 }}>Cómo salió — las 6 fotos</div>
+          <div style={{ fontSize: 11, color: "var(--faint)", marginBottom: 6 }}>
+            La prueba del estado en que se entrega. Sin ellas no se puede cerrar.
+          </div>
+          <GridFotosAngulos fotos={fotos} onChange={setFotos} />
+        </div>
+        {faltan.length > 0 && (
+          <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "8px 12px" }}>
+            Falta: {faltan.map(a => a.label).join(", ")}.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button onClick={onClose} disabled={guardando} style={ghostBtn}>Cancelar</button>
+          <button
+            onClick={async () => { if (guardando || faltan.length > 0) return; setGuardando(true); try { await onCerrar(fotos); } finally { setGuardando(false); } }}
+            disabled={guardando || faltan.length > 0}
+            style={{ ...primaryBtn, fontSize: 13, opacity: guardando || faltan.length > 0 ? 0.6 : 1 }}
+          >
+            {guardando ? "Cerrando..." : "Cerrar orden"}
+          </button>
+        </div>
+      </div>
+    </ModalTaller>
+  );
+}
+
 function DetallePanel({
   item,
   motoLabel,
@@ -433,11 +372,15 @@ function DetallePanel({
   enPrestamo,
   cobro,
   finLabel,
+  puedeAutorizar,
   onActualizar,
   onCobrar,
   onFinalizar,
   onImprimir,
   onCambiarEstado,
+  onAgregarFotos,
+  onNuevaPeticion,
+  onResolverPeticion,
 }: {
   item: TallerItem;
   motoLabel: string;
@@ -448,11 +391,16 @@ function DetallePanel({
   /** Si este usuario puede cobrar y, si ya se cobró, cuánto quedó registrado. */
   cobro: { puede: boolean; montoCobrado: number | null };
   finLabel: string;
+  /** Quién puede responder una petición: la oficina, no el mecánico. */
+  puedeAutorizar: boolean;
   onActualizar: () => void;
   onCobrar: () => void;
   onFinalizar: () => void;
   onImprimir: () => void;
   onCambiarEstado: () => void;
+  onAgregarFotos: () => void;
+  onNuevaPeticion: () => void;
+  onResolverPeticion: (peticionId: string, estado: "autorizada" | "rechazada") => void;
 }) {
   const dias = diasEnTaller(item.fecha_ingreso, item.fecha_salida);
   const finalizado = item.estado_tecnico === "Finalizado";
@@ -481,6 +429,58 @@ function DetallePanel({
         <div style={{ fontSize: 14, color: "var(--text)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px" }}>{item.detalle}</div>
       </div>
       <div>
+        <div style={rotulo}>Cómo entró</div>
+        <GaleriaFotos fotos={anguloAFotos(item.fotos_entrada)} vacio="Esta orden se abrió antes de que se pidieran fotos." />
+      </div>
+
+      <div>
+        <div style={{ ...rotulo, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span>Fotos del arreglo</span>
+          {!finalizado && <button onClick={onAgregarFotos} style={{ ...ghostBtn, fontSize: 11, padding: "4px 10px" }}>+ Agregar foto</button>}
+        </div>
+        <GaleriaFotos fotos={(item.fotos_libres ?? []).map(f => ({ url: f.url, nota: f.nota }))} vacio="Sin fotos del daño ni de los repuestos." />
+      </div>
+
+      <div>
+        <div style={{ ...rotulo, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span>Peticiones y autorizaciones</span>
+          {!finalizado && <button onClick={onNuevaPeticion} style={{ ...ghostBtn, fontSize: 11, padding: "4px 10px" }}>+ Nueva petición</button>}
+        </div>
+        {(item.peticiones ?? []).length === 0
+          ? <div style={{ fontSize: 13, color: "var(--faint)", fontStyle: "italic" }}>Nadie ha pedido nada en esta orden.</div>
+          : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {(item.peticiones ?? []).map(pt => (
+                <div key={pt.id} style={{
+                  background: "var(--soft2)", borderRadius: 10, padding: "10px 12px",
+                  borderLeft: `3px solid ${pt.estado === "autorizada" ? "var(--ok)" : pt.estado === "rechazada" ? "var(--bad)" : "var(--warn)"}`,
+                }}>
+                  <div style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.45 }}>{pt.texto}</div>
+                  <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 3 }}>
+                    {pt.pedida_por.toUpperCase()} · {formatDate(pt.fecha)}
+                  </div>
+                  {pt.estado === "pendiente" ? (
+                    puedeAutorizar && !finalizado ? (
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <button onClick={() => onResolverPeticion(pt.id, "autorizada")} style={{ ...ghostBtn, fontSize: 11, padding: "5px 12px", background: "var(--ok-soft)", color: "var(--ok-ink)" }}>Autorizar</button>
+                        <button onClick={() => onResolverPeticion(pt.id, "rechazada")} style={{ ...ghostBtn, fontSize: 11, padding: "5px 12px", background: "var(--bad-soft)", color: "var(--bad-ink)" }}>No autorizar</button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--warn-ink)", marginTop: 5 }}>Esperando respuesta</div>
+                    )
+                  ) : (
+                    <div style={{ fontSize: 11.5, fontWeight: 700, marginTop: 5, color: pt.estado === "autorizada" ? "var(--ok-ink)" : "var(--bad-ink)" }}>
+                      {pt.estado === "autorizada" ? "Autorizada" : "No autorizada"} por {(pt.resuelta_por ?? "").toUpperCase()} · {formatDate(pt.resuelta_fecha ?? null)}
+                      {pt.nota ? ` — ${pt.nota}` : ""}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+
+      <div>
         <div style={rotulo}>Qué se le hizo</div>
         {item.trabajo_realizado
           ? <div style={{ fontSize: 14, color: "var(--text)", background: "var(--soft2)", borderRadius: 10, padding: "10px 14px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{item.trabajo_realizado}</div>
@@ -496,6 +496,12 @@ function DetallePanel({
               </span>
             ))}
           </div>
+        </div>
+      )}
+      {finalizado && (
+        <div>
+          <div style={rotulo}>Cómo salió</div>
+          <GaleriaFotos fotos={anguloAFotos(item.fotos_salida)} vacio="Esta orden se cerró antes de que se pidieran fotos de salida." />
         </div>
       )}
       {cobro.montoCobrado !== null && (
@@ -518,6 +524,12 @@ function DetallePanel({
       )}
     </div>
   );
+}
+
+/** Las 6 guiadas se guardan como {angulo: url}; la galería las quiere en orden y con su nombre. */
+function anguloAFotos(fotos: Record<string, string> | null | undefined): { url: string; nota: string }[] {
+  if (!fotos) return [];
+  return ANGULOS_FOTO.filter(a => fotos[a.key]).map(a => ({ url: fotos[a.key], nota: a.label }));
 }
 
 // ─── Print helper ──────────────────────────────────────────────────────────────
@@ -561,6 +573,12 @@ function imprimirOrden(item: TallerItem, motoLabel: string, extra: { clienteNomb
 <div class="field"><div class="label">Con que entro</div><div class="detalle">${escapeHtml(item.detalle)}</div></div>
 <div class="field" style="margin-top:16px"><div class="label">Que se le hizo</div><div class="detalle">${trabajoHtml || "Sin anotar"}</div></div>
 ${item.repuestos ? `<div class="field" style="margin-top:16px"><div class="label">Repuestos utilizados</div><div class="detalle">${escapeHtml(item.repuestos)}</div></div>` : ""}
+${(item.peticiones ?? []).length > 0 ? `<div class="field" style="margin-top:16px"><div class="label">Peticiones y autorizaciones</div><div class="detalle">${(item.peticiones ?? []).map(pt => {
+  const resp = pt.estado === "pendiente" ? "SIN RESPONDER"
+    : `${pt.estado === "autorizada" ? "AUTORIZADA" : "NO AUTORIZADA"} por ${escapeHtml((pt.resuelta_por ?? "").toUpperCase())} el ${fmtFechaCorta(pt.resuelta_fecha ?? null)}`;
+  return `&bull; ${escapeHtml(pt.texto)}<br><span style="font-size:11px;color:#555">${escapeHtml(pt.pedida_por.toUpperCase())} &middot; ${fmtFechaCorta(pt.fecha)} &mdash; ${resp}${pt.nota ? " &mdash; " + escapeHtml(pt.nota) : ""}</span>`;
+}).join("<br>")}</div></div>` : ""}
+${((item.fotos_entrada && Object.keys(item.fotos_entrada).length) || (item.fotos_salida && Object.keys(item.fotos_salida).length) || (item.fotos_libres ?? []).length) ? `<div class="field" style="margin-top:16px"><div class="label">Evidencias</div><div class="detalle">${Object.keys(item.fotos_entrada ?? {}).length} foto(s) de como entro &middot; ${Object.keys(item.fotos_salida ?? {}).length} de como salio &middot; ${(item.fotos_libres ?? []).length} del arreglo (se ven en el sistema)</div></div>` : ""}
 ${extra.montoCobrado != null ? `<div class="field" style="margin-top:16px"><div class="label">Cobrado al cliente</div><div class="value"><strong>${formatCOP(extra.montoCobrado)}</strong> (registrado como deuda en su cuenta)</div></div>` : ""}
 <div class="footer">Generado automaticamente por MotoGestion</div>
 <script>window.print();</script>
@@ -573,7 +591,7 @@ ${extra.montoCobrado != null ? `<div class="field" style="margin-top:16px"><div 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey, filter?: string) => void }) {
-  const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso, anotarTrabajoOrden, vincularDeuda } = useTaller();
+  const { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso, anotarTrabajoOrden, guardarEnOrden, vincularDeuda } = useTaller();
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
@@ -584,6 +602,10 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
   const { profile } = useAuth();
   const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
   const puedeCobrar = ROLES_COBRAN.includes(profile?.role ?? "");
+  // Quien autoriza una petición es la oficina — los mismos que pueden cobrarle el arreglo al
+  // cliente. El mecánico pide y anota; no se autoriza a sí mismo el repuesto.
+  const puedeAutorizar = puedeCobrar;
+  const quienSoy = profile?.nombre ?? "SISTEMA";
   const [showCobrar, setShowCobrar] = useState(false);
   // Al cerrar la orden de una moto cuyo cliente anda en una prestada: la moto quedó lista pero
   // todavía hay que devolvérsela (eso vive en Inmovilizaciones). Este aviso lo dice y lleva allá.
@@ -598,6 +620,12 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
   useBloquearScrollFondo(seleccionId !== null);
   const [showNueva, setShowNueva] = useState(false);
   const [showActualizar, setShowActualizar] = useState(false);
+  // Evidencias y peticiones (mig 150): fotos sueltas del arreglo, una petición nueva, y las 6
+  // fotos de cómo salió — que se piden AL CERRAR, no después: es la última vez que la moto está
+  // ahí para fotografiarla.
+  const [showFotos, setShowFotos] = useState(false);
+  const [showPeticion, setShowPeticion] = useState(false);
+  const [showCerrar, setShowCerrar] = useState(false);
   const [showCambioEstado, setShowCambioEstado] = useState(false);
   const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: Contrato; motoPlaca: string; clienteNombre: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
@@ -680,14 +708,54 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
     }
   }
 
-  async function handleFinalizar() {
+  /** Guarda fotos libres nuevas encima de las que ya tenía la orden (nunca las reemplaza). */
+  async function handleAgregarFotos(nuevas: FotoLibreLocal[]) {
+    if (!seleccionado || nuevas.length === 0) { setShowFotos(false); return; }
+    const { fotos, fallidas } = await subirLibresTaller(seleccionado.id, nuevas, quienSoy);
+    const previas: FotoLibreTaller[] = seleccionado.fotos_libres ?? [];
+    const { error: err } = await guardarEnOrden(seleccionado.id, { fotos_libres: [...previas, ...fotos] });
+    if (err) alert("No se pudieron guardar las fotos: " + err);
+    else if (fallidas > 0) alert(`${fallidas} foto(s) no subieron. Intenta de nuevo con esas.`);
+    setShowFotos(false);
+  }
+
+  async function handleNuevaPeticion(texto: string) {
     if (!seleccionado) return;
-    if (!seleccionado.trabajo_realizado?.trim() && !confirm("No has anotado qué se le hizo a la moto. ¿Finalizar igual?")) return;
-    const pregunta = prestamoSel
-      ? `¿Finalizar la orden? La moto queda lista para devolvérsela a ${nombreCorto}. Sigue marcada en taller hasta que se haga la devolución.`
-      : "¿Finalizar esta orden de taller? La moto saldrá del taller.";
-    if (!confirm(pregunta)) return;
+    const lista = agregarPeticion(seleccionado.peticiones, { id: nuevoId(), texto, pedidaPor: quienSoy, fechaISO: hoyISO() });
+    const { error: err } = await guardarEnOrden(seleccionado.id, { peticiones: lista });
+    if (err) alert("No se pudo guardar la petición: " + err);
+    setShowPeticion(false);
+  }
+
+  async function handleResolverPeticion(peticionId: string, estado: "autorizada" | "rechazada") {
+    if (!seleccionado) return;
+    const nota = estado === "rechazada" ? (prompt("¿Por qué no se autoriza? (opcional)") ?? "") : "";
+    const lista = resolverPeticion(seleccionado.peticiones, peticionId, estado, quienSoy, hoyISO(), nota);
+    const { error: err } = await guardarEnOrden(seleccionado.id, { peticiones: lista });
+    if (err) alert("No se pudo guardar la respuesta: " + err);
+  }
+
+  /** El botón de finalizar abre la ventana de cierre: ahí se toman las 6 fotos de cómo salió. */
+  function handleFinalizar() {
+    if (!seleccionado) return;
+    if (!seleccionado.trabajo_realizado?.trim() && !confirm("No has anotado qué se le hizo a la moto. ¿Cerrar igual?")) return;
+    const pendientes = peticionesPendientes(seleccionado.peticiones);
+    if (pendientes > 0 && !confirm(`Hay ${pendientes} petición(es) sin responder. ¿Cerrar igual?`)) return;
+    setShowCerrar(true);
+  }
+
+  async function cerrarOrden(fotosSalida: Partial<Record<AnguloFoto, string>>) {
+    if (!seleccionado) return;
     const fechaSalida = hoyISO();
+    const sal = await subirAngulosTaller(seleccionado.id, "salida", fotosSalida);
+    const { error: errFotos } = await guardarEnOrden(seleccionado.id, { fotos_salida: sal.fotos });
+    if (errFotos || sal.fallidas > 0) {
+      alert(errFotos
+        ? "No se pudieron guardar las fotos de salida: " + errFotos
+        : `${sal.fallidas} foto(s) de salida no subieron. La orden NO se cerró: intenta de nuevo.`);
+      return;
+    }
+    setShowCerrar(false);
     const { error: errFin, destino } = await finalizarProceso(seleccionado.id, seleccionado.moto_id);
     if (errFin) { alert("No se pudo finalizar la orden: " + errFin); return; }
     if (destino === "espera_devolucion") {
@@ -880,6 +948,10 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
                 onCambiarEstado={() => setShowCambioEstado(true)}
                 onActualizar={() => setShowActualizar(true)}
                 onCobrar={() => setShowCobrar(true)}
+                puedeAutorizar={puedeAutorizar}
+                onAgregarFotos={() => setShowFotos(true)}
+                onNuevaPeticion={() => setShowPeticion(true)}
+                onResolverPeticion={handleResolverPeticion}
                 onFinalizar={handleFinalizar}
                 onImprimir={() => imprimirOrden(seleccionado, getMotoLabel(seleccionado.moto_id), { clienteNombre: clienteSel?.nombre ?? null, montoCobrado: deudaSel?.monto ?? null })}
               />
@@ -898,10 +970,31 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
 
       {/* Modals */}
       {showNueva && (
-        <NuevaOrdenModal
+        <ModalIngresoTaller
           motos={motosParaTaller}
+          quienRegistra={quienSoy}
           onClose={() => setShowNueva(false)}
           onRegistrar={registrarIngreso}
+        />
+      )}
+
+      {/* Fotos sueltas del arreglo: el daño, el repuesto viejo, cómo quedó. */}
+      {showFotos && seleccionado && (
+        <ModalFotosLibres onClose={() => setShowFotos(false)} onGuardar={handleAgregarFotos} />
+      )}
+
+      {/* Una petición nueva. El mecánico la escribe; la oficina la responde. */}
+      {showPeticion && seleccionado && (
+        <ModalPeticion onClose={() => setShowPeticion(false)} onGuardar={handleNuevaPeticion} />
+      )}
+
+      {/* Cierre de la orden: las 6 fotos de cómo salió son la prueba de en qué estado se entregó. */}
+      {showCerrar && seleccionado && (
+        <ModalCerrarOrden
+          finLabel={finLabel}
+          motoLabel={getMotoLabel(seleccionado.moto_id)}
+          onClose={() => setShowCerrar(false)}
+          onCerrar={cerrarOrden}
         />
       )}
 
@@ -938,7 +1031,7 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
       )}
 
       {avisoDevolucion && (
-        <Modal onClose={() => setAvisoDevolucion(null)} title="Orden cerrada">
+        <ModalTaller onClose={() => setAvisoDevolucion(null)} title="Orden cerrada">
           <div style={{ display: "grid", gap: 14, fontSize: 14, color: "var(--text)", lineHeight: 1.5 }}>
             <div>
               La <strong>{avisoDevolucion.placa}</strong> quedó lista, pero <strong>{avisoDevolucion.clienteNombre}</strong> todavía anda en la moto prestada.
@@ -953,11 +1046,11 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
               )}
             </div>
           </div>
-        </Modal>
+        </ModalTaller>
       )}
 
       {showCambioEstado && seleccionado && (
-        <Modal onClose={() => setShowCambioEstado(false)} title="Cambiar estado">
+        <ModalTaller onClose={() => setShowCambioEstado(false)} title="Cambiar estado">
           <div style={{ display: "grid", gap: 10 }}>
             {ESTADOS.filter((e) => e !== "Finalizado").map((e) => {
               const { bg, color } = ESTADO_COLORS[e];
@@ -987,7 +1080,7 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
             })}
             <button onClick={() => setShowCambioEstado(false)} style={{ ...dangerBtn, marginTop: 4 }}>Cancelar</button>
           </div>
-        </Modal>
+        </ModalTaller>
       )}
 
       {tiempoFueraModal && (

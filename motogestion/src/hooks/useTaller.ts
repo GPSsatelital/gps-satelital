@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { estadoMotoTrasLiberar } from "./useMotos";
 import { hoyISO } from "../utils/fecha";
-import { anotarTrabajo } from "../utils/taller";
+import { anotarTrabajo, type FotoLibreTaller, type PeticionTaller } from "../utils/taller";
 
 export type TallerEstado = "Pendiente" | "En diagnóstico" | "En reparación" | "Listo para salida" | "Finalizado";
 
@@ -18,6 +18,13 @@ export type TallerItem = {
   trabajo_realizado: string | null;
   /** La deuda que se le registró al cliente por este arreglo; null = no se le cobró (mig 125). */
   deuda_id: string | null;
+  /** Las 6 fotos guiadas de cómo entró y cómo salió, por ángulo (mig 150). */
+  fotos_entrada: Record<string, string> | null;
+  fotos_salida: Record<string, string> | null;
+  /** Fotos sueltas del arreglo: el daño, el repuesto viejo (mig 150). */
+  fotos_libres: FotoLibreTaller[] | null;
+  /** Lo que se pidió durante el arreglo y quién lo autorizó (mig 150). */
+  peticiones: PeticionTaller[] | null;
   fecha_ingreso: string;
   fecha_salida: string | null;
   created_at: string;
@@ -70,12 +77,19 @@ export function useTaller() {
     };
   }, [fetchTaller]);
 
-  async function registrarIngreso(nuevo: NuevoTallerItem) {
-    const { error: errTaller } = await supabase.from("taller").insert(nuevo);
+  /**
+   * Crea la orden y deja la moto "En taller".
+   *
+   * Devuelve el `id` porque las fotos se suben DESPUÉS (van a `taller/{id}/...` en el bucket).
+   * `maybeSingle`: si la RLS deja insertar pero no leer la fila de vuelta, el insert igual quedó
+   * hecho — se devuelve id null y la pantalla avisa en vez de dar la orden por fallida.
+   */
+  async function registrarIngreso(nuevo: NuevoTallerItem): Promise<{ error: string | null; id?: string | null }> {
+    const { data, error: errTaller } = await supabase.from("taller").insert(nuevo).select("id").maybeSingle();
     if (errTaller) return { error: errTaller.message };
 
     const { error: errMoto } = await supabase.from("motos").update({ estado: "Mantenimiento" }).eq("id", nuevo.moto_id);
-    return { error: errMoto?.message ?? null };
+    return { error: errMoto?.message ?? null, id: (data as { id: string } | null)?.id ?? null };
   }
 
   async function actualizarEstadoTaller(id: string, estado_tecnico: TallerEstado) {
@@ -115,11 +129,17 @@ export function useTaller() {
     return { error: error?.message ?? null };
   }
 
+  /** Guarda las fotos (guiadas de entrada/salida, o las libres) y las peticiones de la orden. */
+  async function guardarEnOrden(id: string, campos: Partial<Pick<TallerItem, "fotos_entrada" | "fotos_salida" | "fotos_libres" | "peticiones">>) {
+    const { error } = await supabase.from("taller").update(campos).eq("id", id);
+    return { error: error?.message ?? null };
+  }
+
   /** Deja ligada la orden a la deuda que se le registró al cliente por este arreglo. */
   async function vincularDeuda(id: string, deudaId: string) {
     const { error } = await supabase.from("taller").update({ deuda_id: deudaId }).eq("id", id);
     return { error: error?.message ?? null };
   }
 
-  return { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso, anotarTrabajoOrden, vincularDeuda };
+  return { taller, loading, error, registrarIngreso, actualizarEstadoTaller, finalizarProceso, anotarTrabajoOrden, guardarEnOrden, vincularDeuda };
 }

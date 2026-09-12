@@ -566,12 +566,22 @@ export function generarHTMLAcuerdoPago(
   cliente: Cliente,
   moto: Moto | null,
   deudas: Array<{ concepto: string; monto_pendiente: number }>,
-  convenio: { deuda_total: number; cuota_por_periodo: number; numero_cuotas: number; firma_url?: string | null },
+  convenio: {
+    deuda_total: number; cuota_por_periodo: number; numero_cuotas: number; firma_url?: string | null;
+    // La acompañante como CODEUDORA SOLIDARIA (mig 151). Si no firmó, el documento sale igual
+    // que siempre: una sola caja de firma.
+    firma_acompanante_url?: string | null;
+    acompanante_nombre?: string | null;
+    acompanante_cedula?: string | null;
+  },
   // Fecha de terminación del contrato (aproximada) para que el cliente sepa hasta cuándo
   // va su contrato; si fue modificada alguna vez, el documento lo aclara.
   finContrato?: { fecha: string | null; modificada: boolean },
 ): string {
   const hoy = fmtFecha(hoyISO());
+  // La acompañante firma como codeudora solidaria (mig 151). Sin su firma el papel sale igual
+  // que siempre: no se le imprime una línea en blanco a nadie.
+  const firmoAcompanante = !!convenio.firma_acompanante_url && !!convenio.acompanante_nombre;
   // Agrupa las deudas pendientes por concepto.
   const porConcepto = new Map<string, number>();
   for (const d of deudas) {
@@ -630,6 +640,14 @@ export function generarHTMLAcuerdoPago(
         hasta saldar la deuda pendiente.
       </div>
 
+      ${firmoAcompanante ? `
+      <div style="text-align:justify;margin-bottom:14px">
+        Firma igualmente el/la señor(a) <strong>${(convenio.acompanante_nombre ?? "").toUpperCase()}</strong> con
+        C.C. <strong>${convenio.acompanante_cedula ?? ""}</strong>, en calidad de
+        <strong>CODEUDOR(A) SOLIDARIO(A)</strong>, respondiendo por esta obligación en las mismas
+        condiciones que el titular.
+      </div>` : ""}
+
       <div style="text-align:justify;margin-bottom:14px">
         Ante cualquier incumplimiento de este acuerdo, se procederá con la recolección del vehículo y la posible
         terminación del contrato.
@@ -649,6 +667,20 @@ export function generarHTMLAcuerdoPago(
           ${cajaHuella(cliente.autorizacion_datos_huella_url)}
         </div>
       </div>
+
+      ${firmoAcompanante ? `
+      <div style="display:flex;gap:24px;align-items:flex-end;margin-top:26px">
+        <div style="flex:1;text-align:center">
+          ${cajaFirma(convenio.firma_acompanante_url)}
+          <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:11px">
+            ${(convenio.acompanante_nombre ?? "").toUpperCase()}<br/>C.C. ${convenio.acompanante_cedula ?? ""} · Codeudor(a) solidario(a)
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Huella</div>
+          ${cajaHuella(cliente.acompanante_huella_url)}
+        </div>
+      </div>` : ""}
     </div>
   `;
 }

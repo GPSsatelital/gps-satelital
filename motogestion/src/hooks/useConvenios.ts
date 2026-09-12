@@ -20,6 +20,11 @@ export type Convenio = {
   aprobado_por: string | null;
   cubre_periodo_hasta: string | null; // si el convenio absorbió la cuota del período actual al crearse
   firma_url: string | null; // firma del acuerdo de pago (opcional)
+  /** La acompañante como CODEUDORA SOLIDARIA (mig 151). Nombre y cédula quedan congelados al
+   *  firmar: el papel firmado tiene que seguir diciendo quién firmó aunque editen al cliente. */
+  firma_acompanante_url?: string | null;
+  acompanante_nombre?: string | null;
+  acompanante_cedula?: string | null;
   /** La PARTITURA (mig 116): qué financia este convenio, en pesos y en orden. null = convenio
    *  viejo sin lista — el dueño se la escribe desde el editor, contra el acuerdo firmado. */
   partitura: RenglonPartitura[] | null;

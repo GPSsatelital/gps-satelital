@@ -194,6 +194,12 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [cuotaInput, setCuotaInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
   const [firma, setFirma] = useState<string | null>(null);
+  // LA ACOMPAÑANTE COMO CODEUDORA SOLIDARIA (mig 151, pedido del dueño 12-sep-2026): responde por
+  // la deuda en las mismas condiciones que el titular. Es OPCIONAL y solo aparece si ese cliente
+  // tiene acompañante registrada; su huella se muestra si la tiene, pero no bloquea (a diferencia
+  // de la del titular, que sí es requisito desde el 28-jul).
+  const [conAcompanante, setConAcompanante] = useState(false);
+  const [firmaAcomp, setFirmaAcomp] = useState<string | null>(null);
   const [verAcuerdo, setVerAcuerdo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,6 +219,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     return c ? clientes.find(cl => cl.id === c.cliente_id) ?? null : null;
   })();
   const tieneHuella = !!clienteDelContrato?.autorizacion_datos_huella_url;
+  const acompNombre = clienteDelContrato?.acompanante_nombre?.trim() || "";
+  const acompCedula = clienteDelContrato?.acompanante_cedula?.trim() || "";
+  const hayAcompanante = acompNombre.length > 0;
+  const acompTieneHuella = !!clienteDelContrato?.acompanante_huella_url;
   // Mientras los hooks cargan no se sabe: no se bloquea por un dato que aún no llegó.
   const huellaResuelta = !!clienteDelContrato;
   const [verificando, setVerificando] = useState(true);
@@ -412,6 +422,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       return;
     }
     if (!firma) { setError("Falta la firma del acuerdo. El cliente debe firmar antes de crear el convenio."); return; }
+    if (conAcompanante && !firmaAcomp) {
+      setError(`Marcaste que ${acompNombre.toUpperCase()} también firma, pero falta su firma. Fírmala o desmarca la casilla.`);
+      return;
+    }
     if (totalConvenios !== null && totalConvenios >= 3) { setError("Este contrato ya tiene 3 convenios (máximo permitido)."); return; }
 
     setError(null);
@@ -447,6 +461,16 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     if (errSub) { setError("No se pudo subir la firma: " + errSub.message); setGuardando(false); return; }
     const firmaUrl = supabase.storage.from("documentos").getPublicUrl(path).data.publicUrl;
 
+    // La de la codeudora va por el mismo camino: si falla la subida, el convenio no se crea.
+    let firmaAcompUrl: string | null = null;
+    if (conAcompanante && firmaAcomp) {
+      const pathA = `convenios/${contratoId}/acuerdo_codeudora_${Date.now()}.png`;
+      const blobA = await (await fetch(firmaAcomp)).blob();
+      const { error: errA } = await supabase.storage.from("documentos").upload(pathA, blobA, { contentType: "image/png", upsert: true });
+      if (errA) { setError("No se pudo subir la firma de la acompañante: " + errA.message); setGuardando(false); return; }
+      firmaAcompUrl = supabase.storage.from("documentos").getPublicUrl(pathA).data.publicUrl;
+    }
+
     const { error: err } = await supabase.from("convenios").insert({
       contrato_id: contratoId,
       numero_convenio: count + 1,
@@ -481,6 +505,15 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       // La MISMA cobertura con la que la base calculó la lista que el funcionario vio.
       cubre_periodo_hasta: cuotaSemana > 0 ? cubreParaBase : null,
       firma_url: firmaUrl,
+      // Las columnas de la codeudora (mig 151) solo se mandan si de verdad firmó. Así, mientras
+      // la migración no esté corrida, el convenio de siempre se crea igual que antes.
+      // Nombre y cédula CONGELADOS: el papel firmado hoy tiene que seguir diciendo quién firmó,
+      // aunque mañana le editen los datos al cliente.
+      ...(firmaAcompUrl ? {
+        firma_acompanante_url: firmaAcompUrl,
+        acompanante_nombre: acompNombre,
+        acompanante_cedula: acompCedula,
+      } : {}),
     });
 
     setGuardando(false);
@@ -867,7 +900,12 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                     (contratoActual.moto_id ? motos.find(m => m.id === contratoActual.moto_id) : null) ?? null,
                     // Solo las deudas que quedaron MARCADAS: es lo que el cliente va a firmar.
                     deudasQueEntran.map(d => ({ concepto: d.concepto, monto_pendiente: Number(d.monto_pendiente) })),
-                    { deuda_total: meta, cuota_por_periodo: cuotaCalc, numero_cuotas: cuotasCalc, firma_url: firma },
+                    {
+                      deuda_total: meta, cuota_por_periodo: cuotaCalc, numero_cuotas: cuotasCalc, firma_url: firma,
+                      firma_acompanante_url: conAcompanante ? firmaAcomp : null,
+                      acompanante_nombre: conAcompanante ? acompNombre : null,
+                      acompanante_cedula: conAcompanante ? acompCedula : null,
+                    },
                     infoFinContrato(contratoActual),
                   ) }} />
               )}
@@ -880,6 +918,46 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
               <CanvasFirma key="firma-convenio" label="Firma del cliente" modal opcional={false} onChange={setFirma} />
             </div>
+
+            {/* La acompañante como codeudora solidaria. Solo si el cliente tiene una registrada:
+                sin nombre y cédula no hay a quién pedirle que firme. */}
+            {hayAcompanante && (
+              <div style={{ border: "1px solid var(--line2)", borderRadius: 12, padding: 12, background: "var(--soft2)", textAlign: "left" }}>
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={conAcompanante}
+                    onChange={e => { setConAcompanante(e.target.checked); if (!e.target.checked) setFirmaAcomp(null); }}
+                    style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0, cursor: "pointer" }}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>La acompañante también firma este acuerdo</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.45 }}>
+                      Firma como <strong>codeudora solidaria</strong>: responde por la deuda en las mismas
+                      condiciones que el titular.
+                    </span>
+                  </span>
+                </label>
+
+                {conAcompanante && (
+                  <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase" }}>
+                      {acompNombre}
+                      {acompCedula && <span style={{ fontWeight: 400, color: "var(--muted)", textTransform: "none" }}> · C.C. {acompCedula}</span>}
+                    </div>
+                    {!acompCedula && (
+                      <div style={{ fontSize: 12, color: "var(--warn-ink)" }}>
+                        No tiene cédula registrada. Puede firmar igual, pero el acuerdo saldrá sin su número de documento.
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: acompTieneHuella ? "var(--ok-ink)" : "var(--muted)" }}>
+                      Huella: {acompTieneHuella ? "registrada" : "sin registrar (no impide firmar)"}
+                    </div>
+                    <CanvasFirma key="firma-codeudora" label={`Firma de ${acompNombre}`} modal opcional={false} onChange={setFirmaAcomp} />
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && (
               <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>

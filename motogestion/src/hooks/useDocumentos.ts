@@ -662,7 +662,7 @@ export function generarHTMLAcuerdoPago(
       <div style="margin:20px 0 30px">Acepto cabalmente.</div>
 
       ${soloFirmoAcompanante ? "" : `
-      <div style="display:flex;gap:24px;align-items:flex-end;margin-top:20px">
+      <div style="display:flex;gap:24px;align-items:flex-end;margin-top:20px" data-firma="titular">
         <div style="flex:1;text-align:center">
           ${cajaFirma(convenio.firma_url ?? cliente.autorizacion_datos_firma_url)}
           <div style="border-top:1px solid #0f172a;padding-top:6px;font-size:11px">

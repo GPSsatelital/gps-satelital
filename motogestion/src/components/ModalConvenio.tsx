@@ -228,6 +228,11 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const acompCedula = clienteDelContrato?.acompanante_cedula?.trim() || "";
   const hayAcompanante = acompNombre.length > 0;
   const acompTieneHuella = !!clienteDelContrato?.acompanante_huella_url;
+  // LA HUELLA: la de ella vale como la de él (dueño, 12-sep: "ambos en este caso es como si fueran
+  // lo mismo"). La regla del 28-jul sigue viva — sin huella no hay acuerdo — pero se cumple con la
+  // que haya registrada de cualquiera de los dos. Antes bloqueaba mirando SOLO la del titular, así
+  // que un cliente sin huella no podía hacer convenio ni acompañado.
+  const hayAlgunaHuella = tieneHuella || acompTieneHuella;
   // Mientras los hooks cargan no se sabe: no se bloquea por un dato que aún no llegó.
   const huellaResuelta = !!clienteDelContrato;
   const [verificando, setVerificando] = useState(true);
@@ -422,8 +427,10 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       return;
     }
     if (!fechaLimite) { setError("Selecciona la fecha límite (la de la última cuota)."); return; }
-    if (huellaResuelta && !tieneHuella) {
-      setError(`${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
+    if (huellaResuelta && !hayAlgunaHuella) {
+      setError(hayAcompanante
+        ? `Ni ${clienteNombre.toUpperCase()} ni ${acompNombre.toUpperCase()} tienen la huella registrada. Regístrale la huella a alguno de los dos en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`
+        : `${clienteNombre.toUpperCase()} no tiene la huella registrada. Regístrasela primero en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`);
       return;
     }
     if (conAcompanante && !firmaAcomp) {
@@ -893,10 +900,18 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
             {/* La huella no se puede capturar desde acá (necesita el lector conectado y el
                 formulario del cliente): se avisa temprano y se dice a dónde ir, en vez de dejar
                 que llene todo el formulario y descubra el bloqueo al final. */}
-            {huellaResuelta && !tieneHuella && (
+            {huellaResuelta && !hayAlgunaHuella && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
-                ⛔ <strong>{clienteNombre.toUpperCase()} no tiene la huella registrada.</strong> Sin huella no se puede
-                crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá.
+                ⛔ <strong>{clienteNombre.toUpperCase()} no tiene la huella registrada.</strong>
+                {hayAcompanante ? ` Tampoco ${acompNombre.toUpperCase()}. Basta con la de uno de los dos: regístrasela a cualquiera en Clientes → el cliente → Editar, y vuelve acá.`
+                               : " Sin huella no se puede crear el convenio. Regístrasela en Clientes → el cliente → Editar, y vuelve acá."}
+              </div>
+            )}
+            {/* La de ella basta y ya está: se dice, para que nadie salga a buscar la del titular. */}
+            {huellaResuelta && !tieneHuella && acompTieneHuella && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
+                ✍️ {clienteNombre.toUpperCase()} no tiene huella registrada, pero sí {acompNombre.toUpperCase()}:
+                para el acuerdo vale igual. Puede firmar cualquiera de los dos.
               </div>
             )}
 
@@ -967,7 +982,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                       </div>
                     )}
                     <div style={{ fontSize: 12, color: acompTieneHuella ? "var(--ok-ink)" : "var(--muted)" }}>
-                      Huella: {acompTieneHuella ? "registrada" : "sin registrar (no impide firmar)"}
+                      Huella: {acompTieneHuella
+                        ? (tieneHuella ? "registrada" : "registrada — vale como la del titular")
+                        : "sin registrar (no impide firmar)"}
                     </div>
                     <CanvasFirma key="firma-codeudora" label={`Firma de ${acompNombre}`} modal opcional={false} onChange={setFirmaAcomp} />
                   </div>
@@ -996,8 +1013,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 // Basta con la firma de UNO de los dos (12-sep): el botón se habilita con la del
                 // titular o con la de la acompañante. Antes exigía la del titular y por eso, si él
                 // no estaba, no había forma de cerrar el acuerdo.
-                disabled={guardando || exito || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !tieneHuella)}
-                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !tieneHuella)) ? 0.6 : 1 }}
+                disabled={guardando || exito || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)}
+                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)) ? 0.6 : 1 }}
               >
                 {guardando ? "Guardando..." : meta > 0 ? `Firmar acuerdo por $ ${fmt(meta)}` : "Firmar acuerdo"}
               </button>

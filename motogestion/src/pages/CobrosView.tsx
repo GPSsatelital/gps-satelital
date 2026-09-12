@@ -89,6 +89,7 @@ import {
   diaPagoFrase,
   type ContratoCiclo,
 } from "../utils/cicloPago";
+import { marcaDeFirma } from "../utils/convenioFirmas";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
@@ -2564,6 +2565,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   <div style={{ fontWeight: 700, fontSize: 14, color: "var(--warn-ink)" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>{convenioActual.concepto}</div>
                   <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 2, fontWeight: 600 }}>📅 Creado el {fmtFecha(convenioActual.created_at.slice(0, 10))}</div>
+                  {/* Quién firmó: si lo firmó la acompañante hay que verlo sin abrir el papel. */}
+                  {marcaDeFirma(convenioActual) && (
+                    <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 4, fontWeight: 600 }}>✍️ {marcaDeFirma(convenioActual)}</div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                     <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
                     <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />

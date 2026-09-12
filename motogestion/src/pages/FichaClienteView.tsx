@@ -17,6 +17,7 @@ import LineaTiempo from "../components/LineaTiempo";
 import { formatDiaPago } from "../utils/cicloPago";
 import { fmtFechaLarga } from "../utils/fecha";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
+import { marcaDeFirma } from "../utils/convenioFirmas";
 import { useAuth } from "../contexts/AuthContext";
 import { useBackGuard } from "../contexts/BackNav";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
@@ -995,6 +996,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 4 }}>
                       Cuota: <strong>${fmt(cv.cuota_por_periodo)}</strong> · {cv.cuotas_pagadas}/{cv.numero_cuotas} cuotas · Vence: {fmtFecha(cv.fecha_limite)}
                     </div>
+                    {marcaDeFirma(cv) && (
+                      <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 4, fontWeight: 600 }}>✍️ {marcaDeFirma(cv)}</div>
+                    )}
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(cv.deuda_total)}</div>

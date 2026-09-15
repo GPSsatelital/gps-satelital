@@ -27,7 +27,7 @@ import { useNominaCierres } from "../hooks/useNominaCierres";
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemanaDetallada, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { nominaSemanaDetallada, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
@@ -544,6 +544,10 @@ export default function ReportesView({ onNavigate }: Props) {
       eventos: eventosNomina,
       convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, created_at: cv.created_at })),
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
+      // Quién trajo a cada cliente (mig 153): $30.000 a esa persona en la semana de la entrega.
+      referidos: clientes
+        .filter(c => c.referido_por_funcionario)
+        .map(c => ({ cliente_id: c.id, funcionario_id: c.referido_por_funcionario! })),
     });
   }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas]);
   const nominas = nominaDetalle.nominas;
@@ -1670,10 +1674,11 @@ export default function ReportesView({ onNavigate }: Props) {
         const fmtDia = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
         const nombreDe = (id: string | null) => id === null ? null : (subadmins.find(s => s.id === id)?.nombre ?? "COBRADOR");
         const TIPO_TXT: Record<TipoGestion, string> = {
-          ciclo: "Ciclo a tiempo", ciclo_atrasado: "Ciclo atrasado (30%)",
+          ciclo: "Ciclo a tiempo", ciclo_atrasado: `Ciclo atrasado (${PCT_ATRASADO}%)`,
           prorrateo: "Prorrateo", retencion: "Retención",
-          cuota_convenio: "Convenio de retenida (30%)",
+          cuota_convenio: `Convenio de retenida (${PCT_ATRASADO}%)`,
           visita: "Visita domiciliaria",
+          referido: "Referido propio (lo trajo)",
         };
         const conCobrador = nominasVista.filter(n => n.subadminId !== null);
         const sinCobrador = nominasVista.find(n => n.subadminId === null);
@@ -1694,7 +1699,7 @@ export default function ReportesView({ onNavigate }: Props) {
             {/* La regla, visible siempre: el texto se explica solo */}
             <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
               Se paga por <b>moto gestionada</b>: ciclo cobrado a tiempo <b>$ {fmt(VALOR_CICLO)}</b> (una vez por ciclo del cliente) ·
-              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> (30%) ·
+              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> ({PCT_ATRASADO}%) ·
               retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
               en mora sin pagar y sin retener <b>$ 0</b>. Los contratos <b>Diarios no entran</b>.
               <br />
@@ -1834,6 +1839,7 @@ export default function ReportesView({ onNavigate }: Props) {
                         {n.cuotasConvenio > 0 && <span>{n.cuotasConvenio} cuota{n.cuotasConvenio === 1 ? "" : "s"} de convenio · </span>}
                         {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
                         {n.visitas > 0 && <span>{n.visitas} visita{n.visitas === 1 ? "" : "s"} · </span>}
+                        {n.referidos > 0 && <span>{n.referidos} referido{n.referidos === 1 ? "" : "s"} · </span>}
                         {n.renglones.length} gestiones
                       </div>
                       {/* CUÁNTAS TIENE vs CUÁNTAS PAGARON (15-sep). Antes solo se veía lo que se

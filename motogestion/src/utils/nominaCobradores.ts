@@ -6,7 +6,7 @@ import { proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPag
 //   · Ciclo cobrado A TIEMPO ............ $7.500   (semanal cada semana, quincenal cada 15 días,
 //                                                   mensual al mes — "una vez por ciclo")
 //   · PRORRATEO cobrado ................. $7.500   (el primer cobro real de la moto, completo)
-//   · Ciclo ATRASADO que entra después .. 30% = $2.250  (la gestión llegó tarde; el trabajo duro
+//   · Ciclo ATRASADO que entra después .. 50% = $3.750  (la gestión llegó tarde; el trabajo duro
 //                                                   de la retención ya se premió con los $10.000)
 //   · RETENCIÓN ......................... $17.500  (una sola vez: la semana en que se retiene)
 //   · En mora, ni pagó ni se retuvo ..... $0       (no hubo gestión)
@@ -15,11 +15,11 @@ import { proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPag
 //   · CONVENIO = parte del PAQUETE (regla del dueño, 23-ago: "solo se le va a pagar una sola
 //     agrupación de semana + convenio = 7.500, no por separados"). El cliente con convenio debe
 //     su semana + la cuota del convenio como UNA sola cosa: el renglón del ciclo nace cuando el
-//     paquete COMPLETO está cubierto; si cualquiera de las dos patas llegó tarde, vale el 30%;
+//     paquete COMPLETO está cubierto; si cualquiera de las dos patas llegó tarde, vale el 50%;
 //     mientras falte una, $0 — "si no paga completo es como si la caja de la semana no se ha
 //     completado". Cuotas adelantadas dejan cubiertas las semanas que vienen, sin renglones
 //     sueltos (3 cuotas juntas = una gestión, no tres). Única excepción: la moto RETENIDA
-//     (contrato Suspendido, sin semanas corriendo) paga $2.250 por semana en que entre cuota.
+//     (contrato Suspendido, sin semanas corriendo) paga $3.750 por semana en que entre cuota.
 //
 // Solo SUBADMIN con motos asignadas. Los DIARIOS quedan por fuera (decisión del dueño: "la idea
 // ahorita es que todos los diarios paguen solo a semanal").
@@ -55,9 +55,17 @@ export function vigiaCubre(desdeISO: string): boolean {
 }
 
 export const VALOR_CICLO = 7500;
-export const FRACCION_ATRASADO = 0.3;             // → $2.250
+// EL ATRASADO PASÓ DEL 30% AL 50% (decisión del dueño, 15-sep-2026). Sube CON ÉL la semana de
+// convenio de una moto guardada, que se apoya en esta misma tarifa desde el 23-ago — él lo
+// confirmó sabiéndolo ("cambia los dos por ahora al 50%").
+// 🔲 Queda abierto, desde el 1-sep, si la semana del retenido debe tener precio propio en vez de
+//    seguir pegada al atrasado. Ver memoria regla-nomina-cobradores.
+export const FRACCION_ATRASADO = 0.5;             // → $3.750
 export const EXTRA_RETENCION = 10000;             // → $17.500 la retención
 export const VALOR_ATRASADO = VALOR_CICLO * FRACCION_ATRASADO;
+/** El porcentaje para ESCRIBIRLO en pantalla y en el papel. Sale de la fracción, nunca a mano:
+ *  cuando pasó del 30% al 50% las etiquetas seguían diciendo "30%" al lado de $3.750. */
+export const PCT_ATRASADO = Math.round(FRACCION_ATRASADO * 100);
 export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
 
 /**
@@ -78,7 +86,21 @@ export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
  */
 export const VALOR_VISITA = 40000;
 
-export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio" | "visita";
+/**
+ * EL REFERIDO PROPIO — $30.000 (regla del dueño, 15-sep-2026): *"si alguno tiene un referido
+ * propio recomendado por él, que se agregue adicional $30.000"*.
+ *
+ *   · Lo cobra QUIEN LO TRAJO (`clientes.referido_por_funcionario`, mig 153), aunque la moto
+ *     después quede a cargo de otro. Es plata por conseguir el cliente, no por gestionarlo.
+ *   · Se paga en la semana en que el cliente RECIBE la moto — igual que la visita y que el
+ *     programa de referidos entre clientes. Antes de la entrega el negocio todavía no existe.
+ *   · UNA sola vez por cliente: su primera entrega. Si más adelante cambia de moto, no se
+ *     vuelve a pagar — no es un cliente nuevo.
+ *   · Es ADICIONAL: si además le hizo la visita, cobra las dos cosas. Son dos trabajos.
+ */
+export const VALOR_REFERIDO = 30000;
+
+export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio" | "visita" | "referido";
 
 /** Anotación del vigía (mig 112): una caja que se llenó, con fecha y por cuál camino. */
 export type EventoCaja = {
@@ -96,6 +118,12 @@ export type ConvenioNomina = {
    *  paquete no exige la pata del convenio. */
   periodos_exonerados?: number | null;
   created_at: string;
+};
+
+/** Quién del equipo trajo a cada cliente (mig 153). Solo los que tienen a alguien anotado. */
+export type ReferidoNomina = {
+  cliente_id: string;
+  funcionario_id: string;
 };
 
 export type VisitaNomina = {
@@ -134,6 +162,7 @@ export type NominaCobrador = {
   retenciones: number;
   cuotasConvenio: number;
   visitas: number;
+  referidos: number;
   total: number;
 };
 
@@ -151,7 +180,7 @@ export type NominaCobrador = {
  *   sin_contrato ........ la moto no tiene cliente (disponible, taller, liquidada). Nada que cobrar.
  *   diario .............. contrato diario: fuera de la nómina por decisión del dueño.
  *   retenida_sin_abono .. contrato Suspendido. La retención ya se pagó en SU semana; desde ahí solo
- *                         paga si el cliente sigue abonando el convenio ($2.250). No entró nada.
+ *                         paga si el cliente sigue abonando el convenio ($3.750). No entró nada.
  *   falta_convenio ...... la caja SÍ se llenó esta semana, pero falta la cuota del convenio. Es la
  *                         regla del paquete, no un descuido: el cliente pagó a medias.
  *   no_pago ............. contrato activo al que no se le llenó ninguna caja. Esto sí es mora.
@@ -260,8 +289,10 @@ export function nominaSemanaDetallada(opts: {
   convenios?: ConvenioNomina[];
   /** Las visitas domiciliarias — $40.000 a quien la hizo, al entregarse la moto (ver VALOR_VISITA). */
   visitas?: VisitaNomina[];
+  /** Quién trajo a cada cliente — $30.000 a esa persona al entregarse la moto (ver VALOR_REFERIDO). */
+  referidos?: ReferidoNomina[];
 }): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
-  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [] } = opts;
+  const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [], referidos = [] } = opts;
   // El interruptor MIRA LA SEMANA, no si existe algún evento suelto (ver VIGIA_DESDE): con
   // anotaciones incompletas el modo exacto deja fuera a todo el que no aparezca en ellas.
   const eventos = vigiaCubre(desde) ? (opts.eventos ?? null) : null;
@@ -523,6 +554,30 @@ export function nominaSemanaDetallada(opts: {
     });
   }
 
+  // ── 2d) EL REFERIDO PROPIO: $30.000 a QUIEN TRAJO al cliente, en la semana de la entrega ────
+  // Ver VALOR_REFERIDO. Va aparte de la visita a propósito: quien trae al cliente y quien va a
+  // su casa pueden ser dos personas distintas, y si es la misma cobra las dos cosas.
+  const referidoPagado = new Set<string>();
+  for (const rf of referidos) {
+    if (!rf.funcionario_id || referidoPagado.has(rf.cliente_id)) continue;
+    // Su PRIMERA entrega: si mañana cambia de moto no vuelve a pagarse — no es un cliente nuevo.
+    const c = contratos
+      .filter(x => x.cliente_id === rf.cliente_id && x.fecha_entrega && x.estado !== "Cancelado")
+      .sort((a, b) => dia(a.fecha_entrega!).localeCompare(dia(b.fecha_entrega!)))[0];
+    if (!c || !c.moto_id) continue;
+    const entrega = dia(c.fecha_entrega!);
+    if (entrega < desde || entrega > hasta) continue;
+    const moto = motoDe.get(c.moto_id);
+    if (!moto) continue;
+    referidoPagado.add(rf.cliente_id);
+    renglones.push({
+      motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—",
+      cliente: clientesPorId.get(rf.cliente_id) ?? "—",
+      tipo: "referido", fecha: entrega, valor: VALOR_REFERIDO,
+      cobradorId: rf.funcionario_id,        // lo cobra quien lo trajo, no el dueño de la moto
+    });
+  }
+
   // ── 2c) LA RETENCIÓN ABSORBE SU SEMANA ──────────────────────────────────────────────────────
   //
   // 🔴 REGLA DEL DUEÑO (7-sep-2026, textual): "se le paga solamente lo de la retención, que son
@@ -533,14 +588,16 @@ export function nominaSemanaDetallada(opts: {
   //
   // O sea: en la semana en que se retuvo esa moto, los $17.500 cubren TODO lo de ese contrato —
   // aunque el cliente pague ahí mismo la semana atrasada para recuperarla. Sin esto se pagaban
-  // $17.500 + $2.250 por el mismo trabajo. Desde la semana siguiente todo corre normal (y para
+  // $17.500 + $3.750 por el mismo trabajo. Desde la semana siguiente todo corre normal (y para
   // los que quedaron con convenio, la pata del convenio va dentro del paquete, como siempre).
   const semanaDeRetencion = new Set<string>();
   for (const r of renglones) {
     if (r.tipo === "retencion") semanaDeRetencion.add(r.motoId + "|" + lunesDe(r.fecha));
   }
   const renglonesFinales = semanaDeRetencion.size === 0 ? renglones : renglones.filter(r =>
-    r.tipo === "retencion" || r.tipo === "visita"
+    // La visita y el referido NO son gestión de cobro de esa semana: son por traer al cliente y
+    // por ir a su casa. La retención no se los traga.
+    r.tipo === "retencion" || r.tipo === "visita" || r.tipo === "referido"
     || !semanaDeRetencion.has(r.motoId + "|" + lunesDe(r.fecha)));
 
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────
@@ -600,6 +657,7 @@ export function resumirRenglones(subadminId: string | null, renglones: GestionNo
     retenciones: rs.filter(r => r.tipo === "retencion").length,
     cuotasConvenio: rs.filter(r => r.tipo === "cuota_convenio").length,
     visitas: rs.filter(r => r.tipo === "visita").length,
+    referidos: rs.filter(r => r.tipo === "referido").length,
     total: rs.reduce((s, r) => s + r.valor, 0),
   };
 }

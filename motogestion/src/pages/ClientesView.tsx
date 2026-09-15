@@ -251,6 +251,7 @@ function emptyForm(): NuevoCliente {
     cedula: "",
     direccion: "",
     fuente_llegada: "",
+    referido_por_funcionario: null,
     telefono: "",
     mismo_whatsapp: true,
     whatsapp: "",
@@ -839,6 +840,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
       cedula: cliente.cedula,
       direccion: cliente.direccion,
       fuente_llegada: cliente.fuente_llegada,
+      referido_por_funcionario: cliente.referido_por_funcionario,
       telefono: cliente.telefono,
       mismo_whatsapp: cliente.mismo_whatsapp,
       whatsapp: cliente.whatsapp,
@@ -1195,6 +1197,26 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
             <div><div style={labelStyle}>Cédula</div><input style={inputStyle} value={data.cedula} onChange={(e) => update({ cedula: e.target.value })} /></div>
             <div><div style={labelStyle}>Dirección</div><input style={inputStyle} value={data.direccion} onChange={(e) => update({ direccion: e.target.value })} /></div>
             <div><div style={labelStyle}>Fuente de llegada</div><input style={inputStyle} value={data.fuente_llegada ?? ""} onChange={(e) => update({ fuente_llegada: e.target.value })} /></div>
+            {/* QUIÉN LO TRAJO (mig 153). Si es alguien del equipo, esa persona cobra $30.000 en su
+                nómina la semana en que este cliente reciba su moto. Va junto a "Fuente de llegada"
+                porque responde la misma pregunta —de dónde salió este cliente— pero con un nombre
+                al que sí se le puede pagar, en vez de un texto suelto. */}
+            <div>
+              <div style={labelStyle}>¿Alguien del equipo lo trajo?</div>
+              <select
+                style={inputStyle}
+                value={data.referido_por_funcionario ?? ""}
+                onChange={(e) => update({ referido_por_funcionario: e.target.value || null })}
+              >
+                <option value="">— Nadie / llegó por su cuenta —</option>
+                {subadmins.map(s2 => <option key={s2.id} value={s2.id}>{s2.nombre}</option>)}
+              </select>
+              {data.referido_por_funcionario && (
+                <div style={{ fontSize: 11.5, color: "var(--ok-ink)", marginTop: 4, lineHeight: 1.45 }}>
+                  Se le pagarán $ 30.000 en su nómina, una sola vez, cuando este cliente reciba su moto.
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

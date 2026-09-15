@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, nominaSemanaDetallada, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
+import { nominaSemana, nominaSemanaDetallada, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -594,5 +594,76 @@ describe("nominaSemanaDetallada — por qué NO se pagó cada moto", () => {
     const pagos = [pago("2026-08-17", 202000)];
     expect(nominaSemana({ ...base, pagos, contratos: [CONTRATO] }))
       .toEqual(nominaSemanaDetallada({ ...base, pagos, contratos: [CONTRATO] }).nominas);
+  });
+});
+
+// ── EL ATRASADO PASÓ AL 50% Y EL REFERIDO PROPIO VALE $30.000 (15-sep-2026) ──────────────────
+describe("el ciclo atrasado vale el 50% desde el 15-sep", () => {
+  it("son $3.750, no los $2.250 de antes", () => {
+    expect(VALOR_ATRASADO).toBe(3750);
+    expect(VALOR_CICLO).toBe(7500);
+  });
+
+  it("la semana de convenio de una moto guardada sube con él (decisión del dueño: los dos al 50%)", () => {
+    // Contrato Suspendido con convenio: su única gestión medible es la cuota que entra.
+    const n = nominaSemana({
+      ...SEMANA, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      contratos: [{ ...CONTRATO, estado: "Suspendido" }],
+      convenios: [{ contrato_id: "ct1", cuota_por_periodo: 50000, numero_cuotas: 10, created_at: "2026-07-27T10:00:00Z" }],
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-19", created_at: "2026-08-19T10:00:00Z", estado: "Confirmado", aplicado_convenio: 50000 }],
+    });
+    expect(n[0].cuotasConvenio).toBe(1);
+    expect(n[0].total).toBe(3750);
+  });
+});
+
+describe("el referido propio vale $30.000 a quien trajo al cliente", () => {
+  const CON_ENTREGA: ContratoNomina = { ...CONTRATO, fecha_entrega: "2026-08-19" };
+  const correrRef = (o: Record<string, unknown> = {}) => nominaSemana({
+    ...SEMANA, motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+    contratos: [CON_ENTREGA], pagos: [],
+    referidos: [{ cliente_id: "cl1", funcionario_id: "LUMAR" }],
+    ...o,
+  } as never);
+
+  it("se paga en la semana en que el cliente RECIBE la moto", () => {
+    const n = correrRef();
+    const lumar = n.find(x => x.subadminId === "LUMAR");
+    expect(lumar?.referidos).toBe(1);
+    expect(lumar?.total).toBe(VALOR_REFERIDO);
+    expect(lumar?.renglones[0]).toMatchObject({ tipo: "referido", cliente: "JUAN PEREZ", valor: 30000 });
+  });
+
+  it("lo cobra QUIEN LO TRAJO, no el dueño de la moto", () => {
+    // La moto es de PEDRO, pero el cliente lo trajo LUMAR.
+    const n = correrRef();
+    expect(n.find(x => x.subadminId === "LUMAR")?.referidos).toBe(1);
+    expect(n.find(x => x.subadminId === "PEDRO")).toBeUndefined();
+  });
+
+  it("si la entrega fue otra semana, esta semana no paga nada", () => {
+    expect(correrRef({ contratos: [{ ...CONTRATO, fecha_entrega: "2026-07-10" }] })).toHaveLength(0);
+  });
+
+  it("se paga UNA sola vez: su primera entrega, no cada moto que le den", () => {
+    // El mismo cliente con un contrato viejo y uno nuevo: manda el viejo, que no es de esta semana.
+    const n = correrRef({
+      contratos: [{ ...CONTRATO, fecha_entrega: "2026-07-10" }, { ...CONTRATO, id: "ct2", fecha_entrega: "2026-08-19" }],
+    });
+    expect(n).toHaveLength(0);
+  });
+
+  it("es ADICIONAL a la visita: si la misma persona hizo las dos, cobra $70.000", () => {
+    const n = correrRef({
+      visitas: [{ id: "v1", cliente_id: "cl1", realizada_por: "LUMAR", fecha: "2026-08-10", estado: "Realizada" }],
+    });
+    const lumar = n.find(x => x.subadminId === "LUMAR");
+    expect(lumar?.visitas).toBe(1);
+    expect(lumar?.referidos).toBe(1);
+    expect(lumar?.total).toBe(VALOR_VISITA + VALOR_REFERIDO);
+  });
+
+  it("sin nadie anotado, nada cambia respecto a como funcionaba antes", () => {
+    expect(correrRef({ referidos: [] })).toHaveLength(0);
   });
 });

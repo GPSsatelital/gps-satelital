@@ -1,5 +1,5 @@
 import type { NominaCobrador, GestionNomina, MotoSinGestion } from "./nominaCobradores";
-import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, totalesPorGrupo, TEXTO_SIN_GESTION } from "./nominaCobradores";
+import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_REFERIDO, PCT_ATRASADO, totalesPorGrupo, TEXTO_SIN_GESTION } from "./nominaCobradores";
 
 // EL DESPRENDIBLE DE NÓMINA DE UN COBRADOR — pedido textual del dueño (22-ago): "debe ser un
 // documento detallado para que cada cobrador o subadmin pueda verificar bien qué le están
@@ -22,11 +22,12 @@ function fechaLarga(iso: string) {
 
 const TIPO_LABEL: Record<GestionNomina["tipo"], string> = {
   ciclo: "Ciclo a tiempo",
-  ciclo_atrasado: "Ciclo atrasado (30%)",
+  ciclo_atrasado: `Ciclo atrasado (${PCT_ATRASADO}%)`,
   prorrateo: "Prorrateo (primer cobro)",
   retencion: "Retención",
-  cuota_convenio: "Convenio de retenida (30%)",
+  cuota_convenio: `Convenio de retenida (${PCT_ATRASADO}%)`,
   visita: "Visita domiciliaria",
+  referido: "Referido propio (lo trajo)",
 };
 
 /**
@@ -116,6 +117,7 @@ export function htmlDesprendibleNomina(
     ${nomina.ciclosAtrasados > 0 ? `<tr><td>${nomina.ciclosAtrasados} ciclo${nomina.ciclosAtrasados === 1 ? "" : "s"} atrasado${nomina.ciclosAtrasados === 1 ? "" : "s"} × ${cop(VALOR_ATRASADO)}</td><td class="num">${cop(nomina.ciclosAtrasados * VALOR_ATRASADO)}</td></tr>` : ""}
     ${nomina.cuotasConvenio > 0 ? `<tr><td>${nomina.cuotasConvenio} semana${nomina.cuotasConvenio === 1 ? "" : "s"} de convenio de retenida × ${cop(VALOR_ATRASADO)}</td><td class="num">${cop(nomina.cuotasConvenio * VALOR_ATRASADO)}</td></tr>` : ""}
     ${nomina.retenciones > 0 ? `<tr><td>${nomina.retenciones} retenci${nomina.retenciones === 1 ? "ón" : "ones"} × ${cop(VALOR_RETENCION)}</td><td class="num">${cop(nomina.retenciones * VALOR_RETENCION)}</td></tr>` : ""}
+    ${nomina.referidos > 0 ? `<tr><td>${nomina.referidos} referido${nomina.referidos === 1 ? "" : "s"} propio${nomina.referidos === 1 ? "" : "s"} × ${cop(VALOR_REFERIDO)}</td><td class="num">${cop(nomina.referidos * VALOR_REFERIDO)}</td></tr>` : ""}
     <tr class="total-final"><td>TOTAL A PAGAR</td><td class="num">${cop(nomina.total)}</td></tr>
   </table>
 
@@ -153,14 +155,14 @@ export function htmlDesprendibleNomina(
   <div class="regla">
     <strong>Cómo se paga.</strong> Cada ciclo del cliente cobrado a tiempo vale ${cop(VALOR_CICLO)}
     (el semanal cada semana, el quincenal cada 15 días, el mensual al mes; el prorrateo del arranque
-    vale completo). Un ciclo que entra atrasado vale el 30% (${cop(VALOR_ATRASADO)}). El cliente con
+    vale completo). Un ciclo que entra atrasado vale el ${PCT_ATRASADO}% (${cop(VALOR_ATRASADO)}). El cliente con
     convenio debe su semana y la cuota del convenio como UN solo paquete: el ciclo se paga cuando el
-    paquete completo entra (si una parte llegó tarde, vale el 30%; mientras falte algo, no se paga) —
+    paquete completo entra (si una parte llegó tarde, vale el ${PCT_ATRASADO}%; mientras falte algo, no se paga) —
     las cuotas del convenio no se pagan por separado, y las adelantadas dejan cubiertas las semanas
-    que vienen. Una moto retenida cuyo cliente sigue pagando su convenio vale el 30% por semana.
+    que vienen. Una moto retenida cuyo cliente sigue pagando su convenio vale el ${PCT_ATRASADO}% por semana.
     Retener una moto vale ${cop(VALOR_RETENCION)} (${cop(VALOR_CICLO)} + $10.000 por el trabajo de
     guardarla), una sola vez, la semana en que se retiene. Una moto en mora que ni pagó ni se retuvo
-    no genera pago: no hubo gestión.
+    no genera pago: no hubo gestión. Traer un cliente nuevo (referido propio) vale ${cop(VALOR_REFERIDO)}, una sola vez, en la semana en que ese cliente recibe su moto.
   </div>
 
   <div class="cierre">

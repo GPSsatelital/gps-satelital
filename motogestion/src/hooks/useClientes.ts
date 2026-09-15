@@ -66,6 +66,8 @@ export type Cliente = {
   ingreso_por_cesion: boolean;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
+  /** Funcionario del equipo que trajo a este cliente (mig 153). Le paga $30.000 en la nómina. */
+  referido_por_funcionario: string | null;
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
   acompanante_huella_url: string | null;
@@ -103,6 +105,8 @@ export type NuevoCliente = {
   ingreso_por_cesion: boolean;
   referido_por_cedula: string | null;
   referido_por_nombre: string | null;
+  /** Funcionario del equipo que trajo a este cliente (mig 153). Le paga $30.000 en la nómina. */
+  referido_por_funcionario: string | null;
   autorizacion_datos_firma_url: string | null;
   autorizacion_datos_huella_url: string | null;
   acompanante_huella_url: string | null;
@@ -128,8 +132,20 @@ export function useClientes() {
 
   // Devuelve el id del cliente creado: quien registra su base inicial lo necesita para ligarle
   // el movimiento de plata (mig 091). Sin el id, esa entrada no tendría a quién pertenecer.
+  /**
+   * La columna `referido_por_funcionario` (mig 153) solo se manda si de verdad hay alguien
+   * anotado. Así, mientras esa migración no esté corrida, registrar y editar clientes sigue
+   * funcionando exactamente igual que antes en vez de reventar con "column does not exist".
+   * Mismo criterio que la firma de la acompañante en el convenio (mig 151).
+   */
+  function sinCamposNuevos<T extends { referido_por_funcionario?: string | null }>(d: T): T {
+    if (d.referido_por_funcionario) return d;
+    const { referido_por_funcionario: _omitido, ...resto } = d;
+    return resto as T;
+  }
+
   async function crearCliente(nuevo: NuevoCliente) {
-    const { data, error } = await supabase.from("clientes").insert(nuevo).select("id").single();
+    const { data, error } = await supabase.from("clientes").insert(sinCamposNuevos(nuevo)).select("id").single();
     return { error: error?.message ?? null, id: data?.id ?? null };
   }
 
@@ -146,7 +162,7 @@ export function useClientes() {
   }
 
   async function actualizarCliente(id: string, cambios: Partial<NuevoCliente>) {
-    const { error } = await supabase.from("clientes").update(cambios).eq("id", id);
+    const { error } = await supabase.from("clientes").update(sinCamposNuevos(cambios)).eq("id", id);
     return { error: error?.message ?? null };
   }
 

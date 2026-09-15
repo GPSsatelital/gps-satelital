@@ -1840,6 +1840,11 @@ export default function ReportesView({ onNavigate }: Props) {
                           paga: un cobrador con 99 motos veía 30 renglones y no sabía qué pasó con
                           las otras 69. */}
                       {(() => {
+                        // 🔴 SOLO MIENTRAS LA SEMANA SIGA ABIERTA. El reverso se calcula EN VIVO y una
+                        // semana cerrada muestra las cifras CONGELADAS: si un pago se rechaza después
+                        // del cierre, la misma tarjeta diría "se le pagó por esta moto" arriba y "no
+                        // pagó" abajo. Dos cuentas del mismo hecho no pueden convivir (regla del dinero).
+                        if (n.subadminId && cierreDe(n.subadminId)) return null;
                         const asignadas = motos.filter(m => m.subadmin_id === n.subadminId).length;
                         const noPagaron = sinGestionPorCobrador.get(n.subadminId ?? "")?.length ?? 0;
                         if (asignadas === 0) return null;
@@ -1899,8 +1904,10 @@ export default function ReportesView({ onNavigate }: Props) {
                         </button>
                       ))}
                     <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "", {
-                      sinGestion: sinGestionPorCobrador.get(n.subadminId ?? "") ?? [],
-                      motosAsignadas: motos.filter(m => m.subadmin_id === n.subadminId).length,
+                      // Una semana cerrada se imprime tal como se pagó: sin el reverso vivo, que
+                      // hoy podría decir otra cosa que las cifras congeladas de ese día.
+                      sinGestion: n.subadminId && cierreDe(n.subadminId) ? [] : (sinGestionPorCobrador.get(n.subadminId ?? "") ?? []),
+                      motosAsignadas: n.subadminId && cierreDe(n.subadminId) ? 0 : motos.filter(m => m.subadmin_id === n.subadminId).length,
                     })}
                       style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
                       🖨️ Desprendible
@@ -1930,6 +1937,8 @@ export default function ReportesView({ onNavigate }: Props) {
                           Va con placa y cliente para que el cobrador pueda reclamar con el papel
                           en la mano — mismo criterio que el desprendible. */}
                       {(() => {
+                        // Misma razón que el contador: en una semana ya pagada manda lo congelado.
+                        if (n.subadminId && cierreDe(n.subadminId)) return null;
                         const faltantes = sinGestionPorCobrador.get(n.subadminId ?? "") ?? [];
                         if (faltantes.length === 0) return null;
                         const porMotivo = [...new Set(faltantes.map(f => f.motivo))]

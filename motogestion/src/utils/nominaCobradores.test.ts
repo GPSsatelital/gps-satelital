@@ -396,7 +396,7 @@ describe("🔴 semana anterior al vigía: las anotaciones sueltas NO pueden tapa
   });
 });
 
-// ── LA VISITA DOMICILIARIA — $30.000 (regla del dueño; valor confirmado el 1-sep) ────────────
+// ── LA VISITA DOMICILIARIA — $40.000 (regla del dueño; subido desde $30.000 el 15-sep) ───────
 // La cobra QUIEN LA HIZO, en la semana en que se ENTREGA la moto, y se revierte si la validación
 // dice que la moto no duerme donde el cliente declaró ("se paga por dejar el dato CIERTO").
 describe("visitas domiciliarias", () => {

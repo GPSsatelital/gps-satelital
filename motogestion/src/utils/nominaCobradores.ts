@@ -61,8 +61,12 @@ export const VALOR_ATRASADO = VALOR_CICLO * FRACCION_ATRASADO;
 export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
 
 /**
- * LA VISITA DOMICILIARIA — $30.000, regla del dueño (valor confirmado el 1-sep-2026; la
- * condición venía del 30-jul con el rol VISITADOR).
+ * LA VISITA DOMICILIARIA — $40.000, regla del dueño (subido de $30.000 el 15-sep-2026; el valor
+ * anterior venía del 1-sep y la condición del 30-jul, con el rol VISITADOR).
+ *
+ * 🔴 El cambio NO toca lo ya pagado: `nomina_cierres` (mig 120) guarda las cifras CONGELADAS de
+ * cada semana cerrada y nunca las recalcula. Las semanas ABIERTAS sí se recalculan al abrir la
+ * pantalla, así que toda visita todavía sin pagar pasa a valer $40.000.
  *
  *   · La paga QUIEN LA HIZO (`visitas.realizada_por`), no el dueño de la moto. Un cobrador que
  *     hace la visita de un cliente que después será suyo cobra las dos cosas.
@@ -72,7 +76,7 @@ export const VALOR_RETENCION = VALOR_CICLO + EXTRA_RETENCION;
  *     (dueño, 30-jul). Si la moto NO duerme donde el cliente declaró, esa visita no vale.
  *   · El portafolio sale solo: para cuando se paga, el cliente ya tiene moto y la moto tiene grupo.
  */
-export const VALOR_VISITA = 30000;
+export const VALOR_VISITA = 40000;
 
 export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio" | "visita";
 
@@ -207,7 +211,7 @@ export function nominaSemana(opts: {
   eventos?: EventoCaja[] | null;
   /** Los convenios del sistema — para pagar el 30% cuando ENTRA cada cuota (decisión del dueño). */
   convenios?: ConvenioNomina[];
-  /** Las visitas domiciliarias — $30.000 a quien la hizo, al entregarse la moto (ver VALOR_VISITA). */
+  /** Las visitas domiciliarias — $40.000 a quien la hizo, al entregarse la moto (ver VALOR_VISITA). */
   visitas?: VisitaNomina[];
 }): NominaCobrador[] {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [] } = opts;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
+import { nominaSemana, nominaSemanaDetallada, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -530,5 +530,69 @@ describe("la retención absorbe su semana (regla del dueño, 7-sep-2026)", () =>
     const lumar = n.find(x => x.subadminId === "LUMAR");
     expect(lumar?.total).toBe(VALOR_VISITA);
     expect(n.find(x => x.subadminId === "PEDRO")?.total).toBe(VALOR_RETENCION);
+  });
+});
+
+// ── EL REVERSO: las motos asignadas que NO generaron gestión ────────────────────────────────
+// Pedido del dueño (15-sep): "si tienen más motos asignadas por qué solo están saliendo las
+// gestiones que salen" + "quiero que salgan ahí también los que no pagaron". La nómina se armaba
+// desde los pagos, así que una moto sin gestión desaparecía sin dejar rastro.
+describe("nominaSemanaDetallada — por qué NO se pagó cada moto", () => {
+  const motos = [
+    { id: "m1", placa: "ABC12D", subadmin_id: "PEDRO", grupo: "PRADERA" },
+    { id: "m2", placa: "BBB22B", subadmin_id: "PEDRO", grupo: "PRADERA" },
+    { id: "m3", placa: "CCC33C", subadmin_id: null, grupo: "PRADERA" },
+  ];
+  const base = { ...SEMANA, motos, recepciones: [], clientesPorId: CLIENTES };
+  const detalle = (o: Record<string, unknown>) =>
+    nominaSemanaDetallada({ ...base, pagos: [], contratos: [CONTRATO], ...o } as never);
+
+  it("la moto que SÍ generó gestión no aparece en el reverso", () => {
+    const r = detalle({ pagos: [pago("2026-08-17", 202000)] });
+    expect(r.nominas[0].total).toBe(VALOR_CICLO);
+    expect(r.sinGestion.map(x => x.placa)).not.toContain("ABC12D");
+  });
+
+  it("contrato activo sin pagar = NO PAGÓ, con placa y cliente", () => {
+    const r = detalle({});
+    const abc = r.sinGestion.find(x => x.placa === "ABC12D");
+    expect(abc).toMatchObject({ motivo: "no_pago", cliente: "JUAN PEREZ", cobradorId: "PEDRO" });
+  });
+
+  it("moto sin contrato = SIN CLIENTE, no cuenta como que el cobrador no trabajó", () => {
+    expect(detalle({}).sinGestion.find(x => x.placa === "BBB22B")).toMatchObject({
+      motivo: "sin_contrato", cliente: "—",
+    });
+  });
+
+  it("la moto SIN cobrador no entra al reverso: no es plata de nadie", () => {
+    expect(detalle({}).sinGestion.map(x => x.placa)).not.toContain("CCC33C");
+  });
+
+  it("contrato Suspendido = RETENIDA que no abonó (la retención ya se pagó en su semana)", () => {
+    const r = detalle({ contratos: [{ ...CONTRATO, estado: "Suspendido" }] });
+    expect(r.sinGestion.find(x => x.placa === "ABC12D")?.motivo).toBe("retenida_sin_abono");
+  });
+
+  it("contrato diario = fuera por regla, no es mora del cobrador", () => {
+    const r = detalle({ contratos: [{ ...CONTRATO, forma_pago: "Diario" }] });
+    expect(r.sinGestion.find(x => x.placa === "ABC12D")?.motivo).toBe("diario");
+  });
+
+  it("llenó la caja pero le falta la cuota del convenio: FALTA CONVENIO, no 'no pagó'", () => {
+    // Convenio firmado 3 semanas antes: para el lunes 17 ya se le exigen cuotas, y no abonó
+    // ninguna. La caja de la semana SÍ se llenó, pero el paquete queda incompleto.
+    const r = detalle({
+      pagos: [pago("2026-08-17", 202000)],
+      convenios: [{ contrato_id: "ct1", cuota_por_periodo: 50000, numero_cuotas: 10, created_at: "2026-07-27T10:00:00Z" }],
+    });
+    expect(r.nominas).toHaveLength(0);
+    expect(r.sinGestion.find(x => x.placa === "ABC12D")?.motivo).toBe("falta_convenio");
+  });
+
+  it("nominaSemana sigue devolviendo lo mismo de siempre (no se rompió a quien ya la llamaba)", () => {
+    const pagos = [pago("2026-08-17", 202000)];
+    expect(nominaSemana({ ...base, pagos, contratos: [CONTRATO] }))
+      .toEqual(nominaSemanaDetallada({ ...base, pagos, contratos: [CONTRATO] }).nominas);
   });
 });

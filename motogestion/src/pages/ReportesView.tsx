@@ -27,7 +27,7 @@ import { useNominaCierres } from "../hooks/useNominaCierres";
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemana, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { nominaSemanaDetallada, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
@@ -531,9 +531,9 @@ export default function ReportesView({ onNavigate }: Props) {
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
   const { cerrarSemana, cierreDe } = useNominaCierres(lunesNomina, tab === "nomina");
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
-  const nominas = useMemo(() => {
-    if (tab !== "nomina") return [];
-    return nominaSemana({
+  const nominaDetalle = useMemo(() => {
+    if (tab !== "nomina") return { nominas: [], sinGestion: [] };
+    return nominaSemanaDetallada({
       desde: lunesNomina,
       hasta: domingoNomina,
       contratos,
@@ -546,6 +546,18 @@ export default function ReportesView({ onNavigate }: Props) {
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
     });
   }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas]);
+  const nominas = nominaDetalle.nominas;
+  // EL REVERSO (15-sep): las motos asignadas que NO generaron gestión, agrupadas por cobrador.
+  // Sin esto, una moto sin pago desaparecía de la pantalla y no había cómo distinguir "no trabajó"
+  // de "el sistema no lo contó" — que es justo lo que el dueño preguntó.
+  const sinGestionPorCobrador = useMemo(() => {
+    const m = new Map<string, typeof nominaDetalle.sinGestion>();
+    for (const x of nominaDetalle.sinGestion) {
+      if (!m.has(x.cobradorId)) m.set(x.cobradorId, []);
+      m.get(x.cobradorId)!.push(x);
+    }
+    return m;
+  }, [nominaDetalle]);
   /**
    * LO QUE SE MUESTRA. Si una semana ya se cerró, mandan las cifras CONGELADAS de ese día — no las
    * que daría el cálculo de hoy. Sin esto el sello decía "✓ Pagado" al lado de un total que seguía
@@ -1824,6 +1836,21 @@ export default function ReportesView({ onNavigate }: Props) {
                         {n.visitas > 0 && <span>{n.visitas} visita{n.visitas === 1 ? "" : "s"} · </span>}
                         {n.renglones.length} gestiones
                       </div>
+                      {/* CUÁNTAS TIENE vs CUÁNTAS PAGARON (15-sep). Antes solo se veía lo que se
+                          paga: un cobrador con 99 motos veía 30 renglones y no sabía qué pasó con
+                          las otras 69. */}
+                      {(() => {
+                        const asignadas = motos.filter(m => m.subadmin_id === n.subadminId).length;
+                        const noPagaron = sinGestionPorCobrador.get(n.subadminId ?? "")?.length ?? 0;
+                        if (asignadas === 0) return null;
+                        return (
+                          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                            <b style={{ color: "var(--text)" }}>{asignadas}</b> motos asignadas ·{" "}
+                            <b style={{ color: "var(--ok-ink)" }}>{asignadas - noPagaron}</b> con gestión ·{" "}
+                            <b style={{ color: noPagaron > 0 ? "var(--warn-ink)" : "var(--muted)" }}>{noPagaron}</b> sin gestión
+                          </div>
+                        );
+                      })()}
                       {/* De qué portafolio sale la plata de esta nómina (pedido del dueño):
                           la gestión de cada moto la paga el grupo dueño de esa moto. */}
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
@@ -1895,6 +1922,41 @@ export default function ReportesView({ onNavigate }: Props) {
                           <span style={{ flexShrink: 0, fontWeight: 800, fontVariantNumeric: "tabular-nums", width: 72, textAlign: "right" }}>$ {fmt(r.valor)}</span>
                         </div>
                       ))}
+                      {/* EL REVERSO: lo que NO se pagó, con el motivo de cada moto. Pedido del
+                          dueño (15-sep): "quiero que salgan ahí también los que no pagaron".
+                          Va con placa y cliente para que el cobrador pueda reclamar con el papel
+                          en la mano — mismo criterio que el desprendible. */}
+                      {(() => {
+                        const faltantes = sinGestionPorCobrador.get(n.subadminId ?? "") ?? [];
+                        if (faltantes.length === 0) return null;
+                        const porMotivo = [...new Set(faltantes.map(f => f.motivo))]
+                          .map(mv => ({ mv, lista: faltantes.filter(f => f.motivo === mv) }))
+                          // Primero lo que es gestión pendiente de verdad; al final lo que no tiene cliente.
+                          .sort((a, b) => a.lista.length - b.lista.length)
+                          .sort((a, b) => Number(a.mv === "sin_contrato") - Number(b.mv === "sin_contrato"));
+                        return (
+                          <div style={{ marginTop: 14, paddingTop: 10, borderTop: "2px dashed var(--line2)" }}>
+                            <div style={{ fontWeight: 800, fontSize: 12.5, color: "var(--warn-ink)", marginBottom: 6 }}>
+                              NO SE PAGÓ — {faltantes.length} moto{faltantes.length === 1 ? "" : "s"}
+                            </div>
+                            {porMotivo.map(({ mv, lista }) => (
+                              <div key={mv} style={{ marginBottom: 8 }}>
+                                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted2)", marginBottom: 2 }}>
+                                  {lista.length} · {TEXTO_SIN_GESTION[mv]}
+                                </div>
+                                {lista.map(f => (
+                                  <div key={f.motoId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12, minWidth: 0, opacity: mv === "sin_contrato" || mv === "diario" ? 0.6 : 1 }}>
+                                    <span style={{ fontWeight: 800, letterSpacing: 0.5, flexShrink: 0 }}>{f.placa}</span>
+                                    <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--faint)" }}>{f.grupo}</span>
+                                    <span style={{ flex: 1, minWidth: 0, textTransform: "uppercase", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.cliente}</span>
+                                    <span style={{ flexShrink: 0, fontWeight: 800, color: "var(--faint)", fontVariantNumeric: "tabular-nums", width: 72, textAlign: "right" }}>$ 0</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

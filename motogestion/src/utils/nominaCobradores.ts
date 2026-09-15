@@ -137,6 +137,44 @@ export type NominaCobrador = {
   total: number;
 };
 
+/**
+ * POR QUÉ ESTA MOTO NO PAGÓ ESTA SEMANA (15-sep-2026).
+ *
+ * 🔴 EL DEFECTO QUE CIERRA: la nómina se armaba EMPEZANDO por los pagos que entraron, así que una
+ * moto sin gestión simplemente no aparecía — ni en cero, ni con nota. Un cobrador con 99 motos
+ * veía 30 renglones y no había forma de saber qué pasó con las otras 69, ni de distinguir "no
+ * trabajó" de "el sistema no lo contó". Pedido del dueño: *"si tienen más motos asignadas por qué
+ * solo están saliendo las gestiones que salen"* y *"quiero que salgan ahí también los que no
+ * pagaron"*.
+ *
+ * Los cinco motivos son EXCLUYENTES y se deciden en este orden:
+ *   sin_contrato ........ la moto no tiene cliente (disponible, taller, liquidada). Nada que cobrar.
+ *   diario .............. contrato diario: fuera de la nómina por decisión del dueño.
+ *   retenida_sin_abono .. contrato Suspendido. La retención ya se pagó en SU semana; desde ahí solo
+ *                         paga si el cliente sigue abonando el convenio ($2.250). No entró nada.
+ *   falta_convenio ...... la caja SÍ se llenó esta semana, pero falta la cuota del convenio. Es la
+ *                         regla del paquete, no un descuido: el cliente pagó a medias.
+ *   no_pago ............. contrato activo al que no se le llenó ninguna caja. Esto sí es mora.
+ */
+export type MotivoSinGestion = "sin_contrato" | "diario" | "retenida_sin_abono" | "falta_convenio" | "no_pago";
+
+export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
+  sin_contrato: "Sin cliente (no hay nada que cobrar)",
+  diario: "Contrato diario (fuera de la nómina)",
+  retenida_sin_abono: "Retenida — no abonó el convenio esta semana",
+  falta_convenio: "Pagó la semana, le falta la cuota del convenio",
+  no_pago: "No pagó su semana",
+};
+
+export type MotoSinGestion = {
+  motoId: string;
+  placa: string;
+  grupo: string;
+  cliente: string;
+  cobradorId: string;
+  motivo: MotivoSinGestion;
+};
+
 export type ContratoNomina = ContratoCiclo & {
   /** Validación de dónde duerme la moto: si dice 'no_coincide', la visita no se paga. */
   ubicacion_moto_resultado?: "coincide" | "no_coincide" | null;
@@ -194,7 +232,16 @@ export function lunesDe(iso: string): string {
  *
  * @param clientesPorId  nombre del cliente por id — solo para que el desprendible sea legible.
  */
-export function nominaSemana(opts: {
+/**
+ * La nómina de la semana, SOLO los totales por cobrador. Envoltorio de `nominaSemanaDetallada`
+ * para no romper a quien ya la llamaba: una sola implementación, dos formas de pedirla.
+ */
+export function nominaSemana(opts: Parameters<typeof nominaSemanaDetallada>[0]): NominaCobrador[] {
+  return nominaSemanaDetallada(opts).nominas;
+}
+
+/** La nómina + el reverso: qué motos asignadas NO generaron gestión y por qué. */
+export function nominaSemanaDetallada(opts: {
   desde: string;
   hasta: string;
   contratos: ContratoNomina[];
@@ -213,7 +260,7 @@ export function nominaSemana(opts: {
   convenios?: ConvenioNomina[];
   /** Las visitas domiciliarias — $40.000 a quien la hizo, al entregarse la moto (ver VALOR_VISITA). */
   visitas?: VisitaNomina[];
-}): NominaCobrador[] {
+}): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [] } = opts;
   // El interruptor MIRA LA SEMANA, no si existe algún evento suelto (ver VIGIA_DESDE): con
   // anotaciones incompletas el modo exacto deja fuera a todo el que no aparezca en ellas.
@@ -223,6 +270,9 @@ export function nominaSemana(opts: {
   /** `contratoId|lunes` de cada semana que ya generó su renglón — para que la excepción de la
    *  retenida (1b) nunca pague encima de una semana ya pagada como ciclo. */
   const semanaConCiclo = new Set<string>();
+  /** Contratos cuya caja se llenó esta semana pero quedaron sin renglón porque falta la
+   *  cuota del convenio. Solo alimenta el desglose de lo NO pagado — no cambia ni un peso. */
+  const frenadoPorConvenio = new Set<string>();
   const eventosPorContrato = new Map<string, EventoCaja[]>();
   if (eventos) for (const e of eventos) {
     if (!eventosPorContrato.has(e.contrato_id)) eventosPorContrato.set(e.contrato_id, []);
@@ -328,7 +378,14 @@ export function nominaSemana(opts: {
         // una caja llena de una semana vieja puede volverse renglón esta semana, si la cuota
         // del convenio que le faltaba recién entró.
         const paq = fechaPaquete(exigencia, ev.fecha);
-        if (paq === null || paq < desde || paq > hasta) continue;
+        if (paq === null) {
+          // La caja SÍ se llenó esta semana, pero falta la pata del convenio. No es un renglón
+          // —es la regla del paquete— pero tampoco es "no pagó": se anota para poder decirle al
+          // cobrador la verdad exacta en el desglose de lo no pagado.
+          if (ev.fecha >= desde && ev.fecha <= hasta) frenadoPorConvenio.add(c.id);
+          continue;
+        }
+        if (paq < desde || paq > hasta) continue;
         const atrasada = lunesDe(exigencia) < lunesDe(paq);
         semanaConCiclo.add(c.id + "|" + lunesDe(paq));
         renglones.push({
@@ -383,7 +440,11 @@ export function nominaSemana(opts: {
         // Misma regla del paquete que el modo exacto: el renglón nace (y se fecha) cuando la
         // última pata entró — caja llena Y convenio al día hasta esa semana.
         const paq = fechaPaquete(exigencia, dia(p.fecha));
-        if (paq === null || paq < desde || paq > hasta) continue;
+        if (paq === null) {
+          if (dia(p.fecha) >= desde && dia(p.fecha) <= hasta) frenadoPorConvenio.add(c.id);
+          continue;
+        }
+        if (paq < desde || paq > hasta) continue;
         // A tiempo si la semana en que se exigía aún no había pasado cuando se completó
         // (llenarla antes de tiempo —prepago— también es a tiempo). Tarde = 30%.
         const atrasada = lunesDe(exigencia) < lunesDe(paq);
@@ -490,9 +551,35 @@ export function nominaSemana(opts: {
     porCobrador.get(sub)!.push(r);
   }
 
-  return [...porCobrador.entries()]
-    .map(([subadminId, rs]) => resumirRenglones(subadminId, rs))
-    .sort((a, b) => b.total - a.total);
+  // ── 4) EL REVERSO: las motos asignadas que NO generaron ni un renglón, con su motivo ────────
+  // Se recorre por MOTO (no por renglón): es la única forma de ver lo que falta. Las motos sin
+  // cobrador no entran — no son plata de nadie y ya se muestran aparte.
+  const conRenglon = new Set(renglonesFinales.map(r => r.motoId));
+  const sinGestion: MotoSinGestion[] = [];
+  for (const m of motos) {
+    if (!m.subadmin_id || conRenglon.has(m.id)) continue;
+    const c = contratos.find(x => x.moto_id === m.id && x.estado !== "Cancelado" && x.estado !== "Finalizado");
+    let motivo: MotivoSinGestion;
+    if (!c) motivo = "sin_contrato";
+    else if (c.forma_pago === "Diario") motivo = "diario";
+    else if (c.estado === "Suspendido") motivo = "retenida_sin_abono";
+    else if (frenadoPorConvenio.has(c.id)) motivo = "falta_convenio";
+    else if (c.estado === "Activo") motivo = "no_pago";
+    else motivo = "sin_contrato";
+    sinGestion.push({
+      motoId: m.id, placa: m.placa, grupo: m.grupo ?? "—",
+      cliente: c ? (clientesPorId.get(c.cliente_id) ?? "—") : "—",
+      cobradorId: m.subadmin_id, motivo,
+    });
+  }
+  sinGestion.sort((a, b) => a.placa.localeCompare(b.placa));
+
+  return {
+    nominas: [...porCobrador.entries()]
+      .map(([subadminId, rs]) => resumirRenglones(subadminId, rs))
+      .sort((a, b) => b.total - a.total),
+    sinGestion,
+  };
 }
 
 /**

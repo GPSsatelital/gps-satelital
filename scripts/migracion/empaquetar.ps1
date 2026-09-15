@@ -71,7 +71,8 @@ Write-Host "  [2/6] Memorias y conversaciones..." -ForegroundColor Green
 $origenProy = Join-Path $ClaudeDir "projects\$Proyecto"
 $destProy   = Join-Path $Paquete "claude\projects\$Proyecto"
 if ($SinConversaciones) {
-  robocopy $origenProy $destProy /MIR /NFL /NDL /NJH /NJS /NP /XF "*.jsonl" | Out-Null
+  # /E: sin esto, /MIR borraria del disco las conversaciones de una copia anterior completa.
+  robocopy $origenProy $destProy /E /NFL /NDL /NJH /NJS /NP /XF "*.jsonl" | Out-Null
   Write-Host "        (sin las conversaciones: solo memorias)" -ForegroundColor DarkGray
 } else {
   robocopy $origenProy $destProy /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
@@ -102,7 +103,7 @@ foreach ($mem in @(".mempalace", ".claude-mem")) {
 if (-not $SinPlugins) {
   Write-Host "  [5/6] Plugins de Claude..." -ForegroundColor Green
   $o = Join-Path $ClaudeDir "plugins"
-  if (Test-Path $o) { robocopy $o (Join-Path $Paquete "claude\plugins") /MIR /NFL /NDL /NJH /NJS /NP | Out-Null }
+  if (Test-Path $o) { robocopy $o (Join-Path $Paquete "claude\plugins") /E /NFL /NDL /NJH /NJS /NP | Out-Null }
 } else {
   Write-Host "  [5/6] Plugins: omitidos (-SinPlugins)" -ForegroundColor DarkGray
 }

@@ -69,13 +69,19 @@ robocopy (Join-Path $Paquete "repo") $Repo /MIR /NFL /NDL /NJH /NJS /NP /XD "nod
 
 # ── 2) Las memorias ───────────────────────────────────────────────────────────────────────────
 Write-Host "  [2/5] Memorias y conversaciones..." -ForegroundColor Green
-robocopy (Join-Path $Paquete "claude\projects\$Proyecto") (Join-Path $ClaudeDir "projects\$Proyecto") /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
+# /E y no /MIR a proposito: si el paquete vino liviano (-SinConversaciones), /MIR borraria del
+# PC destino los .jsonl que SI tenia. Agrega y actualiza, nunca borra.
+robocopy (Join-Path $Paquete "claude\projects\$Proyecto") (Join-Path $ClaudeDir "projects\$Proyecto") /E /NFL /NDL /NJH /NJS /NP | Out-Null
+# Las memorias SI quedan como espejo exacto: si se borro una a proposito, tiene que desaparecer.
+$memOrigen = Join-Path $Paquete "claude\projects\$Proyecto\memory"
+if (Test-Path $memOrigen) { robocopy $memOrigen (Join-Path $ClaudeDir "projects\$Proyecto\memory") /MIR /NFL /NDL /NJH /NJS /NP | Out-Null }
 
 # ── 3) Planes, skills, ajustes y plugins ──────────────────────────────────────────────────────
 Write-Host "  [3/5] Planes, skills y ajustes..." -ForegroundColor Green
 foreach ($carpeta in @("plans", "skills", "agents", "commands", "plugins")) {
   $o = Join-Path $Paquete "claude\$carpeta"
-  if (Test-Path $o) { robocopy $o (Join-Path $ClaudeDir $carpeta) /MIR /NFL /NDL /NJH /NJS /NP | Out-Null }
+  # /E: si el paquete vino sin plugins, no se borran los que este PC ya tenia.
+  if (Test-Path $o) { robocopy $o (Join-Path $ClaudeDir $carpeta) /E /NFL /NDL /NJH /NJS /NP | Out-Null }
 }
 foreach ($archivo in @("settings.json", "CLAUDE.md", "keybindings.json")) {
   $o = Join-Path $Paquete "claude\$archivo"

@@ -21,5 +21,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // `_medir-liquidacion` no es código de la app: es una herramienta de consola que escribe los
+  // HTML de una liquidación para medirlos con Chrome. Usa `node:fs` y `process`, que no existen
+  // en el navegador y no tienen tipos acá. Se ejecuta con MEDIR=1 y vitest, no con tsc.
+  "exclude": ["src/**/_*.test.ts"]
 }

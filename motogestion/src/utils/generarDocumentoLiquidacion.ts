@@ -80,29 +80,33 @@ export function htmlLiquidacion(
   /* Tamaño CARTA: es el papel que se usa acá. Todo el documento tiene que caber en UNA hoja —
      antes la constancia y las firmas se iban a una segunda página casi vacía. Carta (279mm) es
      más corta que A4 (297mm), así que si cabe en carta cabe también en el PDF, que se arma en A4. */
-  @page { size: letter; margin: 12mm; }
+  /* 10mm en vez de 12: el documento tiene que caber en UNA hoja. Con la tabla llena (ahorro,
+     base, deudas, daños) se pasaba a la segunda y el bloque de firmas — que no se puede partir —
+     se iba entero con ella, dejando una hoja con dos renglones. Medido con Chrome, no a ojo:
+     scripts/paginas.mjs. */
+  @page { size: letter; margin: 10mm; }
   /* El espacio se aprieta acá, en la hoja de siempre — NO dentro de @media print. El PDF que se
      guarda al firmar se arma con html2canvas, que renderiza en modo PANTALLA: cualquier ahorro
      que viva solo en @media print no lo ve, y el PDF sale con el tamaño viejo. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; padding: 26px; position: relative; }
-  h1 { font-size: 20px; text-align: center; margin-bottom: 2px; }
-  .subtitulo { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 14px; }
-  .seccion { margin-bottom: 12px; }
-  .seccion h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 7px; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 2px; }
+  .subtitulo { text-align: center; font-size: 11.5px; color: #64748b; margin-bottom: 10px; }
+  .seccion { margin-bottom: 9px; }
+  .seccion h2 { font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #0284c7; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 5px; }
   /* Los datos van en DOS columnas: uno debajo de otro gastaba media hoja en cuatro renglones. */
   .datos { display: flex; flex-wrap: wrap; gap: 2px 28px; }
   .fila { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 4px; flex: 1 1 44%; min-width: 0; }
   .fila span:first-child { color: #64748b; }
   .fila span:last-child { font-weight: 600; text-align: right; }
   .tabla { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  .tabla th, .tabla td { padding: 6px 10px; border: 1px solid #e2e8f0; text-align: left; font-size: 12px; }
+  .tabla th, .tabla td { padding: 4px 9px; border: 1px solid #e2e8f0; text-align: left; font-size: 11.5px; }
   .tabla th { background: #f8fafc; font-weight: 700; }
   .total-row td { font-weight: 700; background: #f1f5f9; }
   .saldo-positivo { color: #166534; font-size: 18px; font-weight: 800; }
   .saldo-negativo { color: #991b1b; font-size: 18px; font-weight: 800; }
-  .explica { margin-top: 10px; padding: 9px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11.5px; line-height: 1.5; color: #334155; }
-  .explica p { margin-bottom: 5px; }
+  .explica { margin-top: 8px; padding: 7px 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 11px; line-height: 1.45; color: #334155; }
+  .explica p { margin-bottom: 4px; }
   .explica p:last-child { margin-bottom: 0; }
   /* Una liquidación normal cabe en UNA hoja carta. Una con muchos renglones (varias deudas +
      varios daños) necesita dos, y eso está bien — lo que no puede pasar es que corte mal:
@@ -110,22 +114,23 @@ export function htmlLiquidacion(
   .cierre { page-break-inside: avoid; break-inside: avoid; }
   .explica, .seccion, .tabla tr { page-break-inside: avoid; break-inside: avoid; }
   .tabla thead { display: table-header-group; }   /* el encabezado se repite en la 2ª hoja */
-  .firmas { display: flex; gap: 26px; margin-top: 26px; align-items: flex-end; }
+  .firmas { display: flex; gap: 22px; margin-top: 16px; align-items: flex-end; }
   .firma-box { flex: 1; text-align: center; font-size: 12px; }
   /* La firma va GRANDE: es lo que da fe del documento. Se había apretado a 48px para que la hoja
      cupiera en carta y quedó ilegible (reclamo del dueño, 22-ago) — el espacio sobraba por otro
      lado (los datos en dos columnas ya habían liberado ~230px). */
-  .firma-trazo { height: 104px; display: flex; align-items: flex-end; justify-content: center; }
-  .firma-trazo img { max-height: 100px; max-width: 100%; }
-  .firma-linea { border-top: 1px solid #334155; padding-top: 8px; }
-  .huella-box { width: 110px; text-align: center; font-size: 11px; color: #64748b; }
-  .huella-cuadro { width: 92px; height: 92px; margin: 0 auto 5px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  /* El espacio en blanco para firmar: suficiente para una firma a mano, sin regalar media hoja. */
+  .firma-trazo { height: 68px; display: flex; align-items: flex-end; justify-content: center; }
+  .firma-trazo img { max-height: 66px; max-width: 100%; }
+  .firma-linea { border-top: 1px solid #334155; padding-top: 6px; }
+  .huella-box { width: 96px; text-align: center; font-size: 10.5px; color: #64748b; }
+  .huella-cuadro { width: 74px; height: 74px; margin: 0 auto 4px; border: 1px solid #334155; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .huella-cuadro img { max-width: 100%; max-height: 100%; }
-  .constancia { margin-top: 18px; font-size: 11px; color: #475569; line-height: 1.55; text-align: justify; }
+  .constancia { margin-top: 12px; font-size: 10.5px; color: #475569; line-height: 1.45; text-align: justify; }
   .numero-liq { position: absolute; top: 40px; right: 40px; font-size: 12px; color: #64748b; }
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
   .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; font-weight: 700; text-align: center; }
-  .nota-validez { border-top: 1px solid #cbd5e1; padding-top: 10px; margin-bottom: 14px; font-size: 11px; color: #475569; text-align: center; line-height: 1.5; }
+  .nota-validez { border-top: 1px solid #cbd5e1; padding-top: 8px; margin-bottom: 10px; font-size: 10.5px; color: #475569; text-align: center; line-height: 1.4; }
   .contenido { position: relative; z-index: 1; }
   /* Al imprimir manda el margen de @page; el padding del body lo sumaría encima y comería
      otros 80px de alto, que es justo lo que hacía que no cupiera en una hoja. */

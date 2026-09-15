@@ -26,3 +26,6 @@ migracion_datos/
 *.njsproj
 *.sln
 *.sw?
+
+# Muestras que genera _medir-liquidacion (se regeneran con MEDIR=1)
+scripts/_liq-*.html

@@ -1898,7 +1898,10 @@ export default function ReportesView({ onNavigate }: Props) {
                           ✓ Cerrar y pagar
                         </button>
                       ))}
-                    <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "")}
+                    <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "", {
+                      sinGestion: sinGestionPorCobrador.get(n.subadminId ?? "") ?? [],
+                      motosAsignadas: motos.filter(m => m.subadmin_id === n.subadminId).length,
+                    })}
                       style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
                       🖨️ Desprendible
                     </button>

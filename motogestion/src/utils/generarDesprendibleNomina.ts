@@ -1,5 +1,5 @@
-import type { NominaCobrador, GestionNomina } from "./nominaCobradores";
-import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, totalesPorGrupo } from "./nominaCobradores";
+import type { NominaCobrador, GestionNomina, MotoSinGestion } from "./nominaCobradores";
+import { VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, totalesPorGrupo, TEXTO_SIN_GESTION } from "./nominaCobradores";
 
 // EL DESPRENDIBLE DE NÓMINA DE UN COBRADOR — pedido textual del dueño (22-ago): "debe ser un
 // documento detallado para que cada cobrador o subadmin pueda verificar bien qué le están
@@ -29,13 +29,26 @@ const TIPO_LABEL: Record<GestionNomina["tipo"], string> = {
   visita: "Visita domiciliaria",
 };
 
-export function generarDesprendibleNomina(
+/**
+ * El HTML del desprendible. Vive aparte de `generarDesprendibleNomina` para poder PROBARLO:
+ * abrir una ventana e imprimir no se puede verificar en una prueba, pero el papel que firma el
+ * cobrador sí — y es plata. (15-sep-2026)
+ */
+export function htmlDesprendibleNomina(
   nomina: NominaCobrador,
   nombreCobrador: string,
   desde: string,
   hasta: string,
   quienPagaNombre: string,
+  /**
+   * EL REVERSO (15-sep-2026): las motos asignadas que NO generaron gestión, con su motivo.
+   * Va en el papel y no solo en la pantalla porque el desprendible es lo que el cobrador firma
+   * y con lo que reclama: si solo dice lo que se le paga, no puede discutir lo que NO se le pagó.
+   */
+  extra?: { sinGestion?: MotoSinGestion[]; motosAsignadas?: number },
 ) {
+  const sinGestion = extra?.sinGestion ?? [];
+  const motosAsignadas = extra?.motosAsignadas ?? 0;
   const filas = nomina.renglones.map(r => `
     <tr>
       <td class="placa">${r.placa}</td>
@@ -73,6 +86,9 @@ export function generarDesprendibleNomina(
   .totales td { border: none; padding: 3px 8px; }
   .totales .num { font-size: 12px; }
   .total-final td { border-top: 2px solid #0f172a; font-size: 15px; font-weight: bold; padding-top: 6px; }
+  .conteo { font-size: 11.5px; color: #475569; margin: -12px 0 16px; }
+  .no-pago-titulo { font-size: 12.5px; font-weight: bold; color: #92400e; margin: 4px 0 6px; }
+  .motivo { background: #fffbeb; font-size: 11px; font-weight: bold; color: #92400e; text-transform: uppercase; }
   .regla { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #334155; line-height: 1.55; margin-bottom: 10px; }
   .cierre { page-break-inside: avoid; break-inside: avoid; }
   .firmas { display: flex; gap: 40px; margin-top: 40px; }
@@ -85,6 +101,7 @@ export function generarDesprendibleNomina(
   <h1>Liquidación de nómina — ${nombreCobrador.toUpperCase()}</h1>
   <div class="sub">Club de Moteros · Cartagena · Nómina de cobradores</div>
   <div class="semana">Semana del ${fechaLarga(desde)} al ${fechaLarga(hasta)}</div>
+  ${motosAsignadas > 0 ? `<div class="conteo">${motosAsignadas} motos asignadas · ${motosAsignadas - sinGestion.length} con gestión · ${sinGestion.length} sin gestión</div>` : ""}
 
   <table>
     <thead>
@@ -105,6 +122,32 @@ export function generarDesprendibleNomina(
   ${porGrupo.length > 0 ? `<table class="totales" style="margin-top:-6px">
     <tr><td colspan="2" style="font-size:10.5px;color:#64748b;text-transform:uppercase;font-weight:bold">De qué portafolio sale</td></tr>
     ${porGrupo.map(g => `<tr><td>${g.grupo}</td><td class="num">${cop(g.total)}</td></tr>`).join("")}
+  </table>` : ""}
+
+  ${sinGestion.length > 0 ? `
+  <div class="no-pago-titulo">No se pagó — ${sinGestion.length} moto${sinGestion.length === 1 ? "" : "s"} de las asignadas</div>
+  <table>
+    <thead>
+      <tr><th>Placa</th><th>Grupo</th><th>Cliente</th><th style="text-align:right">Valor</th></tr>
+    </thead>
+    <tbody>${
+      // Agrupadas por motivo, y las que no tienen cliente al final: son las que no son gestión.
+      [...new Set(sinGestion.map(f => f.motivo))]
+        .sort((a, b) => Number(a === "sin_contrato") - Number(b === "sin_contrato"))
+        .map(mv => {
+          const lista = sinGestion.filter(f => f.motivo === mv);
+          // El motivo va UNA vez, en la fila que encabeza el grupo. Repetirlo en cada renglón
+          // llenaba el papel de la misma frase cinco veces seguidas.
+          return `<tr><td colspan="4" class="motivo">${lista.length} · ${TEXTO_SIN_GESTION[mv]}</td></tr>` +
+            lista.map(f => `
+              <tr>
+                <td class="placa">${f.placa}</td>
+                <td style="color:#64748b;font-size:10.5px">${f.grupo}</td>
+                <td style="text-transform:uppercase">${f.cliente}</td>
+                <td class="num" style="color:#94a3b8">${cop(0)}</td>
+              </tr>`).join("");
+        }).join("")
+    }</tbody>
   </table>` : ""}
 
   <div class="regla">
@@ -129,9 +172,15 @@ export function generarDesprendibleNomina(
 </body>
 </html>`;
 
+  return html;
+}
+
+export function generarDesprendibleNomina(
+  ...args: Parameters<typeof htmlDesprendibleNomina>
+) {
   const ventana = window.open("", "_blank", "width=820,height=900");
   if (!ventana) return;
-  ventana.document.write(html);
+  ventana.document.write(htmlDesprendibleNomina(...args));
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 400);

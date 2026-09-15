@@ -33,6 +33,8 @@ import ModalDeuda from "../components/ModalDeuda";
 import ModalConvenio from "../components/ModalConvenio";
 import ModalConfirmarPago from "../components/ModalConfirmarPago";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
+import { useCuentasBancarias, cuentasDelGrupo } from "../hooks/useCuentasBancarias";
+import { faltaElegirCuenta } from "../utils/cuentasDelDia";
 import MoneyInput from "../components/MoneyInput";
 import { Badge } from "../components/atomos";
 
@@ -182,6 +184,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { convenioActivoDelContrato } = useConvenios();
   const { cerrarCaja, cajaDia } = useCaja();
   const { prestamos } = usePrestamos();
+  const { cuentas: cuentasBancarias } = useCuentasBancarias();
 
   const filas: Fila[] = useMemo(() => {
     return contratos
@@ -321,6 +324,19 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     window.open(`tel:+57${tel.replace(/\D/g, "")}`);
   }
 
+  /**
+   * A CUÁL cuenta entró (15-sep-2026). Misma regla que Cartera, escrita una sola vez: con una
+   * cuenta el selector la elige solo; COSTA tiene dos y nadie estaba obligado a marcarla, así
+   * que el pago se guardaba con la cuenta vacía — y eso no se recupera, porque el extracto no
+   * dice de quién era cada entrada.
+   */
+  function errorCuenta(motoId: string | null | undefined): string | null {
+    const grupo = motos.find(m => m.id === motoId)?.grupo ?? null;
+    if (faltaElegirCuenta(cuentasDelGrupo(cuentasBancarias, grupo), cobrarMetodo, cobrarCuentaId))
+      return "Marca a cuál cuenta entró la transferencia. Este portafolio recibe en más de una y después no hay forma de saberlo.";
+    return null;
+  }
+
   // Valida y abre la ventana flotante de confirmación (en vez de cobrar directo).
   function pedirConfirmacionCobro() {
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
@@ -328,6 +344,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
+    const errCta = errorCuenta(filas.find(f => f.contratoId === cobrandoId)?.motoId);
+    if (errCta) { setCobrarError(errCta); return; }
     setCobrarError(null);
     setConfirmarCobroOpen(true);
   }
@@ -338,6 +356,10 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarReferencia.trim()) { setCobrarError("Escribe el N° de referencia de la transferencia"); return; }
     if (cobrarMetodo === "Transferencia" && !cobrarComprobante) { setCobrarError("Sube la foto del comprobante de la transferencia"); return; }
+    // Se revalida acá a propósito: este handler también se dispara desde la ventana de
+    // confirmación, sin volver a pasar por pedirConfirmacionCobro.
+    const errCtaCobro = errorCuenta(f.motoId);
+    if (errCtaCobro) { setCobrarError(errCtaCobro); setConfirmarCobroOpen(false); return; }
     setCobrandoLoading(true);
     setCobrarError(null);
     const cuotaPactada = f.tipoRuta === "diario" ? f.valorPactado : f.valorPeriodo;

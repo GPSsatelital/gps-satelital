@@ -13,6 +13,7 @@ import { usePrestamos, grupoDePago as grupoDePagoCompartido } from "../hooks/use
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { hoyISO, hoyDate } from "../utils/fecha";
+import { totalesPorCuenta } from "../utils/cuentasDelDia";
 import { COLOR_GRUPO } from "../styles/shared";
 
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
@@ -124,6 +125,12 @@ export default function CajaView() {
   // "Cobrado a clientes": no es cobro de arriendo, es lo que el cliente entrega para arrancar.
   // Pero SÍ está en la gaveta, así que el arqueo tiene que contarla o el día nunca cuadra —
   // era justo lo que faltaba para que la caja calzara con el efectivo real.
+  // Cuánto entró a CADA cuenta del banco este día. Siempre sobre el día COMPLETO: un extracto
+  // no sabe de portafolios, así que filtrarlo por grupo daría una cifra que no cuadra con nada.
+  const totalesCuentas = useMemo(
+    () => totalesPorCuenta({ pagos: pagosDia, bases: abonosBase, sinDuenio: pendientesNI, fecha }),
+    [pagosDia, abonosBase, pendientesNI, fecha],
+  );
   const basesDelDiaVista = basesDelDia(abonosBase, fecha, grupoEnVista);
   const basesSinGrupoDelDia = basesDelDia(abonosBase.filter(a => !a.grupo), fecha);
 
@@ -673,6 +680,62 @@ export default function CajaView() {
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>Cobrado a clientes — todos los grupos</span>
             <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(resumenDia.total)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* POR CUENTA BANCARIA (15-sep-2026) — la otra mitad de la mig 087.
+          Desde agosto cada transferencia guarda a cuál cuenta entró, pero no había dónde verlo:
+          la caja daba UN solo total y la secretaria, con dos extractos de COSTA, sumaba a mano.
+          Responde otra pregunta que "Recaudo por grupo" (cuánto produjo cada portafolio): acá es
+          cuánto tiene que decir cada extracto. No coinciden a propósito — un cliente de COSTA
+          puede transferirle al Nequi de PRADERA, y se registra la verdad. */}
+      {filtroGrupo === "todos" && totalesCuentas.length > 0 && (
+        <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              🏦 Por cuenta bancaria
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--faint)" }}>para cuadrar contra el extracto</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+            {totalesCuentas.map(t => {
+              const c = t.cuentaId ? cuentasActivas.find(x => x.id === t.cuentaId) ?? null : null;
+              const sinMarcar = t.cuentaId === null;
+              return (
+                <div
+                  key={t.cuentaId ?? "sin"}
+                  style={{
+                    border: sinMarcar ? "1px solid var(--warn-line)" : "1px solid var(--line2)",
+                    borderLeft: `4px solid ${sinMarcar ? "var(--warn-ink)" : "var(--accent-ink)"}`,
+                    borderRadius: 12, padding: "12px 14px",
+                    background: sinMarcar ? "var(--warn-soft)" : "var(--soft2)",
+                    minWidth: 0, boxSizing: "border-box",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: sinMarcar ? "var(--warn-ink)" : "var(--text)" }}>
+                    {sinMarcar ? "⚠️ Sin especificar" : `${c?.banco ?? "Cuenta borrada"}${c?.tipo ? ` ${c.tipo}` : ""} · ${c?.numero ?? "—"}`}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: sinMarcar ? "var(--warn-ink)" : "var(--text)", marginTop: 4 }}>
+                    ${fmt(t.total)}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: sinMarcar ? "var(--warn-ink)" : "var(--muted)", marginTop: 3, lineHeight: 1.45 }}>
+                    {sinMarcar
+                      ? <>Nadie marcó a cuál cuenta entró. Los pagos anteriores a agosto no la tienen y ya no se puede saber.</>
+                      : <>{c?.titular ? `${c.titular} · ` : ""}{c?.grupos.join(", ") || "sin portafolio"}</>}
+                    <br />{t.movimientos} movimiento{t.movimientos === 1 ? "" : "s"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", minWidth: 0 }}>
+              Todo lo que llegó al banco — transferencias, bases y plata sin dueño
+            </span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>
+              ${fmt(totalesCuentas.reduce((s, t) => s + t.total, 0))}
+            </span>
           </div>
         </div>
       )}

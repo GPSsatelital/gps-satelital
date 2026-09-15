@@ -90,6 +90,7 @@ import {
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
+import { faltaElegirCuenta } from "../utils/cuentasDelDia";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
@@ -1356,6 +1357,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       return "Esa referencia ya se usó en otro pago. Verifica en el extracto y marca la casilla si de verdad cubre a dos clientes.";
     if (modalFechaEfectiva > hoyISO() || modalFechaEfectiva < hoyMasDias(-60))
       return `La fecha del pago (${formatDate(modalFechaEfectiva)}) está fuera de rango: no puede ser futura ni de hace más de 60 días.`;
+    // A CUÁL cuenta entró (15-sep-2026). Solo estorba donde de verdad hay que decidir: con una
+    // sola cuenta el selector la elige solo. COSTA tiene dos y nadie estaba obligado a marcarla,
+    // así que el pago se guardaba con la cuenta vacía — y ese dato no se recupera después,
+    // porque el extracto no dice de quién era cada entrada.
+    if (faltaElegirCuenta(cuentasDelGrupo(cuentasBancarias, modalMoto?.grupo ?? null), modalMetodo, modalCuentaId))
+      return "Marca a cuál cuenta entró la transferencia. Este portafolio recibe en más de una y después no hay forma de saberlo.";
     return null;
   }
 

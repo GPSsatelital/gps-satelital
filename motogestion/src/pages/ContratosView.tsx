@@ -114,12 +114,12 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const { pagos } = usePagos();
   const [histAbierto, setHistAbierto] = useState<string | null>(null);   // historial del contrato cerrado
   const puedeCeder = puede("ceder_contrato");
+  const puedeRodarTiempo = puede("rodar_tiempo");
   // RESOLVER EL TIEMPO GUARDADO DESPUÉS (24-ago): cuando la entrega la hace un SUBADMIN o
   // SECRETARIA, el modal de cobrar/rodar no les sale (la decisión es del admin) y el caso se
   // evaporaba para siempre — pasó dos veces el mismo fin de semana (WILLINGTON DQW26I y JUAN
   // CARLOS YAL68H, ajustados por SQL). Este botón lo deja RE-ABRIBLE: el admin pone las fechas
   // reales del guardado y sigue el flujo de siempre, con documento firmado. Nada queda en el aire.
-  const esAdminRol = role === "ADMIN" || role === "ADMIN_PRINCIPAL";
   const [rtFechas, setRtFechas] = useState<{ desde: string; hasta: string } | null>(null);
   const [rtFormAbierto, setRtFormAbierto] = useState(false);
   const [rtDesde, setRtDesde] = useState("");
@@ -541,7 +541,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
               );
             })()}
 
-            {esAdminRol && c.estado === "Activo" && (() => {
+            {puedeRodarTiempo && c.estado === "Activo" && (() => {
               const pendiente = tiempoGuardadoSinResolver(recepciones, acuerdos, c.id, c.moto_id, tramosDePrestamos(prestamos, c.id));
               return (
                 <>

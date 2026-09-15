@@ -51,6 +51,15 @@ export const ACCIONES: AccionDef[] = [
   // trigger de la mig 019 solo se lo permite a ADMIN para arriba — dárselo a otro rol dejaría
   // cesiones a medias (contrato ya cambiado, estados fallando).
   { key: "ceder_contrato",         label: "Ceder contrato a otro cliente",      modulo: "contratos", dbEnforced: true },
+  // RODAR EL TIEMPO (15-sep-2026). Correr al final las semanas que la moto estuvo guardada, en vez
+  // de cobrarlas. Alarga el contrato: la empresa deja de cobrar esas semanas ahora.
+  // Hasta hoy había DOS reglas distintas para lo mismo: Taller/Motos/Contratos lo dejaban solo a
+  // ADMIN, mientras Inmovilizaciones y Cartera lo dejaban a quien operara el flujo. Se unifica en
+  // esta acción: un solo interruptor para las 6 puertas.
+  // El default respeta la decisión del dueño del 24-ago ("el subadmin también tiene permiso, es
+  // parte de su trabajo; lo sagrado es el rastro"): nadie pierde lo que ya hacía. La acción existe
+  // para QUITÁRSELA a alguien puntual desde Usuarios, no para repartirla.
+  { key: "rodar_tiempo",           label: "Rodar el tiempo de un contrato",     modulo: "contratos" },
   // Motos
   { key: "recolectar_moto",        label: "Recolectar / retener moto",          modulo: "motos" },
   { key: "cambiar_grupo_moto",     label: "Cambiar el grupo de una moto",       modulo: "motos" },
@@ -98,7 +107,7 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "crear_contrato", "editar_contrato", "editar_deuda", "crear_convenio",
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion", "ceder_contrato",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
-    "exportar_datos", "devolver_base", "entregar_premio",
+    "exportar_datos", "devolver_base", "entregar_premio", "rodar_tiempo",
     // Decisión del dueño (10-sep): "por ahora solo yo y Sergio". Espejo en `_acciones_default()`
     // de la mig 140: si se toca acá, tocar allá.
     "asignar_tarea",
@@ -110,8 +119,12 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     // Decisión del dueño (22-ago): ANGELA hace liquidaciones completas — es la de la plata en
     // oficina. Espejo en _acciones_default() de la mig 110: si se toca acá, tocar allá.
     "iniciar_liquidacion",
+    // Ya lo hacía: en Cartera, el tiempo guardado se resuelve ANTES de crear el convenio.
+    "rodar_tiempo",
   ],
-  SUBADMIN: ["recolectar_moto", "iniciar_liquidacion"],
+  // El subadmin ya rodaba en Inmovilizaciones (entregar una retenida y devolver un préstamo):
+  // decisión del dueño del 24-ago, confirmada el 15-sep.
+  SUBADMIN: ["recolectar_moto", "iniciar_liquidacion", "rodar_tiempo"],
   // El visitador no aprueba, no cobra y no liquida: solo registra la visita que le asignaron.
   VISITADOR: [],
   MECANICO: [],

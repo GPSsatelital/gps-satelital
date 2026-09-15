@@ -609,9 +609,9 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
   const { deudas } = useDeudas();
   const { filtrarMotos } = useScope();
   const motos = filtrarMotos(todasMotos);
-  const { profile } = useAuth();
-  const esAdminOSuperior = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
+  const { profile, puede } = useAuth();
   const puedeCobrar = ROLES_COBRAN.includes(profile?.role ?? "");
+  const puedeRodarTiempo = puede("rodar_tiempo");
   // Quien autoriza una petición es la oficina — los mismos que pueden cobrarle el arreglo al
   // cliente. El mecánico pide y anota; no se autoriza a sí mismo el repuesto.
   const puedeAutorizar = puedeCobrar;
@@ -773,9 +773,10 @@ export default function TallerView({ onNavigate }: { onNavigate?: (view: ViewKey
       setSeleccionId(null);
       return;
     }
-    // Solo ADMIN/AP deciden cobrar vs rodar (misma jerarquía que Editar contrato) — si otro
-    // rol finaliza el taller, el tiempo queda pendiente de resolver manualmente después.
-    if (esAdminOSuperior) {
+    // Quien tenga el permiso `rodar_tiempo` decide cobrar vs rodar (15-sep-2026: antes era la
+    // jerarquia de Editar contrato, quemada en el codigo). Si quien finaliza no lo tiene, el
+    // tiempo queda pendiente de resolver despues, igual que antes.
+    if (puedeRodarTiempo) {
       const contratoActivo = contratos.find(c => c.moto_id === seleccionado.moto_id && c.estado === "Activo");
       const dias = Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(seleccionado.fecha_ingreso + "T00:00:00").getTime()) / 86400000);
       if (contratoActivo && dias > 0) {

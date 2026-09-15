@@ -107,6 +107,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const puedeLiquidar = puede("iniciar_liquidacion");
   const puedeCambiarGrupo = puede("cambiar_grupo_moto");
   const puedeExportar = puede("exportar_datos");
+  const puedeRodarTiempo = puede("rodar_tiempo");
   const [abrirDescarga, setAbrirDescarga] = useState(false);
   const { filtrarMotos } = useScope();
   const { contratos, suspenderContrato } = useContratos();
@@ -121,7 +122,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [tiempoFueraModal, setTiempoFueraModal] = useState<{ contrato: import("../hooks/useContratos").Contrato; motoPlaca: string; clienteNombre: string; motivo: string; fechaEntrada: string; fechaSalida: string } | null>(null);
 
   function abrirResolverTiempoSiAplica(moto: Moto, motivo: string, fechaEntrada: string | null | undefined) {
-    if (!esAdminOSuperior || !fechaEntrada) return;
+    // 15-sep-2026: pasa de la jerarquia quemada al permiso `rodar_tiempo`, que se prende y apaga
+    // por persona desde Usuarios.
+    if (!puedeRodarTiempo || !fechaEntrada) return;
     const contratoActivo = contratos.find(c => c.moto_id === moto.id && c.estado === "Activo");
     const fechaSalida = hoyISO();
     const dias = Math.round((new Date(fechaSalida + "T00:00:00").getTime() - new Date(fechaEntrada + "T00:00:00").getTime()) / 86400000);

@@ -28,7 +28,15 @@ interface Props {
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 
 export default function ModalResolverTiempoFueraServicio({ contrato, clienteNombre, motoPlaca, motivo, fechaEntrada, fechaSalida, onClose, onResuelto }: Props) {
-  const { profile } = useAuth();
+  const { profile, puede } = useAuth();
+  // EL PERMISO (15-sep-2026). Rodar alarga el contrato: la empresa deja de cobrar esas semanas.
+  // Antes cada pantalla tenia su propia regla de quien podia decidir — Taller, Motos y Contratos
+  // solo ADMIN; Inmovilizaciones y Cartera, quien operara el flujo. Ahora las 6 puertas preguntan
+  // por la MISMA accion `rodar_tiempo`, que se prende y apaga por persona desde Usuarios.
+  // Quien no la tenga NO queda trabado: ve el aviso y sigue con "Resolver despues" — el camino que
+  // el diseño ya contemplaba ("quien opera no tiene potestad y la difiere al encargado"). El
+  // pendiente queda visible para quien si pueda.
+  const puedeDecidir = puede("rodar_tiempo");
   const { editarContrato } = useContratos();
   const { registrarDeuda } = useDeudas();
   const { crearAcuerdoTiempo, subirDocumentoAcuerdo } = useUbicaciones();
@@ -221,7 +229,19 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
           <div style={{ fontSize: 11, color: "var(--muted)" }}>{dias} días × $ {fmt(tarifa)}/día (tarifa diaria)</div>
         </div>
 
-        {motorV2 ? (
+        {!puedeDecidir && (
+          <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--warn-ink)" }}>
+              No tienes permiso para decidir esto.
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--warn-ink)", marginTop: 4, lineHeight: 1.45 }}>
+              Dale a <strong>"Resolver después"</strong> y sigue con lo tuyo: el tiempo guardado queda
+              anotado como pendiente y lo resuelve el encargado. No se pierde nada.
+            </div>
+          </div>
+        )}
+
+        {puedeDecidir && (motorV2 ? (
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--ok-line, var(--line))" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 6 }}>
@@ -338,7 +358,7 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
             )}
           </div>
         </div>
-        )}
+        ))}
 
         {decision && (
           <>

@@ -175,6 +175,18 @@ if ($Modo -eq "llevar") {
   $resumen = @()
   foreach ($p in $proyectos) {
     Write-Host "  PROYECTO: $($p.Nombre)" -ForegroundColor Green
+
+    # Aviso, no bloqueo: los cambios sin guardar VIAJAN igual (se copia la carpeta entera), pero
+    # conviene saber que quedaron a medias antes de cambiar de PC.
+    if ((Test-Path $p.Ruta) -and (Test-Path (Join-Path $p.Ruta ".git"))) {
+      Push-Location $p.Ruta
+      $sinGuardar = @(git status --porcelain 2>$null)
+      Pop-Location
+      if ($sinGuardar.Count -gt 0) {
+        Write-Host "     (aviso: $($sinGuardar.Count) archivo(s) con cambios sin guardar - viajan igual)" -ForegroundColor DarkYellow
+      }
+    }
+
     if (-not (Test-Path $p.Ruta)) {
       Write-Host "     (no esta en este PC - se salta)" -ForegroundColor DarkGray
       Write-Host ""
@@ -276,6 +288,51 @@ if ($Modo -eq "traer") {
       Write-Host ""
       continue
     }
+    # EL AVISO QUE SALVA HORAS DE TRABAJO. Traer pisa la carpeta con lo que trae el disco: si en
+    # este PC quedo trabajo sin llevar (porque se olvido el 2-LLEVAR), se perderia. Se revisa con
+    # git y se pide confirmacion antes de tocar nada.
+    if (Test-Path (Join-Path $p.Ruta ".git")) {
+      Push-Location $p.Ruta
+      $sinGuardar = @(git status --porcelain 2>$null)
+      $sinSubir   = @(git log "@{u}.." --oneline 2>$null)
+      Pop-Location
+      if ($sinGuardar.Count -gt 0 -or $sinSubir.Count -gt 0) {
+        Write-Host ""
+        Write-Host "     CUIDADO: este PC tiene trabajo que nunca se llevo al disco." -ForegroundColor Red
+        Write-Host ""
+        if ($sinGuardar.Count -gt 0) {
+          Write-Host "       Archivos cambiados sin guardar: $($sinGuardar.Count)" -ForegroundColor Yellow
+          $sinGuardar | Select-Object -First 8 | ForEach-Object { Write-Host "         $_" -ForegroundColor Yellow }
+        }
+        if ($sinSubir.Count -gt 0) {
+          Write-Host "       Guardados pero sin subir: $($sinSubir.Count)" -ForegroundColor Yellow
+          $sinSubir | Select-Object -First 5 | ForEach-Object { Write-Host "         $_" -ForegroundColor Yellow }
+        }
+        Write-Host ""
+        Write-Host "     Si sigues, eso se reemplaza por lo que trae el disco." -ForegroundColor Red
+        Write-Host "     (Queda copia en el respaldo, pero es mejor no llegar ahi.)" -ForegroundColor DarkGray
+        Write-Host ""
+        $r = Read-Host "     Escribe SI para seguir, o cualquier cosa para cancelar"
+        if ($r -notmatch "^(SI|Si|si)$") {
+          Write-Host ""
+          Write-Host "     Cancelado. No se toco nada." -ForegroundColor Cyan
+          Write-Host "     Lo que conviene: guarda ese trabajo, haz doble clic en 2-LLEVAR," -ForegroundColor Yellow
+          Write-Host "     y despues si 1-TRAER." -ForegroundColor Yellow
+          Write-Host ""
+          Read-Host "     Presiona ENTER para cerrar"
+          exit 1
+        }
+      }
+    }
+
+    # Respaldo de la carpeta ANTES de pisarla. Sin esto, traer sobre trabajo sin llevar lo borraba
+    # sin dejar rastro (el respaldo de arriba solo cubria las memorias).
+    if (Test-Path $p.Ruta) {
+      Write-Host "     respaldando lo que habia..." -NoNewline
+      Copiar $p.Ruta (Join-Path $respaldo "proyectos\$($p.Nombre)") $true @("node_modules", "dist") $null | Out-Null
+      Write-Host " ok"
+    }
+
     Write-Host "     archivos del proyecto..." -NoNewline
     New-Item -ItemType Directory -Force -Path (Split-Path $p.Ruta -Parent) | Out-Null
     # Espejo, pero sin tocar node_modules: si este PC ya lo tenia instalado, no se borra.

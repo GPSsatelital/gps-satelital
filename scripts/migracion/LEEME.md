@@ -1,87 +1,57 @@
-# Mover MotoGestión a otro PC sin perder nada
+# Trabajar en dos PC sin perder nada
 
-Dos scripts: uno empaqueta en la memoria USB, el otro restaura en el PC nuevo.
-Probados el 15-sep-2026 contra una carpeta de prueba: 109 memorias, 240 MB (sin plugins ni
-conversaciones), sin `node_modules` y sin los archivos que llevan contraseñas.
+El dueño trabaja el proyecto en dos PC y lo pasa con un disco (`PY_ofc`, 930 GB libres).
+**Syncthing se probó y falló** — copiaba las memorias mientras Claude las escribía y se perdía la
+coherencia. El disco funciona porque la copia se hace con Claude **cerrado**.
 
----
+Lo que el dueño usa en el día a día está **en el disco**, no acá: dos archivos de doble clic
+(`1-TRAER.bat`, `2-LLEVAR.bat`) y un `LEEME-PRIMERO.txt` explicado paso a paso. Acá vive la fuente
+del script, versionada.
 
-## Antes de nada: las dos reglas que no se pueden saltar
+## El script
 
-**1. El usuario de Windows tiene que llamarse `USER` en los dos PC.**
-Las memorias se guardan en una carpeta cuyo nombre ES la ruta del proyecto:
-`C--Users-USER-Documents-GitHub-gps-satelital`. Si el otro PC tiene otro usuario, Claude
-buscará una carpeta con otro nombre y **no encontrará ninguna memoria**. El script de
-restaurar se niega a seguir si detecta un usuario distinto, para que nadie lo descubra tarde.
-
-**2. Nunca Claude abierto en los dos PC a la vez.**
-Las memorias (`mempalace`, `claude-mem`) son bases de datos. Dos programas escribiendo a la
-vez las corrompen. Se trabaja en uno, se cierra, se pasa la memoria, se abre en el otro.
-
----
-
-## Para llevar (en el PC donde vienes trabajando)
+`sincronizar.ps1` — un solo archivo, dos verbos:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\migracion\empaquetar.ps1 -Destino E:\
+sincronizar.ps1 traer   D:\      # al LLEGAR a un PC, antes de abrir Claude
+sincronizar.ps1 llevar  D:\      # al TERMINAR, con Claude ya cerrado
 ```
 
-Cambia `E:\` por la letra de tu memoria. Tarda unos minutos.
+**Sirve para varios proyectos.** La lista vive en el disco (`TRABAJO-EN-DOS-PC\proyectos.txt`), una
+línea por proyecto (`nombre | ruta`). Un proyecto que no esté en el PC donde corre simplemente se
+salta — por eso el segundo proyecto, que vive en el otro PC, se suma solo cuando se agregue su
+línea allá.
 
-Si quieres un paquete más liviano:
+Por cada proyecto mueve su carpeta y su carpeta de memorias, que Claude nombra con la ruta
+convertida: se cambian `:` y la barra invertida por `-`. Y una sola vez, porque son del PC entero:
+`plans`, `skills`, `agents`, `commands`, `plugins`, `settings.json`, `CLAUDE.md`, `.mempalace` y
+`.claude-mem`.
 
-| Opción | Qué deja fuera | Ahorra |
-|---|---|---|
-| `-SinPlugins` | Los plugins de Claude (se reinstalan solos) | 171 MB |
-| `-SinConversaciones` | El historial completo de las conversaciones | ~350 MB |
+## Las tres guardas
 
-Las **memorias siempre viajan** — son 952 KB y son lo importante.
+1. **Claude cerrado** — si está abierto, para. Copiar una base de datos que se está escribiendo es
+   justo lo que rompía con Syncthing.
+2. **Usuario `USER`** — las memorias llevan la ruta en el nombre de la carpeta; con otro usuario de
+   Windows no se encuentran.
+3. **El candado** — `ESTADO.json` en el disco dice qué PC lo dejó y cuándo; cada PC guarda qué
+   versión trajo. Si se intenta LLEVAR sin haber TRAÍDO el trabajo del otro PC, para y avisa.
 
-El script avisa si hay trabajo sin guardar en git antes de copiar.
+## Detalles que costaron una prueba
 
----
+- Los `.ps1` van con **BOM** (`utf-8-sig`): PowerShell 5.1 los lee como ANSI sin él y parte los
+  acentos. El `LEEME-PRIMERO.txt` también, para el Bloc de notas.
+- Los mensajes de consola van **sin tildes**: la consola de Windows los muestra rotos.
+- `/MIR` borra en el destino lo que no viene en el origen. Por eso todo lo de `.claude` se copia con
+  `/E` (agrega, nunca borra) y solo `memory` va con `/MIR`, que sí debe ser espejo exacto. Sin esto,
+  traer un disco armado a medias habría borrado las conversaciones del otro PC.
+- Los `.bat` usan `%~d0` para la letra del disco: si en el otro PC es `E:` en vez de `D:`, funciona
+  igual sin tocar nada.
 
-## Para instalar (en el PC nuevo)
+## Probado el 15-sep-2026
 
-1. Conecta la memoria y **cierra Claude por completo**.
-2. Desde la carpeta del paquete:
+Copia real al disco: **695 MB, 110 memorias**, las 3 conversaciones, `.git`, `.env` y el manual;
+verificado que **no** se cuelan `node_modules` ni los `PEGAR-EN-SUPABASE-*.sql` (llevan
+contraseñas). El candado probado en sus 3 casos. La guarda de "Claude cerrado" probada de verdad.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File repo\scripts\migracion\restaurar.ps1
-```
-
-3. Abre una consola en `C:\Users\USER\Documents\GitHub\gps-satelital\motogestion` y corre:
-
-```bash
-npm install
-```
-
-4. Abre Claude. Las memorias tienen que estar ahí.
-
-El script guarda una copia de lo que hubiera en ese PC antes de sobreescribir
-(`C:\Users\USER\RESPALDO-ANTES-DE-RESTAURAR-<fecha>`), por si acaso.
-
-**Falta instalar a mano, una sola vez por PC:** Node.js, Git y Claude Code. Y los drivers si
-ese PC va a usar el lector de huellas o la impresora térmica.
-
----
-
-## Qué viaja y qué no
-
-| Viaja | Se queda |
-|---|---|
-| El código con toda su historia de git | `node_modules` (se regenera con `npm install`) |
-| Las 109 memorias del proyecto | `dist` (se regenera al compilar) |
-| Las conversaciones completas | `PEGAR-EN-SUPABASE-*.sql` (llevan contraseñas y ya se usaron) |
-| Planes, skills y ajustes de Claude | La caché y la telemetría |
-| MemPalace y claude-mem | |
-| Las claves de Supabase (`.env`) | |
-| Los datos de migración y el manual en PDF (no están en GitHub) | |
-
----
-
-## Para dos PC fijos, hay algo mejor que la USB
-
-Syncthing sincroniza la carpeta `.claude` entre los dos por internet, sin USB y sin acordarse
-de copiar. El código ya viaja por GitHub. Sigue valiendo la regla de un PC a la vez.
-El diseño está en la memoria `syncthing-setup-2pc`.
+🔲 Falta que el dueño corra el ciclo completo: no se puede probar desde dentro de Claude, porque el
+script exige que esté cerrado.

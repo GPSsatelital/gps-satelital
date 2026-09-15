@@ -1,4 +1,4 @@
-﻿# SINCRONIZAR — mover TODOS los proyectos entre dos PC usando un disco.
+﻿# SINCRONIZAR — mover TODO entre dos PC usando un disco.
 #
 #   Al LLEGAR a un PC:   sincronizar.ps1 traer   D:\
 #   Al IRME de un PC:    sincronizar.ps1 llevar  D:\
@@ -7,22 +7,26 @@
 #
 # POR QUE EXISTE (15-sep-2026). El dueño probó Syncthing y "no guardaba las memorias y perdía
 # coherencia al pasar de un pc al otro". La causa es de fondo: Syncthing copia archivos MIENTRAS
-# se escriben, y las memorias de Claude son bases de datos que están abiertas todo el tiempo — se
-# llevaba copias a medio escribir. Este script hace lo contrario: exige Claude CERRADO, así las
-# memorias están completas y quietas cuando se copian.
+# se escriben, y las memorias de Claude son bases de datos abiertas todo el tiempo — se llevaba
+# copias a medio escribir. Este script exige Claude CERRADO, así las memorias están completas.
 #
-# QUE MUEVE, por cada proyecto de la lista:
-#   · la carpeta del proyecto (código, documentos, todo lo que tenga adentro)
-#   · su carpeta de memorias de Claude, que se llama igual que la ruta pero con guiones
-#     (C:\Users\USER\Documents\GitHub\gps-satelital  ->  C--Users-USER-Documents-GitHub-gps-satelital)
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# COMO DECIDE QUE COPIAR (pregunta del dueño: "¿y si agrego skills, carpetas, programas?")
 #
-# Y UNA SOLA VEZ, porque son de todo el PC y no de un proyecto:
-#   · .claude\plans, skills, agents, commands, plugins, settings.json, CLAUDE.md
-#   · .mempalace y .claude-mem (las dos memorias automáticas)
+# De la carpeta .claude se copia TODO, salvo una lista corta de basura. Es a proposito: si
+# mañana se agrega un skill, un agente, un comando, un plugin o algo que Claude invente, VIAJA
+# SOLO — no hay que acordarse de agregarlo acá. Lo unico que se queda es lo que se regenera o es
+# de este PC nada mas (cache, telemetria, snapshots de consola).
 #
-# EL CANDADO. En el disco queda un ESTADO.json que dice qué PC lo dejó y cuándo. Si se intenta
-# LLEVAR desde un PC sin haber TRAIDO antes el trabajo del otro, el script para y avisa — ese es
-# justo el error que produce la incoherencia.
+# Eso incluye la carpeta `projects` COMPLETA: asi viajan las memorias de TODOS los proyectos,
+# incluso los que no estan en la lista de abajo.
+#
+# La lista `proyectos.txt` decide otra cosa distinta: QUE CARPETAS DE CODIGO viajan. Un proyecto
+# que no este en el PC donde corre el programa, simplemente se salta.
+#
+# LO QUE NO PUEDE VIAJAR NUNCA: los programas instalados en Windows (Node, Git, Claude Code,
+# drivers, navegadores). Eso se instala una vez en cada PC.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
 
 param(
   [Parameter(Mandatory = $true, Position = 0)]
@@ -35,7 +39,7 @@ param(
   [switch]$Forzar,                  # saltarse el candado (ultimo recurso)
 
   # Solo para verificar que la copia funciona: escribe en una carpeta PRUEBA-BORRAR, no sella el
-  # disco y no toca las marcas de este PC. No se usa en el dia a dia (para eso estan los .bat).
+  # disco y no toca nada de este PC. No se usa en el dia a dia (para eso estan los .bat).
   [switch]$SoloProbarCopia
 )
 
@@ -49,13 +53,20 @@ $ComunDir   = Join-Path $DatosDir "comun"
 $ProyDir    = Join-Path $DatosDir "proyectos"
 
 $ClaudeDir  = "C:\Users\USER\.claude"
-$MarcaLocal = Join-Path $ClaudeDir "ULTIMA-SINCRONIZACION.json"
+$Home_      = "C:\Users\USER"
+$MarcaLocal = Join-Path $Home_ "marca-sincronizacion.json"
 $EstePC     = $env:COMPUTERNAME
 $Ahora      = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
-# Carpetas y archivos que son del PC entero, no de un proyecto.
-$ComunCarpetas = @("plans", "skills", "agents", "commands", "plugins")
-$ComunArchivos = @("settings.json", "CLAUDE.md", "keybindings.json")
+# Lo UNICO que no se copia de .claude: se regenera solo o es de este PC nada mas.
+$BasuraClaude = @("cache", "telemetry", "shell-snapshots", "session-env", "daemon", "worktrees", ".stversions", ".stfolder")
+
+# Archivos de configuracion que viven en el home, no dentro de .claude.
+#   .claude.json  <- los servidores MCP, los proyectos conocidos, las preferencias. CLAVE.
+$HomeArchivos = @(".claude.json", ".claude.json.backup", "CLAUDE.md", ".mcp.json")
+
+# Las dos memorias automaticas, tambien en el home.
+$HomeMemorias = @(".mempalace", ".claude-mem")
 
 function Ruta-A-NombreDeMemoria([string]$ruta) {
   # Claude guarda las memorias en una carpeta cuyo nombre ES la ruta, con ':' y '\' cambiados por '-'
@@ -65,13 +76,22 @@ function Ruta-A-NombreDeMemoria([string]$ruta) {
 
 function Copiar($origen, $destino, $espejo, $excluirDir, $excluirArch) {
   if (-not (Test-Path $origen)) { return $false }
-  $args = @($origen, $destino, "/NFL", "/NDL", "/NJH", "/NJS", "/NP", "/R:1", "/W:1")
+  $lista = @($origen, $destino, "/NFL", "/NDL", "/NJH", "/NJS", "/NP", "/R:1", "/W:1")
   # /MIR deja el destino IGUAL al origen (borra lo que sobre). /E solo agrega y actualiza.
-  if ($espejo) { $args += "/MIR" } else { $args += "/E" }
-  if ($excluirDir)  { $args += "/XD"; $args += $excluirDir }
-  if ($excluirArch) { $args += "/XF"; $args += $excluirArch }
-  robocopy @args | Out-Null
+  if ($espejo) { $lista += "/MIR" } else { $lista += "/E" }
+  if ($excluirDir)  { $lista += "/XD"; $lista += $excluirDir }
+  if ($excluirArch) { $lista += "/XF"; $lista += $excluirArch }
+  robocopy @lista | Out-Null
   return $true
+}
+
+function Parar($titulo, $lineas) {
+  Write-Host "  PARA. $titulo" -ForegroundColor Red
+  Write-Host ""
+  foreach ($l in $lineas) { Write-Host "  $l" -ForegroundColor Yellow }
+  Write-Host ""
+  Read-Host "  Presiona ENTER para cerrar"
+  exit 1
 }
 
 Write-Host ""
@@ -82,35 +102,25 @@ Write-Host "   disco:   $Disco" -ForegroundColor Cyan
 Write-Host "  ============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Requisito 1: Claude cerrado ───────────────────────────────────────────────────────────────
+# ── Guarda 1: Claude cerrado ──────────────────────────────────────────────────────────────────
 if (-not $SoloProbarCopia -and (Get-Process -Name "Claude*" -ErrorAction SilentlyContinue)) {
-  Write-Host "  PARA. Claude esta abierto en este PC." -ForegroundColor Red
-  Write-Host ""
-  Write-Host "  Cierralo por completo y vuelve a intentar." -ForegroundColor Yellow
-  Write-Host "  Las memorias son bases de datos: copiarlas mientras Claude escribe es" -ForegroundColor Yellow
-  Write-Host "  exactamente lo que hacia perder coherencia con Syncthing." -ForegroundColor Yellow
-  Write-Host ""
-  Read-Host "  Presiona ENTER para cerrar"
-  exit 1
+  Parar "Claude esta abierto en este PC." @(
+    "Cierralo por completo y vuelve a intentar.",
+    "Las memorias son bases de datos: copiarlas mientras Claude escribe es",
+    "exactamente lo que hacia perder coherencia con Syncthing.")
 }
 
-# ── Requisito 2: usuario de Windows ───────────────────────────────────────────────────────────
+# ── Guarda 2: usuario de Windows ──────────────────────────────────────────────────────────────
 if ($env:USERNAME -ne "USER") {
-  Write-Host "  PARA. El usuario de Windows de este PC se llama '$env:USERNAME', no 'USER'." -ForegroundColor Red
-  Write-Host ""
-  Write-Host "  Las memorias se guardan con la ruta escrita adentro del nombre de la carpeta," -ForegroundColor Yellow
-  Write-Host "  asi que con otro usuario NO se van a encontrar." -ForegroundColor Yellow
-  Write-Host "  Solucion: crea en Windows un usuario llamado USER y trabaja desde ahi." -ForegroundColor Yellow
-  Write-Host ""
-  Read-Host "  Presiona ENTER para cerrar"
-  exit 1
+  Parar "El usuario de Windows de este PC se llama '$env:USERNAME', no 'USER'." @(
+    "Las memorias se guardan con la ruta escrita adentro del nombre de la carpeta,",
+    "asi que con otro usuario NO se van a encontrar.",
+    "Solucion: crea en Windows un usuario llamado USER y trabaja desde ahi.")
 }
 
 $unidad = Split-Path $Disco -Qualifier
 if ($unidad -and -not (Test-Path "$unidad\")) {
-  Write-Host "  PARA. No encuentro la unidad $unidad. Esta conectado el disco?" -ForegroundColor Red
-  Read-Host "  Presiona ENTER para cerrar"
-  exit 1
+  Parar "No encuentro la unidad $unidad." @("Esta conectado el disco?")
 }
 
 # ── La lista de proyectos ─────────────────────────────────────────────────────────────────────
@@ -119,13 +129,11 @@ New-Item -ItemType Directory -Force -Path $Base, $DatosDir, $ComunDir, $ProyDir 
 if (-not (Test-Path $ListaTxt)) {
   @"
 # LISTA DE PROYECTOS QUE VIAJAN EN ESTE DISCO
-# Una linea por proyecto:   nombre corto | ruta completa en el PC
-# Las lineas que empiezan con # no cuentan.
+# Una linea por proyecto:   nombre corto | ruta completa de la carpeta en el PC
+# Las lineas que empiezan con # son notas y no cuentan.
+# Si un proyecto no esta en el PC donde corres el programa, se salta solo.
 
 motogestion | C:\Users\USER\Documents\GitHub\gps-satelital
-
-# Para agregar otro, copia la linea de arriba y cambiala. Ejemplo:
-# asistente | C:\Users\USER\Proyecto Asistete autonomo
 "@ | Out-File $ListaTxt -Encoding ASCII
   Write-Host "  (se creo la lista de proyectos: $ListaTxt)" -ForegroundColor DarkGray
   Write-Host ""
@@ -137,16 +145,9 @@ foreach ($linea in (Get-Content $ListaTxt)) {
   if (-not $l -or $l.StartsWith("#")) { continue }
   $partes = $l -split '\|', 2
   if ($partes.Count -ne 2) { continue }
-  $proyectos += [pscustomobject]@{
-    Nombre = $partes[0].Trim()
-    Ruta   = $partes[1].Trim()
-  }
+  $proyectos += [pscustomobject]@{ Nombre = $partes[0].Trim(); Ruta = $partes[1].Trim() }
 }
-if ($proyectos.Count -eq 0) {
-  Write-Host "  PARA. La lista de proyectos esta vacia: $ListaTxt" -ForegroundColor Red
-  Read-Host "  Presiona ENTER para cerrar"
-  exit 1
-}
+if ($proyectos.Count -eq 0) { Parar "La lista de proyectos esta vacia." @($ListaTxt) }
 
 function Leer-Json($ruta) { if (Test-Path $ruta) { return Get-Content $ruta -Raw | ConvertFrom-Json } return $null }
 $enDisco = Leer-Json $EstadoJson
@@ -160,17 +161,14 @@ if ($Modo -eq "llevar") {
   # EL CANDADO: no pisar trabajo del otro PC que este nunca trajo.
   if ($enDisco -and $enDisco.pc -ne $EstePC) {
     $traido = if ($marca) { $marca.fecha_del_disco } else { "nunca" }
-    if ($traido -ne $enDisco.fecha) {
-      Write-Host "  PARA. El disco trae trabajo de otro PC que este nunca trajo." -ForegroundColor Red
-      Write-Host ""
-      Write-Host "     En el disco hay:  $($enDisco.pc)   del  $($enDisco.fecha)" -ForegroundColor Yellow
-      Write-Host "     Este PC trajo:    $traido" -ForegroundColor Yellow
-      Write-Host ""
-      Write-Host "  Si llevas ahora, pisas ese trabajo y se pierde." -ForegroundColor Red
-      Write-Host "  Lo correcto: primero haz doble clic en 1-TRAER.bat y sigue desde ahi." -ForegroundColor Yellow
-      Write-Host ""
-      if (-not $Forzar) { Read-Host "  Presiona ENTER para cerrar"; exit 1 }
-      Write-Host "  (-Forzar: siguiendo de todas formas)" -ForegroundColor DarkYellow
+    if ($traido -ne $enDisco.fecha -and -not $Forzar) {
+      Parar "El disco trae trabajo de otro PC que este nunca trajo." @(
+        "",
+        "   En el disco hay:  $($enDisco.pc)   del  $($enDisco.fecha)",
+        "   Este PC trajo:    $traido",
+        "",
+        "Si llevas ahora, pisas ese trabajo y se pierde.",
+        "Lo correcto: primero doble clic en 1-TRAER.bat, y sigues desde ahi.")
     }
   }
 
@@ -189,43 +187,41 @@ if ($Modo -eq "llevar") {
     Copiar $p.Ruta (Join-Path $destProy "archivos") $true @("node_modules", "dist", ".vite") @("PEGAR-EN-SUPABASE-*.sql") | Out-Null
     Write-Host " ok"
 
-    $nombreMem = Ruta-A-NombreDeMemoria $p.Ruta
-    $origenMem = Join-Path $ClaudeDir "projects\$nombreMem"
-    Write-Host "     memorias y conversaciones..." -NoNewline
-    if (Copiar $origenMem (Join-Path $destProy "memoria") $true $null $null) {
-      $n = (Get-ChildItem (Join-Path $origenMem "memory") -File -ErrorAction SilentlyContinue).Count
-      Write-Host " ok ($n memorias)"
-      $resumen += "$($p.Nombre): $n memorias"
-    } else {
-      Write-Host " (todavia no tiene)"
-      $resumen += "$($p.Nombre): sin memorias aun"
-    }
-    # Deja anotado a que ruta pertenece esta memoria, por si algun dia cambia el nombre.
     "$($p.Ruta)" | Out-File (Join-Path $destProy "RUTA-ORIGINAL.txt") -Encoding ASCII
+
+    $nombreMem = Ruta-A-NombreDeMemoria $p.Ruta
+    $n = (Get-ChildItem (Join-Path $ClaudeDir "projects\$nombreMem\memory") -File -ErrorAction SilentlyContinue).Count
+    $resumen += "$($p.Nombre): $n memorias"
     Write-Host ""
   }
 
+  # TODO .claude, salvo la basura. Asi viaja cualquier cosa nueva sin tener que acordarse.
   Write-Host "  LO QUE ES DE TODO EL PC" -ForegroundColor Green
-  foreach ($c in $ComunCarpetas) {
-    Write-Host "     $c..." -NoNewline
-    if (Copiar (Join-Path $ClaudeDir $c) (Join-Path $ComunDir "claude\$c") $true $null $null) { Write-Host " ok" } else { Write-Host " (no hay)" }
-  }
-  New-Item -ItemType Directory -Force -Path (Join-Path $ComunDir "claude") | Out-Null
-  foreach ($a in $ComunArchivos) {
-    $o = Join-Path $ClaudeDir $a
-    if (Test-Path $o) { Copy-Item $o (Join-Path $ComunDir "claude\$a") -Force }
-  }
-  if (Test-Path "C:\Users\USER\CLAUDE.md") { Copy-Item "C:\Users\USER\CLAUDE.md" (Join-Path $ComunDir "CLAUDE-del-usuario.md") -Force }
+  Write-Host "     .claude completo (memorias, skills, planes, plugins, ajustes)..." -NoNewline
+  Copiar $ClaudeDir (Join-Path $ComunDir "claude") $true $BasuraClaude @("marca-sincronizacion.json") | Out-Null
+  Write-Host " ok"
 
-  foreach ($m in @(".mempalace", ".claude-mem")) {
+  New-Item -ItemType Directory -Force -Path (Join-Path $ComunDir "home") | Out-Null
+  Write-Host "     configuracion del usuario (.claude.json y CLAUDE.md)..." -NoNewline
+  foreach ($a in $HomeArchivos) {
+    $o = Join-Path $Home_ $a
+    if (Test-Path $o) { Copy-Item $o (Join-Path $ComunDir "home\$a") -Force }
+  }
+  Write-Host " ok"
+
+  foreach ($m in $HomeMemorias) {
     Write-Host "     $m..." -NoNewline
-    if (Copiar "C:\Users\USER\$m" (Join-Path $ComunDir $m.TrimStart('.')) $true $null $null) { Write-Host " ok" } else { Write-Host " (no hay)" }
+    if (Copiar (Join-Path $Home_ $m) (Join-Path $ComunDir $m.TrimStart('.')) $true $null $null) { Write-Host " ok" } else { Write-Host " (no hay)" }
   }
   Write-Host ""
 
-  # Sellar el disco
+  $totalMem = (Get-ChildItem (Join-Path $ComunDir "claude\projects") -Directory -ErrorAction SilentlyContinue |
+               ForEach-Object { (Get-ChildItem (Join-Path $_.FullName "memory") -File -ErrorAction SilentlyContinue).Count } |
+               Measure-Object -Sum).Sum
+
   if (-not $SoloProbarCopia) {
-    @{ pc = $EstePC; fecha = $Ahora; proyectos = ($proyectos | ForEach-Object { $_.Nombre }) -join ", "; detalle = $resumen -join " | " } |
+    @{ pc = $EstePC; fecha = $Ahora; proyectos = ($proyectos | ForEach-Object { $_.Nombre }) -join ", "
+       detalle = $resumen -join " | "; memorias_totales = $totalMem } |
       ConvertTo-Json | Out-File $EstadoJson -Encoding ASCII
     @{ fecha_del_disco = $Ahora; pc_origen = $EstePC } | ConvertTo-Json | Out-File $MarcaLocal -Encoding ASCII
   } else {
@@ -236,7 +232,7 @@ if ($Modo -eq "llevar") {
 
   Write-Host "  ============================================" -ForegroundColor Cyan
   Write-Host "   LISTO. Ya puedes llevarte el disco." -ForegroundColor Cyan
-  Write-Host "   $peso en total" -ForegroundColor Cyan
+  Write-Host "   $peso  ·  $totalMem memorias en total" -ForegroundColor Cyan
   foreach ($r in $resumen) { Write-Host "   $r" -ForegroundColor Cyan }
   Write-Host "  ============================================" -ForegroundColor Cyan
   Write-Host ""
@@ -263,65 +259,56 @@ if ($Modo -eq "traer") {
     }
   }
 
-  # Respaldo de lo que hubiera, por si acaso.
-  $respaldo = "C:\Users\USER\RESPALDO-ANTES-DE-TRAER-$(Get-Date -Format 'yyyy-MM-dd_HHmm')"
-  Write-Host "  Guardando un respaldo de lo que habia en este PC..." -NoNewline
-  foreach ($m in @(".mempalace", ".claude-mem")) {
-    Copiar "C:\Users\USER\$m" (Join-Path $respaldo $m.TrimStart('.')) $true $null $null | Out-Null
-  }
-  foreach ($p in $proyectos) {
-    $nombreMem = Ruta-A-NombreDeMemoria $p.Ruta
-    Copiar (Join-Path $ClaudeDir "projects\$nombreMem") (Join-Path $respaldo "memorias\$nombreMem") $true $null $null | Out-Null
-  }
+  # Respaldo de lo que hubiera en este PC, por si acaso.
+  $respaldo = Join-Path $Home_ "RESPALDO-ANTES-DE-TRAER-$(Get-Date -Format 'yyyy-MM-dd_HHmm')"
+  Write-Host "  Guardando un respaldo de lo que habia..." -NoNewline
+  Copiar (Join-Path $ClaudeDir "projects") (Join-Path $respaldo "claude-projects") $true $null $null | Out-Null
+  foreach ($m in $HomeMemorias) { Copiar (Join-Path $Home_ $m) (Join-Path $respaldo $m.TrimStart('.')) $true $null $null | Out-Null }
   Write-Host " ok"
   Write-Host "     ($respaldo)" -ForegroundColor DarkGray
   Write-Host ""
 
   foreach ($p in $proyectos) {
     Write-Host "  PROYECTO: $($p.Nombre)" -ForegroundColor Green
-    $origenProy = Join-Path $ProyDir $p.Nombre
+    $origenProy = Join-Path $ProyDir "$($p.Nombre)\archivos"
     if (-not (Test-Path $origenProy)) {
       Write-Host "     (no viene en el disco - se salta)" -ForegroundColor DarkGray
       Write-Host ""
       continue
     }
-
     Write-Host "     archivos del proyecto..." -NoNewline
     New-Item -ItemType Directory -Force -Path (Split-Path $p.Ruta -Parent) | Out-Null
-    # /MIR pero SIN tocar node_modules: si este PC ya tenia instalado, no se borra.
-    Copiar (Join-Path $origenProy "archivos") $p.Ruta $true @("node_modules") $null | Out-Null
+    # Espejo, pero sin tocar node_modules: si este PC ya lo tenia instalado, no se borra.
+    Copiar $origenProy $p.Ruta $true @("node_modules") $null | Out-Null
     Write-Host " ok"
-
-    $nombreMem = Ruta-A-NombreDeMemoria $p.Ruta
-    $destMem   = Join-Path $ClaudeDir "projects\$nombreMem"
-    Write-Host "     memorias y conversaciones..." -NoNewline
-    # /E: agrega y actualiza, nunca borra (por si este PC tenia conversaciones que el disco no trae).
-    if (Copiar (Join-Path $origenProy "memoria") $destMem $false $null $null) {
-      # Las memorias SI quedan como espejo exacto: si se borro una a proposito, debe desaparecer.
-      $memOrigen = Join-Path $origenProy "memoria\memory"
-      if (Test-Path $memOrigen) { Copiar $memOrigen (Join-Path $destMem "memory") $true $null $null | Out-Null }
-      $n = (Get-ChildItem (Join-Path $destMem "memory") -File -ErrorAction SilentlyContinue).Count
-      Write-Host " ok ($n memorias)"
-    } else { Write-Host " (no venian)" }
     Write-Host ""
   }
 
   Write-Host "  LO QUE ES DE TODO EL PC" -ForegroundColor Green
-  foreach ($c in $ComunCarpetas) {
-    Write-Host "     $c..." -NoNewline
-    # /E a proposito: si el disco vino sin plugins, no se borran los que este PC ya tenia.
-    if (Copiar (Join-Path $ComunDir "claude\$c") (Join-Path $ClaudeDir $c) $false $null $null) { Write-Host " ok" } else { Write-Host " (no venia)" }
+  Write-Host "     .claude completo (memorias, skills, planes, plugins, ajustes)..." -NoNewline
+  # /E: agrega y actualiza, NUNCA borra. Si este PC tenia algo que el disco no trae, se conserva.
+  Copiar (Join-Path $ComunDir "claude") $ClaudeDir $false $null $null | Out-Null
+  # Las memorias de cada proyecto SI quedan como espejo exacto: si se borro una a proposito,
+  # tiene que desaparecer tambien aca.
+  $projDisco = Join-Path $ComunDir "claude\projects"
+  if (Test-Path $projDisco) {
+    foreach ($d in (Get-ChildItem $projDisco -Directory)) {
+      $memOrigen = Join-Path $d.FullName "memory"
+      if (Test-Path $memOrigen) { Copiar $memOrigen (Join-Path $ClaudeDir "projects\$($d.Name)\memory") $true $null $null | Out-Null }
+    }
   }
-  foreach ($a in $ComunArchivos) {
-    $o = Join-Path $ComunDir "claude\$a"
-    if (Test-Path $o) { Copy-Item $o (Join-Path $ClaudeDir $a) -Force }
-  }
-  $md = Join-Path $ComunDir "CLAUDE-del-usuario.md"
-  if (Test-Path $md) { Copy-Item $md "C:\Users\USER\CLAUDE.md" -Force }
+  Write-Host " ok"
 
-  foreach ($m in @(".mempalace", ".claude-mem")) {
+  Write-Host "     configuracion del usuario (.claude.json y CLAUDE.md)..." -NoNewline
+  foreach ($a in $HomeArchivos) {
+    $o = Join-Path $ComunDir "home\$a"
+    if (Test-Path $o) { Copy-Item $o (Join-Path $Home_ $a) -Force }
+  }
+  Write-Host " ok"
+
+  foreach ($m in $HomeMemorias) {
     Write-Host "     $m..." -NoNewline
-    if (Copiar (Join-Path $ComunDir $m.TrimStart('.')) "C:\Users\USER\$m" $true $null $null) { Write-Host " ok" } else { Write-Host " (no venia)" }
+    if (Copiar (Join-Path $ComunDir $m.TrimStart('.')) (Join-Path $Home_ $m) $true $null $null) { Write-Host " ok" } else { Write-Host " (no venia)" }
   }
   Write-Host ""
 
@@ -329,8 +316,13 @@ if ($Modo -eq "traer") {
     @{ fecha_del_disco = $enDisco.fecha; pc_origen = $enDisco.pc } | ConvertTo-Json | Out-File $MarcaLocal -Encoding ASCII
   }
 
+  $totalMem = (Get-ChildItem (Join-Path $ClaudeDir "projects") -Directory -ErrorAction SilentlyContinue |
+               ForEach-Object { (Get-ChildItem (Join-Path $_.FullName "memory") -File -ErrorAction SilentlyContinue).Count } |
+               Measure-Object -Sum).Sum
+
   Write-Host "  ============================================" -ForegroundColor Cyan
   Write-Host "   LISTO. Ya puedes abrir Claude en este PC." -ForegroundColor Cyan
+  Write-Host "   $totalMem memorias en total" -ForegroundColor Cyan
   Write-Host "  ============================================" -ForegroundColor Cyan
   Write-Host ""
   Write-Host "  Si es la primera vez en este PC, falta una sola cosa:" -ForegroundColor Yellow

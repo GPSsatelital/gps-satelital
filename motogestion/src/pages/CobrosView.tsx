@@ -2615,8 +2615,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 4, fontWeight: 600 }}>✍️ {marcaDeFirma(convenioActual)}</div>
                   )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-                    <InfoBox label="Deuda total" value={`$ ${fmt(convenioActual.deuda_total)}`} />
+                    {/* 🔴 "Deuda total" decía lo PACTADO el día que firmó — un número que nunca
+                        baja. El dueño lo vio así: *"los convenios, con lo que van pagando, no se van
+                        descontando, como que ya los pagó"*. El número no estaba malo: estaba mal
+                        ETIQUETADO, y al lado no había ninguno que se moviera. Es el defecto de
+                        LIBINTO otra vez (regla del dinero: cada cifra dice QUÉ pregunta responde).
+                        Lo abonado ya se calculaba en este mismo archivo — solo faltaba mostrarlo. */}
+                    <InfoBox label="Total del acuerdo" value={`$ ${fmt(convenioActual.deuda_total)}`} />
                     <InfoBox label="Cuota por período" value={`$ ${fmt(convenioActual.cuota_por_periodo)}`} highlight />
+                    <InfoBox label="Ya abonó" value={`$ ${fmt(Math.min(sumaAbonadoConvenio(convenioActual.id), convenioActual.deuda_total))}`} />
+                    <InfoBox label="Le falta" value={`$ ${fmt(Math.max(convenioActual.deuda_total - sumaAbonadoConvenio(convenioActual.id), 0))}`} highlight />
                     <InfoBox label="Cuotas" value={`${convenioActual.cuotas_pagadas} / ${convenioActual.numero_cuotas}`} />
                     <InfoBox label="Fecha límite" value={formatDate(convenioActual.fecha_limite)} />
                     {/* La fecha límite es la de la ÚLTIMA cuota — no le sirve al funcionario para

@@ -1001,8 +1001,11 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                     )}
                   </div>
                   <div style={{ textAlign: "right" }}>
+                    {/* Decía "deuda total" y es el monto PACTADO: no baja nunca. Mismo arreglo que
+                        en Cartera — una cifra correcta con la etiqueta equivocada hace que el
+                        funcionario le cobre de más a alguien que ya pagó. */}
                     <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>${fmt(cv.deuda_total)}</div>
-                    <div style={{ fontSize: 11, color: "var(--faint)" }}>deuda total</div>
+                    <div style={{ fontSize: 11, color: "var(--faint)" }}>total del acuerdo</div>
                   </div>
                 </div>
                 <div>

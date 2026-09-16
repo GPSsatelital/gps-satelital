@@ -436,11 +436,14 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           motivoVarada,
           // PATIOS (16-sep-2026, regla del dueño): la moto en Fiscalía está retenida, sí, pero
           // "no hay que hacerle gestión: no está en la empresa y solo hay que esperar a que la
-          // liberen — no depende de nosotros". Esta lista es de trabajo pendiente; lo que nadie
+          // liberen — no depende de nosotros". TRÁNSITO va al mismo lado: también quedan en los
+          // patios, solo que "por lo general no duran más de una semana para salir" (dueño,
+          // 16-sep) — la espera es más corta, pero la espera es igual. Esta lista es de trabajo
+          // pendiente; lo que nadie
           // puede trabajar no va en el montón. NO se saca de los datos —solo de la vista por
           // defecto— porque de acá sale el préstamo de reemplazo para ese cliente, que sí
           // depende de nosotros: tiene su propio chip para encontrarla cuando haga falta.
-          categoria: (moto?.estado === "Fiscalia" ? "patios"
+          categoria: ((moto?.estado === "Fiscalia" || moto?.estado === "Transito") ? "patios"
             : varada ? "taller"
             : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller" | "patios",
           soloInfoTaller: varada && c.estado === "Activo",

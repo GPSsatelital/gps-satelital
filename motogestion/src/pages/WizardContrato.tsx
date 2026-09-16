@@ -6,6 +6,7 @@ import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
 import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado, type FirmasDoc } from "../hooks/useDocumentos";
+import Placa from "../components/Placa";
 import { htmlAPdfBlob, urlADataUrl } from "../utils/pdf";
 import MoneyInput from "../components/MoneyInput";
 import CanvasFirma from "../components/CanvasFirma";
@@ -80,6 +81,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const [contratoId, setContratoId] = useState<string | null>(contratoInicial?.id ?? null);
   const [contratoData, setContratoData] = useState<Contrato | null>(contratoInicial ?? null);
   const [motoId, setMotoId] = useState<string | null>(contratoInicial?.moto_id ?? null);
+  // LA REVISIÓN FINAL (dueño, 16-sep): *"que al final salga a confirmar los datos como nombre y
+  // placa bien claros y llamativos, para que se tenga que leer sí o sí, porque a veces hay errores
+  // humanos"*. Es una casilla y no un `confirm()` a propósito: un popup se cierra de memoria sin
+  // leerlo; marcar una casilla que está AL LADO de los datos obliga a mirarlos.
+  const [revisado, setRevisado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
@@ -592,6 +598,15 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--card)" }}>{pasoTitulos[step - 1]}</div>
               {clienteActual && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
+              {/* LA PLACA, EN TODOS LOS PASOS (dueño, 16-sep). Desde que se elige la moto queda a
+                  la vista hasta el final: en un proceso de seis pasos es fácil creer que se está
+                  entregando otra, y el error se descubre con la moto ya afuera. */}
+              {motoActual && (
+                <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.1)", borderRadius: 8, padding: "4px 10px" }}>
+                  <Placa placa={motoActual.placa} size="sm" />
+                  <span style={{ fontSize: 11.5, color: "var(--muted3)" }}>{motoActual.marca} {motoActual.modelo}</span>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {contratoId && (
@@ -1008,12 +1023,33 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           {/* ── PASO 6: Entrega ── */}
           {step === 6 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {motoActual && (
-                <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--accent)" }}>🏍️ {motoActual.placa}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted2)" }}>{motoActual.marca} {motoActual.modelo} · {motoActual.color}</div>
+              {/* ANTES DE ENTREGAR — los dos datos que, si están mal, mandan la moto equivocada al
+                  cliente equivocado. Grandes, juntos y con una casilla que hay que marcar: es lo
+                  último que se ve antes de que la moto salga por la puerta. */}
+              <div style={{ padding: "16px 16px 14px", borderRadius: 14, background: "var(--warn-soft)", border: "2px solid var(--warn-ink)" }}>
+                <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--warn-ink)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                  ⚠️ Revisa antes de entregar
                 </div>
-              )}
+                <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, textTransform: "uppercase", opacity: 0.75 }}>Se le entrega a</div>
+                <div style={{ fontSize: 21, fontWeight: 800, color: "var(--text)", textTransform: "uppercase", lineHeight: 1.2, wordBreak: "break-word", marginBottom: 12 }}>
+                  {clienteActual?.nombre ?? "—"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--warn-ink)", fontWeight: 700, textTransform: "uppercase", opacity: 0.75, marginBottom: 5 }}>La moto</div>
+                {motoActual ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <Placa placa={motoActual.placa} size="lg" grupo={motoActual.grupo} />
+                    <div style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>{motoActual.marca} {motoActual.modelo} · {motoActual.color}</div>
+                  </div>
+                ) : <div style={{ fontSize: 14, color: "var(--bad)" }}>Sin moto asignada</div>}
+
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--warn-ink)", cursor: "pointer" }}>
+                  <input type="checkbox" checked={revisado} onChange={e => setRevisado(e.target.checked)}
+                    style={{ width: 20, height: 20, flexShrink: 0, marginTop: 1, cursor: "pointer" }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", lineHeight: 1.45 }}>
+                    Leí el nombre y la placa de arriba y son los correctos.
+                  </span>
+                </label>
+              </div>
 
               <div>
                 <label style={labelStyle}>Kilometraje inicial</label>
@@ -1112,8 +1148,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               </button>
             )}
             {step === 6 && (
-              <button onClick={handleStep6} disabled={guardando} style={{ ...btnPrimary, background: guardando ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok))", opacity: guardando ? 0.6 : 1 }}>
-                {guardando ? "Activando contrato..." : "✅ Activar contrato"}
+              <button onClick={handleStep6} disabled={guardando || !revisado}
+                title={!revisado ? "Primero confirma el nombre y la placa" : undefined}
+                style={{ ...btnPrimary, background: (guardando || !revisado) ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok))", opacity: (guardando || !revisado) ? 0.6 : 1, cursor: (guardando || !revisado) ? "not-allowed" : "pointer" }}>
+                {guardando ? "Activando contrato..." : !revisado ? "Confirma arriba para activar" : "✅ Activar contrato"}
               </button>
             )}
           </div>

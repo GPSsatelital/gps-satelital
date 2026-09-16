@@ -88,10 +88,24 @@ function ContractBadge({ estado }: { estado: ContratoEstado }) {
   return <Badge tone={ESTADO_TONE[estado] ?? "neutral"}>{estado}</Badge>;
 }
 
+/**
+ * ¿EN QUÉ PASO QUEDÓ ESTE CONTRATO A MEDIAS?
+ *
+ * 🔴 EL DEFECTO (dueño, 16-sep): *"que guarde los procesos de cada paso; que si se corta por algún
+ * motivo no se devuelva del paso 4 al 2 otra vez"*. Esta función solo sabía reconocer TRES
+ * posiciones —2, 3 y 6— así que quien iba en el 4 o el 5 volvía atrás y tenía que rehacer las
+ * firmas y los PDF que ya estaban subidos.
+ *
+ * El avance SIEMPRE estuvo guardado: cada paso deja su propia huella en la fila del contrato
+ * (la moto, el PDF del contrato, el del pagaré, la foto del certificado). Solo faltaba leerlas.
+ * Por eso no hizo falta ninguna columna nueva: se lee lo que de verdad quedó subido.
+ */
 function wizardStep(c: Contrato): number {
-  if (!c.moto_id) return 2;
-  if (!c.firma_cliente) return 3;
-  return 6;
+  if (!c.moto_id) return 2;              // paso 2 guarda la moto
+  if (!c.contrato_pdf_url) return 3;     // paso 3 sube el contrato firmado
+  if (!c.pagare_pdf_url) return 4;       // paso 4 sube el pagaré firmado
+  if (!c.certificado_pdf_url) return 5;  // paso 5 sube la foto del certificado
+  return 6;                              // solo falta la entrega
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {

@@ -31,6 +31,7 @@ const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }
   documento_generado: { label: "Doc. generado", color: "var(--violet)", bg: "var(--indigo-soft)" },
   firmada: { label: "Firmada", color: "var(--ok-ink)", bg: "var(--ok-soft)" },
   cerrada: { label: "Cerrada", color: "var(--muted3)", bg: "var(--soft)" },
+  anulada: { label: "Anulada", color: "var(--bad)", bg: "var(--bad-soft)" },
 };
 
 const PASOS = ["iniciada", "en_taller", "calculada", "documento_generado", "firmada", "cerrada"];
@@ -93,7 +94,7 @@ export default function LiquidacionesView() {
   const esAdmin = role === "ADMIN" || role === "ADMIN_PRINCIPAL" || role === "SECRETARIA";
 
   const { filtrarMotos } = useScope();
-  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, devolverAPendienteDeFirma, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();
+  const { liquidaciones, loading, registrarRevisionTaller, calcularSaldo, marcarDocumentoGenerado, subirDocumentoFirmado, devolverAPendienteDeFirma, anularLiquidacion, adjuntarFirmaACerrada, firmarDigital, volverACalcular, cambiarMotivo, confirmarCierre } = useLiquidaciones();
   const [firmando, setFirmando] = useState(false);
   const { clientes } = useClientes();
   const { motos: todasMotos } = useMotos();
@@ -197,8 +198,10 @@ export default function LiquidacionesView() {
     }
   }, [sel, taller]);
 
-  const activas = liquidaciones.filter((l) => l.estado !== "cerrada");
-  const cerradas = liquidaciones.filter((l) => l.estado === "cerrada");
+  // Una ANULADA no es activa —no hay nada que trabajar en ella— pero tampoco se esconde: baja al
+  // grupo de las terminadas, como constancia de que ese contrato estuvo bloqueado y por qué.
+  const activas = liquidaciones.filter((l) => l.estado !== "cerrada" && l.estado !== "anulada");
+  const cerradas = liquidaciones.filter((l) => l.estado === "cerrada" || l.estado === "anulada");
 
   /** Pagos confirmados del contrato — la base del saldo a favor. */
   function pagosDelContrato(contratoId: string) {
@@ -510,6 +513,32 @@ export default function LiquidacionesView() {
     setMsg(error ?? `${sel.numero} volvió a quedar pendiente de firma. El documento anterior se borró.`, !!error);
   }
 
+  /**
+   * ANULAR: para la que se empezó sobre el contrato equivocado. Sin esto ese contrato quedaba
+   * bloqueado para siempre — el sistema no deja abrir otra mientras haya una en curso.
+   */
+  async function handleAnular() {
+    if (!sel || !profile) return;
+    const motivo = prompt(
+      `¿Por qué se anula ${sel.numero}?
+
+`
+      + "Queda escrito en el historial del contrato. Ejemplo: «se inició sobre el cliente equivocado».");
+    if (motivo === null) return;
+    if (!motivo.trim()) { setMsg("Hay que decir por qué se anula.", true); return; }
+    if (!confirm(
+      `¿Anular ${sel.numero}?
+
+`
+      + "El contrato queda libre para empezar otra liquidación y la moto vuelve a su estado. "
+      + "La liquidación NO se borra: queda marcada como anulada, con tu nombre y el motivo.")) return;
+    setGuardando(true);
+    const { error } = await anularLiquidacion(sel.id, profile.id, motivo.trim());
+    setGuardando(false);
+    if (!error) setSel(null);
+    setMsg(error ?? `${sel.numero} quedó anulada. El contrato ya está libre.`, !!error);
+  }
+
   // Paz y Salvo — constancia de cumplimiento y transferencia de la moto al cliente.
   function handlePazYSalvo() {
     if (!sel) return;
@@ -570,7 +599,7 @@ export default function LiquidacionesView() {
 
         {cerradas.length > 0 && (
           <div style={card}>
-            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: "var(--muted)" }}>Cerradas ({cerradas.length})</div>
+            <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: "var(--muted)" }}>Cerradas y anuladas ({cerradas.length})</div>
             {cerradas.map((l) => {
               const cliente = clienteDe(l);
               return (
@@ -641,7 +670,7 @@ export default function LiquidacionesView() {
                 </div>
                 <button onClick={() => setSel(null)} style={btn("var(--line)", "var(--muted2)")}>✕</button>
               </div>
-              <Stepper estado={sel.estado} />
+              {sel.estado !== "anulada" && <Stepper estado={sel.estado} />}
 
               {/* Resumen financiero */}
               <div style={{ background: "var(--soft2)", borderRadius: 12, padding: 12, marginTop: 8, fontSize: 13 }}>
@@ -1034,6 +1063,31 @@ export default function LiquidacionesView() {
                     Quedó debiendo ${Math.abs(sel.saldo_final).toLocaleString("es-CO")} — no hay Paz y Salvo hasta que esa deuda se pague. El Paz y Salvo declara que no debe nada, y no es cierto.
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ANULAR — para la que se empezó sobre el contrato equivocado. Va de última y en gris:
+                es deshacer, no un paso del flujo (mismo criterio que "devolver a pendiente de
+                firma"). Una CERRADA no aparece acá: ahí ya se movió plata, contrato y moto. */}
+            {esAdmin && sel.estado !== "cerrada" && sel.estado !== "anulada" && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 9, lineHeight: 1.5 }}>
+                  ¿Se inició sobre el <b>contrato equivocado</b>? Anúlala: el contrato queda libre
+                  para empezar otra y la moto vuelve a su estado. No se borra — queda el rastro.
+                </div>
+                <button
+                  style={{ ...btn("var(--soft2)", "var(--text)"), border: "1px solid var(--bad)", opacity: guardando ? 0.6 : 1 }}
+                  disabled={guardando} onClick={handleAnular}>
+                  {guardando ? "Anulando..." : "Se inició por error — anular esta liquidación"}
+                </button>
+              </div>
+            )}
+
+            {sel.estado === "anulada" && (
+              <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "var(--bad-soft)", color: "var(--bad)", fontSize: 12.5, lineHeight: 1.5 }}>
+                <b>Anulada.</b> {sel.anulada_motivo ? `Motivo: ${sel.anulada_motivo}` : ""}
+                {sel.anulada_at ? ` · ${new Date(sel.anulada_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+                <br />El contrato quedó libre. Esta liquidación se conserva solo como constancia.
               </div>
             )}
           </div>

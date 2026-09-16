@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
+import { estadoMotoTrasLiberar } from "./useMotos";
 
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
-export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada";
+export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada" | "anulada";
 
 export type DetalleDano = { concepto: string; monto: number };
 /**
@@ -27,6 +28,10 @@ export type Liquidacion = {
   cliente_id: string;
   moto_id: string | null;
   motivo: MotivoLiquidacion;
+  /** Rastro de la anulación (mig 155). null en las que nunca se anularon. */
+  anulada_por?: string | null;
+  anulada_motivo?: string | null;
+  anulada_at?: string | null;
   estado: EstadoLiquidacion;
   ahorro_acumulado: number;
   saldo_favor: number;
@@ -386,6 +391,64 @@ export function useLiquidaciones() {
    * plata, contrato y moto; retroceder el estado dejaría la pantalla diciendo una cosa y la base
    * otra. Esa liquidación se arregla con el botón de adjuntar la firma, no devolviéndola.
    */
+  /**
+   * ANULAR una liquidación empezada por error (mig 155).
+   *
+   * 🔴 EL HUECO QUE CIERRA: iniciarla sobre el contrato equivocado lo dejaba BLOQUEADO para
+   * siempre — no deja empezar otra mientras haya una en curso, y no había cómo deshacerla.
+   *
+   * 🔴 SOLO ANTES DEL CIERRE. Cerrar es lo que mueve plata (salda deudas, cierra el convenio, pone
+   * el ahorro en 0, crea la deuda del faltante); deshacer eso es otro problema. Antes del cierre
+   * la liquidación solo creó su fila y una orden de taller, y las dos se revierten limpio.
+   * El `.neq("estado", "cerrada")` es el candado de verdad: aunque alguien llame esta función con
+   * una cerrada, la BD no la deja.
+   *
+   * SE MARCA, NO SE BORRA: una liquidación empezada sobre un cliente real es un hecho que pasó, y
+   * el contrato estuvo bloqueado mientras tanto. Queda quién, cuándo y por qué (regla del RASTRO).
+   */
+  async function anularLiquidacion(liquidacionId: string, quien: string, motivo: string) {
+    if (!motivo.trim()) return { error: "Escribe por qué se anula: queda en el historial del contrato." };
+    const liq = liquidaciones.find(l => l.id === liquidacionId);
+    if (liq?.estado === "cerrada") return { error: "Una liquidación CERRADA no se anula: ahí ya se movió plata, contrato y moto." };
+
+    const { error } = await supabase.from("liquidaciones").update({
+      estado: "anulada",
+      anulada_por: quien || null,
+      anulada_motivo: motivo.trim(),
+      anulada_at: new Date().toISOString(),
+    }).eq("id", liquidacionId).neq("estado", "cerrada");
+    if (error) return { error: error.message };
+
+    // La orden de taller que creó la liquidación deja de tener sentido. Solo se cierra si el
+    // mecánico todavía no la trabajó: si ya la tocó, su trabajo es real y se respeta.
+    if (liq?.taller_id) {
+      await supabase.from("taller")
+        .update({ estado_tecnico: "Finalizado", fecha_salida: hoyISO(),
+                  detalle: `Liquidación ${liq.numero} ANULADA — ${motivo.trim()}` })
+        .eq("id", liq.taller_id).eq("estado_tecnico", "Pendiente");
+    }
+
+    // La moto vuelve a donde estaba: 'Asignada' si el contrato sigue activo, 'Disponible' si no.
+    // Sin esto quedaría en Mantenimiento sin orden abierta y no la podría usar nadie.
+    if (liq?.moto_id) {
+      await supabase.from("motos")
+        .update({ estado: await estadoMotoTrasLiberar(liq.moto_id) })
+        .eq("id", liq.moto_id).eq("estado", "Mantenimiento");
+    }
+
+    // El rastro en el contrato: por qué estuvo bloqueado y quién lo liberó.
+    if (liq?.contrato_id) {
+      await supabase.from("contratos_auditoria").insert({
+        contrato_id: liq.contrato_id,
+        campo: `liquidación ${liq.numero}`,
+        valor_anterior: liq.estado,
+        valor_nuevo: `ANULADA — ${motivo.trim()}`,
+        editado_por: quien,
+      });
+    }
+    return { error: null };
+  }
+
   async function devolverAPendienteDeFirma(liquidacionId: string, quien: string, motivo: string) {
     const liq = liquidaciones.find(l => l.id === liquidacionId);
 
@@ -495,6 +558,7 @@ export function useLiquidaciones() {
     cambiarMotivo,
     subirDocumentoFirmado,
     devolverAPendienteDeFirma,
+    anularLiquidacion,
     adjuntarFirmaACerrada,
     firmarDigital,
     confirmarCierre,

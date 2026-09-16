@@ -653,13 +653,32 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   useBackGuard(clienteVisitaId !== null, () => setClienteVisitaId(null));
   useBackGuard(open, () => setOpen(false));
 
+  // El día en que se le hizo la visita aprobada: define su puesto en la fila de entrega.
+  const fechaVisitaAprobada = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of visitas) {
+      if (v.resultado !== "Aprobado") continue;
+      const prev = m.get(v.cliente_id);
+      if (!prev || v.fecha < prev) m.set(v.cliente_id, v.fecha);   // la PRIMERA, no la última
+    }
+    return m;
+  }, [visitas]);
+
   const filtered = useMemo(() => {
     let list = clientes.filter((c) => [c.nombre, c.cedula, c.telefono].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "mora") list = list.filter(c => c.estado === "En mora" || c.estado === "En riesgo");
     else if (filtroEstado) list = list.filter(c => c.estado === filtroEstado);
     if (filtroGrupo !== "todos") list = list.filter(c => grupoDelCliente.get(c.id) === filtroGrupo);
+    // LA COLA DE ENTREGA VA POR ORDEN DE LLEGADA (regla del dueño, 16-sep): *"el primero al que se
+    // le haga la visita, el primero que salga en el listado para entregar la moto"*. Es una FILA,
+    // y una fila sin orden se vuelve "el que más insista". Solo aplica a los Aprobados —en las
+    // demás listas el orden de siempre está bien. Sin visita van al final: todavía no hicieron fila.
+    if (filtroEstado === "Aprobado") {
+      list = [...list].sort((a, b) =>
+        (fechaVisitaAprobada.get(a.id) ?? "9999-12-31").localeCompare(fechaVisitaAprobada.get(b.id) ?? "9999-12-31"));
+    }
     return list;
-  }, [clientes, query, filtroEstado, filtroGrupo, grupoDelCliente]);
+  }, [clientes, query, filtroEstado, filtroGrupo, grupoDelCliente, fechaVisitaAprobada]);
 
   const GRUPOS_FILTRO_CLIENTES: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
   function ChipsGrupo() {
@@ -1447,6 +1466,22 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                       key={cliente.id}
                       titulo={cliente.nombre}
                       subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
+                      tituloCompleto={filtroEstado === "Aprobado"}
+                      extra={filtroEstado === "Aprobado" && (
+                        // LOS QUE ESPERAN MOTO se leen uno por uno, no de corrido: acá importa el
+                        // nombre entero y cuánto entregó de base. Antes el nombre se cortaba en los
+                        // laterales y la base no salía: había que abrir la ficha de cada uno.
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+                          <span style={{ fontWeight: 700, color: (cliente.ingreso_inicial ?? 0) > 0 ? "var(--ok-ink)" : "var(--warn-ink)" }}>
+                            Base entregada: $ {(cliente.ingreso_inicial ?? 0).toLocaleString("es-CO")}
+                          </span>
+                          <span style={{ color: "var(--muted)" }}>
+                            {fechaVisitaAprobada.get(cliente.id)
+                              ? `Visita: ${new Date(fechaVisitaAprobada.get(cliente.id)! + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}`
+                              : "Sin visita aprobada"}
+                          </span>
+                        </div>
+                      )}
                       rielColor={rielCliente(estadoVisual(cliente))}
                       right={<>
                         <ClienteBadge estado={estadoVisual(cliente)} />
@@ -1501,6 +1536,21 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                         key={cliente.id}
                         titulo={cliente.nombre}
                         subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
+                        tituloCompleto={filtroEstado === "Aprobado"}
+                        extra={filtroEstado === "Aprobado" && (
+                          // Misma información que en la lista de celular: esta pantalla tiene las
+                          // dos listas separadas y arreglar una sola deja la mitad sin arreglar.
+                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+                            <span style={{ fontWeight: 700, color: (cliente.ingreso_inicial ?? 0) > 0 ? "var(--ok-ink)" : "var(--warn-ink)" }}>
+                              Base entregada: $ {(cliente.ingreso_inicial ?? 0).toLocaleString("es-CO")}
+                            </span>
+                            <span style={{ color: "var(--muted)" }}>
+                              {fechaVisitaAprobada.get(cliente.id)
+                                ? `Visita: ${new Date(fechaVisitaAprobada.get(cliente.id)! + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}`
+                                : "Sin visita aprobada"}
+                            </span>
+                          </div>
+                        )}
                         rielColor={rielCliente(estadoVisual(cliente))}
                         right={<>
                           <ClienteBadge estado={estadoVisual(cliente)} />

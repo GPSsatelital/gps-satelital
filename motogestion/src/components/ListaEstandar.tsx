@@ -42,12 +42,15 @@ export function ListBox({ isMobile, children, maxHeightVh, scrollRef }: {
 //  · extra    → contenido debajo, a todo el ancho (barra de progreso, botones…)
 //  · rielColor→ color del riel izquierdo (estado); si no, transparente
 export function ItemLista({
-  placa, grupo, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick,
+  placa, grupo, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick, tituloCompleto,
 }: {
   placa?: string;
   // Portafolio de la moto: se pinta debajo de la placa (ver Placa.tsx).
   grupo?: string | null;
   titulo: ReactNode;
+  /** Deja que el título use dos renglones en vez de cortarse con "…". Para listas donde el nombre
+   *  completo importa más que la densidad — ej. los que esperan moto, que se leen uno por uno. */
+  tituloCompleto?: boolean;
   subtitulo?: ReactNode;
   right?: ReactNode;
   extra?: ReactNode;
@@ -75,7 +78,9 @@ export function ItemLista({
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         {placa && <Placa placa={placa} size="sm" grupo={grupo} />}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={tituloCompleto
+            ? { fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", lineHeight: 1.3, wordBreak: "break-word" }
+            : { fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {titulo}
           </div>
           {subtitulo != null && subtitulo !== false && (

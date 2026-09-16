@@ -120,6 +120,7 @@ export default function LiquidacionesView() {
   const [nombreResp, setNombreResp] = useState("");
   const [cargoResp, setCargoResp] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
   // El aviso lleva su tipo EXPLÍCITO. Antes se pintaba verde salvo que el texto contuviera la
   // palabra "error" — un fallo de red o de la BD salía en verde y el funcionario seguía como si
   // todo hubiera quedado guardado.
@@ -198,10 +199,24 @@ export default function LiquidacionesView() {
     }
   }, [sel, taller]);
 
+  /**
+   * BUSCADOR (16-sep-2026, pedido del dueño). Busca por número, cliente, cédula y **placa**: *"que
+   * también salga la placa que tuvo asignada en ese contrato, para tener relación y poder
+   * identificar mejor y más rápido a la hora de buscar a alguien"*. La placa es como la gente
+   * reconoce un contrato — más que por el número de la liquidación.
+   */
+  const coincide = (l: Liquidacion, q: string) => {
+    if (!q) return true;
+    const cl = clienteDe(l);
+    return [l.numero, cl?.nombre, cl?.cedula, motoDe(l)?.placa]
+      .filter(Boolean).join(" ").toLowerCase().includes(q);
+  };
+
   // Una ANULADA no es activa —no hay nada que trabajar en ella— pero tampoco se esconde: baja al
   // grupo de las terminadas, como constancia de que ese contrato estuvo bloqueado y por qué.
-  const activas = liquidaciones.filter((l) => l.estado !== "cerrada" && l.estado !== "anulada");
-  const cerradas = liquidaciones.filter((l) => l.estado === "cerrada" || l.estado === "anulada");
+  const q = busqueda.trim().toLowerCase();
+  const activas = liquidaciones.filter((l) => l.estado !== "cerrada" && l.estado !== "anulada" && coincide(l, q));
+  const cerradas = liquidaciones.filter((l) => (l.estado === "cerrada" || l.estado === "anulada") && coincide(l, q));
 
   /** Pagos confirmados del contrato — la base del saldo a favor. */
   function pagosDelContrato(contratoId: string) {
@@ -575,8 +590,19 @@ export default function LiquidacionesView() {
       {/* Lista */}
       {!(isMobile && sel) && (
       <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+        {/* Buscar por nombre, cédula, número o PLACA — la placa es como la gente reconoce un
+            contrato. Va antes de las listas para que filtre las dos a la vez. */}
+        <input
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, cédula, placa o N° de liquidación..."
+          style={{ ...inputStyle, marginBottom: 0 }}
+        />
+
         {activas.length === 0 && cerradas.length === 0 && (
-          <div style={{ ...card, color: "var(--muted)", textAlign: "center" }}>No hay liquidaciones registradas.</div>
+          <div style={{ ...card, color: "var(--muted)", textAlign: "center" }}>
+            {q ? `Ninguna liquidación coincide con "${busqueda.trim()}".` : "No hay liquidaciones registradas."}
+          </div>
         )}
 
         {activas.length > 0 && (
@@ -591,6 +617,7 @@ export default function LiquidacionesView() {
                     <Badge estado={l.estado} />
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"} · {MOTIVO_LABEL[l.motivo]}</div>
+                  {motoDe(l) && <div style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 1, fontWeight: 700, letterSpacing: 0.5 }}>{motoDe(l)!.placa}</div>}
                 </div>
               );
             })}
@@ -617,7 +644,9 @@ export default function LiquidacionesView() {
                       <Badge estado={l.estado} />
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2, textTransform: "uppercase" }}>{cliente?.nombre ?? "—"}</div>
+                  <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2, textTransform: "uppercase" }}>
+                    {cliente?.nombre ?? "—"}{motoDe(l) ? ` · ${motoDe(l)!.placa}` : ""}
+                  </div>
                 </div>
               );
             })}

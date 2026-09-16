@@ -143,7 +143,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // Retenidas primero: es el endpoint que a la práctica más se consulta (de ahí salen las
   // inmovilizadas). "En mora" es la persecución previa a la recolección.
   const [tab, setTab]                 = useState<"retenidas" | "en_mora">("retenidas");
-  const [filtroRet, setFiltroRet]     = useState<"todas" | "mora" | "temporal" | "taller">("todas");
+  const [filtroRet, setFiltroRet]     = useState<"todas" | "mora" | "temporal" | "taller" | "patios">("todas");
   const [busquedaRet, setBusquedaRet] = useState("");
 
   const hoy = hoyISO();
@@ -315,7 +315,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     esTemporal: boolean; // guardada por incapacidad/entrega voluntaria (NO moroso)
     enTaller: boolean;   // varada por causa ajena al pago: taller, fiscalía, tránsito o garantía
     motivoVarada: string; // "en taller" | "en Fiscalía" | "en Tránsito" | "en Garantía"
-    categoria: "mora" | "temporal" | "taller";
+    categoria: "mora" | "temporal" | "taller" | "patios";
     soloInfoTaller: boolean; // varada con contrato Activo → solo info, sin acciones de recuperación
     formaPago: string;   // Diario / Semanal / Quincenal / Mensual — define préstamo vs liquidar+reasignar
   };
@@ -434,20 +434,34 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           esTemporal: c.motivo_suspension === "temporal",
           enTaller: varada,
           motivoVarada,
-          categoria: (varada ? "taller" : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller",
+          // PATIOS (16-sep-2026, regla del dueño): la moto en Fiscalía está retenida, sí, pero
+          // "no hay que hacerle gestión: no está en la empresa y solo hay que esperar a que la
+          // liberen — no depende de nosotros". Esta lista es de trabajo pendiente; lo que nadie
+          // puede trabajar no va en el montón. NO se saca de los datos —solo de la vista por
+          // defecto— porque de acá sale el préstamo de reemplazo para ese cliente, que sí
+          // depende de nosotros: tiene su propio chip para encontrarla cuando haga falta.
+          categoria: (moto?.estado === "Fiscalia" ? "patios"
+            : varada ? "taller"
+            : (c.motivo_suspension === "temporal" ? "temporal" : "mora")) as "mora" | "temporal" | "taller" | "patios",
           soloInfoTaller: varada && c.estado === "Activo",
           formaPago: c.forma_pago ?? "",
         };
       })
       // Agrupa visualmente por categoría: mora → temporal → taller.
-      .sort((a, b) => ["mora", "temporal", "taller"].indexOf(a.categoria) - ["mora", "temporal", "taller"].indexOf(b.categoria));
+      .sort((a, b) => ["mora", "temporal", "taller", "patios"].indexOf(a.categoria) - ["mora", "temporal", "taller", "patios"].indexOf(b.categoria));
   }, [contratos, clientes, motos, deudas, gestiones, pagos, convenios]);
 
   // Lo que se ve en la pestaña Retenidas: categoría + búsqueda, en UN solo lugar. Antes esta
   // expresión estaba escrita tres veces (contador, estado vacío y lista) — con tres copias,
   // cualquier filtro nuevo se olvidaba en alguna y la pantalla se contradecía sola.
+  // EL MONTÓN DE TRABAJO = todas menos las que están en los patios (no dependen de nosotros).
+  // Se calcula UNA vez y la usan el contador de la pestaña, el chip "Todas" y el estado vacío:
+  // este mismo archivo ya se contradijo antes por tener la expresión escrita en tres lados.
+  const retenidasDelMonton = useMemo(() => motosRetenidas.filter(m => m.categoria !== "patios"), [motosRetenidas]);
+
   const retenidasVisibles = useMemo(() => {
-    let l = filtroRet === "todas" ? motosRetenidas : motosRetenidas.filter(m => m.categoria === filtroRet);
+    // "Todas" ya no las incluye: son el montón de trabajo del día. Se ven por su propio chip.
+    let l = filtroRet === "todas" ? retenidasDelMonton : motosRetenidas.filter(m => m.categoria === filtroRet);
     const q = busquedaRet.trim().toLowerCase();
     if (q) {
       l = l.filter(m =>
@@ -457,7 +471,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         (m.clienteTel ?? "").includes(q));
     }
     return l;
-  }, [motosRetenidas, filtroRet, busquedaRet]);
+  }, [motosRetenidas, retenidasDelMonton, filtroRet, busquedaRet]);
 
   // Cobro para recuperar: registra el pago sobre el contrato suspendido (la BD reparte con
   // FIFO: primero cuotas atrasadas, luego la multa). Al quedar la deuda de recuperación en
@@ -711,7 +725,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       {/* Tab bar — Retenidas primero (endpoint más consultado) */}
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         {([
-          { key: "retenidas", label: "🔒 Retenidas", count: motosRetenidas.length },
+          { key: "retenidas", label: "🔒 Retenidas", count: retenidasDelMonton.length },
           // Ya no son solo los de mora: agrupa a todo el que se puede inmovilizar (mora, gabela o
           // deuda). El contador muestra el total; los chips de adentro lo separan por razón, con
           // "En mora" preseleccionado para que la vista por defecto siga siendo la de siempre.
@@ -985,10 +999,11 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       {/* Filtros: mora / temporal / varadas (taller, fiscalía, tránsito, garantía) / todas */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {([
-          { key: "todas",    label: "Todas",         count: motosRetenidas.length },
+          { key: "todas",    label: "Todas",         count: retenidasDelMonton.length },
           { key: "mora",     label: "🔴 Mora",       count: motosRetenidas.filter(m => m.categoria === "mora").length },
           { key: "temporal", label: "🅿️ Temporal",   count: motosRetenidas.filter(m => m.categoria === "temporal").length },
           { key: "taller",   label: "🔧 Varadas",    count: motosRetenidas.filter(m => m.categoria === "taller").length },
+          { key: "patios",   label: "🏛️ En patios",  count: motosRetenidas.filter(m => m.categoria === "patios").length },
         ] as const).map(f => (
           <Chip key={f.key} activo={filtroRet === f.key} count={f.count} onClick={() => setFiltroRet(f.key)}>
             {f.label}
@@ -1011,7 +1026,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
             {busquedaRet.trim()
               ? `Ninguna moto retenida coincide con "${busquedaRet.trim()}"`
-              : motosRetenidas.length > 0
+              : retenidasDelMonton.length > 0
               ? "Ninguna en este filtro"
               : "No hay motos retenidas"}
           </div>

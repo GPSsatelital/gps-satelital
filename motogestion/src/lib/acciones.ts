@@ -71,6 +71,10 @@ export const ACCIONES: AccionDef[] = [
   // base completa. Más delicado que registrar un ingreso — por eso acción propia y no colgada de
   // "editar_cliente". Default SECRETARIA + ADMIN (los mismos que reciben la base).
   { key: "devolver_base",          label: "Devolver la base inicial",           modulo: "clientes" },
+  // Pasar a saldo a favor lo que el cliente dio POR ENCIMA de la base exigida (mig 156). Es la
+  // ÚNICA plata de la base que se puede mover: los $308.000 y el ahorro no se tocan. Default
+  // SECRETARIA + ADMIN: la misma gente que recibe la base y que hoy aplica el saldo a favor.
+  { key: "mover_excedente_base",   label: "Pasar el excedente de la base a saldo a favor", modulo: "cobros" },
   // Referidos — otra plata que SALE (el premio, o el dinero que se paga en vez del premio).
   // Mismo criterio que devolver_base: acción propia y no colgada de "editar_cliente", con default
   // SECRETARIA + ADMIN porque la secretaria es quien maneja el efectivo de la oficina.
@@ -112,6 +116,7 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
     "recolectar_moto", "cambiar_grupo_moto", "iniciar_liquidacion", "ceder_contrato",
     "editar_cliente", "aprobar_visita", "lista_negra", "editar_configuracion",
     "exportar_datos", "devolver_base", "entregar_premio", "rodar_tiempo",
+    "mover_excedente_base",
     // Decisión del dueño (10-sep): "por ahora solo yo y Sergio". Espejo en `_acciones_default()`
     // de la mig 140: si se toca acá, tocar allá.
     "asignar_tarea",
@@ -119,7 +124,7 @@ export const DEFAULT_ACCIONES: Record<Role, string[]> = {
   SECRETARIA: [
     "registrar_efectivo", "confirmar_transferencia", "cerrar_caja",
     "aplicar_saldo_favor", "crear_convenio", "editar_cliente", "devolver_base",
-    "entregar_premio",
+    "entregar_premio", "mover_excedente_base",
     // Decisión del dueño (22-ago): ANGELA hace liquidaciones completas — es la de la plata en
     // oficina. Espejo en _acciones_default() de la mig 110: si se toca acá, tocar allá.
     "iniciar_liquidacion",

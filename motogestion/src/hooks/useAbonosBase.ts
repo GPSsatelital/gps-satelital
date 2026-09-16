@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { hoyISO } from "../utils/fecha";
 import { createTableStore } from "./createTableStore";
 
 // Movimientos de la BASE INICIAL (mig 091): lo que el cliente entrega para arrancar el proceso
@@ -10,7 +11,7 @@ import { createTableStore } from "./createTableStore";
 // abono = el cliente entrega · devolucion = sale de la caja a sus manos ·
 // retencion = se queda la empresa (mig 092). Son tres hechos distintos y la caja los ve distinto:
 // la devolución es plata que SALE, la retención solo cambia de bolsillo dentro de la empresa.
-export type TipoAbonoBase = "abono" | "devolucion" | "retencion";
+export type TipoAbonoBase = "abono" | "devolucion" | "retencion" | "traslado_saldo";
 
 /**
  * Lo que la empresa retiene de la base cuando el cliente se retira: es lo que ya le pagó al
@@ -80,7 +81,9 @@ export function basesDelDia(
 ): { efectivo: number; transfer: number; total: number } {
   let efectivo = 0, transfer = 0;
   for (const m of movs) {
-    if (m.tipo === "retencion") continue;
+    // Ni la retención ni el traslado del excedente mueven la gaveta: la plata ya estaba
+    // adentro y solo cambió de bolsillo. Si sumaran, la caja diría que entró plata que no llegó.
+    if (m.tipo === "retencion" || m.tipo === "traslado_saldo") continue;
     const dia = m.metodo === "Transferencia" ? m.fecha : (m.fecha_registro || m.fecha);
     if (dia !== fecha) continue;
     if (grupo != null && m.grupo !== grupo) continue;
@@ -98,6 +101,65 @@ export function useAbonosBase() {
     return abonos
       .filter(a => a.cliente_id === clienteId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+
+  /**
+   * PASA EL EXCEDENTE DE LA BASE A SALDO A FAVOR (mig 156).
+   *
+   * Solo se mueve lo que el cliente dio POR ENCIMA de lo exigido: la base ($308.000, $305.000 en
+   * los de tarifa vieja) y el ahorro NO se tocan — regla del dueño, cerrada después de un intento
+   * que hubo que revertir. Quién decide cuánto es movible vive en `desglosarBase()`, no acá.
+   *
+   * 🔴 LA CAJA NO SE MUEVE: no entró ni salió un peso, la plata ya estaba adentro y solo cambió de
+   * bolsillo. Por eso `basesDelDia()` deja fuera este tipo, igual que la retención.
+   *
+   * EL RASTRO, como lo pidió el dueño ("que el sistema siempre sepa de dónde sale todo"): la fila
+   * en `abonos_base` con su nota, MÁS el renglón en `contratos_auditoria` con el antes y el después
+   * del saldo. Si el segundo falla, el traslado YA pasó: se avisa en vez de fingir que no.
+   */
+  async function trasladarExcedenteASaldo(datos: {
+    clienteId: string;
+    contratoId: string;
+    monto: number;
+    saldoFavorActual: number;
+    quien: string | null;
+    nota?: string;
+  }): Promise<{ error: string | null }> {
+    const monto = Math.round(datos.monto);
+    if (monto <= 0) return { error: "El monto a pasar tiene que ser mayor que cero." };
+
+    // Primero el saldo: es lo que el cliente puede gastar. Si esto falla, no queda un movimiento
+    // diciendo que se movió una plata que en realidad no se movió.
+    const nuevoSaldo = Math.round(datos.saldoFavorActual) + monto;
+    const { error: errSaldo } = await supabase.from("contratos")
+      .update({ saldo_favor_apertura: nuevoSaldo }).eq("id", datos.contratoId);
+    if (errSaldo) return { error: errSaldo.message };
+
+    const hoy = hoyISO();
+    const { error: errMov } = await registrar({
+      cliente_id: datos.clienteId,
+      contrato_id: datos.contratoId,
+      tipo: "traslado_saldo",
+      monto,
+      grupo: null,
+      fecha: hoy,
+      fecha_registro: hoy,
+      registrado_por: datos.quien,
+      nota: datos.nota?.trim()
+        || "Excedente de la base inicial pasado a saldo a favor (lo que entregó de más).",
+    });
+    if (errMov) {
+      return { error: "El saldo a favor ya quedó actualizado, pero NO se pudo guardar el movimiento: " + errMov };
+    }
+
+    await supabase.from("contratos_auditoria").insert({
+      contrato_id: datos.contratoId,
+      campo: "saldo_favor_apertura",
+      valor_anterior: `$${Math.round(datos.saldoFavorActual).toLocaleString("es-CO")}`,
+      valor_nuevo: `$${nuevoSaldo.toLocaleString("es-CO")} — entraron $${monto.toLocaleString("es-CO")} del excedente de la base`,
+      editado_por: datos.quien,
+    });
+    return { error: null };
   }
 
   async function registrar(datos: {
@@ -149,5 +211,5 @@ export function useAbonosBase() {
     return { url: data.publicUrl, error: null as string | null };
   }
 
-  return { abonos, loading, movimientosDeCliente, registrar, subirEvidencia };
+  return { abonos, loading, movimientosDeCliente, registrar, trasladarExcedenteASaldo, subirEvidencia };
 }

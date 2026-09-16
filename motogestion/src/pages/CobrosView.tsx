@@ -91,6 +91,8 @@ import {
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
 import { faltaElegirCuenta } from "../utils/cuentasDelDia";
+import { desglosarBase, motivoNoSePuedeTrasladar } from "../utils/excedenteBase";
+import { useAbonosBase } from "../hooks/useAbonosBase";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
 import { ItemLista } from "../components/ListaEstandar";
@@ -1213,6 +1215,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const puedeEliminarPago = puede("eliminar_pago");
   const puedeEditarDeuda = puede("editar_deuda");
   const puedeAplicarSaldo = puede("aplicar_saldo_favor");
+  // Mover el excedente de la base es su propio permiso (mig 156): la base es sagrada y quien
+  // aplica saldo a favor no necesariamente puede sacar plata de ahí.
+  const puedeMoverExcedente = puede("mover_excedente_base");
+  const { abonos: abonosBase, trasladarExcedenteASaldo } = useAbonosBase();
+  const [excedenteModal, setExcedenteModal] = useState<{ contratoId: string; clienteId: string; disponible: number; saldoActual: number } | null>(null);
+  const [excedenteMonto, setExcedenteMonto] = useState("");
+  const [excedenteErr, setExcedenteErr] = useState<string | null>(null);
+  const [excedenteProc, setExcedenteProc] = useState(false);
   // Envío masivo: al principio solo el administrador principal (decisión del dueño, 8-sep); se
   // reparte por persona desde Usuarios cuando el canal oficial esté probado.
   const puedeEnviarMasivo = puede("enviar_masivo");
@@ -2339,6 +2349,34 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               )}
             </div>
           ) : null}
+
+          {/* EL EXCEDENTE DE LA BASE (mig 156) — lo ÚNICO de la base que se puede usar: lo que dio
+              POR ENCIMA de lo exigido. Los $308.000 y el ahorro NO se tocan. Va pegado al saldo a
+              favor porque ahí es donde termina, y así se ve de dónde salió. */}
+          {(() => {
+            const dg = desglosarBase(contratoDetalle);
+            const yaMovido = abonosBase
+              .filter(a => a.contrato_id === contratoDetalle.id && a.tipo === "traslado_saldo")
+              .reduce((acc, a) => acc + a.monto, 0);
+            const disponible = Math.max(0, dg.excedente - yaMovido);
+            if (dg.excedente <= 0) return null;
+            return (
+              <div style={{ marginTop: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", textTransform: "uppercase" }}>Dio de más en la base</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ok-ink)" }}>$ {fmt(disponible)}{yaMovido > 0 && <span style={{ fontSize: 12, fontWeight: 600 }}> · ya pasó $ {fmt(yaMovido)}</span>}</div>
+                <div style={{ fontSize: 11.5, color: "var(--ok-ink)", marginTop: 3, lineHeight: 1.45 }}>
+                  Entregó $ {fmt(dg.entregado)} y debía $ {fmt(dg.requerido)}. Su base de $ {fmt(dg.guardadoIntocable)} no se toca.
+                </div>
+                {puedeMoverExcedente && disponible > 0 && (
+                  <button
+                    onClick={() => { setExcedenteModal({ contratoId: contratoDetalle.id, clienteId: contratoDetalle.cliente_id, disponible, saldoActual: contratoDetalle.saldoAFavor ?? 0 }); setExcedenteMonto(String(disponible)); setExcedenteErr(null); }}
+                    style={{ marginTop: 8, background: "var(--ok-ink)", color: "var(--on-ink)", border: "none", borderRadius: 9, padding: "7px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+                    Pasar a saldo a favor
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {(contratoDetalle.saldoAFavor ?? 0) > 0 && (
             // Recuadro explicado: en época de adaptación el funcionario tiene que entender qué es
@@ -4226,6 +4264,53 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 {modalSubiendo ? "Subiendo..." : "Registrar pago"}
               </button>
               <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PASAR EL EXCEDENTE A SALDO A FAVOR (mig 156). Ventana chica a propósito: un solo dato que
+          escribir y el candado al lado, para que se vea POR QUÉ no deja pasar de cierto monto. */}
+      {excedenteModal && (
+        <div onClick={() => !excedenteProc && setExcedenteModal(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...card, width: "100%", maxWidth: 380, padding: 20 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>Pasar a saldo a favor</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
+              Solo se mueve lo que el cliente <b>dio de más</b>. Su base y su ahorro no se tocan.
+              Disponible: <b style={{ color: "var(--ok-ink)" }}>$ {fmt(excedenteModal.disponible)}</b>
+            </div>
+            <div style={labelStyle}>¿Cuánto vas a pasar?</div>
+            <MoneyInput value={excedenteMonto} onChange={v => { setExcedenteMonto(v); setExcedenteErr(null); }} />
+            {excedenteErr && (
+              <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9, background: "var(--bad-soft)", color: "var(--bad)", fontSize: 12.5, lineHeight: 1.45 }}>{excedenteErr}</div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button onClick={() => setExcedenteModal(null)} disabled={excedenteProc}
+                style={{ ...secondaryBtn, flex: 1, minWidth: 0 }}>Cancelar</button>
+              <button
+                disabled={excedenteProc}
+                onClick={async () => {
+                  if (excedenteProc) return;
+                  const monto = parseInt(excedenteMonto.replace(/\D/g, ""), 10);
+                  const err = motivoNoSePuedeTrasladar(monto, excedenteModal.disponible);
+                  if (err) { setExcedenteErr(err); return; }
+                  setExcedenteProc(true);
+                  try {
+                    const { error } = await trasladarExcedenteASaldo({
+                      clienteId: excedenteModal.clienteId,
+                      contratoId: excedenteModal.contratoId,
+                      monto,
+                      saldoFavorActual: excedenteModal.saldoActual,
+                      quien: profile?.id ?? null,
+                    });
+                    if (error) { setExcedenteErr(error); return; }
+                    setExcedenteModal(null);
+                  } finally { setExcedenteProc(false); }
+                }}
+                style={{ ...primaryBtn, flex: 1, minWidth: 0, background: "var(--ok-ink)", opacity: excedenteProc ? 0.6 : 1 }}>
+                {excedenteProc ? "Pasando..." : "Pasar"}
+              </button>
             </div>
           </div>
         </div>

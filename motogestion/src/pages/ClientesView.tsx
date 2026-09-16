@@ -366,10 +366,21 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                   {semaforo.icono}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cliente.nombre}</div>
+                  {/* El nombre COMPLETO, en dos renglones si hace falta (dueño, 16-sep): "se mocha
+                      en los laterales y no se alcanza a ver bien". Acá se lee uno por uno para
+                      decidir, no se barre la lista de corrido: vale más el nombre entero que la
+                      densidad. */}
+                  <div style={{ fontWeight: 700, fontSize: 15, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.25, wordBreak: "break-word" }}>{cliente.nombre}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    C.C. {cliente.cedula} · {semaforo.texto}
+                    {/* El semáforo ya está en la pastilla de la derecha: repetirlo acá solo robaba
+                        el ancho que necesitan el nombre y la base. */}
+                    C.C. {cliente.cedula}
                     {visita ? ` · Visita: ${new Date(visita.fecha + "T00:00:00").toLocaleDateString("es-CO")}` : " · Sin visita registrada"}
+                  </div>
+                  {/* CUÁNTO ENTREGÓ DE BASE — es el dato que decide si se le puede entregar moto.
+                      Antes había que abrir la ficha de cada uno para verlo. */}
+                  <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 3, color: (cliente.ingreso_inicial ?? 0) > 0 ? "var(--ok-ink)" : "var(--warn-ink)" }}>
+                    Base entregada: $ {(cliente.ingreso_inicial ?? 0).toLocaleString("es-CO")}
                   </div>
                 </div>
               </div>
@@ -652,6 +663,17 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   useBackGuard(editForm !== null, () => setEditForm(null));
   useBackGuard(clienteVisitaId !== null, () => setClienteVisitaId(null));
   useBackGuard(open, () => setOpen(false));
+
+  // La PRIMERA visita de cada cliente, con cualquier resultado: define su puesto en la fila de
+  // evaluación (ahí todavía no hay ninguna aprobada — están esperando esa decisión).
+  const fechaVisitaDe = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of visitas) {
+      const prev = m.get(v.cliente_id);
+      if (!prev || v.fecha < prev) m.set(v.cliente_id, v.fecha);
+    }
+    return m;
+  }, [visitas]);
 
   // El día en que se le hizo la visita aprobada: define su puesto en la fila de entrega.
   const fechaVisitaAprobada = useMemo(() => {
@@ -1381,7 +1403,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
       {filtroEstado === "Pendiente evaluación" ? (
         <PanelAprobacion
-          clientes={clientes.filter(c => c.estado === "Pendiente evaluación")}
+          // MISMA FILA QUE LA DE ENTREGA (regla del dueño, 16-sep): el primero al que se le hizo
+          // la visita es el primero que se atiende. Venían de la más nueva a la más vieja, que es
+          // justo al revés — el que lleva más esperando quedaba de último.
+          clientes={clientes
+            .filter(c => c.estado === "Pendiente evaluación")
+            .sort((a, b) => (fechaVisitaDe.get(a.id) ?? "9999-12-31").localeCompare(fechaVisitaDe.get(b.id) ?? "9999-12-31"))}
           visitas={visitas}
           role={role}
           onAprobar={async (clienteId, visitaId) => {

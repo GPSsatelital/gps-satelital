@@ -7,6 +7,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import { calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import { resumenFlota, entregasRecientes, vencimientosProximos, recaudoPorMes } from "../utils/portalSocio";
 import { hoyISO, hoyDate, fmtFechaLarga } from "../utils/fecha";
 import Placa from "../components/Placa";
@@ -115,7 +116,9 @@ export default function SocioDashboard() {
   // ── El estado de cada cliente, con la MISMA cuenta que Cartera ────────────────────────────
   const cuentas = useMemo(() => activos.map(c => {
     const pagosC = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
-    const convenio = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+    // Activo O incumplido — el acuerdo vencido se sigue cobrando (17-sep-2026). El socio tiene
+    // que ver la misma cartera que Cartera, o los dos números se separan.
+    const convenio = elegirConvenioPorCobrar(convenios, c.id);
     const cuotaConv = cuotaConvenioDelPeriodo(convenio, c, ahora);
     const cubierto = !!(convenio?.cubre_periodo_hasta && convenio.cubre_periodo_hasta >= hoy);
     const estado = calcularEstadoCartera(c, pagosC, ahora, cuotaConv, cubierto, convenio);

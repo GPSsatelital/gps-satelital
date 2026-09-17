@@ -11,6 +11,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { useAuth } from "../contexts/AuthContext";
 import { razonParaInmovilizar, RAZON_INMOVILIZAR_LABEL } from "../utils/inmovilizacion";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import {
   calcularEstadoCartera,
   cuotaConvenioDelPeriodo,
@@ -164,8 +165,9 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
         // Entran los que se pueden inmovilizar: en mora, en gabela, o con deuda pendiente.
         // Antes solo entraban los de mora, y por eso un cliente al que ya le habían retenido la
         // moto no aparecía acá para poder registrarlo (caso ISMAEL / RLZ94H, 28-jul).
-        // La cuota del convenio activo cuenta como parte de lo exigido del período.
-        const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+        // La cuota del convenio cuenta como parte de lo exigido del período. Activo O incumplido
+        // (17-sep-2026): el acuerdo vencido se sigue cobrando y sigue pesando en la mora.
+        const convenioAct = elegirConvenioPorCobrar(convenios, c.id);
         const cuotaConvenio = cuotaConvenioDelPeriodo(convenioAct, c, hoyDate);
         const periodoCubierto = !!(convenioAct?.cubre_periodo_hasta && convenioAct.cubre_periodo_hasta >= hoyISOStr);
         const estadoCart = calcularEstadoCartera(c, pagosC, hoyDate, cuotaConvenio, periodoCubierto, convenioAct);
@@ -405,6 +407,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
           const confirmados = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
           cuotasAtrasadas = Math.max(valorPeriodoReal(c) - totalPagadoPeriodoActual(c, confirmados, hoyDateFn()), 0);
         }
+        // 🔴 ACÁ SÍ VA 'activo' A SECAS, y no es un olvido (17-sep-2026). Este `convenioId` es el
+        // que DESBLOQUEA la entrega de una moto retenida: `puedeEntregar` acepta que lo atrasado
+        // esté financiado si hay convenio. Un acuerdo INCUMPLIDO no financia nada — es justo el
+        // que ya falló. Si contara acá, el que rompió su acuerdo se llevaría la moto igual.
         const convenioAct = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
         return {
           contratoId: c.id,

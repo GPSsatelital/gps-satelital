@@ -181,7 +181,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const { motos } = useMotos();
   const { pagos, registrarPago, subirComprobante } = usePagos();
   const { deudas } = useDeudas();
-  const { convenioActivoDelContrato } = useConvenios();
+  const { convenioPorCobrarDelContrato } = useConvenios();
   const { cerrarCaja, cajaDia } = useCaja();
   const { prestamos } = usePrestamos();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
@@ -217,7 +217,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
         // Solo deuda EXIGIBLE (pendiente) — las 'en_convenio' se cobran vía la cuota del convenio.
         const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((s, d) => s + d.monto_pendiente, 0);
-        const convActivo = convenioActivoDelContrato(c.id);
+        const convActivo = convenioPorCobrarDelContrato(c.id);
         // Las dos cifras que lleva el mensaje de mora. Se calculan con las MISMAS funciones que
         // Cartera (cicloPago) para que el mismo cliente el mismo día no vea dos números distintos
         // según por dónde le escriban.
@@ -272,7 +272,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           prioridad,
         };
       });
-  }, [contratos, clientes, motos, pagos, deudas, convenioActivoDelContrato, hoy]);
+  }, [contratos, clientes, motos, pagos, deudas, convenioPorCobrarDelContrato, hoy]);
 
   // Tab data
   const filasHoy = useMemo(() => filas.filter(f => f.tipoRuta === "diario"), [filas]);

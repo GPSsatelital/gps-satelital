@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
 import type { RenglonPartitura } from "../utils/partituraConvenio";
+import { elegirConvenioVigente, elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 
 export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado";
 
@@ -43,8 +44,20 @@ const conveniosStore = createTableStore<Convenio>("convenios", {
 export function useConvenios() {
   const { data: convenios, loading, error } = conveniosStore.useStore();
 
+  /**
+   * ¿Tiene un acuerdo VIGENTE? Solo 'activo'. Para CREAR y AMPLIAR — no cambió nada.
+   * Ojo: NO usar esta para cobrar ni para mostrar lo que debe. Ver `convenioPorCobrarDelContrato`.
+   */
   function convenioActivoDelContrato(contratoId: string): Convenio | null {
-    return convenios.find(c => c.contrato_id === contratoId && c.estado === "activo") ?? null;
+    return elegirConvenioVigente(convenios, contratoId);
+  }
+
+  /**
+   * ¿Tiene un acuerdo QUE HAY QUE COBRARLE? 'activo' o 'incumplido' (17-sep-2026).
+   * La usan las 6 puertas de cobro. El porqué y el caso de BRAYAN, en `utils/convenioPorCobrar.ts`.
+   */
+  function convenioPorCobrarDelContrato(contratoId: string): Convenio | null {
+    return elegirConvenioPorCobrar(convenios, contratoId);
   }
 
   function totalConveniosDelContrato(contratoId: string): number {
@@ -219,5 +232,5 @@ export function useConvenios() {
     return { error: null };
   }
 
-  return { convenios, loading, error, convenioActivoDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio, guardarPartitura, rodarPeriodosConvenio };
+  return { convenios, loading, error, convenioActivoDelContrato, convenioPorCobrarDelContrato, totalConveniosDelContrato, crearConvenio, ampliarConvenio, renovarConvenio, abonarCuotaConvenio, marcarIncumplido, eliminarConvenio, guardarPartitura, rodarPeriodosConvenio };
 }

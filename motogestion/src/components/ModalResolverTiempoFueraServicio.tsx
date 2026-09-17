@@ -43,8 +43,12 @@ export default function ModalResolverTiempoFueraServicio({ contrato, clienteNomb
   // RODAR EL PAQUETE (regla del dueño, 24-ago): si el cliente tiene convenio, las semanas
   // guardadas se corren COMPLETAS — su semana normal Y su cuota del convenio. Ninguna se
   // perdona: ambas se pagan al final. "Se le rueda al final también."
-  const { convenioActivoDelContrato, rodarPeriodosConvenio } = useConvenios();
-  const convenioActivo = convenioActivoDelContrato(contrato.id);
+  // 17-sep-2026: activo O incumplido. Antes, a quien tenía el acuerdo vencido NO se le rodaban
+  // las cuotas del acuerdo: sus semanas se corrían pero la cuota se le seguía exigiendo en la
+  // fecha vieja — le quedaba debiendo el acuerdo de unas semanas en las que ni tenía la moto,
+  // y encima vencía antes. `rodarPeriodosConvenio` actualiza por id, así que sirve igual.
+  const { convenioPorCobrarDelContrato, rodarPeriodosConvenio } = useConvenios();
+  const convenioActivo = convenioPorCobrarDelContrato(contrato.id);
   // QUIÉN DECIDE (aclarado por el dueño, 24-ago): quien opere el flujo — el subadmin también
   // tiene permiso, es parte de su trabajo. Lo sagrado es EL RASTRO: qué se decidió, quién
   // (creado_por), cuándo y cómo (el acuerdo + el documento firmado + la auditoría). "Todo el

@@ -623,7 +623,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { deudas, registrarDeuda, editarDeuda, eliminarDeuda } = useDeudas();
   const { buscarPorReferencia, consumirPorPago } = useIngresosNoIdentificados();
   const { cuentas: cuentasBancarias } = useCuentasBancarias();
-  const { convenios, convenioActivoDelContrato, totalConveniosDelContrato, guardarPartitura } = useConvenios();
+  const { convenios, convenioPorCobrarDelContrato, totalConveniosDelContrato, guardarPartitura } = useConvenios();
   const { gestiones, registrarGestion } = useGestiones();
   // Todos los mensajes de esta pantalla salen por la tubería única (plantilla + variables, con
   // rastro real); el render del texto vive adentro de `enviar`.
@@ -875,19 +875,21 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
       // La cuota del convenio es obligatoria junto al pago normal — cuenta para la mora,
       // pero solo desde el período en que se creó (no en una semana ya vencida antes).
-      const convenioActivo = convenioActivoDelContrato(contrato.id);
-      const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, contrato, hoy);
+      // 17-sep-2026: se cobra el acuerdo VENCIDO también. Antes solo miraba los 'activo' y al que
+      // incumplía se le borraba la cuenta de la pantalla justo cuando había que perseguirlo.
+      const convenioACobrar = convenioPorCobrarDelContrato(contrato.id);
+      const cuotaConvenio = cuotaConvenioDelPeriodo(convenioACobrar, contrato, hoy);
       // Si el convenio absorbió la cuota de este período (alivio), ese período va "al día".
-      const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
+      const periodoCubierto = !!(convenioACobrar?.cubre_periodo_hasta && convenioACobrar.cubre_periodo_hasta >= hoyISO());
 
       // Se le pasa el convenio COMPLETO para que el estado cuente el acuerdo con el mismo
       // arrastre que el monto. Sin esto miraba solo los pagos de esta semana: quien había
       // abonado su cuota en semanas anteriores salía EN MORA con $0 de deuda, y entraba a la
       // cola de recolección. (DANIEL MILLAN, RLT87H: $61.000 abonados contra $33.500 de cuota.)
-      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar);
       // Días que lleva VENCIDA la cuota — distinto de `diasSinPago` (que un abono parcial reinicia).
       // Los mensajes de mora y recolección llevan las dos cifras, cada una con su palabra.
-      const diasMora = diasEnMora(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioActivo);
+      const diasMora = diasEnMora(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       // Una sola función para todo el sistema (usePagos): la liquidación necesita esta misma
@@ -902,7 +904,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         recaudadoHoy,
         estadoCartera,
         deudaContrato,
-        convenioActivo,
+        convenioACobrar,
         cuotaConvenio,
         pendientesCount: pendientes.length,
         diasSinPago,
@@ -930,7 +932,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       c,
       pagosDelContrato(c.id).filter(p => p.estado === "Confirmado"),
       deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"),
-      c.convenioActivo,
+      c.convenioACobrar,
       hoyDate(),
       {
         sinPagosNunca: c.sinPagosNunca ?? true,
@@ -963,16 +965,16 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const enMora = operativos.filter(r => r.estadoCartera === "mora");
   const enGabela = operativos.filter(r => r.estadoCartera === "gabela");
   const alDia = operativos.filter(r => r.estadoCartera === "al-dia");
-  const conConvenio = operativos.filter(r => r.convenioActivo);
+  const conConvenio = operativos.filter(r => r.convenioACobrar);
   // Los que están ESPERANDO el empalme para poder recibir su cifra (9-sep-2026). Es la misma
   // cuenta que `zala.cliente.cuenta_confiable = false`: migrado, sin empalme cerrado Y SIN
-  // CONVENIO. El `!convenioActivo` no sobra — hay 69 con el empalme pendiente que YA reciben la
+  // CONVENIO. El `!convenioACobrar` no sobra — hay 69 con el empalme pendiente que YA reciben la
   // cifra porque el convenio se lo firmaron ellos mismos; meterlos aquí sería decirles a los
   // funcionarios que están bloqueados cuando no lo están.
   // Es una lista de TRABAJO, no una alerta: cerrar el empalme es lo único que le falta a esta
   // persona para que el mensaje empiece a llevarle su número. Incluye los retenidos: a esos
   // también hay que cuadrarles la cuenta, y son los que más deben.
-  const conEmpalme = resumenContratos.filter(r => empalmePendiente(r) && !r.convenioActivo);
+  const conEmpalme = resumenContratos.filter(r => empalmePendiente(r) && !r.convenioACobrar);
   // La plata SÍ cuenta aunque la moto esté retenida: si el cliente abonó para recuperarla, eso
   // entró a la caja igual y el recaudo del día tiene que reflejarlo.
   const recaudadoHoyTotal = resumenContratos.reduce((acc, r) => acc + r.recaudadoHoy, 0);
@@ -1244,7 +1246,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [filtroHoy, setFiltroHoy] = useState<FiltroHoy>("todos");
   const [envioMasivo, setEnvioMasivo] = useState<{ filas: DestinatarioMasivo[]; titulo: string; omitidos: number } | null>(null);
   const [busquedaHoy, setBusquedaHoy] = useState("");
-  const convenioActual = contratoSeleccionadoId ? convenioActivoDelContrato(contratoSeleccionadoId) : null;
+  // El acuerdo del panel de detalle: activo O incumplido. El incumplido tiene que VERSE —
+  // es el que hay que cobrar — y se pinta distinto más abajo (17-sep-2026).
+  const convenioActual = contratoSeleccionadoId ? convenioPorCobrarDelContrato(contratoSeleccionadoId) : null;
+  // Se venció sin terminar de pagarse. Pinta el recuadro en rojo y cambia el rótulo: el mismo
+  // cuadro que antes decía "Activo" fijo ahora tendría que mentir en estos casos.
+  const convenioRoto = convenioActual?.estado === "incumplido";
 
   const gestionesContrato = contratoSeleccionadoId
     ? gestiones.filter(g => g.contrato_id === contratoSeleccionadoId).slice(0, 5)
@@ -1453,7 +1460,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         // siendo la de hoy, porque ahí la fecha es solo lo que dice el cliente.
         ...(cruce ? { fechaCaja: cruce.fecha_banco } : {}),
         ...(modalMetodo === "Transferencia" ? { referencia: modalReferencia.trim(), cuentaId: modalCuentaId } : {}),
-        ...(modalContrato?.convenioActivo?.id ? { convenioId: modalContrato.convenioActivo.id } : {}),
+        ...(modalContrato?.convenioACobrar?.id ? { convenioId: modalContrato.convenioACobrar.id } : {}),
       },
     );
     if (error) { setModalError(error); return; }
@@ -1510,9 +1517,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         aplicadoConvenio: rep.convenio,
         aplicadoSaldoFavor: rep.saldo,
         pendienteDespues: Math.max((modalContrato ? desgloseDebe(modalContrato).totalFalta : modalCuotaPendiente) - modalMonto, 0),
-        convenioAbonado: modalContrato?.convenioActivo ? rep.convenio : null,
-        convenioRestante: modalContrato?.convenioActivo
-          ? Math.max(modalContrato.convenioActivo.deuda_total - sumaAbonadoConvenio(modalContrato.convenioActivo.id) - rep.convenio, 0)
+        convenioAbonado: modalContrato?.convenioACobrar ? rep.convenio : null,
+        convenioRestante: modalContrato?.convenioACobrar
+          ? Math.max(modalContrato.convenioACobrar.deuda_total - sumaAbonadoConvenio(modalContrato.convenioACobrar.id) - rep.convenio, 0)
           : null,
       });
     } else {
@@ -1537,7 +1544,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // Movimiento interno que consume el saldo y avanza la cuota (NO efectivo nuevo, NO caja diaria).
       const { error } = await aplicarSaldoFavor(
         contratoSeleccionadoId, saldo,
-        contratoDetalle.convenioActivo?.id ? { convenioId: contratoDetalle.convenioActivo.id } : undefined,
+        contratoDetalle.convenioACobrar?.id ? { convenioId: contratoDetalle.convenioACobrar.id } : undefined,
       );
       if (error) { alert(error); return; }
       setSaldoAplicado({ contratoId: contratoSeleccionadoId, monto: saldo });
@@ -1774,7 +1781,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // Con convenio: la deuda la paga el convenio → NO se suma completa (contaría doble).
     // A pagar este período = cuota pendiente + cuota del convenio. Si está al día, 0.
     // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
-    const cvActiva = contratoDetalle.convenioActivo;
+    const cvActiva = contratoDetalle.convenioACobrar;
     const cuotaConvActiva = cvActiva?.cuota_por_periodo ?? 0; // cuota completa del convenio (próximo pago)
     // (Lo exigido del convenio ya no se calcula aparte: el renglón del desglose usa
     // debe.acuerdo.falta — el ARRASTRE completo, la misma cifra que suma el total.)
@@ -2606,8 +2613,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               {!puedeCrearConvenio ? (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No tienes permiso para gestionar convenios — pídele al encargado.</div>
               ) : convenioActual ? (
-                <div style={{ background: "var(--warn-soft2)", borderRadius: 12, padding: 14, border: "1px solid var(--warn-line)" }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--warn-ink)" }}>Convenio #{convenioActual.numero_convenio} — Activo</div>
+                <div style={{ background: convenioRoto ? "var(--bad-soft)" : "var(--warn-soft2)", borderRadius: 12, padding: 14, border: `1px solid ${convenioRoto ? "var(--bad-line)" : "var(--warn-line)"}` }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: convenioRoto ? "var(--bad-ink)" : "var(--warn-ink)" }}>
+                    Convenio #{convenioActual.numero_convenio} — {convenioRoto ? "INCUMPLIDO" : "Activo"}
+                  </div>
+                  {/* 17-sep-2026: el acuerdo vencido ya NO desaparece de la pantalla. Antes este
+                      recuadro solo salía para los 'activo', así que al que incumplía se le borraba
+                      la cuenta justo cuando había que perseguirlo. Ahora sale, en rojo, y dice que
+                      se le sigue cobrando — porque a partir de hoy el motor sí se lo cobra. */}
+                  {convenioRoto && (
+                    <div style={{ fontSize: 12.5, color: "var(--bad-ink)", marginTop: 5, fontWeight: 600, lineHeight: 1.45 }}>
+                      Se venció el {formatDate(convenioActual.fecha_limite)} sin terminar de pagarse.
+                      <b> Se le sigue cobrando:</b> la plata que entre se aplica a este acuerdo igual que antes.
+                    </div>
+                  )}
                   <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>{convenioActual.concepto}</div>
                   <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 2, fontWeight: 600 }}>📅 Creado el {fmtFecha(convenioActual.created_at.slice(0, 10))}</div>
                   {/* Quién firmó: si lo firmó la acompañante hay que verlo sin abrir el papel. */}
@@ -2909,7 +2928,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           // Fuente única (ledger + convenio + deuda) — misma cifra que el detalle y Panel Hoy.
           const pendiente = calcularPendienteContrato(c);
-          const faltaConvenio = !empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioActivo;
+          const faltaConvenio = !empalmePendiente(c) && c.es_migrado && c.deudaContrato > 0 && !c.convenioACobrar;
 
           // Monto = héroe: color por estado (prorrateo=próximo pago en cyan, deuda en rojo, al día en verde)
           const montoColor = pendiente > 0 ? (enProrrateoLista ? "var(--accent)" : "var(--bad-ink)") : "var(--ok-ink)";
@@ -3330,7 +3349,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                               </div>
                             </>
                           ) : (
-                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>{c.convenioActivo ? "● Al día · convenio" : "● Al día"}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>{c.convenioACobrar ? "● Al día · convenio" : "● Al día"}</span>
                           )}
                         </div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -3463,7 +3482,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         const moto = contrato ? motos.find(m => m.id === contrato.moto_id) : null;
                         const contratoResumen = resumenContratos.find(c => c.id === p.contrato_id);
                         const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
-                        const convenioActivo = contratoResumen?.convenioActivo ?? null;
+                        const convenioACobrar = contratoResumen?.convenioACobrar ?? null;
                         setReciboData({
                           contratoId: p.contrato_id,
                           folio: p.folio ?? "—",
@@ -3482,8 +3501,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                           aplicadoConvenio: rep.convenio,
                           aplicadoSaldoFavor: rep.saldo,
                           pendienteDespues,
-                          convenioAbonado: convenioActivo ? rep.convenio : null,
-                          convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
+                          convenioAbonado: convenioACobrar ? rep.convenio : null,
+                          convenioRestante: convenioACobrar ? Math.max(convenioACobrar.deuda_total - sumaAbonadoConvenio(convenioACobrar.id), 0) : null,
                         });
                       }
                     }}
@@ -3626,7 +3645,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                         onClick={() => {
                           const contratoResumen = resumenContratos.find(c => c.id === p.contrato_id);
                           const pendienteDespues = contratoResumen ? calcularPendienteContrato(contratoResumen) : 0;
-                          const convenioActivo = contratoResumen?.convenioActivo ?? null;
+                          const convenioACobrar = contratoResumen?.convenioACobrar ?? null;
                           setReciboData({
                             contratoId: p.contrato_id,
                             folio: p.folio ?? "—",
@@ -3645,8 +3664,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                             aplicadoConvenio: repartoDelPago(p).convenio,
                             aplicadoSaldoFavor: repartoDelPago(p).saldo,
                             pendienteDespues,
-                            convenioAbonado: convenioActivo ? repartoDelPago(p).convenio : null,
-                            convenioRestante: convenioActivo ? Math.max(convenioActivo.deuda_total - sumaAbonadoConvenio(convenioActivo.id), 0) : null,
+                            convenioAbonado: convenioACobrar ? repartoDelPago(p).convenio : null,
+                            convenioRestante: convenioACobrar ? Math.max(convenioACobrar.deuda_total - sumaAbonadoConvenio(convenioACobrar.id), 0) : null,
                           });
                         }}
                         style={miniBtn("var(--ok-soft)", "var(--ok-ink)")}

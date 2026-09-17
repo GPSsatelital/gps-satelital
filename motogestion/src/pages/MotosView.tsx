@@ -24,6 +24,7 @@ import { useDeudas } from "../hooks/useDeudas";
 import { usePagos } from "../hooks/usePagos";
 import { useConvenios } from "../hooks/useConvenios";
 import { calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import { razonParaInmovilizar, motivoNoInmovilizable, RAZON_INMOVILIZAR_LABEL, MULTA_RECOLECCION, VALOR_LAVADA } from "../utils/inmovilizacion";
 import PreguntasRecepcion from "../components/PreguntasRecepcion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
@@ -357,7 +358,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     if (!contratoMoto || contratoMoto.estado !== "Activo") return null;
     const hoyD = hoyDateFn();
     const pagosC = pagos.filter(p => p.contrato_id === contratoMoto.id && p.estado === "Confirmado");
-    const conv = convenios.find(cv => cv.contrato_id === contratoMoto.id && cv.estado === "activo") ?? null;
+    // Activo O incumplido — el acuerdo vencido se sigue cobrando (17-sep-2026).
+    const conv = elegirConvenioPorCobrar(convenios, contratoMoto.id);
     const cuotaConv = cuotaConvenioDelPeriodo(conv, contratoMoto, hoyD);
     const cubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
     const estado = calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto, conv);

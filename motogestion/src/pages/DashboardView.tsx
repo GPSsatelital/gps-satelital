@@ -11,6 +11,7 @@ import Placa from "../components/Placa";
 import MontoOculto, { GrupoMontoOculto } from "../components/MontoOculto";
 import { Badge } from "../components/atomos";
 import { esDiaDePago, calcularEstadoCartera, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import { hoyISO, hoyMasDias, hoyDate } from "../utils/fecha";
 import type { ViewKey } from "../App";
 
@@ -111,7 +112,9 @@ export default function DashboardView({ onNavigate }: {
         const pc = pagos.filter(p => p.contrato_id === c.id && p.estado === "Confirmado");
         // La cuota del convenio cuenta para la mora y, si el convenio ya cubrió el período, ese
         // período va al día. Sin esto el conteo divergía de Cartera en los que tienen convenio.
-        const conv = convenios.find(cv => cv.contrato_id === c.id && cv.estado === "activo") ?? null;
+        // Activo O incumplido: el acuerdo vencido se sigue cobrando y cuenta para la mora igual
+        // (17-sep-2026). Antes se volvía invisible justo para el que hay que perseguir.
+        const conv = elegirConvenioPorCobrar(convenios, c.id);
         const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
         const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
         return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv);

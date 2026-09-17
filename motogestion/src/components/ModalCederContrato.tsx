@@ -6,6 +6,7 @@ import { useClientes, documentosListos } from "../hooks/useClientes";
 import { useContratos, ahorroTotal, empalmePendiente } from "../hooks/useContratos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import { usePagos } from "../hooks/usePagos";
 import { useMotos } from "../hooks/useMotos";
 import { useVisitas } from "../hooks/useVisitas";
@@ -78,7 +79,9 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
   // ── El retrato de las cuentas al día de hoy ────────────────────────────────
   const snapshot: SnapshotCesion = useMemo(() => {
     const misDeudas = deudas.filter(d => d.contrato_id === contrato.id && d.estado === "pendiente");
-    const conv = convenios.find(c => c.contrato_id === contrato.id && c.estado === "activo") as
+    // Activo O incumplido (17-sep-2026): si el acuerdo se venció sin pagarse, esa deuda viaja con
+    // el contrato igual. Dejarla fuera del retrato sería cederle el contrato limpio a alguien.
+    const conv = (elegirConvenioPorCobrar(convenios, contrato.id) ?? undefined) as
       undefined | { deuda_total?: number; cuota_por_periodo?: number; numero_cuotas?: number; cuotas_pagadas?: number };
     const confirmados = pagos.filter(p => p.contrato_id === contrato.id && p.estado === "Confirmado");
     const saldoFavor = (contrato.saldo_favor_apertura ?? 0)

@@ -509,7 +509,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { motos }     = useMotos();
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
-  const { convenios, convenioActivoDelContrato } = useConvenios();
+  const { convenios, convenioPorCobrarDelContrato } = useConvenios();
 
   // ── NÓMINA DE COBRADORES (regla del dueño, 22-ago — memoria regla-nomina-cobradores) ──
   const domingoNomina = useMemo(() => {
@@ -667,7 +667,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const monto = recaudoPorContrato.get(c.id) ?? 0;
       const confirmados = confPorContrato.get(c.id) ?? [];
       // Mismo cálculo que Cartera: convenio activo cuenta para la mora (deuda programada).
-      const convenioActivo = convenioActivoDelContrato(c.id);
+      const convenioActivo = convenioPorCobrarDelContrato(c.id);
       const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, c as never, hoy);
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
       const enMora = !guardada && calcularEstadoCartera(c as never, confirmados as never, hoy, cuotaConvenio, periodoCubierto, convenioActivo as never) === "mora";
@@ -710,7 +710,7 @@ export default function ReportesView({ onNavigate }: Props) {
       });
     });
     return rows;
-  }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, prestamos, convenioActivoDelContrato]);
+  }, [contratos, motos, clientes, pagos, pagosRango, deudas, subadmins, prestamos, convenioPorCobrarDelContrato]);
 
   // ── MOTOS GUARDADAS: las que no están produciendo (pedido del dueño, 25-ago) ──
   // Todo derivado: el estado dice que está guardada, la última recepción dice desde cuándo y

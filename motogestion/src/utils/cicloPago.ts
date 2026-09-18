@@ -308,6 +308,20 @@ export type LoQueDebe = {
   totalFalta: number;
   /** Se muestra al lado, NUNCA se resta del total (regla 3). */
   saldoAFavor: number;
+  /**
+   * Lo que ya lleva abonado de una semana que TODAVÍA NO se le exige — el que paga el sábado la
+   * semana que le arranca el lunes (la ventana de prepago de la mig 149, que alcanza 3 días).
+   *
+   * 18-sep-2026, pregunta del dueño: *"¿dónde se ve cuando hay semana adelantada?"*. La respuesta
+   * era: en ningún lado. Ese adelanto vivía solo en `contratos.caja_actual_pagado`, una columna
+   * que NINGUNA pantalla leía — únicamente el motor de reparto y las pruebas. El cliente había
+   * entregado la plata y no aparecía por ninguna parte.
+   *
+   * `null` cuando no hay adelanto. OJO: solo es adelanto si no queda nada exigido pendiente. Si
+   * al cliente le falta una caja, ese mismo parcial es ABONO de lo que ya debe —no adelanto— y
+   * `cuota.falta` ya lo descontó. Son dos cosas distintas y no se pueden mezclar.
+   */
+  adelanto: { lleva: number; de: number } | null;
 };
 
 /**
@@ -364,6 +378,7 @@ export function loQueDebe(
   // Con motor: sale del ledger real, que ya sabe qué cajas están llenas. Sin motor: la fórmula
   // vieja de ventana. Las dos YA descontaban lo pagado — no se tocan, solo se envuelven.
   let cuota: ParteDebe;
+  let adelanto: LoQueDebe["adelanto"] = null;
   if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
     const d = desgloseExigible(contrato, hoy);
     const cubre = convenio?.cubre_periodo_hasta ?? null;
@@ -384,6 +399,10 @@ export function loQueDebe(
       ? prorrateoTotal + exigibles.length * valorCaja
       : valorCaja;   // al día: se muestra la cuota del período como referencia de lo que viene
     cuota = { toca, pagado: Math.max(toca - falta, 0), falta };
+    // EL ADELANTO. `caja_actual_pagado` es lo que lleva puesto en la caja que está llenando; solo
+    // es "adelanto" si ya no le queda nada exigido — si le falta algo, eso es abono de su deuda.
+    const lleva = Math.max(contrato.caja_actual_pagado ?? 0, 0);
+    if (falta === 0 && lleva > 0 && valorCaja > 0) adelanto = { lleva, de: valorCaja };
   } else if (contrato.forma_pago === "Diario" && opciones.diario) {
     const { toca, pagado } = opciones.diario;
     cuota = { toca, pagado, falta: Math.max(toca - pagado, 0) };
@@ -413,6 +432,7 @@ export function loQueDebe(
     cuota, acuerdo, deudas,
     totalFalta: cuota.falta + (acuerdo?.falta ?? 0) + deudas.falta,
     saldoAFavor,
+    adelanto,
   };
 }
 

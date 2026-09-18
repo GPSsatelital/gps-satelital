@@ -2209,6 +2209,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   Además tiene <strong>$ {fmt(debe.saldoAFavor)}</strong> a favor, sin usar.
                 </div>
               )}
+              {/* LA SEMANA ADELANTADA (18-sep-2026). Pregunta del dueño: "¿dónde se ve cuando hay
+                  semana adelantada?". No se veía en ningún lado: vivía solo en una columna que
+                  ninguna pantalla leía. El cliente había entregado esa plata y era invisible. */}
+              {debe.adelanto && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--accent-ink)" }}>
+                  Y lleva <strong>$ {fmt(debe.adelanto.lleva)}</strong> adelantados de su próxima
+                  cuota (de $ {fmt(debe.adelanto.de)}) — le faltarían <strong>$ {fmt(Math.max(debe.adelanto.de - debe.adelanto.lleva, 0))}</strong> para completarla.
+                </div>
+              )}
             </div>
           )}
 

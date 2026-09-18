@@ -31,6 +31,51 @@ const PAGOS_LIBINTO = [
   { fecha: "2026-08-10", valor: 302000, aplicado_convenio: 100000 },
 ];
 
+// ── JOHAN ANDRES PEREZ (RMW28H) — la semana adelantada que no se veía ──────────
+// 18-sep-2026: le aplicaron $195.000 de saldo a favor. $110.000 taparon las 2 cuotas que debía
+// del acuerdo y los $85.000 restantes cayeron en la ventana de prepago (la semana que arrancaba
+// el lunes 21). Esos $85.000 quedaron en `caja_actual_pagado`, una columna que NINGUNA pantalla
+// leía. Pregunta del dueño: "¿dónde se ve cuando hay semana adelantada?" — no se veía.
+const JOHAN: ContratoCiclo = {
+  forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 195000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 104, cajas_pagadas: 50, caja_actual_pagado: 85000, cajas_previas: 42,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+};
+
+describe("la semana adelantada se VE (JOHAN, RMW28H)", () => {
+  it("al día y con adelanto: lo dice, con cuánto lleva y de cuánto es la cuota", () => {
+    const r = loQueDebe(JOHAN, [], [], null, D("2026-09-18"));
+    expect(r.cuota.falta).toBe(0);                 // hoy no debe nada
+    expect(r.adelanto).toEqual({ lleva: 85000, de: 195000 });
+  });
+
+  it("🔴 un parcial de lo que YA DEBE no es adelanto — son dos cosas distintas", () => {
+    // Misma plata en la misma columna, pero con una caja exigida sin llenar: eso es ABONO de su
+    // deuda, no adelanto. Confundirlos le diría al funcionario "va adelantado" a alguien que debe.
+    const atrasado = { ...JOHAN, cajas_pagadas: 49 };
+    const r = loQueDebe(atrasado, [], [], null, D("2026-09-18"));
+    expect(r.cuota.falta).toBe(110000);            // 195.000 − 85.000 abonados
+    expect(r.adelanto).toBeNull();
+  });
+
+  it("sin nada adelantado no inventa el renglón", () => {
+    const r = loQueDebe({ ...JOHAN, caja_actual_pagado: 0 }, [], [], null, D("2026-09-18"));
+    expect(r.adelanto).toBeNull();
+  });
+
+  it("los contratos sin motor no traen adelanto (esa columna es del libro de cajas)", () => {
+    const r = loQueDebe({ ...JOHAN, motor_v2: false }, [], [], null, D("2026-09-18"));
+    expect(r.adelanto).toBeNull();
+  });
+
+  it("el adelanto NO se resta de lo que debe — es plata de la semana que viene", () => {
+    const conDeuda = loQueDebe(JOHAN, [], [{ monto: 30000, monto_pendiente: 30000 }], null, D("2026-09-18"));
+    expect(conDeuda.totalFalta).toBe(30000);       // la deuda entera, sin descontarle el adelanto
+    expect(conDeuda.adelanto).toEqual({ lleva: 85000, de: 195000 });
+  });
+});
+
 describe("LIBINTO — pagó su semana y su cuota del acuerdo", () => {
   it("🔴 EL DEFECTO: ya no debe nada del acuerdo", () => {
     const r = loQueDebe(LIBINTO, PAGOS_LIBINTO, [], CONV_LIBINTO, D("2026-08-12"));

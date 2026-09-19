@@ -24,6 +24,7 @@ import { usePagos, esPagoDeCaja } from "../hooks/usePagos";
 import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 13 };
@@ -443,7 +444,9 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                     <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)" }}>Firma del cliente</span><strong style={{ color: liq.documento_firmado_url ? "var(--ok-ink)" : "var(--warn-ink)" }}>{liq.documento_firmado_url ? "✓ Firmada" : "Sin firma"}</strong></div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
                       {liq.documento_firmado_url && (
-                        <a href={liq.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ ...secondaryBtn, textDecoration: "none", textAlign: "center" }}>📄 Ver documento firmado</a>
+                        <a href={liq.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => { e.preventDefault(); abrirDocumento(liq.documento_firmado_url); }}
+                          style={{ ...secondaryBtn, textDecoration: "none", textAlign: "center" }}>📄 Ver documento firmado</a>
                       )}
                       <button
                         onClick={() => imprimirLiquidacion(liq,
@@ -543,6 +546,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                       {a.observaciones && <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>{a.observaciones}</div>}
                       {a.documento_firmado_url ? (
                         <a href={a.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => { e.preventDefault(); abrirDocumento(a.documento_firmado_url); }}
                           style={{ ...secondaryBtn, textDecoration: "none", textAlign: "center", fontSize: 12.5, padding: "8px 12px" }}>
                           📄 Ver / imprimir el acuerdo firmado
                         </a>

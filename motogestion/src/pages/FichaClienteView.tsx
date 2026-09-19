@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ImgPrivada from "../components/ImgPrivada";
+import { abrirDocumento, descargarDocumento } from "../lib/storagePrivado";
 import { supabase } from "../lib/supabase";
 import type { ViewKey } from "../App";
 import { useClientes, type ClienteEstado, type DocumentoFlags } from "../hooks/useClientes";
@@ -691,8 +692,16 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)", minWidth: 0 }}>{d.label}</span>
                         {d.url ? (
                           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                            <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--accent-soft)" }}>👁 Ver</a>
-                            <a href={`${d.url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--ok-soft)" }}>⬇ Descargar</a>
+                            {/* Enlace FIRMADO (19-sep-2026): estas son cédulas y recibos de 269
+                                clientes en un bucket público — el enlace directo los deja abiertos
+                                a cualquiera, para siempre, aunque viaje por WhatsApp. Se conserva
+                                el `<a>` para no cambiar ni un píxel; solo se intercepta el clic. */}
+                            <a href={d.url} target="_blank" rel="noopener noreferrer"
+                               onClick={e => { e.preventDefault(); abrirDocumento(d.url); }}
+                               style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--accent-soft)" }}>👁 Ver</a>
+                            <a href={`${d.url}?download`}
+                               onClick={e => { e.preventDefault(); descargarDocumento(d.url); }}
+                               style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", textDecoration: "none", padding: "4px 10px", borderRadius: 8, background: "var(--ok-soft)" }}>⬇ Descargar</a>
                           </div>
                         ) : (
                           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>Falta</span>
@@ -819,12 +828,14 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                   {(v.fotos?.fachada || v.fotos?.clienteFuncionario) && (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
                       {v.fotos.fachada && /^https?:\/\//.test(v.fotos.fachada) && (
-                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada de la vivienda">
+                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada de la vivienda"
+                           onClick={e => { e.preventDefault(); abrirDocumento(v.fotos!.fachada); }}>
                           <ImgPrivada src={v.fotos.fachada} alt="Fachada" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
                       {v.fotos.clienteFuncionario && /^https?:\/\//.test(v.fotos.clienteFuncionario) && (
-                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Cliente + funcionario">
+                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Cliente + funcionario"
+                           onClick={e => { e.preventDefault(); abrirDocumento(v.fotos!.clienteFuncionario); }}>
                           <ImgPrivada src={v.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 96, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       )}
@@ -901,7 +912,9 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 600, color: isOk ? "var(--ok-ink)" : "var(--bad-ink)", flex: 1 }}>{label}</span>
                         {item?.file && (
-                          <a href={item.file} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>Ver</a>
+                          <a href={item.file} target="_blank" rel="noreferrer"
+                             onClick={e => { e.preventDefault(); abrirDocumento(item.file); }}
+                             style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>Ver</a>
                         )}
                       </div>
                     );

@@ -9,6 +9,7 @@ import { useBackGuard } from "../contexts/BackNav";
 import { card, inputStyle, labelStyle, primaryBtn, secondaryBtn, listaConScroll } from "../styles/shared";
 import Placa from "../components/Placa";
 import { hoyISO } from "../utils/fecha";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 const MOTIVOS = ["Copia de llave (perdió la suya)", "Trámite legal", "Otro"];
 
@@ -293,7 +294,9 @@ export default function TarjetasLlavesView() {
                   <div style={{ fontSize: 13, color: "var(--muted2)", marginTop: 6, textTransform: "uppercase" }}>Prestada a: <strong>{p.prestado_a}</strong></div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                     {p.motivo ? `${p.motivo} · ` : ""}Desde {fmtFecha(p.fecha_prestamo)}
-                    {p.foto_url && <> · <a href={p.foto_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 700 }}>📷 Ver foto</a></>}
+                    {p.foto_url && <> · <a href={p.foto_url} target="_blank" rel="noopener noreferrer"
+                      onClick={e => { e.preventDefault(); abrirDocumento(p.foto_url); }}
+                      style={{ color: "var(--accent)", fontWeight: 700 }}>📷 Ver foto</a></>}
                   </div>
                   {p.detalles && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{p.detalles}</div>}
                   {!devuelta && p.fecha_devolucion_esperada && (

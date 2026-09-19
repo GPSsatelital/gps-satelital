@@ -6,6 +6,7 @@ import { usePremiosReferidos } from "../hooks/usePremiosReferidos";
 import ModalEntregarPremio from "../components/ModalEntregarPremio";
 import { generarReciboPremio } from "../utils/generarReciboPremio";
 import { useAuth } from "../contexts/AuthContext";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 const PREMIOS = [
   { hito: 2,  premio: "Par de guantes de manejo", icon: "🧤" },
@@ -366,7 +367,9 @@ export default function ReferidosView() {
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>${p.costo_total.toLocaleString("es-CO")}</div>
-                    <a href={p.foto_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 700 }}>📷 ver foto</a>
+                    <a href={p.foto_url} target="_blank" rel="noopener noreferrer"
+                       onClick={e => { e.preventDefault(); abrirDocumento(p.foto_url); }}
+                       style={{ fontSize: 11.5, color: "var(--accent)", fontWeight: 700 }}>📷 ver foto</a>
                   </div>
                 </div>
                 <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>

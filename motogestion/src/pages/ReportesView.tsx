@@ -15,6 +15,7 @@ import { useBackGuard } from "../contexts/BackNav";
 import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
+import { abrirDocumento } from "../lib/storagePrivado";
 import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo, cajasExigidasHasta } from "../utils/cicloPago";
 import {
   exportarCSV, descargarExcel, GRUPO_HEX,
@@ -2704,7 +2705,7 @@ export default function ReportesView({ onNavigate }: Props) {
                     ].map(d => (
                       <button
                         key={d.key}
-                        onClick={() => d.url && window.open(d.url, "_blank")}
+                        onClick={() => d.url && abrirDocumento(d.url)}
                         disabled={!d.url}
                         title={d.ok ? (d.url ? "Abrir documento" : "Firmado") : "Falta"}
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, padding: "7px 10px", borderRadius: 10, border: "1px solid " + (d.ok ? "var(--ok-line)" : "var(--bad-line)"), background: d.ok ? "var(--ok-soft)" : "var(--bad-soft)", color: d.ok ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 12, fontWeight: 700, cursor: d.url ? "pointer" : "default", minWidth: 0 }}
@@ -2718,8 +2719,11 @@ export default function ReportesView({ onNavigate }: Props) {
                   {/* Fotos de entrega (miniaturas → lightbox) */}
                   {e.nFotos > 0 && (
                     <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
+                      {/* `ImgPrivada` en vez de `<img>` suelto: enlace firmado (estas fotos viven
+                          en un bucket público y el enlace directo las deja abiertas a cualquiera)
+                          y carga diferida, que es lo que arregla el scroll. */}
                       {e.fotos.slice(0, 6).map(([ang, url]) => (
-                        <img
+                        <ImgPrivada
                           key={ang}
                           src={url}
                           alt={ANG_LABEL[ang] ?? ang}

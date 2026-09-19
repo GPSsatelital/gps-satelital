@@ -17,7 +17,7 @@ import { useVisitas, type Visita } from "../hooks/useVisitas";
 import { useContratos } from "../hooks/useContratos";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { useAuth } from "../contexts/AuthContext";
-import { hoyISO } from "../utils/fecha";
+import { hoyISO, fmtFechaCorta } from "../utils/fecha";
 import { ReciboBaseModal, buildTicketBaseInicial, type TicketData } from "../components/TicketTermico";
 import ModalDevolucionBase from "../components/ModalDevolucionBase";
 import SelectorCuentaBanco from "../components/SelectorCuentaBanco";
@@ -39,9 +39,12 @@ const primaryBtn: React.CSSProperties = { background: "linear-gradient(90deg, va
 const secondaryBtn: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)" };
 
 
+// 19-sep-2026: decía un día MENOS. `new Date("2026-09-14")` se lee como medianoche UTC y en
+// Colombia (UTC−5) eso cae el 13 a las 7 pm. `fmtFechaCorta` le pone la hora local antes de
+// convertir — misma cuenta, un solo lugar (ver `utils/fecha.ts`).
 function formatDate(date: string | null) {
   if (!date) return "Sin registrar";
-  return new Date(date).toLocaleDateString("es-CO");
+  return fmtFechaCorta(date);
 }
 
 function getToday() {

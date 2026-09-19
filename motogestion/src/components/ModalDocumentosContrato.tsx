@@ -3,6 +3,7 @@ import type { Contrato, TipoDocumentoContrato } from "../hooks/useContratos";
 import { useContratos } from "../hooks/useContratos";
 import { useAuth } from "../contexts/AuthContext";
 import { secondaryBtn } from "../styles/shared";
+import { abrirDocumento, descargarDocumento } from "../lib/storagePrivado";
 
 interface Props {
   contrato: Contrato;
@@ -75,10 +76,14 @@ export default function ModalDocumentosContrato({ contrato: contratoInicial, cli
 
               {url && (
                 <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
+                  <a href={url} target="_blank" rel="noopener noreferrer"
+                     onClick={e => { e.preventDefault(); abrirDocumento(url); }}
+                     style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
                     👁 Ver
                   </a>
-                  <a href={`${url}?download`} style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)" }}>
+                  <a href={`${url}?download`}
+                     onClick={e => { e.preventDefault(); descargarDocumento(url); }}
+                     style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)" }}>
                     ⬇ Descargar
                   </a>
                 </div>

@@ -3,6 +3,7 @@ import ImgPrivada from "./ImgPrivada";
 import type { Moto } from "../hooks/useMotos";
 import { useMotos } from "../hooks/useMotos";
 import { secondaryBtn } from "../styles/shared";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 interface Props {
   moto: Moto;
@@ -101,7 +102,9 @@ export default function ModalDocumentosMoto({ moto: motoInicial, onClose }: Prop
                   : <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", background: "var(--warn-soft)", borderRadius: 999, padding: "2px 8px" }}>⏳ Falta</span>}
               </div>
               {url && (
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginBottom: 8 }}>
+                <a href={url} target="_blank" rel="noopener noreferrer"
+                   onClick={e => { e.preventDefault(); abrirDocumento(url); }}
+                   style={{ display: "inline-block", marginBottom: 8 }}>
                   <ImgPrivada src={url} alt={label} style={{ maxHeight: 90, borderRadius: 8, border: "1px solid var(--line)" }} />
                 </a>
               )}

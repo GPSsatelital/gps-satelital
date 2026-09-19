@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtFechaLarga } from "./fecha";
+import { fmtFechaLarga, fmtFechaCorta } from "./fecha";
 
 // El día de la semana en la fecha de un pago NO es adorno: los días de pago son lunes o
 // miércoles, así que verlo dice de una si el cliente pagó cuando le tocaba. Si algún día
@@ -29,5 +29,27 @@ describe("fmtFechaLarga — fecha de pago en pantalla", () => {
     expect(fmtFechaLarga(undefined)).toBe("—");
     expect(fmtFechaLarga("")).toBe("—");
     expect(fmtFechaLarga("no es una fecha")).toBe("—");
+  });
+});
+
+// 🔴 EL DEFECTO DE LA ZONA HORARIA (19-sep-2026). `new Date("2026-09-14")` se lee como medianoche
+// UTC; en Colombia (UTC−5) eso cae el 13 a las 7 de la noche, así que la pantalla mostraba UN DÍA
+// MENOS. Estaba en MotosView (SOAT, tecnomecánica) y en ClientesView. La cura es siempre la misma:
+// pegarle "T00:00:00" para que se lea como medianoche LOCAL. Estas pruebas no dependen de la zona
+// horaria de la máquina — ese es justo el punto.
+describe("fmtFechaCorta — la fecha no se corre un día", () => {
+  it("una fecha suelta se muestra tal cual, sin retroceder", () => {
+    expect(fmtFechaCorta("2026-09-14")).toBe("14/9/2026");
+    expect(fmtFechaCorta("2026-01-01")).toBe("1/1/2026");
+  });
+
+  it("un instante completo (con hora) también se respeta", () => {
+    expect(fmtFechaCorta("2026-09-14T15:30:00")).toBe("14/9/2026");
+  });
+
+  it("sin fecha no inventa nada", () => {
+    expect(fmtFechaCorta(null)).toBe("-");
+    expect(fmtFechaCorta(undefined)).toBe("-");
+    expect(fmtFechaCorta("cualquier cosa")).toBe("-");
   });
 });

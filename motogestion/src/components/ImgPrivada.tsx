@@ -43,5 +43,21 @@ export default function ImgPrivada({
     // Hueco del mismo tamaño mientras llega la firma: sin esto la pantalla salta.
     return <div style={{ ...style, background: "var(--soft2)", borderRadius: style?.borderRadius ?? 8 }} />;
   }
-  return <img src={resuelta} alt={alt} title={title} style={style} onClick={onClick} />;
+  // `loading="lazy"`: el navegador solo BAJA la imagen cuando está por verse (19-sep-2026).
+  // El Reporte de Entregas pinta hasta 6 miniaturas de 48×48 por tarjeta, pero cada una es la
+  // foto COMPLETA de la cámara del celular: con 20 entregas eran 120 imágenes de varios megas
+  // bajando y decodificándose a la vez para mostrarse del tamaño de una estampilla. Ese era el
+  // "scroll lento". Va acá y no en cada pantalla para que lo hereden todas.
+  // `decoding="async"`: decodificar tampoco frena el pintado de lo demás.
+  return (
+    <img
+      src={resuelta}
+      alt={alt}
+      title={title}
+      style={style}
+      onClick={onClick}
+      loading="lazy"
+      decoding="async"
+    />
+  );
 }

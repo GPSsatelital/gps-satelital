@@ -15,6 +15,7 @@ import PanelDelDia from "../components/PanelDelDia";
 import Placa from "../components/Placa";
 import { useAjustes, enlaceZala } from "../hooks/useAjustes";
 import { fmtFechaCorta } from "../utils/fecha";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 // MI DÍA — lo que le toca hoy a esta persona. Dos cosas distintas, juntas por primera vez:
 //
@@ -193,14 +194,18 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
           <div style={{ marginTop: 7, fontSize: 11.5, color: "var(--muted)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {t.resultado_comentario && <span style={{ flex: "1 1 100%", lineHeight: 1.45 }}>“{t.resultado_comentario}”</span>}
             {t.resultado_fotos.map((f, i) => (
-              <a key={i} href={f} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Foto {i + 1}</a>
+              <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                 onClick={e => { e.preventDefault(); abrirDocumento(f); }}
+                 style={{ color: "var(--accent)" }}>Foto {i + 1}</a>
             ))}
             {t.resultado_ubicacion && (
               <a href={`https://maps.google.com/?q=${t.resultado_ubicacion.lat},${t.resultado_ubicacion.lng}`}
                  target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Ver ubicación</a>
             )}
             {t.resultado_firma_url && (
-              <a href={t.resultado_firma_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>Firma</a>
+              <a href={t.resultado_firma_url} target="_blank" rel="noopener noreferrer"
+                 onClick={e => { e.preventDefault(); abrirDocumento(t.resultado_firma_url); }}
+                 style={{ color: "var(--accent)" }}>Firma</a>
             )}
           </div>
         )}

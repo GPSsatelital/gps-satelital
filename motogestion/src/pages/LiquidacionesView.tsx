@@ -7,6 +7,7 @@ import { useMotos, type Moto } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
 import { useTaller, type TallerItem } from "../hooks/useTaller";
 import { useAuth } from "../contexts/AuthContext";
+import { abrirDocumento, descargarDocumento } from "../lib/storagePrivado";
 import { useScope } from "../contexts/SubadminScopeContext";
 import { imprimirLiquidacion, htmlLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiquidacion";
@@ -888,7 +889,9 @@ export default function LiquidacionesView() {
                   </div>
                   {sel.documento_firmado_url && (
                     <div style={{ marginBottom: 10 }}>
-                      <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento actual</a>
+                      <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                         onClick={e => { e.preventDefault(); abrirDocumento(sel.documento_firmado_url); }}
+                         style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento actual</a>
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -958,7 +961,9 @@ export default function LiquidacionesView() {
                 <div style={{ fontWeight: 700, marginBottom: 8 }}>Confirmar cierre de liquidación</div>
                 {sel.documento_firmado_url && (
                   <div style={{ marginBottom: 12 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento firmado</a>
+                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                       onClick={e => { e.preventDefault(); abrirDocumento(sel.documento_firmado_url); }}
+                       style={{ color: "var(--accent)", fontSize: 13 }}>Ver documento firmado</a>
                   </div>
                 )}
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
@@ -1054,7 +1059,9 @@ export default function LiquidacionesView() {
                 {sel.documento_firmado_url ? "Liquidación cerrada" : "Liquidación cerrada — SIN FIRMA del cliente"}
                 {sel.documento_firmado_url && (
                   <div style={{ marginTop: 8 }}>
-                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
+                    <a href={sel.documento_firmado_url} target="_blank" rel="noopener noreferrer"
+                       onClick={e => { e.preventDefault(); descargarDocumento(sel.documento_firmado_url); }}
+                       style={{ color: "var(--accent)", fontSize: 13, fontWeight: 400 }}>Descargar documento firmado</a>
                   </div>
                 )}
                 {/* Si se cerró sin firma y el cliente aparece después, aquí se completa. Pasa de

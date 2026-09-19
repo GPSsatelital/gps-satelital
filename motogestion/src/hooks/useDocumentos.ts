@@ -802,6 +802,10 @@ export type DatosDetallado = DatosEstadoCuenta & {
   desglose: Array<{ concepto: string; toca: number; pagado: number; falta: number; nota?: string }>;
   historial: PagoDetallado[];
   totalPagado: number;
+  /** Lo que ya lleva puesto de una cuota que TODAVÍA no se le exige (ventana de prepago, mig 149).
+   *  En pantalla ya se veía desde el 18-sep; en el papel que se le entrega al cliente, no — y era
+   *  plata suya que él había entregado y el documento no nombraba. */
+  adelanto?: { lleva: number; de: number } | null;
   // Cálculo de referencia, NO una liquidación: no incluye daños (los valora el taller).
   preliquidacion: { lineas: Array<{ label: string; monto: number }>; resultado: number };
 };
@@ -851,7 +855,8 @@ export function generarHTMLEstadoCuentaDetallado(cliente: Cliente, moto: Moto | 
       <div style="border-top:1px solid ${raya};margin-top:6px;padding-top:6px">
         ${fila("LE FALTA POR PAGAR", `$ ${fmt(d.debeHoy)}`, true)}
       </div>
-      ${d.saldoFavor > 0 ? `<div style="color:${gris};margin-top:4px">Además tiene $ ${fmt(d.saldoFavor)} a favor, sin usar. No se descuenta solo: se aplica en oficina.</div>` : ""}`)}
+      ${d.saldoFavor > 0 ? `<div style="color:${gris};margin-top:4px">Además tiene $ ${fmt(d.saldoFavor)} a favor, sin usar. No se descuenta solo: se aplica en oficina.</div>` : ""}
+      ${d.adelanto ? `<div style="color:${gris};margin-top:4px">Y lleva $ ${fmt(d.adelanto.lleva)} adelantados de su próxima cuota (de $ ${fmt(d.adelanto.de)}): le faltarían $ ${fmt(Math.max(d.adelanto.de - d.adelanto.lleva, 0))} para completarla.</div>` : ""}`)}
 
     ${seccion(3, "Su ahorro",
       fila("Ahorro acumulado", `$ ${fmt(d.ahorroTotal)}`, true) +

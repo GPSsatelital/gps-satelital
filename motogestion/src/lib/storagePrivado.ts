@@ -68,3 +68,22 @@ export async function abrirDocumento(url: string | null | undefined) {
   if (firmada) w.location.href = firmada;
   else w.close();
 }
+
+/**
+ * Descarga un documento con enlace firmado, en vez del `href={url + "?download"}` que dejaba la
+ * URL pública a la vista (19-sep-2026).
+ *
+ * Se hace con un `<a>` temporal y no con `window.open`: así el navegador lo trata como una
+ * descarga pedida por el usuario y no como una ventana emergente.
+ */
+export async function descargarDocumento(url: string | null | undefined) {
+  if (!url) return;
+  const firmada = await urlFirmada(url);
+  if (!firmada) return;
+  const a = document.createElement("a");
+  a.href = firmada.includes("?") ? `${firmada}&download` : `${firmada}?download`;
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}

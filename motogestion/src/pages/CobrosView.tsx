@@ -1904,6 +1904,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       return {
         ...armarDatosEstadoCuenta(),
         desglose,
+        // La semana adelantada también va en el papel: es plata que el cliente entregó y hasta
+        // ahora el documento no la nombraba (19-sep-2026).
+        adelanto: debe.adelanto,
         historial: confirmados.map(p => ({
           fecha: p.fecha, valor: p.valor, metodo: p.metodo, referencia: p.referencia,
           partes: partesDe(p), ahorro: p.aplicado_ahorro ?? 0,

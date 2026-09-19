@@ -37,7 +37,7 @@ import ModalIniciarLiquidacion from "../components/ModalIniciarLiquidacion";
 import ModalIngresoTaller from "../components/ModalIngresoTaller";
 import { useTaller } from "../hooks/useTaller";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
-import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
+import { hoyISO, hoyDate as hoyDateFn, fmtFechaCorta } from "../utils/fecha";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 
 const MOTO_TONE: Record<MotoStatus, BadgeTone> = {
@@ -90,9 +90,13 @@ function StatusBadge({ status }: { status: MotoStatus }) {
   return <Badge tone={MOTO_TONE[status] ?? "neutral"}>{ESTADO_LABEL[status]}</Badge>;
 }
 
+// 19-sep-2026: decía un día MENOS. `new Date("2026-09-14")` se lee como medianoche UTC y en
+// Colombia (UTC−5) eso cae el 13 a las 7 pm. Pasaba con el SOAT, la tecnomecánica y cualquier
+// fecha suelta. `fmtFechaCorta` ya le pone la hora local antes de convertir — misma cuenta,
+// un solo lugar (ver `utils/fecha.ts`).
 function formatDate(date: string | null) {
   if (!date) return "Sin registrar";
-  return new Date(date).toLocaleDateString("es-CO");
+  return fmtFechaCorta(date);
 }
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };

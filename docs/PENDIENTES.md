@@ -5,6 +5,9 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - **Cómo se usa:** se agrega abajo de su bloque, se marca `[x]` al cerrarlo y se mueve a "Cerrados"
   con la fecha. Si algo sube o baja de prioridad, se mueve de bloque y se dice por qué.
 - **Quién lo hace:** 🧑 = tarea del dueño / la operación · 💻 = tarea de desarrollo.
+- 📋 = salió de la pizarra del dueño (foto del 19-sep).
+- ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
+  preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **19-sep-2026**.
 
 ---
@@ -73,6 +76,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 - [ ] 💻 **Al mover un pago de contrato, el comprobante queda en la carpeta del contrato viejo**
   en Storage. Se ve bien, pero está archivado donde no es. (Caso RONAL/ANGEL, 19-sep.)
 
+- [ ] 💻 📋 **Referencia de pagos repetidos.** Hoy **nada impide** registrar dos pagos con la
+  misma referencia de transferencia: la misma consignación se puede contar dos veces. Sería el
+  mismo tipo de candado en la base que la mig 160 le puso al saldo a favor.
+  ⚠️ **Por definir:** ¿avisar y dejar pasar, o rechazar como el del saldo a favor?
+
 - [ ] 💻 **`eliminarPago()` pierde la referencia y el comprobante.**
 
 - [ ] 💻 **`ampliarConvenio` cobra doble** → [[convenios-ahorro-semanas-financiadas]].
@@ -111,15 +119,52 @@ Lo que está afectando cifras reales de clientes en este momento.
 - [ ] 🧑 **Cabo de `fuente_llegada`:** ver si hay clientes con el nombre del cobrador SOLO en ese
   campo y que por eso no se cobran.
 
+- [ ] 💻 📋 **Historial de visitas ya pagadas.** Ver qué visitas se pagaron en la nómina y en qué
+  semana, para que no se paguen dos veces. ⚠️ **Por definir:** ¿una pantalla aparte, o una columna
+  en el desprendible que ya existe?
+
+- [ ] 🧑 📋 **Cambios de contrato Semanal → Quincenal** — IEW83I (JHON FREDDYS SANCHEZ), XZI08H
+  (AILTON UCHIRODRIGUEZ), DQL82I (AGUSTIN TOVAR), RML41H (ALVARO WILCHES).
+  🔴 **PARQUEADO por decisión del dueño (19-sep):** *"hay que pensarlo mejor por temas de firmas"* —
+  cambiar la forma de pago cambia lo que el cliente firmó. Además mueve todo su calendario de cobro
+  (la quincena no son dos semanas: son 15 días con dos fechas fijas del mes).
+
 ---
 
 ## P3 — Módulos por construir
 
-- [ ] 💻 **EGRESOS** — diseñado, sin construir. Hoy la plata que SALE no se registra en ningún lado
-  (se vio con ELKIN: no había forma de saber si se le entregó su saldo a favor).
+- [ ] 💻 📋 **EGRESOS, con detalles y evidencias** — diseñado, sin construir. Hoy la plata que SALE
+  no se registra en ningún lado (se vio con ELKIN: no había forma de saber si se le entregó su
+  saldo a favor). El dueño pide que lleve **evidencia adjunta**, no solo el monto.
 - [ ] 💻 **INFORMES GERENCIALES** — diseñados, sin construir.
 - [ ] 💻 **Aviso "salieron $X" en Caja** (no aprobado todavía).
-- [ ] 💻 **Rediseño visual, fase 3: Cartera** · falta el **logo** de la marca.
+- [ ] 💻 📋 **Logo e identidad de marca** (falta el logo) · **Rediseño visual, fase 3: Cartera**.
+
+- [ ] 💻 📋 **Portal del SOCIO: número de motos y portafolio detallado.** Que el socio vea cuántas
+  motos tiene y el detalle de su portafolio. ⚠️ **Por definir:** ¿qué cifras exactamente — solo
+  cuántas motos y su estado, o también recaudo, mora y rentabilidad del grupo?
+
+- [ ] 💻 📋 **Validar papeles.** Que alguien pueda marcar que los documentos de un cliente
+  **fueron revisados y están correctos**, no solo que están subidos. Hoy el sistema sabe que el
+  papel existe, pero no que alguien lo miró.
+  ⚠️ **Por definir:** ¿quién valida (secretaria, admin), y qué pasa si un papel se rechaza?
+
+- [ ] 💻 📋 **Módulo de visitas por confirmar.** Una pantalla con las visitas ya hechas que esperan
+  que el admin las apruebe o rechace. ⚠️ **Por definir:** ¿es una pantalla nueva o le falta algo al
+  panel de aprobación que ya existe en Clientes?
+
+- [ ] 💻 📋 **Recordatorio de gestiones de los Sub Admin (hora y detalle).**
+  ⚠️ **Por definir, y son dos cosas opuestas:** (a) un recordatorio **para ellos** —"te falta llamar
+  a estos 5 hoy"— o (b) un registro **para el dueño**: a qué hora hizo cada gestión y con qué
+  detalle, para revisarle el día.
+
+- [ ] 💻 📋 **Total o proyección esperada.** Cuánto **debería** entrar esta semana o este mes si
+  todos pagan, contra lo que de verdad entró. ⚠️ **Por definir:** ¿por semana, por mes, por grupo?
+
+- [ ] 💻 📋 **Migración / base de datos local.**
+  ⚠️ **Por definir, y cambia todo el trabajo:** ¿es un **respaldo** por si Supabase falla, o poder
+  **trabajar sin internet** y sincronizar después? Lo primero es una tarea; lo segundo es un
+  proyecto grande.
 
 ---
 
@@ -134,6 +179,8 @@ Lo que está afectando cifras reales de clientes en este momento.
   crean más diarios y el motor no se toca. Pero quedan activos.
 - [ ] 💻 **`cajas_previas` puede superar a `total_cajas`** (3 contratos hoy). Viene de la migración y
   nadie lo valida.
+- [ ] 💻 📋 **Scroll lento en el Reporte de Entregas.** La pantalla va pesada. Se mide con el
+  navegador y se arregla — probablemente sea que arma la lista completa sin ventana de scroll.
 
 ---
 

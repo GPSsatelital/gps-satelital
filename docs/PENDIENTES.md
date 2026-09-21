@@ -82,6 +82,14 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **`ampliarConvenio` cobra doble** → [[convenios-ahorro-semanas-financiadas]].
 
+- [ ] 🧑💻 **CERRAR LOS BUCKETS DE STORAGE — el paso que de verdad cierra la fuga.**
+  Los 19 enlaces ya piden enlace firmado (21-sep), pero **los 5 buckets siguen públicos**: un link
+  suelto —reenviado por WhatsApp, guardado en el historial— todavía abre la cédula de un cliente
+  **sin sesión**. Son 269 clientes con autorización de tratamiento firmada.
+  **Orden obligatorio, no invertirlo:** ① comprobar en el navegador que abre bien un documento y
+  una foto en cada pantalla tocada ② recién ahí poner los buckets en privado. Al revés se rompen
+  imágenes en producción, en vivo y sin aviso. → [[fuga-documentos-storage]]
+
 - [ ] 💻 **Cesión DPU50I** hecha a mano, sin flujo · **8 partidas de caja sin grupo**.
 
 ---

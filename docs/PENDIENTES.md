@@ -16,7 +16,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 Lo que está afectando cifras reales de clientes en este momento.
 
-- [ ] 🧑 **CESAR ESCUDERO (ZHO34G) y RAMON BARON (RLI25H) — falta rodarles el tiempo.**
+- [ ] 🧑 ⏸️ **CESAR ESCUDERO (ZHO34G) y RAMON BARON (RLI25H) — falta rodarles el tiempo.**
+  🚫 **EN PAUSA por decisión del dueño (21-sep): "dejalos quietos".** No retomar sin que él los saque.
   Anotado desde el 29-ago y nunca hecho. Sus contratos muestran **118 y 112 semanas consumidas
   contra las 104** que tienen. Igual que JORGE TOVAR, necesitan que el cliente venga para
   reconstruir cuánto tiempo no tuvo la moto. Sin eso no se les puede cerrar la cuenta.

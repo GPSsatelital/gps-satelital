@@ -82,13 +82,15 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **`ampliarConvenio` cobra doble** → [[convenios-ahorro-semanas-financiadas]].
 
-- [ ] 🧑💻 **CERRAR LOS BUCKETS DE STORAGE — el paso que de verdad cierra la fuga.**
-  Los 19 enlaces ya piden enlace firmado (21-sep), pero **los 5 buckets siguen públicos**: un link
-  suelto —reenviado por WhatsApp, guardado en el historial— todavía abre la cédula de un cliente
-  **sin sesión**. Son 269 clientes con autorización de tratamiento firmada.
-  **Orden obligatorio, no invertirlo:** ① comprobar en el navegador que abre bien un documento y
-  una foto en cada pantalla tocada ② recién ahí poner los buckets en privado. Al revés se rompen
-  imágenes en producción, en vivo y sin aviso. → [[fuga-documentos-storage]]
+- [ ] 🧑 **CERRAR LOS BUCKETS DE STORAGE — el paso que de verdad cierra la fuga.**
+  El código ya está listo: los 19 enlaces **y** las imágenes de todos los documentos piden enlace
+  firmado (21-sep). Pero **los 5 buckets siguen públicos**: un link suelto —reenviado por WhatsApp,
+  guardado en el historial— todavía abre la cédula de un cliente **sin sesión**. Son 269 clientes
+  con autorización de tratamiento firmada.
+  **Falta solo comprobarlo en el navegador** → checklist en
+  `docs/COMPROBAR-ANTES-DE-CERRAR-BUCKETS.md`. Cuando esté todo marcado se corre el SQL.
+  Orden obligatorio, no invertirlo: comprobar → cerrar. Al revés se rompen imágenes en producción,
+  en vivo y sin aviso. → [[fuga-documentos-storage]]
 
 - [ ] 💻 **Cesión DPU50I** hecha a mano, sin flujo · **8 partidas de caja sin grupo**.
 
@@ -190,7 +192,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
-| 21-sep | **Fuga de documentos cerrada** — los 19 enlaces que abrían la URL pública ahora piden enlace firmado que caduca en 60 min |
+| 21-sep | **Las imágenes de los documentos también piden enlace firmado** — sin esto, cerrar la bodega hacía que el contrato y la liquidación salieran impresos SIN FIRMA, en silencio |
+| 21-sep | **Los 19 enlaces** que abrían la URL pública ahora piden enlace firmado que caduca en 60 min |
 | 21-sep | Al revisar se encontró que **dos ítems ya estaban resueltos**: el adelanto en el estado de cuenta impreso (quedó en `1fc87c7`), y las fechas UTC de TallerView (ya usa `fmtFechaCorta`) |
 | 19-sep | **Candado del saldo a favor** (mig 160) — ya no se puede aplicar dos veces |
 | 19-sep | YERLIS: doble clic deshecho · JORGE TOVAR: día de pago corregido · pago movido de IEW59I a IEW65I |

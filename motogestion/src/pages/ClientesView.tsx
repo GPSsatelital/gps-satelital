@@ -30,6 +30,7 @@ import LectorHuella from "../components/LectorHuella";
 import FotoPerfil from "../components/FotoPerfil";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
+import { abrirDocumento } from "../lib/storagePrivado";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
@@ -126,7 +127,8 @@ function DocsSummary({ doc, only, role }: { doc: DocumentoFlags; only?: Array<ke
         const estilo: React.CSSProperties = { padding: "5px 8px", borderRadius: 999, background: item.ok ? "var(--ok-soft)" : "var(--bad-soft)", color: item.ok ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 12, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 };
         if (item.ok && esUrl(item.file) && puedeVerArchivo) {
           return (
-            <a key={key} href={item.file!} target="_blank" rel="noreferrer" style={estilo} title="Ver documento">
+            <a key={key} href={item.file!} target="_blank" rel="noreferrer" style={estilo} title="Ver documento"
+               onClick={e => { e.preventDefault(); abrirDocumento(item.file); }}>
               {label} 🔍
             </a>
           );
@@ -193,7 +195,8 @@ function DocsChecklist({ doc, onChange, only, carpeta, subir }: {
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>
                 {esUrl(doc[key]?.file ?? null) ? (
-                  <a href={doc[key]!.file!} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>✔ Ver documento cargado</a>
+                  <a href={doc[key]!.file!} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}
+                     onClick={e => { e.preventDefault(); abrirDocumento(doc[key]!.file); }}>✔ Ver documento cargado</a>
                 ) : (
                   <span style={{ color: "var(--ok)" }}>✔ Cargado</span>
                 )}
@@ -445,12 +448,14 @@ function PanelAprobacion({ clientes, visitas, role, onAprobar, onRepetir, onRech
                     {role !== "SUBADMIN" && (visita.fotos.clienteFuncionario || visita.fotos.fachada) && (
                       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {visita.fotos.clienteFuncionario && (
-                          <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer">
+                          <a href={visita.fotos.clienteFuncionario} target="_blank" rel="noreferrer"
+                             onClick={e => { e.preventDefault(); abrirDocumento(visita.fotos.clienteFuncionario); }}>
                             <ImgPrivada src={visita.fotos.clienteFuncionario} alt="Cliente + funcionario" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
                         {visita.fotos.fachada && (
-                          <a href={visita.fotos.fachada} target="_blank" rel="noreferrer">
+                          <a href={visita.fotos.fachada} target="_blank" rel="noreferrer"
+                             onClick={e => { e.preventDefault(); abrirDocumento(visita.fotos.fachada); }}>
                             <ImgPrivada src={visita.fotos.fachada} alt="Fachada" style={{ height: 100, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                           </a>
                         )}
@@ -1878,7 +1883,8 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                     {v.fotos.clienteFuncionario && (
                       esUrl(v.fotos.clienteFuncionario) ? (
-                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Funcionario + visitados">
+                        <a href={v.fotos.clienteFuncionario} target="_blank" rel="noreferrer" title="Funcionario + visitados"
+                           onClick={e => { e.preventDefault(); abrirDocumento(v.fotos.clienteFuncionario); }}>
                           <ImgPrivada src={v.fotos.clienteFuncionario} alt="Funcionario + visitados" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (
@@ -1887,7 +1893,8 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
                     )}
                     {v.fotos.fachada && (
                       esUrl(v.fotos.fachada) ? (
-                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada">
+                        <a href={v.fotos.fachada} target="_blank" rel="noreferrer" title="Fachada"
+                           onClick={e => { e.preventDefault(); abrirDocumento(v.fotos.fachada); }}>
                           <ImgPrivada src={v.fotos.fachada} alt="Fachada" style={{ height: 90, borderRadius: 10, objectFit: "cover", border: "2px solid var(--line)" }} />
                         </a>
                       ) : (

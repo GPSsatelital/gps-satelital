@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **19-sep-2026**.
+- Última revisión: **21-sep-2026**.
 
 ---
 
@@ -56,9 +56,6 @@ Lo que está afectando cifras reales de clientes en este momento.
   `fecha_limite = hoy + cuotas_faltantes × días`. Con la regla nueva de inmovilizar, alguien podría
   abonar cualquier cosa y salirse de la cola. El dueño: *"lo definimos cuando sea necesario"*.
 
-- [ ] 💻 **El estado de cuenta IMPRESO no muestra la semana adelantada.** En pantalla ya se ve
-  (`d01c7a9`); en el papel que se le entrega al cliente, no.
-
 - [ ] 💻 **`aplicarSaldoFavor` trabaja en dos tiempos desde el cliente** (crea el movimiento y
   después le descuenta el saldo, en dos llamadas). La mig 160 le puso candado, pero la raíz sigue:
   debería ser **un solo RPC en una transacción**.
@@ -85,10 +82,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **`ampliarConvenio` cobra doble** → [[convenios-ahorro-semanas-financiadas]].
 
-- [ ] 💻 **Cesión DPU50I** hecha a mano, sin flujo · **Storage: 20 `<a href>` directos** (fuga de
-  documentos) · **8 partidas de caja sin grupo**.
-
-- [ ] 💻 **Fechas UTC en TallerView** (se ven corridas un día).
+- [ ] 💻 **Cesión DPU50I** hecha a mano, sin flujo · **8 partidas de caja sin grupo**.
 
 ---
 
@@ -188,6 +182,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 21-sep | **Fuga de documentos cerrada** — los 19 enlaces que abrían la URL pública ahora piden enlace firmado que caduca en 60 min |
+| 21-sep | Al revisar se encontró que **dos ítems ya estaban resueltos**: el adelanto en el estado de cuenta impreso (quedó en `1fc87c7`), y las fechas UTC de TallerView (ya usa `fmtFechaCorta`) |
 | 19-sep | **Candado del saldo a favor** (mig 160) — ya no se puede aplicar dos veces |
 | 19-sep | YERLIS: doble clic deshecho · JORGE TOVAR: día de pago corregido · pago movido de IEW59I a IEW65I |
 | 18-sep | **El acuerdo vencido se sigue cobrando** — 4 piezas (migs 157·158·159) |

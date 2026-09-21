@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CanvasFirma from "./CanvasFirma";
 import LectorHuella from "./LectorHuella";
+import ImgPrivada from "./ImgPrivada";
 import { htmlAcuerdoTiempo, imprimirAcuerdoTiempo, type DatosAcuerdoTiempo } from "../utils/generarDocumentoAcuerdoTiempo";
 
 // FIRMAR EL ACUERDO DE TIEMPO EN PANTALLA — mismo orden que la firma de liquidaciones (pedido del
@@ -113,7 +114,7 @@ export default function ModalFirmaAcuerdoTiempo({
                 <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 2 }}>4. Huella del cliente</div>
                 {huellaRegistroUrl ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--line)", marginTop: 8 }}>
-                    <img src={huellaRegistro ?? huellaRegistroUrl} alt="Huella del registro"
+                    <ImgPrivada src={huellaRegistro ?? huellaRegistroUrl} alt="Huella del registro"
                       style={{ width: 64, height: 64, objectFit: "contain", background: "#fff", borderRadius: 8, border: "1px solid var(--line)", flexShrink: 0 }} />
                     <span style={{ minWidth: 0, fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
                       {huellaRegistro ? "Se usa la del registro — va en el documento" : "Cargando la huella..."}

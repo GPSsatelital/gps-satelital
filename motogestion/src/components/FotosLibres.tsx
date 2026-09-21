@@ -8,6 +8,7 @@
 // El componente NO sube nada: entrega los `dataUrl` y la pantalla que lo usa decide dónde guardarlos.
 
 import React, { useState } from "react";
+import ImgPrivada from "./ImgPrivada";
 
 export type FotoLibreLocal = { src: string; nota: string };
 
@@ -102,7 +103,7 @@ export function GaleriaFotos({ fotos, vacio }: { fotos: { url: string; nota?: st
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8, textAlign: "left" }}>
         {fotos.map((f, i) => (
           <div key={i} style={{ minWidth: 0 }}>
-            <img src={f.url} alt={f.nota || `Foto ${i + 1}`} onClick={() => setAmpliada(f.url)}
+            <ImgPrivada src={f.url} alt={f.nota || `Foto ${i + 1}`} onClick={() => setAmpliada(f.url)}
               style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 8, cursor: "zoom-in", display: "block", border: "1px solid var(--line)" }} />
             {f.nota && <div style={{ fontSize: 10, color: "var(--muted2)", marginTop: 3, lineHeight: 1.3 }}>{f.nota}</div>}
           </div>
@@ -110,7 +111,7 @@ export function GaleriaFotos({ fotos, vacio }: { fotos: { url: string; nota?: st
       </div>
       {ampliada && (
         <div onClick={() => setAmpliada(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1300, padding: 16 }}>
-          <img src={ampliada} alt="Foto ampliada" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
+          <ImgPrivada src={ampliada} alt="Foto ampliada" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 12 }} />
         </div>
       )}
     </>

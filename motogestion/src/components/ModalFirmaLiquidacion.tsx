@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CanvasFirma from "./CanvasFirma";
 import LectorHuella from "./LectorHuella";
+import ImgPrivada from "./ImgPrivada";
 import { htmlLiquidacion, imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import type { Liquidacion } from "../hooks/useLiquidaciones";
 
@@ -152,7 +153,7 @@ export default function ModalFirmaLiquidacion({
                       Se usa la que dio al registrarse. No hay que volver a pedírsela.
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, background: "var(--ok-soft)", border: "1px solid var(--line)" }}>
-                      <img src={huellaRegistro ?? huellaRegistroUrl} alt="Huella del registro"
+                      <ImgPrivada src={huellaRegistro ?? huellaRegistroUrl} alt="Huella del registro"
                         style={{ width: 64, height: 64, objectFit: "contain", background: "#fff", borderRadius: 8, border: "1px solid var(--line)", flexShrink: 0 }} />
                       <span style={{ minWidth: 0, fontSize: 13, color: "var(--ok-ink)", fontWeight: 600 }}>
                         {huellaRegistro ? "Huella en archivo — va en el documento" : "Cargando la huella..."}

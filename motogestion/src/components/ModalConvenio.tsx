@@ -8,6 +8,7 @@ import { useClientes } from "../hooks/useClientes";
 import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
+import HtmlFirmado from "./HtmlFirmado";
 import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo, financiarSemanas } from "../utils/cicloPago";
 import { hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { sumarLoQueEntra, deudasMarcadas as soloMarcadas, type QueEntra } from "../utils/convenioQueEntra";
@@ -923,8 +924,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                 {verAcuerdo ? "Ocultar acuerdo" : "👁 Ver acuerdo de pago (para que el cliente lo lea)"}
               </button>
               {verAcuerdo && clienteDelContrato && contratoActual && (
-                <div style={{ border: "1px solid var(--line)", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "var(--card)" }}
-                  dangerouslySetInnerHTML={{ __html: generarHTMLAcuerdoPago(
+                <HtmlFirmado style={{ border: "1px solid var(--line)", borderRadius: 12, maxHeight: 340, overflowY: "auto", background: "var(--card)" }}
+                  html={generarHTMLAcuerdoPago(
                     clienteDelContrato,
                     (contratoActual.moto_id ? motos.find(m => m.id === contratoActual.moto_id) : null) ?? null,
                     // Solo las deudas que quedaron MARCADAS: es lo que el cliente va a firmar.
@@ -936,7 +937,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
                       acompanante_cedula: conAcompanante ? acompCedula : null,
                     },
                     infoFinContrato(contratoActual),
-                  ) }} />
+                  )} />
               )}
             </div>
 

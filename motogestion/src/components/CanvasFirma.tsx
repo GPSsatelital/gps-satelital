@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { labelStyle } from "../styles/shared";
+import ImgPrivada from "./ImgPrivada";
 
 interface Props {
   label: string;
@@ -260,7 +261,7 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
           }}
         >
           {firmaSaved ? (
-            <img src={firmaSaved} alt="Firma guardada" style={{ width: "100%", display: "block", maxHeight: 110, objectFit: "contain" }} />
+            <ImgPrivada src={firmaSaved} alt="Firma guardada" style={{ width: "100%", display: "block", maxHeight: 110, objectFit: "contain" }} />
           ) : (
             <div style={{ padding: "18px 20px", textAlign: "center", color: "var(--faint)", fontSize: 14, fontWeight: 600 }}>
               Toque aquí para firmar

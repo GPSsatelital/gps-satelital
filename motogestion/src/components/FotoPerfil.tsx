@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { labelStyle } from "../styles/shared";
+import ImgPrivada from "./ImgPrivada";
 
 interface Props {
   label: string;
@@ -104,7 +105,7 @@ export default function FotoPerfil({ label, valorInicial = null, onChange }: Pro
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {foto ? (
-            <img src={foto} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <ImgPrivada src={foto} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <span style={{ fontSize: 32, color: "var(--line2)" }}>👤</span>
           )}

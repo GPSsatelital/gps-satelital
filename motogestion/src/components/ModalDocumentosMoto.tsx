@@ -39,12 +39,14 @@ export default function ModalDocumentosMoto({ moto: motoInicial, onClose }: Prop
   }
 
   // Imprime la tarjeta con AMBAS caras en una sola hoja (la copia que se le entrega al conductor).
-  function imprimirTarjeta() {
+  // La ventana se abre ANTES de firmar los enlaces, o el navegador la bloquea por emergente.
+  async function imprimirTarjeta() {
     const d = moto.documentos_moto ?? {};
     if (!d.tarjeta_frente || !d.tarjeta_reverso) return;
     const w = window.open("", "_blank", "width=720,height=900");
     if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><title>Tarjeta ${moto.placa}</title>
+    const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+    w.document.write(await firmarImagenesHtml(`<!DOCTYPE html><html><head><title>Tarjeta ${moto.placa}</title>
       <style>@page{margin:10mm}@media print{body{margin:0}}
       body{font-family:Arial,sans-serif;text-align:center}
       h3{margin:6px 0 10px;font-size:15px}
@@ -54,21 +56,22 @@ export default function ModalDocumentosMoto({ moto: motoInicial, onClose }: Prop
       <h3>Tarjeta de propiedad — ${moto.placa}</h3>
       <div class="cara">Frente</div><img src="${d.tarjeta_frente}"/>
       <div class="cara">Reverso</div><img src="${d.tarjeta_reverso}"/>
-      </body></html>`);
+      </body></html>`));
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);
   }
 
-  function imprimirSoat() {
+  async function imprimirSoat() {
     const d = moto.documentos_moto ?? {};
     if (!d.soat) return;
     const w = window.open("", "_blank", "width=720,height=900");
     if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head><title>SOAT ${moto.placa}</title>
+    const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+    w.document.write(await firmarImagenesHtml(`<!DOCTYPE html><html><head><title>SOAT ${moto.placa}</title>
       <style>@page{margin:10mm}@media print{body{margin:0}}body{font-family:Arial,sans-serif;text-align:center}
       h3{margin:6px 0 10px;font-size:15px}img{width:100%;max-width:180mm;max-height:250mm;object-fit:contain;display:block;margin:0 auto;border:1px solid #ddd}
-      </style></head><body><h3>SOAT — ${moto.placa}</h3><img src="${d.soat}"/></body></html>`);
+      </style></head><body><h3>SOAT — ${moto.placa}</h3><img src="${d.soat}"/></body></html>`));
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);

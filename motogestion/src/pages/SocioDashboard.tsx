@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import ImgPrivada from "../components/ImgPrivada";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos } from "../hooks/useMotos";
@@ -392,7 +393,7 @@ export function TarjetaEntrega({ c, clientes, motos }: {
     <div style={{ ...card, padding: 0, overflow: "hidden" }}>
       <div style={{ position: "relative", height: 168, background: "var(--soft2)" }}>
         {fotos[0]
-          ? <img src={fotos[0]} alt={`Entrega de la moto ${moto?.placa ?? ""}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ? <ImgPrivada src={fotos[0]} alt={`Entrega de la moto ${moto?.placa ?? ""}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)", fontSize: 12.5 }}>Sin fotos de la entrega</div>}
         <div style={{ position: "absolute", left: 12, bottom: 12 }}>
           <Placa placa={moto?.placa ?? "—"} size="md" />

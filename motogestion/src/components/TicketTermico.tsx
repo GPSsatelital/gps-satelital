@@ -8,6 +8,7 @@
 // modo="preview" → visible en pantalla como vista previa, NO se imprime.
 
 import { hoyISO } from "../utils/fecha";
+import ImgPrivada from "./ImgPrivada";
 
 export type LineaTicket = { label: string; valor: string; fuerte?: boolean };
 
@@ -167,7 +168,7 @@ export default function TicketTermico({ datos, modo }: { datos: TicketData; modo
 
       {datos.firmaUrl && (
         <div style={{ marginTop: 8, textAlign: "center" }}>
-          <img src={datos.firmaUrl} alt="Firma" style={{ maxWidth: "58mm", maxHeight: "18mm", objectFit: "contain" }} />
+          <ImgPrivada src={datos.firmaUrl} alt="Firma" style={{ maxWidth: "58mm", maxHeight: "18mm", objectFit: "contain" }} />
           <div style={{ borderTop: "1px solid #000", margin: "2px auto 0", width: "58mm" }} />
           <div style={{ fontSize: 11, color: "#000", marginTop: 2 }}>{datos.firmaLabel ?? "Firma de quien recibe"}</div>
         </div>

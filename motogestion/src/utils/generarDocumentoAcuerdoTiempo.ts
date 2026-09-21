@@ -171,11 +171,15 @@ ${borrador ? `<div class="aviso-borrador">
 </html>`;
 }
 
-/** Abre el acuerdo en una ventana aparte y manda a imprimir (para el camino de papel). */
-export function imprimirAcuerdoTiempo(d: DatosAcuerdoTiempo, opts: OpcionesAcuerdo = {}) {
+/**
+ * Abre el acuerdo en una ventana aparte y manda a imprimir (para el camino de papel).
+ * La ventana se abre ANTES de firmar las imágenes, o el navegador la bloquea por emergente.
+ */
+export async function imprimirAcuerdoTiempo(d: DatosAcuerdoTiempo, opts: OpcionesAcuerdo = {}) {
   const ventana = window.open("", "_blank", "width=800,height=900");
   if (!ventana) return;
-  ventana.document.write(htmlAcuerdoTiempo(d, opts));
+  const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+  ventana.document.write(await firmarImagenesHtml(htmlAcuerdoTiempo(d, opts)));
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 400);

@@ -137,10 +137,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // Abre el documento en una pestaña y lanza Imprimir → el usuario elige "Guardar como PDF".
 // Es 100% confiable (render nativo del navegador) — no depende de html2canvas, que salía
 // en blanco. Se usa para documentos que se descargan a demanda (no se guardan en Storage).
-function imprimirDocumento(html: string, titulo: string) {
+async function imprimirDocumento(html: string, titulo: string) {
+  // La ventana se abre ANTES de firmar las imágenes: después del `await` el navegador la
+  // bloquearía por emergente.
   const ventana = window.open("", "_blank");
   if (!ventana) return;
-  ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${html}</body></html>`);
+  const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+  const cuerpo = await firmarImagenesHtml(html);
+  ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><style>*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{margin:0}}</style></head><body>${cuerpo}</body></html>`);
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 300);

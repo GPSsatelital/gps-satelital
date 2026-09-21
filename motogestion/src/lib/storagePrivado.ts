@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { urlsDeStorageEnHtml } from "./urlsEnHtml";
 
 // Acceso a los archivos del cliente (cédulas, recibos, firmas, huellas, comprobantes) con
 // enlaces FIRMADOS que caducan, en vez de enlaces públicos eternos.
@@ -67,6 +68,34 @@ export async function abrirDocumento(url: string | null | undefined) {
   if (!w) return;
   if (firmada) w.location.href = firmada;
   else w.close();
+}
+
+/**
+ * Recibe un HTML ya armado (los de `useDocumentos.ts`, `generarDocumento*.ts` y las ventanas de
+ * impresión) y devuelve el mismo HTML con TODA URL pública de Storage cambiada por su enlace
+ * firmado (21-sep-2026).
+ *
+ * POR QUÉ ASÍ: la app imprime desde 11 sitios distintos, cada uno con su propio
+ * `w.document.write(...)`, y los HTML se arman con plantillas de texto — no con React, así que
+ * `ImgPrivada` no sirve ahí. Firmar el HTML terminado es UN solo punto que cubre los 11, y de
+ * paso cubre cualquier imagen que no esté en el inventario (una nueva, un `background-image`).
+ *
+ * Es un no-op si el HTML no trae ninguna URL de Storage: devuelve el mismo texto sin pedir nada.
+ *
+ * ORDEN AL USARLA: abrir la ventana de impresión ANTES de llamarla. Si se abre después del
+ * `await`, el navegador la trata como emergente no pedida y la bloquea.
+ */
+export async function firmarImagenesHtml(html: string): Promise<string> {
+  const encontradas = urlsDeStorageEnHtml(html);
+  if (encontradas.length === 0) return html;
+  const pares = await Promise.all(
+    encontradas.map(async (u) => [u, (await urlFirmada(u)) ?? u]),
+  );
+  let out = html;
+  // split/join en vez de replace con regex: la URL lleva `/` y `?`, y escaparlos a mano es
+  // justo el tipo de detalle que rompe una sola imagen sin que nadie lo note.
+  for (const [orig, firmada] of pares) out = out.split(orig).join(firmada);
+  return out;
 }
 
 /**

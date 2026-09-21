@@ -238,8 +238,12 @@ ${paraFirmar ? `<div class="nota-validez">
 </html>`;
 }
 
-/** Abre el documento en una ventana aparte y manda a imprimir. */
-export function imprimirLiquidacion(
+/**
+ * Abre el documento en una ventana aparte y manda a imprimir.
+ * La ventana se abre ANTES de firmar las imágenes: si se abriera después del `await`, el
+ * navegador la trataría como emergente no pedida y la bloquearía.
+ */
+export async function imprimirLiquidacion(
   liq: Liquidacion,
   cliente: Cliente,
   moto: Moto | null,
@@ -247,7 +251,8 @@ export function imprimirLiquidacion(
 ) {
   const ventana = window.open("", "_blank", "width=800,height=900");
   if (!ventana) return;
-  ventana.document.write(htmlLiquidacion(liq, cliente, moto, opts));
+  const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+  ventana.document.write(await firmarImagenesHtml(htmlLiquidacion(liq, cliente, moto, opts)));
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 400);

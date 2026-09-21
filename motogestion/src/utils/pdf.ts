@@ -3,7 +3,8 @@
 // Usa html2pdf.js (html2canvas + jsPDF). Respeta `page-break-inside:avoid` de las cláusulas.
 // La librería se importa de forma dinámica: es pesada y solo se necesita al firmar, así
 // no infla la carga inicial de la app.
-export async function htmlAPdfBlob(html: string): Promise<Blob> {
+export async function htmlAPdfBlob(htmlEntrada: string): Promise<Blob> {
+  let html = htmlEntrada;
   // Se captura DIRECTO con html2canvas sobre el elemento montado en pantalla y se arma el PDF
   // con jsPDF a mano. Antes se usaba html2pdf.js, que internamente RE-CLONA el contenido a un
   // contenedor fuera de pantalla para procesarlo — y esa copia salía SIEMPRE en blanco (PDFs
@@ -13,6 +14,12 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
     import("jspdf"),
   ]);
   const JsPDF = jspdfMod.jsPDF;
+
+  // 21-sep-2026: por acá pasan TODOS los PDF que genera la app, así que es el punto donde se
+  // firman sus imágenes. Las firmas y huellas que vienen de `urlADataUrl` ya son dataURL y no
+  // se tocan; esto cubre las que quedaron como URL pública guardada.
+  const { firmarImagenesHtml } = await import("../lib/storagePrivado");
+  html = await firmarImagenesHtml(html);
 
   // Montar el HTML en pantalla, realmente renderizado (html2canvas captura en blanco si el
   // elemento no está visible o está en position:fixed). Ancho A4 @ 96dpi = 794px.
@@ -83,9 +90,26 @@ export async function htmlAPdfBlob(html: string): Promise<Blob> {
 
 // Descarga una imagen remota (ej. huella del registro en Storage) y la convierte a
 // dataURL, para incrustarla en el PDF sin problemas de CORS/taint de html2canvas.
+//
+// 21-sep-2026: ES EL EMBUDO de las imágenes de TODOS los documentos — contrato, pagaré,
+// liquidación, acuerdo de tiempo y las huellas del registro (11 puntos de llamada). Antes hacía
+// `fetch` sobre la URL pública guardada; el día que los buckets se cierren eso devolvería 400 y
+// el documento saldría SIN FIRMA. Ahora pide el enlace firmado primero (`urlFirmada` devuelve la
+// URL original si no es de Storage, así que un dataURL recién capturado sigue funcionando).
+//
+// OJO — sigue devolviendo `null` cuando falla, y quien la llama pinta el recuadro vacío sin
+// avisar: un documento puede salir impreso sin firma y nadie se enteraría. Avisarle al
+// funcionario es un cambio de comportamiento en los 11 puntos; queda anotado en PENDIENTES.
 export async function urlADataUrl(url: string): Promise<string | null> {
   try {
-    const resp = await fetch(url);
+    const { urlFirmada } = await import("../lib/storagePrivado");
+    const firmada = await urlFirmada(url);
+    if (!firmada) return null;
+    const resp = await fetch(firmada);
+    if (!resp.ok) {
+      console.warn(`[pdf] no se pudo bajar la imagen del documento (${resp.status}):`, url);
+      return null;
+    }
     const blob = await resp.blob();
     return await new Promise((resolve) => {
       const reader = new FileReader();
@@ -93,7 +117,8 @@ export async function urlADataUrl(url: string): Promise<string | null> {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (e) {
+    console.warn("[pdf] falló la imagen del documento:", url, e);
     return null;
   }
 }

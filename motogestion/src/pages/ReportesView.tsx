@@ -15,7 +15,7 @@ import { useBackGuard } from "../contexts/BackNav";
 import { Chip } from "../components/atomos";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
-import { abrirDocumento } from "../lib/storagePrivado";
+import { abrirDocumento, firmarImagenesHtml } from "../lib/storagePrivado";
 import { formatDiaPago, valorPeriodoReal, calcularEstadoCartera, cuotaConvenioDelPeriodo, cajasExigidasHasta } from "../utils/cicloPago";
 import {
   exportarCSV, descargarExcel, GRUPO_HEX,
@@ -1302,17 +1302,18 @@ export default function ReportesView({ onNavigate }: Props) {
   const entregasConFotos    = entregas.filter(e => e.nFotos > 0).length;
 
   // ── Resumen de UNA entrega (por contrato): lo pactado + fotos, en una página ──
-  function verResumenEntrega(e: typeof entregas[number]) {
+  async function verResumenEntrega(e: typeof entregas[number]) {
     const c = contratos.find(ct => ct.id === e.id);
     const cliente = clientes.find(cl => cl.id === e.clienteId);
     const moto = e.motoId ? motos.find(m => m.id === e.motoId) ?? null : null;
     if (!c || !cliente) return;
     const fotos = e.fotos.map(([ang, url]) => ({ label: ANG_LABEL[ang] ?? ang, url }));
-    const cuerpo = generarHTMLResumenEntrega(c, cliente, moto, fotos);
     // El navegador usa el <title> como nombre por defecto al "Guardar como PDF".
     const nombreDoc = `Rep_entrega (${e.placa})(${e.cliente})`;
+    // La ventana se abre ANTES de firmar las fotos, o el navegador la bloquea por emergente.
     const win = window.open("", "_blank", "width=840,height=920");
     if (!win) return;
+    const cuerpo = await firmarImagenesHtml(generarHTMLResumenEntrega(c, cliente, moto, fotos));
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${nombreDoc}</title>
       <style>@media print{.no-print{display:none}} body{margin:0;background:var(--soft)}</style></head><body>
       <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:flex-end">

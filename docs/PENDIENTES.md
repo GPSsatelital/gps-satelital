@@ -44,6 +44,16 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ---
 
+- [ ] 🧑 **APAGAR EL REGISTRO DE USUARIOS EN SUPABASE — sin confirmar todavía.**
+  Verificado el 21-sep: *"Allow new users to sign up"* estaba **ACTIVO**. Con eso, cualquier persona
+  en internet se creaba una cuenta (la llave anónima viaja dentro del bundle de la app), quedaba
+  **sin perfil**, y `mi_rol() IS DISTINCT FROM 'VISITADOR'` la dejaba pasar — podía **listar y
+  descargar los documentos de los 269 clientes**, y sobreescribirlos.
+  La mig 162 le puso el cinturón de seguridad, pero **el freno es el interruptor**:
+  Supabase → Authentication → Sign In / Providers → *Allow new users to sign up* → **apagar**.
+  Nadie de la empresa se registra solo: los usuarios los crea el dueño desde la pantalla Usuarios.
+  → [[fuga-documentos-storage]]
+
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
 - [ ] 💻 **La regla del sobrante** (decidida **esperar hasta el ~26-sep, a propósito**).
@@ -183,6 +193,16 @@ Lo que está afectando cifras reales de clientes en este momento.
   crean más diarios y el motor no se toca. Pero quedan activos.
 - [ ] 💻 **`cajas_previas` puede superar a `total_cajas`** (3 contratos hoy). Viene de la migración y
   nadie lo valida.
+- [ ] 💻 **Permisos escritos descuidadamente (no son huecos, se verificaron el 21-sep).**
+  · `contratos` UPDATE "staff de oficina" tiene la primera casilla en `true` ("cualquier
+  contrato"); lo que frena es la segunda. Funciona, pero si alguien agrega otro permiso con la
+  segunda abierta, ese `true` se vuelve peligroso. Debería decir lo mismo en las dos.
+  · `ajustes`, `mensajes_whatsapp` y `pendientes_atendidos` los lee cualquiera con sesión.
+  Se revisó qué guardan: el número de WhatsApp de ZALA, textos de mensajes y quién atendió qué.
+  Ningún secreto, ningún dato de cliente — por eso no se tocó.
+  · `subir comprobantes` (INSERT) no pide rol: cualquiera con sesión sube al bucket
+  `comprobantes`. Subir basura no expone datos de nadie, pero tampoco debería poder.
+
 - [ ] 💻 📋 **Scroll lento en el Reporte de Entregas.** La pantalla va pesada. Se mide con el
   navegador y se arregla — probablemente sea que arma la lista completa sin ventana de scroll.
 

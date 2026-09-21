@@ -115,6 +115,13 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 🧑 **45 motos guardadas, 463 días sin producir.** Que el sistema exija gestionarlas.
 
+- [ ] 💻 **Verificar en el navegador el cambio de moto / graduación** (migs 114+115, nunca se
+  probó): la partitura de **GEOVANNY**, los rodares de **JUAN CARLOS** y **WILLINGTON**, y que
+  **ADOLFO** aparezca listo para graduar. → [[graduacion-cambio-moto-flujo]]
+
+- [ ] 🧑 **DQF56I sigue sin devolverse** — anotado el 7-sep en el módulo de taller y nunca cerrado.
+  → [[taller-trabajo-y-cobro]]
+
 - [ ] 🧑 **Decisiones sueltas:** 3 deudas `tarifa_atrasada` ambiguas · 6 convenios con sobrante ·
   grupo USADAS sin cuenta bancaria · $152.000 de IEW38I · si `cuentas_bancarias` debe verla el
   SUBADMIN/VISITADOR · la multa cuando hay que salir de la ciudad (valor distinto, sin dónde

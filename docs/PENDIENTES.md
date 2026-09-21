@@ -44,16 +44,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ---
 
-- [ ] 🧑 **APAGAR EL REGISTRO DE USUARIOS EN SUPABASE — sin confirmar todavía.**
-  Verificado el 21-sep: *"Allow new users to sign up"* estaba **ACTIVO**. Con eso, cualquier persona
-  en internet se creaba una cuenta (la llave anónima viaja dentro del bundle de la app), quedaba
-  **sin perfil**, y `mi_rol() IS DISTINCT FROM 'VISITADOR'` la dejaba pasar — podía **listar y
-  descargar los documentos de los 269 clientes**, y sobreescribirlos.
-  La mig 162 le puso el cinturón de seguridad, pero **el freno es el interruptor**:
-  Supabase → Authentication → Sign In / Providers → *Allow new users to sign up* → **apagar**.
-  Nadie de la empresa se registra solo: los usuarios los crea el dueño desde la pantalla Usuarios.
-  → [[fuga-documentos-storage]]
-
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
 - [ ] 💻 **La regla del sobrante** (decidida **esperar hasta el ~26-sep, a propósito**).
@@ -212,6 +202,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 21-sep | 🔴 **El registro de usuarios de Supabase estaba ABIERTO** — cualquiera en internet podía crearse cuenta (sin confirmar correo siquiera), quedar sin perfil y descargar los documentos de los 269 clientes. **Apagado.** Nadie había entrado (0 cuentas sin perfil). Ver también: *anonymous sign-ins* ya estaba apagado |
+| 21-sep | **mig 161** — el VISITADOR ya no lee los documentos: 5 políticas PERMISIVAS se sumaban y anulaban su exclusión |
+| 21-sep | **mig 162** — para tocar los documentos hay que tener un rol de verdad (`NULL IS DISTINCT FROM 'X'` es TRUE) |
 | 21-sep | **Las imágenes de los documentos también piden enlace firmado** — sin esto, cerrar la bodega hacía que el contrato y la liquidación salieran impresos SIN FIRMA, en silencio |
 | 21-sep | **Los 19 enlaces** que abrían la URL pública ahora piden enlace firmado que caduca en 60 min |
 | 21-sep | Al revisar se encontró que **dos ítems ya estaban resueltos**: el adelanto en el estado de cuenta impreso (quedó en `1fc87c7`), y las fechas UTC de TallerView (ya usa `fmtFechaCorta`) |

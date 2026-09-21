@@ -1,8 +1,17 @@
 # Comprobar antes de cerrar la bodega de archivos
 
-**Qué se va a hacer:** poner en privado los 5 depósitos de Supabase Storage, para que un enlace
+**Qué se va a hacer:** poner en privado los **2** depósitos de Supabase Storage, para que un enlace
 viejo —reenviado por WhatsApp, guardado en el historial del navegador— **deje de abrir la cédula
 de un cliente sin sesión**. Son 269 clientes con autorización de tratamiento de datos firmada.
+
+Los dos, verificados el 21-sep-2026 (antes se creía que eran 5):
+
+| Depósito | Qué guarda | Usos en el código |
+|---|---|---|
+| `documentos` | cédulas, recibos, hojas de vida, antecedentes, firmas, huellas, fotos de moto, PDF de contratos y liquidaciones | 63 |
+| `comprobantes` | fotos de comprobantes de transferencia | 2 |
+
+No hay ningún otro: el código no apunta a ningún depósito que no exista.
 
 **Por qué hay que comprobar primero:** cerrar la bodega rompe cualquier pantalla o documento que
 todavía use la dirección vieja. Pedir la llave firmada funciona **igual** con la puerta abierta,
@@ -61,7 +70,7 @@ Acá el defecto sería que el documento salga **sin la firma o sin la huella**, 
 
 ## Después: cerrar
 
-Cuando TODAS las casillas estén marcadas, se corre el SQL que pone los 5 depósitos en privado.
+Cuando TODAS las casillas estén marcadas, se corre el SQL que pone los 2 depósitos en privado.
 **No está en este archivo a propósito** — se pega en el chat en el momento, para que no se corra
 por error antes de tiempo.
 

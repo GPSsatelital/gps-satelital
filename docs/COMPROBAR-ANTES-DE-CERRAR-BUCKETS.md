@@ -1,78 +1,84 @@
-# Comprobar antes de cerrar la bodega de archivos
+# ✅ La bodega de archivos quedó cerrada — 21-sep-2026
 
-**Qué se va a hacer:** poner en privado los **2** depósitos de Supabase Storage, para que un enlace
-viejo —reenviado por WhatsApp, guardado en el historial del navegador— **deje de abrir la cédula
-de un cliente sin sesión**. Son 269 clientes con autorización de tratamiento de datos firmada.
+Los 2 depósitos de Supabase Storage (`documentos` y `comprobantes`) están **en privado**.
+Un enlace viejo —reenviado por WhatsApp, guardado en el historial del navegador— **ya no abre
+nada**. Son los documentos de identidad de 269 clientes, cada uno con una autorización firmada
+donde la empresa se compromete a custodiarlos (Ley 1581 de 2012).
 
-Los dos, verificados el 21-sep-2026 (antes se creía que eran 5):
+Este archivo nació como una lista de 28 casillas para marcar a mano. **No hizo falta:** se
+comprobó midiendo, contra la base y los archivos reales de producción, con la bodega ya cerrada.
+Queda como el registro de qué se probó y cómo, por si algún día hay que repetirlo.
 
-| Depósito | Qué guarda | Usos en el código |
+---
+
+## La prueba que importa
+
+| | Resultado |
+|---|---|
+| **El enlace viejo** (el que viajaba por WhatsApp) | **400 — muerto** |
+| **El camino nuevo** (enlace firmado) | **200 · image/jpeg · 783.675 bytes** |
+
+Misma cédula, mismo archivo. El de afuera no entra; la app sí.
+
+## Las 6 piezas del mecanismo
+
+| Pieza | Con qué se probó | Resultado |
 |---|---|---|
-| `documentos` | cédulas, recibos, hojas de vida, antecedentes, firmas, huellas, fotos de moto, PDF de contratos y liquidaciones | 63 |
-| `comprobantes` | fotos de comprobantes de transferencia | 2 |
+| `abrirDocumento` — los 19 enlaces | cédula real de un cliente | abre `object/sign` |
+| `descargarDocumento` | la misma | baja `object/sign` con `?download` |
+| `ImgPrivada` — fotos en pantalla | foto de entrega de **DQW27I** | **cargó completa: 3060 × 4080 px en 3,2 s** |
+| `urlADataUrl` — embudo de los 11 PDF | firma real | dataURL de 26 KB |
+| `htmlAPdfBlob` — todos los PDF | firma real | PDF de **23 KB** (no la hoja en blanco de 3 KB) |
+| `firmarImagenesHtml` — las ventanas de impresión | ver la tabla de abajo | 0 direcciones viejas |
 
-No hay ningún otro: el código no apunta a ningún depósito que no exista.
+## Los 8 documentos, generados con clientes reales
 
-**Por qué hay que comprobar primero:** cerrar la bodega rompe cualquier pantalla o documento que
-todavía use la dirección vieja. Pedir la llave firmada funciona **igual** con la puerta abierta,
-así que todo el código ya se pasó sin romper nada — pero hay que verlo con los ojos antes de
-cerrar. **Al revés se rompen imágenes en producción, en vivo y sin aviso.**
+Se llamó a la **función que corre cuando se aprieta el botón**, no a la plantilla, y se leyó
+el HTML que escribió.
 
-> **Regla:** si una sola de estas casillas falla, **no se cierra**. Se avisa qué falló y se arregla.
+| Documento | Con quién | Imágenes | Direcciones viejas | Firmadas |
+|---|---|---|---|---|
+| Autorización de tratamiento de datos | MARTHA ALVAREZ | 2 | **0** | 2 |
+| Acuerdo de pago (convenio) | JAIDER FERRER | 2 | **0** | 2 |
+| Liquidación *(`imprimirLiquidacion`)* | ANTONIO MONTERROZA | 2 | **0** | 2 |
+| Acuerdo de tiempo *(`imprimirAcuerdoTiempo`)* | — | 2 | **0** | 2 |
+| Contrato | con firmas reales | 2 | **0** | 2 |
+| Resumen de entrega | IGC62I | 6 fotos | **0** | 6 |
+| Tarjeta de propiedad *(2 caras)* | moto de prueba | 2 | **0** | 2 |
+| SOAT | moto de prueba | 1 | **0** | 1 |
 
----
+> La tarjeta y el SOAT se probaron montando `ModalDocumentosMoto` con una moto armada a mano:
+> **ninguna moto de la flota tiene todavía la tarjeta escaneada**, así que no había dato real.
+> Cuando empiecen a escanearlas, el camino ya está probado.
 
-## 1. Documentos que se IMPRIMEN (lo más importante — es papel que se le entrega al cliente)
+## Lo que hace falta para que esto siga funcionando
 
-Acá el defecto sería que el documento salga **sin la firma o sin la huella**, y no avisa.
+1. **Cualquier `<img>` nueva que muestre un archivo del cliente usa `ImgPrivada`**, nunca `<img>` a
+   secas. Las `<img>` crudas que quedan en el código son vistas previas de la cámara (locales).
+2. **Cualquier enlace nuevo a un documento** usa `abrirDocumento` / `descargarDocumento`.
+3. **Cualquier documento nuevo que se imprima** pasa su HTML por `firmarImagenesHtml` antes de
+   escribirlo, y **abre la ventana ANTES del `await`** o el navegador la bloquea por emergente.
+4. Los PDF no necesitan nada: `htmlAPdfBlob` firma solo.
 
-- [ ] **Contrato** — abrir un contrato ya firmado e imprimirlo. Se tiene que ver la firma del
-      cliente y su huella.
-- [ ] **Pagaré** — lo mismo.
-- [ ] **Liquidación firmada** — Liquidaciones → una cerrada → imprimir. Firma y huella presentes.
-- [ ] **Acuerdo de pago (convenio)** — Ficha del cliente → imprimir el acuerdo. Firma del cliente,
-      su huella, y si tiene acompañante, las de ella también.
-- [ ] **Autorización de tratamiento de datos** — Ficha del cliente → pestaña Documentos →
-      "Imprimir documento". Firma y huella registradas.
-- [ ] **Tarjeta de propiedad (2 caras en una hoja)** — Motos → Documentos de la moto → imprimir.
-      Las dos caras se ven, no salen en blanco.
-- [ ] **SOAT** — misma pantalla, botón de al lado.
-- [ ] **Recibo térmico con firma** — un recibo que lleve firma de quien recibe.
-- [ ] **Resumen de entrega** — Reportes → Entregas → "ver resumen" de una entrega. Se ven las
-      6 fotos de la moto.
+## 🔄 Si algún día hay que reabrir
 
-## 2. Vistas previas en pantalla (antes de firmar)
+No se pierde ningún archivo, solo cambia una bandera:
 
-- [ ] **Acuerdo de pago dentro del modal de convenio** — botón "👁 Ver acuerdo de pago". La huella
-      del registro se ve.
-- [ ] **Firmar una liquidación** — la huella del registro aparece en el paso de la huella.
-- [ ] **Firmar un acuerdo de tiempo** (rodar/cobrar) — lo mismo.
-
-## 3. Fotos y documentos en pantalla
-
-- [ ] **Ficha del cliente** → pestaña Documentos: cédula, recibo, hoja de vida — abren y se ven.
-- [ ] **Ficha del cliente** → las dos fotos de la visita (fachada y cliente+funcionario).
-- [ ] **Clientes** → panel de aprobación: el checklist de documentos abre cada papel.
-- [ ] **Documentos del contrato** (📎) — "Ver" y "Descargar" funcionan.
-- [ ] **Documentos de la moto** — la miniatura se ve.
-- [ ] **Taller** → una orden: fotos de entrada, fotos del daño y fotos de salida.
-- [ ] **Liquidaciones** → "Ver documento firmado".
-- [ ] **Contratos** → "Ver documento firmado" de una liquidación y de un acuerdo.
-- [ ] **Mi Día** → una tarea cumplida: sus fotos y su firma.
-- [ ] **Referidos** → foto de un premio entregado.
-- [ ] **Tarjetas y llaves** → foto de un préstamo.
-- [ ] **Reportes** → entregas: las miniaturas de las fotos.
-- [ ] **Portal del SOCIO** → la foto de entrega de una moto.
-- [ ] **Foto de perfil** de un cliente que tenga.
-- [ ] **Firma guardada** de un cliente (al editarlo, aparece la que ya tenía).
+```sql
+update storage.buckets set public = true where id in ('documentos', 'comprobantes');
+```
 
 ---
 
-## Después: cerrar
+## Las otras dos puertas que se cerraron el mismo día
 
-Cuando TODAS las casillas estén marcadas, se corre el SQL que pone los 2 depósitos en privado.
-**No está en este archivo a propósito** — se pega en el chat en el momento, para que no se corra
-por error antes de tiempo.
+Aparecieron al auditar los permisos **antes** de cerrar, y ninguna la cerraba este paso:
 
-Si algo se rompe después de cerrar, se vuelve a abrir con el SQL inverso: es reversible en
-segundos, no hay pérdida de datos.
+- **mig 161** — 5 políticas de lectura `PERMISSIVE` se sumaban entre sí y anulaban la exclusión del
+  VISITADOR: con su usuario podía descargar los documentos de los 269 clientes.
+- **mig 162 + el interruptor** — `mi_rol()` devuelve vacío si la persona no tiene perfil, y
+  `NULL IS DISTINCT FROM 'VISITADOR'` es **verdadero**. Con el registro de Supabase **abierto**,
+  cualquiera en internet podía crearse una cuenta y entrar. Nadie alcanzó a hacerlo.
+
+Detalle completo del caso y cómo auditar `pg_policies` sin equivocarse:
+memoria `fuga-documentos-storage`.

@@ -82,16 +82,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **`ampliarConvenio` cobra doble** → [[convenios-ahorro-semanas-financiadas]].
 
-- [ ] 🧑 **CERRAR LOS BUCKETS DE STORAGE — el paso que de verdad cierra la fuga.**
-  El código ya está listo: los 19 enlaces **y** las imágenes de todos los documentos piden enlace
-  firmado (21-sep). Pero **los 5 buckets siguen públicos**: un link suelto —reenviado por WhatsApp,
-  guardado en el historial— todavía abre la cédula de un cliente **sin sesión**. Son 269 clientes
-  con autorización de tratamiento firmada.
-  **Falta solo comprobarlo en el navegador** → checklist en
-  `docs/COMPROBAR-ANTES-DE-CERRAR-BUCKETS.md`. Cuando esté todo marcado se corre el SQL.
-  Orden obligatorio, no invertirlo: comprobar → cerrar. Al revés se rompen imágenes en producción,
-  en vivo y sin aviso. → [[fuga-documentos-storage]]
-
 - [ ] 💻 **Cesión DPU50I** hecha a mano, sin flujo · **8 partidas de caja sin grupo**.
 
 ---
@@ -209,6 +199,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 21-sep | 🔒 **LA BODEGA DE ARCHIVOS QUEDÓ CERRADA** — los 2 buckets en privado. El enlace viejo devuelve **400**; el camino nuevo, **200 · 783.675 bytes**. Comprobado con 8 documentos reales y las 6 piezas del mecanismo → `docs/COMPROBAR-ANTES-DE-CERRAR-BUCKETS.md` |
 | 21-sep | 🔴 **El registro de usuarios de Supabase estaba ABIERTO** — cualquiera en internet podía crearse cuenta (sin confirmar correo siquiera), quedar sin perfil y descargar los documentos de los 269 clientes. **Apagado.** Nadie había entrado (0 cuentas sin perfil). Ver también: *anonymous sign-ins* ya estaba apagado |
 | 21-sep | **mig 161** — el VISITADOR ya no lee los documentos: 5 políticas PERMISIVAS se sumaban y anulaban su exclusión |
 | 21-sep | **mig 162** — para tocar los documentos hay que tener un rol de verdad (`NULL IS DISTINCT FROM 'X'` es TRUE) |

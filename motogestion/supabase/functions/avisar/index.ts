@@ -107,8 +107,15 @@ async function resumenDelDia(admin: ReturnType<typeof createClient>, momento: "m
   let enviados = 0, saltados = 0, fallidos = 0;
 
   for (const persona of gente) {
+    // El ADMIN_PRINCIPAL ve también lo que cae en 'ADMIN' (22-sep): lo que no tiene subadmin
+    // asignado no le llegaba, y eran 8 avisos incluidos 3 SOAT por vencer. Mismo criterio que
+    // `mios()` en usePendientes.ts — si se toca uno hay que tocar el otro, o el celular y la
+    // pantalla dirían cosas distintas. No al revés: el ADMIN no hereda lo del jefe.
     const suyos = (pend ?? []).filter((p: { dueno_id: string | null; dueno_rol: string | null; clave: string }) =>
-      (p.dueno_id === persona.id || (p.dueno_rol && p.dueno_rol === persona.role)) && !hechos.has(p.clave));
+      (p.dueno_id === persona.id
+        || (p.dueno_rol && (p.dueno_rol === persona.role
+                            || (persona.role === "ADMIN_PRINCIPAL" && p.dueno_rol === "ADMIN"))))
+      && !hechos.has(p.clave));
 
     if (suyos.length === 0) { saltados++; continue; }   // sin nada que decir, no se molesta
 

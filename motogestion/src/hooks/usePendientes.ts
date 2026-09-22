@@ -126,9 +126,20 @@ export function usePendientes() {
 
   const estaAtendido = (clave: string) => atendidos.some(a => a.clave === clave);
 
-  /** Los que le tocan a esta persona: los suyos por nombre, más los de su puesto. */
+  /**
+   * Los que le tocan a esta persona: los suyos por nombre, más los de su puesto.
+   *
+   * 22-sep-2026 — EL JEFE VE TAMBIÉN LO DEL ADMIN. El filtro comparaba el rol exacto, así que
+   * todo lo que cae en 'ADMIN' (lo que no tiene subadmin asignado: SOAT por vencer, contratos
+   * sin activar, la revisión de coherencia) **no le llegaba al ADMIN_PRINCIPAL**. Eran 8 avisos
+   * que él no veía, incluidos 3 SOAT y una tecnomecánica por vencer.
+   * Contradecía la regla escrita del proyecto: "ADMIN_PRINCIPAL — todo sin restricción, ve TODO".
+   * No al revés: el ADMIN no hereda lo del jefe.
+   */
   function mios(uid: string, rol: string | null | undefined): Pendiente[] {
-    return pendientes.filter(p => p.dueno_id === uid || (p.dueno_rol && p.dueno_rol === rol));
+    return pendientes.filter(p =>
+      p.dueno_id === uid
+      || (p.dueno_rol && (p.dueno_rol === rol || (rol === "ADMIN_PRINCIPAL" && p.dueno_rol === "ADMIN"))));
   }
 
   return { pendientes, atendidos, loading, error, recargar: cargar, marcarAtendido, posponer, estaAtendido, mios };

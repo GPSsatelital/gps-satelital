@@ -47,6 +47,18 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 **Bloquear los cambios de estado también en la BASE, no solo en la pantalla.**
+  El 22-sep se quitaron los 3 controles que movían un estado a dedo, pero eso es la capa de
+  arriba: con las herramientas del navegador todavía se puede. Un candado en la base necesita
+  distinguir el cambio *a dedo* del que viene de un flujo bueno (wizard, recolección, taller,
+  liquidación, préstamo, cesión) — si se hace de pasada, frena la operación.
+  → [[estados-a-mano-y-evidencia-del-prestamo]] · [[permisos-dos-capas-rls]]
+
+- [ ] 🧑 **Los 2 préstamos activos no tienen fotos ni kilometraje de salida** — se hicieron antes
+  de la mig 164 y eso no se puede inventar hacia atrás. Al devolverlos, el modal lo va a decir.
+  Si alguno vuelve con un daño, no hay con qué comparar.
+
+
 - [ ] 💻 **La regla del sobrante** (decidida **esperar hasta el ~26-sep, a propósito**).
   Cuando a un cliente le sobra plata después de cubrir semana, deudas y la cuota del acuerdo, hoy
   adelanta la semana de los próximos 3 días. Propuesta: que **baje el acuerdo primero**. Se
@@ -200,6 +212,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 22-sep | **La moto prestada deja evidencia** (mig 164) — 6 fotos + km al salir y al volver; el km compara y dice cuánto rodó. Era el único traspaso de moto sin rastro |
+| 22-sep | **Los estados ya no se cambian a mano** — fuera el selector de Motos y los botones Suspender/Reactivar de Contratos |
+| 22-sep | **El menú de novedades dice la consecuencia** — cada opción avisa si el contrato sigue cobrando o se suspende; "Entrega voluntaria" → "El cliente para un tiempo" |
+| 22-sep | **JORDAN MARTINEZ (DQL76I)** destrabado: su contrato estaba suspendido por error, se le prestó la YAT46H |
 | 21-sep | 🔒 **LA BODEGA DE ARCHIVOS QUEDÓ CERRADA** — los 2 buckets en privado. El enlace viejo devuelve **400**; el camino nuevo, **200 · 783.675 bytes**. Comprobado con 8 documentos reales y las 6 piezas del mecanismo → `docs/COMPROBAR-ANTES-DE-CERRAR-BUCKETS.md` |
 | 21-sep | 🔴 **El registro de usuarios de Supabase estaba ABIERTO** — cualquiera en internet podía crearse cuenta (sin confirmar correo siquiera), quedar sin perfil y descargar los documentos de los 269 clientes. **Apagado.** Nadie había entrado (0 cuentas sin perfil). Ver también: *anonymous sign-ins* ya estaba apagado |
 | 21-sep | **mig 161** — el VISITADOR ya no lee los documentos: 5 políticas PERMISIVAS se sumaban y anulaban su exclusión |

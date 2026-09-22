@@ -106,7 +106,7 @@ import type { ViewKey } from "../App";
 
 export default function MotosView({ initialFilter = "", initialOpenForm = false, onNavigate }: { initialFilter?: string; initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void }) {
   const { profile, puede } = useAuth();
-  const { motos, loading, error, crearMoto, actualizarMoto, cambiarEstadoMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
+  const { motos, loading, error, crearMoto, actualizarMoto, registrarRetencion, liberarRetencion, asignarSubadmin } = useMotos();
   // Acciones sensibles con permiso por persona (defaults: recolectar/liquidar=ADMIN+SUBADMIN, grupo=ADMIN)
   const puedeRecolectar = puede("recolectar_moto");
   const puedeLiquidar = puede("iniciar_liquidacion");
@@ -725,15 +725,21 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             {selectedMoto.retencion_detalle && <div style={{ color: "var(--muted)", marginTop: 4 }}>{selectedMoto.retencion_detalle}</div>}
           </div>
         )}
+        {/* 22-sep-2026: acá había un desplegable que cambiaba el estado de la moto con UN CLIC,
+            sin preguntar, sin motivo y sin dejar rastro. Podía dejar la moto contradiciendo su
+            contrato (una moto "Disponible" con contrato Activo) y desde ahí el cliente
+            desaparecía de media pantalla. Lo pidió quitar el dueño: "que no hayan errores de
+            clicks o intenciones no adecuadas que puedan entorpecer el sistema y su veracidad
+            operativa". El estado ahora SOLO lo mueve un flujo que documenta lo que pasó. */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 6 }}>Cambiar estado</div>
-          <select value={selectedMoto.estado} onChange={(e) => cambiarEstadoMoto(selectedMoto.id, e.target.value as MotoStatus)} style={inputStyle}>
-            <option value="Disponible">Disponible</option>
-            <option value="Reservada">Reservada</option>
-            <option value="Asignada">Asignada</option>
-            <option value="Mantenimiento">En taller</option>
-            <option value="Recuperada">Recuperada</option>
-          </select>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 6 }}>Estado</div>
+          <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{ESTADO_LABEL[selectedMoto.estado] ?? selectedMoto.estado}</div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.5 }}>
+              El estado lo mueve la operación: entregar, ingresar a taller, recolectar o registrar
+              una novedad. <strong>No se cambia a mano.</strong>
+            </div>
+          </div>
         </div>
         {esAdminOSuperior && (
           <div>
@@ -1340,7 +1346,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           {
             icono: "🔧", titulo: "Ingresar a taller",
             enabled: !ordenAbierta && !["Fiscalia", "Transito", "Garantia"].includes(selectedMoto.estado),
-            desc: "Abre la orden con las 6 fotos de cómo entró. El mecánico la ve en su lista y queda el rastro del arreglo.",
+            desc: "Se dañó y el cliente SIGUE con nosotros. Su contrato sigue cobrando y se le puede prestar otra moto mientras tanto. Abre la orden con las 6 fotos de cómo entró.",
             motivoOff: ordenAbierta
               ? "Ya tiene una orden abierta en taller: agrégale el trabajo ahí"
               : "Está retenida por un tercero. Primero dale \"Salida de ...\" y elige \"pasa a taller\"",
@@ -1350,34 +1356,39 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
             icono: "🚚", titulo: "Inmovilizar por incumplimiento",
             enabled: puedeRecolectar && !!contratoActivo && !!razonInmovilizarMoto?.razon,
             desc: razonInmovilizarMoto?.razon
-              ? `El cliente está ${RAZON_INMOVILIZAR_LABEL[razonInmovilizarMoto.razon]}. Suspende el contrato, crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`
-              : `Suspende el contrato, crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`,
+              ? `El cliente está ${RAZON_INMOVILIZAR_LABEL[razonInmovilizarMoto.razon]}. SUSPENDE el contrato (deja de cobrársele y no se le presta otra moto), crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`
+              : `SUSPENDE el contrato (deja de cobrársele y no se le presta otra moto), crea la multa de $${MULTA_RECOLECCION.toLocaleString("es-CO")} y pide 6 fotos.`,
             motivoOff: !puedeRecolectar ? "No tienes permiso para recolectar motos"
               : !contratoActivo ? "La moto no tiene un contrato activo"
               : motivoNoInmovilizable(razonInmovilizarMoto?.estado ?? "al-dia", razonInmovilizarMoto?.deudaPend ?? 0),
             onClick: () => { setRecoleccionMoto(selectedMoto); setOpenNovedad(false); },
           },
           {
-            icono: "🤝", titulo: "Entrega voluntaria del cliente", enabled: !!contratoActivo,
-            desc: "El cliente trae/entrega la moto por un tiempo. Suspende el contrato (costo solo si se fue a buscar).",
+            // 22-sep-2026: se llamaba "Entrega voluntaria del cliente" y decía solo "suspende el
+            // contrato". Con ese nombre, quien recibió una moto DAÑADA eligió esta (JORDAN,
+            // DQL76I): el contrato quedó suspendido y el cliente se quedó sin poder recibir un
+            // reemplazo, estando al día. El nombre ahora dice el CASO y el texto dice la
+            // CONSECUENCIA, más el desvío al camino correcto.
+            icono: "🤝", titulo: "El cliente para un tiempo", enabled: !!contratoActivo,
+            desc: "Se enfermó, viaja o no va a trabajar por ahora. SUSPENDE el contrato: deja de cobrársele y NO se le puede prestar otra moto. ⚠️ Si la moto se dañó y quiere seguir trabajando, usa \"Ingresar a taller\".",
             motivoOff: "La moto no tiene un contrato activo",
             onClick: () => { setFormRec(f => ({ ...f, motivo: "entrega_voluntaria" })); setRecFueBuscada(false); setFotosRec({}); setOpenRecepcion(true); setOpenNovedad(false); },
           },
           {
             icono: "⚖️", titulo: "Retención legal (Fiscalía / Tránsito / Garantía)", enabled: puedeRecolectar && !yaRetenida,
-            desc: "La moto queda retenida por un tercero. El tiempo parado se le cobra al cliente (o se rueda), igual para los 3.",
+            desc: "Se la quitó un tercero. El contrato SIGUE corriendo y el tiempo parado se le cobra al cliente (o se le rueda). Igual para los 3.",
             motivoOff: !puedeRecolectar ? "No tienes permiso para retener motos" : "La moto ya está retenida",
             onClick: () => { setOpenRetencion(true); setOpenNovedad(false); },
           },
           {
             icono: "📄", titulo: "Liquidar / cerrar contrato", enabled: puedeLiquidar && !!contratoMoto,
-            desc: "Cierre definitivo: revisión de taller, saldo final y documento. Sin bloqueo de 7 días.",
+            desc: "El cliente se va DEFINITIVAMENTE. Cierre con revisión de taller, saldo final y documento. Sin bloqueo de 7 días.",
             motivoOff: !puedeLiquidar ? "No tienes permiso para iniciar liquidaciones" : "La moto no tiene un contrato para cerrar",
             onClick: () => { setLiquidacionMoto(selectedMoto); setOpenNovedad(false); },
           },
           {
             icono: "📋", titulo: "Solo recepción / registro", enabled: true,
-            desc: "Registrar el estado de la moto o moverla (sin contrato, o cambio de bodega/taller).",
+            desc: "Dejar constancia del estado de la moto o moverla de sitio. NO cambia nada del contrato.",
             onClick: () => { setFormRec(f => ({ ...f, motivo: "nuevo_registro" })); setRecFueBuscada(false); setFotosRec({}); setOpenRecepcion(true); setOpenNovedad(false); },
           },
         ];

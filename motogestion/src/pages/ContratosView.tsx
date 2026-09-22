@@ -145,7 +145,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const puedeDocumentos = puedeCrear || role === "SECRETARIA";
 
   const { filtrarContratos } = useScope();
-  const { contratos: todosContratos, loading, error, eliminarContratoEnProceso, suspenderContrato, reactivarContrato } = useContratos();
+  const { contratos: todosContratos, loading, error, eliminarContratoEnProceso } = useContratos();
   const contratos = filtrarContratos(todosContratos);
   const { clientes } = useClientes();
   const { motos } = useMotos();
@@ -332,14 +332,14 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           <div style={card}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, color: "var(--muted2)" }}>Acciones</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* 22-sep-2026: acá había "↩️ Reactivar contrato". Cambiaba el contrato a Activo y
+                  la moto a Asignada con un clic, sin dejar por qué. Quitado por pedido del dueño:
+                  revivir un contrato cerrado no es una decisión de un botón. */}
               {puedeCrear && c.estado === "Cancelado" && (
-                <button onClick={async () => {
-                  if (!confirm("¿Reactivar este contrato? Quedará Activo otra vez y la moto pasará a Asignada.")) return;
-                  const { error } = await reactivarContrato(c.id, c.moto_id);
-                  if (error) setAccionError(error);
-                }} style={{ background: "var(--ok-soft)", color: "var(--ok-ink)", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                  ↩️ Reactivar contrato
-                </button>
+                <div style={{ background: "var(--soft2)", border: "1px solid var(--line)", borderRadius: 14, padding: "12px 16px", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Este contrato está <strong>cancelado</strong>. Volver a abrirlo se hace por base de
+                  datos, con quien lo autorice, para que quede escrito por qué.
+                </div>
               )}
               {puedeCrear && c.estado === "En proceso" && (
                 <button onClick={() => abrirWizardContinuar(c)} style={{
@@ -350,13 +350,19 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                   {!c.moto_id ? "🏍️ Continuar — asignar moto" : !c.firma_cliente ? "✍️ Continuar — firmar documentos" : "🚀 Continuar — entregar moto"}
                 </button>
               )}
+              {/* 22-sep-2026: acá había "⏸️ Suspender contrato". Suspendía y mandaba la moto a
+                  Recuperada sin pedir motivo, ni fotos, ni dejar gestión — el mismo tipo de atajo
+                  que dejó a un cliente al día (JORDAN, DQL76I) sin poder recibir una moto de
+                  reemplazo. Cada camino de suspensión de abajo documenta lo que pasó. */}
               {puedeCrear && c.estado === "Activo" && (
-                <button onClick={() => {
-                  if (!confirm("¿Suspender este contrato? La moto quedará como Recuperada (retenida por la empresa).")) return;
-                  suspenderContrato(c.id, c.moto_id);
-                }} style={{ background: "var(--indigo-soft)", color: "var(--violet)", border: "none", borderRadius: 14, padding: "12px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
-                  ⏸️ Suspender contrato
-                </button>
+                <div style={{ background: "var(--soft2)", border: "1px solid var(--line)", borderRadius: 14, padding: "12px 16px", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "var(--muted2)" }}>¿Hay que parar este contrato?</strong> Se hace por
+                  el camino que corresponde, para que quede la evidencia:
+                  <div style={{ marginTop: 6 }}>• <strong>No está pagando</strong> → Motos → Registrar novedad → Inmovilizar por incumplimiento</div>
+                  <div>• <strong>El cliente para un tiempo</strong> → Motos → Registrar novedad → El cliente para un tiempo</div>
+                  <div>• <strong>Se le dañó la moto</strong> → Motos → Registrar novedad → Ingresar a taller <em>(el contrato sigue corriendo y se le puede prestar otra)</em></div>
+                  <div>• <strong>Se va definitivamente</strong> → Liquidar contrato</div>
+                </div>
               )}
               {/* Si YA hay una liquidación abierta, la pantalla lo dice. Antes se le daba a
                   "Iniciar liquidación", se creaba, y aquí no cambiaba absolutamente nada: el

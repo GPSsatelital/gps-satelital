@@ -33,6 +33,7 @@ import ModalConvenio from "../components/ModalConvenio";
 import ModalEntregaDevolucion from "../components/ModalEntregaDevolucion";
 import ModalResolverTiempoFueraServicio from "../components/ModalResolverTiempoFueraServicio";
 import ModalPrestarReemplazo from "../components/ModalPrestarReemplazo";
+import ModalDevolverReemplazo from "../components/ModalDevolverReemplazo";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { usePrestamos } from "../hooks/usePrestamos";
 import { Chip } from "../components/atomos";
@@ -529,9 +530,28 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     return { dias, generado, pagado, saldo: Math.max(generado - pagado, 0) };
   }
 
+  /**
+   * El kilometraje con el que SALIÓ la moto prestada, para comparar al devolverla (22-sep-2026).
+   * Sale de la recepción `prestamo_entrega` de esa moto, la más nueva desde que empezó el
+   * préstamo. Devuelve null en los préstamos viejos, hechos antes de que se pidiera evidencia —
+   * ahí el modal lo dice en vez de inventar un número.
+   */
+  function kmSalidaDelPrestamo(motoPrestadaId: string, desde: string): number | null {
+    const r = recepciones
+      .filter(x => x.moto_id === motoPrestadaId && x.motivo === "prestamo_entrega" && (x.created_at ?? "") >= desde)
+      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+    return r?.kilometros ?? null;
+  }
+
+  // El modal de devolución (6 fotos + km) abre desde el panel de préstamos activos.
+  const [devolverPrestamo, setDevolverPrestamo] = useState<{
+    prestamoId: string; motoPrestadaId: string; placaPrestada: string; placaOriginal: string;
+    contratoId: string; clienteId: string | null; clienteNombre: string; kmSalida: number | null;
+  } | null>(null);
+
+  // La evidencia ya la guardó el modal; acá solo se cierra el préstamo y se cobra lo que falte.
   async function handleDevolverPrestamo(prestamoId: string) {
     if (prestamoProc) return;
-    if (!confirm("¿La moto propia ya salió del taller? Se devuelve la prestada al pool y el contrato vuelve a su placa original.")) return;
     setPrestamoProc(prestamoId);
     try {
       const p = prestamos.find(x => x.id === prestamoId);
@@ -1327,7 +1347,19 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                       style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
                       💵 Cobrar alquiler
                     </button>
-                    <button onClick={() => handleDevolverPrestamo(p.id)} disabled={proc}
+                    {/* 22-sep-2026: antes esto devolvía de una, con un confirm() y nada más: la
+                        moto del socio volvía sin una foto ni un kilometraje. Ahora abre el
+                        formulario de devolución, que exige las 6 fotos igual que la salida. */}
+                    <button onClick={() => setDevolverPrestamo({
+                      prestamoId: p.id,
+                      motoPrestadaId: p.moto_prestada_id,
+                      placaPrestada: motoP?.placa ?? "?",
+                      placaOriginal: motoO?.placa ?? "?",
+                      contratoId: p.contrato_id,
+                      clienteId: cli?.id ?? null,
+                      clienteNombre: cli?.nombre ?? "—",
+                      kmSalida: kmSalidaDelPrestamo(p.moto_prestada_id, p.fecha_inicio),
+                    })} disabled={proc}
                       style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)", opacity: proc ? 0.6 : 1 }}>
                       ✓ Devolver (salió de taller)
                     </button>
@@ -1430,11 +1462,28 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
       {prestarRec && (
         <ModalPrestarReemplazo
           contratoId={prestarRec.contratoId}
+          clienteId={prestarRec.clienteId}
           motivoVarada={prestarRec.motivoVarada}
           motoOriginalId={prestarRec.motoId}
           clienteNombre={prestarRec.clienteNombre}
           placaOriginal={prestarRec.placa}
           onClose={() => setPrestarRec(null)}
+        />
+      )}
+
+      {/* Devolver la prestada: exige las 6 fotos y el km antes de cerrar el préstamo */}
+      {devolverPrestamo && (
+        <ModalDevolverReemplazo
+          prestamoId={devolverPrestamo.prestamoId}
+          motoPrestadaId={devolverPrestamo.motoPrestadaId}
+          placaPrestada={devolverPrestamo.placaPrestada}
+          placaOriginal={devolverPrestamo.placaOriginal}
+          contratoId={devolverPrestamo.contratoId}
+          clienteId={devolverPrestamo.clienteId}
+          clienteNombre={devolverPrestamo.clienteNombre}
+          kmSalida={devolverPrestamo.kmSalida}
+          onClose={() => setDevolverPrestamo(null)}
+          onConfirmar={() => handleDevolverPrestamo(devolverPrestamo.prestamoId)}
         />
       )}
 

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export type UbicacionFisica = "con_cliente" | "bodega" | "oficina" | "taller" | "patios_transito" | "fiscalia" | "otro";
-export type MotivoRecepcion = "retencion_mora" | "entrega_voluntaria" | "liquidacion" | "nuevo_registro" | "otro";
+// `prestamo_entrega` / `prestamo_devolucion` (mig 164, 22-sep-2026): prestar un reemplazo era el
+// único momento en que una moto cambiaba de manos sin dejar evidencia. Van con nombre propio y no
+// dentro de "otro" — el atajo de "otro" ya se pagó caro con el alquiler del reemplazo (mig 131).
+export type MotivoRecepcion = "retencion_mora" | "entrega_voluntaria" | "liquidacion" | "nuevo_registro" | "otro" | "prestamo_entrega" | "prestamo_devolucion";
 export type CondicionVehiculo = "buena" | "regular" | "mala";
 export type DecisionTiempo = "cobrar_ahora" | "rodar_al_final";
 
@@ -22,6 +25,8 @@ export const MOTIVO_RECEPCION_LABEL: Record<MotivoRecepcion, string> = {
   liquidacion: "Liquidación de contrato",
   nuevo_registro: "Nuevo registro de moto",
   otro: "Otro motivo",
+  prestamo_entrega: "Salida de moto prestada (reemplazo)",
+  prestamo_devolucion: "Devolución de moto prestada (reemplazo)",
 };
 
 export type HistorialUbicacion = {

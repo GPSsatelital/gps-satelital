@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **21-sep-2026**.
+- Última revisión: **22-sep-2026**.
 
 ---
 
@@ -58,6 +58,14 @@ Lo que está afectando cifras reales de clientes en este momento.
   de la mig 164 y eso no se puede inventar hacia atrás. Al devolverlos, el modal lo va a decir.
   Si alguno vuelve con un daño, no hay con qué comparar.
 
+- [ ] 🧑 **Redesplegar la Edge Function `avisar`** — cambió el 22-sep para que el celular respete
+  los avisos pospuestos y para que el ADMIN_PRINCIPAL reciba también lo que cae en 'ADMIN'.
+  Mientras no se redespliegue, la pantalla y el celular dicen cosas distintas.
+
+- [ ] 💻 **56 acuerdos activos o incumplidos SIN lista de qué financian** (medido el 22-sep; antes
+  se hablaba de 8 y de 53 por separado). El aviso de coherencia solo revisa los que SÍ tienen
+  lista: los que no la tienen no se pueden comprobar contra nada.
+
 
 - [ ] 💻 **La regla del sobrante** (decidida **esperar hasta el ~26-sep, a propósito**).
   Cuando a un cliente le sobra plata después de cubrir semana, deudas y la cuota del acuerdo, hoy
@@ -72,11 +80,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 - [ ] 💻 **`aplicarSaldoFavor` trabaja en dos tiempos desde el cliente** (crea el movimiento y
   después le descuenta el saldo, en dos llamadas). La mig 160 le puso candado, pero la raíz sigue:
   debería ser **un solo RPC en una transacción**.
-
-- [ ] 💻 **La batería de coherencia debería correr sola.** Los 10 chequeos del 19-sep (reparto que
-  no suma, lista de acuerdo que no cuadra, saldo negativo, cajas imposibles…) se corrieron a mano y
-  encontraron 3 problemas reales. Deberían ser un aviso más de `public.pendientes`, no una consulta
-  que alguien se acuerde de correr.
 
 - [ ] 💻 **La prueba espejo `loQueDebe()` ↔ `zala.cliente`** existe como script de navegador. Debería
   correr sola antes de cada despliegue que toque plata.
@@ -212,6 +215,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 22-sep | **La revisión de coherencia corre sola** (mig 165) — 5 chequeos pasan a ser avisos de Mi Día, bloque "Revisión del sistema". Las fórmulas medidas contra los 2.938 pagos: 0 descuadres, 3 casos de cajas (los conocidos) |
+| 22-sep | **Se pueden posponer avisos** con fecha y motivo (solo el jefe), para lo que ya se sabe y no depende de nosotros |
+| 22-sep | **El ADMIN_PRINCIPAL ve también lo que cae en 'ADMIN'** — eran 8 avisos que el jefe no veía, incluidos 3 SOAT y 1 tecnomecánica por vencer |
 | 22-sep | **La moto prestada deja evidencia** (mig 164) — 6 fotos + km al salir y al volver; el km compara y dice cuánto rodó. Era el único traspaso de moto sin rastro |
 | 22-sep | **Los estados ya no se cambian a mano** — fuera el selector de Motos y los botones Suspender/Reactivar de Contratos |
 | 22-sep | **El menú de novedades dice la consecuencia** — cada opción avisa si el contrato sigue cobrando o se suspende; "Entrega voluntaria" → "El cliente para un tiempo" |

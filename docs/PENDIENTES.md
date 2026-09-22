@@ -58,6 +58,12 @@ Lo que está afectando cifras reales de clientes en este momento.
   de la mig 164 y eso no se puede inventar hacia atrás. Al devolverlos, el modal lo va a decir.
   Si alguno vuelve con un daño, no hay con qué comparar.
 
+- [ ] 🧑 **KEVIN (RLY45H): revisar si el hueco le cambió alguna decisión de cobro.**
+  Del 29-ago al 16-sep su cuenta lo mostró debiendo **$195.000 menos de lo real**. Si en esas
+  tres semanas alguien decidió no perseguirlo o no recogerle la moto, esa decisión se tomó con
+  un número malo. **Su plata está cuadrada** ($2.160.000 entraron, $2.160.000 se aplicaron) —
+  esto es lo único de su caso que quedó sin mirar. → [[candado-saldo-favor-dos-clics]]
+
 - [ ] 🧑 **Redesplegar la Edge Function `avisar`** — cambió el 22-sep para que el celular respete
   los avisos pospuestos y para que el ADMIN_PRINCIPAL reciba también lo que cae en 'ADMIN'.
   Mientras no se redespliegue, la pantalla y el celular dicen cosas distintas.
@@ -215,6 +221,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 22-sep | 🔴 **El saldo a favor ya NO puede ser negativo** (mig 166, probada) — KEVIN (RLY45H) estuvo en −$195.000 tres semanas y la pantalla decía $0. Candado diferido que deshace cualquier operación que lo deje en rojo. **Era el único de la flota** (2.938 pagos auditados) |
 | 22-sep | **La revisión de coherencia corre sola** (mig 165) — 5 chequeos pasan a ser avisos de Mi Día, bloque "Revisión del sistema". Las fórmulas medidas contra los 2.938 pagos: 0 descuadres, 3 casos de cajas (los conocidos) |
 | 22-sep | **Se pueden posponer avisos** con fecha y motivo (solo el jefe), para lo que ya se sabe y no depende de nosotros |
 | 22-sep | **El ADMIN_PRINCIPAL ve también lo que cae en 'ADMIN'** — eran 8 avisos que el jefe no veía, incluidos 3 SOAT y 1 tecnomecánica por vencer |

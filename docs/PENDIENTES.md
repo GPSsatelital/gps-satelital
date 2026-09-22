@@ -58,10 +58,20 @@ Lo que está afectando cifras reales de clientes en este momento.
   de la mig 164 y eso no se puede inventar hacia atrás. Al devolverlos, el modal lo va a decir.
   Si alguno vuelve con un daño, no hay con qué comparar.
 
+- [ ] 💻 **No hay botón para "la empresa asume una semana".**
+  Se destapó con KEVIN (22-sep): un error de cuentas que no se le puede cobrar al cliente hoy
+  **solo se arregla por SQL**. `cajas_exoneradas` únicamente se toca desde
+  `ModalResolverTiempoFueraServicio` —que exige que la moto haya estado en taller— y
+  `ModalEditarContrato` no lo expone. Debería poder hacerse desde la ficha del contrato, con
+  motivo escrito obligatorio y permiso de ADMIN_PRINCIPAL.
+  ⚠️ **Por definir:** ¿distinguir en pantalla "rodar" (se cobra al final, exige firma) de "asumir"
+  (no se cobra nunca, no exige firma)? Son dos cosas distintas y hoy se hacen con el mismo campo.
+  → [[candado-saldo-favor-dos-clics]]
+
 - [ ] 🧑 **KEVIN (RLY45H): revisar si el hueco le cambió alguna decisión de cobro.**
   Del 29-ago al 16-sep su cuenta lo mostró debiendo **$195.000 menos de lo real**. Si en esas
   tres semanas alguien decidió no perseguirlo o no recogerle la moto, esa decisión se tomó con
-  un número malo. **Su plata está cuadrada** ($2.160.000 entraron, $2.160.000 se aplicaron) —
+  un número malo. Su plata está cuadrada y **la semana del 21 ya la asumió la empresa** —
   esto es lo único de su caso que quedó sin mirar. → [[candado-saldo-favor-dos-clics]]
 
 - [ ] 🧑 **Redesplegar la Edge Function `avisar`** — cambió el 22-sep para que el celular respete

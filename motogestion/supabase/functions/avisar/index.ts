@@ -92,7 +92,10 @@ async function resumenDelDia(admin: ReturnType<typeof createClient>, momento: "m
     .toISOString().slice(0, 10);
 
   const [{ data: pend }, { data: atend }, { data: aparatos }, { data: perfiles }] = await Promise.all([
-    admin.from("pendientes").select("clave, nivel, dueno_id, dueno_rol"),
+    // `pendientes_activos` y no `pendientes` (mig 165): sin los avisos que el jefe pospuso a una
+    // fecha futura. Si el celular siguiera sonando por algo que él mandó a dormir, posponer no
+    // serviría de nada.
+    admin.from("pendientes_activos").select("clave, nivel, dueno_id, dueno_rol"),
     admin.from("pendientes_atendidos").select("clave").eq("fecha", hoy),
     admin.from("push_dispositivos").select("*"),
     admin.from("profiles").select("id, nombre, role"),

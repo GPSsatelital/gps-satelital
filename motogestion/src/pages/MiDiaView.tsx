@@ -14,7 +14,7 @@ import AvisosCelular from "../components/AvisosCelular";
 import PanelDelDia from "../components/PanelDelDia";
 import Placa from "../components/Placa";
 import { useAjustes, enlaceZala } from "../hooks/useAjustes";
-import { fmtFechaCorta } from "../utils/fecha";
+import { fmtFechaCorta, hoyISO, hoyMasDias } from "../utils/fecha";
 import { abrirDocumento } from "../lib/storagePrivado";
 
 // MI DÍA — lo que le toca hoy a esta persona. Dos cosas distintas, juntas por primera vez:
@@ -34,7 +34,9 @@ import { abrirDocumento } from "../lib/storagePrivado";
 //   · El dueño: arriba EL DÍA — la plata, después lo que espera su decisión, después lo que va mal.
 // No son tres pantallas: es una sola con los bloques en el orden que cada quien necesita.
 
-const ORDEN_BLOQUES: Bloque[] = ["inicio", "cobro", "plata", "motos", "contratos"];
+// "revision" va de último a propósito: es plata mal contada que hay que sentarse a revisar, no
+// trabajo del día. Si fuera arriba taparía el cobro, que es lo primero de la mañana.
+const ORDEN_BLOQUES: Bloque[] = ["inicio", "cobro", "plata", "motos", "contratos", "revision"];
 
 export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) => void }) {
   const { profile, puede } = useAuth();
@@ -61,7 +63,7 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
 
   // Los pendientes que el servidor calculó y que le tocan a esta persona (mig 142). Los ya
   // atendidos se quedan a la vista, tachados: al final del día vale ver lo que se hizo.
-  const { pendientes, atendidos, error: errorPend, marcarAtendido, estaAtendido, mios } = usePendientes();
+  const { pendientes, atendidos, error: errorPend, marcarAtendido, posponer, estaAtendido, mios } = usePendientes();
   const misPendientes = useMemo(() => mios(uid, profile?.role), [mios, uid, profile?.role]);
   const porHacer = misPendientes.filter(p => !estaAtendido(p.clave));
 
@@ -83,6 +85,32 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
     if (!profile) return;
     const { error } = await marcarAtendido(clave, profile.id);
     if (error) { setMsg("No se pudo marcar: " + error); setTimeout(() => setMsg(null), 5000); }
+  }
+
+  // Dormir un aviso hasta una fecha (mig 165). Solo el jefe: si un cobrador pudiera posponer su
+  // propia mora, el aviso dejaría de servir para lo único que sirve.
+  const [posponerP, setPosponerP] = useState<Pendiente | null>(null);
+  const [posponerHasta, setPosponerHasta] = useState("");
+  const [posponerMotivo, setPosponerMotivo] = useState("");
+  const [posponiendo, setPosponiendo] = useState(false);
+
+  function abrirPosponer(p: Pendiente) {
+    setPosponerP(p);
+    setPosponerHasta(hoyMasDias(7));   // una semana, que es lo que suele tardar citar a alguien
+    setPosponerMotivo("");
+  }
+
+  async function handlePosponer() {
+    if (!profile || !posponerP || posponiendo) return;
+    if (!posponerMotivo.trim()) { setMsg("Escribe por qué se pospone."); setTimeout(() => setMsg(null), 4000); return; }
+    setPosponiendo(true);
+    try {
+      const { error } = await posponer(posponerP.clave, profile.id, posponerHasta, posponerMotivo.trim());
+      if (error) { setMsg("No se pudo posponer: " + error); setTimeout(() => setMsg(null), 5000); return; }
+      setMsg(`Pospuesto hasta el ${fmtFechaCorta(posponerHasta)}.`);
+      setTimeout(() => setMsg(null), 4000);
+      setPosponerP(null);
+    } finally { setPosponiendo(false); }
   }
 
   // Abrir el canal con ZALA: se abre WhatsApp con el mensaje ya escrito y, en el mismo toque, el
@@ -317,15 +345,30 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
                           Escribirle a ZALA
                         </button>
                       ) : (
-                        <button
-                          onClick={() => handleAtender(p.clave)}
-                          disabled={hecho}
-                          style={{
-                            ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap", flexShrink: 0,
-                            opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
-                          }}>
-                          {hecho ? "✓ Atendido" : "Marcar atendido"}
-                        </button>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+                          <button
+                            onClick={() => handleAtender(p.clave)}
+                            disabled={hecho}
+                            style={{
+                              ...secondaryBtn, fontSize: 11, padding: "6px 11px", whiteSpace: "nowrap",
+                              opacity: hecho ? 0.6 : 1, cursor: hecho ? "default" : "pointer",
+                            }}>
+                            {hecho ? "✓ Atendido" : "Marcar atendido"}
+                          </button>
+                          {/* Posponer solo el jefe: si un cobrador pudiera dormir su propia mora,
+                              el aviso dejaría de servir para lo único que sirve. */}
+                          {esJefe && !hecho && (
+                            <button
+                              onClick={() => abrirPosponer(p)}
+                              style={{
+                                background: "none", border: "none", color: "var(--muted)",
+                                fontSize: 10.5, cursor: "pointer", padding: "1px 4px", whiteSpace: "nowrap",
+                                textDecoration: "underline",
+                              }}>
+                              Posponer…
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -377,6 +420,44 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
           )}
         </div>
       </div>
+
+      {/* Dormir un aviso hasta una fecha, con el motivo escrito (mig 165) */}
+      {posponerP && (
+        <>
+          <div onClick={() => setPosponerP(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 400 }} />
+          <div style={{ ...card, position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,96vw)", maxHeight: "calc(100dvh - 60px)", overflowY: "auto", zIndex: 401, display: "grid", gap: 12, boxSizing: "border-box" }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>Posponer este aviso</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.45 }}>{posponerP.titulo}</div>
+            </div>
+            <div style={{ padding: "9px 12px", borderRadius: 10, background: "var(--warn-soft)", fontSize: 11.5, color: "var(--warn-ink2)", lineHeight: 1.45 }}>
+              No desaparece: vuelve solo el día que elijas. Sirve para lo que ya sabés y no depende
+              de vos — un cliente al que hay que citar, por ejemplo.
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 5 }}>No mostrarlo hasta</div>
+              <input type="date" value={posponerHasta} min={hoyISO()} onChange={e => setPosponerHasta(e.target.value)}
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", marginBottom: 5 }}>¿Por qué? (obligatorio)</div>
+              <input value={posponerMotivo} onChange={e => setPosponerMotivo(e.target.value)}
+                placeholder="Ej. hay que citar al cliente para reconstruir su cuenta"
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                Un aviso silenciado sin explicación es un aviso perdido.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setPosponerP(null)} style={{ ...secondaryBtn, flex: 1 }}>Cancelar</button>
+              <button onClick={handlePosponer} disabled={posponiendo || !posponerMotivo.trim() || !posponerHasta}
+                style={{ ...primaryBtn, flex: 2, opacity: (posponiendo || !posponerMotivo.trim() || !posponerHasta) ? 0.6 : 1 }}>
+                {posponiendo ? "Guardando..." : "Posponer"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {asignando && <ModalAsignarTarea onClose={() => setAsignando(false)} onHecho={() => { setAsignando(false); setMsg("Tarea asignada."); setTimeout(() => setMsg(null), 4000); }} />}
       {resolviendo && <ModalResolverTarea tarea={resolviendo} onClose={() => setResolviendo(null)} onHecho={(t) => { setResolviendo(null); setMsg(t); setTimeout(() => setMsg(null), 4000); }} />}

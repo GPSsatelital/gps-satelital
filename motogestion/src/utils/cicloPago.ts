@@ -423,6 +423,20 @@ export function loQueDebe(
   const deudaFalta = deudasPendientes.reduce((s, d) => s + d.monto_pendiente, 0);
   const deudas: ParteDebe = { toca: deudaOriginal, pagado: Math.max(deudaOriginal - deudaFalta, 0), falta: deudaFalta };
 
+  // 🔴 EL `0` DE ABAJO TAPÓ UN HUECO DE $195.000 DURANTE TRES SEMANAS (22-sep-2026).
+  // El saldo a favor no es un dato guardado: es esta suma. Y hasta la mig 160 nada impedía
+  // aplicar más de lo que había, así que la suma podía quedar NEGATIVA — y este `Math.max`
+  // la mostraba como "$0". KEVIN (RLY45H) estuvo en −$195.000 desde el 29-ago hasta el 16-sep
+  // y la pantalla decía cero. Lo encontró el dueño mirando una ficha, no el sistema.
+  //
+  // El `Math.max(0)` SE QUEDA a propósito: "−$195.000 de saldo a favor" no le dice nada útil a
+  // quien atiende al cliente. Lo que se arregló no es el número que se muestra — es que ahora
+  // el negativo NO PUEDE EXISTIR (mig 166: candado diferido en `pagos` que deshace cualquier
+  // operación que deje el saldo en rojo) y, si alguna vez apareciera por fuera del sistema,
+  // sale un aviso al día siguiente (`public.pendientes`, tipo `saldo_negativo`).
+  //
+  // ⚠️ La cuenta de acá y la de `public.saldo_favor_actual(uuid)` son la MISMA fórmula en dos
+  // idiomas. Si se toca una, hay que tocar la otra.
   const saldoAFavor = Math.max(
     (contrato.saldo_favor_apertura ?? 0) + pagosConfirmados.reduce((s, p) => s + (p.aplicado_saldo_favor ?? 0), 0),
     0,

@@ -118,6 +118,20 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ---
 
+- [ ] 🧑💻 **PLAN: alimentar el sistema con la información que le falta** →
+  `docs/PLAN-COMPLETAR-DATOS.md` (medido el 22-sep). Lo grande: **168 contratos migrados sin un
+  solo papel**, **82 clientes sin firma de autorización de datos** (eso es la ley de habeas data),
+  **97 motos sin fecha de SOAT** y **371 sin tarjeta escaneada**. La estrategia propuesta es que
+  el sistema lo pida solo, con cupo diario, en el momento en que el cliente ya está enfrente.
+  ⚠️ Tiene 4 preguntas por definir al final del plan antes de construir nada.
+
+- [ ] 🧑 **Los 4 contratos con el plazo dudoso** (22-sep) — entre $2M y $11M cada uno, en las dos
+  direcciones. **JHON NAIDER** (IEW88I) y **JOSE LUIS JULIO** (XZN84H): confirmar con SERGIO, que
+  fue quien les editó los meses. **KENNY** (RMM69H): sacar su contrato de papel del archivo y ver
+  si dice 18 o 24 meses — no está escaneado. **DARGENIS** (RLZ83H): la teoría del typo (2026 por
+  2027) no cuadra por 11 semanas; o su total son 80 semanas y no 91, o sus semanas previas de la
+  migración están 11 cortas. → [[fecha-fin-y-semanas-una-sola-verdad]]
+
 ## P2 — Necesita gente, no código
 
 - [ ] 🧑 **NÓMINA: los 63 atrasados de BRANDON** (~$330.750) sin verificar, y **nadie ha cerrado

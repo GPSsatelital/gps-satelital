@@ -47,6 +47,18 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 🔴 **LA FECHA DE FIN NO COBRA NADA — una sola verdad.** *"¿Cómo puede ser que se le
+  muestre algo y se le cobre otra cosa?"* (dueño, 22-sep). El contrato termina **por semanas
+  pagadas**, pero `fecha_fin_contrato` quedó visible y editable con pinta de importante, y la gente
+  la ha editado creyendo que cambiaba el contrato. Medido: **15 de 266 activos** con la fecha
+  descuadrada (7 son rodadas legítimas) y **2 contratos con las semanas mal** — los 2 únicos a los
+  que alguien les editó los meses, porque `editarContrato` no recalcula nada.
+  ✅ **Las 4 reglas están confirmadas por el dueño** (la fecha se mueve solo al rodar con firma;
+  el cliente ve una fecha y el funcionario las dos; editar el plazo muestra el impacto y **bloquea**
+  si ya pagó más semanas).
+  ⚠️ **La lista de 7 puntos de implementación NO está aprobada** — repetírsela y esperar el sí
+  antes de escribir una línea. → [[fecha-fin-y-semanas-una-sola-verdad]]
+
 - [ ] 💻 **Bloquear los cambios de estado también en la BASE, no solo en la pantalla.**
   El 22-sep se quitaron los 3 controles que movían un estado a dedo, pero eso es la capa de
   arriba: con las herramientas del navegador todavía se puede. Un candado en la base necesita

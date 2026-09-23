@@ -47,16 +47,17 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **El botón de saldo a favor sigue pudiendo trabar la plata de un cliente.**
-  Si se aplica saldo cuando el cliente **no debe nada**, el motor no tiene dónde meterlo y queda
-  una fila en ceros que el candado de la mig 160 cuenta "en vuelo" por su valor completo — el
-  saldo queda en $0 disponible **para siempre**, mientras la ficha se lo sigue mostrando. Le pasó
-  a LUIS (IEW57I, 8 días) y a RAFAEL (DPU52I, 1 día); los 2 se destrabaron a mano el 23-sep.
-  Falta: **(a)** que no se pueda crear ese movimiento si no hay nada pendiente que cubrir,
-  **(b)** el **chequeo #6** de coherencia (*movimiento de saldo atascado* — la fórmula actual no
-  lo ve: cero menos cero da cero), **(c)** el texto de `lineaTiempo.ts`, que con el aplicado en 0
-  dice *"sobraron $110.000 y siguen como saldo a favor"*.
-  → [[saldo-favor-movimiento-atascado]]
+- [x] ✅ **El saldo a favor ya no se puede trabar** — cerrado el **23-sep** (mig 167 + `277ba92`).
+  Aplicar saldo cuando el cliente no debía nada dejaba una fila con los 5 campos de reparto en
+  cero, que el candado de la mig 160 contaba "en vuelo" por su valor completo: LUIS (IEW57I)
+  estuvo **8 días** sin poder usar sus $59.000 y RAFAEL (DPU52I) **1 día** con $100.000, mientras
+  la ficha se los mostraba. Las 2 filas se quitaron a mano, y quedó: el candado solo cuenta las
+  que el motor SÍ aplicó · el **freno** (`debeHoy` obligatorio en `aplicarSaldoFavor`) · el
+  **chequeo #6** de coherencia · el texto de la ficha. Medido sobre los 2.998 pagos: 0 trabados,
+  0 filas vacías, y de los 148 movimientos de saldo los 148 que consumieron crédito aplicaron
+  algo. → [[saldo-favor-movimiento-atascado]]
+  ⚠️ **Efecto secundario a vigilar:** ya no se puede usar el saldo para **adelantar** una cuota
+  del acuerdo que todavía no se le exige. Fue decisión del dueño (23-sep); si estorba, se ajusta.
 
 - [ ] 💻 🔴 **LA FECHA DE FIN NO COBRA NADA — una sola verdad.** *"¿Cómo puede ser que se le
   muestre algo y se le cobre otra cosa?"* (dueño, 22-sep). El contrato termina **por semanas

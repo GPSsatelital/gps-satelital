@@ -1544,6 +1544,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // Movimiento interno que consume el saldo y avanza la cuota (NO efectivo nuevo, NO caja diaria).
       const { error } = await aplicarSaldoFavor(
         contratoSeleccionadoId, saldo,
+        // Cuánto debe HOY, de la fuente única (loQueDebe). Si es $0 el saldo no se aplica: una
+        // fila que no cubre nada le trababa el crédito al cliente (mig 167).
+        desgloseDebe(contratoDetalle).totalFalta,
         contratoDetalle.convenioACobrar?.id ? { convenioId: contratoDetalle.convenioACobrar.id } : undefined,
       );
       if (error) { alert(error); return; }

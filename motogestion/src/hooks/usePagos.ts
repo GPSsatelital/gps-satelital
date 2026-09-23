@@ -528,8 +528,21 @@ export function usePagos() {
   // El crédito viejo debe saldar primero lo viejo. Se resuelve SIN tocar el motor: la mig 045
   // solo re-reparte cuando TODOS los aplicado_* vienen en cero, y su rama de reparto explícito
   // (líneas 264-293) igual baja las deudas de la más antigua a la más nueva.
-  async function aplicarSaldoFavor(contratoId: string, saldo: number, opts?: { convenioId?: string }) {
+  // 🔴 `debeHoy` ES OBLIGATORIO A PROPÓSITO (23-sep-2026, caso LUIS IEW57I / RAFAEL DPU52I).
+  // Si el cliente no debe nada, el motor no tiene dónde meter el crédito y devuelve TODO como
+  // excedente: `nuevoSaldo = excedente − restante = 0`. La fila termina bien, con consumo cero…
+  // y queda idéntica a una que va en camino. El candado de la mig 160 la contaba por su valor
+  // completo y le trababa el saldo al cliente: LUIS estuvo 8 días sin poder usar sus $59.000
+  // mientras la pantalla se los mostraba. La mig 167 arregló el candado; esto evita que la fila
+  // inútil llegue a nacer.
+  // Va como parámetro y no se calcula acá porque `loQueDebe()` es la fuente ÚNICA de "cuánto
+  // debe" (regla de las cifras de plata) — una segunda copia de esa cuenta se separa sola.
+  // Es posicional y obligatorio para que TypeScript marque cualquier punto de cobro que lo olvide.
+  async function aplicarSaldoFavor(contratoId: string, saldo: number, debeHoy: number, opts?: { convenioId?: string }) {
     if (saldo <= 0) return { error: "No hay saldo a favor para aplicar." };
+    if (debeHoy <= 0) {
+      return { error: `No hay nada pendiente que cubrir con el saldo a favor. Sus $${Math.round(saldo).toLocaleString("es-CO")} quedan guardados y se le aplican cuando le toque pagar.` };
+    }
 
     // Con convenioId el funcionario está dirigiendo el crédito a un convenio puntual: ahí manda
     // su decisión, no la regla general.

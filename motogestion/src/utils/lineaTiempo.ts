@@ -94,6 +94,19 @@ function tituloPago(p: Pago): { icono: string; titulo: string; detalle: string; 
       // crédito que todavía tiene disponible.
       const ap = p.aplicado_saldo_favor;
       const usado = ap === null || ap === undefined ? p.valor : Math.abs(ap);
+      // 🔴 Consumo CERO no es "sobró todo" (23-sep-2026, caso LUIS IEW57I). Si el cliente no
+      // debía nada, el motor no aplicó un peso y el consumo queda en 0 — pero la cuenta de
+      // abajo lo leía como "sobró el valor entero" y la ficha decía "Sobraron $110.000 y siguen
+      // como saldo a favor" cuando de verdad tenía $59.000. Es la regla de las cifras: un número
+      // correcto con la etiqueta equivocada es un defecto igual de caro.
+      if (usado === 0) {
+        return {
+          icono: "♻️",
+          titulo: `Saldo a favor sin aplicar: ${v}`,
+          detalle: "No cubrió nada: en ese momento no tenía cuotas pendientes. Su saldo a favor quedó intacto.",
+          tono: "accent",
+        };
+      }
       const sobro = Math.max(p.valor - usado, 0);
       return {
         icono: "♻️",

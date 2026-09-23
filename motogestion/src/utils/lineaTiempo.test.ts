@@ -255,3 +255,37 @@ describe("desglosarPago — a qué se fue la plata", () => {
     expect(d.some(x => x.k.includes("Se usó de su saldo"))).toBe(true);
   });
 });
+
+// 🔴 CASO REAL — LUIS ALEJANDRO GUTIERREZ (IEW57I), 23-sep-2026. El 15-sep se mandó a aplicar un
+// saldo a favor de $110.000 cuando el cliente ya no debía nada: el motor no aplicó un peso y el
+// consumo quedó en $0. La ficha leía ese cero como "sobró todo" y le decía **"Sobraron $110.000 y
+// siguen como saldo a favor"** cuando de verdad tenía $59.000 — $51.000 prometidos de más, por
+// escrito, en su propia película de pagos.
+describe("movimiento de saldo a favor que NO aplicó nada", () => {
+  const conSaldo = (p: Partial<Pago>) => fuentes({
+    contratos: [contrato({})], clientes: [cliente({})], motos: [moto({})],
+    pagos: [pago({ tipo_registro: "saldo_favor", ...p } as Partial<Pago>)],
+  });
+  const evento = (p: Partial<Pago>) =>
+    construirLineaTiempo({ clienteId: "cli1" }, conSaldo(p)).find(e => /saldo a favor/i.test(e.titulo ?? ""))!;
+
+  it("no le promete al cliente un crédito que no tiene", () => {
+    const e = evento({ valor: 110000, aplicado_saldo_favor: 0 });
+    expect(e.titulo).toContain("sin aplicar");
+    expect(`${e.titulo} ${e.detalle}`).not.toContain("siguen como saldo a favor");
+    expect(e.detalle).toContain("no tenía cuotas pendientes");
+  });
+
+  it("el que SÍ consumió crédito se sigue leyendo igual que siempre", () => {
+    const e = evento({ valor: 51000, aplicado_saldo_favor: -51000 });
+    expect(e.titulo).toContain("Se usó saldo a favor");
+    expect(e.titulo).toContain("51.000");
+  });
+
+  it("cuando consume una parte, el resto sí se anuncia como saldo que le queda", () => {
+    const e = evento({ valor: 110000, aplicado_saldo_favor: -50000 });
+    expect(e.titulo).toContain("50.000");
+    expect(e.detalle).toContain("Sobraron");
+    expect(e.detalle).toContain("60.000");
+  });
+});

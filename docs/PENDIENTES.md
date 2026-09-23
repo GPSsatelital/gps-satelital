@@ -47,6 +47,17 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 🔴 **El botón de saldo a favor sigue pudiendo trabar la plata de un cliente.**
+  Si se aplica saldo cuando el cliente **no debe nada**, el motor no tiene dónde meterlo y queda
+  una fila en ceros que el candado de la mig 160 cuenta "en vuelo" por su valor completo — el
+  saldo queda en $0 disponible **para siempre**, mientras la ficha se lo sigue mostrando. Le pasó
+  a LUIS (IEW57I, 8 días) y a RAFAEL (DPU52I, 1 día); los 2 se destrabaron a mano el 23-sep.
+  Falta: **(a)** que no se pueda crear ese movimiento si no hay nada pendiente que cubrir,
+  **(b)** el **chequeo #6** de coherencia (*movimiento de saldo atascado* — la fórmula actual no
+  lo ve: cero menos cero da cero), **(c)** el texto de `lineaTiempo.ts`, que con el aplicado en 0
+  dice *"sobraron $110.000 y siguen como saldo a favor"*.
+  → [[saldo-favor-movimiento-atascado]]
+
 - [ ] 💻 🔴 **LA FECHA DE FIN NO COBRA NADA — una sola verdad.** *"¿Cómo puede ser que se le
   muestre algo y se le cobre otra cosa?"* (dueño, 22-sep). El contrato termina **por semanas
   pagadas**, pero `fecha_fin_contrato` quedó visible y editable con pinta de importante, y la gente

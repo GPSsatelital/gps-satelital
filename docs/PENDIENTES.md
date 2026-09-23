@@ -56,6 +56,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   **chequeo #6** de coherencia · el texto de la ficha. Medido sobre los 2.998 pagos: 0 trabados,
   0 filas vacías, y de los 148 movimientos de saldo los 148 que consumieron crédito aplicaron
   algo. → [[saldo-favor-movimiento-atascado]]
+  ✅ **Probado en la pantalla real** con LUIS: salió el aviso y no escribió nada (10/10 pagos).
   ⚠️ **Efecto secundario a vigilar:** ya no se puede usar el saldo para **adelantar** una cuota
   del acuerdo que todavía no se le exige. Fue decisión del dueño (23-sep); si estorba, se ajusta.
 

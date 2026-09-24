@@ -95,3 +95,22 @@ vez de mirar** — el error exacto que ese plan pretende arreglar, cometido dent
 **Quién lo cazó:** yo, al verificar antes de cerrar — pero recién a la cuarta vuelta de revisión.
 **Qué lo evita ahora:** la regla de **medir antes de afirmar**, aplicada también a lo que escribo en
 un plan. Y `npm run arranque`, que reportará el estado real en vez de dejarlo a la memoria.
+
+---
+
+## 24 de septiembre de 2026
+
+### Mi propio script de verificación me dio siete falsos negativos
+**Lo que mostré:** una tabla con **7 ❌** al verificar que `CLAUDE.md` ya no tuviera frases falsas.
+**Lo que era verdad:** las 7 estaban en **0**. El error era de mi script: `grep -c` devolvía el
+número en su propia línea y mi comparación leía un texto de varias líneas en vez de un número.
+**Por qué me equivoqué:** escribí la verificación de apuro, en una sola línea de shell, en vez de
+hacerla de la manera aburrida y legible.
+**Quién lo cazó:** yo, al mirar los números al lado de los ❌ — pero se los mostré mal primero.
+**Qué lo evita ahora:** las verificaciones que importan salen de un script con nombre
+(`arranque.mjs`, `cierre.mjs`), no de una línea improvisada.
+
+### Dije que `CLAUDE.md` quedaría en ~940 líneas y quedó en 966
+**Por qué:** no conté el encabezado nuevo que yo mismo estaba agregando.
+**Qué lo evita ahora:** nada, y no hace falta — fue una estimación anunciada como tal, no un dato
+presentado como medido. Queda como recordatorio de decir "estimo" cuando estimo.

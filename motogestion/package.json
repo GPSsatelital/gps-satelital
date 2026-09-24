@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "memoria:respaldar": "node scripts/respaldar-memoria.mjs"
+    "memoria:respaldar": "node scripts/respaldar-memoria.mjs",
+    "arranque": "node scripts/arranque.mjs",
+    "cierre": "node scripts/cierre.mjs"
   },
   "dependencies": {
     "@digitalpersona/devices": "^0.2.6",

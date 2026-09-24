@@ -52,12 +52,13 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 3 al 7** → `docs/ESTANDAR.md`.
-  ✅ **Paso 1 (23-sep):** decisiones + memoria en git. ✅ **Paso 2 (24-sep):** `CLAUDE.md` pasó de
-  1.426 a 923 líneas; la bitácora vive en `docs/HISTORIAL.md` y se corrigió todo lo que decía
-  falso. **Falta, en orden:**
-  **(3)** `npm run arranque` / `npm run cierre` **+ los hooks** que los disparan solos, y la tabla
-  `migraciones_aplicadas` ·
+- [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 4 al 7** → `docs/ESTANDAR.md`.
+  ✅ **Paso 1 (23-sep):** decisiones + memoria en git. ✅ **Paso 2 (24-sep):** `CLAUDE.md` de 1.426
+  a 966 líneas, la bitácora a `docs/HISTORIAL.md`, y se corrigió todo lo falso.
+  ✅ **Paso 3 (24-sep):** `npm run arranque` (lo dispara solo el hook `SessionStart`) y
+  `npm run cierre` · mig 168 `migraciones_aplicadas`.
+  ⚠️ **Pendiente del paso 3:** correr la **mig 168** en Supabase.
+  **Falta, en orden:**
   **(4)** la *foto de la plata* antes/después de cada migración, la regla de la vuelta atrás, y la
   ventana de despliegue (no tocar cartera lunes ni miércoles antes de las 6pm) ·
   **(5)** `RUNBOOK.md` + la sección técnica de riesgos ·

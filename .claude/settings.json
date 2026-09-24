@@ -1,0 +1,22 @@
+{
+  "$comentario": [
+    "Configuración del proyecto — viaja en git, así que sirve en cualquier equipo y para quien venga después.",
+    "SessionStart corre el arranque: estado real medido (rama, commit, migraciones), qué herramientas",
+    "deberían estar, lo primero de PENDIENTES y las últimas decisiones. Y avisa si la sesión anterior",
+    "no cerró bien. Así el protocolo pasa aunque nadie se acuerde — ver docs/ESTANDAR.md paso 3.",
+    "El CIERRE (npm run cierre) NO es un hook a propósito: correría en cada respuesta y hace pruebas.",
+    "Su freno es otro: si no se cierra, el arranque de la próxima sesión lo dice en la cara."
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node motogestion/scripts/arranque.mjs 2>&1 || echo \"[arranque] no pudo correr — medir el estado a mano antes de tocar nada\""
+          }
+        ]
+      }
+    ]
+  }
+}

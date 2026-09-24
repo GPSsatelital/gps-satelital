@@ -33,6 +33,7 @@ import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
 import { claveParaBalde, diasTexto, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
 import { rastroSaldoFavor } from "../utils/saldoFavor";
+import { rastroDeCubrimiento, fraseDeFechas } from "../utils/cubrimientoPago";
 
 // Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
 // adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
@@ -1197,6 +1198,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const rastroSaldo = contratoSeleccionadoId && contratoDetalle
     ? rastroSaldoFavor(contratoDetalle, pagosDelContrato(contratoSeleccionadoId).filter(p => p.estado === "Confirmado"))
     : { usos: {}, generadores: {}, saldoHoy: 0 };
+
+  // QUÉ SEMANA CUBRIÓ CADA PAGO (pedido del dueño, 24-sep). Mismo criterio que el rastro del
+  // saldo: se rebobina con TODOS los pagos, no con los 10 que la lista muestra. Si el rebobinado
+  // no cierra contra el contrato, `confiable` viene en false y no se muestra fecha alguna —
+  // decir "cubrió del 8 al 14" cuando no es cierto sería peor que no decir nada.
+  const cubrimiento = contratoSeleccionadoId && contratoDetalle
+    ? rastroDeCubrimiento(contratoDetalle, pagosDelContrato(contratoSeleccionadoId).filter(p => p.estado === "Confirmado"))
+    : { porPago: {}, confiable: false, descuadre: 0 };
 
   // Solo deuda EXIGIBLE (pendiente): lo 'en_convenio' se muestra en la pestaña Convenio
   // (saldo del convenio) — aquí duplicaría el cobro en tab Deudas, estado de cuenta y meta.
@@ -2965,6 +2974,28 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       {ahorroAp > 0 && <span style={{ color: "var(--faint)", fontWeight: 400 }}>(de eso, ${fmt(ahorroAp)} es ahorro suyo)</span>}
                     </div>
                   )}
+                  {/* QUÉ SEMANA CUBRIÓ, con fechas (24-sep). Antes el pago decía "Cuota $202.000"
+                      y el cliente no sabía qué semana le tapó. */}
+                  {(() => {
+                    const cub = cubrimiento.porPago[p.id];
+                    if (!cub || cub.semanas.length === 0) return null;
+                    const conFecha = cub.semanas.filter(s => s.desde);
+                    if (conFecha.length === 0) return null;
+                    const parcial = cub.semanas.length === 1 && !cub.semanas[0].completa;
+                    return (
+                      <div style={{ marginTop: 6, fontSize: 11, color: "var(--faint)", lineHeight: 1.5 }}>
+                        {parcial ? "Abonó a la semana " : cub.semanas.length > 1 ? "Cubre las semanas " : "Cubre la semana "}
+                        {conFecha.map((s, i) => (
+                          <span key={s.numero}>
+                            {i > 0 ? (i === conFecha.length - 1 ? " y " : ", ") : ""}
+                            <b style={{ color: "var(--muted)", fontWeight: 600 }}>{fraseDeFechas(s.desde, s.hasta)}</b>
+                            {!s.completa && conFecha.length > 1 ? " (parcial)" : ""}
+                          </span>
+                        ))}
+                        {conFecha.length < cub.semanas.length && <span> (y semanas anteriores al sistema)</span>}
+                      </div>
+                    );
+                  })()}
                   {/* Y QUÉ QUEDÓ. Las dos cifras que faltaban: lo que el motor no pudo colocar y
                       volvió a la bolsa, y con cuánto quedó el cliente después del movimiento. */}
                   {uso && (

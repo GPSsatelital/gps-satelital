@@ -466,3 +466,70 @@ describe("🔴 HOY: con semanas atrasadas, el acuerdo no recibe nada (cambia con
     expect(r.convenio).toBeGreaterThan(0);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// ✅ D-022 — LA SEMANA Y SU CUOTA DEL ACUERDO SON UN CONJUNTO (24-sep-2026)
+//
+// Decisión del dueño: *"tomarlo como un conjunto para los que tienen convenio, ya que es como si
+// su tarifa cambiara"*. Primero la semana, después su cuota; si falta, se arrastra al siguiente.
+//
+// El bloque de arriba congeló cómo repartía ANTES. Estas prueban cómo reparte AHORA — y las dos
+// cosas conviven a propósito: sin `convenioCuotaPeriodo` el reparto es el de antes, con ella es
+// el nuevo. Así ningún punto de cobro cambia de conducta hasta que se le pase el dato.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+describe("✅ D-022: el conjunto semana + cuota del acuerdo", () => {
+  // JOSE ENRIQUE (IEW50I): debe 3 semanas, acuerdo de $48.000 por período con 4 cuotas exigidas.
+  const base = {
+    cajaValor: 202000, cajaAhorro: 26000,
+    cajasPagadas: 5, cajaActualPagado: 0, cajasExigidas: 8, totalCajas: 104,
+    convenioPendiente: 483500, convenioExigido: 192000, convenioAbonado: 0,
+    convenioCuotaPeriodo: 48000,
+  };
+
+  it("su pago de $250.000 ahora tapa la semana Y su cuota del acuerdo", () => {
+    const r = repartirPagoV2({ ...base, monto: 250000 });
+    expect(r.tarifa).toBe(202000);
+    expect(r.convenio).toBe(48000);     // antes era 0
+    expect(r.cajasPagadas).toBe(6);
+    expect(r.cajaActualPagado).toBe(0); // antes quedaban $48.000 abonados a la semana siguiente
+  });
+
+  it("con el doble, paga dos conjuntos completos", () => {
+    const r = repartirPagoV2({ ...base, monto: 500000 });
+    expect(r.tarifa).toBe(404000);
+    expect(r.convenio).toBe(96000);
+    expect(r.saldo).toBe(0);
+  });
+
+  it("primero la semana: un abono que no la completa no toca el acuerdo", () => {
+    const r = repartirPagoV2({ ...base, monto: 150000 });
+    expect(r.tarifa).toBe(150000);
+    expect(r.convenio).toBe(0);
+    expect(r.cajaActualPagado).toBe(150000);   // se arrastra al siguiente pago
+  });
+
+  it("lo que falte se completa con el siguiente pago, y ahí sí entra la cuota", () => {
+    const uno = repartirPagoV2({ ...base, monto: 150000 });
+    const dos = repartirPagoV2({ ...base, monto: 100000, cajaActualPagado: uno.cajaActualPagado });
+    expect(dos.tarifa).toBe(52000);    // termina la semana
+    expect(dos.convenio).toBe(48000);  // y entra su cuota
+  });
+
+  it("🔴 el freno de la mig 119 sigue mandando: nunca más de lo EXIGIDO", () => {
+    // Solo 1 cuota exigida, aunque el acuerdo deba mucho más y el cliente pague de sobra.
+    const r = repartirPagoV2({ ...base, monto: 1000000, convenioExigido: 48000 });
+    expect(r.convenio).toBe(48000);
+  });
+
+  it("lo ya abonado no se cobra dos veces", () => {
+    const r = repartirPagoV2({ ...base, monto: 250000, convenioAbonado: 192000 });
+    expect(r.convenio).toBe(0);
+    expect(r.tarifa).toBe(250000);
+  });
+
+  it("sin acuerdo, nada cambia", () => {
+    const r = repartirPagoV2({ ...base, monto: 250000, convenioPendiente: 0, convenioExigido: 0, convenioCuotaPeriodo: 0 });
+    expect(r.convenio).toBe(0);
+    expect(r.tarifa).toBe(250000);
+  });
+});

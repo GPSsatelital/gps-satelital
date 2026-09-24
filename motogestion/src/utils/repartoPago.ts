@@ -180,6 +180,14 @@ export type EntradaReparto = {
   convenioExigidoVentana?: number;
   /** Lo que ya se le abonó al convenio ANTES de este pago. */
   convenioAbonado?: number;
+  /**
+   * La cuota del acuerdo de UN período (`convenios.cuota_por_periodo`).
+   *
+   * 🔑 D-022 (24-sep-2026): con esto, la semana y su cuota del acuerdo se cobran como UN CONJUNTO
+   * —primero la semana, después la cuota— en vez de llenar todas las semanas y dejar el acuerdo
+   * para el final. Sin este dato el reparto se comporta exactamente como antes.
+   */
+  convenioCuotaPeriodo?: number;
 };
 
 export type ResultadoReparto = {
@@ -248,17 +256,47 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     monto -= delta;
   }
 
-  // 2) Cajas FIFO — SOLO hasta las exigidas a la fecha REAL del pago. El excedente NO llena cajas
-  //    futuras. (La ventana de prepago ya no entra aquí: va al final, paso 2b — mig 149.)
+  // 2) EL CONJUNTO: la semana Y SU CUOTA DEL ACUERDO, período por período (D-022, 24-sep-2026).
+  //
+  // 🔴 POR QUÉ CAMBIÓ. Antes las cajas se llenaban TODAS primero y el acuerdo recibía al final.
+  // Con una sola semana atrasada, el acuerdo no volvía a recibir un peso nunca. Medido el 24-sep:
+  // **31 clientes pagando y sus acuerdos en cero**. YAL68H pagó $1.664.000 en 10 pagos desde julio
+  // y su acuerdo seguía en 0. Los primeros vencían el 12 y el 19 de octubre, y al tercer acuerdo
+  // incumplido va liquidación obligatoria — se estaba castigando justo al que sí paga.
+  //
+  // Regla del dueño, textual: *"tomarlo como un conjunto para los que tienen convenio, ya que es
+  // como si su tarifa cambiara"*. Primero la semana, después su cuota; si falta, se arrastra.
+  //
+  // ⚠️ Sin `convenioCuotaPeriodo` esto se comporta EXACTAMENTE como antes: el paso 4 recoge todo
+  // lo exigido al final. Así los puntos de cobro que todavía no lo pasan no cambian de conducta.
   let exigidas = e.cajasExigidas;
   if (e.tipoRegistro === "adelanto_base") exigidas = Math.max(exigidas, r.cajasPagadas + 1);
+  const cuotaConv = Math.max(e.convenioCuotaPeriodo ?? 0, 0);
+  const pendConv = Math.max(e.convenioPendiente ?? 0, 0);
+  // El freno de la mig 119 sigue mandando: el acuerdo nunca recibe más de lo EXIGIDO a la fecha
+  // real del pago. Lo que cambia es CUÁNDO lo recibe, no cuánto.
+  let convPorRecibir = Math.max(
+    Math.min((e.convenioExigido ?? 0) - (e.convenioAbonado ?? 0), pendConv),
+    0,
+  );
   while (monto > 0 && r.cajasPagadas < totalCajas && r.cajasPagadas < exigidas && cajaValor > 0) {
     const delta = Math.min(monto, cajaValor - r.cajaActualPagado);
     r.ahorro += ahorroDelTramo(r.cajaActualPagado, delta, cajaValor, cajaAhorro);
     r.cajaActualPagado += delta;
     r.tarifa += delta;
     monto -= delta;
-    if (r.cajaActualPagado >= cajaValor) { r.cajasPagadas += 1; r.cajaActualPagado = 0; }
+    if (r.cajaActualPagado >= cajaValor) {
+      r.cajasPagadas += 1;
+      r.cajaActualPagado = 0;
+      // La cuota del acuerdo de ESE mismo período, justo detrás de su semana. Solo cuando la
+      // semana quedó COMPLETA: primero la semana, después el acuerdo.
+      if (cuotaConv > 0 && convPorRecibir > 0 && monto > 0) {
+        const aConv = Math.min(monto, cuotaConv, convPorRecibir);
+        r.convenio += aConv;
+        convPorRecibir -= aConv;
+        monto -= aConv;
+      }
+    }
   }
 
   // 3) Deudas — multa de recolección primero, la lavada segunda, después las más antiguas
@@ -282,14 +320,14 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
   //
   // Ponerse al día NO es adelanto: si trae cuotas atrasadas acumuladas, las cubre todas. El
   // tope es `exigido − ya abonado`, no "una cuota".
-  const pendConv = Math.max(e.convenioPendiente ?? 0, 0);
-  if (monto > 0 && pendConv > 0) {
-    const puedeRecibir = Math.max(
-      Math.min((e.convenioExigido ?? 0) - (e.convenioAbonado ?? 0), pendConv),
-      0,
-    );
-    r.convenio = Math.min(monto, puedeRecibir);
-    monto -= r.convenio;
+  // Lo que le quedó debiendo el pago al acuerdo después del conjunto: cuando el cliente trae
+  // cuotas atrasadas acumuladas, acá las termina de cubrir. `convPorRecibir` ya viene descontado
+  // de lo que se entregó período por período arriba, así que no se cuenta dos veces.
+  if (monto > 0 && convPorRecibir > 0) {
+    const delta = Math.min(monto, convPorRecibir);
+    r.convenio += delta;
+    convPorRecibir -= delta;
+    monto -= delta;
   }
 
   // 2b / 4b) LA VENTANA DE PREPAGO, AL FINAL DE LA FILA (mig 149, 11-sep-2026).

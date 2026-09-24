@@ -52,10 +52,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 2 al 7** → `docs/ESTANDAR.md`.
-  El 23-sep se hizo el paso 1 (decisiones + memoria en git). **Falta, en orden:**
-  **(2)** mudar las 437 líneas de bitácora de `CLAUDE.md` a `docs/HISTORIAL.md` y corregir lo que
-  hoy dice falso (la rama fantasma, "mig 026 pendiente", el plan borrado) ·
+- [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 3 al 7** → `docs/ESTANDAR.md`.
+  ✅ **Paso 1 (23-sep):** decisiones + memoria en git. ✅ **Paso 2 (24-sep):** `CLAUDE.md` pasó de
+  1.426 a 923 líneas; la bitácora vive en `docs/HISTORIAL.md` y se corrigió todo lo que decía
+  falso. **Falta, en orden:**
   **(3)** `npm run arranque` / `npm run cierre` **+ los hooks** que los disparan solos, y la tabla
   `migraciones_aplicadas` ·
   **(4)** la *foto de la plata* antes/después de cada migración, la regla de la vuelta atrás, y la
@@ -70,9 +70,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   8, el respaldo ya no la alcanzaba. ¿Activar *Point-in-Time Recovery* (extra pagado) o un respaldo
   propio semanal de las tablas de plata?
 
-- [ ] 🧑 **Reconectar las 5 herramientas caídas** (`codebase-memory`, `context7`,
-  `sequential-thinking`, `mempalace`, `task-master`). `CLAUDE.md` declara `codebase-memory` como
-  *"SIEMPRE ACTIVA"* y el 23-sep no conectó ninguna.
+- [x] ✅ **Las herramientas caídas, arregladas** (24-sep, commit `5facd3d`). La causa, medida:
+  `context7` tardaba **34 s** en arrancar y el límite son 30 — `npx` lo bajaba de internet cada vez.
+  Instalados en la máquina: **34 s → 1 s** · `sequential-thinking` 7 s → 0 s · `mempalace` 11 s → 3 s.
+  De paso se quitó una duplicación (3 servidores declarados en dos archivos) y **`task-master-ai`**
+  (D-021: nunca se usó, nunca conectó, y `PENDIENTES.md` hace lo mismo y el dueño lo puede leer).
 
 - [ ] 💻 **Sembrar `DECISIONES.md` con lo de junio a agosto.** Quedaron las 19 más importantes;
   faltan las anteriores, que hay que rescatar de `CLAUDE.md`, `docs/memoria/` y el código. Las del
@@ -241,6 +243,18 @@ Lo que está afectando cifras reales de clientes en este momento.
   saldo a favor). El dueño pide que lleve **evidencia adjunta**, no solo el monto.
 - [ ] 💻 **INFORMES GERENCIALES** — diseñados, sin construir.
 - [ ] 💻 **Aviso "salieron $X" en Caja** (no aprobado todavía).
+- [ ] 💻 **GPS real: sirena y apagado remoto.** Hoy la sirena solo deja registro de la
+  gestión (3 segundos simulados) y el apagado no existe. Las reglas ya están definidas en CLAUDE.md
+  (sirena máx 5-10 s y solo con el vehículo detenido; apagado solo detenido, máx 1 hora). Falta el
+  puente con el proveedor de GPS. *(Venía de la lista 'Pendiente' de CLAUDE.md, 24-sep.)*
+
+- [ ] 💻 **Recibo como imagen o PDF con el logo.** Hoy el recibo se imprime en la térmica y se manda
+  como texto por WhatsApp. ⚠️ Depende del logo, que todavía no existe. *(Ídem.)*
+
+- [ ] 💻 **APK nativo con Capacitor.** Decidido en su momento: empaquetar apuntando a la web en vivo
+  (no una copia local), así un cambio de código se refleja sin reinstalar. Solo haría falta para el
+  lector de huellas en Android. *(Ídem.)*
+
 - [ ] 💻 📋 **Logo e identidad de marca** (falta el logo) · **Rediseño visual, fase 3: Cartera**.
 
 - [ ] 💻 📋 **Portal del SOCIO: número de motos y portafolio detallado.** Que el socio vea cuántas

@@ -32,6 +32,7 @@ import { useGestiones, type TipoGestion } from "../hooks/useGestiones";
 import { useEnvioMensaje } from "../hooks/useEnvioMensaje";
 import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEnvioMasivo";
 import { claveParaBalde, diasTexto, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
+import { rastroSaldoFavor } from "../utils/saldoFavor";
 
 // Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
 // adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
@@ -1190,6 +1191,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const pagosContrato = contratoSeleccionadoId
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
+
+  // 🔴 El rastro se arma con TODOS los pagos, no con los 10 que la lista muestra: el FIFO tiene
+  // que arrancar desde el primero o le atribuiría el crédito al pago equivocado.
+  const rastroSaldo = contratoSeleccionadoId && contratoDetalle
+    ? rastroSaldoFavor(contratoDetalle, pagosDelContrato(contratoSeleccionadoId).filter(p => p.estado === "Confirmado"))
+    : { usos: {}, generadores: {}, saldoHoy: 0 };
 
   // Solo deuda EXIGIBLE (pendiente): lo 'en_convenio' se muestra en la pestaña Convenio
   // (saldo del convenio) — aquí duplicaría el cobro en tab Deudas, estado de cuenta y meta.
@@ -2850,6 +2857,10 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 // el resultado. Faltaban prorrateo, multa y base inicial: un pago que iba entero a
                 // los días rodados salía diciendo "sin desglose (pago antiguo)" — falso, y dejaba
                 // invisible el ahorro que llevaba adentro.
+                // EL RASTRO (23-sep-2026, pedido del dueño): de dónde salió la plata y qué quedó.
+                // `uso` = este movimiento gastó saldo · `genero` = este pago dejó saldo guardado.
+                const uso = rastroSaldo.usos[p.id];
+                const genero = rastroSaldo.generadores[p.id];
                 const partes: string[] = [];
                 if (prorrAp > 0) partes.push(`Días rodados $${fmt(prorrAp)}`);
                 if (cuota > 0) partes.push(`Cuota $${fmt(cuota)}`);
@@ -2867,7 +2878,18 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 <div key={p.id} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
+                      {/* 🔴 Cuando un movimiento de saldo cubre MENOS de lo que se mandó a aplicar,
+                          el número grande solo decía el monto mandado y los pesos que volvieron a
+                          guardarse no aparecían en ninguna parte (caso LUIS IEW57I: "$59.000" con
+                          "Convenio $50.000" abajo y $9.000 sin explicar). Ahora dice las dos. */}
+                      {uso && uso.seUso !== uso.seMando ? (
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          $ {fmt(uso.seUso)}{" "}
+                          <span style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)" }}>de $ {fmt(uso.seMando)}</span>
+                        </div>
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>$ {fmt(p.valor)}</div>
+                      )}
                       {/* Los movimientos INTERNOS no son plata que entró: mostrar "Efectivo" ahí
                           hacía que aplicar un saldo se viera idéntico a un pago nuevo (caso RMB51H,
                           31-jul: el dueño creyó que se había contado dos veces). No entran a la caja. */}
@@ -2886,15 +2908,40 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                       {p.tipo_registro === "saldo_favor" && (
                         <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--accent-ink)", background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "6px 9px" }}>
                           <b>🔄 No es un pago nuevo.</b> Aquí se usó la plata que el cliente <b>ya había abonado antes</b>{" "}
-                          (su saldo a favor) para cubrir esta cuota. <b>No entró dinero hoy</b>, por eso no suma en la caja del día.
+                          (su saldo a favor). <b>No entró dinero hoy</b>, por eso no suma en la caja del día.
+                          {/* DE DÓNDE SALIÓ. Sin esto el movimiento queda en el aire: el funcionario
+                              ve "se usó saldo" y no puede rastrear de qué pago del cliente vino. */}
+                          {uso && uso.vieneDe.length > 0 && (
+                            <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid var(--accent-line)" }}>
+                              <b>Viene de:</b>{" "}
+                              {uso.vieneDe.length === 1
+                                ? (uso.vieneDe[0].fecha
+                                    ? <>su pago de <b>$ {fmt(uso.vieneDe[0].valorPago)}</b> del {fmtFecha(uso.vieneDe[0].fecha)}.</>
+                                    : <>el saldo que ya traía <b>de antes de este sistema</b>.</>)
+                                : uso.vieneDe.map((o, i) => (
+                                    <span key={i}>
+                                      {i > 0 ? " · " : ""}<b>$ {fmt(o.monto)}</b> de {o.fecha ? `su pago del ${fmtFecha(o.fecha)}` : "lo que traía de antes"}
+                                    </span>
+                                  ))}
+                            </div>
+                          )}
                         </div>
                       )}
-                      {/* La plata que se quedó guardada: explica POR QUÉ no bajó la deuda. */}
-                      {esPagoDeCaja(p) && p.estado === "Confirmado" && saldoAp > 0 && saldoAp >= p.valor && (
+                      {/* HACIA ADELANTE: este pago dejó plata guardada — qué pasó después con ella. */}
+                      {genero && genero.guardo > 0 && (
                         <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.45, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "6px 9px" }}>
-                          <b>💡 Esta plata quedó guardada como saldo a favor.</b> El cliente sí pagó y el dinero está
-                          contado en la caja, pero en esa fecha no había cuota que cobrarle todavía.
-                          Queda a su favor hasta que alguien toque <b>«Aplicar»</b> en el recuadro de saldo a favor.
+                          <b>💡 De este pago quedaron $ {fmt(genero.guardo)} guardados</b> como saldo a favor.{" "}
+                          {genero.usos.length === 0
+                            ? <>El cliente sí pagó y el dinero está contado en la caja, pero en esa fecha no había
+                               cuota que cobrarle. Siguen a su favor hasta que alguien toque <b>«Aplicar a lo que debe»</b>.</>
+                            : <>
+                                Se usaron {genero.usos.map((u, i) => (
+                                  <span key={i}>{i > 0 ? " y " : ""}<b>$ {fmt(u.monto)}</b> el {fmtFecha(u.fecha)}</span>
+                                ))}.
+                                {genero.sigueGuardado > 0
+                                  ? <> Todavía quedan <b>$ {fmt(genero.sigueGuardado)}</b> de este pago.</>
+                                  : <> Ya no queda nada de este pago.</>}
+                              </>}
                         </div>
                       )}
                     </div>
@@ -2910,12 +2957,28 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   </div>
                   {p.estado !== "Rechazado" && (partes.length > 0 || ahorroAp > 0) && (
                     <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line2)", fontSize: 11, color: "var(--accent-ink)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
-                      <span style={{ color: "var(--faint)" }}>Se aplicó a:</span>
+                      <span style={{ color: "var(--faint)" }}>{uso ? "Se usó en:" : "Se aplicó a:"}</span>
                       {partes.length > 0 ? partes.map((t, i) => <span key={i} style={{ background: "var(--accent-soft)", borderRadius: 999, padding: "2px 8px" }}>→ {t}</span>) : <span style={{ color: "var(--faint)" }}>sin desglose (pago antiguo)</span>}
                       {/* El ahorro NO es una parte más: sale de adentro de la cuota o de los días
                           rodados (los dos únicos baldes que lo generan). Decía "de la cuota", que
                           era falso cuando venía del prorrateo. */}
                       {ahorroAp > 0 && <span style={{ color: "var(--faint)", fontWeight: 400 }}>(de eso, ${fmt(ahorroAp)} es ahorro suyo)</span>}
+                    </div>
+                  )}
+                  {/* Y QUÉ QUEDÓ. Las dos cifras que faltaban: lo que el motor no pudo colocar y
+                      volvió a la bolsa, y con cuánto quedó el cliente después del movimiento. */}
+                  {uso && (
+                    <div style={{ marginTop: 6, fontSize: 11, display: "grid", gap: 3 }}>
+                      {uso.volvioAGuardarse > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                          <span style={{ color: "var(--faint)", minWidth: 0 }}>Volvió a quedar guardado</span>
+                          <span style={{ fontWeight: 700 }}>$ {fmt(uso.volvioAGuardarse)}</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ color: "var(--faint)", minWidth: 0 }}>Saldo a favor después de esto</span>
+                        <span style={{ fontWeight: 700, color: "var(--accent-ink)" }}>$ {fmt(uso.quedaDespues)}</span>
+                      </div>
                     </div>
                   )}
                 </div>

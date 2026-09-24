@@ -1,4 +1,5 @@
 import type { Pago } from "../hooks/usePagos";
+import { rastroSaldoFavor, type UsoDeSaldo } from "./saldoFavor";
 import type { Contrato } from "../hooks/useContratos";
 import type { Gestion } from "../hooks/useGestiones";
 import type { Deuda } from "../hooks/useDeudas";
@@ -76,7 +77,25 @@ export function desglosarPago(p: Pago): LineaDetalle[] {
   return d;
 }
 
-function tituloPago(p: Pago): { icono: string; titulo: string; detalle: string; tono: EventoLT["tono"] } {
+/** "su pago de $260.000 del 15 sep" — de dónde salió el crédito que se usó. */
+function fraseOrigen(uso: UsoDeSaldo | undefined): string {
+  if (!uso || uso.vieneDe.length === 0) return "";
+  const dia = (iso: string) => {
+    const d = new Date(iso + "T00:00:00");
+    return `${d.getDate()} ${["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getMonth()]}`;
+  };
+  if (uso.vieneDe.length === 1) {
+    const o = uso.vieneDe[0];
+    return o.fecha
+      ? ` Viene de su pago de ${fmt(o.valorPago)} del ${dia(o.fecha)}.`
+      : " Viene del saldo que ya traía de antes de este sistema.";
+  }
+  return " Viene de " + uso.vieneDe
+    .map(o => `${fmt(o.monto)} de su pago del ${o.fecha ? dia(o.fecha) : "antes de este sistema"}`)
+    .join(" y ") + ".";
+}
+
+function tituloPago(p: Pago, uso?: UsoDeSaldo): { icono: string; titulo: string; detalle: string; tono: EventoLT["tono"] } {
   const v = fmt(p.valor);
   if (p.estado === "Rechazado") return { icono: "🚫", titulo: `Pago rechazado de ${v}`, detalle: "No cuenta para su cuenta.", tono: "bad" };
   const pend = p.estado === "Pendiente";
@@ -110,8 +129,12 @@ function tituloPago(p: Pago): { icono: string; titulo: string; detalle: string; 
       const sobro = Math.max(p.valor - usado, 0);
       return {
         icono: "♻️",
-        titulo: `Se usó saldo a favor: ${fmt(usado)}`,
-        detalle: `Crédito que ya tenía guardado — no entró plata nueva.${sobro > 0 ? ` Sobraron ${fmt(sobro)} y siguen como saldo a favor.` : ""}`,
+        // Las dos cifras juntas cuando no coinciden (decisión del dueño, 23-sep): sin esto el
+        // título anunciaba el monto mandado y los pesos que volvieron a guardarse no se veían.
+        titulo: sobro > 0
+          ? `Se usó saldo a favor: ${fmt(usado)} de ${v}`
+          : `Se usó saldo a favor: ${fmt(usado)}`,
+        detalle: `Crédito que ya tenía guardado — no entró plata nueva.${fraseOrigen(uso)}${sobro > 0 ? ` Sobraron ${fmt(sobro)} y siguen como saldo a favor.` : ""}`,
         tono: "accent",
       };
     }
@@ -323,8 +346,14 @@ export function construirLineaTiempo(
   }
 
   // ── Pagos ─────────────────────────────────────────────────────────────────
+  // El rastro del saldo a favor, por contrato. Se arma con TODOS sus pagos confirmados —no solo
+  // con los del tramo que se está mostrando— porque el FIFO tiene que empezar por el primero.
+  const rastroPorContrato = new Map<string, ReturnType<typeof rastroSaldoFavor>>();
+  for (const c of contratos) {
+    rastroPorContrato.set(c.id, rastroSaldoFavor(c, f.pagos.filter(x => x.contrato_id === c.id && x.estado === "Confirmado")));
+  }
   for (const p of f.pagos.filter(p => contratoIds.has(p.contrato_id) && enTramo(p.contrato_id, soloFecha(p.fecha)))) {
-    const t = tituloPago(p);
+    const t = tituloPago(p, rastroPorContrato.get(p.contrato_id)?.usos[p.id]);
     push({
       id: `pag-${p.id}`, fecha: soloFecha(p.fecha), orden: p.created_at ?? p.fecha,
       categoria: "pago", icono: t.icono, titulo: t.titulo,

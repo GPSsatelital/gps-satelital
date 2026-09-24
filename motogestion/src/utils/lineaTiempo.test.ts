@@ -288,4 +288,28 @@ describe("movimiento de saldo a favor que NO aplicó nada", () => {
     expect(e.detalle).toContain("Sobraron");
     expect(e.detalle).toContain("60.000");
   });
+
+  // Pedido del dueño (23-sep): *"no dice de cuándo vino ni qué cantidad era la del pago inicial"*.
+  it("dice de qué pago del cliente salió el crédito, con su monto y su fecha", () => {
+    const f = fuentes({
+      contratos: [contrato({})], clientes: [cliente({})], motos: [moto({})],
+      pagos: [
+        pago({ id: "gen", fecha: "2026-09-15", created_at: "2026-09-15T19:44:00Z", valor: 260000, aplicado_tarifa: 151000, aplicado_saldo_favor: 59000 } as Partial<Pago>),
+        pago({ id: "usa", fecha: "2026-09-23", created_at: "2026-09-23T21:20:00Z", valor: 59000, tipo_registro: "saldo_favor", aplicado_convenio: 50000, aplicado_saldo_favor: -50000 } as Partial<Pago>),
+      ],
+    });
+    const e = construirLineaTiempo({ clienteId: "cli1" }, f).find(x => /Se usó saldo a favor/.test(x.titulo ?? ""))!;
+    expect(e.titulo).toContain("$ 50.000 de $ 59.000");
+    expect(e.detalle).toContain("Viene de su pago de $ 260.000 del 15 sep");
+    expect(e.detalle).toContain("Sobraron $ 9.000");
+  });
+
+  it("el saldo que venía del empalme se nombra como tal, sin inventarle un pago", () => {
+    const f = fuentes({
+      contratos: [contrato({ saldo_favor_apertura: 80000 } as Partial<Contrato>)], clientes: [cliente({})], motos: [moto({})],
+      pagos: [pago({ id: "u", fecha: "2026-09-10", created_at: "2026-09-10T10:00:00Z", valor: 30000, tipo_registro: "saldo_favor", aplicado_tarifa: 30000, aplicado_saldo_favor: -30000 } as Partial<Pago>)],
+    });
+    const e = construirLineaTiempo({ clienteId: "cli1" }, f).find(x => /Se usó saldo a favor/.test(x.titulo ?? ""))!;
+    expect(e.detalle).toContain("de antes de este sistema");
+  });
 });

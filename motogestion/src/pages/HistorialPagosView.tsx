@@ -253,9 +253,22 @@ export default function HistorialPagosView({ onNavigate }: {
               )}
             </div>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: p.estado === "Rechazado" ? "var(--faint)" : "var(--text)", flexShrink: 0, textDecoration: p.estado === "Rechazado" ? "line-through" : "none" }}>
-            ${fmt(p.valor)}
-          </div>
+          {/* Un movimiento de saldo puede cubrir MENOS de lo que se mandó a aplicar: el motor solo
+              llena lo exigido y devuelve el resto. Mostrar solo el monto mandado dejaba invisibles
+              los pesos que volvieron a guardarse (caso LUIS IEW57I, 23-sep-2026). Las dos cifras,
+              una debajo de la otra para que no desborde a 375px. */}
+          {(() => {
+            const usado = Math.abs(p.aplicado_saldo_favor ?? 0);
+            const parcial = p.tipo_registro === "saldo_favor" && usado > 0 && usado !== p.valor;
+            return (
+              <div style={{ flexShrink: 0, textAlign: "right" }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: p.estado === "Rechazado" ? "var(--faint)" : "var(--text)", textDecoration: p.estado === "Rechazado" ? "line-through" : "none" }}>
+                  ${fmt(parcial ? usado : p.valor)}
+                </div>
+                {parcial && <div style={{ fontSize: 11, color: "var(--muted)" }}>de ${fmt(p.valor)}</div>}
+              </div>
+            );
+          })()}
         </div>
       </div>
     );

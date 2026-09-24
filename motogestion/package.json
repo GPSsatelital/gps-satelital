@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "memoria:respaldar": "node scripts/respaldar-memoria.mjs"
   },
   "dependencies": {
     "@digitalpersona/devices": "^0.2.6",

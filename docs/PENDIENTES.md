@@ -12,9 +12,14 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 ---
 
-## P0 — Plata mal contada HOY
+## P0 — Plata mal contada HOY (y lo que está abierto de seguridad)
 
 Lo que está afectando cifras reales de clientes en este momento.
+
+- [ ] 🧑 🔴 **ROTAR LA LLAVE DE ZALA — pasó por el chat.** Estaba anotada en P2 como una tarea más
+  de la puesta en marcha de ZALA. **Una llave de producción que circuló por un chat no es un
+  pendiente de operación: es una puerta abierta**, y lleva días así. Sube a P0 hasta que se cambie.
+  *(Subida el 23-sep · riesgo T8 en `docs/RIESGOS.md`.)*
 
 - [ ] 🧑 ⏸️ **CESAR ESCUDERO (ZHO34G) y RAMON BARON (RLI25H) — falta rodarles el tiempo.**
   🚫 **EN PAUSA por decisión del dueño (21-sep): "dejalos quietos".** No retomar sin que él los saque.
@@ -46,6 +51,32 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 2 al 7** → `docs/ESTANDAR.md`.
+  El 23-sep se hizo el paso 1 (decisiones + memoria en git). **Falta, en orden:**
+  **(2)** mudar las 437 líneas de bitácora de `CLAUDE.md` a `docs/HISTORIAL.md` y corregir lo que
+  hoy dice falso (la rama fantasma, "mig 026 pendiente", el plan borrado) ·
+  **(3)** `npm run arranque` / `npm run cierre` **+ los hooks** que los disparan solos, y la tabla
+  `migraciones_aplicadas` ·
+  **(4)** la *foto de la plata* antes/después de cada migración, la regla de la vuelta atrás, y la
+  ventana de despliegue (no tocar cartera lunes ni miércoles antes de las 6pm) ·
+  **(5)** `RUNBOOK.md` + la sección técnica de riesgos ·
+  **(6)** los candados: casos reales → espejos → knip → **CI, que NO existe** (no hay `.github/`) ·
+  **(7)** recién ahí, la auditoría técnica (rendimiento, seguridad, código muerto).
+
+- [ ] 🧑 **Probar que el respaldo de Supabase se puede restaurar.** Tienen el plan Pro: hay respaldo
+  diario con **7 días** de retención. Nunca se probó restaurarlo, y un respaldo sin probar es una
+  ilusión. ⚠️ **Por definir:** 7 días es corto — la mig 124 se descubrió a los 3; si hubiera tardado
+  8, el respaldo ya no la alcanzaba. ¿Activar *Point-in-Time Recovery* (extra pagado) o un respaldo
+  propio semanal de las tablas de plata?
+
+- [ ] 🧑 **Reconectar las 5 herramientas caídas** (`codebase-memory`, `context7`,
+  `sequential-thinking`, `mempalace`, `task-master`). `CLAUDE.md` declara `codebase-memory` como
+  *"SIEMPRE ACTIVA"* y el 23-sep no conectó ninguna.
+
+- [ ] 💻 **Sembrar `DECISIONES.md` con lo de junio a agosto.** Quedaron las 19 más importantes;
+  faltan las anteriores, que hay que rescatar de `CLAUDE.md`, `docs/memoria/` y el código. Las del
+  plan perdido que no se puedan reconstruir se marcan `⚠️ no recuperada` — sin inventar.
 
 - [x] ✅ **El saldo a favor ya no se puede trabar** — cerrado el **23-sep** (mig 167 + `277ba92`).
   Aplicar saldo cuando el cliente no debía nada dejaba una fila con los 5 campos de reparto en
@@ -165,7 +196,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 - [ ] 🧑 **Punto 2 de la nómina:** si la semana de una moto guardada debe tener precio propio en vez
   de seguir pegada al atrasado. Abierto desde el 1-sep.
 
-- [ ] 🧑 **ZALA:** que Meta apruebe las 10 plantillas · cambiar la llave (pasó por el chat) ·
+- [ ] 🧑 **ZALA:** que Meta apruebe las 10 plantillas · *(la llave subió a P0)* ·
   formato de la plata.
 
 - [ ] 🧑 **Probar con gente real:** Mi Día con un SUBADMIN · los avisos push en un Android ·

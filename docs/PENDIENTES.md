@@ -44,6 +44,36 @@ Lo que está afectando cifras reales de clientes en este momento.
   automática. En algunos la lista se deduce sola (JOHAN: $965.800 de deuda + $195.000 de semana
   = $1.160.800 exacto); esos se pueden escribir sin sacar el papel.
 
+- [ ] 🧑 🔴 **JORDAN (DQL76I / LIQ-0073) — reabierta el 24-sep, falta cerrarla EN LA APP con él
+  presente.** La base de datos ya quedó lista y verificada: liquidación `en_taller` · contrato
+  `Suspendido` con su ahorro de $40.000 · cliente `Activo` fuera de lista negra · moto
+  `Mantenimiento` · **fecha de corte 2026-09-21** (el lunes que la trajo) · deuda del alquiler
+  $54.000 pendiente. **Al darle Calcular debe salir +$157.000 a su favor** (verificado llamando a
+  `cuentaLiquidacion` con los datos reales — si sale otro número, PARAR).
+  **Los pasos, en orden:** finalizar su orden de taller (está en *"Listo para salida"*) → Calcular →
+  generar documento → **que JORDAN firme (firma + huella)** → cerrar marcando ☑ *"Sigue con la
+  empresa"* con los **$157.000** como base de la moto nueva → le faltarían **$353.000** de los
+  $510.000, que se cubren con lo que dé ese día + convenio.
+  ⚠️ **Su convenio de base se dejó a propósito en `cumplido`**: es lo que impide que el recálculo le
+  vuelva a cobrar los $308.000 sin tener que arreglar el código todavía. **Ese truco NO sirve para
+  los otros 5 casos** — ahí hay que arreglar `cuentaLiquidacion.ts`.
+  ⚠️ El convenio NUEVO que le abra el wizard nace con el mismo defecto: si algún día vuelve a
+  liquidar sin terminar, se lo cobrarán otra vez.
+
+- [ ] 💻 🔴 **Se puede CERRAR una liquidación sin que el cliente firme nada.** Descubierto el 24-sep
+  al reabrir LIQ-0073: estaba `cerrada` con `firma_cliente_url`, `huella_cliente_url`, `fecha_firma`
+  y `documento_firmado_url` **los cuatro en null**. El flujo tiene el paso `firmada`, pero nada
+  obliga a pasar por él. Es el respaldo legal de la cuenta final: sin firma, la empresa no tiene con
+  qué sostener el saldo que cobró o devolvió.
+
+- [ ] 💻 **La recepción real de una entrega queda huérfana y una administrativa le gana la fecha.**
+  Mismo caso: la entrega de JORDAN (22-sep, `entrega_voluntaria`, con sus 6 fotos) se guardó **sin
+  `contrato_id` ni `cliente_id`**, y al iniciar la liquidación se creó otra (`motivo: liquidacion`)
+  con la fecha de HOY. `recepcionDelContrato()` toma **la más reciente** → el corte se corrió del 21
+  al 24 y eso le quitaba **$93.000** al cliente. **Dos arreglos:** (a) que la recepción de una
+  entrega quede siempre pegada a su contrato y cliente; (b) que iniciar una liquidación **no** cree
+  una recepción nueva si ya hay una de entrega sin liquidar — o que no cuente para la fecha de corte.
+
 - [ ] 💻 🔴 **LA LIQUIDACIÓN NO MIRA EL MOTIVO — $8.043.000 en riesgo, YESID a 5 semanas.**
   Regla del dueño **D-023** (24-sep): el ahorro es de la empresa **solo si el contrato termina
   bien**; si liquida sin finalizar, se le devuelve. Pero `cuentaLiquidacion()` **no mira `motivo`
@@ -62,7 +92,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   devolver. `cuentaLiquidacion.ts:160` cobra todo convenio `activo`/`incumplido` sin distinguir.
   | Liquidación | Cliente | Placa | Mal cobrado | Estado |
   |---|---|---|---|---|
-  | LIQ-0073 | JORDAN MARTINEZ | DQL76I | $308.000 | ✅ **corregido a mano el 24-sep** |
+  | LIQ-0073 | JORDAN MARTINEZ | DQL76I | $308.000 | 🔲 **reabierta el 24-sep — falta que el dueño la cierre en la app** (ver abajo) |
   | LIQ-0056 | MELISSA BELLO | RMZ65H | $339.000 | 🔴 cerrada · lista negra · ⚠️ **su cuenta no cuadra: puso $404.000 al registrarse (debería deber $106.000) y su Semana 1 aparece SIN pagar. Mirarla aparte antes de tocarle un peso.** |
   | LIQ-0011 | JESUS MARIA DE HORTA | XZP35H | $308.000 | ⚠️ documento ya generado |
   | LIQ-0063 | RICARDO CRUZ | IEW84I | $308.000 | salvable antes de cerrar |

@@ -115,6 +115,33 @@ hacerla de la manera aburrida y legible.
 **Qué lo evita ahora:** nada, y no hace falta — fue una estimación anunciada como tal, no un dato
 presentado como medido. Queda como recordatorio de decir "estimo" cuando estimo.
 
+### 🔴 Entregué un manual sin mirarlo, con dibujos en vez de pantallas
+**Lo que entregué:** 22 diapositivas 16:9 con pantallas **dibujadas a mano en CSS**, sin abrirlo ni
+una vez. **Lo dije yo mismo al entregarlo** — *"no lo he mirado renderizado"* — y lo entregué igual.
+**Lo que el dueño encontró en dos minutos:** *"no se ven las pantallas reales del sistema y está
+como todo simple… hay letras que se sobreponen una con la otra… no me gustó, el que hiciste
+anteriormente era mejor"*. Las tres cosas, ciertas.
+**Por qué me equivoqué, en orden de gravedad:**
+1. **No reusé lo que ya existía.** `motogestion/scripts/manual/capturas.mjs` y
+   `docs/manual/manual-operacion.html` llevaban desde el 10-sep tomando **capturas reales** y
+   maquetando en A4. Inventé un formato nuevo sin buscar el que ya funcionaba —
+   [[regla-reusar-flujo-existente]], que está escrita hace meses.
+2. **Me salté el paso de revisar.** El propio prompt que él me pasó dice, en el punto 6:
+   *"convierte cada diapositiva en imagen y mírala… no entregues sin esta vuelta"*.
+3. **Dejé que "rápido" decidiera la calidad.** Él pidió rápido; yo entendí "entregá algo".
+   Rápido era **reusar la máquina**, que habría sido más rápido *y* mejor.
+**Qué costó:** rehacerlo entero. Y al mirarlo de verdad aparecieron **dos errores más** que el
+dibujo tapaba: una página con la foto de otro paso (la liquidación avanzó de etapa entre el guion y
+la corrida) y un botón con el nombre viejo («Imprimir documento» por **«Imprimir para firmar»**).
+**Qué lo evita ahora:**
+- `src/utils/manualesAlDia.test.ts` — saca los nombres de botón de todo manual y comprueba que
+  sigan existiendo en el código. **Probado rompiéndolo a propósito.** Responde además su pedido de
+  que los manuales *"se actualicen por sí solos"*.
+- `docs/manual-liquidacion/README.md` deja escrito que **las liquidaciones avanzan de etapa** y que
+  hay que mirar el PDF página por página antes de entregar.
+- Y la regla de fondo: **antes de construir un entregable, buscar si ya existe uno igual en el
+  repo.** Acá existía, con su máquina de capturas y su formato probado.
+
 ### 🔴 Afirmé que cobrar los $308.000 de la base estaba mal, sin haber verificado la otra cara
 **Lo que dije:** *"esos $308.000 son el ahorro que él debía guardar y nunca guardó… es plata suya,
 no un servicio que la empresa le prestó. La empresa no perdió nada, así que no hay nada que

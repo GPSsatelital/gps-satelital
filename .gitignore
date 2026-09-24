@@ -11,6 +11,8 @@ entities.json
 # Para rehacerlos: motogestion/scripts/manual/recibe-sesion.mjs + capturas.mjs, y luego el PDF.
 docs/manual/img/
 docs/manual/*.pdf
+docs/manual-liquidacion/img/
+docs/manual-liquidacion/*.pdf
 
 # SQL temporal con la llave del despertador — no se versiona
 PEGAR-EN-SUPABASE-*.sql

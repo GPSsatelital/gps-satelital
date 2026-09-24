@@ -1,769 +1,687 @@
-<!doctype html>
-<html lang="es-CO">
+<!DOCTYPE html>
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <title>Cómo hacer una liquidación — MotoGestión</title>
 <style>
-  @page { size: 1920px 1080px; margin: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root{
-    --navy:#0f172a; --navy2:#1e293b; --cyan:#0284c7; --cyan-soft:#e0f2fe;
-    --papel:#f8fafc; --texto:#0f172a; --muted:#475569; --faint:#64748b; --line:#e2e8f0;
-    --ok:#166534; --ok-soft:#dcfce7; --ok-line:#86efac;
-    --bad:#991b1b; --bad-soft:#fee2e2; --bad-line:#fca5a5;
-    --warn:#92400e; --warn-soft:#fef3c7; --warn-line:#fcd34d;
-    --placa:#FFD100;
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #0f172a; margin: 0; font-size: 12.5pt; line-height: 1.55;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  body{ font-family:"Inter","Segoe UI",system-ui,sans-serif; background:#334155; font-variant-numeric:tabular-nums; }
-  .d{ width:1920px; height:1080px; background:var(--papel); color:var(--texto);
-      padding:96px 120px 110px; position:relative; overflow:hidden;
-      page-break-after:always; break-after:page; margin:0 auto 28px; }
-  .d:last-child{ page-break-after:auto; break-after:auto; }
-  .d.osc{ background:var(--navy); color:#fff; }
-  .d.osc .ceja{ color:#7dd3fc; }
-  .d.osc h1,.d.osc h2{ color:#fff; }
-  .d.osc .pie{ color:#64748b; border-top-color:#1e293b; }
+  .pag { page-break-after: always; }
+  .pag:last-child { page-break-after: auto; }
 
-  .ceja{ font-size:22px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
-         color:var(--cyan); margin-bottom:26px; }
-  h1{ font-size:96px; font-weight:800; letter-spacing:-.025em; line-height:1.02; }
-  h2{ font-size:74px; font-weight:800; letter-spacing:-.022em; line-height:1.08; margin-bottom:34px; }
-  h2 em{ font-style:normal; color:var(--cyan); }
-  .d.osc h2 em{ color:#38bdf8; }
-  p{ font-size:36px; line-height:1.5; color:var(--muted); max-width:1500px; }
-  .d.osc p{ color:#cbd5e1; }
-  .lead{ font-size:42px; line-height:1.45; color:var(--texto); }
-  .d.osc .lead{ color:#e2e8f0; }
-  b,strong{ color:var(--texto); font-weight:700; }
-  .d.osc b,.d.osc strong{ color:#fff; }
+  .portada { height: 258mm; display: flex; flex-direction: column; justify-content: center; }
+  .placa {
+    display: inline-block; background: #FFD100; color: #0f172a;
+    border: 3px solid #0f172a; border-radius: 8px;
+    padding: 8px 22px; font-size: 26pt; font-weight: 800; letter-spacing: 3px;
+  }
+  .portada h1 { font-size: 40pt; margin: 26px 0 6px; line-height: 1.05; }
+  .portada .sub { font-size: 16pt; color: #334155; margin: 0 0 4px; }
+  .portada .fecha { font-size: 12pt; color: #64748b; margin-top: 22px; }
+  .aviso {
+    margin-top: 34px; background: #fef3c7; border-left: 6px solid #f59e0b;
+    padding: 14px 18px; font-size: 11.5pt; color: #78350f;
+  }
 
-  .pie{ position:absolute; left:120px; right:120px; bottom:46px; display:flex;
-        justify-content:space-between; font-size:21px; color:var(--faint);
-        border-top:1px solid var(--line); padding-top:16px; }
-
-  .cols{ display:flex; gap:64px; align-items:flex-start; }
-  .txt{ flex:0 0 880px; }
-  .fig{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
-  .cap{ font-size:20px; color:var(--faint); text-align:center; }
-
-  .tarjetas{ display:flex; gap:26px; flex-wrap:wrap; margin-top:12px; }
-  .t{ flex:1 1 380px; background:#fff; border:1px solid var(--line); border-radius:20px;
-      padding:30px 32px; box-shadow:0 2px 10px rgba(15,23,42,.05); }
-  .t h3{ font-size:34px; font-weight:700; margin-bottom:12px; }
-  .t p{ font-size:28px; line-height:1.42; }
-  .num{ display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px;
-        border-radius:999px; background:var(--cyan); color:#fff; font-size:30px; font-weight:800;
-        margin-bottom:16px; flex-shrink:0; }
-  .num.g{ background:var(--ok); } .num.a{ background:var(--warn); } .num.r{ background:var(--bad); }
-
-  ol.pasos{ list-style:none; margin-top:10px; }
-  ol.pasos li{ display:flex; gap:24px; align-items:flex-start; margin-bottom:26px; font-size:36px; line-height:1.42; color:var(--muted); }
-  ol.pasos li .num{ margin-bottom:0; width:50px; height:50px; font-size:27px; }
-  ul.lista{ list-style:none; margin-top:8px; }
-  ul.lista li{ font-size:34px; line-height:1.5; color:var(--muted); margin-bottom:18px; padding-left:38px; position:relative; }
-  ul.lista li::before{ content:""; position:absolute; left:0; top:16px; width:16px; height:16px; border-radius:4px; background:var(--cyan); }
-  ul.lista.mal li::before{ background:var(--bad); }
-  ul.lista.bien li::before{ background:var(--ok); }
-
-  .caja{ border-radius:18px; padding:28px 32px; font-size:32px; line-height:1.45; margin-top:26px; }
-  .caja b{ display:block; margin-bottom:6px; font-size:30px; letter-spacing:.02em; text-transform:uppercase; }
-  .caja.ok{ background:var(--ok-soft); border:1px solid var(--ok-line); color:var(--ok); }
-  .caja.ok b, .caja.ok strong{ color:var(--ok); }
-  .caja.warn{ background:var(--warn-soft); border:1px solid var(--warn-line); color:var(--warn); }
-  .caja.warn b, .caja.warn strong{ color:var(--warn); }
-  .caja.bad{ background:var(--bad-soft); border:1px solid var(--bad-line); color:var(--bad); }
-  .caja.bad b, .caja.bad strong{ color:var(--bad); }
-
-  table{ border-collapse:collapse; width:100%; margin-top:18px; font-size:30px; }
-  th{ text-align:left; font-size:24px; text-transform:uppercase; letter-spacing:.08em;
-      color:var(--faint); font-weight:700; padding:0 20px 14px; border-bottom:2px solid var(--line); }
-  td{ padding:20px; border-bottom:1px solid var(--line); color:var(--muted); vertical-align:top; line-height:1.38; }
-  td b{ color:var(--texto); }
-  tr.neg td{ background:#fff7ed; }
-
-  /* El teléfono y la recreación de pantalla */
-  .tel{ width:430px; border-radius:42px; background:#0b1220; padding:16px;
-        box-shadow:0 22px 50px rgba(15,23,42,.30); }
-  .tel .scr{ background:#0f172a; border-radius:30px; overflow:hidden; color:#e2e8f0;
-             font-size:17px; padding:18px 16px; min-height:520px; }
-  .scr .top{ font-size:19px; font-weight:700; color:#fff; margin-bottom:14px; }
-  .panel{ border-radius:14px; padding:16px; margin-bottom:12px; }
-  .panel.warn{ background:#3f2d0b; border:1px solid #a16207; color:#fde68a; }
-  .panel.okp{ background:#052e16; border:1px solid #15803d; color:#bbf7d0; }
-  .panel.cardp{ background:#1e293b; border:1px solid #334155; }
-  .btn{ display:block; border-radius:10px; padding:12px 14px; font-weight:700;
-        text-align:center; font-size:17px; margin-top:10px; }
-  .btn.verde{ background:#16a34a; color:#fff; }
-  .btn.azul{ background:#0284c7; color:#fff; }
-  .btn.gris{ background:#334155; color:#cbd5e1; }
-  .btn.morado{ background:#7c3aed; color:#fff; }
-  .btn.borde{ background:transparent; border:1px solid #475569; color:#cbd5e1; }
-  .fila{ display:flex; justify-content:space-between; font-size:17px; padding:7px 0; }
-  .fila .v{ font-weight:700; }
-  .v.ok{ color:#4ade80; } .v.bad{ color:#f87171; }
-  .chip{ display:inline-block; border-radius:999px; padding:4px 12px; font-size:13px; font-weight:700; }
-  .chip.warn{ background:#78350f; color:#fde68a; } .chip.gris{ background:#334155; color:#cbd5e1; }
-  .placa{ display:inline-block; background:var(--placa); color:#0f172a; font-weight:800;
-          border-radius:6px; padding:4px 12px; font-size:16px; letter-spacing:.06em; border:2px solid #0f172a; }
-  .marca{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px;
-          border-radius:999px; background:#f97316; color:#fff; font-size:20px; font-weight:800;
-          box-shadow:0 0 0 4px rgba(249,115,22,.25); }
-
-  .gigante{ font-size:130px; font-weight:800; line-height:1.05; letter-spacing:-.03em; }
-  .cifra{ font-size:96px; font-weight:800; color:var(--cyan); letter-spacing:-.03em; }
-  .d.osc .cifra{ color:#38bdf8; }
-  .mini{ font-size:26px; color:var(--faint); }
+  h2 {
+    font-size: 20pt; margin: 0 0 2px; color: #0f172a;
+    border-bottom: 3px solid #FFD100; padding-bottom: 6px;
+  }
+  h2 .paso { font-size: 11pt; color: #0284c7; display: block; font-weight: 700;
+             letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
+  h3 { font-size: 14pt; margin: 18px 0 6px; color: #0f172a; }
+  .paraque {
+    background: #e0f2fe; border-left: 6px solid #0284c7;
+    padding: 9px 14px; margin: 12px 0 14px; font-size: 12pt; color: #075985;
+  }
+  .fila { display: flex; gap: 14px; align-items: flex-start; }
+  .fila img {
+    width: 64mm; border: 1.5px solid #cbd5e1; border-radius: 10px; flex-shrink: 0;
+  }
+  .fila.angosta img { width: 54mm; }
+  .fila .texto { flex: 1; min-width: 0; }
+  ol.notas { margin: 0; padding-left: 20px; }
+  ol.notas li { margin-bottom: 9px; }
+  ul.simple { margin: 6px 0; padding-left: 20px; }
+  ul.simple li { margin-bottom: 6px; }
+  b.res { background: #fef3c7; padding: 0 3px; }
+  .boton { background:#0f172a; color:#fff; border-radius:5px; padding:1px 7px;
+           font-size:11pt; font-weight:600; white-space:nowrap; }
+  .ojo {
+    background: #fee2e2; border-left: 6px solid #dc2626;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #7f1d1d;
+  }
+  .bien {
+    background: #dcfce7; border-left: 6px solid #16a34a;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #14532d;
+  }
+  table.reglas { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11.5pt; }
+  table.reglas td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+  table.reglas td.n {
+    width: 28px; text-align: center; font-weight: 800; background: #0f172a; color: #fff;
+  }
+  table.reglas th { border:1px solid #cbd5e1; padding:8px 10px; background:#f1f5f9;
+                    text-align:left; font-size:11pt; }
+  .indice li { margin-bottom: 7px; font-size: 13pt; }
+  .pie { margin-top: 20px; font-size: 10.5pt; color: #64748b; }
+  .granfrase { font-size: 26pt; line-height:1.2; font-weight: 800; margin: 26px 0 18px; }
+  .granfrase span { color:#0284c7; }
+  .cap { font-size: 9.5pt; color:#64748b; margin-top:5px; text-align:center; width:64mm; }
 </style>
 </head>
 <body>
 
-<!-- 1 · PORTADA -->
-<div class="d osc">
-  <div class="ceja">Club Moteros Cartagena · MotoGestión</div>
-  <h1>Cómo hacer<br>una <em>liquidación</em></h1>
-  <p class="lead" style="margin-top:40px; max-width:1180px;">
-    Cerrar la cuenta de un cliente que entrega la moto:<br>
-    qué le queda a favor, qué debe, y cómo queda el papel firmado.
-  </p>
-  <div style="margin-top:72px; display:flex; gap:20px; flex-wrap:wrap;">
-    <span class="chip gris" style="font-size:24px; padding:12px 26px;">Secretaria</span>
-    <span class="chip gris" style="font-size:24px; padding:12px 26px;">Administrador</span>
-    <span class="chip gris" style="font-size:24px; padding:12px 26px;">Administrador principal</span>
-  </div>
-  <div style="position:absolute; right:120px; bottom:110px; text-align:right;">
-    <div class="placa" style="font-size:34px; padding:10px 26px;">DQL76I</div>
-    <div class="mini" style="color:#64748b; margin-top:16px;">Septiembre de 2026 · versión 1</div>
-  </div>
-</div>
+<!-- ═══════════════ PORTADA ═══════════════ -->
+<section class="pag portada">
+  <div><span class="placa">MOTOGESTIÓN</span></div>
+  <h1>Cómo hacer<br>una liquidación</h1>
+  <p class="sub">Cerrar la cuenta de un cliente que entrega la moto.</p>
+  <p class="sub">Club de Moteros — Cartagena</p>
+  <p class="fecha">24 de septiembre de 2026 · Versión 1</p>
 
-<!-- 2 · QUÉ ES -->
-<div class="d">
-  <div class="ceja">Antes de empezar</div>
-  <h2>Una liquidación es <em>cerrar la cuenta</em></h2>
-  <p class="lead" style="max-width:1400px;">
-    El cliente entrega la moto. Hay que decirle, con un papel firmado,
-    <b>cuánto le queda a favor o cuánto debe</b> — y dejar el contrato, la moto y su ficha
-    en orden.
-  </p>
-  <div class="tarjetas" style="margin-top:56px;">
-    <div class="t"><div class="num">1</div><h3>Se suma lo que es de él</h3>
-      <p>Su ahorro, lo que puso de base, y lo que pagó por adelantado y no alcanzó a usar.</p></div>
-    <div class="t"><div class="num r">2</div><h3>Se resta lo que debe</h3>
-      <p>Deudas registradas, el saldo del convenio y los daños de la moto.</p></div>
-    <div class="t"><div class="num g">3</div><h3>Queda un saldo</h3>
-      <p>A favor de él, o en contra. Ese número es el que firma.</p></div>
+  <div class="aviso">
+    <b>Este manual es interno.</b><br>
+    Las fotos son de la aplicación de verdad, con clientes de verdad y plata de verdad.
+    No lo comparta con nadie de afuera de la empresa.
   </div>
-  <div class="caja ok"><b>Tranquilo</b>
-    El sistema hace la cuenta solo. Tu trabajo es que <b>los datos que entran sean los correctos</b> —
-    sobre todo la fecha en que recibiste la moto.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>2</span></div>
-</div>
+</section>
 
-<!-- 3 · LOS 3 MOTIVOS -->
-<div class="d">
-  <div class="ceja">Lo primero que se elige</div>
-  <h2>Hay <em>tres motivos</em>, y cada uno termina distinto</h2>
-  <table>
-    <tr><th style="width:320px">Motivo</th><th>Cuándo se usa</th><th style="width:420px">Cómo queda todo al final</th></tr>
-    <tr><td><b>Retiro voluntario</b></td>
-        <td>El cliente decide entregar la moto y se va, o va a cambiar de moto.</td>
-        <td>Contrato <b>Finalizado</b> · moto <b>Disponible</b> · cliente <b>Retirado</b></td></tr>
-    <tr><td><b>Incumplimiento</b></td>
-        <td>No pagó y hubo que recogerle la moto.</td>
-        <td>Contrato <b>Cancelado</b> · moto <b>Disponible</b> · cliente <b>Retirado</b></td></tr>
-    <tr class="neg"><td><b>Cumplimiento</b></td>
-        <td>Pagó todas sus semanas. <b>La moto pasa a ser de él.</b></td>
-        <td>Moto <b>En traspaso</b> · cliente <b>Egresado</b> · sale el <b>Paz y Salvo</b></td></tr>
-  </table>
-  <div class="caja warn"><b>Ojo con esto</b>
-    Elegir <b>«Cumplimiento»</b> por error <b>le regala la moto al cliente</b>. Solo va ahí el que
-    terminó de pagar de verdad. Si tienes duda, <b>pregunta antes de cerrar</b>.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>3</span></div>
-</div>
+<!-- ═══════════════ ANTES DE EMPEZAR ═══════════════ -->
+<section class="pag">
+  <h2>Antes de empezar</h2>
 
-<!-- 4 · QUÉ ENTRA EN LA CUENTA -->
-<div class="d">
-  <div class="ceja">La cuenta por dentro</div>
-  <h2>Qué entra <em>a favor</em> y qué entra <em>en contra</em></h2>
-  <div class="cols" style="gap:48px; margin-top:16px;">
-    <div style="flex:1;">
-      <div class="caja ok" style="margin-top:0;"><b>A favor del cliente</b></div>
-      <ul class="lista bien" style="margin-top:26px;">
-        <li><b>Su ahorro</b> — los $26.000 que deja cada semana pagada</li>
-        <li><b>Lo que viene de su base inicial</b> — lo que puso al empezar, menos la semana adelantada</li>
-        <li><b>Pagó adelantado y no alcanzó a usar</b> — si entregó la moto a mitad de semana</li>
-        <li><b>Saldo a favor</b>, si tenía</li>
-      </ul>
-    </div>
-    <div style="flex:1;">
-      <div class="caja bad" style="margin-top:0;"><b>En contra del cliente</b></div>
-      <ul class="lista mal" style="margin-top:26px;">
-        <li><b>Días que rodó y no pagó</b></li>
-        <li><b>Deudas registradas</b> — multas, lavada, alquiler de moto prestada</li>
-        <li><b>Saldo del convenio</b>, si tenía uno activo</li>
-        <li><b>Daños de la moto</b> — lo que escribas tú, no lo que costó el taller</li>
-      </ul>
-    </div>
+  <div class="paraque">
+    Una liquidación es <b>cerrar la cuenta</b> de un cliente que entrega la moto.
+    Se le dice, con un papel firmado, <b>cuánto le queda a favor o cuánto debe</b>.
   </div>
-  <div class="caja warn"><b>No confundas dos cosas</b>
-    El <b>costo del taller</b> es lo que gastó la empresa. Los <b>daños</b> son lo que se le cobra
-    al cliente. <b>No son el mismo número</b>, y el sistema no los mezcla a propósito.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>4</span></div>
-</div>
 
-<!-- 5 · LO MÁS IMPORTANTE -->
-<div class="d osc">
-  <div class="ceja">Lo más importante de todo</div>
-  <div style="display:flex; align-items:center; height:720px;">
-    <div style="max-width:1450px;">
-      <div class="gigante">La fecha en que<br>recibiste la moto<br><em style="color:#38bdf8; font-style:normal;">manda sobre todo.</em></div>
-      <p class="lead" style="margin-top:48px; max-width:1350px;">
-        Todo se cuenta hasta ese día. Los días que la moto lleva en la bodega
-        <b>no se le cobran al cliente</b>.
-      </p>
-      <div class="caja warn" style="background:#422006; border-color:#a16207; color:#fde68a; max-width:1350px;">
-        <b>Caso real · septiembre de 2026</b>
-        Una liquidación se hizo con la fecha de hoy en vez de la del lunes que el cliente trajo la moto.
-        Tres días de diferencia: el saldo pasó de <b style="color:#fde68a">+$157.000</b> a
-        <b style="color:#fde68a">+$64.000</b>. <b style="color:#fde68a">$93.000 menos para el cliente.</b>
-      </div>
-    </div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>5</span></div>
-</div>
+  <h3>Quién la hace</h3>
+  <p>La secretaria, el administrador o el administrador principal. El mecánico hace su parte:
+    revisar la moto.</p>
 
-<!-- 6 · LOS 8 PASOS -->
-<div class="d">
-  <div class="ceja">El camino completo</div>
-  <h2>La liquidación, <em>en ocho pasos</em></h2>
-  <div class="tarjetas" style="margin-top:34px;">
-    <div class="t" style="flex:1 1 330px"><div class="num">1</div><h3>Recibir la moto</h3><p>Con las 6 fotos y el kilometraje.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num">2</div><h3>Iniciar la liquidación</h3><p>Desde Contratos o Inmovilizaciones.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num">3</div><h3>Revisión del taller</h3><p>El mecánico dice cómo llegó.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num">4</div><h3>Daños y deudas</h3><p>Lo que se le va a cobrar.</p></div>
-  </div>
-  <div class="tarjetas" style="margin-top:26px;">
-    <div class="t" style="flex:1 1 330px"><div class="num">5</div><h3>Calcular</h3><p>Sale el saldo. Léelo con calma.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num">6</div><h3>Generar el documento</h3><p>El papel que se le muestra.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num g">7</div><h3>Que firme</h3><p>En pantalla, con su huella.</p></div>
-    <div class="t" style="flex:1 1 330px"><div class="num g">8</div><h3>Cerrar</h3><p>Ahí se mueve todo lo demás.</p></div>
-  </div>
-  <div class="caja ok"><b>Se puede parar en cualquier punto</b>
-    Nada se pierde. La liquidación queda guardada donde la dejaste y la sigues después —
-    la barra de arriba te dice siempre en qué paso vas.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>6</span></div>
-</div>
-
-<!-- 7 · PASO 1 · RECIBIR -->
-<div class="d">
-  <div class="ceja">Paso 1 · el que más plata mueve</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Recibe la moto <em>el mismo día</em></h2>
-      <ol class="pasos">
-        <li><span class="num">1</span><div>En <b>Motos</b>, toca <b>«Registrar novedad»</b> y elige por qué llega.</div></li>
-        <li><span class="num">2</span><div>Toma las <b>6 fotos</b>: frente, lado izquierdo, arriba, lado derecho, atrás, y <b>la persona al lado de la moto</b>.</div></li>
-        <li><span class="num">3</span><div>Escribe el <b>kilometraje</b> y en qué condición llegó.</div></li>
-      </ol>
-      <div class="caja bad"><b>Por qué importa tanto</b>
-        <b>De aquí sale la fecha de corte.</b> Si registras el viernes una moto que llegó el lunes,
-        le cobras al cliente cuatro días que no tuvo la moto.</div>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">Registrar novedad</div>
-        <div class="panel cardp">
-          <div style="font-size:15px; color:#94a3b8; margin-bottom:8px;">6 fotos obligatorias</div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:22px">&check;</div>
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:22px">&check;</div>
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:22px">&check;</div>
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:22px">&check;</div>
-            <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:22px">&check;</div>
-            <div style="background:#0f172a;border:2px solid #f97316;border-radius:8px;height:62px;display:flex;align-items:center;justify-content:center;color:#f97316;font-size:13px;text-align:center;line-height:1.2">Persona<br>+ moto</div>
-          </div>
-        </div>
-        <div class="panel cardp">
-          <div class="fila"><span>Kilometraje</span><span class="v">17.467</span></div>
-          <div class="fila"><span>Condición</span><span class="v">Buena</span></div>
-          <div class="fila" style="border-top:1px solid #334155;margin-top:6px;padding-top:12px">
-            <span style="color:#fbbf24">Fecha de recibo</span><span class="v" style="color:#fbbf24">Lunes 21</span></div>
-        </div>
-        <div class="btn verde">Guardar recepción</div>
-      </div></div>
-      <div class="cap">Recreación de la pantalla real, hecha para este manual.</div>
-    </div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>7</span></div>
-</div>
-
-<!-- 8 · PASO 2 · INICIAR -->
-<div class="d">
-  <div class="ceja">Paso 2</div>
-  <h2>Inicia la liquidación <em>desde el contrato</em></h2>
-  <p class="lead" style="max-width:1450px;">Hay dos puertas, y las dos llegan al mismo lado:</p>
-  <div class="tarjetas" style="margin-top:36px;">
-    <div class="t"><div class="num">A</div><h3>Desde Contratos</h3>
-      <p>Busca el contrato y toca <b>«Iniciar liquidación»</b>. Es la puerta normal.</p></div>
-    <div class="t"><div class="num">B</div><h3>Desde Inmovilizaciones</h3>
-      <p>Si la moto está retenida, ahí mismo está el botón <b>«Iniciar liquidación»</b>.</p></div>
-  </div>
-  <p class="lead" style="margin-top:44px;">Al iniciarla, el sistema hace tres cosas solo:</p>
-  <ul class="lista" style="margin-top:20px;">
-    <li>Crea la <b>orden de taller</b> para que el mecánico revise la moto</li>
-    <li>Trae las <b>deudas que el cliente ya tenía registradas</b></li>
-    <li>Le pone un número: <b>LIQ-0074</b>, y ese número la acompaña hasta el final</li>
+  <h3>Cómo está armado este manual</h3>
+  <ul class="simple">
+    <li>A la izquierda, <b>la foto de la pantalla</b> tal como se ve en el celular.</li>
+    <li>A la derecha, <b>los números</b> que explican qué es cada cosa.</li>
   </ul>
-  <div class="caja warn"><b>Si te equivocaste de contrato</b>
-    No la dejes ahí: un contrato con una liquidación abierta <b>no deja empezar otra</b>.
-    Abajo del todo hay un botón gris — <b>«Se inició por error — anular esta liquidación»</b>.
-    No se borra: queda el rastro de quién la anuló y por qué.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>8</span></div>
-</div>
 
-<!-- 9 · PASO 3 · TALLER -->
-<div class="d">
-  <div class="ceja">Paso 3</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Espera la <em>revisión del taller</em></h2>
-      <p>El mecánico revisa la moto en su propia pantalla. Lo que él escriba
-        <b>llega solo</b> a la liquidación: no tienes que copiarlo.</p>
-      <div class="caja ok"><b>Cuando ya terminó</b>
-        Sale <b>«El mecánico ya terminó la revisión»</b> y su texto aparece abajo, listo para
-        que lo revises y le agregues lo que falte.</div>
-      <div class="caja warn"><b>Cuando todavía no</b>
-        Sale <b>«El mecánico aún no termina»</b> y te dice en qué va.
-        Puedes seguir, pero lo normal es esperarlo: él es quien ve los daños.</div>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">LIQ-0074 · Revisión</div>
-        <div class="panel okp">
-          <b>&check; El mecánico ya terminó la revisión.</b><br>
-          <span style="font-size:15px">Lo que él escribió ya está abajo — revísalo y complétalo si hace falta.</span>
-        </div>
-        <div class="panel cardp">
-          <div style="font-size:14px;color:#94a3b8;margin-bottom:6px">Observaciones del taller</div>
-          <div style="font-size:15px;line-height:1.4">Llega con sonido en el motor. Cambio de aceite y filtro.
-            Llanta trasera al límite.</div>
-        </div>
-        <div class="panel cardp">
-          <div style="font-size:14px;color:#94a3b8;margin-bottom:8px">Daños que se le cobran</div>
-          <div class="fila"><span>Llanta trasera</span><span class="v bad">$ 120.000</span></div>
-          <div class="btn borde" style="margin-top:8px">+ Agregar daño</div>
-        </div>
-        <div class="btn morado">Registrar revisión y calcular</div>
-      </div></div>
-      <div class="cap">Recreación de la pantalla real, hecha para este manual.</div>
-    </div>
+  <div class="bien">
+    <b>Se puede parar en cualquier punto.</b><br>
+    Nada se pierde. La liquidación queda guardada donde la dejó y la sigue después.
+    Arriba siempre hay una barra de seis bolitas que dice en qué paso va.
   </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>9</span></div>
-</div>
 
-<!-- 10 · PASO 4 · DAÑOS Y DEUDAS -->
-<div class="d">
-  <div class="ceja">Paso 4</div>
-  <h2>Escribe los <em>daños</em> y revisa las <em>deudas</em></h2>
-  <div class="cols" style="gap:48px;">
-    <div style="flex:1;">
-      <h3 style="font-size:40px; margin-bottom:18px;">Los daños</h3>
-      <p>Los escribes tú, uno por uno, con su valor. Es lo que se le cobra al cliente
-        por cómo entregó la moto.</p>
-      <div class="caja bad" style="font-size:30px;"><b>No copies el costo del taller</b>
-        El aceite y los frenos los asume la empresa. Al cliente se le cobra el daño,
-        no el mantenimiento.</div>
-    </div>
-    <div style="flex:1;">
-      <h3 style="font-size:40px; margin-bottom:18px;">Las deudas</h3>
-      <p>Llegan solas: multas, lavada, alquiler de una moto prestada, tarifas atrasadas.
-        Revísalas y quita la que no corresponda.</p>
-      <div class="caja ok" style="font-size:30px;"><b>Las del convenio no se repiten</b>
-        Una deuda que ya está dentro de un convenio <b>no se suma dos veces</b>:
-        entra una sola vez, con el convenio.</div>
-    </div>
-  </div>
-  <div class="caja warn"><b>Antes de calcular, revisa la fecha</b>
-    Arriba del formulario está <b>la fecha en que se recibió la moto</b>. Si no es la correcta,
-    <b>no sigas</b>: arréglala primero. Después de cerrar es mucho más difícil.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>10</span></div>
-</div>
+  <h3>Lo que va a encontrar</h3>
+  <ol class="indice">
+    <li>Los tres motivos, y en qué termina cada uno</li>
+    <li>La fecha en que recibió la moto: lo más importante de todo</li>
+    <li>Paso 1 — Recibir la moto</li>
+    <li>Paso 2 — Iniciar la liquidación</li>
+    <li>Paso 3 — La revisión del taller</li>
+    <li>Paso 4 — Calcular la cuenta</li>
+    <li>Paso 5 — Generar el documento</li>
+    <li>Paso 6 — Que el cliente firme</li>
+    <li>Si el cliente no puede venir a firmar</li>
+    <li>Paso 7 — Cerrar</li>
+    <li>Cuando el cliente llega después a firmar</li>
+    <li>Lo que nunca se hace</li>
+    <li>Si algo se ve raro</li>
+    <li>La liquidación en una hoja</li>
+  </ol>
+</section>
 
-<!-- 11 · PASO 5 · CALCULAR -->
-<div class="d">
-  <div class="ceja">Paso 5</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Toca <em>«Registrar revisión y calcular»</em></h2>
-      <p>Sale la cuenta completa, en tres bloques. <b>Léela con el cliente al lado.</b></p>
-      <ol class="pasos" style="margin-top:30px;">
-        <li><span class="num g">1</span><div><b>A favor</b> — su ahorro y lo que prepagó</div></li>
-        <li><span class="num r">2</span><div><b>En contra</b> — deudas, convenio y daños</div></li>
-        <li><span class="num">3</span><div><b>Saldo final</b> — el número que se firma</div></li>
-      </ol>
-      <div class="caja bad"><b>Si el número te extraña, para</b>
-        Un saldo que no cuadra casi siempre es la <b>fecha de recibo</b> equivocada
-        o un <b>daño mal escrito</b>. Es más fácil arreglarlo ahora que después de cerrar.</div>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">LIQ-0074 · La cuenta</div>
-        <div class="panel cardp">
-          <div style="font-size:14px;color:#4ade80;margin-bottom:8px;font-weight:700">A FAVOR DEL CLIENTE</div>
-          <div class="fila"><span>Ahorro que ganó pagando</span><span class="v ok">$ 40.000</span></div>
-          <div class="fila"><span>Pagó adelantado y no usó</span><span class="v ok">$ 171.000</span></div>
-        </div>
-        <div class="panel cardp">
-          <div style="font-size:14px;color:#f87171;margin-bottom:8px;font-weight:700">EN CONTRA</div>
-          <div class="fila"><span>Alquiler moto prestada</span><span class="v bad">$ 54.000</span></div>
-        </div>
-        <div class="panel okp" style="text-align:center">
-          <div style="font-size:14px">SALDO FINAL</div>
-          <div style="font-size:30px;font-weight:800;color:#4ade80;margin-top:4px">+ $ 157.000</div>
-          <div style="font-size:14px;margin-top:4px">a favor del cliente</div>
-        </div>
-        <div class="btn morado">Generar documento de liquidación</div>
-      </div></div>
-      <div class="cap">Recreación con las cifras reales de un caso de septiembre. Nombre cambiado.</div>
-    </div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>11</span></div>
-</div>
+<!-- ═══════════════ LOS TRES MOTIVOS ═══════════════ -->
+<section class="pag">
+  <h2>1 · Los tres motivos</h2>
 
-<!-- 12 · PASO 6 · DOCUMENTO -->
-<div class="d">
-  <div class="ceja">Paso 6</div>
-  <h2>Genera el <em>documento</em></h2>
-  <p class="lead" style="max-width:1450px;">Te pide dos datos, y son de la empresa, no del cliente:</p>
-  <div class="tarjetas" style="margin-top:36px;">
-    <div class="t"><div class="num">1</div><h3>Nombre del responsable</h3>
-      <p>Quién firma por la empresa. Normalmente tú.</p></div>
-    <div class="t"><div class="num">2</div><h3>Cargo</h3>
-      <p>«Secretaria», «Administrador». Sale impreso en el documento.</p></div>
+  <div class="paraque">
+    Lo primero que se elige. <b>El motivo decide dónde termina la moto y dónde termina el cliente.</b>
   </div>
-  <p class="lead" style="margin-top:46px;">
-    Toca <b>«Generar documento de liquidación»</b> y ya tienes el papel con toda la cuenta.
-  </p>
-  <div class="caja ok"><b>¿Te equivocaste en un número?</b>
-    En este paso todavía puedes <b>volver a calcular</b>: el botón está arriba del documento.
-    Después de que firme, ya no.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>12</span></div>
-</div>
 
-<!-- 13 · PASO 7 · FIRMA -->
-<div class="d">
-  <div class="ceja">Paso 7 · el respaldo de todo</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Que firme <em>en pantalla</em></h2>
-      <p>Es la forma normal y la mejor: queda la firma, la huella y el documento
-        en un solo archivo.</p>
-      <ol class="pasos" style="margin-top:28px;">
-        <li><span class="num">1</span><div><b>Muéstrale la cuenta.</b> Sale marcada como copia de revisión, para que la lea con calma.</div></li>
-        <li><span class="num">2</span><div>Marca <b>«El cliente ya revisó la cuenta y está de acuerdo»</b>.</div></li>
-        <li><span class="num">3</span><div><b>Firma con el dedo</b> y <b>huella con el lector</b>.</div></li>
-      </ol>
-      <div class="caja warn"><b>La huella se compara sola</b>
-        El sistema le muestra al lado <b>la huella que dejó cuando se registró</b>,
-        para que veas que es la misma persona.</div>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">Firmar liquidación</div>
-        <div style="font-size:14px;color:#94a3b8;margin-bottom:10px">LIQ-0074 · MARIO GÓMEZ · <span class="placa" style="font-size:12px;padding:2px 8px">ABC12D</span></div>
-        <div class="panel warn" style="font-size:14px">
-          Esta es una copia de revisión. Todavía <b>NO está firmada</b> y no tiene valor.
-          Léala con calma: si algo no le cuadra, dígalo antes de firmar.
-        </div>
-        <div class="panel cardp" style="text-align:center;padding:22px">
-          <div style="font-size:14px;color:#94a3b8">Firme aquí con el dedo</div>
-          <div style="border-bottom:2px solid #475569;height:56px;margin:12px 20px 6px"></div>
-          <div style="font-size:13px;color:#64748b">MARIO GÓMEZ · C.C. 1.0xx.xxx</div>
-        </div>
-        <div class="btn verde">Firmar en pantalla (firma + huella)</div>
-      </div></div>
-      <div class="cap">Recreación de la pantalla real. Cliente de ejemplo.</div>
-    </div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>13</span></div>
-</div>
-
-<!-- 14 · SI NO SE PUEDE FIRMAR EN PANTALLA -->
-<div class="d">
-  <div class="ceja">Paso 7 · el plan B</div>
-  <h2>Si el lector falla o <em>prefiere el papel</em></h2>
-  <p class="lead" style="max-width:1450px;">Justo debajo del botón verde tienes cuatro salidas:</p>
-  <div class="tarjetas" style="margin-top:36px;">
-    <div class="t" style="flex:1 1 330px"><h3>Imprimir documento</h3>
-      <p>Sale el papel listo para que lo firme a mano.</p></div>
-    <div class="t" style="flex:1 1 330px"><h3>Descargar para enviar</h3>
-      <p>Un PDF para mandarle por WhatsApp al que no puede venir.</p></div>
-    <div class="t" style="flex:1 1 330px"><h3>Cámara</h3>
-      <p>Le tomas la foto al papel ya firmado.</p></div>
-    <div class="t" style="flex:1 1 330px"><h3>Galería / PDF</h3>
-      <p>Si te lo devolvió firmado por WhatsApp.</p></div>
-  </div>
-  <div class="caja bad"><b>Nunca subas el documento sin firmar</b>
-    El sistema no puede mirar dentro del archivo: si subes el que está en blanco,
-    queda <b>dado por firmado</b> y la empresa se queda sin respaldo.
-    <b>Ya pasó una vez</b>, y hubo que devolver la liquidación para arreglarlo.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>14</span></div>
-</div>
-
-<!-- 15 · PASO 8 · CERRAR -->
-<div class="d">
-  <div class="ceja">Paso 8 · el último</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Toca <em>«Confirmar cierre de liquidación»</em></h2>
-      <p>Con esto se mueve todo lo demás, <b>de una sola vez</b>:</p>
-      <ul class="lista" style="margin-top:24px;">
-        <li>El <b>contrato</b> queda Finalizado o Cancelado, según el motivo</li>
-        <li>La <b>moto</b> queda Disponible (o En traspaso, si fue cumplimiento)</li>
-        <li>Las <b>deudas y el convenio</b> quedan saldados contra su ahorro</li>
-        <li>Si no alcanzó, <b>lo que falta queda como una deuda</b> para cobrársela si vuelve</li>
-        <li>Si quedó debiendo, entra a <b>lista negra</b> automáticamente</li>
-      </ul>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">Confirmar cierre</div>
-        <div class="panel cardp">
-          <div class="fila"><span>Contrato</span><span class="v">Finalizado</span></div>
-          <div class="fila"><span>Moto <span class="placa" style="font-size:12px;padding:2px 8px">ABC12D</span></span><span class="v">Disponible</span></div>
-          <div class="fila"><span>Cliente</span><span class="v">Retirado</span></div>
-        </div>
-        <div class="panel cardp" style="border-color:#0284c7">
-          <div style="display:flex;gap:10px;align-items:flex-start">
-            <div style="width:20px;height:20px;border:2px solid #38bdf8;border-radius:5px;flex-shrink:0;margin-top:2px"></div>
-            <div style="font-size:15px;line-height:1.35">Sigue con la empresa — hará cambio a otra moto</div>
-          </div>
-        </div>
-        <div class="btn verde">Confirmar cierre de liquidación</div>
-      </div></div>
-      <div class="cap">Recreación de la pantalla real. Placa de ejemplo.</div>
-    </div>
-  </div>
-  <div class="caja bad" style="margin-top:20px;"><b>Es el punto sin retorno</b>
-    Después de cerrar, las cifras <b>no se cambian desde la pantalla</b>.
-    Revisa el saldo y la fecha una última vez.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>15</span></div>
-</div>
-
-<!-- 16 · SIGUE CON LA EMPRESA -->
-<div class="d">
-  <div class="ceja">El caso más importante</div>
-  <h2>Si el cliente <em>sigue con nosotros</em></h2>
-  <p class="lead" style="max-width:1500px;">
-    Se liquida la moto vieja para poder entregarle otra. <b>Marca la casilla</b>
-    <b>«Sigue con la empresa — hará cambio a otra moto»</b> y su plata <b>viaja sola</b> al contrato nuevo.
-  </p>
-  <div class="tarjetas" style="margin-top:44px;">
-    <div class="t"><div class="num g">1</div><h3>Base para la moto nueva</h3>
-      <p>Lo que se le abona a los $510.000 de base del contrato nuevo.</p></div>
-    <div class="t"><div class="num">2</div><h3>A favor del contrato nuevo</h3>
-      <p>El resto queda como saldo a favor, para sus primeras cuotas.</p></div>
-    <div class="t"><div class="num a">3</div><h3>En efectivo</h3>
-      <p>Solo lo que él pida llevarse en la mano.</p></div>
-  </div>
-  <div class="caja ok"><b>Sin esta casilla, el cliente queda «Retirado»</b>
-    Y entonces <b>no aparece en el listado para hacerle el contrato nuevo</b>.
-    Si se te pasó, se puede arreglar — pero es mucho más trabajo. <b>Márcala antes de cerrar.</b></div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>16</span></div>
-</div>
-
-<!-- 17 · CERRAR SIN FIRMA -->
-<div class="d">
-  <div class="ceja">Cuando el cliente no puede venir</div>
-  <h2>Cerrar <em>sin firma</em> — cuándo se vale</h2>
-  <p class="lead" style="max-width:1500px;">
-    A veces la moto se necesita ya y el cliente no aparece. Para eso hay un botón aparte:
-    <b>«Cerrar sin firma — el cliente firma después»</b>.
-  </p>
-  <div class="cols" style="margin-top:40px; gap:48px;">
-    <div style="flex:1;">
-      <div class="caja ok" style="margin-top:0;"><b>Se vale cuando</b></div>
-      <ul class="lista bien" style="margin-top:24px;">
-        <li>La moto se necesita para otro cliente <b>hoy</b></li>
-        <li>Ya le mandaste el documento y quedó en devolverlo firmado</li>
-        <li>El cliente está lejos o no contesta hace días</li>
-      </ul>
-    </div>
-    <div style="flex:1;">
-      <div class="caja bad" style="margin-top:0;"><b>No se vale cuando</b></div>
-      <ul class="lista mal" style="margin-top:24px;">
-        <li>El cliente <b>está ahí mismo</b> — que firme en pantalla</li>
-        <li>Todavía no revisaste la fecha ni el saldo</li>
-        <li>Solo para salir del paso porque estás de afán</li>
-      </ul>
-    </div>
-  </div>
-  <div class="caja warn"><b>Queda marcada, no olvidada</b>
-    En la lista sale con un chip <b>«Falta firma»</b>, y adentro un aviso amarillo:
-    <b>«Liquidación cerrada — SIN FIRMA del cliente»</b>. No se pierde de vista.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>17</span></div>
-</div>
-
-<!-- 18 · FIRMA TARDÍA -->
-<div class="d">
-  <div class="ceja">Lo nuevo · septiembre de 2026</div>
-  <div class="cols">
-    <div class="txt">
-      <h2>Cuando llega <em>después</em> a firmar</h2>
-      <p>Abre su liquidación en la lista — la que tiene el chip <b>«Falta firma»</b> —
-        y en el aviso amarillo tienes las dos salidas:</p>
-      <ol class="pasos" style="margin-top:28px;">
-        <li><span class="num g">1</span><div><b>«Firmar en pantalla»</b> — si el cliente está ahí. Firma con el dedo y huella con el lector, igual que siempre.</div></li>
-        <li><span class="num">2</span><div><b>Cámara</b> o <b>Galería / PDF</b> — si te devolvió el papel firmado.</div></li>
-      </ol>
-      <div class="caja ok"><b>La cuenta no se toca</b>
-        Firmar después <b>no cambia ni un peso</b> ni mueve el contrato ni la moto.
-        La liquidación <b>sigue cerrada</b>: solo se le pega el papel que faltaba.</div>
-    </div>
-    <div class="fig">
-      <div class="tel"><div class="scr">
-        <div class="top">LIQ-0074</div>
-        <div style="text-align:right;margin-bottom:10px">
-          <span class="chip warn">Falta firma</span> <span class="chip gris">Cerrada</span></div>
-        <div class="panel cardp">
-          <div class="fila"><span>Ahorro acumulado</span><span class="v ok">$ 1.025.000</span></div>
-          <div class="fila"><span>Total deudas</span><span class="v bad">- $ 868.000</span></div>
-          <div class="fila" style="border-top:1px solid #334155;margin-top:6px;padding-top:12px">
-            <span style="font-weight:700">Saldo final</span><span class="v ok">$ 157.000</span></div>
-        </div>
-        <div class="panel warn" style="text-align:center">
-          <b style="font-size:16px">Liquidación cerrada — SIN FIRMA del cliente</b>
-          <div style="font-size:14px;margin-top:8px;line-height:1.35">El cierre ya se aplicó. Si el cliente
-            aparece y firma, queda completa.</div>
-          <div class="btn verde" style="margin-top:12px">Firmar en pantalla</div>
-          <div style="font-size:12px;margin-top:10px;color:#fbbf24">¿No puede venir? Sube la foto del papel firmado:</div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <div class="btn azul" style="flex:1;margin:0;font-size:14px">Cámara</div>
-            <div class="btn gris" style="flex:1;margin:0;font-size:14px">Galería / PDF</div>
-          </div>
-        </div>
-      </div></div>
-      <div class="cap">Recreación de la pantalla real. Cifras de ejemplo.</div>
-    </div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>18</span></div>
-</div>
-
-<!-- 19 · LO QUE NUNCA SE HACE -->
-<div class="d osc">
-  <div class="ceja" style="color:#fca5a5">Lo que nunca se hace</div>
-  <h2>Cinco cosas que <em style="color:#fca5a5">no se hacen</em> nunca</h2>
-  <div class="tarjetas" style="margin-top:40px;">
-    <div class="t" style="background:#1e293b;border-color:#334155;flex:1 1 440px">
-      <div class="num r">1</div><h3 style="color:#fff">Cerrar sin mirar la fecha</h3>
-      <p style="color:#cbd5e1">Cada día corrido son ~$31.000 del cliente.</p></div>
-    <div class="t" style="background:#1e293b;border-color:#334155;flex:1 1 440px">
-      <div class="num r">2</div><h3 style="color:#fff">Subir el documento en blanco</h3>
-      <p style="color:#cbd5e1">Queda «firmado» sin firma y la empresa sin respaldo.</p></div>
-    <div class="t" style="background:#1e293b;border-color:#334155;flex:1 1 440px">
-      <div class="num r">3</div><h3 style="color:#fff">Elegir «Cumplimiento» sin que haya pagado</h3>
-      <p style="color:#cbd5e1">Le regala la moto: pasa a «En traspaso».</p></div>
-  </div>
-  <div class="tarjetas" style="margin-top:26px;">
-    <div class="t" style="background:#1e293b;border-color:#334155;flex:1 1 440px">
-      <div class="num r">4</div><h3 style="color:#fff">Cobrarle el costo del taller</h3>
-      <p style="color:#cbd5e1">El mantenimiento lo asume la empresa. Solo los daños se cobran.</p></div>
-    <div class="t" style="background:#1e293b;border-color:#334155;flex:1 1 440px">
-      <div class="num r">5</div><h3 style="color:#fff">Prometerle un número antes de calcular</h3>
-      <p style="color:#cbd5e1">Primero sale la cuenta; después se le dice.</p></div>
-    <div class="t" style="background:#0f172a;border:none;flex:1 1 440px"></div>
-  </div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>19</span></div>
-</div>
-
-<!-- 20 · SI ALGO SE VE RARO -->
-<div class="d">
-  <div class="ceja">Si algo se ve raro</div>
-  <h2>Qué hacer cuando <em>algo no cuadra</em></h2>
-  <table>
-    <tr><th style="width:640px">Lo que ves</th><th>Qué hacer</th></tr>
-    <tr><td><b>La fecha de recibo está mal</b></td>
-        <td>No sigas. Avisa antes de calcular — después de cerrar es mucho más difícil.</td></tr>
-    <tr><td><b>El saldo te parece raro</b></td>
-        <td>Casi siempre es la fecha o un daño mal escrito. Vuelve a calcular y revisa renglón por renglón.</td></tr>
-    <tr><td><b>Dice «sin fecha registrada»</b></td>
-        <td>Nunca se registró la recepción de la moto. Regístrala primero, con la fecha real.</td></tr>
-    <tr><td><b>«Ya existe una liquidación en curso»</b></td>
-        <td>Búscala en la lista y continúala. Si se hizo sobre el contrato equivocado, anúlala.</td></tr>
-    <tr><td><b>El mecánico no ha terminado</b></td>
-        <td>Espéralo. Si es urgente, escribe tú los daños y déjalo anotado.</td></tr>
-    <tr><td><b>Quedó cerrada y sin firma</b></td>
-        <td>Cuando el cliente aparezca, ábrela y toca <b>«Firmar en pantalla»</b>.</td></tr>
-    <tr class="neg"><td><b>Quedó debiendo y pide Paz y Salvo</b></td>
-        <td>No se le da. El Paz y Salvo dice que no debe nada, y no es cierto.</td></tr>
+  <table class="reglas">
+    <tr><th style="width:34%">Motivo</th><th>Cuándo se usa</th></tr>
+    <tr>
+      <td><b>Retiro voluntario</b></td>
+      <td>El cliente decide entregar la moto. O va a cambiar de moto y sigue con nosotros.<br>
+        <span style="color:#475569">Contrato <b>Finalizado</b> · moto <b>Disponible</b></span></td>
+    </tr>
+    <tr>
+      <td><b>Incumplimiento</b></td>
+      <td>No pagó y hubo que recogerle la moto.<br>
+        <span style="color:#475569">Contrato <b>Cancelado</b> · moto <b>Disponible</b></span></td>
+    </tr>
+    <tr style="background:#fffbeb">
+      <td><b>Cumplimiento</b></td>
+      <td>Pagó todas sus semanas. <b>La moto pasa a ser de él.</b><br>
+        <span style="color:#475569">Moto <b>En traspaso</b> · cliente <b>Egresado</b> · sale el <b>Paz y Salvo</b></span></td>
+    </tr>
   </table>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>20</span></div>
-</div>
 
-<!-- 21 · EN UNA HOJA -->
-<div class="d">
-  <div class="ceja">Para imprimir y tener al lado</div>
-  <h2>La liquidación <em>en una hoja</em></h2>
-  <div style="margin-top:34px; columns:2; column-gap:80px;">
-    <div style="break-inside:avoid; margin-bottom:26px;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px">Antes de empezar</div>
-      <div style="font-size:31px;line-height:1.9;color:var(--muted)">
-        <div>&#9744; &nbsp;Recibí la moto con <b>6 fotos</b> y kilometraje</div>
-        <div>&#9744; &nbsp;La <b>fecha de recibo</b> es la real</div>
-        <div>&#9744; &nbsp;Elegí el <b>motivo</b> correcto</div>
-      </div>
-    </div>
-    <div style="break-inside:avoid; margin-bottom:26px;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px">La cuenta</div>
-      <div style="font-size:31px;line-height:1.9;color:var(--muted)">
-        <div>&#9744; &nbsp;El mecánico ya revisó</div>
-        <div>&#9744; &nbsp;Escribí los <b>daños</b> (no el costo del taller)</div>
-        <div>&#9744; &nbsp;Revisé las <b>deudas</b> que llegaron solas</div>
-        <div>&#9744; &nbsp;Calculé y <b>el saldo me cuadra</b></div>
-      </div>
-    </div>
-    <div style="break-inside:avoid; margin-bottom:26px;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px">El papel</div>
-      <div style="font-size:31px;line-height:1.9;color:var(--muted)">
-        <div>&#9744; &nbsp;Generé el documento</div>
-        <div>&#9744; &nbsp;<b>El cliente lo leyó</b> antes de firmar</div>
-        <div>&#9744; &nbsp;Firmó en pantalla, con huella</div>
-      </div>
-    </div>
-    <div style="break-inside:avoid;">
-      <div style="font-size:26px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px">Al cerrar</div>
-      <div style="font-size:31px;line-height:1.9;color:var(--muted)">
-        <div>&#9744; &nbsp;¿<b>Sigue con la empresa</b>? Marqué la casilla</div>
-        <div>&#9744; &nbsp;Repartí su saldo: base / a favor / efectivo</div>
-        <div>&#9744; &nbsp;Confirmé el cierre</div>
-      </div>
-    </div>
+  <div class="ojo">
+    <b>Cuidado con «Cumplimiento».</b><br>
+    Ese motivo <b>le entrega la moto al cliente</b>. Solo va ahí el que terminó de pagar de verdad.
+    Si tiene la menor duda, <b>pregunte antes de seguir</b>.
   </div>
-  <div class="caja warn" style="margin-top:34px;"><b>Si cerraste sin firma</b>
-    Anótalo en tu lista del día. Cuando el cliente aparezca: abre la liquidación y
-    <b>«Firmar en pantalla»</b>.</div>
-  <div class="pie"><span>Cómo hacer una liquidación · MotoGestión</span><span>21</span></div>
-</div>
 
-<!-- 22 · CIERRE -->
-<div class="d osc">
-  <div class="ceja">Para cerrar</div>
-  <div style="display:flex; align-items:center; height:700px;">
-    <div style="max-width:1400px;">
-      <div class="gigante" style="font-size:104px;">Ante la duda,<br><em style="color:#38bdf8;font-style:normal;">no cierres.</em></div>
-      <p class="lead" style="margin-top:44px; max-width:1300px;">
-        Una liquidación mal cerrada cuesta días de trabajo arreglarla — y le cuesta plata
-        a un cliente que confió en el número que le dijimos.
-      </p>
-      <p class="lead" style="margin-top:28px; max-width:1300px;">
-        <b>Preguntar toma dos minutos.</b>
-      </p>
+  <div class="bien">
+    <b>Si se equivocó, se puede cambiar.</b><br>
+    Mientras no haya cerrado, el motivo se cambia con la lista desplegable que está debajo del
+    nombre del cliente. La pantalla le dice ahí mismo cómo va a quedar todo.
+  </div>
+</section>
+
+<!-- ═══════════════ LA FECHA ═══════════════ -->
+<section class="pag">
+  <h2>2 · La fecha en que recibió la moto</h2>
+
+  <p class="granfrase">Esa fecha <span>manda sobre todo</span>.<br>Es de donde sale la plata.</p>
+
+  <p>Todo se cuenta hasta el día en que la moto entró a la empresa. Los días que la moto
+    lleva guardada en la bodega <b>no se le cobran al cliente</b>.</p>
+
+  <div class="ojo">
+    <b>Caso real — septiembre de 2026</b><br>
+    Una liquidación se hizo con la fecha de ese día, en vez de la del lunes en que el cliente
+    trajo la moto. <b>Tres días de diferencia.</b><br><br>
+    El saldo pasó de <b class="res">$157.000 a favor</b> a <b class="res">$64.000 a favor</b>.<br>
+    <b>$93.000 menos para el cliente</b>, por una fecha.
+  </div>
+
+  <h3>De dónde saca el sistema esa fecha</h3>
+  <p>De la <b>recepción de la moto</b>: el registro que se hace cuando la moto llega, con sus
+    fotos y su kilometraje. Por eso ese registro es el paso 1 y no un trámite.</p>
+
+  <div class="bien">
+    <b>Si la moto llegó un día y usted la registra otro</b><br>
+    Escriba <b>la fecha en que llegó de verdad</b>, no la de hoy. Es un campo que se puede
+    escribir a mano, justo para eso.
+  </div>
+
+  <div class="ojo">
+    <b>Si la pantalla dice «sin fecha registrada»</b><br>
+    Es porque nunca se registró la recepción. <b>No siga.</b> Registre primero la recepción
+    con la fecha real, y vuelva.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 1 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 1</span>Recibir la moto</h2>
+
+  <div class="paraque">
+    Se hace en <b>Motos</b>, con el botón <span class="boton">Registrar novedad</span>.
+    Es el paso que más plata mueve de todo el manual.
+  </div>
+
+  <h3>Qué le va a pedir</h3>
+  <ol class="notas">
+    <li><b>Por qué llega la moto.</b> Entrega voluntaria, recolección por mora, taller.</li>
+    <li><b>Seis fotos.</b> Frente, lado izquierdo, arriba, lado derecho, atrás, y
+      <b>la persona al lado de la moto</b> con la cara visible.</li>
+    <li><b>El kilometraje</b> y en qué condición llegó.</li>
+    <li><b>La fecha.</b> La del día en que llegó de verdad.</li>
+  </ol>
+
+  <div class="bien">
+    <b>Para qué sirven las seis fotos</b><br>
+    Son la prueba de cómo estaba la moto ese día. Si después aparece un daño, esas fotos dicen
+    si ya venía o no. La foto de la persona dice <b>a quién se le recibió</b>.
+  </div>
+
+  <div class="ojo">
+    <b>No deje este paso para después.</b><br>
+    Si la moto llegó el lunes y usted la registra el viernes, el sistema le cobra al cliente
+    <b>cuatro días que no tuvo la moto</b>.
+  </div>
+
+  <div class="pie">Después de este paso, la moto ya está en la empresa y el contrato queda suspendido.</div>
+</section>
+
+<!-- ═══════════════ PASO 2 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 2</span>Iniciar la liquidación</h2>
+  <div class="fila">
+    <div>
+      <img src="img/01-lista.png" alt="Lista de liquidaciones">
+      <div class="cap">Pantalla real · Más → Liquidaciones</div>
+    </div>
+    <div class="texto">
+      <h3>Hay dos puertas</h3>
+      <ul class="simple">
+        <li>Desde <b>Contratos</b>: busque el contrato y toque <span class="boton">Iniciar liquidación</span>.</li>
+        <li>Desde <b>Inmovilizaciones</b>: si la moto está retenida, el botón está ahí mismo.</li>
+      </ul>
+
+      <h3>Qué hace el sistema solo</h3>
+      <ol class="notas">
+        <li>Le pone un <b>número</b>: LIQ-0074. Ese número la acompaña hasta el final.</li>
+        <li>Crea la <b>orden de taller</b> para que el mecánico revise la moto.</li>
+        <li>Trae las <b>deudas que el cliente ya tenía</b> registradas.</li>
+      </ol>
+
+      <h3>Dónde la vuelve a encontrar</h3>
+      <p>En <b>Más → Liquidaciones</b>. Arriba están las <b>«En proceso»</b> y más abajo las
+        <b>«Cerradas y anuladas»</b>. El buscador acepta el nombre, la cédula, la placa
+        o el número.</p>
     </div>
   </div>
-  <div class="pie" style="border-top-color:#1e293b;">
-    <span>Club Moteros Cartagena · MotoGestión</span><span>Septiembre de 2026</span>
+
+  <div class="ojo">
+    <b>Si se equivocó de contrato, no la deje ahí.</b><br>
+    Un contrato con una liquidación abierta <b>no deja empezar otra</b>. Abra la liquidación,
+    baje hasta el final y toque <span class="boton">Se inició por error — anular esta liquidación</span>.
+    No se borra: queda escrito quién la anuló y por qué.
   </div>
-</div>
+</section>
+
+<!-- ═══════════════ PASO 3 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 3</span>La revisión del taller</h2>
+  <div class="fila">
+    <div>
+      <img src="img/03-taller.png" alt="Liquidación en revisión de taller">
+      <div class="cap">Pantalla real · liquidación abierta</div>
+    </div>
+    <div class="texto">
+      <h3>El mecánico trabaja en su propia pantalla</h3>
+      <p>Usted no tiene que copiarle nada. Lo que él escriba <b>llega solo</b> a la liquidación.</p>
+
+      <ol class="notas">
+        <li>Si ya terminó, sale <b>«El mecánico ya terminó la revisión»</b> y su texto aparece
+          abajo, listo para que usted lo revise.</li>
+        <li>Si no ha terminado, sale <b>«El mecánico aún no termina»</b> y le dice en qué va.</li>
+      </ol>
+
+      <h3>Lo normal es esperarlo</h3>
+      <p>Él es quien ve los daños. Si es urgente, puede seguir y escribir usted los daños,
+        pero déjelo anotado.</p>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>El costo del taller NO es lo que se le cobra al cliente.</b><br>
+    El aceite, los frenos y el mantenimiento <b>los paga la empresa</b>. Al cliente se le cobran
+    los <b>daños</b>, que son otra cosa y se escriben aparte. El sistema no los mezcla, a propósito.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 4 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 4</span>Calcular la cuenta</h2>
+  <div class="fila">
+    <div>
+      <img src="img/05-cuenta.png" alt="La cuenta ya calculada">
+      <div class="cap">Pantalla real · la cuenta calculada</div>
+    </div>
+    <div class="texto">
+      <h3>Antes de calcular</h3>
+      <ul class="simple">
+        <li>Escriba los <b>daños</b>, uno por uno, con su valor.</li>
+        <li>Revise las <b>deudas</b> que llegaron solas y quite la que no corresponda.</li>
+        <li><b>Mire la fecha.</b> Si no es la correcta, arréglela antes.</li>
+      </ul>
+      <p>Después toque <span class="boton">Registrar revisión y calcular</span>.</p>
+
+      <h3>Cómo se lee la cuenta</h3>
+      <ol class="notas">
+        <li><b>Ahorro acumulado</b> — la plata que es del cliente.</li>
+        <li><b>Total deudas</b> — lo que debe, todo junto.</li>
+        <li><b>Costo daños</b> — lo que se le cobra por cómo entregó la moto.</li>
+        <li><b>Saldo final</b> — en verde si es <b>a favor</b> de él, en rojo si queda
+          <b>pendiente</b>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>Si el número le extraña, pare.</b><br>
+    Casi siempre es la <b>fecha de recibo</b> equivocada o un <b>daño mal escrito</b>.
+    Arreglarlo ahora toma un minuto. Después de cerrar, toma días.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 5 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 5</span>Generar el documento</h2>
+  <div class="fila">
+    <div>
+      <img src="img/06-generar-doc.png" alt="Generar documento de liquidación">
+      <div class="cap">Pantalla real · generar el documento</div>
+    </div>
+    <div class="texto">
+      <h3>Le pide dos datos, y son de la empresa</h3>
+      <ol class="notas">
+        <li><b>Nombre del responsable</b> — quién firma por la empresa. Normalmente usted.</li>
+        <li><b>Cargo</b> — «Secretaria», «Administrador». Sale impreso en el papel.</li>
+      </ol>
+
+      <p>Después toque <span class="boton">Generar documento de liquidación</span> y ya tiene
+        el papel con toda la cuenta explicada renglón por renglón.</p>
+
+      <div class="bien" style="margin-top:14px">
+        <b>Todavía puede corregir.</b><br>
+        Si al leerlo con el cliente aparece un error, en la pantalla siguiente hay un enlace
+        que dice <b>«Corregir la cuenta»</b> y lo devuelve al cálculo.
+        <b>Después de que firme, ya no.</b>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 6 · FIRMA ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 6</span>Que el cliente firme</h2>
+  <div class="fila">
+    <div>
+      <img src="img/07-firma.png" alt="Firma del cliente">
+      <div class="cap">Pantalla real · el paso de la firma</div>
+    </div>
+    <div class="texto">
+      <div class="paraque" style="margin-top:0">
+        La firma es <b>el respaldo de toda la cuenta</b>. Sin ella, la empresa no tiene con qué
+        sostener el número que se le cobró o se le devolvió.
+      </div>
+
+      <h3>Lo normal: firmar en pantalla</h3>
+      <ol class="notas">
+        <li>Toque <span class="boton">Firmar en pantalla (firma + huella)</span>.</li>
+        <li><b>Muéstrele la cuenta.</b> Sale marcada como copia de revisión, para que la lea
+          con calma. Déjelo leer.</li>
+        <li>Marque <b>«El cliente ya revisó la cuenta y está de acuerdo»</b>.</li>
+        <li><b>Firma con el dedo</b> y <b>huella con el lector</b>.</li>
+      </ol>
+
+      <h3>La huella se compara sola</h3>
+      <p>El sistema le muestra al lado <b>la huella que el cliente dejó cuando se registró</b>,
+        para que usted vea que es la misma persona.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SI NO PUEDE FIRMAR EN PANTALLA ═══════════════ -->
+<section class="pag">
+  <h2>Si no se puede firmar en pantalla</h2>
+  <div class="fila">
+    <div>
+      <img src="img/08-firma-opciones.png" alt="Opciones cuando no se puede firmar en pantalla">
+      <div class="cap">Pantalla real · las otras salidas</div>
+    </div>
+    <div class="texto">
+      <p>Pasa: el lector no responde, el cliente prefiere el papel, o no puede venir.
+        Justo debajo del botón verde hay cuatro salidas.</p>
+
+      <ol class="notas">
+        <li><span class="boton">🖨️ Imprimir para firmar</span><br>
+          Sale el papel listo para que lo firme a mano.</li>
+        <li><span class="boton">Descargar para enviar</span><br>
+          Un PDF para mandarle por WhatsApp al que no puede venir.</li>
+        <li><span class="boton">📷 Cámara</span><br>
+          Le toma la foto al papel ya firmado.</li>
+        <li><span class="boton">🖼 Galería / PDF</span><br>
+          Si se lo devolvió firmado por WhatsApp.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>Nunca suba el documento sin firmar.</b><br>
+    El sistema no puede mirar adentro del archivo: si usted sube el que está en blanco,
+    la liquidación queda <b>dada por firmada</b> y la empresa se queda sin respaldo.<br>
+    <b>Ya pasó una vez</b>, y hubo que devolver la liquidación para arreglarlo.
+  </div>
+</section>
+
+<!-- ═══════════════ CERRAR SIN FIRMA ═══════════════ -->
+<section class="pag">
+  <h2>Cuando el cliente no puede venir</h2>
+  <div class="fila">
+    <div>
+      <img src="img/09-cerrar-sin-firma.png" alt="Cerrar sin firma">
+      <div class="cap">Pantalla real · cerrar sin firma</div>
+    </div>
+    <div class="texto">
+      <p>A veces la moto se necesita ya y el cliente no aparece. Para eso hay un botón aparte:
+        <span class="boton">Cerrar sin firma — el cliente firma después</span>.</p>
+
+      <h3>Se vale cuando</h3>
+      <ul class="simple">
+        <li>La moto se necesita para otro cliente <b>hoy</b>.</li>
+        <li>Ya le mandó el documento y quedó en devolverlo firmado.</li>
+        <li>El cliente está lejos o no contesta hace días.</li>
+      </ul>
+
+      <h3>No se vale cuando</h3>
+      <ul class="simple">
+        <li>El cliente <b>está ahí mismo</b>. Que firme en pantalla.</li>
+        <li>Todavía no revisó la fecha ni el saldo.</li>
+        <li>Solo para salir del paso porque está de afán.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="bien">
+    <b>Queda marcada, no olvidada.</b><br>
+    En la lista sale con un letrero amarillo que dice <b>«Falta firma»</b>, y adentro un aviso
+    grande. No se pierde de vista. En la página siguiente está cómo se completa.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 7 · CERRAR ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 7</span>Cerrar la liquidación</h2>
+
+  <div class="paraque">
+    Es el último paso, y <b>el punto sin retorno</b>. Antes de tocarlo, mire una vez más
+    <b>la fecha</b> y <b>el saldo</b>.
+  </div>
+
+  <p>Toque <span class="boton">Confirmar cierre de liquidación</span>. Con eso se mueve
+    todo lo demás, de una sola vez:</p>
+
+  <ol class="notas">
+    <li>El <b>contrato</b> queda Finalizado o Cancelado, según el motivo.</li>
+    <li>La <b>moto</b> queda Disponible y se le puede entregar a otro cliente.</li>
+    <li>Las <b>deudas y el convenio</b> quedan saldados contra su ahorro.</li>
+    <li>Si el ahorro no alcanzó, <b>lo que falta queda como una deuda</b>, para poder
+      cobrársela si vuelve.</li>
+    <li>Si quedó debiendo, el cliente entra a <b>lista negra</b> automáticamente.</li>
+  </ol>
+
+  <h3>Si el cliente sigue con la empresa</h3>
+  <p>Cuando se liquida la moto vieja <b>para entregarle otra</b>, marque la casilla
+    <b>«Sigue con la empresa — hará cambio a otra moto»</b> antes de confirmar.
+    La pantalla le deja repartir su saldo en tres:</p>
+
+  <table class="reglas">
+    <tr><td class="n">1</td><td><b>Base para la moto nueva</b> — se le abona a los $510.000 de base
+      del contrato nuevo. El asistente la trae sola.</td></tr>
+    <tr><td class="n">2</td><td><b>A favor del contrato nuevo</b> — el resto queda como saldo a
+      favor, para sus primeras cuotas.</td></tr>
+    <tr><td class="n">3</td><td><b>En efectivo</b> — solo lo que él pida llevarse en la mano.</td></tr>
+  </table>
+
+  <div class="ojo">
+    <b>Sin esa casilla, el cliente queda «Retirado»</b><br>
+    Y entonces <b>no aparece en la lista para hacerle el contrato nuevo</b>.
+    Se puede arreglar después, pero es mucho más trabajo. <b>Márquela antes de cerrar.</b>
+  </div>
+
+  <div class="bien">
+    <b>Ejemplo real — 24 de septiembre de 2026</b><br>
+    Un cliente entregó su moto para que le dieran otra. Su liquidación cerró con
+    <b>$157.000 a favor</b>, se marcó la casilla, y esos $157.000 quedaron puestos como base
+    de su moto nueva. <b>Solo le faltan $353.000</b> para completar los $510.000.
+  </div>
+</section>
+
+<!-- ═══════════════ FIRMA TARDÍA ═══════════════ -->
+<section class="pag">
+  <h2>Cuando el cliente llega después a firmar</h2>
+  <div class="fila">
+    <div>
+      <img src="img/10-cerrada-sin-firma.png" alt="Liquidación cerrada sin firma">
+      <div class="cap">Pantalla real · cerrada sin firma</div>
+    </div>
+    <div class="texto">
+      <div class="paraque" style="margin-top:0">
+        Esto pasa todo el tiempo: se cierra un día porque la moto se necesita, y el cliente
+        aparece al siguiente. <b>Nunca queda «sin firma» para siempre.</b>
+      </div>
+
+      <h3>Cómo se completa</h3>
+      <ol class="notas">
+        <li>Busque su liquidación en la lista. Es la que tiene el letrero
+          <b>«Falta firma»</b>.</li>
+        <li>Ábrala. Abajo está el aviso amarillo
+          <b>«Liquidación cerrada — SIN FIRMA del cliente»</b>.</li>
+        <li>Si el cliente <b>está ahí</b>: toque <span class="boton">Firmar en pantalla</span>.
+          Firma con el dedo y huella con el lector, igual que siempre.</li>
+        <li>Si <b>no puede venir</b>: mándele el documento y suba la foto del papel firmado
+          con <span class="boton">📷 Cámara</span> o <span class="boton">🖼 Galería / PDF</span>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="bien">
+    <b>Firmar después no cambia ni un peso.</b><br>
+    No mueve el contrato, ni la moto, ni la cuenta. La liquidación <b>sigue cerrada</b>:
+    solo se le pega el papel que faltaba. Puede hacerlo sin miedo.
+  </div>
+</section>
+
+<!-- ═══════════════ CÓMO SE VE UNA BIEN CERRADA ═══════════════ -->
+<section class="pag">
+  <h2>Cómo se ve una que quedó bien</h2>
+  <div class="fila">
+    <div>
+      <img src="img/12-cerrar.png" alt="Liquidación cerrada y firmada">
+      <div class="cap">Pantalla real · cerrada, firmada y con saldo a favor</div>
+    </div>
+    <div class="texto">
+      <p>El aviso pasa de <b>amarillo</b> a <b>verde</b> y dice solamente
+        <b>«Liquidación cerrada»</b>, con el enlace para descargar el documento firmado.</p>
+
+      <h3>Cómo saber, de un vistazo, cuáles le faltan</h3>
+      <p>En la lista, las que están incompletas llevan el letrero amarillo
+        <b>«Falta firma»</b> al lado del estado. Las que están bien, no llevan nada.</p>
+
+      <div class="bien" style="margin-top:14px">
+        <b>Revíselo de vez en cuando.</b><br>
+        Entre veinte liquidaciones cerradas, la que le falta el papel se pierde de vista.
+        Buscar el letrero amarillo cada semana toma dos minutos.
+      </div>
+
+      <h3>El Paz y Salvo</h3>
+      <p>Solo sale cuando el motivo fue <b>Cumplimiento</b> y el cliente <b>no quedó debiendo</b>.
+        Ese papel dice que no debe nada: si debe, no se le da.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ LO QUE NUNCA SE HACE ═══════════════ -->
+<section class="pag">
+  <h2>Lo que nunca se hace</h2>
+
+  <table class="reglas">
+    <tr><td class="n">1</td><td><b>Cerrar sin mirar la fecha de recibo.</b><br>
+      Cada día corrido son unos $31.000 del cliente.</td></tr>
+    <tr><td class="n">2</td><td><b>Subir el documento sin firmar.</b><br>
+      Queda «firmado» sin firma, y la empresa sin respaldo.</td></tr>
+    <tr><td class="n">3</td><td><b>Elegir «Cumplimiento» sin que haya terminado de pagar.</b><br>
+      Ese motivo le entrega la moto al cliente.</td></tr>
+    <tr><td class="n">4</td><td><b>Cobrarle al cliente el costo del taller.</b><br>
+      El mantenimiento lo asume la empresa. Solo los daños se cobran.</td></tr>
+    <tr><td class="n">5</td><td><b>Decirle un número al cliente antes de calcular.</b><br>
+      Primero sale la cuenta; después se le dice.</td></tr>
+    <tr><td class="n">6</td><td><b>Imprimir un Paz y Salvo cuando quedó debiendo.</b><br>
+      Ese papel dice que no debe nada, y no es cierto.</td></tr>
+    <tr><td class="n">7</td><td><b>Dejar una liquidación abierta sobre el contrato equivocado.</b><br>
+      Ese contrato no deja empezar otra. Anúlela.</td></tr>
+  </table>
+
+  <div class="ojo">
+    <b>Ante la duda, no cierre.</b><br>
+    Una liquidación mal cerrada cuesta días de trabajo arreglarla, y le cuesta plata a un
+    cliente que confió en el número que le dijimos.<br>
+    <b>Preguntar toma dos minutos.</b>
+  </div>
+</section>
+
+<!-- ═══════════════ SI ALGO SE VE RARO ═══════════════ -->
+<section class="pag">
+  <h2>Si algo se ve raro</h2>
+
+  <table class="reglas">
+    <tr><th style="width:42%">Lo que ve</th><th>Qué hacer</th></tr>
+    <tr><td><b>La fecha de recibo está mal</b></td>
+      <td>No siga. Arréglela antes de calcular. Después de cerrar es mucho más difícil.</td></tr>
+    <tr><td><b>El saldo le parece raro</b></td>
+      <td>Casi siempre es la fecha o un daño mal escrito. Vuelva a calcular y lea renglón por renglón.</td></tr>
+    <tr><td><b>Dice «sin fecha registrada»</b></td>
+      <td>Nunca se registró la recepción de la moto. Regístrela primero, con la fecha real.</td></tr>
+    <tr><td><b>«Ya existe una liquidación en curso»</b></td>
+      <td>Búsquela en la lista y continúela. Si se hizo sobre el contrato equivocado, anúlela.</td></tr>
+    <tr><td><b>El mecánico no ha terminado</b></td>
+      <td>Espérelo. Si es urgente, escriba usted los daños y déjelo anotado.</td></tr>
+    <tr><td><b>Quedó cerrada y sin firma</b></td>
+      <td>Cuando el cliente aparezca, ábrala y toque <b>«Firmar en pantalla»</b>.</td></tr>
+    <tr><td><b>El cliente quedó debiendo y pide Paz y Salvo</b></td>
+      <td>No se le da. Ese papel dice que no debe nada, y no es cierto.</td></tr>
+    <tr><td><b>Firmó, pero el documento salió en blanco</b></td>
+      <td>Avise. Se puede devolver al paso de la firma y volver a hacerlo.</td></tr>
+  </table>
+
+  <div class="pie">
+    Si nada de esto responde lo que está viendo, <b>pare y pregunte</b>. No cierre por salir del paso.
+  </div>
+</section>
+
+<!-- ═══════════════ EN UNA HOJA ═══════════════ -->
+<section class="pag">
+  <h2>La liquidación en una hoja</h2>
+  <div class="paraque">Imprima esta hoja y téngala al lado. Vaya marcando.</div>
+
+  <h3>Antes de empezar</h3>
+  <table class="reglas">
+    <tr><td style="width:26px;text-align:center">☐</td><td>Recibí la moto con las <b>6 fotos</b> y el kilometraje</td></tr>
+    <tr><td style="text-align:center">☐</td><td>La <b>fecha de recibo</b> es la de verdad, no la de hoy</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Elegí el <b>motivo</b> correcto</td></tr>
+  </table>
+
+  <h3>La cuenta</h3>
+  <table class="reglas">
+    <tr><td style="width:26px;text-align:center">☐</td><td>El mecánico ya revisó la moto</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Escribí los <b>daños</b> — no el costo del taller</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Revisé las <b>deudas</b> que llegaron solas</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Calculé y <b>el saldo me cuadra</b></td></tr>
+  </table>
+
+  <h3>El papel</h3>
+  <table class="reglas">
+    <tr><td style="width:26px;text-align:center">☐</td><td>Generé el documento</td></tr>
+    <tr><td style="text-align:center">☐</td><td><b>El cliente lo leyó</b> antes de firmar</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Firmó en pantalla, con su huella</td></tr>
+  </table>
+
+  <h3>Al cerrar</h3>
+  <table class="reglas">
+    <tr><td style="width:26px;text-align:center">☐</td><td>¿<b>Sigue con la empresa</b>? Marqué la casilla</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Repartí su saldo: base / a favor / efectivo</td></tr>
+    <tr><td style="text-align:center">☐</td><td>Confirmé el cierre</td></tr>
+  </table>
+
+  <div class="bien">
+    <b>¿Cerró sin firma?</b> Anótelo en su lista del día. Cuando el cliente aparezca:
+    abra la liquidación y toque <b>«Firmar en pantalla»</b>.
+  </div>
+
+  <div class="pie">Club de Moteros — Cartagena · MotoGestión · Septiembre de 2026</div>
+</section>
 
 </body>
 </html>

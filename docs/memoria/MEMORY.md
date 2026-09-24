@@ -29,6 +29,17 @@ y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan pe
 el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
 `RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
 
+### 🔴 MAÑANA ARRANCA POR ACÁ: YESID, que tiene reloj
+De todo lo del 24-sep, **es lo único con fecha propia**. `cuentaLiquidacion()` **no mira el motivo
+ni una vez** (grep: 0 coincidencias), así que le devuelve todo el ahorro igual al que pagó sus 104
+semanas y al que entregó la moto a los 7 días. **YESID BARRAZA va 60 de 65 — cinco semanas — y se
+llevaría $3.801.000** que, según **D-023**, ya pagaron la moto. Detrás: LUIS FERNANDO SOLANO
+($2.203.000) y 2 contratos que ya completaron. Ya pasó una vez: ANGELICA PACHECO, LIQ-0007, $340.000.
+
+🔑 **Es el mismo archivo** que corrige el otro hueco (cobrarle la base a quien se va sin terminar,
+$2.289.000 en 6 casos abiertos) → **un solo arreglo tapa $10,3M**. Todo en `docs/PENDIENTES.md` → P0.
+Regla de orden: **primero lo que tiene reloj** → [[ahorro-de-quien-es-regla-d023]]
+
 ### ▶️ DESPUÉS: el arreglo de la fecha de fin
 🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
 muestre algo y se le cobre otra cosa?"*. La fecha de fin es **decorativa** y las semanas son las
@@ -67,9 +78,14 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 - **24-sep (tarde)** — 🔴 **¿De quién es el ahorro?** La regla que faltaba (**D-023**): es de la
   empresa **solo si el contrato termina bien**; si liquida sin finalizar, se devuelve. De ahí salen
   **3 defectos por $13,8M** (el peor: la liquidación **no mira el motivo** y le devolvería
-  **$3.801.000** a YESID, que está a 5 semanas). Se corrigió **solo JORDAN** a mano —
-  −$244.000 → **+$64.000**, 7/7 verificado, 1 sola cifra movida en 362 contratos
+  **$3.801.000** a YESID, que está a 5 semanas). Se corrigió **solo JORDAN** —
+  −$244.000 → **+$157.000** con la fecha real del lunes 21, firmado y listo para su moto nueva
   → [[ahorro-de-quien-es-regla-d023]]
+- **24-sep (noche)** — **Mig 171 corrida**: el acuerdo por fin recibe ($48.000 donde iba $0, cero
+  pesos movidos en 366 contratos) · la **169 se descartó** por duplicar un aviso que ya existía
+  (**D-024**) · **botón nuevo**: firmar en pantalla una liquidación ya cerrada — eran **24 de 44
+  cerradas sin ninguna firma, $11.276.500** · **manual de liquidación** (18 hojas A4, pantallas
+  reales) con el **candado** que avisa si un botón cambia de nombre y el manual queda mintiendo
 - **22-sep** — Los estados ya no se cambian a mano (fuera el selector de Motos y los 2 botones de
   Contratos) · el menú de novedades dice si el contrato SIGUE COBRANDO o se suspende · la moto
   prestada exige 6 fotos + km al salir y al volver (mig 164). Disparado por JORDAN/DQL76I

@@ -1,6 +1,9 @@
 {
   "$comentario": [
     "Configuración del proyecto — viaja en git, así que sirve en cualquier equipo y para quien venga después.",
+    "El comando busca la raíz con `git rev-parse` y NO con $CLAUDE_PROJECT_DIR: probado el 24-sep,",
+    "sin esa variable el arranque revienta, y la sesión puede abrirse en cualquier subcarpeta.",
+    "Con git funciona desde donde sea y en los dos PC. Ya falló una vez por una ruta relativa.",
     "SessionStart corre el arranque: estado real medido (rama, commit, migraciones), qué herramientas",
     "deberían estar, lo primero de PENDIENTES y las últimas decisiones. Y avisa si la sesión anterior",
     "no cerró bien. Así el protocolo pasa aunque nadie se acuerde — ver docs/ESTANDAR.md paso 3.",
@@ -13,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/motogestion/scripts/arranque.mjs\" 2>&1 || echo \"[arranque] no pudo correr — medir el estado a mano antes de tocar nada\""
+            "command": "cd \"$(git rev-parse --show-toplevel)\" && node motogestion/scripts/arranque.mjs 2>&1 || echo \"[arranque] no pudo correr — medir el estado a mano antes de tocar nada\""
           }
         ]
       }

@@ -217,6 +217,30 @@ perdió `sunny-brewing-island.md` con 40+ decisiones.
 **Dónde vive:** `npm run memoria:respaldar` · `docs/memoria/`.
 **Reemplaza a:** —
 
+### D-022 · 24-sep-2026 · Con acuerdo, la semana y la cuota del acuerdo son UNA sola cosa
+**Decidió:** el dueño.
+**Qué se decidió:** para un cliente con acuerdo activo, lo que se le exige cada día de pago es
+**un conjunto**: la semana **+** la cuota del acuerdo — *"es como si su tarifa cambiara"*. Dentro
+del conjunto se cobra **primero la semana y después el acuerdo**. Si el pago no alcanza, lo que
+falte **se arrastra** al siguiente pago.
+Textual: *"tomarlo como un conjunto para los que tienen convenio… y que si queda faltando algo que
+se complete con el siguiente pago, pero que quede detallado ese movimiento de dónde se completó, y
+creo que también los pagos digan qué cubre y de qué fecha a qué fecha"*.
+**Por qué:** medido el 24-sep — **31 clientes están pagando y NADA llega a su acuerdo**. El motor
+reparte las semanas vencidas primero, así que mientras haya una semana atrasada el acuerdo nunca
+recibe. YAL68H pagó **$1.664.000 en 10 pagos** desde julio y su acuerdo sigue en cero. Los primeros
+vencen el **12 y el 19 de octubre**, y al tercer acuerdo incumplido va liquidación obligatoria —
+se estaría castigando a quien sí paga.
+**Alcance:** ⚠️ **SOLO DE AQUÍ EN ADELANTE.** No se re-reparte ni un peso de lo ya pagado.
+**Consecuencia aceptada:** las semanas avanzan un poco más lento (con $250.000 hoy avanza 1,24
+semanas; con la regla nueva avanza 1), así que los contratos se alargan algo. La misma plata entra,
+más tarde — coherente con que el contrato es **por pagos, no por tiempo**.
+**Incluye además:** que cada pago diga **qué cubre y de qué fecha a qué fecha**, y que cuando una
+cuota se complete con un pago posterior quede escrito de dónde salió ([[regla-esencia-y-rastro]]).
+**Dónde vive:** 🔲 **sin construir.** Toca el motor de reparto — lo más delicado del sistema.
+**Reemplaza a:** el orden de aplicación de `CLAUDE.md` (cuota → deuda → convenio → saldo) **solo
+para los contratos con acuerdo activo**. Sin acuerdo, todo sigue igual.
+
 ### D-020 · 24-sep-2026 · Las herramientas se instalan en la máquina, no se bajan al arrancar
 **Decidió:** el arquitecto (decisión técnica), tras el pedido del dueño de arreglar las caídas.
 **Qué se decidió:** los servidores MCP se configuran apuntando al **programa instalado**, nunca a

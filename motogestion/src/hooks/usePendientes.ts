@@ -43,6 +43,9 @@ export const BLOQUE_DE: Record<string, Bloque> = {
   recoleccion: "cobro", mora: "cobro", gabela: "cobro",
   plazo_vencido: "cobro", promesa_vencida: "cobro",
   convenio_por_vencer: "cobro", convenio_incumplido_3: "cobro",
+  // El cliente paga y su acuerdo no recibe (mig 169). Va en Cobro porque es una tarea del
+  // cobrador: pedirle la cuota del acuerdo APARTE de la semana, antes de que el acuerdo venza.
+  acuerdo_sin_recibir: "cobro",
   transferencia_pendiente: "plata", dinero_sin_identificar: "plata",
   soat_vence: "motos", tecno_vence: "motos", moto_retenida: "motos",
   taller_demorado: "motos", prestamo_doc_vence: "motos", validar_ubicacion_moto: "motos",

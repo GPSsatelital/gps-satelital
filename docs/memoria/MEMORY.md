@@ -9,28 +9,25 @@ una línea por entrada.
 P2 necesita gente · P3 módulos por construir · P4 limpieza). **Leerla al arrancar cualquier sesión.**
 Lo que se cierra se marca y se mueve abajo. Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (23-sep)
+## ▶️ DÓNDE RETOMAR (24-sep)
 
-✅ **`main` = `b60c9d6` · 668 pruebas · build verde · desplegado. Nada sin subir.**
-✅ **Migraciones hasta la 167, todas corridas y verificadas. No queda SQL pendiente.**
-⚠️ **Falta redesplegar la Edge Function `avisar`** (pendiente desde el 22-sep).
+🔑 **NO le creas a ningún documento para el estado: se mide al arrancar.** Rama, último commit,
+migraciones, pruebas, y **qué herramientas no conectaron** (regla D-017).
 
-### 🔴 EL ESTÁNDAR DEL PROYECTO — arrancado el 23-sep, van 1 de 7 pasos
-El dueño pidió *"un camino muy bien trazado que se autoalimente y no se pueda desviar… que en una
-sesión nueva no empieces a creer cosas que no son"*. **Todo el plan vive en `docs/ESTANDAR.md`**
-(ya en el repo). Se hizo el **paso 1**; los pasos **2 al 7 están en `docs/PENDIENTES.md` (P1)**.
+### 🔴 EL ESTÁNDAR — van 2 de 7 pasos · plan completo en `docs/ESTANDAR.md`
+Pedido del dueño: *"un camino que se autoalimente y no se pueda desviar… que en una sesión nueva no
+empieces a creer cosas que no son"*. Los pasos **3 al 7 están en `docs/PENDIENTES.md` (P1)**.
 
-**Lo que ya quedó:** `docs/memoria/` (los 125 archivos, antes fuera de git · `npm run memoria:respaldar`)
-· **`docs/DECISIONES.md`** (19 sembradas; solo se agrega, nunca se edita) · **`docs/DERRAPES.md`**
-(mis errores con su causa y su candado) · la llave de ZALA subida a P0.
+✅ **Paso 1 (23-sep):** `docs/memoria/` (126 archivos, antes fuera de git · `npm run memoria:respaldar`)
+· **`DECISIONES.md`** (21; solo se agrega, nunca se edita) · **`DERRAPES.md`** · llave de ZALA a P0.
+✅ **Paso 2 (24-sep):** `CLAUDE.md` de 1.426 → 966 líneas. La bitácora vive en `docs/HISTORIAL.md`
+y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan perdido y Taskmaster.
+✅ **Las 5 herramientas caídas, arregladas** — la causa era `npx`, que las bajaba en cada arranque
+(`context7`: 34 s → 1 s). `task-master-ai` se quitó (D-021).
 
-🔑 **Lo que sigue, en orden:** mudar las 437 líneas de bitácora de `CLAUDE.md` a `docs/HISTORIAL.md`
-→ `npm run arranque`/`cierre` **con hooks** → la *foto de la plata* antes de cada migración →
-`RUNBOOK.md` → los candados y el **CI (que NO existe: no hay `.github/`)**.
-
-🔴 **`CLAUDE.md` MIENTE HOY** — dice que vamos por la mig 029 (vamos por la 167), manda hacer merge
-desde una rama que no existe, y ordena leer `sunny-brewing-island.md`, que se perdió con 40+
-decisiones del dueño. **No creerle hasta que se haga el paso 2.**
+🔑 **Sigue el paso 3:** `npm run arranque`/`cierre` **con hooks** que los disparen solos — sin eso
+el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
+`RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
 
 ### ▶️ DESPUÉS: el arreglo de la fecha de fin
 🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
@@ -71,42 +68,27 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
   Contratos) · el menú de novedades dice si el contrato SIGUE COBRANDO o se suspende · la moto
   prestada exige 6 fotos + km al salir y al volver (mig 164). Disparado por JORDAN/DQL76I
   → [[estados-a-mano-y-evidencia-del-prestamo]]
-- **23-sep** — IEW57I: el saldo a favor que quedaba **trabado** (LUIS 8 días, RAFAEL 1) y el
-  **rastro** de de dónde viene cada peso (mig 167 · `saldoFavor.ts`)
-  → [[saldo-favor-movimiento-atascado]]. Y de ahí salió **EL ESTÁNDAR**: `docs/ESTANDAR.md` ·
-  `DECISIONES.md` · `DERRAPES.md` · la memoria dentro del repo → [[estandar-del-proyecto]]
-- **22-sep (tarde)** — KEVIN destapó que el saldo a favor podía ser **negativo** y la pantalla lo
-  tapaba con un `Math.max(0)`: candado en la base (mig 166, probado) + la empresa asumió sus
-  $195.000 → [[candado-saldo-favor-dos-clics]]. Y de ahí salió lo de **la fecha de fin que no
-  cobra nada** → [[fecha-fin-y-semanas-una-sola-verdad]] · plan para alimentar el sistema en
-  `docs/PLAN-COMPLETAR-DATOS.md`
-
-- **21-sep** — Fuga de documentos: los 19 enlaces **y las imágenes de todos los documentos** piden
-  enlace firmado. Al auditar antes de cerrar aparecieron 2 puertas peores: el **registro de usuarios
-  de Supabase estaba ABIERTO** (apagado) y `NULL IS DISTINCT FROM 'X'` dejaba pasar a quien no tiene
-  perfil (migs 161·162). Nadie había entrado → [[fuga-documentos-storage]]
+- **24-sep** — Las 5 herramientas caídas (la causa era `npx`) · `CLAUDE.md` deja de ser un diario:
+  1.426 → 966 líneas, la bitácora a `docs/HISTORIAL.md` → [[estandar-del-proyecto]]
+- **23-sep** — IEW57I: el saldo a favor **trabado** (LUIS 8 días, RAFAEL 1) y el **rastro** de de
+  dónde viene cada peso (mig 167 · `saldoFavor.ts`) → [[saldo-favor-movimiento-atascado]]. De ahí
+  salió **EL ESTÁNDAR** → [[estandar-del-proyecto]]
+- **22-sep** — KEVIN: el saldo a favor podía ser **negativo** y la pantalla lo tapaba con
+  `Math.max(0)`; candado en la base (mig 166) + la empresa asumió sus $195.000
+  → [[candado-saldo-favor-dos-clics]]. De ahí salió **la fecha de fin que no cobra nada**
+  → [[fecha-fin-y-semanas-una-sola-verdad]]
+- **21-sep** — Fuga de documentos, 3 puertas: enlaces sin firmar, el **registro de usuarios de
+  Supabase ABIERTO**, y `NULL IS DISTINCT FROM` (migs 161·162). Nadie había entrado
+  → [[fuga-documentos-storage]]
 - **19-sep** — Revisión de coherencia de toda la flota · YERLIS (saldo aplicado dos veces, mig 160)
   · JORGE TOVAR (día de pago mal migrado) · pago de $162.000 movido de placa
   → [[correcciones-a-mano-sep-2026]] · [[candado-saldo-favor-dos-clics]]
-- **17/18-sep** — El acuerdo vencido se sigue cobrando, en 4 piezas (migs 157·158·159); la semana
-  adelantada por fin se ve · ELKIN: reversa de una liquidación cerrada
-  → [[acuerdo-vencido-se-sigue-cobrando]] · [[elkin-revertir-liquidacion-cerrada]]
-- **16-sep** — Los 6 pendientes dictados: wizard, excedente de base, patios, liquidaciones
-  (migs 155·156) → [[pendientes-16-sep]] · [[excedente-base-a-saldo-favor]]
-- **15-sep** — Permiso `rodar_tiempo` · caja por cuenta bancaria · nómina (migs 150-154)
-  → [[permiso-rodar-tiempo]] · [[caja-por-cuenta-bancaria]] · [[regla-nomina-cobradores]]
-- **12-sep** — EDINSON: la ventana de prepago se tragaba el acuerdo (mig 149)
-  → [[motor-ventana-prepago-al-final]]
-- **10-sep** — Flujo diario + motor de pendientes: tabla `tareas`, **Mi Día**, `public.pendientes`
-  en el servidor, campana apagada, avisos al celular (migs 140-146)
-  → [[flujo-diario-de-cada-persona]] · [[avisos-al-celular-push]]
-- **7/8/9-sep** — Taller · contador cuando la moto es de otro · deudas etiquetadas · el acuerdo se
-  suma (no se escribe) · recolección por días vencida (mig 136) · **regresión mía de la mig 124**
-  → [[taller-trabajo-y-cobro]] · [[regresion-mig124-convenios]] · [[deudas-etiquetadas-a-donde-va-la-plata]]
-- **1/2/3-sep** — Nómina y su freno (migs 119·120) · lavada y llave (122·123) · SUBADMIN validado
-  (121) → [[regla-nomina-cobradores]] · [[auditoria-subadmin-nuevos]]
-- 🔨 **ZALA** — canal probado de punta a punta (10-sep), los 10 textos vivos. Falta que Meta apruebe
-  las plantillas y cambiar la llave → [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
+- **17/18-sep** — El acuerdo vencido se sigue cobrando (migs 157-159) · ELKIN: reversa de liquidación cerrada → [[acuerdo-vencido-se-sigue-cobrando]] · [[elkin-revertir-liquidacion-cerrada]]
+- **15/16-sep** — Los 6 pendientes dictados (155·156) · permiso `rodar_tiempo` · caja por cuenta bancaria · nómina (150-154) → [[pendientes-16-sep]] · [[excedente-base-a-saldo-favor]] · [[permiso-rodar-tiempo]] · [[caja-por-cuenta-bancaria]]
+- **10/12-sep** — **Mi Día** + `public.pendientes` + avisos al celular (140-146) · EDINSON: la ventana de prepago se tragaba el acuerdo (149) → [[flujo-diario-de-cada-persona]] · [[avisos-al-celular-push]] · [[motor-ventana-prepago-al-final]]
+- **7/8/9-sep** — Taller · deudas etiquetadas · recolección por días vencida (136) · **regresión mía de la mig 124** → [[taller-trabajo-y-cobro]] · [[regresion-mig124-convenios]] · [[deudas-etiquetadas-a-donde-va-la-plata]]
+- **1/2/3-sep** — Nómina y su freno (119·120) · lavada y llave (122·123) · SUBADMIN validado (121) → [[regla-nomina-cobradores]] · [[auditoria-subadmin-nuevos]]
+- 🔨 **ZALA** — canal probado (10-sep), los 10 textos vivos. Falta que Meta apruebe las plantillas y **rotar la llave (ahora P0)** → [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
 
 ## 🚨 Estado vivo
 
@@ -123,23 +105,9 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ## 🔴 Dinero y seguridad (lo que no se puede volver a romper)
 
-- 🔴 **[Fuga de documentos](fuga-documentos-storage.md)** — 3 puertas: enumeración (mig 071) ·
-  políticas permisivas que se suman (161) · `NULL IS DISTINCT FROM` + registro abierto (162).
-  **Incluye cómo auditar `pg_policies` sin equivocarse.** 🔲 falta cerrar los buckets.
-- 🔴 **[El saldo a favor no se aplica dos veces — Y NO PUEDE SER NEGATIVO](candado-saldo-favor-dos-clics.md)**
-  (migs 160 y **166**). KEVIN estuvo en **−$195.000 tres semanas** y la pantalla decía "$0": el
-  saldo es una SUMA que termina en `Math.max(0)`, y ese cero lo tapaba. Lo encontró el dueño
-  mirando una ficha. Candado diferido en `pagos` que deshace cualquier operación que lo deje en
-  rojo — **probado**, no solo puesto. 🔑 La guarda de la PANTALLA no protege plata: va en la BASE.
-- ✅ **[El rastro del saldo a favor](saldo-favor-movimiento-atascado.md)** (23-sep, `03ef50d`) —
-  `rastroSaldoFavor()` en `src/utils/saldoFavor.ts`: FIFO, una sola fuente para las 3 pantallas.
-  Cada movimiento dice **de qué pago vino**, cuánto se usó de cuánto, y qué quedó. ⚠️ El historial
-  muestra 10 pagos pero el FIFO se arma con TODOS.
-- 🔨 **[El "papelito vacío" que traba el saldo a favor](saldo-favor-movimiento-atascado.md)** (23-sep)
-  — aplicar saldo cuando el cliente **no debe nada** deja una fila en ceros que el candado cuenta
-  "en vuelo" por su valor: LUIS estuvo 8 días y RAFAEL 1 con la plata trabada, mientras la pantalla
-  se las mostraba. ✅ los 2 destrabados y verificados · 🔲 **el botón los sigue pudiendo crear**.
-  Trae las 2 trampas del SQL (el permiso de `eliminar_pago` y `set constraints all immediate`).
+- 🔴 **[Fuga de documentos](fuga-documentos-storage.md)** — 3 puertas (migs 071·161·162) + **cómo auditar `pg_policies` sin equivocarse**. 🔲 falta cerrar los buckets.
+- 🔴 **[Saldo a favor: ni dos veces, ni negativo, ni trabado](candado-saldo-favor-dos-clics.md)** (migs 160·166·167) — KEVIN estuvo en **−$195.000 tres semanas** con la pantalla diciendo "$0" (`Math.max(0)` lo tapaba). 🔑 **La guarda de la PANTALLA no protege plata: va en la BASE.**
+- ✅ **[El rastro del saldo a favor](saldo-favor-movimiento-atascado.md)** — `rastroSaldoFavor()` FIFO, una sola fuente para las 3 pantallas; dice de qué pago vino cada peso. ⚠️ el historial muestra 10 pagos pero el FIFO usa TODOS. Trae las 2 trampas del SQL de corrección.
 - ✅ **[La ventana de prepago se tragaba el acuerdo](motor-ventana-prepago-al-final.md)** · **[La acompañante firma el acuerdo](convenio-firma-acompanante.md)**.
 - **[Base inicial ≠ ahorro acumulado](base-inicial-vs-ahorro-acumulado.md)** · **[REGLAS del dinero](reglas-dinero-referencia-efectivo.md)** · **[Batería cicloPago](bateria-pruebas-ciclopago.md)** (`npm test` antes de desplegar plata).
 - **[Fecha real del pago](../../../plans/humble-dazzling-phoenix.md)** — `fecha` = cuándo PAGÓ · `fecha_registro` = cuándo se DIGITÓ · el motor reparte por `created_at`.

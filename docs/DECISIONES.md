@@ -309,3 +309,28 @@ arreglos quedaron en `docs/PENDIENTES.md` → P0.
 **Corrige la lectura de:** `CLAUDE.md`, que llama a los $308.000 *"ahorro inicial"* sin decir bajo
 qué condición son del cliente. La plata es suya **condicionalmente**, y esa condición faltaba.
 **Reemplaza a:** —
+
+### D-024 · 24-sep-2026 · Se descarta el aviso «acuerdo sin recibir» (la mig 169)
+**Decidió:** el arquitecto, con el sí del dueño.
+**Qué se decidió:** **NO** correr la migración 169, y **borrarla del repo**. Queda solo esta
+entrada como memoria de por qué.
+**Por qué:** el aviso se escribió **antes** de tener el arreglo de fondo. Con la **mig 171** ya
+corrida (D-022), el problema que el aviso iba a señalar **se arregla solo desde el próximo pago**.
+Medido el 24-sep, de los **34 casos** que habría mostrado:
+- **20 ya salían avisados** por la rama `acuerdo_sin_pagos` que ya existe (*"Acuerdo sin un solo
+  peso — firmó hace N días y no ha entrado nada"*) o por `acuerdo_incumplido`.
+- Los **14 restantes** son acuerdos recién firmados donde el cliente pagó **una semana exacta
+  ($202.000)** y vencen en **39 a 83 días**: con el motor arreglado, el próximo pago ya les entra.
+
+Sumar 34 avisos —20 duplicados— sobre los **351** que ya tiene la pantalla es **ruido que tapa lo
+importante**.
+**Consecuencia aceptada:** un cliente cuyo acuerdo no reciba por otra razón no tendrá un aviso
+propio; lo cubre `acuerdo_sin_pagos`. Si algún día hace falta el matiz de *"está pagando y aun así
+no le entra"*, se **mejora esa rama**, no se agrega otra al lado.
+**La excepción que sí queda viva:** **RAUL GOMEZ SAN MARTIN** — su acuerdo vence el **12-oct** y
+el arreglo no alcanza a salvarlo. Anotado en `PENDIENTES.md` → P0.
+**Verificación pendiente:** el **1-oct**, comprobar que los 14 ya tienen abonos. Si no, el motor
+necesita otra mirada.
+**Regla que deja:** **un aviso nuevo se agrega solo después de medir cuántos casos NO cubre uno que
+ya existe.** Acá eran 14 de 34, y de esos 14 ninguno necesitaba el aviso.
+**Reemplaza a:** —

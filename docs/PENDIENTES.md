@@ -16,19 +16,15 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 Lo que está afectando cifras reales de clientes en este momento.
 
-- [ ] 🧑 🔴 **DOS MIGRACIONES ESCRITAS Y SIN CORRER — 169 y 171.** Verificado el 24-sep contra
-  `public.migraciones_aplicadas`: solo están registradas la **168** y la **170**. Las otras dos
-  están en el repo, probadas, y **nunca se pegaron en Supabase**.
-  - **`171_conjunto_semana_y_acuerdo.sql`** — la mitad SQL de la decisión **D-022**: con acuerdo
-    activo, la semana y su cuota se cobran **como un conjunto**. **Mientras no se corra, la
-    pantalla y el motor dicen cosas distintas** (`repartoPago.ts` ya tiene la mitad TS).
-    Es el arreglo de los **31 clientes que pagan y no les llega un peso al acuerdo** —
-    **$19.809.500** pactados sin un solo abono, y los primeros **vencen el 12 y el 19 de octubre**.
-    Al tercer acuerdo incumplido va liquidación obligatoria: se estaría castigando al que sí paga.
-  - **`169_aviso_acuerdo_sin_recibir.sql`** — el aviso que hace visibles esos 31 casos.
-    ⚠️ **Correr la 169 DESPUÉS de la 171**, o la gente ve el problema sin que esté arreglado.
-  🔑 Antes de correrlas: **tomar la foto de la plata** (`select public.tomar_foto_plata('antes-171')`)
-  y compararla después. Las dos tocan el motor.
+- [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN — su acuerdo vence el 12 de octubre y no le alcanza.**
+  Cuota **$48.000**, **0 abonado**, y quedan **18 días** (medido el 24-sep). Con el motor ya
+  arreglado (mig 171) le van a entrar unas 2 cuotas antes del vencimiento: **no alcanza**.
+  **Dos salidas:** cobrarle las cuotas atrasadas **aparte** de la semana, o ampliarle el plazo.
+  Es el único de los 34 casos de acuerdos sin recibir que el arreglo no salva solo (ver **D-024**).
+
+- [ ] 💻 **1-oct: comprobar que los acuerdos ya están recibiendo.** Consulta de 30 segundos —
+  los **14 clientes** cuyos acuerdos estaban en cero el 24-sep deben tener abonos después de su
+  primer pago con el motor nuevo. Si no los tienen, el motor necesita otra mirada. (Ver **D-024**.)
 
 - [ ] 🧑 🔴 **ROTAR LA LLAVE DE ZALA — pasó por el chat.** Estaba anotada en P2 como una tarea más
   de la puesta en marcha de ZALA. **Una llave de producción que circuló por un chat no es un

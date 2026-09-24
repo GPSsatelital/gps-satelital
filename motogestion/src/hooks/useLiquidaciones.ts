@@ -6,6 +6,39 @@ import { estadoMotoTrasLiberar } from "./useMotos";
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada" | "anulada";
 
+/**
+ * QUÉ SE ESCRIBE AL FIRMAR UNA LIQUIDACIÓN.
+ *
+ * 🔴 LA REGLA QUE PROTEGE (24-sep-2026): una liquidación **YA CERRADA no retrocede de estado**.
+ * El cierre ya movió plata, contrato y moto; ponerla en 'firmada' dejaría la pantalla diciendo una
+ * cosa y la base otra. Cuando el cliente firma después del cierre solo se pega la EVIDENCIA
+ * —firma, huella, fecha y el PDF— y nada más.
+ *
+ * POR QUÉ HACE FALTA: cerrar sin firma es una salida a propósito ("el cliente no va a venir y la
+ * moto se necesita"), y para el que llegaba después solo existía la foto del papel — teniendo el
+ * lector de huella al lado. Medido el 24-sep: **24 de 44 liquidaciones cerradas sin ninguna firma,
+ * $11.276.500 en juego.**
+ *
+ * Está aparte y exportada para poder probarla: es una decisión de una línea que, si alguien la
+ * cambia sin darse cuenta, hace retroceder liquidaciones cerradas. Ver `useLiquidaciones.test.ts`.
+ */
+export function cambiosDeFirma(p: {
+  docUrl: string;
+  firmaUrl: string;
+  huellaUrl: string | null;
+  fechaISO: string;
+  yaCerrada: boolean;
+}): Record<string, unknown> {
+  const cambios: Record<string, unknown> = {
+    documento_firmado_url: p.docUrl,
+    firma_cliente_url: p.firmaUrl,
+    huella_cliente_url: p.huellaUrl,
+    fecha_firma: p.fechaISO,
+  };
+  if (!p.yaCerrada) cambios.estado = "firmada";
+  return cambios;
+}
+
 export type DetalleDano = { concepto: string; monto: number };
 /**
  * Un renglón de lo que se le descuenta al cliente.
@@ -324,6 +357,10 @@ export function useLiquidaciones() {
    * Firma en pantalla: guarda la firma, la huella y el documento FINAL ya armado con las dos
    * incrustadas. Deja la liquidación en 'firmada', igual que subir la foto del papel.
    *
+   * Con `opts.yaCerrada` sirve para firmar una liquidación **YA CERRADA** (el cliente que no pudo
+   * venir y aparece después): guarda la misma evidencia pero **NO mueve el estado ni una cifra**.
+   * Sin ese opts el comportamiento es idéntico al de siempre.
+   *
    * El PDF va a `documento_firmado_url`, la misma columna de siempre: todo lo que ya la lee
    * —el botón de descargar, el aviso de "cerrada sin firma", el cierre— sigue funcionando sin
    * enterarse de que ahora puede venir de la pantalla en vez de la cámara.
@@ -336,6 +373,7 @@ export function useLiquidaciones() {
     firmaDataUrl: string,
     huellaDataUrl: string | null,
     htmlFinal: string,
+    opts?: { yaCerrada?: boolean; quien?: string },
   ) {
     const subirDataUrl = async (dataUrl: string, nombre: string) => {
       const blob = await (await fetch(dataUrl)).blob();
@@ -358,14 +396,29 @@ export function useLiquidaciones() {
       if (errDoc) return { error: errDoc.message };
       const docUrl = supabase.storage.from("documentos").getPublicUrl(pathDoc).data.publicUrl;
 
-      const { error } = await supabase.from("liquidaciones").update({
-        estado: "firmada",
-        documento_firmado_url: docUrl,
-        firma_cliente_url: firmaUrl,
-        huella_cliente_url: huellaUrl,
-        fecha_firma: new Date().toISOString(),
-      }).eq("id", liquidacionId);
+      const cambios = cambiosDeFirma({
+        docUrl, firmaUrl, huellaUrl,
+        fechaISO: new Date().toISOString(),
+        yaCerrada: !!opts?.yaCerrada,
+      });
+
+      const { error } = await supabase.from("liquidaciones").update(cambios).eq("id", liquidacionId);
       if (error) return { error: error.message };
+
+      // El rastro de la firma tardía: sin esto, mañana nadie sabría que se firmó después del cierre
+      // ni qué día ([[regla-esencia-y-rastro]]).
+      if (opts?.yaCerrada) {
+        const liq = liquidaciones.find(l => l.id === liquidacionId);
+        if (liq?.contrato_id) {
+          await supabase.from("contratos_auditoria").insert({
+            contrato_id: liq.contrato_id,
+            campo: `liquidación ${liq.numero} · firma`,
+            valor_anterior: "cerrada sin firma del cliente",
+            valor_nuevo: "firmada en pantalla despues del cierre (firma + huella). El estado y las cifras no se tocaron.",
+            editado_por: opts.quien ?? null,
+          });
+        }
+      }
 
       await fetchLiquidaciones();
       return { error: null };

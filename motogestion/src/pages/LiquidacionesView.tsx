@@ -1070,8 +1070,21 @@ export default function LiquidacionesView() {
                 {!sel.documento_firmado_url && (
                   <div style={{ marginTop: 10, fontWeight: 400 }}>
                     <div style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 10 }}>
-                      El cierre ya se aplicó. Si el cliente aparece y firma, súbelo acá y queda completa —
+                      El cierre ya se aplicó. Si el cliente aparece y firma, queda completa —
                       el documento es el respaldo de la cuenta que se le hizo.
+                    </div>
+                    {/* EL CLIENTE ESTÁ AQUÍ: que firme en pantalla, igual que antes de cerrar.
+                        Antes solo se podía subir la foto del papel, así que al que venía en persona
+                        había que imprimirle el documento y tomarle foto — teniendo el lector al
+                        lado. La firma NO mueve el estado ni una cifra: la liquidación sigue cerrada
+                        (ver `firmarDigital` con `yaCerrada`). */}
+                    <button
+                      style={{ ...btn("var(--ok)"), width: "100%", padding: "12px 16px", fontSize: 14, marginBottom: 10 }}
+                      onClick={() => setFirmando(true)}>
+                      ✍️ Firmar en pantalla
+                    </button>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                      ¿El cliente no puede venir? Mándale el documento e <b>sube la foto del papel firmado</b>:
                     </div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                       <label style={{ ...btn("var(--accent)"), display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
@@ -1137,7 +1150,10 @@ export default function LiquidacionesView() {
           moto={datosMoto(sel)}
           huellaRegistroUrl={clienteDe(sel)?.autorizacion_datos_huella_url ?? null}
           onCerrar={() => setFirmando(false)}
-          onFirmar={(firma, huella, html) => firmarDigital(sel.id, firma, huella, html)}
+          // Si ya está cerrada, la firma se pega SIN mover el estado ni una cifra. El modal es el
+          // mismo: no tiene que saber en qué etapa está la liquidación.
+          onFirmar={(firma, huella, html) => firmarDigital(sel.id, firma, huella, html,
+            sel.estado === "cerrada" ? { yaCerrada: true, quien: profile?.id } : undefined)}
         />
       )}
     </div>

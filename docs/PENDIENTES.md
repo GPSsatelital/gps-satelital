@@ -60,11 +60,24 @@ Lo que está afectando cifras reales de clientes en este momento.
   ⚠️ El convenio NUEVO que le abra el wizard nace con el mismo defecto: si algún día vuelve a
   liquidar sin terminar, se lo cobrarán otra vez.
 
-- [ ] 💻 🔴 **Se puede CERRAR una liquidación sin que el cliente firme nada.** Descubierto el 24-sep
-  al reabrir LIQ-0073: estaba `cerrada` con `firma_cliente_url`, `huella_cliente_url`, `fecha_firma`
-  y `documento_firmado_url` **los cuatro en null**. El flujo tiene el paso `firmada`, pero nada
-  obliga a pasar por él. Es el respaldo legal de la cuenta final: sin firma, la empresa no tiene con
-  qué sostener el saldo que cobró o devolvió.
+- [ ] 💻 **A una liquidación CERRADA solo se le puede subir la FOTO del papel — no se puede firmar
+  en pantalla.** ⚠️ **Corrección de lo que anoté primero:** dije que *"se puede cerrar sin que el
+  cliente firme nada"* como si fuera un hueco. **No lo es: es una salida deliberada** — en el paso de
+  la firma hay un botón aparte que dice *"¿El cliente no va a venir y la moto se necesita? Puedes
+  cerrarla ya y subir la firma después"*. Y la puerta para firmar después **también existe**: el
+  panel de una cerrada sin documento avisa en ámbar *"Liquidación cerrada — SIN FIRMA del cliente"* y
+  ofrece **📷 Cámara** y **🖼 Galería / PDF** (`adjuntarFirmaACerrada`).
+  **El hueco real es estrecho:** esa puerta solo acepta la **foto del papel**. Si el cliente llega
+  hoy en persona, hay que imprimirle el documento, que lo firme a mano y tomarle foto — cuando el
+  sistema ya sabe capturar **firma + huella en pantalla** (`firmarDigital`, que se usa antes de
+  cerrar). Falta ese botón en el panel de la cerrada.
+  ⚠️ `firmarDigital` **no se puede reutilizar tal cual**: pone `estado = 'firmada'`, y eso haría
+  retroceder una cerrada. Necesita una variante que guarde firma, huella y fecha **sin tocar el
+  estado ni una cifra**.
+  **Medido el 24-sep — de las 44 liquidaciones cerradas:** 14 con firma + huella + documento
+  completos · 6 con solo el papel subido · **24 sin nada, $11.276.500 en juego**. Las más grandes:
+  KELVIN SALAZAR −$2.607.000 · ELIO QUIROGA −$2.164.500 · JAIDER HERNANDEZ −$1.656.000. Y dos **a
+  favor del cliente** sin papel firmado: BLEIMER CASTELLANO +$959.000 · ERLEY BASTOS +$851.000.
 
 - [ ] 💻 **La recepción real de una entrega queda huérfana y una administrativa le gana la fecha.**
   Mismo caso: la entrega de JORDAN (22-sep, `entrega_voluntaria`, con sus 6 fotos) se guardó **sin

@@ -217,6 +217,33 @@ perdió `sunny-brewing-island.md` con 40+ decisiones.
 **Dónde vive:** `npm run memoria:respaldar` · `docs/memoria/`.
 **Reemplaza a:** —
 
+### D-020 · 24-sep-2026 · Las herramientas se instalan en la máquina, no se bajan al arrancar
+**Decidió:** el arquitecto (decisión técnica), tras el pedido del dueño de arreglar las caídas.
+**Qué se decidió:** los servidores MCP se configuran apuntando al **programa instalado**, nunca a
+`npx`, que los resuelve y descarga en cada arranque.
+**Por qué:** medido — `context7` tardaba **34 segundos** en arrancar con `npx` y el límite son 30, así
+que **nunca conectaba**. Instalado: **1 segundo**. `sequential-thinking` pasó de 7 s a 0 s. El único
+que venía funcionando (`codebase-memory`) era justamente el único ya instalado.
+**De paso:** `context7`, `codebase-memory` y `sequential-thinking` estaban declarados **dos veces**
+(en `.claude.json` y en `.mcp.json`). Se dejó una sola declaración por servidor.
+**Dónde vive:** `.mcp.json` (proyecto) · `~/.claude.json` (usuario). Copias de seguridad con fecha.
+**Reemplaza a:** —
+
+### D-021 · 24-sep-2026 · Se quita `task-master-ai`
+**Decidió:** el dueño — *"no lo necesitamos"*.
+**Qué se decidió:** sale de la configuración. El paquete queda instalado por si algún día se quiere
+volver a poner.
+**Por qué:** era para partir trabajos grandes en tareas numeradas con dependencias. **Nunca se usó**,
+y el proyecto terminó resolviendo lo mismo mejor con `docs/PENDIENTES.md` — que además **el dueño
+puede leer**, mientras que las tareas de Task Master viven en archivos que solo lee la máquina. Eso
+contradice la regla de que él no dependa de que yo le traduzca. Además nunca conectaba: a los 20
+segundos seguía inicializándose y buscaba su configuración en una carpeta que no existe.
+**Consecuencia aceptada:** si algún día hace falta un desglose con dependencias, se hace a mano en
+`PENDIENTES.md` o se vuelve a conectar.
+**Dónde vive:** quitado de `~/.claude.json`.
+**Reemplaza a:** la línea de `CLAUDE.md` que lo sugería para *"trabajo grande multi-etapa
+dependiente"* — 🔲 hay que quitarla en el paso 2 del estándar.
+
 ### D-019 · 23-sep-2026 · `CLAUDE.md` es la especificación; la bitácora se muda
 **Decidió:** el dueño.
 **Qué se decidió:** las ~437 líneas de bitácora de julio salen de `CLAUDE.md` y se mudan a

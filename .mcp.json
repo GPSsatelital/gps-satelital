@@ -1,19 +1,18 @@
 {
   "mcpServers": {
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
-    },
     "codebase-memory": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "codebase-memory-mcp"],
+      "command": "codebase-memory-mcp",
+      "env": {}
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "context7-mcp",
       "env": {}
     },
     "sequential-thinking": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "command": "mcp-server-sequential-thinking",
       "env": {}
     },
     "mempalace": {

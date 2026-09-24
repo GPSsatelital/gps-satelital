@@ -14,3 +14,4 @@ docs/manual/*.pdf
 
 # SQL temporal con la llave del despertador — no se versiona
 PEGAR-EN-SUPABASE-*.sql
+.mcp.json.respaldo-*

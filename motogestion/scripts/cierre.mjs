@@ -62,7 +62,10 @@ else if (/failed/i.test(salida ?? "")) mal("HAY PRUEBAS EN ROJO", "no cerrar as�
 else ojo("No pude leer el resultado de las pruebas", "correr `npm test` a mano");
 
 // ── 5) Nada sin subir ───────────────────────────────────────────────────────────────────────
-const sucio = sh("git status --porcelain");
+// `ultima-sesion.json` se excluye porque lo escribe ESTE script: si no, el cierre nunca podría
+// pasar — dejaría un archivo nuevo y se quejaría de él en la misma corrida. Se muerde la cola.
+const sucio = (sh("git status --porcelain") ?? "")
+  .split("\n").filter(l => l.trim() && !l.includes("ultima-sesion.json")).join("\n");
 const rama = sh("git branch --show-current") ?? "main";
 sh("git fetch -q origin");
 const local = sh("git rev-parse HEAD"), remoto = sh("git rev-parse origin/" + rama);

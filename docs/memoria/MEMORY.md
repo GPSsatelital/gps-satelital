@@ -9,13 +9,30 @@ una línea por entrada.
 P2 necesita gente · P3 módulos por construir · P4 limpieza). **Leerla al arrancar cualquier sesión.**
 Lo que se cierra se marca y se mueve abajo. Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (22-sep)
+## ▶️ DÓNDE RETOMAR (23-sep)
 
-✅ **`main` = `5e4b1ca` · build y pruebas en verde · desplegado. Nada sin subir.**
-✅ **Migraciones hasta la 166, todas corridas y verificadas. No queda SQL pendiente.**
+✅ **`main` = `b60c9d6` · 668 pruebas · build verde · desplegado. Nada sin subir.**
+✅ **Migraciones hasta la 167, todas corridas y verificadas. No queda SQL pendiente.**
 ⚠️ **Falta redesplegar la Edge Function `avisar`** (pendiente desde el 22-sep).
 
-### ▶️ LO PRIMERO AL ARRANCAR: el arreglo de la fecha de fin
+### 🔴 EL ESTÁNDAR DEL PROYECTO — arrancado el 23-sep, van 1 de 7 pasos
+El dueño pidió *"un camino muy bien trazado que se autoalimente y no se pueda desviar… que en una
+sesión nueva no empieces a creer cosas que no son"*. **Todo el plan vive en `docs/ESTANDAR.md`**
+(ya en el repo). Se hizo el **paso 1**; los pasos **2 al 7 están en `docs/PENDIENTES.md` (P1)**.
+
+**Lo que ya quedó:** `docs/memoria/` (los 125 archivos, antes fuera de git · `npm run memoria:respaldar`)
+· **`docs/DECISIONES.md`** (19 sembradas; solo se agrega, nunca se edita) · **`docs/DERRAPES.md`**
+(mis errores con su causa y su candado) · la llave de ZALA subida a P0.
+
+🔑 **Lo que sigue, en orden:** mudar las 437 líneas de bitácora de `CLAUDE.md` a `docs/HISTORIAL.md`
+→ `npm run arranque`/`cierre` **con hooks** → la *foto de la plata* antes de cada migración →
+`RUNBOOK.md` → los candados y el **CI (que NO existe: no hay `.github/`)**.
+
+🔴 **`CLAUDE.md` MIENTE HOY** — dice que vamos por la mig 029 (vamos por la 167), manda hacer merge
+desde una rama que no existe, y ordena leer `sunny-brewing-island.md`, que se perdió con 40+
+decisiones del dueño. **No creerle hasta que se haga el paso 2.**
+
+### ▶️ DESPUÉS: el arreglo de la fecha de fin
 🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
 muestre algo y se le cobre otra cosa?"*. La fecha de fin es **decorativa** y las semanas son las
 que cobran; la gente la ha editado creyendo que cambiaba el contrato. **Las 4 reglas están
@@ -54,6 +71,10 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
   Contratos) · el menú de novedades dice si el contrato SIGUE COBRANDO o se suspende · la moto
   prestada exige 6 fotos + km al salir y al volver (mig 164). Disparado por JORDAN/DQL76I
   → [[estados-a-mano-y-evidencia-del-prestamo]]
+- **23-sep** — IEW57I: el saldo a favor que quedaba **trabado** (LUIS 8 días, RAFAEL 1) y el
+  **rastro** de de dónde viene cada peso (mig 167 · `saldoFavor.ts`)
+  → [[saldo-favor-movimiento-atascado]]. Y de ahí salió **EL ESTÁNDAR**: `docs/ESTANDAR.md` ·
+  `DECISIONES.md` · `DERRAPES.md` · la memoria dentro del repo → [[estandar-del-proyecto]]
 - **22-sep (tarde)** — KEVIN destapó que el saldo a favor podía ser **negativo** y la pantalla lo
   tapaba con un `Math.max(0)`: candado en la base (mig 166, probado) + la empresa asumió sus
   $195.000 → [[candado-saldo-favor-dos-clics]]. Y de ahí salió lo de **la fecha de fin que no

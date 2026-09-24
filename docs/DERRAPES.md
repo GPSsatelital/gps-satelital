@@ -114,3 +114,29 @@ hacerla de la manera aburrida y legible.
 **Por qué:** no conté el encabezado nuevo que yo mismo estaba agregando.
 **Qué lo evita ahora:** nada, y no hace falta — fue una estimación anunciada como tal, no un dato
 presentado como medido. Queda como recordatorio de decir "estimo" cuando estimo.
+
+### 🔴 Afirmé que cobrar los $308.000 de la base estaba mal, sin haber verificado la otra cara
+**Lo que dije:** *"esos $308.000 son el ahorro que él debía guardar y nunca guardó… es plata suya,
+no un servicio que la empresa le prestó. La empresa no perdió nada, así que no hay nada que
+cobrarle."* Lo dije como un hecho, con el respaldo de que `CLAUDE.md` los llama *"ahorro inicial"*.
+**Lo que era verdad:** el sistema trata esos $308.000 como **plata de la empresa** de forma
+coherente, por los dos lados: si no los pagaste te los cobra, y si los pagaste **no te los devuelve
+como ahorro** (35 clientes, **$3.528.000**, medido). **No era un error del código: era una regla que
+yo no conocía**, y que apunta al revés de lo que afirmé.
+La regla real resultó ser una tercera que no estaba en ninguna parte y solo vivía en la cabeza del
+dueño: *"es de la empresa si termina el contrato satisfactoriamente; si liquida sin finalizar, hay
+que devolvérselos"* (**D-023**).
+**Por qué me equivoqué:** verifiqué **una sola cara** de la regla. Miré qué pasa cuando el cliente
+**no** paga la base, y de ahí saqué una conclusión sobre qué ES esa plata — sin mirar nunca qué pasa
+cuando **sí** la paga. Con una sola cara, dos reglas opuestas se ven idénticas.
+**Qué casi costó:** si hubiéramos arreglado solo la liquidación, quedaba una injusticia visible —
+al que **no** pagó se le perdona, y al que **sí** pagó nunca se le devuelve. Y peor: al no conocer
+la regla completa, no habría aparecido que `cuentaLiquidacion()` **no mira el motivo** y le devuelve
+todo el ahorro al que termina bien — **$8.043.000**, con YESID BARRAZA a cinco semanas.
+**Quién lo cazó:** yo, pero solo porque el dueño me hizo hacer un paso más. Su pregunta
+*"¿qué diferencia haría cada opción?"* me obligó a explicar el mecanismo en vez de repetir la
+conclusión, y ahí salió.
+**Qué lo evita ahora — regla nueva:** cuando una cifra puede ser *"del cliente"* o *"de la
+empresa"*, **no alcanza con mirar el caso en que no se pagó.** Hay que medir las DOS caras —
+qué pasa cuando entra la plata y qué pasa cuando no — y si las dos apuntan al mismo lado, **ese es
+el criterio que el sistema ya tiene**, y hay que preguntarlo antes de cambiarlo, no después.

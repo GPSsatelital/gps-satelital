@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node motogestion/scripts/arranque.mjs 2>&1 || echo \"[arranque] no pudo correr — medir el estado a mano antes de tocar nada\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/motogestion/scripts/arranque.mjs\" 2>&1 || echo \"[arranque] no pudo correr — medir el estado a mano antes de tocar nada\""
           }
         ]
       }

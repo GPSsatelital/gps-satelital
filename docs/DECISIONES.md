@@ -277,3 +277,35 @@ el paso del tiempo, no va en `CLAUDE.md`*.
 (vamos por la 167), que se trabaja en una rama que no existe, y que lea un plan borrado.
 **Dónde vive:** 🔲 **pendiente de ejecutar** — `docs/ESTANDAR.md` paso 2.
 **Reemplaza a:** —
+
+### D-023 · 24-sep-2026 · 🔴 El ahorro es de la empresa SOLO si el contrato termina bien
+**Decidió:** el dueño.
+**Qué se decidió, textual:** *"es de la empresa si termina el contrato satisfactoriamente; o si
+liquida sin finalizar, hay que devolvérselos"*.
+
+O sea, **el ahorro es la alcancía con la que el cliente compra la moto**:
+- **Llega al final y se lleva la moto** → esa alcancía ya se gastó comprándola. **Es de la empresa.**
+- **Se va antes de terminar** → no compró nada. **La alcancía es suya y se le devuelve.**
+
+Aplica a **todo** el ahorro: los **$308.000** de la base inicial **y** los $26.000 que deja cada
+semana pagada.
+
+**Por qué importa tanto:** de esta regla salen tres defectos que hoy están vivos, y apuntan para
+lados opuestos. Medido el 24-sep:
+
+| Cara de la regla | Qué hace el sistema hoy | Plata |
+|---|---|---|
+| Termina bien → es de la empresa | `cuentaLiquidacion()` **no mira el motivo ni una vez**: le devuelve todo el ahorro igual al que pagó sus 104 semanas y al que entregó la moto a los 7 días | **$8.043.000** en riesgo (YESID BARRAZA a 5 semanas con $3.801.000) · ya pasó una vez: ANGELICA PACHECO, LIQ-0007, $340.000 |
+| Se va antes → se le devuelve | La liquidación **cobra** como deuda el convenio de base no pagado | **$2.289.000** en 7 liquidaciones |
+| Se va antes → se le devuelve | Pagar el convenio de base **no suma al ahorro** del cliente | **$3.528.000** en 35 clientes |
+
+**Consecuencia aceptada:** al que se va sin terminar y nunca pagó su convenio de base **no se le
+cobra nada** por eso — cobrárselo sería cobrarle algo que en el mismo acto habría que devolverle.
+Neto cero. (Es lo que destrabó a JORDAN: su saldo real es **+$64.000**, no −$244.000.)
+
+**Dónde vive:** 🔲 **el código NO está arreglado.** Hoy solo se corrigió **un** caso a mano
+(JORDAN / LIQ-0073, 24-sep, 7 de 7 verificado, 1 sola cifra movida en 362 contratos). Los tres
+arreglos quedaron en `docs/PENDIENTES.md` → P0.
+**Corrige la lectura de:** `CLAUDE.md`, que llama a los $308.000 *"ahorro inicial"* sin decir bajo
+qué condición son del cliente. La plata es suya **condicionalmente**, y esa condición faltaba.
+**Reemplaza a:** —

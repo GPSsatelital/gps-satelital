@@ -44,6 +44,43 @@ Lo que está afectando cifras reales de clientes en este momento.
   automática. En algunos la lista se deduce sola (JOHAN: $965.800 de deuda + $195.000 de semana
   = $1.160.800 exacto); esos se pueden escribir sin sacar el papel.
 
+- [ ] 💻 🔴 **LA LIQUIDACIÓN NO MIRA EL MOTIVO — $8.043.000 en riesgo, YESID a 5 semanas.**
+  Regla del dueño **D-023** (24-sep): el ahorro es de la empresa **solo si el contrato termina
+  bien**; si liquida sin finalizar, se le devuelve. Pero `cuentaLiquidacion()` **no mira `motivo`
+  ni una vez** (verificado por grep: cero coincidencias) → le devuelve todo el ahorro igual al que
+  pagó sus 104 semanas y al que entregó la moto a los 7 días.
+  **Ya pasó una vez:** ANGELICA PACHECO (LIQ-0007, la única por `cumplimiento` en toda la
+  historia) → se le devolvieron **$340.000**. ⚠️ Su saldo quedó en −$289.000 aun devolviéndoselos:
+  revisar ese caso aparte, un "cumplimiento" con saldo negativo es raro.
+  **Lo que viene:** YESID BARRAZA 60/65 → **$3.801.000** · LUIS FERNANDO SOLANO 98/104 →
+  **$2.203.000** · JOSE GOMEZ 12/15 → $172.000. (RAMON y CESAR ya completaron, pero están en pausa
+  por decisión del dueño.) **2 contratos ya llenaron sus semanas.**
+
+- [ ] 💻 🔴 **La liquidación cobra el convenio de base — $2.289.000 en 7 casos.** Misma regla
+  D-023 vista del otro lado: los $308.000 de la base son ahorro del cliente, y a quien liquida sin
+  finalizar se le devuelven — así que cobrarle lo que nunca puso es cobrar algo que habría que
+  devolver. `cuentaLiquidacion.ts:160` cobra todo convenio `activo`/`incumplido` sin distinguir.
+  | Liquidación | Cliente | Placa | Mal cobrado | Estado |
+  |---|---|---|---|---|
+  | LIQ-0073 | JORDAN MARTINEZ | DQL76I | $308.000 | ✅ **corregido a mano el 24-sep** |
+  | LIQ-0056 | MELISSA BELLO | RMZ65H | $339.000 | 🔴 cerrada · lista negra · ⚠️ **su cuenta no cuadra: puso $404.000 al registrarse (debería deber $106.000) y su Semana 1 aparece SIN pagar. Mirarla aparte antes de tocarle un peso.** |
+  | LIQ-0011 | JESUS MARIA DE HORTA | XZP35H | $308.000 | ⚠️ documento ya generado |
+  | LIQ-0063 | RICARDO CRUZ | IEW84I | $308.000 | salvable antes de cerrar |
+  | LIQ-0049 | EDER LEON | DQW27I | $308.000 | salvable |
+  | LIQ-0052 | WILMAR MORENO | XYZ54H | $308.000 | salvable |
+  | LIQ-0070 | FRAIRON CASTILLA | IEW54I | $410.000 | salvable — ⚠️ **mixto: $308.000 son ahorro (no se cobran) + $102.000 son primera semana (SÍ se cobran)** |
+  Y hay **53 convenios de base vivos**: sin arreglar el código, vuelve a pasar con cada uno.
+
+- [ ] 💻 **Pagar el convenio de base no suma al ahorro — $3.528.000 de 35 clientes.** Tercera cara
+  de D-023. Medido: el `ahorro_acumulado` de los 35 coincide **exacto** con la suma de
+  `aplicado_ahorro` de sus pagos (lo que dejan las semanas, $26.000 cada una) — la plata del
+  convenio entró como `aplicado_convenio` y **no sumó un peso** a su alcancía. Debería crecer
+  `ahorro_apertura`, que es *"el remanente de su base"* (`cuentaLiquidacion.ts:110`).
+  Los dos que **terminaron** de pagar su base tampoco la tienen: ANYULIS PERTUZ $223.000 ·
+  DAVIAN PLAZA $160.000. Los más grandes: LUIS ALEJANDRO GUTIERREZ $300.000 · GERMAN DIAZ $240.000.
+  ⚠️ Al construirlo, **cuidado con los convenios mixtos** (base + primera semana, como FRAIRON):
+  solo la parte de ahorro sube.
+
 - [ ] 🧑 **Los 53 convenios viejos:** desglose uno por uno contra el acuerdo firmado.
 
 - [ ] 🧑 **ESTARLIS CHIQUILLO** — $368.000 contra $563.000 sin conciliar.
@@ -51,6 +88,53 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 🔴 **A una moto guardada TEMPORAL no se le puede cobrar ni conveniar — 12 motos,
+  $14.816.500 que la pantalla no puede tocar.** Es **la mitad de un arreglo del 8-sep** que quedó
+  sin terminar. Lo levantó el dueño con **XYZ49H (LUIS EDUARDO VEGAS)** el 24-sep: *"la entregó
+  voluntariamente pero en Inmovilizaciones no me aparece para hacerle convenio ni rodar tiempo ni
+  nada, solo me sale reactivar y tiene deuda"*.
+  **Dos candados que se suman** (`InmovilizacionesView.tsx`):
+  1. `💵 Cobrar` solo aparece si `!entregable`, y `puedeEntregar()` (línea 615) arranca con
+     `m.esTemporal || …` → **para toda temporal la moto ya es entregable, así que el botón de
+     cobrar NUNCA aparece.** Deba lo que deba.
+  2. `📝 Convenio` y `⏳ Dar plazo` exigen `!faltaMulta` → con la multa pendiente se esconden los dos.
+  **El comentario de la línea 1080 cuenta el caso idéntico de BRADER (YAL65H, 8-sep)**: le quitaron
+  el `!m.esTemporal` al convenio… y no al botón de cobrar.
+  **Y "rodar tiempo" no es un botón**: sale como paso previo de *"✓ Reactivar / entregar"* — o sea
+  que el único camino para decidir si se ruedan las semanas guardadas es el mismo que suelta la moto.
+  **Las 3 peores — ni cobrar ni conveniar** (multa pendiente y sin convenio): RMZ58H NELSON
+  $3.042.400 (multa $80.000) · RNG54H JULIO SAYAS $1.840.000 ($30.000) · **XYZ49H LUIS VEGAS
+  $1.190.000 ($25.000)**. Las otras 9 ya tienen convenio, pero igual no se les puede recibir un peso.
+  A **8 de las 12** nunca se les resolvió el tiempo guardado.
+  **Plan propuesto (falta el sí del dueño):** (a) separar *"¿le entrego la moto?"* de *"¿le recibo
+  plata?"* → `💵 Cobrar` visible siempre que deba algo; (b) que la multa **no** trabe el convenio en
+  las temporales (en una temporal la moto se entrega igual, así que el candado no protege la plata:
+  solo quita la herramienta); (c) sacar **rodar tiempo** a su propio botón.
+  ⚠️ **NO hacer (c) mezclando la multa DENTRO del convenio:** hoy el sistema le pone el sello
+  `en_convenio` a la deuda pero **no la suma a la meta** → esa plata se perdería. Toca el motor.
+
+- [ ] 💻 **XYZ49H — la cuenta, ya medida** (24-sep, para cuando el dueño decida): entregada el
+  **31-ago** (24 días en bodega). Va **36 de 104** semanas. El motor le exige 42 → hueco de
+  **$1.165.000**, que son **dos cosas distintas**:
+  **$385.000** de ANTES de entregar la moto (semanas del 19 y 26 de agosto) → **se cobran, no se
+  ruedan nunca** · **$780.000** de las **4 semanas completas** que la moto lleva en la bodega
+  (2, 9, 16 y 23 de sep) → **esas sí se pueden rodar o cobrar**, con documento firmado.
+  Son 4 períodos completos exactos, así que la regla de *"rodar solo por períodos completos"* se
+  cumple limpio. Multa $25.000 pendiente · saldo a favor $0 · su ahorro $872.000 ·
+  ⚠️ **transferencia de $200.000 del 24-sep sin confirmar** · ⚠️ **empalme nunca cerrado**.
+
+- [ ] 💻 **3 liquidaciones fantasma — la moto dice una cosa y la liquidación otra.** Lo levantó el
+  dueño el 24-sep con **DRO38I**: *"¿cómo es posible que esté activa en la calle y al mismo tiempo
+  en taller para liquidación?"*. Devolverle la moto reactiva el contrato **pero no toca la
+  liquidación que ya estaba abierta** → queda huérfana.
+  | Placa | Cliente | Qué pasa |
+  |---|---|---|
+  | **DRO38I** | CLAUDIO ARNEDO | Contrato **Activo** + LIQ-0002 abierta desde el 4-ago (entregó el 4, volvió el 11 y se le devolvió). **Se puede anular desde la pantalla** — el botón existe para las no cerradas; nadie fue a buscarla |
+  | **XZP35H** | JESUS MARIA DE HORTA | Moto dice **Asignada** pero está en el taller, con LIQ-0011 con documento generado desde el 20-ago |
+  | **RLZ98H** | MARCOS VILLEGAS | Moto ya **Disponible** con LIQ-0039 abierta → **se le puede entregar a otro cliente mientras esa liquidación sigue sin cerrar** |
+  Medido: 1 de 74 liquidaciones es contradictoria de verdad; las otras 24 abiertas son trabajo en
+  curso. **El arreglo de fondo:** que devolver/reactivar cierre o anule la liquidación abierta.
 
 - [ ] 💻 🔴 **EL ESTÁNDAR DEL PROYECTO — pasos 4 al 7** → `docs/ESTANDAR.md`.
   ✅ **Paso 1 (23-sep):** decisiones + memoria en git. ✅ **Paso 2 (24-sep):** `CLAUDE.md` de 1.426

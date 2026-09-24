@@ -64,6 +64,12 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **24-sep (tarde)** — 🔴 **¿De quién es el ahorro?** La regla que faltaba (**D-023**): es de la
+  empresa **solo si el contrato termina bien**; si liquida sin finalizar, se devuelve. De ahí salen
+  **3 defectos por $13,8M** (el peor: la liquidación **no mira el motivo** y le devolvería
+  **$3.801.000** a YESID, que está a 5 semanas). Se corrigió **solo JORDAN** a mano —
+  −$244.000 → **+$64.000**, 7/7 verificado, 1 sola cifra movida en 362 contratos
+  → [[ahorro-de-quien-es-regla-d023]]
 - **22-sep** — Los estados ya no se cambian a mano (fuera el selector de Motos y los 2 botones de
   Contratos) · el menú de novedades dice si el contrato SIGUE COBRANDO o se suspende · la moto
   prestada exige 6 fotos + km al salir y al volver (mig 164). Disparado por JORDAN/DQL76I

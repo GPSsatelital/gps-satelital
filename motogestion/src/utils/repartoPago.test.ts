@@ -428,3 +428,41 @@ describe("mig 149 — DANIEL sigue funcionando: el sábado su paquete cae entero
     expect(r).toMatchObject({ tarifa: 195_000, convenio: 35_000, ahorro: 26_000, saldo: 0 });
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// 🔴 EL COMPORTAMIENTO DE HOY, CONGELADO ANTES DE CAMBIARLO (24-sep-2026)
+//
+// Regla del repo: *"antes de tocar lógica de plata, escribir la prueba del comportamiento ACTUAL"*.
+// El dueño decidió cambiar esto (D-022): para quien tenga acuerdo, la semana y la cuota del
+// acuerdo pasan a ser UN CONJUNTO. Estas pruebas fijan cómo reparte HOY, para que cuando se toque
+// el motor se vea **exactamente** qué cambió — y no se rompa nada que no queríamos.
+//
+// EL CASO QUE LO DESTAPÓ: JOSE ENRIQUE CHIRINOS (IEW50I) pagó $1.116.000 en 8 pagos desde agosto
+// y a su acuerdo no le entró un peso. Al medir la flota: **31 clientes iguales**.
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+describe("🔴 HOY: con semanas atrasadas, el acuerdo no recibe nada (cambia con D-022)", () => {
+  // Debe 3 semanas y su acuerdo tiene 4 cuotas exigidas de $48.000.
+  const conAtraso = {
+    monto: 250000, cajaValor: 202000, cajaAhorro: 26000,
+    cajasPagadas: 5, cajaActualPagado: 0, cajasExigidas: 8, totalCajas: 104,
+    convenioPendiente: 483500, convenioExigido: 192000, convenioAbonado: 0,
+  };
+
+  it("todo el pago se va a las semanas y al acuerdo no le llega un peso", () => {
+    const r = repartirPagoV2(conAtraso);
+    expect(r.tarifa).toBe(250000);
+    expect(r.convenio).toBe(0);            // ← ESTO es lo que D-022 va a cambiar a 48000
+  });
+
+  it("y lo que sobra se abona a la SEMANA siguiente, siendo justo la cuota del acuerdo", () => {
+    const r = repartirPagoV2(conAtraso);
+    expect(r.cajasPagadas).toBe(6);
+    expect(r.cajaActualPagado).toBe(48000);  // ← con D-022 esto sería 0 y el acuerdo tendría 48000
+  });
+
+  it("sin semanas atrasadas SÍ le llega al acuerdo — por eso no se nota hasta que alguien se atrasa", () => {
+    const alDia = { ...conAtraso, cajasPagadas: 8, cajasExigidas: 8 };
+    const r = repartirPagoV2(alDia);
+    expect(r.convenio).toBeGreaterThan(0);
+  });
+});

@@ -20,5 +20,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  // `pruebas/` son las que leen el disco (node:fs). No van en `src` porque el tsconfig de la app
+  // excluye los tipos de node a propósito, para que el código de pantalla no pueda importar `fs`.
+  "include": ["vite.config.ts", "pruebas"]
 }

@@ -115,6 +115,21 @@ hacerla de la manera aburrida y legible.
 **Qué lo evita ahora:** nada, y no hace falta — fue una estimación anunciada como tal, no un dato
 presentado como medido. Queda como recordatorio de decir "estimo" cuando estimo.
 
+### Rompí el build y dije que todo estaba bien
+**Lo que pasó:** la prueba nueva de los manuales usa `node:fs`, y el tsconfig de la app declara
+`"types": ["vite/client"]` **a propósito**, para que el código de pantalla no pueda importar `fs`.
+`npm test` pasaba (vitest no type-checkea), pero **`tsc -b` fallaba**. Lo commiteé y lo subí.
+**Por qué me equivoqué:** corrí **solo `npm test`**. La convención del proyecto dice
+*"siempre resolver errores TS antes de hacer push; `npm run build` debe pasar"* — y yo tenía en la
+cabeza "las pruebas pasan, está bien". **Las pruebas y el build no son lo mismo.**
+**Cuánto duró:** unos minutos. Lo encontré al responderle *"¿dejaste todo funcionando?"* — o sea,
+**lo encontré porque él preguntó**, no porque yo revisara.
+**Qué lo evita ahora:** las pruebas que leen el disco viven en `motogestion/pruebas/`, incluida en
+`tsconfig.node.json` (el que sí tiene los tipos de node). La protección de `src` queda intacta.
+Y la regla, que ya estaba escrita y no seguí: **`npm test` + `tsc -b` + `npm run build`, los tres,
+antes de subir.** Los tres están en `npm run cierre` — que también corrí, y que **no mira el build**.
+🔲 Pendiente chico: que `cierre.mjs` corra también el build, no solo las pruebas.
+
 ### 🔴 Entregué un manual sin mirarlo, con dibujos en vez de pantallas
 **Lo que entregué:** 22 diapositivas 16:9 con pantallas **dibujadas a mano en CSS**, sin abrirlo ni
 una vez. **Lo dije yo mismo al entregarlo** — *"no lo he mirado renderizado"* — y lo entregué igual.

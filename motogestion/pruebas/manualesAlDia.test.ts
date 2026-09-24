@@ -1,3 +1,13 @@
+// 📁 POR QUÉ ESTA PRUEBA VIVE FUERA DE `src/` (24-sep-2026)
+//
+// Lee archivos del disco (`node:fs`) para revisar los manuales, y el tsconfig de la app declara
+// `"types": ["vite/client"]` **a propósito**: así el código de pantalla no puede importar `fs` ni
+// nada de node. Esa protección es buena y no se toca. Meter esta prueba en `src/` rompía el build
+// (`tsc -b` fallaba aunque `npm test` pasara) — pasó el 24-sep.
+//
+// Por eso vive acá, y `tsconfig.node.json` —que sí tiene los tipos de node— la incluye.
+// Cualquier prueba futura que lea el disco va en esta carpeta, no en `src/`.
+
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -20,10 +30,10 @@ import { fileURLToPath } from "node:url";
 // Ya cazó uno el primer día: el manual decía «Imprimir documento» y el botón real se llama
 // «Imprimir para firmar».
 
-const AQUI = dirname(fileURLToPath(import.meta.url));
-const RAIZ = join(AQUI, "..", "..", "..");          // la raíz del repo
+const AQUI = dirname(fileURLToPath(import.meta.url));   // motogestion/pruebas
+const RAIZ = join(AQUI, "..", "..");                    // la raíz del repo
 const DOCS = join(RAIZ, "docs");
-const SRC = join(AQUI, "..");                       // motogestion/src
+const SRC = join(AQUI, "..", "src");                    // motogestion/src
 
 /** Todos los .html que hay dentro de las carpetas `docs/manual*`. */
 function manuales(): string[] {

@@ -96,8 +96,14 @@ $rama$;
 end
 $mig$;
 
-select public.registrar_migracion(169, '169_aviso_acuerdo_sin_recibir.sql',
-  'Avisa cuando un cliente paga y su acuerdo no recibe nada — 31 casos al crearlo');
+-- Se anota en el registro de migraciones. Va envuelto a propósito: si esta base todavía no
+-- tiene la mig 168, la migración NO debe reventar por una línea que solo lleva la cuenta.
+do $reg$ begin
+  perform public.registrar_migracion(169, '169_aviso_acuerdo_sin_recibir.sql',
+    'Avisa cuando un cliente paga y su acuerdo no recibe nada — 31 casos al crearlo');
+exception when undefined_function then
+  raise notice 'Sin registro de migraciones (falta la 168). La migración se aplicó igual.';
+end $reg$;
 
 commit;
 

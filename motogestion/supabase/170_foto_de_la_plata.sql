@@ -154,8 +154,14 @@ $$;
 comment on function public.comparar_fotos(text, text) is
   'Qué se movió entre dos fotos, con placa y nombre. CERO FILAS = nada se movió, que es lo que se espera de una migración que no debía tocar plata.';
 
-select public.registrar_migracion(170, '170_foto_de_la_plata.sql',
-  'Foto antes/después de las cifras de plata, para que ninguna migración mueva un peso en silencio');
+-- Se anota en el registro de migraciones. Va envuelto a propósito: si esta base todavía no
+-- tiene la mig 168, la migración NO debe reventar por una línea que solo lleva la cuenta.
+do $reg$ begin
+  perform public.registrar_migracion(170, '170_foto_de_la_plata.sql',
+    'Foto antes/después de las cifras de plata, para que ninguna migración mueva un peso en silencio');
+exception when undefined_function then
+  raise notice 'Sin registro de migraciones (falta la 168). La migración se aplicó igual.';
+end $reg$;
 
 commit;
 

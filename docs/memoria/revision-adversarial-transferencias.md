@@ -5,12 +5,14 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e189eed2-e48b-4069-b4c2-6cc4daa35703
-  modified: 2026-07-26T03:02:59.401Z
+  modified: 2026-09-24T15:17:40.531Z
 ---
 
 # ✅ COMPLETO — A, B, C, D y E en producción. Falta PROBAR con los logins reales.
 
-Revisión adversarial (24 agentes, 25-jul-2026) sobre la Fase 2 de [[humble-dazzling-phoenix]]:
+Revisión adversarial (24 agentes, 25-jul-2026) sobre la Fase 2 del plan `humble-dazzling-phoenix`
+(⚠️ **ese archivo se perdió** — 2º caso de un plan desaparecido de `.claude/plans/`; lo que quedó
+de él es la regla de las tres fechas del pago, en el índice de memoria):
 **20 defectos confirmados, 4 bloqueantes**. Los 3 más graves los verifiqué contra el código real
 antes de tocar nada — eran ciertos. Reglas de negocio en [[reglas-dinero-referencia-efectivo]].
 

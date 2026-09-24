@@ -110,7 +110,7 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 - ✅ **[El rastro del saldo a favor](saldo-favor-movimiento-atascado.md)** — `rastroSaldoFavor()` FIFO, una sola fuente para las 3 pantallas; dice de qué pago vino cada peso. ⚠️ el historial muestra 10 pagos pero el FIFO usa TODOS. Trae las 2 trampas del SQL de corrección.
 - ✅ **[La ventana de prepago se tragaba el acuerdo](motor-ventana-prepago-al-final.md)** · **[La acompañante firma el acuerdo](convenio-firma-acompanante.md)**.
 - **[Base inicial ≠ ahorro acumulado](base-inicial-vs-ahorro-acumulado.md)** · **[REGLAS del dinero](reglas-dinero-referencia-efectivo.md)** · **[Batería cicloPago](bateria-pruebas-ciclopago.md)** (`npm test` antes de desplegar plata).
-- **[Fecha real del pago](../../../plans/humble-dazzling-phoenix.md)** — `fecha` = cuándo PAGÓ · `fecha_registro` = cuándo se DIGITÓ · el motor reparte por `created_at`.
+- **Fecha real del pago** — `fecha` = cuándo PAGÓ · `fecha_registro` = cuándo se DIGITÓ · el motor reparte por `created_at` (migs 091·092). ⚠️ El plan `humble-dazzling-phoenix.md` **se perdió** (2º caso); esta línea es lo que quedó.
 - **[Unificar deuda+convenio: DESCARTADO](unificar-deuda-convenio-descartado.md)** · [Sobrante doble ✅](bug-convenio-cobro-doble.md) · [Transferencias ✅](revision-adversarial-transferencias.md) · [Aplicar saldo a favor ✅](bug-aplicar-saldo-favor.md) · [Deuda fantasma 🔨](descuadres-deuda-fantasma-migracion.md).
 
 ## Reglas de trabajo

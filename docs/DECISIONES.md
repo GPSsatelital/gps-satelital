@@ -334,3 +334,33 @@ necesita otra mirada.
 **Regla que deja:** **un aviso nuevo se agrega solo después de medir cuántos casos NO cubre uno que
 ya existe.** Acá eran 14 de 34, y de esos 14 ninguno necesitaba el aviso.
 **Reemplaza a:** —
+
+### D-025 · 25-sep-2026 · Las herramientas se configuran en el repo, no en cada máquina
+**Decidió:** el arquitecto, con el pedido del dueño de *"dejar todo funcionando bien"*.
+**Qué se decidió:** el arranque de las herramientas queda resuelto en **dos ajustes versionados**,
+no en pasos manuales por PC:
+- `.claude/settings.json` → **`"MCP_TIMEOUT": "120000"`**
+- `.claude/settings.json` → **`enabledMcpjsonServers: [codebase-memory, context7, sequential-thinking]`**
+- `mempalace` sale de `.mcp.json`: **ya viene como plugin** y estaba declarada dos veces.
+
+**Por qué — eran DOS problemas distintos con el mismo síntoma**, y por eso el intento del 24-sep
+(hacerlas más rápidas quitando `npx`) no alcanzó:
+
+1. **Se pelean la máquina al arrancar.** Medido el 25-sep, el mismo servidor solo vs. acompañado:
+   `codebase-memory` **132 ms → 13.198 ms** (100 veces más lento) · `sequential-thinking`
+   **567 ms → 21.405 ms**. `superpowers` cruzaba los 30 s por defecto aunque solo arranca en 4,3 s.
+   **No estaban rotas: no les daba el tiempo.**
+2. **Las de `.mcp.json` nunca se aprobaron.** `claude mcp list` las mostraba
+   *"⏸ Pendiente de aprobación"* — `enabledMcpjsonServers` estaba vacío desde siempre.
+   Las que sí funcionaban (`codebase-memory`, `sequential-thinking`) era **porque además estaban
+   declaradas en el `~/.claude.json` global**, que no pide aprobación.
+
+**Cómo se comprobó:** `claude mcp list` antes y después. Antes: 2 pendientes de aprobación y
+superpowers caída. Después: **las 6 conectadas, cero pendientes.**
+**Consecuencia aceptada:** abrir una sesión puede tardar unos segundos más, porque ahora espera a
+que arranquen todas en vez de rendirse a los 30 s.
+**Regla que deja:** **cuando una herramienta no conecta, leer el registro antes de teorizar** —
+`%LOCALAPPDATA%\claude-cli-nodejs\Cache\<proyecto>\mcp-logs-<nombre>\`. Ahí dice si fue tiempo,
+si se murió, o si nunca la dejaron arrancar. Y **`claude mcp list` da el estado real de cada una**
+sin tener que abrir una sesión nueva.
+**Reemplaza a:** el arreglo del 24-sep (quitar `npx`), que era correcto pero solo la mitad.

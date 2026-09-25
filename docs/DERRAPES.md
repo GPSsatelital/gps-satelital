@@ -115,6 +115,29 @@ hacerla de la manera aburrida y legible.
 **Qué lo evita ahora:** nada, y no hace falta — fue una estimación anunciada como tal, no un dato
 presentado como medido. Queda como recordatorio de decir "estimo" cuando estimo.
 
+## 25 de septiembre de 2026
+
+### Di por arregladas las herramientas sin haber leído el registro
+**Lo que hice el 24-sep:** vi que 5 herramientas no conectaban, medí que `npx` las bajaba en cada
+arranque, las instalé globales, y **lo di por resuelto**. Escribí en la memoria
+*"las 5 herramientas caídas, arregladas"*.
+**Lo que pasó al día siguiente:** tres seguían caídas. El dueño: *"arreglemos el tema de las skills
+que no están funcionando"*.
+**Lo que era verdad:** eran **dos problemas distintos con el mismo síntoma**, y yo arreglé medio uno.
+- Las que quedaban lentas **no eran lentas por `npx`**: se pelean la máquina al arrancar todas
+  juntas (`codebase-memory` pasa de 132 ms a 13.198 ms). Faltaba subir `MCP_TIMEOUT`.
+- Y `context7`/`mempalace` **nunca fueron un problema de tiempo**: el `.mcp.json` del proyecto
+  jamás se aprobó (`enabledMcpjsonServers` vacío). `claude mcp list` lo decía con todas las letras.
+**Por qué me equivoqué:** encontré **una** causa que explicaba **parte** del síntoma y paré ahí.
+No leí el registro de errores —que existe y estaba lleno— ni corrí `claude mcp list`, que en una
+línea dice el estado real de cada herramienta. Teoricé sobre lentitud en vez de mirar.
+**Y lo peor:** lo escribí en la memoria como hecho cerrado, con un ✅. La sesión siguiente arrancó
+creyéndolo.
+**Qué lo evita ahora:** queda en **D-025** el par de comandos que dan el estado real —
+`claude mcp list` y los registros en `mcp-logs-<nombre>/`— con la regla: **leer el registro antes
+de teorizar**. Y la de fondo, que ya estaba escrita: **no marcar algo como arreglado sin volver a
+medir el síntoma original.** Ayer medí que arrancaban más rápido; nunca medí que conectaran.
+
 ### Rompí el build y dije que todo estaba bien
 **Lo que pasó:** la prueba nueva de los manuales usa `node:fs`, y el tsconfig de la app declara
 `"types": ["vite/client"]` **a propósito**, para que el código de pantalla no pueda importar `fs`.

@@ -8,8 +8,24 @@
     "deberían estar, lo primero de PENDIENTES y las últimas decisiones. Y avisa si la sesión anterior",
     "no cerró bien. Así el protocolo pasa aunque nadie se acuerde — ver docs/ESTANDAR.md paso 3.",
     "El CIERRE (npm run cierre) NO es un hook a propósito: correría en cada respuesta y hace pruebas.",
-    "Su freno es otro: si no se cierra, el arranque de la próxima sesión lo dice en la cara."
+    "Su freno es otro: si no se cierra, el arranque de la próxima sesión lo dice en la cara.",
+    "",
+    "MCP_TIMEOUT (25-sep): las herramientas arrancan TODAS a la vez y se pelean la máquina.",
+    "Medido: codebase-memory tarda 132 ms sola y 13.198 ms acompañada (100x); sequential-thinking",
+    "567 ms sola y 21.405 ms acompañada. context7, mempalace y superpowers cruzaban los 30.000 ms",
+    "por defecto y se caían — aunque solas arrancan en 1 a 4 segundos. No estaban rotas: no les",
+    "daba el tiempo. Se sube el límite a 120 s, que deja margen de sobra sobre los 21 s del peor.",
+    "",
+    "enabledMcpjsonServers (25-sep): las de `.mcp.json` NO arrancan hasta que alguien las aprueba,",
+    "y nadie las había aprobado nunca: `claude mcp list` las mostraba «Pendiente de aprobación».",
+    "Eso NO era el timeout — fueron dos problemas distintos con el mismo síntoma. Aprobarlas acá",
+    "las deja listas en los dos PC sin que nadie tenga que darle a un botón.",
+    "`mempalace` se quitó de `.mcp.json`: ya viene como plugin y estaba declarada dos veces."
   ],
+  "env": {
+    "MCP_TIMEOUT": "120000"
+  },
+  "enabledMcpjsonServers": ["codebase-memory", "context7", "sequential-thinking"],
   "hooks": {
     "SessionStart": [
       {

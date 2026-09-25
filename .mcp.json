@@ -14,11 +14,6 @@
       "type": "stdio",
       "command": "mcp-server-sequential-thinking",
       "env": {}
-    },
-    "mempalace": {
-      "type": "stdio",
-      "command": "mempalace-mcp",
-      "env": {}
     }
   }
 }

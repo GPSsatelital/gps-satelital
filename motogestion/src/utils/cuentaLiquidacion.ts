@@ -1,4 +1,5 @@
 import { ajusteSalidaLedger, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
+import type { MotivoLiquidacion } from "../hooks/useLiquidaciones";
 
 // LA CUENTA DE UNA LIQUIDACIÓN, EN UN SOLO SITIO.
 //
@@ -90,7 +91,7 @@ export type ContratoConPlata = ContratoCiclo & {
  *    ledger como Caja 1) y el resto quedó en `ahorro_apertura`. Sumarla acá la contaría DOS
  *    VECES. Por eso solo se etiqueta de dónde viene cada parte.
  */
-export function plataQueEsDelCliente(contrato: ContratoConPlata): RenglonCuenta[] {
+export function plataQueEsDelCliente(contrato: ContratoConPlata, motivo?: MotivoLiquidacion | null): RenglonCuenta[] {
   const renglones: RenglonCuenta[] = [];
   const ahorroPagando = contrato.ahorro_acumulado ?? 0;
   const ahorroApertura = contrato.ahorro_apertura ?? 0;
@@ -110,8 +111,20 @@ export function plataQueEsDelCliente(contrato: ContratoConPlata): RenglonCuenta[
     if (ahorroApertura > 0) renglones.push({ concepto: "Ahorro que viene de su base inicial", monto: ahorroApertura });
     if (ahorroPagando > 0) renglones.push({ concepto: "Ahorro que ganó pagando", monto: ahorroPagando });
   }
+
+  // D-023 (regla del dueño, 24-sep): el ahorro es la alcancía con la que el cliente COMPRA la moto.
+  // Si termina bien, esa alcancía ya se gastó comprándola: es de la empresa y NO se le entrega.
+  // Se sigue mostrando renglón por renglón y se cierra con uno que dice a dónde fue, para que el
+  // papel que firma explique el cero en vez de hacer desaparecer la plata. Con los otros motivos
+  // se va antes de terminar, no compró nada, y se le devuelve todo como siempre.
+  if (motivo === "cumplimiento") {
+    const ahorro = renglones.reduce((s, r) => s + r.monto, 0);
+    if (ahorro > 0) renglones.push({ concepto: CONCEPTO_PAGO_MOTO, monto: -ahorro });
+  }
   return renglones;
 }
+
+export const CONCEPTO_PAGO_MOTO = "Con este ahorro terminó de pagar la moto";
 
 /**
  * Arma la cuenta de una liquidación.
@@ -127,11 +140,13 @@ export function cuentaLiquidacion(opts: {
   deudas: DeudaCuenta[];
   convenios: ConvenioCuenta[];
   danos?: RenglonCuenta[];
+  /** Solo "cumplimiento" cambia la cuenta: el ahorro pagó la moto (D-023). */
+  motivo?: MotivoLiquidacion | null;
 }): CuentaLiquidacion {
-  const { contrato, fechaCorte, saldoFavor, deudas, convenios, danos = [] } = opts;
+  const { contrato, fechaCorte, saldoFavor, deudas, convenios, danos = [], motivo } = opts;
   const ajuste = ajusteSalidaLedger(contrato, new Date(fechaCorte + "T12:00:00"));
 
-  const aFavor: RenglonCuenta[] = [...plataQueEsDelCliente(contrato)];
+  const aFavor: RenglonCuenta[] = [...plataQueEsDelCliente(contrato, motivo)];
   if (saldoFavor > 0) aFavor.push({ concepto: "Saldo a favor", monto: saldoFavor });
   // Lo que pagó por adelantado y no alcanzó a usar: se le devuelve (regla 9 del libro de cajas).
   if (ajuste.aFavor > 0) aFavor.push({ concepto: "Pagó adelantado y no alcanzó a usar", monto: ajuste.aFavor });

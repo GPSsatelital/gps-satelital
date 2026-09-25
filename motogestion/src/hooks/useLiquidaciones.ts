@@ -302,9 +302,12 @@ export function useLiquidaciones() {
    *
    * Solo hasta 'documento_generado': después el cliente firmó un papel que dice ese motivo.
    */
-  async function cambiarMotivo(liquidacionId: string, motivo: MotivoLiquidacion) {
+  // `recalcular`: entrar o salir de "cumplimiento" cambia lo que se le entrega (D-023: el ahorro
+  // del que termina pagó la moto). Si ya estaba calculada, vuelve al paso del cálculo; si no, el
+  // papel saldría con el saldo del motivo anterior.
+  async function cambiarMotivo(liquidacionId: string, motivo: MotivoLiquidacion, recalcular = false) {
     const { error } = await supabase.from("liquidaciones")
-      .update({ motivo })
+      .update(recalcular ? { motivo, estado: "en_taller" } : { motivo })
       .eq("id", liquidacionId)
       .in("estado", ["iniciada", "en_taller", "calculada", "documento_generado"]);
     if (!error) await fetchLiquidaciones();

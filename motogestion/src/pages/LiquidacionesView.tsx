@@ -331,7 +331,8 @@ export default function LiquidacionesView() {
     // proyección. Antes esta pantalla hacía su propia suma aparte, y leía `ahorro_inicial`: un
     // campo revuelto que la migración de COSTA dejó en CERO en 64 contratos (a esos no se les
     // contaba NADA de base) y que en otros no coincide con el arqueo. El bueno es `base_inicial`.
-    const renglonesFavor = contratoLiq ? plataQueEsDelCliente(contratoLiq) : [];
+    // El motivo decide si el ahorro se le entrega o ya pagó la moto (D-023).
+    const renglonesFavor = contratoLiq ? plataQueEsDelCliente(contratoLiq, sel.motivo) : [];
     const ahorroDelCliente = renglonesFavor.reduce((s, r) => s + r.monto, 0);
     await calcularSaldo(sel.id, ahorroDelCliente, deudasAjustadas, totalDanos, saldoFavor, renglonesFavor);
     setGuardando(false);
@@ -445,11 +446,18 @@ export default function LiquidacionesView() {
 
   async function handleCambiarMotivo(motivo: MotivoLiquidacion) {
     if (!sel || guardando || motivo === sel.motivo) return;
-    if (!confirm(`¿Cambiar el motivo a "${MOTIVO_LABEL[motivo]}"?\n\nEsto define qué pasa al cerrar: el estado del contrato, el destino de la moto y cómo queda el cliente.`)) return;
+    // Entrar o salir de "cumplimiento" cambia la plata: el ahorro del que termina pagó la moto
+    // (D-023). Si ya estaba calculada, hay que volver a calcular antes de imprimir el papel.
+    const recalcular = (motivo === "cumplimiento") !== (sel.motivo === "cumplimiento")
+      && (sel.estado === "calculada" || sel.estado === "documento_generado");
+    if (!confirm(`¿Cambiar el motivo a "${MOTIVO_LABEL[motivo]}"?\n\nEsto define qué pasa al cerrar: el estado del contrato, el destino de la moto y cómo queda el cliente.`
+      + (recalcular ? "\n\nTambién cambia cuánto se le entrega de su ahorro: la liquidación vuelve al paso del cálculo y hay que calcularla otra vez. Los daños y las deudas escritos no se pierden." : ""))) return;
     setGuardando(true);
-    const { error } = await cambiarMotivo(sel.id, motivo);
+    const { error } = await cambiarMotivo(sel.id, motivo, recalcular);
     setGuardando(false);
-    setMsg(error ? "Error: " + error : `Motivo cambiado a "${MOTIVO_LABEL[motivo]}".`);
+    setMsg(error ? "Error: " + error
+      : recalcular ? `Motivo cambiado a "${MOTIVO_LABEL[motivo]}". Vuelve a calcular: cambió lo que se le entrega de su ahorro.`
+      : `Motivo cambiado a "${MOTIVO_LABEL[motivo]}".`);
   }
 
   async function handleVolverACalcular() {

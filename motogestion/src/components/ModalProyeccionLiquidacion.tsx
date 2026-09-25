@@ -54,13 +54,19 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
     if (fechaSugerida && !fechaTocada) setFecha(fechaSugerida);
   }, [fechaSugerida, fechaTocada]);
 
+  // Si ya llenó todas sus semanas, liquidarlo es por cumplimiento y su ahorro pagó la moto (D-023).
+  // Si no, se estaría yendo antes y el ahorro se le devuelve. Misma condición que ofrece
+  // "Cumplimiento" en ModalIniciarLiquidacion.
+  const terminoDePagar = contrato.total_cajas != null && (contrato.cajas_pagadas ?? 0) >= contrato.total_cajas;
+
   const cuenta = useMemo(() => cuentaLiquidacion({
     contrato,
     fechaCorte: fecha || hoyISO(),
     saldoFavor: saldoAFavorDe(contrato, pagos.filter(p => p.contrato_id === contrato.id && p.estado === "Confirmado")),
     deudas: deudas.filter(d => d.contrato_id === contrato.id),
     convenios: convenios.filter(cv => cv.contrato_id === contrato.id),
-  }), [contrato, fecha, pagos, deudas, convenios]);
+    motivo: terminoDePagar ? "cumplimiento" : null,
+  }), [contrato, fecha, pagos, deudas, convenios, terminoDePagar]);
 
   const leDevuelven = cuenta.saldoFinal >= 0;
 

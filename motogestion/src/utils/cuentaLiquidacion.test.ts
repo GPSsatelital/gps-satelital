@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cuentaLiquidacion } from "./cuentaLiquidacion";
+import { cuentaLiquidacion, plataQueEsDelCliente, CONCEPTO_PAGO_MOTO } from "./cuentaLiquidacion";
 import type { ContratoCiclo } from "./cicloPago";
 
 // La cuenta que se FIRMA. Los contratos son reales, con las cifras de producción del 20-ago-2026.
@@ -184,5 +184,81 @@ describe("el total y su desglose no se pueden contradecir", () => {
       danos: [{ concepto: "Farol roto", monto: 50000 }],
     });
     expect(c.enContra.renglones.find(r => r.concepto === "Daño: Farol roto")?.monto).toBe(50000);
+  });
+});
+
+// ── YESID BARRAZA (RLT72H) — migrado, va 60 de 65, cifras de producción del 25-sep-2026 ──
+// Regla del dueño D-023 (24-sep): el ahorro es de la empresa SOLO si el contrato termina bien;
+// si liquida sin terminar, se le devuelve. Confirmada con su caso el 25-sep.
+const YESID = {
+  forma_pago: "Semanal" as const, dia_pago: "Lunes", valor_semanal: 235000,
+  es_migrado: true, motor_v2: true,
+  total_cajas: 65, cajas_pagadas: 60, cajas_previas: 51, caja_actual_pagado: 0,
+  prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+  tarifa_diaria: 26000, tarifa_domingo: 13000, ahorro_diario: 10000, ahorro_domingo: 6000,
+  ahorro_acumulado: 525000, ahorro_apertura: 3276000, ahorro_inicial: 800000,
+};
+
+describe("el que se va ANTES de terminar: se le devuelve todo su ahorro (D-023)", () => {
+  it("YESID hoy: base $800.000 − semana $235.000 + ahorro $3.801.000 = $4.366.000", () => {
+    const r = plataQueEsDelCliente(YESID);
+    expect(r.map(x => [x.concepto, x.monto])).toEqual([
+      ["Base inicial que entregó", 800000],
+      ["Menos la semana adelantada de esa base", -235000],
+      ["Ahorro que ganó pagando", 3801000],
+    ]);
+    expect(r.reduce((s, x) => s + x.monto, 0)).toBe(4366000);
+  });
+});
+
+// Corte el 1-nov: el día en que se consume su caja 65 exacta. Antes le devuelve lo pagado de la
+// semana que no usó; después le cobra días. Aquí se mide solo el ahorro, sin ese ajuste.
+describe("el que TERMINA su contrato: su ahorro pagó la moto (D-023)", () => {
+  it("YESID al pagar su semana 65: el ahorro se MUESTRA completo y se cierra con lo que pagó", () => {
+    const r = plataQueEsDelCliente(YESID, "cumplimiento");
+    expect(r.map(x => [x.concepto, x.monto])).toEqual([
+      ["Base inicial que entregó", 800000],
+      ["Menos la semana adelantada de esa base", -235000],
+      ["Ahorro que ganó pagando", 3801000],
+      [CONCEPTO_PAGO_MOTO, -4366000],
+    ]);
+    expect(r.reduce((s, x) => s + x.monto, 0)).toBe(0);
+  });
+
+  it("los otros dos motivos se van antes de terminar: se les devuelve todo, igual que siempre", () => {
+    const antes = plataQueEsDelCliente(YESID);
+    expect(plataQueEsDelCliente(YESID, "retiro_voluntario")).toEqual(antes);
+    expect(plataQueEsDelCliente(YESID, "incumplimiento")).toEqual(antes);
+  });
+
+  it("el saldo a favor NO es ahorro: al que termina se le sigue devolviendo", () => {
+    const c = cuentaLiquidacion({
+      contrato: { ...YESID, cajas_pagadas: 65 }, fechaCorte: "2026-11-01", saldoFavor: 109000,
+      deudas: [], convenios: [], motivo: "cumplimiento",
+    });
+    expect(c.aFavor.total).toBe(109000);
+    expect(c.aFavor.renglones.find(r => r.concepto === "Saldo a favor")!.monto).toBe(109000);
+  });
+
+  it("lo que debe se le sigue cobrando: el acuerdo sin terminar queda en contra", () => {
+    const c = cuentaLiquidacion({
+      contrato: { ...YESID, cajas_pagadas: 65 }, fechaCorte: "2026-11-01", saldoFavor: 0,
+      deudas: [], motivo: "cumplimiento",
+      convenios: [{ estado: "activo", deuda_total: 300000, cuotas_pagadas: 4, cuota_por_periodo: 60000 }],
+    });
+    expect(c.aFavor.total).toBe(0);
+    expect(c.enContra.total).toBe(60000);
+    expect(c.saldoFinal).toBe(-60000);
+  });
+
+  it("también al del WIZARD: la apertura (resto de su base) y lo ganado pagando pagan la moto", () => {
+    const r = plataQueEsDelCliente(SERAFIN, "cumplimiento");
+    expect(r.at(-1)).toEqual({ concepto: CONCEPTO_PAGO_MOTO, monto: -418000 });
+    expect(r.reduce((s, x) => s + x.monto, 0)).toBe(0);
+  });
+
+  it("sin ahorro no aparece el renglón: no hay nada que explicar", () => {
+    const r = plataQueEsDelCliente({ ...SERAFIN, ahorro_acumulado: 0, ahorro_apertura: 0 }, "cumplimiento");
+    expect(r).toEqual([]);
   });
 });

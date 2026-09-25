@@ -97,7 +97,24 @@ Lo que está afectando cifras reales de clientes en este momento.
   entrega quede siempre pegada a su contrato y cliente; (b) que iniciar una liquidación **no** cree
   una recepción nueva si ya hay una de entrega sin liquidar — o que no cuente para la fecha de corte.
 
-- [ ] 💻 🔴 **LA LIQUIDACIÓN NO MIRA EL MOTIVO — $8.043.000 en riesgo, YESID a 5 semanas.**
+- [x] 💻 **25-sep: ARREGLADO EN CÓDIGO** — con motivo `cumplimiento` el ahorro se muestra y se cierra
+  con *"Con este ahorro terminó de pagar la moto"* (no suma al saldo); retiro e incumplimiento
+  siguen devolviéndolo. La proyección lo aplica solo si ya llenó sus cajas. Cambiar el motivo
+  desde/hacia cumplimiento después de calcular devuelve la liquidación al cálculo. 7 pruebas nuevas
+  con las cifras reales de YESID. Medido el 25-sep: **$8.753.000** en 5 contratos (YESID $4.366.000
+  contando el sobrante de su base). **Lo que salió al medirlo, sin decidir:**
+  - 🔴 **Terminar debiendo algo = saldo negativo.** Simulado con YESID a 65/65: saldo a favor
+    $109.000 − acuerdo pendiente $256.000 = **−$147.000**. Antes su ahorro lo tapaba; ahora el
+    cierre lo mandaría a **lista negra** y no deja imprimir Paz y Salvo. Decidir con el dueño:
+    ¿se le cobra lo pendiente ANTES de liquidar por cumplimiento? (Al ritmo de ~$60.000/semana
+    al acuerdo, YESID lo termina en ~4 semanas, antes que las 5 que le faltan.)
+  - **La fecha de corte de un cumplimiento mueve plata:** si se liquida el lunes que paga la caja
+    65, el ajuste le devuelve **$199.000** de la semana que no usó; el 1-nov, $0; el 2-nov le cobra
+    un día. ¿Qué fecha manda en un cumplimiento, si la moto no se recibe?
+  - **YESID paga $234.000 y su contrato dice $235.000**: el peso que falta sale del ahorro
+    ($65.000 en vez de $66.000 por semana). Y su ahorro ganado ($3.801.000) está $159.000 por
+    debajo de 60 × $66.000 — la diferencia viene del Excel de la migración.
+- [x] ~~💻 🔴 **LA LIQUIDACIÓN NO MIRA EL MOTIVO — $8.043.000 en riesgo, YESID a 5 semanas.**~~ *(lo de abajo es el registro del 24-sep)*
   Regla del dueño **D-023** (24-sep): el ahorro es de la empresa **solo si el contrato termina
   bien**; si liquida sin finalizar, se le devuelve. Pero `cuentaLiquidacion()` **no mira `motivo`
   ni una vez** (verificado por grep: cero coincidencias) → le devuelve todo el ahorro igual al que

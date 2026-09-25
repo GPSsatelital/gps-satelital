@@ -364,3 +364,26 @@ que arranquen todas en vez de rendirse a los 30 s.
 si se murió, o si nunca la dejaron arrancar. Y **`claude mcp list` da el estado real de cada una**
 sin tener que abrir una sesión nueva.
 **Reemplaza a:** el arreglo del 24-sep (quitar `npx`), que era correcto pero solo la mitad.
+
+### D-026 · 25-sep-2026 · 🔴 Nadie termina debiendo: se le agregan semanas hasta quedar al día
+**Decidió:** el dueño.
+**Qué se decidió, textual:** *"para cuando el tiempo del contrato termine y aún siga debiendo, se
+debe colocar más tiempo en semanas dependiendo de lo que tiene pendiente hasta que quede
+totalmente al día"*. Y de las dos formas que se le mostraron, eligió la **A**:
+- **Sigue pagando su semana normal** (la misma de siempre, ej. YESID $235.000) y **todo va a lo
+  que debe** (acuerdo + deudas). No se le cobra arriendo por esas semanas de más.
+- **Cuando queda en $0**, recién ahí se liquida por cumplimiento y la moto pasa a ser suya.
+- Descartada la **B** (pagar solo la cuota del acuerdo, $60.000): tardaba más del doble.
+
+**Por qué:** D-023 (el ahorro del que termina pagó la moto) dejó al descubierto que el ahorro
+tapaba las deudas en silencio. Sin esta regla, quien termina debiendo sale con liquidación
+**negativa**, y el cierre lo manda a **lista negra** y no deja imprimir el Paz y Salvo — a alguien
+que sí terminó su contrato. Caso con el que se decidió: YESID simulado a 65/65 → −$147.000.
+
+**A quién le toca (medido el 25-sep):** YESID BARRAZA (60/65, debe $256.000 → 2 semanas de más) ·
+LUIS FERNANDO SOLANO (98/104, debe **$1.455.200** → 8 semanas a $195.000) · RAMON BARON (ya
+terminó, $1.509.000, en pausa por el dueño). JOSE GOMEZ y CESAR terminan en $0.
+**Dónde vive:** 🔲 **el código NO lo hace todavía.** Hoy, al llenar la última semana, el sistema
+deja de pedir la semana y solo cobra la cuota del acuerdo — es decir, hace la B. Plan en
+`docs/PENDIENTES.md` → P0. **Fecha límite real: ~26-oct**, cuando YESID paga su semana 65.
+**Reemplaza a:** —

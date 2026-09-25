@@ -97,6 +97,18 @@ Lo que está afectando cifras reales de clientes en este momento.
   entrega quede siempre pegada a su contrato y cliente; (b) que iniciar una liquidación **no** cree
   una recepción nueva si ya hay una de entrega sin liquidar — o que no cuente para la fecha de corte.
 
+- [ ] 💻 🔴 **D-026: SEMANAS DE MÁS PARA EL QUE TERMINA DEBIENDO — antes del ~26-oct (YESID).**
+  Regla del dueño (25-sep): al llenar su última semana, si todavía debe, **sigue pagando su semana
+  normal y todo va a lo que debe**, hasta quedar en $0; recién ahí se liquida por cumplimiento.
+  Hoy el sistema hace otra cosa: deja de pedir la semana y solo cobra la cuota del acuerdo.
+  A quién le toca: YESID ($256.000 → 2 semanas) · LUIS FERNANDO SOLANO ($1.455.200 → 8) · RAMON
+  ($1.509.000, en pausa). **Piezas:** (1) no ofrecer "Cumplimiento" mientras deba un peso;
+  (2) después de la última semana, exigir la semana normal (o lo que falte, si es menos) y que el
+  motor la mande entera a deudas + acuerdo, no solo la cuota; (3) su espejo en la vitrina de ZALA
+  + prueba espejo (REGLA DE LA VITRINA). ⚠️ **Por definir con el dueño antes de construir:** si
+  esas semanas generan mora/gabela/recolección como una semana normal, y en qué orden se pagan
+  deuda y acuerdo.
+
 - [x] 💻 **25-sep: ARREGLADO EN CÓDIGO** — con motivo `cumplimiento` el ahorro se muestra y se cierra
   con *"Con este ahorro terminó de pagar la moto"* (no suma al saldo); retiro e incumplimiento
   siguen devolviéndolo. La proyección lo aplica solo si ya llenó sus cajas. Cambiar el motivo

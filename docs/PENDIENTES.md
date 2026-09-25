@@ -105,9 +105,10 @@ Lo que está afectando cifras reales de clientes en este momento.
   ($1.509.000, en pausa). **Piezas:** (1) no ofrecer "Cumplimiento" mientras deba un peso;
   (2) después de la última semana, exigir la semana normal (o lo que falte, si es menos) y que el
   motor la mande entera a deudas + acuerdo, no solo la cuota; (3) su espejo en la vitrina de ZALA
-  + prueba espejo (REGLA DE LA VITRINA). ⚠️ **Por definir con el dueño antes de construir:** si
-  esas semanas generan mora/gabela/recolección como una semana normal, y en qué orden se pagan
-  deuda y acuerdo.
+  + prueba espejo (REGLA DE LA VITRINA). **Respondido por el dueño el 25-sep:** esas semanas se
+  cobran **igual que una semana normal** (gabela, mora, mensajes, llamada y recolección), y el
+  pago va en el **orden de siempre: primero deudas, después acuerdo**. Falta: el plan técnico
+  (toca el motor) y su visto bueno antes de construir.
 
 - [x] 💻 **25-sep: ARREGLADO EN CÓDIGO** — con motivo `cumplimiento` el ahorro se muestra y se cierra
   con *"Con este ahorro terminó de pagar la moto"* (no suma al saldo); retiro e incumplimiento

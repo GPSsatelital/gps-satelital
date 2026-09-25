@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { labelStyle } from "../styles/shared";
 import ImgPrivada from "./ImgPrivada";
 
@@ -286,7 +287,10 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
             </button>
           </div>
         )}
-        {modalOpen && (
+        {/* Al body: si la ventana que la llama está centrada con transform (Devolver base,
+            Ceder contrato), un position:fixed adentro queda encerrado en esa caja y la firma
+            sale del tamaño de la ventanita en vez de pantalla completa. */}
+        {modalOpen && createPortal(
           <ModalFirma
             label={label}
             onAceptar={(dataUrl) => {
@@ -295,7 +299,8 @@ export default function CanvasFirma({ label, onChange, modal = false, valorInici
               setModalOpen(false);
             }}
             onCerrar={() => setModalOpen(false)}
-          />
+          />,
+          document.body,
         )}
       </>
     );

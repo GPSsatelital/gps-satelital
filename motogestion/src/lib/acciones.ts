@@ -70,7 +70,8 @@ export const ACCIONES: AccionDef[] = [
   // Plata que SALE de la caja: el cliente se retira antes de recibir moto y se le devuelve su
   // base completa. Más delicado que registrar un ingreso — por eso acción propia y no colgada de
   // "editar_cliente". Default SECRETARIA + ADMIN (los mismos que reciben la base).
-  { key: "devolver_base",          label: "Devolver la base inicial",           modulo: "clientes" },
+  // Desde la mig 172 la base lo revisa en devolver_base(): espejo en _acciones_default().
+  { key: "devolver_base",          label: "Devolver la base inicial",           modulo: "clientes", dbEnforced: true },
   // Pasar a saldo a favor lo que el cliente dio POR ENCIMA de la base exigida (mig 156). Es la
   // ÚNICA plata de la base que se puede mover: los $308.000 y el ahorro no se tocan. Default
   // SECRETARIA + ADMIN: la misma gente que recibe la base y que hoy aplica el saldo a favor.

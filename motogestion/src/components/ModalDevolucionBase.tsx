@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useBloquearScrollFondo } from "../hooks/useBloquearScrollFondo";
 import { useAbonosBase, COSTO_VISITA_DOMICILIARIA } from "../hooks/useAbonosBase";
-import { useClientes } from "../hooks/useClientes";
 import { useVisitas, visitaFueHecha } from "../hooks/useVisitas";
 import { useAuth } from "../contexts/AuthContext";
-import { hoyISO } from "../utils/fecha";
 import { labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import CanvasFirma from "./CanvasFirma";
 import LectorHuella from "./LectorHuella";
@@ -36,8 +34,7 @@ interface Props {
 
 export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEntregado, onClose, onDone }: Props) {
   useBloquearScrollFondo();
-  const { registrar, subirEvidencia } = useAbonosBase();
-  const { actualizarCliente } = useClientes();
+  const { devolverBase, subirEvidencia } = useAbonosBase();
   const { visitas } = useVisitas();
   const { profile } = useAuth();
 
@@ -79,42 +76,18 @@ export default function ModalDevolucionBase({ clienteId, nombre, cedula, montoEn
         huellaUrl = r.url;   // si falla, se sigue: la huella es opcional y la firma ya quedó
       }
 
-      // 2. Los movimientos de plata. Son DOS hechos distintos y por eso van separados: lo que
-      //    sale a las manos del cliente, y lo que se queda la empresa por la visita ya pagada.
-      //    Si fuera una sola devolución neta, el saldo del cliente quedaría en $40.000 y
-      //    parecería que todavía tiene plata adentro cuando no tiene nada.
-      const base = {
-        cliente_id: clienteId,
-        metodo: "Efectivo" as const,
-        fecha: hoyISO(),
-        fecha_registro: hoyISO(),
-        registrado_por: profile.id,
-      };
-      if (aDevolver > 0) {
-        const { error: errMov } = await registrar({
-          ...base, tipo: "devolucion", monto: aDevolver,
-          firma_url: firmaUrl, huella_url: huellaUrl,
-          nota: nota.trim() || "El cliente se retira del proceso",
-        });
-        if (errMov) { setError("Error al registrar la devolución: " + errMov); return; }
-      }
-      if (retencion > 0) {
-        const { error: errRet } = await registrar({
-          ...base, tipo: "retencion", monto: retencion,
-          nota: "Visita domiciliaria ya realizada — pago al visitador",
-        });
-        // La devolución ya quedó y el cliente ya tiene su plata: no se aborta por esto, pero
-        // hay que avisar, porque sin la retención su saldo de base no cierra en cero.
-        if (errRet) { setError(`El dinero YA se registró como entregado — NO lo repitas. Falló solo anotar los ${fmt(retencion)} de la visita: ${errRet}. Avísame para corregirlo.`); return; }
-      }
-
-      // 3. El cliente queda Retirado y sin base entregada. Si esto falla, la devolución YA quedó
-      //    registrada — hay que decirlo así para que nadie la vuelva a hacer creyendo que se perdió.
-      const { error: errCli } = await actualizarCliente(clienteId, { ingreso_inicial: 0, estado: "Retirado" } as never);
-      if (errCli) {
-        setError(`La devolución YA quedó registrada — NO la repitas. Lo que falló fue marcar al cliente como Retirado: ${errCli}. Cámbialo a mano desde su ficha.`);
-        return;
-      }
+      // 2. La plata y el cliente, en UNA sola transacción de la base (mig 172). Antes eran 3 pasos
+      //    sueltos: el último (dejarlo Retirado) se lo frenaba el guardián a la secretaria, el botón
+      //    seguía ahí y la devolución se registraba otra vez — pasó con OMAR (4 veces), FELIPE y
+      //    JOSE LUIS. Ahora, si falla, no quedó nada y reintentar es seguro; y la base rechaza una
+      //    segunda devolución porque exige que lo entregado cuadre con la base, que ya quedó en $0.
+      //    Siguen siendo DOS movimientos (lo que sale + la visita), no uno neto: si fuera uno solo,
+      //    el saldo quedaría en $40.000 y parecería que todavía tiene plata adentro.
+      const { error: errDev } = await devolverBase({
+        clienteId, devolver: aDevolver, retencion,
+        firmaUrl, huellaUrl, nota: nota.trim(),
+      });
+      if (errDev) { setError("No se registró la devolución: " + errDev); return; }
 
       // El recibo muestra la cuenta desglosada: el cliente tiene que poder ver POR QUÉ recibe
       // menos de lo que entregó, sin que nadie se lo tenga que explicar de palabra.

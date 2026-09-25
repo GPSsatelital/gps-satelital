@@ -196,6 +196,31 @@ export function useAbonosBase() {
   }
 
   /**
+   * La devolución entera en UNA transacción de la base (mig 172): la plata que sale, el descuento
+   * de la visita y el cliente Retirado con base $0. O queda todo o no queda nada. La base además
+   * exige que devolver + retención sea EXACTAMENTE la base del cliente, así que una segunda
+   * devolución es imposible aunque se toque dos veces.
+   */
+  async function devolverBase(datos: {
+    clienteId: string;
+    devolver: number;
+    retencion: number;
+    firmaUrl: string;
+    huellaUrl: string | null;
+    nota: string;
+  }): Promise<{ error: string | null }> {
+    const { error } = await supabase.rpc("devolver_base", {
+      p_cliente_id: datos.clienteId,
+      p_devolver: Math.round(datos.devolver),
+      p_retencion: Math.round(datos.retencion),
+      p_firma_url: datos.firmaUrl,
+      p_huella_url: datos.huellaUrl,
+      p_nota: datos.nota,
+    });
+    return { error: error?.message ?? null };
+  }
+
+  /**
    * Sube la firma/huella de una devolución al bucket que ya usa el resto del sistema.
    * Si falla, quien llama DEBE abortar: sin la firma no hay prueba de que el cliente
    * recibió su plata, que es justamente el motivo de todo este flujo.
@@ -211,5 +236,5 @@ export function useAbonosBase() {
     return { url: data.publicUrl, error: null as string | null };
   }
 
-  return { abonos, loading, movimientosDeCliente, registrar, trasladarExcedenteASaldo, subirEvidencia };
+  return { abonos, loading, movimientosDeCliente, registrar, trasladarExcedenteASaldo, devolverBase, subirEvidencia };
 }

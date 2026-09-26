@@ -31,8 +31,8 @@
   // `created_at` va porque `faltaDelAcuerdo` corta los abonos por la firma del acuerdo con ese
   // campo (mig 132) — igual que la pantalla, que pasa el pago completo. Sin él, la prueba
   // ejercitaría el respaldo por `fecha` y no el camino real.
-  const pagos = await porLotes("pagos?estado=eq.Confirmado&contrato_id=in.({IDS})&select=contrato_id,fecha,created_at,valor,aplicado_convenio,aplicado_saldo_favor");
-  const deudas = await porLotes("deudas?estado=eq.pendiente&contrato_id=in.({IDS})&select=contrato_id,monto,monto_pendiente");
+  const pagos = await porLotes("pagos?estado=eq.Confirmado&contrato_id=in.({IDS})&select=contrato_id,fecha,created_at,valor,aplicado_convenio,aplicado_saldo_favor,aplicado_deuda");
+  const deudas = await porLotes("deudas?estado=eq.pendiente&contrato_id=in.({IDS})&select=contrato_id,monto,monto_pendiente,created_at");
   const convenios = await q("convenios?estado=eq.activo&select=*");
   const vitrina = await rpc("zala_vitrina", { p_vista: "cliente" });
   const porContrato = new Map(vitrina.map(r => [r.contrato_id, r]));
@@ -50,18 +50,23 @@
     const lqd = cp.loQueDebe(c, pagosC, deudasC, cv, hoy);
     const cuotaConv = cp.cuotaConvenioDelPeriodo(cv, c, hoy);
     const cubierto = !!(cv?.cubre_periodo_hasta && cv.cubre_periodo_hasta >= hoyISO);
-    const estado = cp.calcularEstadoCartera(c, pagosC, hoy, cuotaConv, cubierto, cv);
-    const dias = cp.diasEnMora(c, pagosC, hoy, cuotaConv, cubierto, cv);
+    // D-026: con las deudas, igual que las pantallas, para las semanas de más.
+    const estado = cp.calcularEstadoCartera(c, pagosC, hoy, cuotaConv, cubierto, cv, deudasC);
+    const dias = cp.diasEnMora(c, pagosC, hoy, cuotaConv, cubierto, cv, deudasC);
     const esperado = {
       debe_hoy: lqd.totalFalta, cuota_toca: lqd.cuota.toca, cuota_falta: lqd.cuota.falta,
       acuerdo_toca: lqd.acuerdo?.toca ?? 0, acuerdo_falta: lqd.acuerdo?.falta ?? 0,
       acuerdo_cuota_este_periodo: lqd.acuerdo?.cuotaDelPeriodo ?? 0,
-      deudas_falta: lqd.deudas.falta, saldo_a_favor: lqd.saldoAFavor,
+      // En semanas de más la pantalla pone las deudas dentro de la semana (deudas.falta = 0) y la
+      // vitrina conserva la columna con lo real; se compara contra el desglose del cierre (mig 175).
+      deudas_falta: lqd.cierre ? lqd.cierre.debeDeudas : lqd.deudas.falta, saldo_a_favor: lqd.saldoAFavor,
       estado_cartera: estado, dias_mora: dias,
+      en_semanas_de_mas: lqd.cierre ? 1 : 0, semana_de_mas: lqd.cierre?.semana ?? 0,
+      semanas_de_mas: lqd.cierre?.semanas ?? 0, debe_para_terminar: lqd.cierre?.debeTotal ?? 0,
     };
     comparados++;
     for (const [campo, ts] of Object.entries(esperado)) {
-      const sql = campo === "estado_cartera" ? v[campo] : num(v[campo]);
+      const sql = campo === "estado_cartera" ? v[campo] : campo === "en_semanas_de_mas" ? (v[campo] ? 1 : 0) : num(v[campo]);
       const igual = campo === "estado_cartera" ? sql === ts : Math.abs(sql - ts) < 0.5;
       if (!igual) diffs.push({ placa: v.placa, cliente: v.cliente, campo, pantalla: ts, base: v[campo] });
     }

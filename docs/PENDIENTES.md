@@ -97,7 +97,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   entrega quede siempre pegada a su contrato y cliente; (b) que iniciar una liquidación **no** cree
   una recepción nueva si ya hay una de entrega sin liquidar — o que no cuente para la fecha de corte.
 
-- [ ] 💻 🔴 **D-026: SEMANAS DE MÁS PARA EL QUE TERMINA DEBIENDO — antes del ~26-oct (YESID).**
+- [x] 💻 **D-026: SEMANAS DE MÁS — LOS 4 PASOS HECHOS el 26-sep.** 🔲 Solo queda **mirarle la ficha a YESID el lunes 2-nov** (la primera semana de más de verdad) y correr la prueba espejo ese día. *(Registro:)* **D-026: SEMANAS DE MÁS PARA EL QUE TERMINA DEBIENDO — antes del ~26-oct (YESID).**
   Regla del dueño (25-sep): al llenar su última semana, si todavía debe, **sigue pagando su semana
   normal y todo va a lo que debe**, hasta quedar en $0; recién ahí se liquida por cumplimiento.
   Hoy el sistema hace otra cosa: deja de pedir la semana y solo cobra la cuota del acuerdo.
@@ -128,7 +128,7 @@ Lo que está afectando cifras reales de clientes en este momento.
      paga de más o antes. Mora desde la semana de cierre más vieja sin cubrir.
      ⚠️ Caso borde: quien terminó limpio y meses después le cae una deuda → sus semanas de cierre
      cuentan desde esa deuda, no desde que terminó (si no, amanece con meses de mora).
-  4. **ZALA:** `zala.dias_en_mora_v2` (mig 129) + cuota en `zala.cliente` + estado nuevo en
+  4. ✅ **HECHO 26-sep** (mig 175 registrada) — `zala.semana_de_cierre()` gemela de `semanaDeCierre()`, `zala.cuenta_contrato` la usa (vitrina **y Mi Día**, que no hubo que tocar), `zala.cliente` sin contar las deudas dos veces + 4 columnas, diccionario (5 palabras). **Espejo: 325 contratos, 0 diferencias.** Simulado YESID a 65/65 en 4 fechas: pantalla y base idénticas (30-oct $0 · 2-nov $235.000 vence hoy · 6-nov mora 3 días · 10-nov $256.000 mora 7 días). **ZALA:** `zala.dias_en_mora_v2` (mig 129) + cuota en `zala.cliente` + estado nuevo en
      `zala.diccionario` y `docs/DICCIONARIO-ESTADOS.md` + caso en la prueba espejo.
   Fechas: paso 1 ya; pasos 2-4 antes del **~19-oct** (una semana antes de la semana 65 de YESID),
   nunca lunes/miércoles antes de las 6 pm.
@@ -507,6 +507,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 26-sep | 🔴 **D-026 completa: nadie termina debiendo** — no se liquida por cumplimiento debiendo (mig 173), el motor manda la semana de más entera a lo que debe (mig 174), la cartera la cobra como cualquier semana con mora y recolección ("Semana de más k de N"), y ZALA y Mi Día dicen lo mismo (mig 175, espejo 0 diferencias). Primer caso real: YESID ~2-nov |
 | 25-sep | 🔴 **El que termina su contrato ya no se lleva el ahorro** (D-023, commit f5c2ce1) — con motivo cumplimiento el ahorro se muestra y se cierra con "Con este ahorro terminó de pagar la moto". Medido: $8.753.000 en 5 contratos. Salió D-026 (nadie termina debiendo), plan arriba en P0 |
 | 25-sep | 🔴 **Devolver la base ya no se registra dos veces** (mig 172, commit 6ebc3dd) — la secretaria quedaba frenada en el último paso y repetía: OMAR YANCES 4 veces, FELIPE SEMBERGMAN 2, JOSE LUIS VASQUEZ 2 = $2.082.000 de más, corregidos. Ahora una sola transacción con candado; probado en producción |
 | 25-sep | **La firma sale en pantalla completa** en Devolver base y Ceder contrato (commit b210b16) — la ventana centrada con transform la encerraba |

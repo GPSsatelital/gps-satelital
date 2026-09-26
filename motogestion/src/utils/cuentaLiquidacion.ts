@@ -1,5 +1,9 @@
 import { ajusteSalidaLedger, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
 import type { MotivoLiquidacion } from "../hooks/useLiquidaciones";
+import { pisoBaseDe, PISO_BASE } from "./excedenteBase";
+
+/** Así nace el convenio que financia la base que el cliente no completó (WizardContrato). */
+export const CONCEPTO_CONVENIO_BASE = "Base inicial incompleta al crear el contrato";
 
 // LA CUENTA DE UNA LIQUIDACIÓN, EN UN SOLO SITIO.
 //
@@ -30,7 +34,11 @@ export type CuentaLiquidacion = {
 };
 
 export type DeudaCuenta = { concepto: string; descripcion: string; monto_pendiente: number; estado: string };
-export type ConvenioCuenta = { deuda_total: number; cuota_por_periodo: number; cuotas_pagadas: number; estado: string };
+export type ConvenioCuenta = {
+  deuda_total: number; cuota_por_periodo: number; cuotas_pagadas: number; estado: string; concepto?: string | null;
+  /** Lo abonado de verdad desde la firma. Si viene, manda sobre cuotas × valor (que redondea a cuotas enteras). */
+  abonado?: number;
+};
 
 const CONCEPTO_LEGIBLE: Record<string, string> = {
   multa_recoleccion: "Multa por recolección",
@@ -130,7 +138,15 @@ export const CONCEPTO_PAGO_MOTO = "Con este ahorro terminó de pagar la moto";
  * Lo que el cliente debe FUERA de sus semanas: deudas sueltas y lo que falta de sus acuerdos.
  * La liquidación y el candado del cumplimiento lo leen de aquí, para que nunca digan cifras distintas.
  */
-export function deudasYAcuerdos(deudas: DeudaCuenta[], convenios: ConvenioCuenta[]): RenglonCuenta[] {
+export function deudasYAcuerdos(
+  deudas: DeudaCuenta[],
+  convenios: ConvenioCuenta[],
+  // D-023 (segunda cara): quien se va ANTES de terminar no paga la parte de AHORRO del convenio de
+  // base que no alcanzó a pagar — cobrársela sería cobrarle algo que en el mismo acto habría que
+  // devolverle. Sí paga la parte que era su primera semana: eso es arriendo que usó. Sin esta
+  // opción (el candado del cumplimiento, D-026) se cuenta todo: la base es parte del precio de la moto.
+  opciones: { seVaAntes?: boolean; pisoBase?: number } = {},
+): RenglonCuenta[] {
   const r: RenglonCuenta[] = [];
   // Solo las 'pendiente': las 'en_convenio' entran abajo dentro del convenio, y contarlas por los
   // dos lados sería cobrarlas dos veces.
@@ -143,7 +159,17 @@ export function deudasYAcuerdos(deudas: DeudaCuenta[], convenios: ConvenioCuenta
   // 'activo' e 'incumplido'. El incumplido es el que MÁS se liquida (3er incumplido → liquidación
   // obligatoria) y antes desaparecía de la cuenta, así que se devolvía todo el ahorro.
   for (const cv of convenios.filter(x => x.estado === "activo" || x.estado === "incumplido")) {
-    const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
+    const restante = Math.max(cv.deuda_total - (cv.abonado ?? cv.cuotas_pagadas * cv.cuota_por_periodo), 0);
+    if (opciones.seVaAntes && cv.concepto === CONCEPTO_CONVENIO_BASE) {
+      // Hasta el piso de la base es ahorro; lo que pase de ahí era su primera semana. Lo pagado se
+      // aplica primero a la semana (tarifa primero, regla 3 del libro de cajas).
+      const ahorro = Math.min(cv.deuda_total, opciones.pisoBase ?? PISO_BASE);
+      const semana = cv.deuda_total - ahorro;
+      const pagado = cv.deuda_total - restante;
+      const semanaSinPagar = Math.max(semana - pagado, 0);
+      if (semanaSinPagar > 0) r.push({ concepto: "Primera semana de su base, sin pagar", monto: semanaSinPagar });
+      continue;
+    }
     if (restante > 0) {
       r.push({
         concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
@@ -202,7 +228,7 @@ export function cuentaLiquidacion(opts: {
 
   const enContra: RenglonCuenta[] = [];
   if (ajuste.porCobrar > 0) enContra.push({ concepto: "Días que rodó y no pagó", monto: ajuste.porCobrar });
-  enContra.push(...deudasYAcuerdos(deudas, convenios));
+  enContra.push(...deudasYAcuerdos(deudas, convenios, { seVaAntes: motivo !== "cumplimiento", pisoBase: pisoBaseDe(contrato) }));
   for (const d of danos) if (d.monto > 0) enContra.push({ concepto: `Daño: ${d.concepto}`, monto: d.monto });
 
   const totalFavor = aFavor.reduce((s, r) => s + r.monto, 0);

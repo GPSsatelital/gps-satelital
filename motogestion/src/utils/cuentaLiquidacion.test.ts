@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cuentaLiquidacion, plataQueEsDelCliente, faltaParaCumplimiento, CONCEPTO_PAGO_MOTO } from "./cuentaLiquidacion";
+import { cuentaLiquidacion, plataQueEsDelCliente, faltaParaCumplimiento, deudasYAcuerdos, CONCEPTO_PAGO_MOTO } from "./cuentaLiquidacion";
 import type { ContratoCiclo } from "./cicloPago";
 
 // La cuenta que se FIRMA. Los contratos son reales, con las cifras de producción del 20-ago-2026.
@@ -301,5 +301,52 @@ describe("¿puede liquidarse por cumplimiento? (D-026)", () => {
       deudas: [], convenios: [ACUERDO_YESID], motivo: "cumplimiento",
     });
     expect(c.enContra.total).toBe(faltaParaCumplimiento([], [ACUERDO_YESID], 0).debe);
+  });
+});
+
+// ── EL CONVENIO DE BASE (D-023, segunda cara) ──
+// Casos reales del 26-sep: JESUS MARIA DE HORTA (LIQ-0011) y FRAIRON CASTILLA (LIQ-0070). Ninguno
+// alcanzó a pagar un peso de su convenio "Base inicial incompleta al crear el contrato".
+const CONTRATO_202 = { ...SERAFIN, ahorro_acumulado: 26000, ahorro_apertura: 0 };
+const BASE_JESUS = { estado: "activo", deuda_total: 308000, cuotas_pagadas: 0, cuota_por_periodo: 30000, concepto: "Base inicial incompleta al crear el contrato" };
+const BASE_FRAIRON = { estado: "activo", deuda_total: 410000, cuotas_pagadas: 0, cuota_por_periodo: 50000, concepto: "Base inicial incompleta al crear el contrato" };
+
+describe("D-023 segunda cara: al que se va ANTES no se le cobra la base que no pagó", () => {
+  // Antes de este cambio (26-sep) la liquidación le cobraba a JESUS MARIA los $308.000 completos.
+  it("JESUS MARIA (retiro): su base de $308.000 sin pagar ya no se le cobra", () => {
+    const c = cuentaLiquidacion({ contrato: CONTRATO_202, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [BASE_JESUS], motivo: "retiro_voluntario" });
+    expect(c.enContra.renglones.some(r => /convenio|base/i.test(r.concepto))).toBe(false);
+  });
+
+  it("FRAIRON (incumplimiento): de sus $410.000 solo se cobra la primera semana, $102.000", () => {
+    const c = cuentaLiquidacion({ contrato: CONTRATO_202, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [BASE_FRAIRON], motivo: "incumplimiento" });
+    expect(c.enContra.renglones.find(r => r.concepto === "Primera semana de su base, sin pagar")?.monto).toBe(102000);
+  });
+
+  it("lo que abonó al convenio de base tapa primero la semana (tarifa primero)", () => {
+    const abono100 = deudasYAcuerdos([], [{ ...BASE_FRAIRON, cuotas_pagadas: 2 }], { seVaAntes: true, pisoBase: 308000 });
+    expect(abono100).toEqual([{ concepto: "Primera semana de su base, sin pagar", monto: 2000 }]);
+    const abono150 = deudasYAcuerdos([], [{ ...BASE_FRAIRON, cuotas_pagadas: 3 }], { seVaAntes: true, pisoBase: 308000 });
+    expect(abono150).toEqual([]);
+  });
+
+  it("tarifa vieja: el piso es $305.000, y lo que pase de ahí es semana", () => {
+    const r = deudasYAcuerdos([], [{ ...BASE_FRAIRON, deuda_total: 400000 }], { seVaAntes: true, pisoBase: 305000 });
+    expect(r).toEqual([{ concepto: "Primera semana de su base, sin pagar", monto: 95000 }]);
+  });
+
+  it("por CUMPLIMIENTO sí se cobra entera: la base es parte del precio de la moto (D-026)", () => {
+    const c = cuentaLiquidacion({ contrato: { ...CONTRATO_202, cajas_pagadas: 104 }, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [BASE_JESUS], motivo: "cumplimiento" });
+    expect(c.enContra.renglones.find(r => r.concepto === "Saldo pendiente de convenio")?.monto).toBe(308000);
+  });
+
+  it("el candado del cumplimiento la sigue contando: no se liquida por cumplimiento con la base sin pagar", () => {
+    expect(faltaParaCumplimiento([], [BASE_JESUS], 0).falta).toBe(308000);
+  });
+
+  it("un acuerdo que NO es de base se sigue cobrando igual al que se va", () => {
+    const acuerdo = { ...BASE_JESUS, concepto: "Por tarifas atrasadas" };
+    const c = cuentaLiquidacion({ contrato: CONTRATO_202, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [acuerdo], motivo: "retiro_voluntario" });
+    expect(c.enContra.renglones.find(r => r.concepto === "Saldo pendiente de convenio")?.monto).toBe(308000);
   });
 });

@@ -15,6 +15,7 @@ import ModalConvenio from "../components/ModalConvenio";
 import { calcularProrrateoInicial, proximoDiaPago, totalCajasContrato } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
+import { CONCEPTO_CONVENIO_BASE } from "../utils/cuentaLiquidacion";
 
 type Props = {
   clientes: Cliente[];
@@ -1172,7 +1173,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           // defecto de 7 convenios ($1.616.000) hasta el 25-ago — ver ModalConvenio.
           sinFinanciarSemanas
           metaNota="lo que le falta para completar la base inicial"
-          motivoInicial="Base inicial incompleta al crear el contrato"
+          motivoInicial={CONCEPTO_CONVENIO_BASE}
           obligatorio
           onClose={() => { setConvenioPendiente(null); setStep(2); }}
         />

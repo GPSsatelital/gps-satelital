@@ -94,7 +94,8 @@ import {
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
 import { faltaElegirCuenta } from "../utils/cuentasDelDia";
-import { desglosarBase, motivoNoSePuedeTrasladar } from "../utils/excedenteBase";
+import { desglosarBase, motivoNoSePuedeTrasladar, pisoBaseDe } from "../utils/excedenteBase";
+import { deudasYAcuerdos } from "../utils/cuentaLiquidacion";
 import { useAbonosBase } from "../hooks/useAbonosBase";
 import { hoyISO, hoyDate, hoyMasDias, fechaISO, fmtFechaLarga } from "../utils/fecha";
 import { Chip, Badge, Btn, type BadgeTone } from "../components/atomos";
@@ -1924,7 +1925,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // Preliquidación: su ahorro, menos lo que quedaría debiendo. NO incluye daños — los valora
       // el taller y sin revisión física cualquier cifra ahí sería inventada.
       const ahorro = (c.ahorro_acumulado ?? 0) + (c.ahorro_apertura ?? 0);
-      const convPend = cvActiva ? Math.max(cvActiva.deuda_total - sumaAbonadoConvenio(cvActiva.id), 0) : 0;
+      // D-023: es la cuenta de "si se fuera hoy" — de un convenio de BASE no se resta la parte de
+      // ahorro que no pagó, solo la primera semana si la debe. La misma función que la liquidación.
+      const convPend = cvActiva
+        ? deudasYAcuerdos([], [{ ...cvActiva, abonado: sumaAbonadoConvenio(cvActiva.id) }], { seVaAntes: true, pisoBase: pisoBaseDe(c) })
+            .reduce((s2, r) => s2 + r.monto, 0)
+        : 0;
       const lineas = [
         { label: "Se le devuelve su ahorro", monto: ahorro },
         ...(convPend > 0 ? [{ label: "Menos lo que queda del acuerdo", monto: -convPend }] : []),

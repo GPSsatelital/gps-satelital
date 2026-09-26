@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
 import { estadoMotoTrasLiberar } from "./useMotos";
+import { deudasYAcuerdos } from "../utils/cuentaLiquidacion";
+import { pisoBaseDe } from "../utils/excedenteBase";
 
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada" | "anulada";
@@ -195,18 +197,16 @@ export function useLiquidaciones() {
     // 'cumplido' y 'renovado' NO entran: el primero ya se pagó, el segundo vive en su reemplazo.
     const { data: convenios } = await supabase
       .from("convenios")
-      .select("deuda_total, cuota_por_periodo, cuotas_pagadas, estado")
+      .select("deuda_total, cuota_por_periodo, cuotas_pagadas, estado, concepto")
       .eq("contrato_id", contratoId)
       .in("estado", ["activo", "incumplido"]);
-    for (const cv of convenios ?? []) {
-      const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
-      if (restante > 0) {
-        detalleDeudas.push({
-          concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
-          monto: restante,
-        });
-      }
-    }
+    // La MISMA cuenta que la proyección (`deudasYAcuerdos`). D-023: al que se va antes no se le
+    // cobra la parte de ahorro de su convenio de base que no pagó; solo su primera semana, si la debe.
+    const { data: ctoPiso } = await supabase.from("contratos").select("valor_semanal").eq("id", contratoId).maybeSingle();
+    detalleDeudas.push(...deudasYAcuerdos([], convenios ?? [], {
+      seVaAntes: motivo !== "cumplimiento",
+      pisoBase: pisoBaseDe(ctoPiso ?? {}),
+    }));
     const totalDeudas = detalleDeudas.reduce((acc, d) => acc + d.monto, 0);
 
     // La revisión de taller es obligatoria en toda liquidación: se crea una orden

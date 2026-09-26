@@ -29,7 +29,8 @@ y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan pe
 el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
 `RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
 
-### 🔴 MAÑANA ARRANCA POR ACÁ: D-026 — el plan espera el SÍ del dueño
+### ✅ D-026 COMPLETA el 26-sep (migs 173·174·175) — solo mirar a YESID el 2-nov
+### (registro de lo que era:) D-026 — el plan espera el SÍ del dueño
 **Nadie termina debiendo** (regla del dueño, 25-sep): si llena su última semana y todavía debe,
 sigue pagando su **semana normal** y todo va a deudas → acuerdo, con gabela/mora/recolección igual;
 se liquida por cumplimiento solo en $0. **Plan de 4 pasos en `docs/PENDIENTES.md` → P0: NO está
@@ -74,6 +75,9 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **26-sep** — **D-026 completa en 4 pasos**: candado de cumplimiento (173), motor sin freno al terminar
+  (174), semanas de más en la cartera con mora y recolección (opción A), y la vitrina de ZALA y Mi Día
+  (175, espejo 325/0) → [[d026-semanas-de-cierre]]
 - **25-sep** — Firma a pantalla completa (b210b16) · **devolver la base se registraba 2-4 veces**:
   $2.082.000 corregidos + mig 172 con candado → [[devolucion-base-doble-registro]] · **el que termina
   ya no se lleva el ahorro** (D-023, f5c2ce1) · de ahí **D-026** (plan sin aprobar) · kit de diseño

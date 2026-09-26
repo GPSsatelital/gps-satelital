@@ -1,6 +1,6 @@
 ---
 name: d026-semanas-de-cierre
-description: "D-026 (25-sep-2026) — el que llena su última semana debiendo sigue pagando su semana normal hasta $0; plan de 4 pasos propuesto, SIN aprobar; antes del ~19-oct por YESID."
+description: "D-026 — el que llena su última semana debiendo sigue pagando su semana normal hasta $0. COMPLETA el 26-sep en 4 pasos (migs 173·174·175 + cicloPago); solo falta mirar a YESID el 2-nov."
 metadata:
   node_type: memory
   type: project
@@ -45,3 +45,14 @@ el sí antes de escribir código. Paso 1 primero (protege aunque lo demás tarde
 lunes o miércoles antes de las 6 pm.
 
 Ver [[ahorro-de-quien-es-regla-d023]] · [[acuerdo-vencido-se-sigue-cobrando]] · [[libro-de-cajas-motor-v2]].
+
+## ✅ 26-sep: LOS 4 PASOS HECHOS (el dueño aprobó el plan y eligió la opción A)
+1. Candado: no se liquida por cumplimiento debiendo — `faltaParaCumplimiento()` + mig 173 (f5450c8).
+2. Motor sin freno al acuerdo con todas las cajas llenas — mig 174 + `repartoPago.ts` (f7e71bc).
+3. `semanaDeCierre()` en `cicloPago.ts`; `loQueDebe.cierre`; estado y días de mora reciben
+   `deudasPendientes` en las 7 pantallas; "Semana de más k de N" (06b8fcb). **Opción A del dueño:
+   el número grande es la semana, el total va debajo.**
+4. Mig 175: `zala.semana_de_cierre()` + `zala.cuenta_contrato` (vitrina y Mi Día) + 4 columnas en
+   `zala.cliente` + diccionario (9e17e57). Espejo 325/0. YESID simulado: pantalla = base en 4 fechas.
+CESAR y RAMON quedan fuera a propósito (más semanas previas que su total). **Hoy nadie está en
+semanas de más.** 🔲 Mirar la ficha de YESID el lunes 2-nov y correr el espejo ese día.

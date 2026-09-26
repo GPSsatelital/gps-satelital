@@ -318,21 +318,16 @@ describe("D-023 segunda cara: al que se va ANTES no se le cobra la base que no p
     expect(c.enContra.renglones.some(r => /convenio|base/i.test(r.concepto))).toBe(false);
   });
 
-  it("FRAIRON (incumplimiento): de sus $410.000 solo se cobra la primera semana, $102.000", () => {
+  // FRAIRON: su acuerdo de $410.000 traía $102.000 de su primera semana. Esa semana YA la cobra la
+  // liquidación por los días que usó (ajuste de salida: pagó $1.285.000, usó $1.367.000 → faltan
+  // $82.000, primera semana incluida). Cobrarla también aquí fue un error del 26-sep, corregido.
+  it("FRAIRON (incumplimiento): de su acuerdo de base de $410.000 no se cobra nada — ni la semana", () => {
     const c = cuentaLiquidacion({ contrato: CONTRATO_202, fechaCorte: "2026-07-13", saldoFavor: 0, deudas: [], convenios: [BASE_FRAIRON], motivo: "incumplimiento" });
-    expect(c.enContra.renglones.find(r => r.concepto === "Primera semana de su base, sin pagar")?.monto).toBe(102000);
+    expect(c.enContra.renglones.some(r => /convenio|base/i.test(r.concepto))).toBe(false);
   });
 
-  it("lo que abonó al convenio de base tapa primero la semana (tarifa primero)", () => {
-    const abono100 = deudasYAcuerdos([], [{ ...BASE_FRAIRON, cuotas_pagadas: 2 }], { seVaAntes: true, pisoBase: 308000 });
-    expect(abono100).toEqual([{ concepto: "Primera semana de su base, sin pagar", monto: 2000 }]);
-    const abono150 = deudasYAcuerdos([], [{ ...BASE_FRAIRON, cuotas_pagadas: 3 }], { seVaAntes: true, pisoBase: 308000 });
-    expect(abono150).toEqual([]);
-  });
-
-  it("tarifa vieja: el piso es $305.000, y lo que pase de ahí es semana", () => {
-    const r = deudasYAcuerdos([], [{ ...BASE_FRAIRON, deuda_total: 400000 }], { seVaAntes: true, pisoBase: 305000 });
-    expect(r).toEqual([{ concepto: "Primera semana de su base, sin pagar", monto: 95000 }]);
+  it("aunque haya abonado parte, al que se va antes no se le cobra lo que falta del acuerdo de base", () => {
+    expect(deudasYAcuerdos([], [{ ...BASE_FRAIRON, cuotas_pagadas: 2 }], { seVaAntes: true })).toEqual([]);
   });
 
   it("por CUMPLIMIENTO sí se cobra entera: la base es parte del precio de la moto (D-026)", () => {

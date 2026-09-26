@@ -1,6 +1,5 @@
 import { ajusteSalidaLedger, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
 import type { MotivoLiquidacion } from "../hooks/useLiquidaciones";
-import { pisoBaseDe, PISO_BASE } from "./excedenteBase";
 
 /** Así nace el convenio que financia la base que el cliente no completó (WizardContrato). */
 export const CONCEPTO_CONVENIO_BASE = "Base inicial incompleta al crear el contrato";
@@ -141,11 +140,13 @@ export const CONCEPTO_PAGO_MOTO = "Con este ahorro terminó de pagar la moto";
 export function deudasYAcuerdos(
   deudas: DeudaCuenta[],
   convenios: ConvenioCuenta[],
-  // D-023 (segunda cara): quien se va ANTES de terminar no paga la parte de AHORRO del convenio de
-  // base que no alcanzó a pagar — cobrársela sería cobrarle algo que en el mismo acto habría que
-  // devolverle. Sí paga la parte que era su primera semana: eso es arriendo que usó. Sin esta
-  // opción (el candado del cumplimiento, D-026) se cuenta todo: la base es parte del precio de la moto.
-  opciones: { seVaAntes?: boolean; pisoBase?: number } = {},
+  // D-023 (segunda cara): a quien se va ANTES de terminar no se le cobra NADA de su convenio de base.
+  // La parte de ahorro es suya (cobrársela sería cobrarle algo que en el mismo acto habría que
+  // devolverle), y si el convenio traía un pedazo de su primera semana, ese pedazo YA lo cobra la
+  // liquidación por los días que usó la moto (ajuste de salida del libro de cajas) — cobrarlo aquí
+  // sería cobrarlo dos veces (FRAIRON, LIQ-0070: $102.000 repetidos, corregido el 26-sep).
+  // Sin esta opción (el candado del cumplimiento, D-026) se cuenta todo: la base es parte del precio.
+  opciones: { seVaAntes?: boolean } = {},
 ): RenglonCuenta[] {
   const r: RenglonCuenta[] = [];
   // Solo las 'pendiente': las 'en_convenio' entran abajo dentro del convenio, y contarlas por los
@@ -160,16 +161,7 @@ export function deudasYAcuerdos(
   // obligatoria) y antes desaparecía de la cuenta, así que se devolvía todo el ahorro.
   for (const cv of convenios.filter(x => x.estado === "activo" || x.estado === "incumplido")) {
     const restante = Math.max(cv.deuda_total - (cv.abonado ?? cv.cuotas_pagadas * cv.cuota_por_periodo), 0);
-    if (opciones.seVaAntes && cv.concepto === CONCEPTO_CONVENIO_BASE) {
-      // Hasta el piso de la base es ahorro; lo que pase de ahí era su primera semana. Lo pagado se
-      // aplica primero a la semana (tarifa primero, regla 3 del libro de cajas).
-      const ahorro = Math.min(cv.deuda_total, opciones.pisoBase ?? PISO_BASE);
-      const semana = cv.deuda_total - ahorro;
-      const pagado = cv.deuda_total - restante;
-      const semanaSinPagar = Math.max(semana - pagado, 0);
-      if (semanaSinPagar > 0) r.push({ concepto: "Primera semana de su base, sin pagar", monto: semanaSinPagar });
-      continue;
-    }
+    if (opciones.seVaAntes && cv.concepto === CONCEPTO_CONVENIO_BASE) continue;
     if (restante > 0) {
       r.push({
         concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
@@ -228,7 +220,7 @@ export function cuentaLiquidacion(opts: {
 
   const enContra: RenglonCuenta[] = [];
   if (ajuste.porCobrar > 0) enContra.push({ concepto: "Días que rodó y no pagó", monto: ajuste.porCobrar });
-  enContra.push(...deudasYAcuerdos(deudas, convenios, { seVaAntes: motivo !== "cumplimiento", pisoBase: pisoBaseDe(contrato) }));
+  enContra.push(...deudasYAcuerdos(deudas, convenios, { seVaAntes: motivo !== "cumplimiento" }));
   for (const d of danos) if (d.monto > 0) enContra.push({ concepto: `Daño: ${d.concepto}`, monto: d.monto });
 
   const totalFavor = aFavor.reduce((s, r) => s + r.monto, 0);

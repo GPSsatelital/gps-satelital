@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
 import { estadoMotoTrasLiberar } from "./useMotos";
 import { deudasYAcuerdos } from "../utils/cuentaLiquidacion";
-import { pisoBaseDe } from "../utils/excedenteBase";
 
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada" | "anulada";
@@ -201,12 +200,8 @@ export function useLiquidaciones() {
       .eq("contrato_id", contratoId)
       .in("estado", ["activo", "incumplido"]);
     // La MISMA cuenta que la proyección (`deudasYAcuerdos`). D-023: al que se va antes no se le
-    // cobra la parte de ahorro de su convenio de base que no pagó; solo su primera semana, si la debe.
-    const { data: ctoPiso } = await supabase.from("contratos").select("valor_semanal").eq("id", contratoId).maybeSingle();
-    detalleDeudas.push(...deudasYAcuerdos([], convenios ?? [], {
-      seVaAntes: motivo !== "cumplimiento",
-      pisoBase: pisoBaseDe(ctoPiso ?? {}),
-    }));
+    // cobra su convenio de base (el ahorro es suyo y la semana ya la cobran los días que usó).
+    detalleDeudas.push(...deudasYAcuerdos([], convenios ?? [], { seVaAntes: motivo !== "cumplimiento" }));
     const totalDeudas = detalleDeudas.reduce((acc, d) => acc + d.monto, 0);
 
     // La revisión de taller es obligatoria en toda liquidación: se crea una orden

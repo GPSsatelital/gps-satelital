@@ -5,6 +5,7 @@ import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../ho
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
 import { useTaller } from "../hooks/useTaller";
 import { useConvenios } from "../hooks/useConvenios";
+import { useDeudas } from "../hooks/useDeudas";
 import { usePendientes } from "../hooks/usePendientes";
 import { useScope } from "../contexts/SubadminScopeContext";
 import Placa from "../components/Placa";
@@ -67,6 +68,8 @@ export default function DashboardView({ onNavigate }: {
   const { pagos: todosPagos, loading: lP } = usePagos();
   const { taller: todoTaller, loading: lT } = useTaller();
   const { convenios: todosConvenios } = useConvenios();
+  // D-026: las deudas pendientes, para saber quién está en semanas de más.
+  const { deudas } = useDeudas();
 
   const motos = filtrarMotos(todasMotos);
   const clientes = filtrarPorCliente(todosClientes);
@@ -117,7 +120,9 @@ export default function DashboardView({ onNavigate }: {
         const conv = elegirConvenioPorCobrar(convenios, c.id);
         const cuotaConv = cuotaConvenioDelPeriodo(conv, c, ahoraCartera);
         const periodoCubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
-        return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv);
+        // D-026: con sus deudas, para las semanas de más (ya llenó todas y todavía debe).
+        return calcularEstadoCartera(c, pc, ahoraCartera, cuotaConv, periodoCubierto, conv,
+          deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"));
       });
     const contratosGabela = estadosCartera.filter(e => e === "gabela").length;
     const contratosMora   = estadosCartera.filter(e => e === "mora").length;
@@ -200,7 +205,7 @@ export default function DashboardView({ onNavigate }: {
       prevMotosAsignadas, prevContratosActivos, prevClientesActivos, prevClientesMora,
       recuperadasSemana, paganHoy, motosInmovilizar,
     };
-  }, [loading, motos, clientes, contratos, pagos, taller, convenios]);
+  }, [loading, motos, clientes, contratos, pagos, taller, convenios, deudas]);
 
   // ── Recaudo filtrado por grupo ─────────────────────────────────────────────
   const recaudoFiltrado = useMemo(() => {

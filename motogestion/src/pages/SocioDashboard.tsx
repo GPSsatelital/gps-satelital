@@ -122,13 +122,15 @@ export default function SocioDashboard() {
     const convenio = elegirConvenioPorCobrar(convenios, c.id);
     const cuotaConv = cuotaConvenioDelPeriodo(convenio, c, ahora);
     const cubierto = !!(convenio?.cubre_periodo_hasta && convenio.cubre_periodo_hasta >= hoy);
-    const estado = calcularEstadoCartera(c, pagosC, ahora, cuotaConv, cubierto, convenio);
+    // D-026: con sus deudas, para las semanas de más (ya llenó todas y todavía debe).
+    const deudasPend = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente");
+    const estado = calcularEstadoCartera(c, pagosC, ahora, cuotaConv, cubierto, convenio, deudasPend);
     return {
       contrato: c,
       cliente: clientes.find(cl => cl.id === c.cliente_id),
       moto: motos.find(m => m.id === c.moto_id),
       estado,
-      dias: estado === "mora" ? diasEnMora(c, pagosC, ahora, cuotaConv, cubierto, convenio) : 0,
+      dias: estado === "mora" ? diasEnMora(c, pagosC, ahora, cuotaConv, cubierto, convenio, deudasPend) : 0,
       deuda: deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((a, d) => a + d.monto_pendiente, 0),
     };
   }), [activos, pagos, convenios, clientes, motos, deudas, ahora, hoy]);

@@ -322,6 +322,12 @@ export type LoQueDebe = {
    * `cuota.falta` ya lo descontó. Son dos cosas distintas y no se pueden mezclar.
    */
   adelanto: { lleva: number; de: number } | null;
+  /**
+   * D-026: si ya llenó todas sus semanas y todavía debe, sus semanas de más. Entonces `cuota` es
+   * lo de ESTA semana de más (el número grande), y `acuerdo`/`deudas` van en cero para no contar
+   * dos veces: lo que debe en total, con su desglose, está acá.
+   */
+  cierre: SemanaDeCierre | null;
 };
 
 /**
@@ -363,8 +369,8 @@ function periodosConvenioExigidos(
  */
 export function loQueDebe(
   contrato: ContratoCiclo & { saldo_favor_apertura?: number | null },
-  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_saldo_favor?: number | null }>,
-  deudasPendientes: Array<{ monto: number; monto_pendiente: number }>,
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_saldo_favor?: number | null; aplicado_deuda?: number | null; created_at?: string | null }>,
+  deudasPendientes: Array<{ monto: number; monto_pendiente: number; created_at?: string | null }>,
   convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null } | null | undefined,
   hoy: Date,
   // `diario`: los contratos Diario cobran la tarifa del DÍA (con domingo aparte) contra lo
@@ -442,11 +448,32 @@ export function loQueDebe(
     0,
   );
 
+  // ── 4. Las semanas de más (D-026) ──
+  // Con todas sus semanas llenas y todavía debiendo, lo que se le cobra es su semana normal, que va
+  // entera a deudas y acuerdo (mig 174). Esa semana ocupa el lugar de la cuota y es el número
+  // grande (opción A del dueño); lo que debe en total va en `cierre`, así no se cuenta dos veces.
+  const cierre = contrato.motor_v2 && contrato.forma_pago !== "Diario"
+    ? semanaDeCierre(contrato, pagosConfirmados, deudasPendientes, convenio, hoy)
+    : null;
+  if (cierre) {
+    const semanaDeMas: ParteDebe = { toca: cierre.exigido, pagado: Math.min(cierre.abonado, cierre.exigido), falta: cierre.falta };
+    return {
+      cuota: semanaDeMas,
+      acuerdo: null,
+      deudas: { toca: 0, pagado: 0, falta: 0 },
+      totalFalta: semanaDeMas.falta,
+      saldoAFavor,
+      adelanto: null,
+      cierre,
+    };
+  }
+
   return {
     cuota, acuerdo, deudas,
     totalFalta: cuota.falta + (acuerdo?.falta ?? 0) + deudas.falta,
     saldoAFavor,
     adelanto,
+    cierre: null,
   };
 }
 
@@ -507,7 +534,7 @@ export function calcularEstadoCartera(
   contrato: ContratoCiclo,
   // aplicado_convenio es opcional: solo lo usa la rama del motor v2, para saber si la cuota
   // del convenio de este período ya quedó abonada.
-  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null }>,
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_deuda?: number | null; created_at?: string | null }>,
   hoy: Date,
   cuotaConvenio = 0,
   // periodoCubierto: al crear un convenio se puede meter la cuota de la semana actual DENTRO
@@ -518,6 +545,9 @@ export function calcularEstadoCartera(
   // acumulado) en vez de mirar solo los pagos de la semana en curso — ver `faltaDelAcuerdo`.
   // Es opcional para no cambiarle el estado de golpe a las pantallas que aún no lo pasan.
   convenio?: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null,
+  // D-026: las deudas pendientes, para saber si está en semanas de más. Sin ellas solo se mira el
+  // acuerdo, y a quien debe deudas sueltas nunca le correría la mora de esas semanas.
+  deudasPendientes?: Array<{ monto_pendiente: number; created_at?: string | null }>,
 ): EstadoCartera {
   // MOTOR V2 (libro de cajas): el estado sale de los acumuladores del ledger —
   // en mora si existe una caja exigida sin llenar (FIFO estricto). Esta rama cubre
@@ -526,6 +556,13 @@ export function calcularEstadoCartera(
   hoyDia.setHours(0, 0, 0, 0);
   if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
     if (periodoCubierto) return "al-dia";
+    // D-026: en semanas de más manda SU calendario (su semana normal), no el del acuerdo — la
+    // misma secuencia de siempre: vence hoy = al día · día siguiente = gabela · después = mora.
+    const cierre = semanaDeCierre(contrato, pagosConfirmados, deudasPendientes ?? [], convenio, hoy);
+    if (cierre) {
+      if (cierre.falta <= 0 || cierre.diasVencida === 0) return "al-dia";
+      return cierre.diasVencida === 1 ? "gabela" : "mora";
+    }
     const estadoLedger = estadoCarteraV2(contrato, hoy);
     if (estadoLedger !== "al-dia") return estadoLedger;
     // El ledger de cuotas está al día — pero el convenio va ENCIMA de la cuota, no la
@@ -592,17 +629,21 @@ export function calcularEstadoCartera(
 // cliente pague puntual) con "días de mora" real.
 export function diasEnMora(
   contrato: ContratoCiclo,
-  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null }>,
+  pagosConfirmados: Array<{ fecha: string; valor: number; aplicado_convenio?: number | null; aplicado_deuda?: number | null; created_at?: string | null }>,
   hoy: Date,
   cuotaConvenio = 0,
   periodoCubierto = false,
   // Se pasa derecho al estado: sin esto, un cliente que abonó su acuerdo en semanas anteriores
   // seguiría contando días de mora y entraría a la cola de RECOLECCIÓN sin deber nada.
   convenio?: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null,
+  deudasPendientes?: Array<{ monto_pendiente: number; created_at?: string | null }>,
 ): number {
-  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto, convenio) !== "mora") return 0;
+  if (calcularEstadoCartera(contrato, pagosConfirmados, hoy, cuotaConvenio, periodoCubierto, convenio, deudasPendientes) !== "mora") return 0;
   // MOTOR V2: días desde que se exigió la caja MÁS VIEJA sin llenar (FIFO), menos la gabela.
   if (contrato.motor_v2 && contrato.forma_pago !== "Diario") {
+    // D-026: en semanas de más, desde la semana de más más vieja sin cubrir, menos la gabela.
+    const cierre = semanaDeCierre(contrato, pagosConfirmados, deudasPendientes ?? [], convenio, hoy);
+    if (cierre) return Math.max(cierre.diasVencida - 1, 0);
     return Math.max(diasEnMoraV2(contrato, hoy) - 1, 0);
   }
   const hoyDia = new Date(hoy);
@@ -913,6 +954,132 @@ function fechaCaja(contrato: ContratoCiclo, numero: number): string | null {
     }
   }
   return null;
+}
+
+/**
+ * LAS SEMANAS DE MÁS (D-026, regla del dueño 25-sep-2026): quien llena su última semana y todavía
+ * debe (deudas sueltas + lo que falta de su acuerdo) sigue pagando su semana normal y todo va a lo
+ * que debe, hasta quedar en $0. Esas semanas se cobran igual que cualquier otra: gabela, mora,
+ * días de mora y recolección. En pantalla el número grande es lo de ESA semana (opción A del dueño).
+ *
+ * La cuenta, sin guardar nada nuevo en la base:
+ *   · Semana de más m vence el día que le tocaría la semana (total + rodadas + m) del calendario.
+ *     Si la deuda apareció DESPUÉS de haber terminado limpio, arrancan desde esa deuda — si no,
+ *     amanecería con meses de mora de golpe.
+ *   · Exigido = min(lo que debe + lo que ya abonó en ellas, semanas arrancadas × valor de la semana).
+ *   · Abonado = lo que sus pagos desde la primera semana de más mandaron a deudas y acuerdo.
+ *   · Le falta hoy = exigido − abonado. Nunca más de lo que debe.
+ * `null` = no está en semanas de más (le quedan semanas, no debe nada, o no es de tiempo definido).
+ * El motor ya manda esa plata entera a deudas y acuerdo (mig 174). Espejo SQL: paso 4 de D-026.
+ */
+export type SemanaDeCierre = {
+  /** Cuántas semanas de más ya arrancaron a hoy (0 = la primera todavía no llega). */
+  semana: number;
+  /** En cuántas termina, al ritmo de su semana, con lo que debe hoy. */
+  semanas: number;
+  valorSemana: number;
+  debeTotal: number;
+  debeDeudas: number;
+  debeAcuerdo: number;
+  exigido: number;
+  abonado: number;
+  falta: number;
+  /** La semana de más más vieja sin cubrir, y hace cuántos días venció (0 = vence hoy). */
+  fechaVencida: string | null;
+  diasVencida: number;
+  /** Si está al día: cuándo le toca la siguiente. */
+  proximaFecha: string | null;
+};
+
+export function semanaDeCierre(
+  contrato: ContratoCiclo,
+  pagosConfirmados: Array<{ fecha: string; aplicado_deuda?: number | null; aplicado_convenio?: number | null; created_at?: string | null }>,
+  deudasPendientes: Array<{ monto_pendiente: number; created_at?: string | null }>,
+  convenio: { deuda_total?: number | null; created_at?: string | null } | null | undefined,
+  hoy: Date,
+): SemanaDeCierre | null {
+  if (!contrato.motor_v2 || contrato.forma_pago === "Diario") return null;
+  const total = contrato.total_cajas;
+  if (total == null || (contrato.cajas_pagadas ?? 0) < total) return null;
+  const valorSemana = valorPeriodoReal(contrato);
+  if (valorSemana <= 0) return null;
+
+  const debeDeudas = deudasPendientes.reduce((s, d) => s + Math.max(d.monto_pendiente, 0), 0);
+  // Lo que falta del acuerdo: el mismo corte que usa el motor (abonos desde la firma de ESTE acuerdo).
+  let debeAcuerdo = 0;
+  if (convenio && (convenio.deuda_total ?? 0) > 0) {
+    const firma = convenio.created_at ?? null;
+    const abonado = pagosConfirmados
+      .filter(p => !firma || (p.created_at ? p.created_at >= firma : p.fecha >= firma.slice(0, 10)))
+      .reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+    debeAcuerdo = Math.max((convenio.deuda_total ?? 0) - abonado, 0);
+  }
+  const debeTotal = debeDeudas + debeAcuerdo;
+  if (debeTotal <= 0) return null;
+
+  // Desde cuándo debe esto: la deuda (o el acuerdo con saldo) más vieja que sigue viva.
+  const creadas = [
+    ...deudasPendientes.filter(d => d.monto_pendiente > 0).map(d => d.created_at?.slice(0, 10)),
+    debeAcuerdo > 0 ? convenio?.created_at?.slice(0, 10) : undefined,
+  ].filter((f): f is string => !!f);
+  const debeDesde = creadas.length > 0 ? creadas.sort()[0] : null;
+
+  const base = total + (contrato.cajas_exoneradas ?? 0);
+  let salto = 0;
+  if (debeDesde) {
+    for (let i = 0; i < 520; i++) {
+      const f = fechaCaja(contrato, base + salto + 1);
+      if (!f || f >= debeDesde) break;
+      salto++;
+    }
+  }
+  const fechaSemana = (m: number) => fechaCaja(contrato, base + salto + m);
+  const inicio = fechaSemana(1);
+  if (!inicio) return null;
+
+  // Si la moto ya es de otro (mig 129), las semanas de más tampoco siguen corriendo.
+  let hoyISO = fechaAISO(hoy);
+  if (contrato.fecha_fin_cobro && hoyISO > contrato.fecha_fin_cobro) hoyISO = contrato.fecha_fin_cobro;
+
+  let semana = 0;
+  for (let m = 1; m <= 520; m++) {
+    const f = fechaSemana(m);
+    if (!f || f > hoyISO) break;
+    semana = m;
+  }
+
+  const abonado = pagosConfirmados
+    .filter(p => p.fecha >= inicio)
+    .reduce((s, p) => s + (p.aplicado_deuda ?? 0) + (p.aplicado_convenio ?? 0), 0);
+  const exigido = Math.min(debeTotal + abonado, semana * valorSemana);
+  const falta = Math.max(exigido - abonado, 0);
+
+  let fechaVencida: string | null = null;
+  let diasVencida = 0;
+  let proximaFecha: string | null = null;
+  if (falta > 0) {
+    fechaVencida = fechaSemana(Math.floor(abonado / valorSemana) + 1);
+    if (fechaVencida) {
+      diasVencida = Math.max(Math.floor(
+        (new Date(hoyISO + "T00:00:00").getTime() - new Date(fechaVencida + "T00:00:00").getTime()) / 86400000), 0);
+    }
+  } else {
+    proximaFecha = fechaSemana(semana + 1);
+  }
+
+  return {
+    semana,
+    semanas: Math.floor(abonado / valorSemana) + Math.ceil(debeTotal / valorSemana),
+    valorSemana, debeTotal, debeDeudas, debeAcuerdo,
+    exigido, abonado, falta, fechaVencida, diasVencida, proximaFecha,
+  };
+}
+
+/** Cómo se nombra en pantalla y en papel: "Semana de más 1 de 2". Una sola redacción para todos. */
+export function etiquetaSemanaDeMas(c: SemanaDeCierre, formaPago?: string | null): string {
+  const unidad = formaPago === "Quincenal" ? "Quincena" : formaPago === "Mensual" ? "Mes" : "Semana";
+  if (c.semana === 0) return `${unidad} de más: arranca el ${c.proximaFecha ?? "—"}`;
+  return `${unidad} de más ${c.semana} de ${Math.max(c.semanas, c.semana)}`;
 }
 
 export type PeriodoExigible = { fecha: string; monto: number; diasVencida: number; parcial: boolean };

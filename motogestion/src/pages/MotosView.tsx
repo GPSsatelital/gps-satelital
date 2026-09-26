@@ -366,7 +366,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     const conv = elegirConvenioPorCobrar(convenios, contratoMoto.id);
     const cuotaConv = cuotaConvenioDelPeriodo(conv, contratoMoto, hoyD);
     const cubierto = !!(conv?.cubre_periodo_hasta && conv.cubre_periodo_hasta >= hoyISO());
-    const estado = calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto, conv);
+    const estado = calcularEstadoCartera(contratoMoto, pagosC, hoyD, cuotaConv, cubierto, conv,
+      deudas.filter(d => d.contrato_id === contratoMoto.id && d.estado === "pendiente"));
     // Solo deuda EXIGIBLE: las 'en_convenio' se cobran por la cuota del convenio, no quitando la moto.
     const deudaPend = deudas
       .filter(d => d.contrato_id === contratoMoto.id && d.estado === "pendiente")

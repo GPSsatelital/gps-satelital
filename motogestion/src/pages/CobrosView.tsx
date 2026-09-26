@@ -67,6 +67,7 @@ import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
   calcularEstadoCartera as calcularEstadoCarteraCiclo,
+  etiquetaSemanaDeMas,
   cuotaConvenioDelPeriodo,
   proximaCuotaConvenio,
   loQueDebe,
@@ -888,10 +889,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // arrastre que el monto. Sin esto miraba solo los pagos de esta semana: quien había
       // abonado su cuota en semanas anteriores salía EN MORA con $0 de deuda, y entraba a la
       // cola de recolección. (DANIEL MILLAN, RLT87H: $61.000 abonados contra $33.500 de cuota.)
-      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar);
+      // D-026: con sus deudas, para las semanas de más (ya llenó todas y todavía debe).
+      const deudasPend = deudas.filter(d => d.contrato_id === contrato.id && d.estado === "pendiente");
+      const estadoCartera = calcularEstadoCarteraCiclo(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar, deudasPend);
       // Días que lleva VENCIDA la cuota — distinto de `diasSinPago` (que un abono parcial reinicia).
       // Los mensajes de mora y recolección llevan las dos cifras, cada una con su palabra.
-      const diasMora = diasEnMora(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar);
+      const diasMora = diasEnMora(contrato, confirmados, hoy, cuotaConvenio, periodoCubierto, convenioACobrar, deudasPend);
       const pagadoEnPeriodoActual = totalPagadoPeriodoActual(contrato, confirmados, hoy);
 
       // Una sola función para todo el sistema (usePagos): la liquidación necesita esta misma
@@ -1844,6 +1847,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       { sinPagosNunca: contratoDetalle.sinPagosNunca ?? true },
     );
     const totalDebeAhora = debe.totalFalta;
+    // D-026: en semanas de más, el próximo pago es su próxima semana de más, por lo que falte.
+    const cierreDet = debe.cierre;
+    const proximoMostrado = cierreDet ? (cierreDet.proximaFecha ?? cierreDet.fechaVencida) : proximoPagoFecha;
 
     // Estado de cuenta (imprimir/WhatsApp) — usa los MISMOS valores ya calculados arriba
     // para esta pantalla (totalPendiente, deudas, convenio), nunca un cálculo aparte.
@@ -1905,7 +1911,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         add("Saldo a favor", p.aplicado_saldo_favor);
         return out;
       };
-      const desglose = [
+      // D-026: en semanas de más es UNA fila —su semana normal, que va a lo que debe— y el total
+      // que debe va en la nota. Acuerdo y deudas no van aparte: esa plata ES la de esta fila.
+      const desglose = debe.cierre
+        ? [{ concepto: etiquetaSemanaDeMas(debe.cierre, c.forma_pago), ...debe.cuota,
+             nota: `va a lo que debe · todavía debe $ ${fmt(debe.cierre.debeTotal)} en total` }]
+        : [
         { concepto: "Cuota del período", ...debe.cuota },
         ...(debe.acuerdo ? [{ concepto: "Cuota del acuerdo", toca: debe.acuerdo.toca, pagado: debe.acuerdo.pagado, falta: debe.acuerdo.falta }] : []),
         ...(debe.deudas.toca > 0 ? [{ concepto: "Deudas registradas", ...debe.deudas }] : []),
@@ -1917,8 +1928,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       const lineas = [
         { label: "Se le devuelve su ahorro", monto: ahorro },
         ...(convPend > 0 ? [{ label: "Menos lo que queda del acuerdo", monto: -convPend }] : []),
-        ...(debe.cuota.falta > 0 ? [{ label: "Menos la cuota corriente sin pagar", monto: -debe.cuota.falta }] : []),
-        ...(debe.deudas.falta > 0 ? [{ label: "Menos sus deudas pendientes", monto: -debe.deudas.falta }] : []),
+        // D-026: en semanas de más la "cuota" es su semana que va al acuerdo y a las deudas — ya
+        // están arriba (acuerdo) y abajo (deudas). Restarla aparte sería cobrarla dos veces.
+        ...(!debe.cierre && debe.cuota.falta > 0 ? [{ label: "Menos la cuota corriente sin pagar", monto: -debe.cuota.falta }] : []),
+        ...((debe.cierre ? debe.cierre.debeDeudas : debe.deudas.falta) > 0
+          ? [{ label: "Menos sus deudas pendientes", monto: -(debe.cierre ? debe.cierre.debeDeudas : debe.deudas.falta) }] : []),
       ];
       return {
         ...armarDatosEstadoCuenta(),
@@ -2140,7 +2154,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--muted2)", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].color }}>{ESTADO_CARTERA_STYLE[contratoDetalle.estadoCartera].label}</span>
               {ec.ultimoPago && <span>Último: <strong>{fmtFecha(ec.ultimoPago)}</strong></span>}
-              <span>Próximo: <strong>{fmtFecha(proximoPagoFecha)}</strong></span>
+              {proximoMostrado && <span>Próximo: <strong>{fmtFecha(proximoMostrado)}</strong></span>}
             </div>
             {protocolo && (
               <span style={{ fontSize: 12, fontWeight: 700, color: protocolo.color, background: protocolo.bg, borderRadius: 8, padding: "3px 10px" }}>
@@ -2204,11 +2218,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
               <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: 0.4, marginBottom: 8 }}>
                 De dónde sale
               </div>
-              {[
+              {(debe.cierre
+                // D-026: en semanas de más, UNA fila: su semana normal, que va a lo que debe.
+                ? [{ k: etiquetaSemanaDeMas(debe.cierre, contratoDetalle.forma_pago), p: debe.cuota }]
+                : [
                 { k: "Cuota del período", p: debe.cuota },
                 ...(debe.acuerdo ? [{ k: "Cuota del acuerdo", p: debe.acuerdo }] : []),
                 ...(debe.deudas.toca > 0 ? [{ k: "Deudas", p: debe.deudas }] : []),
-              ].map((f, i) => (
+              ]).map((f, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "3px 0", fontSize: 13 }}>
                   <span style={{ color: "var(--muted2)", minWidth: 0 }}>{f.k}</span>
                   <span style={{ display: "flex", gap: 10, alignItems: "baseline", whiteSpace: "nowrap" }}>
@@ -2225,6 +2242,17 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   $ {fmt(totalDebeAhora)}
                 </strong>
               </div>
+              {/* D-026: lo que debe en total no se pierde de vista (regla 3): va debajo, con su
+                  desglose. Ya terminó sus semanas; esto es lo que falta para liquidar por cumplimiento. */}
+              {debe.cierre && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
+                  Todavía debe <strong style={{ color: "var(--text)" }}>$ {fmt(debe.cierre.debeTotal)}</strong> en total
+                  {debe.cierre.debeDeudas > 0 && debe.cierre.debeAcuerdo > 0
+                    ? <> (deudas $ {fmt(debe.cierre.debeDeudas)} · acuerdo $ {fmt(debe.cierre.debeAcuerdo)})</>
+                    : debe.cierre.debeAcuerdo > 0 ? <> (su acuerdo)</> : <> (deudas)</>}.
+                  {" "}Terminó sus semanas: paga su semana normal hasta quedar en $0.
+                </div>
+              )}
               {/* El saldo a favor se MUESTRA pero NO se resta (regla del dueño): se aplica a mano. */}
               {debe.saldoAFavor > 0 && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--ok-ink)" }}>
@@ -2291,7 +2319,19 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     </div>
                   );
                 })}
-                {contratoDetalle.deudaContrato > 0 && (
+                {/* D-026: en semanas de más la línea es su semana, no todas las deudas — el total de
+                    abajo es esta semana, y el desglose tiene que cuadrar con él. */}
+                {debe.cierre && debe.cierre.falta > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)", fontWeight: 700 }}>
+                    <span style={{ minWidth: 0 }}>
+                      {etiquetaSemanaDeMas(debe.cierre, contratoDetalle.forma_pago)}
+                      {debe.cierre.fechaVencida ? ` · ${fmtFecha(debe.cierre.fechaVencida)}` : ""}
+                      <span style={{ color: debe.cierre.diasVencida > 0 ? "var(--bad-ink)" : "var(--orange)" }}> · {debe.cierre.diasVencida > 0 ? `${debe.cierre.diasVencida}d vencida` : "vence hoy"}</span>
+                    </span>
+                    <strong style={{ flexShrink: 0 }}>$ {fmt(debe.cierre.falta)}</strong>
+                  </div>
+                )}
+                {!debe.cierre && contratoDetalle.deudaContrato > 0 && (
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted2)" }}>
                     <span>Multa / deuda</span><strong>$ {fmt(contratoDetalle.deudaContrato)}</strong>
                   </div>
@@ -2320,7 +2360,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   corre. Los otros 3 sitios ya lo hacían bien y este se quedó con la fecha pelada:
                   MARTHA (RLT68H) mostraba "Próximo: Lun 17" arriba y "próximo pago: Lun 10" abajo,
                   en la misma pantalla. La correcta es la del convenio. */}
-              {proximoPagoFecha && (
+              {!cierreDet && proximoPagoFecha && (
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
                   Después de esto, próximo pago: <strong>{fmtFecha(proximoPagoFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
                   {cuotaConvActiva > 0 && <span> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
@@ -2349,7 +2389,14 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           )}
 
           {/* Al día (nada exigible ahora): solo el próximo pago y su fecha */}
-          {desg && totalDebeAhora === 0 && (desg.proximaFecha || (cubreHasta && cubreHasta >= hoyISO())) && (
+          {/* D-026: al día en sus semanas de más — la próxima y lo que le tocará. */}
+          {cierreDet && totalDebeAhora === 0 && cierreDet.proximaFecha && (
+            <div style={{ marginTop: 12, background: "var(--ok-soft)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--ok-line)", fontSize: 13, color: "var(--ok-ink)" }}>
+              ✓ Al día · Próxima {etiquetaSemanaDeMas({ ...cierreDet, semana: cierreDet.semana + 1 }, contratoDetalle.forma_pago).toLowerCase()}:
+              {" "}<strong>{fmtFecha(cierreDet.proximaFecha)}</strong> · $ {fmt(Math.min(cierreDet.debeTotal, cierreDet.valorSemana))}
+            </div>
+          )}
+          {!cierreDet && desg && totalDebeAhora === 0 && (desg.proximaFecha || (cubreHasta && cubreHasta >= hoyISO())) && (
             <div style={{ marginTop: 12, background: "var(--ok-soft)", borderRadius: 10, padding: "10px 12px", border: "1px solid var(--ok-line)", fontSize: 13, color: "var(--ok-ink)" }}>
               ✓ Al día · Próximo pago: <strong>{fmtFecha(proximoPagoFecha)}</strong> · $ {fmt(desg.proximoMonto + cuotaConvActiva)}
               {cuotaConvActiva > 0 && <span style={{ fontSize: 12 }}> (cuota $ {fmt(desg.proximoMonto)} + convenio $ {fmt(cuotaConvActiva)})</span>}
@@ -2362,7 +2409,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
               {/* El "próximo pago" solo cuando está al día. Si está en gabela/mora, lo que debe
                   AHORA ya lo muestra el recuadro "Pendiente" — no se duplica con "próximo pago". */}
-              {contratoDetalle.estadoCartera === "al-dia" && (
+              {!cierreDet && contratoDetalle.estadoCartera === "al-dia" && (
                 <div style={{ background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", borderRadius: 10, padding: "8px 12px" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>
                     Próximo pago{contratoDetalle.forma_pago !== "Diario" ? ` — ${fmtFecha(proximoPagoFecha)}` : ""}
@@ -3454,7 +3501,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--muted)" }}>Debe pagar</div>
                               <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums", color: "var(--bad)", lineHeight: 1.15 }}>$ {fmt(debePagar)}</div>
                               <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                                cuota ${fmt(dd.cuota.falta)}{(dd.acuerdo?.falta ?? 0) > 0 ? ` + conv. $${fmt(dd.acuerdo!.falta)}` : ""}{dd.deudas.falta > 0 ? ` + deuda $${fmt(dd.deudas.falta)}` : ""}
+                                {dd.cierre
+                                  ? `${etiquetaSemanaDeMas(dd.cierre, c.forma_pago).toLowerCase()} · debe $${fmt(dd.cierre.debeTotal)}`
+                                  : <>cuota ${fmt(dd.cuota.falta)}{(dd.acuerdo?.falta ?? 0) > 0 ? ` + conv. $${fmt(dd.acuerdo!.falta)}` : ""}{dd.deudas.falta > 0 ? ` + deuda $${fmt(dd.deudas.falta)}` : ""}</>}
                               </div>
                             </>
                           ) : (

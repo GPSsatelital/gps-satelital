@@ -671,7 +671,8 @@ export default function ReportesView({ onNavigate }: Props) {
       const convenioActivo = convenioPorCobrarDelContrato(c.id);
       const cuotaConvenio = cuotaConvenioDelPeriodo(convenioActivo, c as never, hoy);
       const periodoCubierto = !!(convenioActivo?.cubre_periodo_hasta && convenioActivo.cubre_periodo_hasta >= hoyISO());
-      const enMora = !guardada && calcularEstadoCartera(c as never, confirmados as never, hoy, cuotaConvenio, periodoCubierto, convenioActivo as never) === "mora";
+      const enMora = !guardada && calcularEstadoCartera(c as never, confirmados as never, hoy, cuotaConvenio, periodoCubierto, convenioActivo as never,
+        deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente")) === "mora";
       const deudaP = deudaPendMap.get(c.id) ?? 0;
       const tieneConvenio = !!convenioActivo;
       const estado: EstadoPagoG = guardada ? "retenida" : !enMora ? "aldia" : (monto > 0 ? "parcial" : "nopago");

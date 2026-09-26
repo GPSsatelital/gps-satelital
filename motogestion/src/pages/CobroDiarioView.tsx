@@ -24,6 +24,8 @@ import {
   diasEnMora,
   cuotaConvenioDelPeriodo,
   diaPagoFrase,
+  semanaDeCierre,
+  type ContratoCiclo,
 } from "../utils/cicloPago";
 import { diasTexto } from "../utils/mensajeria";
 import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
@@ -59,9 +61,18 @@ function calcEstadoPeriodico(
   contrato: { forma_pago: string; dia_pago: string; dias_pago_mes?: number[] | null; fecha_entrega?: string | null; tarifa_diaria?: number; ahorro_diario?: number; tarifa_domingo?: number; ahorro_domingo?: number; valor_semanal?: number },
   pagosC: Array<{ fecha: string; estado: string; valor: number }>,
   hoy: string,
+  // D-026: para las semanas de más (ya llenó todas y todavía debe). Solo se usan para eso.
+  convenio?: Parameters<typeof semanaDeCierre>[3],
+  deudasC: Parameters<typeof semanaDeCierre>[2] = [],
 ): { pagadoHasta: string | null; estadoLabel: "Al día" | "Pendiente" | "Mora"; dias: number } {
   const hoyDate = new Date(hoy + "T00:00:00");
   const conf = pagosC.filter(p => p.estado === "Confirmado").sort((a, b) => b.fecha.localeCompare(a.fecha));
+  // D-026: en semanas de más manda su semana normal, con la misma secuencia de siempre.
+  const cierre = semanaDeCierre(contrato as ContratoCiclo, conf, deudasC, convenio, hoyDate);
+  if (cierre) {
+    const d = cierre.falta > 0 ? cierre.diasVencida : 0;
+    return { pagadoHasta: conf[0]?.fecha ?? null, estadoLabel: d === 0 ? "Al día" : d === 1 ? "Pendiente" : "Mora", dias: d };
+  }
   const inicioPeriodo = inicioPeriodoActual(contrato, hoyDate);
   // Misma ventana que calcularEstadoCartera (período real + prepago de víspera)
   const inicioISO = inicioVentanaPagosISO(contrato, hoyDate);
@@ -213,7 +224,8 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
                 estadoLabel: (d === 0 ? "Al día" : d === 1 ? "Pendiente" : "Mora") as "Al día" | "Pendiente" | "Mora",
               };
             })()
-          : calcEstadoPeriodico(c, pagosC, hoy);
+          : calcEstadoPeriodico(c, pagosC, hoy, convenioPorCobrarDelContrato(c.id),
+              deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"));
         const prioridad: Fila["prioridad"] = dias >= 10 ? "critica" : dias >= 5 ? "alta" : "media";
         // Solo deuda EXIGIBLE (pendiente) — las 'en_convenio' se cobran vía la cuota del convenio.
         const deudaReal = deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente").reduce((s, d) => s + d.monto_pendiente, 0);
@@ -229,6 +241,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
           cuotaConvenioDelPeriodo(convActivo, c, hoyD),
           !!(convActivo?.cubre_periodo_hasta && convActivo.cubre_periodo_hasta >= hoy),
           convActivo,
+          deudas.filter(d => d.contrato_id === c.id && d.estado === "pendiente"),
         );
 
         return {

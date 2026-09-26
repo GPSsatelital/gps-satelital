@@ -122,7 +122,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   2. ✅ **HECHO 26-sep** (mig 174 registrada + `repartoPago.ts`) — probado en la base con YESID simulado a 65/65: $235.000 → acuerdo $235.000, saldo $0 (antes $60.000 / $175.000); 0 pesos movidos. **Motor:** con TODAS las cajas llenas, el acuerdo recibe todo lo que falte (sin freno). Antes
      de eso el freno sigue igual. Parche por anclas sobre `aplicar_pago_confirmado` VIVA (pedir
      `pg_get_functiondef` al dueño) + espejo `repartoPago.ts` + pruebas.
-  3. **Semanas de cierre en `cicloPago`** (`desgloseExigible`/`loQueDebe`/`diasEnMoraV2`): semana k
+  3. ✅ **HECHO 26-sep** — `semanaDeCierre()` en `cicloPago.ts` + `loQueDebe` (cuota = la semana de más, `cierre` con el total) + estado y días de mora (param `deudasPendientes`, pasado en las 7 pantallas: Cobros, CobroDiario, Dashboard, Inmovilizaciones, Motos, Reportes, Socio) + etiquetas "Semana de más k de N" en el detalle, la lista y el estado de cuenta (el dueño eligió la opción A: el número grande es la semana). 17 pruebas. **Medido: hoy nadie está en semanas de más** (CESAR y RAMON quedan fuera a propósito: más semanas previas que su total). ⚠️ **No se pudo ver en pantalla con un caso real**: el primero será YESID ~2-nov — **mirarle la ficha ese lunes**. **Semanas de cierre en `cicloPago`** (`desgloseExigible`/`loQueDebe`/`diasEnMoraV2`): semana k
      de cierre vence en `fechaCaja(total_cajas + k)`; lo que toca hoy = `min(deuda actual,
      k × valor semana − pagado a deudas/acuerdo desde el inicio del cierre)`. Se corrige solo si
      paga de más o antes. Mora desde la semana de cierre más vieja sin cubrir.

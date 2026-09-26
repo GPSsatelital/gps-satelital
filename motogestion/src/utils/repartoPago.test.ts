@@ -533,3 +533,76 @@ describe("✅ D-022: el conjunto semana + cuota del acuerdo", () => {
     expect(r.tarifa).toBe(250000);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// D-026 (25-sep-2026) — NADIE TERMINA DEBIENDO
+//
+// Regla del dueño: quien llena su última semana y todavía debe, sigue pagando su semana normal y
+// TODO va a lo que debe (primero deudas, después acuerdo) hasta quedar en $0. El freno de la
+// mig 119 (el acuerdo solo recibe lo exigido a la fecha) tiene sentido mientras hay semanas que
+// pagar; cuando ya no hay, frenar al acuerdo manda la plata a saldo a favor y el cliente nunca
+// termina.
+//
+// Contrato de referencia: YESID BARRAZA (RLT72H), producción del 25-sep. Semana $235.000
+// (ahorro $66.000) · 65 semanas · acuerdo "tarifas atrasadas" $556.000 en cuotas de $60.000,
+// lleva $300.000 abonados → le faltan $256.000.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+function yesid(over: Partial<Parameters<typeof repartirPagoV2>[0]> = {}) {
+  return {
+    monto: 235_000,
+    cajaValor: 235_000,
+    cajaAhorro: 66_000,
+    cajasPagadas: 65,
+    cajaActualPagado: 0,
+    totalCajas: 65,
+    cajasExigidas: 65,
+    convenioPendiente: 256_000,
+    convenioExigido: 360_000,   // 6 cuotas exigidas a la fecha
+    convenioAbonado: 300_000,   // 5 abonadas → el freno solo deja pasar 1 cuota
+    convenioCuotaPeriodo: 60_000,
+    ...over,
+  };
+}
+
+describe("D-026: con TODAS las semanas llenas, el acuerdo recibe todo lo que le falte", () => {
+  it("YESID en la semana de más: sus $235.000 van enteros al acuerdo (antes de D-026: $60.000 y $175.000 a saldo)", () => {
+    const r = repartirPagoV2(yesid());
+    expect(r.tarifa).toBe(0);
+    expect(r.convenio).toBe(235_000);
+    expect(r.saldo).toBe(0);
+    expect(r.ahorro).toBe(0);
+  });
+
+  it("la segunda semana de más termina el acuerdo y solo lo que sobra queda a favor", () => {
+    const r = repartirPagoV2(yesid({ convenioPendiente: 21_000, convenioAbonado: 535_000, convenioExigido: 420_000 }));
+    expect(r.convenio).toBe(21_000);
+    expect(r.saldo).toBe(214_000);
+  });
+
+  it("primero las deudas, después el acuerdo — el orden de siempre", () => {
+    const r = repartirPagoV2(yesid({ deudas: [{ montoPendiente: 30_000, esMulta: true }] }));
+    expect(r.deuda).toBe(30_000);
+    expect(r.convenio).toBe(205_000);
+    expect(r.saldo).toBe(0);
+  });
+
+  it("el pago que llena la ÚLTIMA semana ya manda lo que sobre al acuerdo, sin freno", () => {
+    const r = repartirPagoV2(yesid({ monto: 500_000, cajasPagadas: 64, cajasExigidas: 65 }));
+    expect(r.tarifa).toBe(235_000);
+    expect(r.cajasPagadas).toBe(65);
+    expect(r.convenio).toBe(256_000);
+    expect(r.saldo).toBe(9_000);
+  });
+
+  it("ANTES de la última semana el freno sigue igual: la semana y UNA cuota, el resto a favor", () => {
+    const r = repartirPagoV2(yesid({ monto: 500_000, cajasPagadas: 60, cajasExigidas: 61 }));
+    expect(r.tarifa).toBe(235_000);
+    expect(r.convenio).toBe(60_000);
+    expect(r.saldo).toBe(205_000);
+  });
+
+  it("sin total de semanas (contrato sin fin) nunca se quita el freno", () => {
+    const r = repartirPagoV2(yesid({ totalCajas: null }));
+    expect(r.convenio).toBe(60_000);
+  });
+});

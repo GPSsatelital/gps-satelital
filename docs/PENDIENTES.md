@@ -119,7 +119,7 @@ Lo que está afectando cifras reales de clientes en este momento.
      Liquidacion + selector de LiquidacionesView), con el aviso *"Todavía debe $X: sigue pagando
      su semana normal hasta quedar en $0"*; y en la base, `cerrar_liquidacion` no deja cerrar un
      cumplimiento con saldo negativo.
-  2. **Motor:** con TODAS las cajas llenas, el acuerdo recibe todo lo que falte (sin freno). Antes
+  2. ✅ **HECHO 26-sep** (mig 174 registrada + `repartoPago.ts`) — probado en la base con YESID simulado a 65/65: $235.000 → acuerdo $235.000, saldo $0 (antes $60.000 / $175.000); 0 pesos movidos. **Motor:** con TODAS las cajas llenas, el acuerdo recibe todo lo que falte (sin freno). Antes
      de eso el freno sigue igual. Parche por anclas sobre `aplicar_pago_confirmado` VIVA (pedir
      `pg_get_functiondef` al dueño) + espejo `repartoPago.ts` + pruebas.
   3. **Semanas de cierre en `cicloPago`** (`desgloseExigible`/`loQueDebe`/`diasEnMoraV2`): semana k

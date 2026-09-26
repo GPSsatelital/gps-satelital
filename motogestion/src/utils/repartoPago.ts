@@ -323,6 +323,13 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
   // Lo que le quedó debiendo el pago al acuerdo después del conjunto: cuando el cliente trae
   // cuotas atrasadas acumuladas, acá las termina de cubrir. `convPorRecibir` ya viene descontado
   // de lo que se entregó período por período arriba, así que no se cuenta dos veces.
+  //
+  // D-026 (25-sep-2026): con TODAS las semanas llenas ya no hay nada que proteger con el freno.
+  // El cliente sigue pagando su semana normal y todo va a lo que debe hasta quedar en $0 — si se
+  // frenara, la plata iría a saldo a favor y nunca terminaría. Espejo de la mig 174.
+  if (e.totalCajas != null && r.cajasPagadas >= e.totalCajas) {
+    convPorRecibir = Math.max(pendConv - r.convenio, 0);
+  }
   if (monto > 0 && convPorRecibir > 0) {
     const delta = Math.min(monto, convPorRecibir);
     r.convenio += delta;

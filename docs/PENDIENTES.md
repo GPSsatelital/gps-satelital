@@ -183,7 +183,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   | LIQ-0070 | FRAIRON CASTILLA | IEW54I | $410.000 | salvable — ⚠️ **mixto: $308.000 son ahorro (no se cobran) + $102.000 son primera semana (SÍ se cobran)** |
   Y hay **53 convenios de base vivos**: sin arreglar el código, vuelve a pasar con cada uno.
 
-- [ ] 💻 **Pagar el convenio de base no suma al ahorro — $3.528.000 de 35 clientes.** Tercera cara
+- [x] 💻 **26-sep: ARREGLADO (mig 177)** — lo pagado del acuerdo de base ya suma a `ahorro_apertura`:
+  35 clientes, **$3.671.000** (foto: solo cambió eso, en esos 35). Disparador `trg_sumar_pago_de_base`
+  para lo que venga (sube al confirmar, baja al rechazar o borrar; probado con LUIS ALEJANDRO dentro de
+  un rollback: $300.000 → $250.000). Solo actúa si el contrato tiene únicamente su acuerdo de base.
+  *(Registro:)* ~~Pagar el convenio de base no suma al ahorro — $3.528.000 de 35 clientes.~~ Tercera cara
   de D-023. Medido: el `ahorro_acumulado` de los 35 coincide **exacto** con la suma de
   `aplicado_ahorro` de sus pagos (lo que dejan las semanas, $26.000 cada una) — la plata del
   convenio entró como `aplicado_convenio` y **no sumó un peso** a su alcancía. Debería crecer
@@ -513,6 +517,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 26-sep | 🔴 **D-023 cerrada por sus tres caras** — el que termina no se lleva el ahorro (f5c2ce1) · al que se va antes no se le cobra la base que no pagó (a20bdf7 + mig 176: RICARDO −$472.000 → −$164.000, JESUS MARIA −$390.000 → −$82.000, FRAIRON, EDER, WILMAR, JORGE LUIS) · lo pagado del acuerdo de base suma a su base (mig 177: 35 clientes, $3.671.000). Queda MELISSA aparte |
 | 26-sep | 🔴 **D-026 completa: nadie termina debiendo** — no se liquida por cumplimiento debiendo (mig 173), el motor manda la semana de más entera a lo que debe (mig 174), la cartera la cobra como cualquier semana con mora y recolección ("Semana de más k de N"), y ZALA y Mi Día dicen lo mismo (mig 175, espejo 0 diferencias). Primer caso real: YESID ~2-nov |
 | 25-sep | 🔴 **El que termina su contrato ya no se lleva el ahorro** (D-023, commit f5c2ce1) — con motivo cumplimiento el ahorro se muestra y se cierra con "Con este ahorro terminó de pagar la moto". Medido: $8.753.000 en 5 contratos. Salió D-026 (nadie termina debiendo), plan arriba en P0 |
 | 25-sep | 🔴 **Devolver la base ya no se registra dos veces** (mig 172, commit 6ebc3dd) — la secretaria quedaba frenada en el último paso y repetía: OMAR YANCES 4 veces, FELIPE SEMBERGMAN 2, JOSE LUIS VASQUEZ 2 = $2.082.000 de más, corregidos. Ahora una sola transacción con candado; probado en producción |

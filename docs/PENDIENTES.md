@@ -162,11 +162,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   **$2.203.000** · JOSE GOMEZ 12/15 → $172.000. (RAMON y CESAR ya completaron, pero están en pausa
   por decisión del dueño.) **2 contratos ya llenaron sus semanas.**
 
-- [x] 💻 **26-sep: ARREGLADO** — código (a20bdf7): al que se va antes no se le cobra la parte de ahorro
-  de su convenio de base no pagada; solo su primera semana si la debe (piso $308.000 / $305.000);
+- [x] 💻 **26-sep: ARREGLADO** — código (a20bdf7): al que se va antes no se le cobra NADA de su
+  convenio de base (corregido en 02cbf62: la semana ya la cobra el ajuste de salida);
   por cumplimiento se cobra entera (D-026). Lo usan iniciar liquidación, proyección y la preliquidación
   del estado de cuenta. **Datos (mig 176):** EDER, WILMAR, JORGE LUIS (nuevo, LIQ-0075) −$308.000 ·
-  FRAIRON $410.000 → $102.000 · JESUS MARIA −$390.000 → **−$82.000** (volvió a *calculada*: 🧑 **hay que
+  FRAIRON $410.000 → $0 (mig 178: el "pedazo de semana" de $102.000 que le dejé era cobro doble — ya lo cobran los días que usó) · JESUS MARIA −$390.000 → **−$82.000** (volvió a *calculada*: 🧑 **hay que
   reimprimirle el papel**) · RICARDO −$472.000 → **−$164.000** (deuda y lista negra ajustadas; sigue
   sin firmar). 🔲 **Falta MELISSA** (su cuenta no cuadra). *(Registro:)* ~~La liquidación cobra el convenio de base — $2.289.000 en 7 casos.~~ Misma regla
   D-023 vista del otro lado: los $308.000 de la base son ahorro del cliente, y a quien liquida sin
@@ -183,9 +183,16 @@ Lo que está afectando cifras reales de clientes en este momento.
   | LIQ-0070 | FRAIRON CASTILLA | IEW54I | $410.000 | salvable — ⚠️ **mixto: $308.000 son ahorro (no se cobran) + $102.000 son primera semana (SÍ se cobran)** |
   Y hay **53 convenios de base vivos**: sin arreglar el código, vuelve a pasar con cada uno.
 
+- [ ] 🧑💻 **El acuerdo de base trae un "pedazo de semana" que el cliente paga dos veces.** Cuando pone
+  menos que su primera semana, el wizard arma el acuerdo con TODO lo que falta (semana + ahorro), pero
+  esa semana también se la cobra el libro de cajas en sus semanas normales. Activos: **JORDAN $45.000**
+  (acuerdo $353.000 → debería ser $308.000) · **JORGE DAVID $2.000** ($310.000 → $308.000). ⚠️ Los
+  acuerdos están firmados: **decisión del dueño** para bajarlos, y cambio en el wizard para que el
+  acuerdo de base lleve solo el ahorro que falta.
+
 - [x] 💻 **26-sep: ARREGLADO (mig 177)** — lo pagado del acuerdo de base ya suma a `ahorro_apertura`:
   35 clientes, **$3.671.000** (foto: solo cambió eso, en esos 35). Disparador `trg_sumar_pago_de_base`
-  para lo que venga (sube al confirmar, baja al rechazar o borrar; probado con LUIS ALEJANDRO dentro de
+  para lo que venga (todo lo abonado es base, hasta su parte de base — mig 178; JORGE DAVID +$2.000; sube al confirmar, baja al rechazar o borrar; probado con LUIS ALEJANDRO dentro de
   un rollback: $300.000 → $250.000). Solo actúa si el contrato tiene únicamente su acuerdo de base.
   *(Registro:)* ~~Pagar el convenio de base no suma al ahorro — $3.528.000 de 35 clientes.~~ Tercera cara
   de D-023. Medido: el `ahorro_acumulado` de los 35 coincide **exacto** con la suma de

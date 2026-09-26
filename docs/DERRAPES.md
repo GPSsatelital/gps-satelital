@@ -237,3 +237,21 @@ función nueva, y repetí la prueba: 325 / 0, esta vez de verdad.
 **Qué lo evita ahora:** antes de una prueba en el navegador, **comprobar que el módulo cargado es el
 nuevo** (que exista la función que se acaba de escribir) y, si la pestaña mostró errores de
 recarga, recargarla primero.
+
+### Dejé un cobro doble de $102.000 a FRAIRON por seguir una nota sin comprobarla
+**Lo que hice:** al arreglar que la liquidación no cobre la base a quien se va antes (mig 176), dejé
+cobrando "la primera semana" que traía su acuerdo de base: a FRAIRON le quedó una línea de
+$102.000, y a la regla automática de la base le puse "primero se cubre la semana" (mig 177).
+**Lo que era verdad:** esa semana ya la lleva el libro de cajas. Mientras el cliente está activo se
+la cobran sus semanas normales, y al liquidar el ajuste de salida la cuenta por los días que usó la
+moto: a FRAIRON ya le faltaban $82.000 de días, semana incluida. La línea de $102.000 era la misma
+semana otra vez.
+**Por qué me equivoqué:** la nota de pendientes del 24-sep decía "$102.000 son primera semana (SÍ
+se cobran)" y la tomé como regla verificada. No revisé si la liquidación ya la cobraba por otro lado.
+**Qué casi costó:** $102.000 a FRAIRON al calcular su liquidación, y $2.000 de base mal reconocidos
+a JORGE DAVID.
+**Quién lo cazó:** yo, horas después, al reconstruir la cuenta de MELISSA y ver que la liquidación
+le devolvía días no usados de esa misma quincena.
+**Qué lo evita ahora:** una nota de pendientes es una pista, no una regla. Antes de cobrar un
+renglón, **buscar si el mismo peso ya entra por otra puerta** de la cuenta (semanas, días usados,
+deudas, acuerdo) — la misma lección de las cuentas que se separan.

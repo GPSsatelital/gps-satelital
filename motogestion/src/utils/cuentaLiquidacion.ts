@@ -127,6 +127,46 @@ export function plataQueEsDelCliente(contrato: ContratoConPlata, motivo?: Motivo
 export const CONCEPTO_PAGO_MOTO = "Con este ahorro terminó de pagar la moto";
 
 /**
+ * Lo que el cliente debe FUERA de sus semanas: deudas sueltas y lo que falta de sus acuerdos.
+ * La liquidación y el candado del cumplimiento lo leen de aquí, para que nunca digan cifras distintas.
+ */
+export function deudasYAcuerdos(deudas: DeudaCuenta[], convenios: ConvenioCuenta[]): RenglonCuenta[] {
+  const r: RenglonCuenta[] = [];
+  // Solo las 'pendiente': las 'en_convenio' entran abajo dentro del convenio, y contarlas por los
+  // dos lados sería cobrarlas dos veces.
+  for (const d of deudas.filter(x => x.estado === "pendiente")) {
+    r.push({
+      concepto: d.descripcion?.trim() || CONCEPTO_LEGIBLE[d.concepto] || d.concepto,
+      monto: d.monto_pendiente,
+    });
+  }
+  // 'activo' e 'incumplido'. El incumplido es el que MÁS se liquida (3er incumplido → liquidación
+  // obligatoria) y antes desaparecía de la cuenta, así que se devolvía todo el ahorro.
+  for (const cv of convenios.filter(x => x.estado === "activo" || x.estado === "incumplido")) {
+    const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
+    if (restante > 0) {
+      r.push({
+        concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
+        monto: restante,
+      });
+    }
+  }
+  return r;
+}
+
+/**
+ * D-026 (regla del dueño, 25-sep): nadie termina debiendo. Si llenó sus semanas pero debe más de lo
+ * que tiene a favor, NO se liquida por cumplimiento: sigue pagando su semana normal hasta quedar en
+ * $0. `falta` > 0 = todavía no. Los daños del taller no entran (se saben después); si los hay y dejan
+ * el saldo en negativo, la base no deja cerrar (mig 173).
+ */
+export function faltaParaCumplimiento(deudas: DeudaCuenta[], convenios: ConvenioCuenta[], saldoFavor: number) {
+  const debe = deudasYAcuerdos(deudas, convenios).reduce((s, r) => s + r.monto, 0);
+  const aFavor = Math.max(saldoFavor, 0);
+  return { debe, aFavor, falta: Math.max(debe - aFavor, 0) };
+}
+
+/**
  * Arma la cuenta de una liquidación.
  *
  * @param fechaCorte  el día en que se guardó la moto. TODO se cuenta hasta ahí — regla del dueño:
@@ -162,25 +202,7 @@ export function cuentaLiquidacion(opts: {
 
   const enContra: RenglonCuenta[] = [];
   if (ajuste.porCobrar > 0) enContra.push({ concepto: "Días que rodó y no pagó", monto: ajuste.porCobrar });
-  // Solo las 'pendiente': las 'en_convenio' entran abajo dentro del convenio, y contarlas por los
-  // dos lados sería cobrarlas dos veces.
-  for (const d of deudas.filter(x => x.estado === "pendiente")) {
-    enContra.push({
-      concepto: d.descripcion?.trim() || CONCEPTO_LEGIBLE[d.concepto] || d.concepto,
-      monto: d.monto_pendiente,
-    });
-  }
-  // 'activo' e 'incumplido'. El incumplido es el que MÁS se liquida (3er incumplido → liquidación
-  // obligatoria) y antes desaparecía de la cuenta, así que se devolvía todo el ahorro.
-  for (const cv of convenios.filter(x => x.estado === "activo" || x.estado === "incumplido")) {
-    const restante = Math.max(cv.deuda_total - cv.cuotas_pagadas * cv.cuota_por_periodo, 0);
-    if (restante > 0) {
-      enContra.push({
-        concepto: cv.estado === "incumplido" ? "Saldo de convenio incumplido" : "Saldo pendiente de convenio",
-        monto: restante,
-      });
-    }
-  }
+  enContra.push(...deudasYAcuerdos(deudas, convenios));
   for (const d of danos) if (d.monto > 0) enContra.push({ concepto: `Daño: ${d.concepto}`, monto: d.monto });
 
   const totalFavor = aFavor.reduce((s, r) => s + r.monto, 0);

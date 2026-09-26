@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cuentaLiquidacion, plataQueEsDelCliente, CONCEPTO_PAGO_MOTO } from "./cuentaLiquidacion";
+import { cuentaLiquidacion, plataQueEsDelCliente, faltaParaCumplimiento, CONCEPTO_PAGO_MOTO } from "./cuentaLiquidacion";
 import type { ContratoCiclo } from "./cicloPago";
 
 // La cuenta que se FIRMA. Los contratos son reales, con las cifras de producción del 20-ago-2026.
@@ -260,5 +260,46 @@ describe("el que TERMINA su contrato: su ahorro pagó la moto (D-023)", () => {
   it("sin ahorro no aparece el renglón: no hay nada que explicar", () => {
     const r = plataQueEsDelCliente({ ...SERAFIN, ahorro_acumulado: 0, ahorro_apertura: 0 }, "cumplimiento");
     expect(r).toEqual([]);
+  });
+});
+
+// D-026 (25-sep): nadie termina debiendo. Si llenó sus semanas pero debe más de lo que tiene a
+// favor, no se liquida por cumplimiento: sigue pagando su semana normal hasta quedar en $0.
+describe("¿puede liquidarse por cumplimiento? (D-026)", () => {
+  // El acuerdo real de YESID: $556.000 en cuotas de $60.000, lleva 5 pagadas.
+  const ACUERDO_YESID = { estado: "activo", deuda_total: 556000, cuotas_pagadas: 5, cuota_por_periodo: 60000 };
+
+  it("YESID hoy: debe $256.000, tiene $109.000 a favor → le faltan $147.000", () => {
+    expect(faltaParaCumplimiento([], [ACUERDO_YESID], 109000)).toEqual({ debe: 256000, aFavor: 109000, falta: 147000 });
+  });
+
+  it("si paga lo que falta del acuerdo, queda en $0 y ya puede", () => {
+    const pagado = { ...ACUERDO_YESID, cuotas_pagadas: 10 };
+    expect(faltaParaCumplimiento([], [pagado], 109000).falta).toBe(0);
+  });
+
+  it("el saldo a favor que alcanza a cubrir lo que debe también lo deja en $0", () => {
+    expect(faltaParaCumplimiento([], [ACUERDO_YESID], 300000).falta).toBe(0);
+  });
+
+  it("las deudas sueltas cuentan; las que están dentro de un acuerdo no se cuentan dos veces", () => {
+    const deudas = [
+      { estado: "pendiente", concepto: "multa_recoleccion", descripcion: "", monto_pendiente: 30000 },
+      { estado: "en_convenio", concepto: "tarifa_atrasada", descripcion: "", monto_pendiente: 202000 },
+      { estado: "pagada", concepto: "lavada", descripcion: "", monto_pendiente: 0 },
+    ];
+    expect(faltaParaCumplimiento(deudas, [], 0)).toEqual({ debe: 30000, aFavor: 0, falta: 30000 });
+  });
+
+  it("un saldo a favor negativo no le resta: se toma como cero", () => {
+    expect(faltaParaCumplimiento([], [ACUERDO_YESID], -5000).falta).toBe(256000);
+  });
+
+  it("la liquidación cobra EXACTAMENTE las mismas deudas y acuerdos que mira el candado", () => {
+    const c = cuentaLiquidacion({
+      contrato: { ...YESID, cajas_pagadas: 65 }, fechaCorte: "2026-11-01", saldoFavor: 0,
+      deudas: [], convenios: [ACUERDO_YESID], motivo: "cumplimiento",
+    });
+    expect(c.enContra.total).toBe(faltaParaCumplimiento([], [ACUERDO_YESID], 0).debe);
   });
 });

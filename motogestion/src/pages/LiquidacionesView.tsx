@@ -14,7 +14,9 @@ import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiqu
 import ModalFirmaLiquidacion from "../components/ModalFirmaLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
 import { desgloseDeudas } from "../utils/desgloseLiquidacion";
-import { plataQueEsDelCliente } from "../utils/cuentaLiquidacion";
+import { plataQueEsDelCliente, faltaParaCumplimiento } from "../utils/cuentaLiquidacion";
+import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
 import { hoyISO } from "../utils/fecha";
 import { generarHTMLPazYSalvo } from "../hooks/useDocumentos";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
@@ -103,6 +105,9 @@ export default function LiquidacionesView() {
   const { taller } = useTaller();
   const { recepciones } = useUbicaciones();
   const { pagos } = usePagos();
+  // Con otro nombre: `deudas` es el formulario de la revisión de taller.
+  const { deudas: deudasBD } = useDeudas();
+  const { convenios: conveniosBD } = useConvenios();
   const motos = filtrarMotos(todasMotos);
 
   // Se guarda el ID, NO el objeto. Guardar el objeto era una FOTOCOPIA: al seleccionar se copiaba
@@ -672,6 +677,13 @@ export default function LiquidacionesView() {
         const ctoSel = contratos.find(ct => ct.id === sel.contrato_id);
         const termino = !ctoSel?.motor_v2 || ctoSel?.total_cajas == null
           || (ctoSel.cajas_pagadas ?? 0) >= ctoSel.total_cajas;
+        // D-026: llenar sus semanas no basta si todavía debe. Misma cuenta que ModalIniciarLiquidacion.
+        const deudaFuera = faltaParaCumplimiento(
+          deudasBD.filter(d => d.contrato_id === sel.contrato_id),
+          conveniosBD.filter(cv => cv.contrato_id === sel.contrato_id),
+          ctoSel ? saldoAFavorDe(ctoSel, pagosDelContrato(sel.contrato_id)) : 0,
+        );
+        const puedeCumplimiento = termino && deudaFuera.falta === 0;
         motoDe(sel);
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -691,7 +703,7 @@ export default function LiquidacionesView() {
                         disabled={guardando}
                         style={{ ...inputStyle, padding: "6px 10px", fontSize: 12.5, width: "auto", minWidth: 210 }}>
                         {(["retiro_voluntario", "incumplimiento", "cumplimiento"] as MotivoLiquidacion[])
-                          .filter(mv => mv !== "cumplimiento" || termino)
+                          .filter(mv => mv !== "cumplimiento" || puedeCumplimiento || sel.motivo === "cumplimiento")
                           .map(mv => <option key={mv} value={mv}>{MOTIVO_LABEL[mv]}</option>)}
                       </select>
                       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
@@ -701,6 +713,16 @@ export default function LiquidacionesView() {
                             ? "Contrato Cancelado · la moto vuelve a la flota"
                             : "Contrato Finalizado · la moto vuelve a la flota"}
                       </div>
+                      {/* Quedó en cumplimiento de antes, o le cayó una deuda después: se avisa. La base
+                          no deja cerrar un cumplimiento con saldo negativo (mig 173). */}
+                      {sel.motivo === "cumplimiento" && deudaFuera.falta > 0 && (
+                        <div style={{ marginTop: 6, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                          🔒 <strong>Todavía debe ${deudaFuera.debe.toLocaleString("es-CO")}</strong>
+                          {deudaFuera.aFavor > 0 ? <> y tiene ${deudaFuera.aFavor.toLocaleString("es-CO")} a favor</> : null}
+                          {" "}→ le faltan <strong>${deudaFuera.falta.toLocaleString("es-CO")}</strong>. No se puede cerrar por
+                          cumplimiento hasta que quede en $0: sigue pagando su semana normal.
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div style={{ fontSize: 13, color: "var(--muted)", textTransform: "uppercase" }}>{MOTIVO_LABEL[sel.motivo]}</div>

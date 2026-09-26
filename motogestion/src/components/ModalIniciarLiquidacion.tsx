@@ -7,6 +7,9 @@ import { useLiquidaciones, type MotivoLiquidacion } from "../hooks/useLiquidacio
 import { useUbicaciones, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useContratos } from "../hooks/useContratos";
 import { useDeudas } from "../hooks/useDeudas";
+import { useConvenios } from "../hooks/useConvenios";
+import { usePagos, saldoAFavorDe } from "../hooks/usePagos";
+import { faltaParaCumplimiento } from "../utils/cuentaLiquidacion";
 import { MULTA_RECOLECCION } from "../utils/inmovilizacion";
 import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
@@ -54,7 +57,9 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
   const { iniciarLiquidacion } = useLiquidaciones();
   const { registrarRecepcion } = useUbicaciones();
   const { contratos, suspenderContrato } = useContratos();
-  const { registrarDeuda } = useDeudas();
+  const { deudas, registrarDeuda } = useDeudas();
+  const { convenios } = useConvenios();
+  const { pagos } = usePagos();
   const { profile } = useAuth();
 
   // Nunca arranca en "cumplimiento" si el que llama no lo pidió: ese motivo regala la moto.
@@ -86,7 +91,15 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
   // Un contrato sin motor de cajas (Diario, o v1 sin inicializar) no se puede verificar: se deja
   // pasar para no bloquear una operación legítima, pero el aviso de abajo lo dice.
   const sinLedger = !contrato?.motor_v2 || totalCajas == null;
-  const puedeCumplimiento = terminoDePagar || sinLedger;
+  // D-026: aunque haya llenado sus semanas, si todavía debe (deudas + acuerdo, menos lo que tiene a
+  // favor) no se liquida por cumplimiento: sigue pagando su semana normal hasta quedar en $0.
+  const deudaFuera = faltaParaCumplimiento(
+    deudas.filter(d => d.contrato_id === contratoId),
+    convenios.filter(cv => cv.contrato_id === contratoId),
+    contrato ? saldoAFavorDe(contrato, pagos.filter(p => p.contrato_id === contratoId && p.estado === "Confirmado")) : 0,
+  );
+  const terminoSusSemanas = terminoDePagar || sinLedger;
+  const puedeCumplimiento = terminoSusSemanas && deudaFuera.falta === 0;
   const MOTIVOS_VISIBLES = puedeCumplimiento ? MOTIVOS : MOTIVOS.filter(m => m.value !== "cumplimiento");
 
   // El empalme abierto significa que sus cifras viejas —ahorro y deuda que traía— NUNCA se
@@ -297,8 +310,20 @@ export default function ModalIniciarLiquidacion({ contratoId, clienteId, cliente
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>{motivoSel.desc}</div>
           {!puedeCumplimiento && (
             <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.5 }}>
-              🔒 <strong>"Cumplimiento" no está disponible</strong>: va en la cuota {cajasPagadas} de {totalCajas}.
-              Ese motivo le entrega la moto al cliente, y solo se puede usar cuando terminó de pagarlas todas.
+              {!terminoSusSemanas ? (
+                <>
+                  🔒 <strong>"Cumplimiento" no está disponible</strong>: va en la cuota {cajasPagadas} de {totalCajas}.
+                  Ese motivo le entrega la moto al cliente, y solo se puede usar cuando terminó de pagarlas todas.
+                </>
+              ) : (
+                <>
+                  🔒 <strong>"Cumplimiento" todavía no</strong>: terminó sus semanas, pero debe
+                  <strong> ${deudaFuera.debe.toLocaleString("es-CO")}</strong>
+                  {deudaFuera.aFavor > 0 ? <> y tiene ${deudaFuera.aFavor.toLocaleString("es-CO")} a favor</> : null}
+                  {" "}→ le faltan <strong>${deudaFuera.falta.toLocaleString("es-CO")}</strong>.
+                  Sigue pagando su semana normal hasta quedar en $0; recién ahí se liquida por cumplimiento.
+                </>
+              )}
             </div>
           )}
         </div>

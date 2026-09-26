@@ -128,3 +128,7 @@ libro de cajas (semanas normales mientras activo; ajuste de salida al liquidar).
 y **todo lo abonado al acuerdo de base es base** (hasta su parte de base). Derrape en DERRAPES.md.
 🔲 Abierto: el pedazo de semana DENTRO de los acuerdos activos se paga dos veces (JORDAN $45.000,
 JORGE DAVID $2.000) — decisión del dueño (acuerdos firmados) + cambio en el wizard. MELISSA pendiente.
+✅ 26-sep (noche): el pedazo de semana DENTRO de los acuerdos activos también quedó arreglado — el
+wizard arma el acuerdo de base con min(lo que falta, $308.000) (54b3791) y la mig 179 bajó JORDAN y
+JORGE DAVID a $308.000 (el dueño lo entendió con las sumas: "le falta $353.000, le piden $398.000").
+Queda solo MELISSA.

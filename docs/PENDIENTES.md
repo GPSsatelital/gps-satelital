@@ -183,7 +183,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   | LIQ-0070 | FRAIRON CASTILLA | IEW54I | $410.000 | salvable — ⚠️ **mixto: $308.000 son ahorro (no se cobran) + $102.000 son primera semana (SÍ se cobran)** |
   Y hay **53 convenios de base vivos**: sin arreglar el código, vuelve a pasar con cada uno.
 
-- [ ] 🧑💻 **El acuerdo de base trae un "pedazo de semana" que el cliente paga dos veces.** Cuando pone
+- [x] 💻 **26-sep: ARREGLADO** — el wizard arma el acuerdo de base solo con el ahorro que falta (54b3791) y la mig 179 bajó JORDAN ($353.000 → $308.000, 11 cuotas, límite 7-dic) y JORGE DAVID ($310.000 → $308.000). 🧑 **Reimprimirles el acuerdo firmado.** *(Registro:)* **El acuerdo de base trae un "pedazo de semana" que el cliente paga dos veces.** Cuando pone
   menos que su primera semana, el wizard arma el acuerdo con TODO lo que falta (semana + ahorro), pero
   esa semana también se la cobra el libro de cajas en sus semanas normales. Activos: **JORDAN $45.000**
   (acuerdo $353.000 → debería ser $308.000) · **JORGE DAVID $2.000** ($310.000 → $308.000). ⚠️ Los

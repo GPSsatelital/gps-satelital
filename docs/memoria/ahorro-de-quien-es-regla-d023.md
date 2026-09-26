@@ -112,3 +112,11 @@ EDER, WILMAR, JORGE LUIS (LIQ-0075, no estaba en la lista del 24-sep), FRAIRON $
 JESUS MARIA −$390k→−$82k (a reimprimir), RICARDO −$472k→−$164k (ya se había cerrado el 24-sep).
 🔲 Quedan: MELISSA (no cuadra) y la **tercera cara** (pagar el convenio de base no suma al ahorro,
 35 clientes) — hoy ninguna liquidación abierta tiene abonos a su convenio de base.
+
+## ✅ 26-sep: la tercera cara ARREGLADA — D-023 CERRADA (mig 177, commit c043d41)
+El dueño preguntó "¿lo que pagan del acuerdo de base no va a la base?" — la plata SÍ entraba y SÍ
+descontaba el acuerdo; lo que faltaba era ANOTARLA como base. Ahora `ahorro_apertura` = lo que puso
+al entrar + lo pagado del acuerdo de base (disparador `trg_sumar_pago_de_base` en pagos, fuera del
+motor; la semana que traía el acuerdo se cubre primero). Una vez: 35 clientes, $3.671.000 (foto:
+solo cambió eso). Probado con LUIS ALEJANDRO en rollback. Límite: solo si el contrato tiene ÚNICAMENTE
+su acuerdo de base (hoy los 63). 🔲 Queda MELISSA BELLO aparte.

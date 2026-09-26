@@ -75,6 +75,9 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **26-sep (tarde)** — **D-023 cerrada por sus 3 caras**: al que se va antes no se le cobra la base no
+  pagada (mig 176: RICARDO −$472.000 → −$164.000 y 5 más) · lo pagado del acuerdo de base suma a su base
+  (mig 177: 35 clientes, $3.671.000) → [[ahorro-de-quien-es-regla-d023]]
 - **26-sep** — **D-026 completa en 4 pasos**: candado de cumplimiento (173), motor sin freno al terminar
   (174), semanas de más en la cartera con mora y recolección (opción A), y la vitrina de ZALA y Mi Día
   (175, espejo 325/0) → [[d026-semanas-de-cierre]]

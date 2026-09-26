@@ -16,6 +16,7 @@ import { calcularProrrateoInicial, proximoDiaPago, totalCajasContrato } from "..
 import { hoyISO } from "../utils/fecha";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { CONCEPTO_CONVENIO_BASE } from "../utils/cuentaLiquidacion";
+import { PISO_BASE } from "../utils/excedenteBase";
 
 type Props = {
   clientes: Cliente[];
@@ -208,9 +209,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   const tarifaSemana = 6 * tarifaDiaria + tarifaDomingo;
   const ahorroSemana = valorSemanal > 0 ? valorSemanal - tarifaSemana : 0;
   const baseRequerida = form.forma_pago === "Diario" ? 0
-    : form.forma_pago === "Semanal" ? 308000 + valorSemanal
-    : form.forma_pago === "Quincenal" ? 308000 + valorQuincenal
-    : 308000 + valorMensual;
+    : form.forma_pago === "Semanal" ? PISO_BASE + valorSemanal
+    : form.forma_pago === "Quincenal" ? PISO_BASE + valorQuincenal
+    : PISO_BASE + valorMensual;
   const ahorroEntregado = Number(form.ahorro_inicial) || 0;
   const baseSuficiente = ahorroEntregado >= baseRequerida;
   // LIBRO DE CAJAS (spec 11-jul, ver CLAUDE.md): de la base entregada, el período adelantado
@@ -406,7 +407,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         }
       }
       if (form.forma_pago !== "Diario" && !baseSuficiente) {
-        setConvenioPendiente({ contratoId: data.id, falta: baseRequerida - ahorroEntregado });
+        // El acuerdo de base lleva SOLO el ahorro que falta. Si lo entregado no alcanzó ni para el
+        // período adelantado, ese período queda a medio pagar en el libro de cajas y se lo cobran sus
+        // semanas normales; meterlo también aquí era cobrárselo dos veces (JORDAN, 26-sep: $45.000).
+        setConvenioPendiente({ contratoId: data.id, falta: Math.min(baseRequerida - ahorroEntregado, PISO_BASE) });
       } else {
         setStep(2);
       }
@@ -858,6 +862,14 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                           {baseSuficiente ? "✅ suficiente" : `falta $ ${fmt(baseRequerida - ahorroEntregado)}`}
                         </div>
                       )}
+                      {/* Lo que no alcanzó para el período adelantado se cobra en sus semanas; el
+                          acuerdo lleva solo el ahorro. Se dice aquí para que las dos cifras no choquen. */}
+                      {form.cliente_id && valorSemanal > 0 && !baseSuficiente && baseRequerida - ahorroEntregado > PISO_BASE && (
+                        <div style={{ color: "var(--muted)", marginTop: 2 }}>
+                          $ {fmt(baseRequerida - ahorroEntregado - PISO_BASE)} de su primer período se cobran en sus cuotas ·
+                          $ {fmt(PISO_BASE)} de ahorro van en el acuerdo
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
@@ -1172,7 +1184,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           // `adelanto_base` de arriba), así que meterla al convenio la cobra dos veces. Fue el
           // defecto de 7 convenios ($1.616.000) hasta el 25-ago — ver ModalConvenio.
           sinFinanciarSemanas
-          metaNota="lo que le falta para completar la base inicial"
+          metaNota="el ahorro que le falta de la base inicial"
           motivoInicial={CONCEPTO_CONVENIO_BASE}
           obligatorio
           onClose={() => { setConvenioPendiente(null); setStep(2); }}

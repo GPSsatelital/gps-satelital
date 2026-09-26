@@ -108,14 +108,14 @@ Lo que está afectando cifras reales de clientes en este momento.
   + prueba espejo (REGLA DE LA VITRINA). **Respondido por el dueño el 25-sep:** esas semanas se
   cobran **igual que una semana normal** (gabela, mora, mensajes, llamada y recolección), y el
   pago va en el **orden de siempre: primero deudas, después acuerdo**.
-  **PLAN PROPUESTO el 25-sep — ⚠️ FALTA EL SÍ DEL DUEÑO antes de escribir una línea:**
+  **PLAN APROBADO por el dueño el 26-sep ("listo dale"):**
   lo que se midió: (a) las deudas sueltas YA se pagan completas después de la última semana;
   (b) el acuerdo NO: el freno de la mig 119 le deja recibir solo la cuota exigida (YESID: $60.000
   de $235.000, el resto a saldo a favor); (c) **después de la última semana la mora queda en 0**
   (`desgloseExigible` topa en `total_cajas`, `proximaFecha = null`) → LUIS podría no pagar sus
   $1.455.200 sin entrar nunca en gabela/mora/recolección; (d) nada impide liquidar por
   cumplimiento a quien debe.
-  1. **Candado (rápido, esta semana):** "Cumplimiento" no se ofrece mientras deba (ModalIniciar-
+  1. ✅ **HECHO 26-sep** (commit f5450c8 + mig 173, registrada) — **Candado:** "Cumplimiento" no se ofrece mientras deba (ModalIniciar-
      Liquidacion + selector de LiquidacionesView), con el aviso *"Todavía debe $X: sigue pagando
      su semana normal hasta quedar en $0"*; y en la base, `cerrar_liquidacion` no deja cerrar un
      cumplimiento con saldo negativo.

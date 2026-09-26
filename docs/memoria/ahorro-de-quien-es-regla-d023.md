@@ -103,3 +103,12 @@ semana $235.000 + ahorro $3.801.000; ahorra $66.000/semana pero paga $234.000 y 
 🔲 **Abierto:** terminar debiendo (YESID simulado: −$147.000 por el acuerdo) manda a lista negra y
 bloquea Paz y Salvo — decidir si se cobra antes. Y qué fecha de corte manda en un cumplimiento
 (±$199.000). Las otras dos caras (convenio de base cobrado; pagarlo no suma al ahorro) siguen igual.
+
+## ✅ 26-sep: la segunda cara ARREGLADA (commits a20bdf7 + a8d2728, mig 176)
+`deudasYAcuerdos(…, { seVaAntes, pisoBase })`: de un convenio `CONCEPTO_CONVENIO_BASE` al que se va
+antes solo se cobra la parte de primera semana (lo que pase del piso $308.000/$305.000), con lo
+abonado aplicado primero a la semana; por cumplimiento se cobra entera (D-026). Datos corregidos:
+EDER, WILMAR, JORGE LUIS (LIQ-0075, no estaba en la lista del 24-sep), FRAIRON $410k→$102k,
+JESUS MARIA −$390k→−$82k (a reimprimir), RICARDO −$472k→−$164k (ya se había cerrado el 24-sep).
+🔲 Quedan: MELISSA (no cuadra) y la **tercera cara** (pagar el convenio de base no suma al ahorro,
+35 clientes) — hoy ninguna liquidación abierta tiene abonos a su convenio de base.

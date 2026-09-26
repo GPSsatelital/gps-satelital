@@ -205,3 +205,18 @@ conclusión, y ahí salió.
 empresa"*, **no alcanza con mirar el caso en que no se pagó.** Hay que medir las DOS caras —
 qué pasa cuando entra la plata y qué pasa cuando no — y si las dos apuntan al mismo lado, **ese es
 el criterio que el sistema ya tiene**, y hay que preguntarlo antes de cambiarlo, no después.
+
+### Le di un plazo de pago a YESID sin haber medido su acuerdo
+**Lo que dije:** que YESID *"paga unos $60.000 por semana al acuerdo y lo termina en unas 4
+semanas, antes que las 5 que le faltan"* — y con eso le quité urgencia a lo que pasa si alguien
+termina su contrato debiendo.
+**Lo que era verdad:** al medir el acuerdo ($556.000 en 10 cuotas de $60.000, lleva 5) le faltan
+**5 pagos** (4 de $60.000 y uno de $16.000): termina **la misma semana** que el contrato, no antes.
+Si se atrasa uno, llega a la semana 65 debiendo.
+**Por qué me equivoqué:** dividí $256.000 entre $60.000, redondeé para abajo y lo dije como hecho,
+sin abrir el acuerdo. Un plazo es una cifra, y las cifras se miden antes de decirlas.
+**Qué casi costó:** poco, porque lo corregí en el siguiente mensaje. Pero era justo el argumento
+para decidir si la regla del que termina debiendo (D-026) era urgente o no.
+**Quién lo cazó:** yo, al medir el acuerdo para explicarle al dueño por qué la cuenta salía negativa.
+**Qué lo evita ahora:** ningún plazo ("en N semanas", "antes de", "termina el día") se dice sin
+abrir el registro que lo define — igual que un monto.

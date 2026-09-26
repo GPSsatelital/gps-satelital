@@ -93,3 +93,13 @@ general: cuando una cifra puede ser *"del cliente"* o *"de la empresa"*, **medir
 qué pasa cuando entra la plata y qué pasa cuando no. Con una sola cara, dos reglas opuestas se ven
 idénticas. Relacionado: [[base-inicial-vs-ahorro-acumulado]] · [[liquidaciones-definicion-cerrada]] ·
 [[correcciones-a-mano-sep-2026]] · [[graduacion-cambio-moto-flujo]].
+
+## ✅ 25-sep: la primera cara ARREGLADA (commit f5c2ce1)
+`plataQueEsDelCliente(contrato, motivo)`: con `cumplimiento` agrega el renglón negativo
+*"Con este ahorro terminó de pagar la moto"* (el ahorro se ve, el saldo no lo suma). Proyección:
+solo si `cajas_pagadas >= total_cajas`. Cambiar motivo desde/hacia cumplimiento ya calculada →
+vuelve a `en_taller`. El dueño lo confirmó con los números de YESID ($4.366.000 = base $800.000 −
+semana $235.000 + ahorro $3.801.000; ahorra $66.000/semana pero paga $234.000 y no $235.000).
+🔲 **Abierto:** terminar debiendo (YESID simulado: −$147.000 por el acuerdo) manda a lista negra y
+bloquea Paz y Salvo — decidir si se cobra antes. Y qué fecha de corte manda en un cumplimiento
+(±$199.000). Las otras dos caras (convenio de base cobrado; pagarlo no suma al ahorro) siguen igual.

@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **22-sep-2026**.
+- Última revisión: **25-sep-2026**.
 
 ---
 
@@ -107,8 +107,31 @@ Lo que está afectando cifras reales de clientes en este momento.
   motor la mande entera a deudas + acuerdo, no solo la cuota; (3) su espejo en la vitrina de ZALA
   + prueba espejo (REGLA DE LA VITRINA). **Respondido por el dueño el 25-sep:** esas semanas se
   cobran **igual que una semana normal** (gabela, mora, mensajes, llamada y recolección), y el
-  pago va en el **orden de siempre: primero deudas, después acuerdo**. Falta: el plan técnico
-  (toca el motor) y su visto bueno antes de construir.
+  pago va en el **orden de siempre: primero deudas, después acuerdo**.
+  **PLAN PROPUESTO el 25-sep — ⚠️ FALTA EL SÍ DEL DUEÑO antes de escribir una línea:**
+  lo que se midió: (a) las deudas sueltas YA se pagan completas después de la última semana;
+  (b) el acuerdo NO: el freno de la mig 119 le deja recibir solo la cuota exigida (YESID: $60.000
+  de $235.000, el resto a saldo a favor); (c) **después de la última semana la mora queda en 0**
+  (`desgloseExigible` topa en `total_cajas`, `proximaFecha = null`) → LUIS podría no pagar sus
+  $1.455.200 sin entrar nunca en gabela/mora/recolección; (d) nada impide liquidar por
+  cumplimiento a quien debe.
+  1. **Candado (rápido, esta semana):** "Cumplimiento" no se ofrece mientras deba (ModalIniciar-
+     Liquidacion + selector de LiquidacionesView), con el aviso *"Todavía debe $X: sigue pagando
+     su semana normal hasta quedar en $0"*; y en la base, `cerrar_liquidacion` no deja cerrar un
+     cumplimiento con saldo negativo.
+  2. **Motor:** con TODAS las cajas llenas, el acuerdo recibe todo lo que falte (sin freno). Antes
+     de eso el freno sigue igual. Parche por anclas sobre `aplicar_pago_confirmado` VIVA (pedir
+     `pg_get_functiondef` al dueño) + espejo `repartoPago.ts` + pruebas.
+  3. **Semanas de cierre en `cicloPago`** (`desgloseExigible`/`loQueDebe`/`diasEnMoraV2`): semana k
+     de cierre vence en `fechaCaja(total_cajas + k)`; lo que toca hoy = `min(deuda actual,
+     k × valor semana − pagado a deudas/acuerdo desde el inicio del cierre)`. Se corrige solo si
+     paga de más o antes. Mora desde la semana de cierre más vieja sin cubrir.
+     ⚠️ Caso borde: quien terminó limpio y meses después le cae una deuda → sus semanas de cierre
+     cuentan desde esa deuda, no desde que terminó (si no, amanece con meses de mora).
+  4. **ZALA:** `zala.dias_en_mora_v2` (mig 129) + cuota en `zala.cliente` + estado nuevo en
+     `zala.diccionario` y `docs/DICCIONARIO-ESTADOS.md` + caso en la prueba espejo.
+  Fechas: paso 1 ya; pasos 2-4 antes del **~19-oct** (una semana antes de la semana 65 de YESID),
+  nunca lunes/miércoles antes de las 6 pm.
 
 - [x] 💻 **25-sep: ARREGLADO EN CÓDIGO** — con motivo `cumplimiento` el ahorro se muestra y se cierra
   con *"Con este ahorro terminó de pagar la moto"* (no suma al saldo); retiro e incumplimiento
@@ -455,6 +478,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P4 — Limpieza y optimización
 
+- [ ] 💻 **`npm run cierre` compara fechas en UTC** (`cierre.mjs`, líneas 77-80): después de las 7 pm de Colombia ya es el día siguiente en UTC y no ve lo registrado hoy en `DECISIONES.md`/`DERRAPES.md` (pasó el 25-sep con D-026). Usar la fecha de Colombia, como `hoyISO()`.
 - [ ] 💻 **Aviso en "Cerrar y pagar" de la nómina** cuando la semana todavía no terminó. Hoy deja
   cerrar una semana a medias y **no se puede deshacer**.
 - [ ] 💻 **`dias_mora` puede contar un hueco de cajas que un acuerdo ya cubrió.** Un solo caso en
@@ -483,6 +507,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 25-sep | 🔴 **El que termina su contrato ya no se lleva el ahorro** (D-023, commit f5c2ce1) — con motivo cumplimiento el ahorro se muestra y se cierra con "Con este ahorro terminó de pagar la moto". Medido: $8.753.000 en 5 contratos. Salió D-026 (nadie termina debiendo), plan arriba en P0 |
+| 25-sep | 🔴 **Devolver la base ya no se registra dos veces** (mig 172, commit 6ebc3dd) — la secretaria quedaba frenada en el último paso y repetía: OMAR YANCES 4 veces, FELIPE SEMBERGMAN 2, JOSE LUIS VASQUEZ 2 = $2.082.000 de más, corregidos. Ahora una sola transacción con candado; probado en producción |
+| 25-sep | **La firma sale en pantalla completa** en Devolver base y Ceder contrato (commit b210b16) — la ventana centrada con transform la encerraba |
 | 22-sep | 🔴 **El saldo a favor ya NO puede ser negativo** (mig 166, probada) — KEVIN (RLY45H) estuvo en −$195.000 tres semanas y la pantalla decía $0. Candado diferido que deshace cualquier operación que lo deje en rojo. **Era el único de la flota** (2.938 pagos auditados) |
 | 22-sep | **La revisión de coherencia corre sola** (mig 165) — 5 chequeos pasan a ser avisos de Mi Día, bloque "Revisión del sistema". Las fórmulas medidas contra los 2.938 pagos: 0 descuadres, 3 casos de cajas (los conocidos) |
 | 22-sep | **Se pueden posponer avisos** con fecha y motivo (solo el jefe), para lo que ya se sabe y no depende de nosotros |

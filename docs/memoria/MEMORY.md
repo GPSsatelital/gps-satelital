@@ -9,7 +9,7 @@ una línea por entrada.
 P2 necesita gente · P3 módulos por construir · P4 limpieza). **Leerla al arrancar cualquier sesión.**
 Lo que se cierra se marca y se mueve abajo. Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (24-sep)
+## ▶️ DÓNDE RETOMAR (25-sep)
 
 🔑 **NO le creas a ningún documento para el estado: se mide al arrancar.** Rama, último commit,
 migraciones, pruebas, y **qué herramientas no conectaron** (regla D-017).
@@ -29,16 +29,15 @@ y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan pe
 el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
 `RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
 
-### 🔴 MAÑANA ARRANCA POR ACÁ: YESID, que tiene reloj
-De todo lo del 24-sep, **es lo único con fecha propia**. `cuentaLiquidacion()` **no mira el motivo
-ni una vez** (grep: 0 coincidencias), así que le devuelve todo el ahorro igual al que pagó sus 104
-semanas y al que entregó la moto a los 7 días. **YESID BARRAZA va 60 de 65 — cinco semanas — y se
-llevaría $3.801.000** que, según **D-023**, ya pagaron la moto. Detrás: LUIS FERNANDO SOLANO
-($2.203.000) y 2 contratos que ya completaron. Ya pasó una vez: ANGELICA PACHECO, LIQ-0007, $340.000.
-
-🔑 **Es el mismo archivo** que corrige el otro hueco (cobrarle la base a quien se va sin terminar,
-$2.289.000 en 6 casos abiertos) → **un solo arreglo tapa $10,3M**. Todo en `docs/PENDIENTES.md` → P0.
-Regla de orden: **primero lo que tiene reloj** → [[ahorro-de-quien-es-regla-d023]]
+### 🔴 MAÑANA ARRANCA POR ACÁ: D-026 — el plan espera el SÍ del dueño
+**Nadie termina debiendo** (regla del dueño, 25-sep): si llena su última semana y todavía debe,
+sigue pagando su **semana normal** y todo va a deudas → acuerdo, con gabela/mora/recolección igual;
+se liquida por cumplimiento solo en $0. **Plan de 4 pasos en `docs/PENDIENTES.md` → P0: NO está
+aprobado** — repetírselo y esperar el sí. El paso 1 (candado: no ofrecer cumplimiento mientras
+deba) es rápido. Pasos 2-4 (motor sin freno al terminar, semanas de cierre, ZALA) **antes del
+~19-oct**: YESID paga su semana 65 ~26-oct; LUIS SOLANO debe $1.455.200 a 6 semanas.
+→ [[d026-semanas-de-cierre]] · ya hecho: el ahorro del que termina pagó la moto (D-023, f5c2ce1)
+→ [[ahorro-de-quien-es-regla-d023]]
 
 ### ▶️ DESPUÉS: el arreglo de la fecha de fin
 🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
@@ -75,6 +74,10 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **25-sep** — Firma a pantalla completa (b210b16) · **devolver la base se registraba 2-4 veces**:
+  $2.082.000 corregidos + mig 172 con candado → [[devolucion-base-doble-registro]] · **el que termina
+  ya no se lleva el ahorro** (D-023, f5c2ce1) · de ahí **D-026** (plan sin aprobar) · kit de diseño
+  25/25 real → [[kit-diseno-pruebas-estado]]
 - **24-sep (tarde)** — 🔴 **¿De quién es el ahorro?** La regla que faltaba (**D-023**): es de la
   empresa **solo si el contrato termina bien**; si liquida sin finalizar, se devuelve. De ahí salen
   **3 defectos por $13,8M** (el peor: la liquidación **no mira el motivo** y le devolvería
@@ -128,6 +131,7 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 ## 🔴 Dinero y seguridad (lo que no se puede volver a romper)
 
 - 🔴 **[Fuga de documentos](fuga-documentos-storage.md)** — 3 puertas (migs 071·161·162) + **cómo auditar `pg_policies` sin equivocarse**. 🔲 falta cerrar los buckets.
+- 🔴 **[Devolver base se registraba 2-4 veces](devolucion-base-doble-registro.md)** (25-sep, mig 172) — $2.082.000 de más en 3 clientes, corregido; ahora una transacción con candado.
 - 🔴 **[Saldo a favor: ni dos veces, ni negativo, ni trabado](candado-saldo-favor-dos-clics.md)** (migs 160·166·167) — KEVIN estuvo en **−$195.000 tres semanas** con la pantalla diciendo "$0" (`Math.max(0)` lo tapaba). 🔑 **La guarda de la PANTALLA no protege plata: va en la BASE.**
 - ✅ **[El rastro del saldo a favor](saldo-favor-movimiento-atascado.md)** — `rastroSaldoFavor()` FIFO, una sola fuente para las 3 pantallas; dice de qué pago vino cada peso. ⚠️ el historial muestra 10 pagos pero el FIFO usa TODOS. Trae las 2 trampas del SQL de corrección.
 - ✅ **[La ventana de prepago se tragaba el acuerdo](motor-ventana-prepago-al-final.md)** · **[La acompañante firma el acuerdo](convenio-firma-acompanante.md)**.
@@ -155,7 +159,7 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 - **[PLAN sistema de diseño](plan-sistema-diseno.md)** · **[Rediseño visual — retomar F3 Cartera](rediseno-visual-f1.md)** · **[Compactar densidad móvil](compactar-densidad-movil.md)** · **[Brief de marca/logo](../../../../Documents/GitHub/gps-satelital/docs/BRIEF-DISENO.md)** (falta logo).
 - 🔴 **[Trabajar en dos PC con un disco](migrar-proyecto-a-otro-pc.md)** — disco `PY_ofc` (D:) con `1-TRAER.bat` / `2-LLEVAR.bat`. **Syncthing se probó y FALLÓ.** Nunca Claude en los dos PC a la vez.
 - 🆕 **[Consultar la base desde el navegador](consultar-base-desde-el-navegador.md)** — medir y probar funciones reales con la sesión del dueño, sin pasarle consultas. Con sus 3 trampas.
-- **[Formatos .docx](plantillas-docx-generador.md)** · ✅ **[Correo Zoho](zoho-correo-corporativo.md)** (`mx.zoho.com`, no `mx1`) · 🔴 **[Browser pane bloqueado por z.ai](verificar-ui-sin-browser-pane.md)** · **[Huellero DigitalPersona](estado-huellero-digitalpersona.md)** · **[Hardware de oficina](decisiones-hardware-oficina.md)** · **[Herramientas por PC](herramientas-por-pc-paridad.md)**.
+- **[Pruebas del kit de diseño: qué corre y qué no](kit-diseno-pruebas-estado.md)** (25-sep) — kit 2.4.0, 25/25 real; Playwright en ~/scripts · **[Formatos .docx](plantillas-docx-generador.md)** · ✅ **[Correo Zoho](zoho-correo-corporativo.md)** (`mx.zoho.com`, no `mx1`) · 🔴 **[Browser pane bloqueado por z.ai](verificar-ui-sin-browser-pane.md)** · **[Huellero DigitalPersona](estado-huellero-digitalpersona.md)** · **[Hardware de oficina](decisiones-hardware-oficina.md)** · **[Herramientas por PC](herramientas-por-pc-paridad.md)**.
 
 ## Historial (julio, resuelto)
 

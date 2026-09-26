@@ -120,3 +120,11 @@ al entrar + lo pagado del acuerdo de base (disparador `trg_sumar_pago_de_base` e
 motor; la semana que traía el acuerdo se cubre primero). Una vez: 35 clientes, $3.671.000 (foto:
 solo cambió eso). Probado con LUIS ALEJANDRO en rollback. Límite: solo si el contrato tiene ÚNICAMENTE
 su acuerdo de base (hoy los 63). 🔲 Queda MELISSA BELLO aparte.
+
+## ⚠️ 26-sep (noche): CORRECCIÓN a lo de arriba — mig 178, commit 02cbf62
+"La parte de primera semana del acuerdo de base sí se cobra" era FALSO: esa semana ya la lleva el
+libro de cajas (semanas normales mientras activo; ajuste de salida al liquidar). Era cobro doble
+(FRAIRON $102.000). Regla vigente: **al que se va antes no se le cobra NADA de su acuerdo de base**,
+y **todo lo abonado al acuerdo de base es base** (hasta su parte de base). Derrape en DERRAPES.md.
+🔲 Abierto: el pedazo de semana DENTRO de los acuerdos activos se paga dos veces (JORDAN $45.000,
+JORGE DAVID $2.000) — decisión del dueño (acuerdos firmados) + cambio en el wizard. MELISSA pendiente.

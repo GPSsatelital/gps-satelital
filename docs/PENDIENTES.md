@@ -162,7 +162,13 @@ Lo que está afectando cifras reales de clientes en este momento.
   **$2.203.000** · JOSE GOMEZ 12/15 → $172.000. (RAMON y CESAR ya completaron, pero están en pausa
   por decisión del dueño.) **2 contratos ya llenaron sus semanas.**
 
-- [ ] 💻 🔴 **La liquidación cobra el convenio de base — $2.289.000 en 7 casos.** Misma regla
+- [x] 💻 **26-sep: ARREGLADO** — código (a20bdf7): al que se va antes no se le cobra la parte de ahorro
+  de su convenio de base no pagada; solo su primera semana si la debe (piso $308.000 / $305.000);
+  por cumplimiento se cobra entera (D-026). Lo usan iniciar liquidación, proyección y la preliquidación
+  del estado de cuenta. **Datos (mig 176):** EDER, WILMAR, JORGE LUIS (nuevo, LIQ-0075) −$308.000 ·
+  FRAIRON $410.000 → $102.000 · JESUS MARIA −$390.000 → **−$82.000** (volvió a *calculada*: 🧑 **hay que
+  reimprimirle el papel**) · RICARDO −$472.000 → **−$164.000** (deuda y lista negra ajustadas; sigue
+  sin firmar). 🔲 **Falta MELISSA** (su cuenta no cuadra). *(Registro:)* ~~La liquidación cobra el convenio de base — $2.289.000 en 7 casos.~~ Misma regla
   D-023 vista del otro lado: los $308.000 de la base son ahorro del cliente, y a quien liquida sin
   finalizar se le devuelven — así que cobrarle lo que nunca puso es cobrar algo que habría que
   devolver. `cuentaLiquidacion.ts:160` cobra todo convenio `activo`/`incumplido` sin distinguir.

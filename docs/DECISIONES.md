@@ -387,3 +387,20 @@ terminó, $1.509.000, en pausa por el dueño). JOSE GOMEZ y CESAR terminan en $0
 deja de pedir la semana y solo cobra la cuota del acuerdo — es decir, hace la B. Plan en
 `docs/PENDIENTES.md` → P0. **Fecha límite real: ~26-oct**, cuando YESID paga su semana 65.
 **Reemplaza a:** —
+
+### D-027 · 26-sep-2026 · Cómo se ven y se cobran las semanas de más (completa D-026)
+**Decidió:** el dueño, pregunta por pregunta.
+**Qué se decidió:**
+- **Las semanas de más se cobran igual que cualquier semana:** gabela, mora, mensajes, llamada y
+  recolección si no paga.
+- **El pago va en el orden de siempre:** primero las deudas sueltas, después el acuerdo.
+- **Opción A para la pantalla:** el número grande es lo que se le cobra ESA semana (su semana
+  normal, o lo que falte si es menos) y debajo va *"Todavía debe $X en total"*. Se descartó la B
+  (el total en grande): el cobrador vería una cifra que no le toca cobrar esa semana, y el número y
+  la mora dirían cosas distintas.
+- **Aprobó el plan de 4 pasos** ("listo dale") y quedó construido el mismo día: migs 173·174·175
+  + `semanaDeCierre()` en `cicloPago.ts`.
+**Por qué:** D-026 decía QUÉ (nadie termina debiendo); faltaba CÓMO se cobra y cómo se ve.
+**Dónde vive:** `cicloPago.ts` (`semanaDeCierre`, `loQueDebe.cierre`, `etiquetaSemanaDeMas`) ·
+`zala.semana_de_cierre()` · `zala.cuenta_contrato` · `zala.cliente` · `docs/DICCIONARIO-ESTADOS.md` C18.
+**Reemplaza a:** —

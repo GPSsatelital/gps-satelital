@@ -220,3 +220,20 @@ para decidir si la regla del que termina debiendo (D-026) era urgente o no.
 **Quién lo cazó:** yo, al medir el acuerdo para explicarle al dueño por qué la cuenta salía negativa.
 **Qué lo evita ahora:** ningún plazo ("en N semanas", "antes de", "termina el día") se dice sin
 abrir el registro que lo define — igual que un monto.
+
+### Reporté una prueba espejo corrida con el código viejo
+**Lo que dije:** *"Prueba espejo: 325 contratos comparados, 0 diferencias"*, como prueba de que la
+migración 175 dejaba a ZALA diciendo lo mismo que la pantalla.
+**Lo que era verdad:** la pestaña del navegador tenía en memoria la versión VIEJA de `cicloPago.ts`
+(la recarga en caliente había fallado horas antes). La comparación no ejercitó el código nuevo. El
+resultado era el mismo por casualidad —hoy nadie está en semanas de más—, pero no probaba nada del
+cambio. Lo descubrí al siguiente paso, cuando `cp.semanaDeCierre` "no era una función".
+**Por qué me equivoqué:** confié en que el módulo importado era el actual sin comprobarlo, en una
+pestaña que ya había mostrado errores de recarga.
+**Qué casi costó:** reportar como verificado un espejo que no verificaba; si la simulación de YESID
+no hubiera fallado, el "0 diferencias" se habría quedado como prueba.
+**Quién lo cazó:** yo, por el error del paso siguiente. Recargué, comprobé que el módulo tenía la
+función nueva, y repetí la prueba: 325 / 0, esta vez de verdad.
+**Qué lo evita ahora:** antes de una prueba en el navegador, **comprobar que el módulo cargado es el
+nuevo** (que exista la función que se acaba de escribir) y, si la pestaña mostró errores de
+recarga, recargarla primero.

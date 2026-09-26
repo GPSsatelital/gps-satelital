@@ -9,7 +9,7 @@ una línea por entrada.
 P2 necesita gente · P3 módulos por construir · P4 limpieza). **Leerla al arrancar cualquier sesión.**
 Lo que se cierra se marca y se mueve abajo. Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (25-sep)
+## ▶️ DÓNDE RETOMAR (26-sep, noche)
 
 🔑 **NO le creas a ningún documento para el estado: se mide al arrancar.** Rama, último commit,
 migraciones, pruebas, y **qué herramientas no conectaron** (regla D-017).
@@ -29,16 +29,17 @@ y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan pe
 el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
 `RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
 
+### 🔴 MAÑANA ARRANCA POR ACÁ: MELISSA BELLO (LIQ-0056) — lo último de D-023
+Su cuenta SÍ cuadra (contrato **quincenal**: base $743.000, puso $404.000 → acuerdo $339.000 =
+$31.000 de su primera quincena + $308.000 de ahorro). Cerrada el 14-sep con −$174.000 y en lista
+negra, porque le cobraron el acuerdo de base entero. Sin ese cobro podría quedar **a su favor**
+(~+$165.000), pero ANTES de decir cifra: revisar cómo cuenta la liquidación su ahorro de $25.000 vs.
+los $140.000 de "pagó adelantado y no alcanzó a usar" (¿se cuentan dos veces?). Método JORDAN/RICARDO.
+🧑 Oficina: reimprimir el papel de JESUS MARIA (LIQ-0011) y los acuerdos de JORDAN y JORGE DAVID.
+
 ### ✅ D-026 COMPLETA el 26-sep (migs 173·174·175) — solo mirar a YESID el 2-nov
-### (registro de lo que era:) D-026 — el plan espera el SÍ del dueño
-**Nadie termina debiendo** (regla del dueño, 25-sep): si llena su última semana y todavía debe,
-sigue pagando su **semana normal** y todo va a deudas → acuerdo, con gabela/mora/recolección igual;
-se liquida por cumplimiento solo en $0. **Plan de 4 pasos en `docs/PENDIENTES.md` → P0: NO está
-aprobado** — repetírselo y esperar el sí. El paso 1 (candado: no ofrecer cumplimiento mientras
-deba) es rápido. Pasos 2-4 (motor sin freno al terminar, semanas de cierre, ZALA) **antes del
-~19-oct**: YESID paga su semana 65 ~26-oct; LUIS SOLANO debe $1.455.200 a 6 semanas.
-→ [[d026-semanas-de-cierre]] · ya hecho: el ahorro del que termina pagó la moto (D-023, f5c2ce1)
-→ [[ahorro-de-quien-es-regla-d023]]
+Nadie termina debiendo: semanas de más con mora y recolección, opción A en pantalla, ZALA espejo 325/0
+→ [[d026-semanas-de-cierre]] · D-023 (el ahorro del que termina paga la moto) → [[ahorro-de-quien-es-regla-d023]]
 
 ### ▶️ DESPUÉS: el arreglo de la fecha de fin
 🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
@@ -75,6 +76,9 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **26-sep (noche)** — Mi error de la tarde corregido: el "pedazo de semana" del acuerdo de base
+  era cobro doble (FRAIRON $102.000, mig 178) · el acuerdo de base nace solo con el ahorro y JORDAN/
+  JORGE DAVID bajaron a $308.000 (mig 179) → [[ahorro-de-quien-es-regla-d023]]
 - **26-sep (tarde)** — **D-023 cerrada por sus 3 caras**: al que se va antes no se le cobra la base no
   pagada (mig 176: RICARDO −$472.000 → −$164.000 y 5 más) · lo pagado del acuerdo de base suma a su base
   (mig 177: 35 clientes, $3.671.000) → [[ahorro-de-quien-es-regla-d023]]
@@ -116,10 +120,7 @@ viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el 
   · JORGE TOVAR (día de pago mal migrado) · pago de $162.000 movido de placa
   → [[correcciones-a-mano-sep-2026]] · [[candado-saldo-favor-dos-clics]]
 - **17/18-sep** — El acuerdo vencido se sigue cobrando (migs 157-159) · ELKIN: reversa de liquidación cerrada → [[acuerdo-vencido-se-sigue-cobrando]] · [[elkin-revertir-liquidacion-cerrada]]
-- **15/16-sep** — Los 6 pendientes dictados (155·156) · permiso `rodar_tiempo` · caja por cuenta bancaria · nómina (150-154) → [[pendientes-16-sep]] · [[excedente-base-a-saldo-favor]] · [[permiso-rodar-tiempo]] · [[caja-por-cuenta-bancaria]]
-- **10/12-sep** — **Mi Día** + `public.pendientes` + avisos al celular (140-146) · EDINSON: la ventana de prepago se tragaba el acuerdo (149) → [[flujo-diario-de-cada-persona]] · [[avisos-al-celular-push]] · [[motor-ventana-prepago-al-final]]
-- **7/8/9-sep** — Taller · deudas etiquetadas · recolección por días vencida (136) · **regresión mía de la mig 124** → [[taller-trabajo-y-cobro]] · [[regresion-mig124-convenios]] · [[deudas-etiquetadas-a-donde-va-la-plata]]
-- **1/2/3-sep** — Nómina y su freno (119·120) · lavada y llave (122·123) · SUBADMIN validado (121) → [[regla-nomina-cobradores]] · [[auditoria-subadmin-nuevos]]
+- **1-16 sep** — Nómina (119·120), lavada y llave (122·123), taller y deudas etiquetadas, recolección por días vencida (136), regresión mig 124, Mi Día y avisos (140-146), acuerdo vencido (157-159), caja por cuenta, rodar_tiempo → ver cada archivo de tema
 - 🔨 **ZALA** — canal probado (10-sep), los 10 textos vivos. Falta que Meta apruebe las plantillas y **rotar la llave (ahora P0)** → [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
 
 ## 🚨 Estado vivo

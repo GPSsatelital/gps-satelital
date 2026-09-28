@@ -5,123 +5,58 @@ una línea por entrada.
 
 ## 📋 LOS PENDIENTES VIVEN EN EL REPO
 
-🔴 **`docs/PENDIENTES.md`** — ordenados por prioridad (P0 plata mal contada hoy · P1 a medio hacer ·
-P2 necesita gente · P3 módulos por construir · P4 limpieza). **Leerla al arrancar cualquier sesión.**
-Lo que se cierra se marca y se mueve abajo. Acá NO se duplican pendientes.
+🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
+P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (26-sep, noche)
+## ▶️ DÓNDE RETOMAR (28-sep)
 
-🔑 **NO le creas a ningún documento para el estado: se mide al arrancar.** Rama, último commit,
-migraciones, pruebas, y **qué herramientas no conectaron** (regla D-017).
+🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
+herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
+paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
 
-### 🔴 EL ESTÁNDAR — van 2 de 7 pasos · plan completo en `docs/ESTANDAR.md`
-Pedido del dueño: *"un camino que se autoalimente y no se pueda desviar… que en una sesión nueva no
-empieces a creer cosas que no son"*. Los pasos **3 al 7 están en `docs/PENDIENTES.md` (P1)**.
+1. 🔴 **MELISSA BELLO (LIQ-0056)** — lo último de D-023. Quincenal: base $743.000, puso $404.000 →
+   acuerdo $339.000. Cerrada el 14-sep con −$174.000 y en lista negra por cobrarle el acuerdo de base
+   entero. Podría quedar a su favor (~+$165.000), pero ANTES revisar si su ahorro de $25.000 y los
+   $140.000 de "pagó adelantado y no alcanzó a usar" se cuentan dos veces. Método JORDAN/RICARDO.
+2. **Saldos a favor más visibles para el funcionario** (pedido del 28-sep) — analizar dónde se ven
+   hoy y proponer el lugar con dibujo, antes de tocar. Está en P1.
+3. **La nómina no salta las semanas rodadas** (lo vecino a D-028) — toca plata de cobradores: medir
+   y preguntar. P1.
+4. **La fecha de fin** → [[fecha-fin-y-semanas-una-sola-verdad]]: 4 reglas confirmadas, los 7
+   puntos de implementación SIN aprobar (JHON NAIDER, $9.696.000). Repetírselos y esperar el sí.
+5. Después: medir los demás diarios (lo de ADOLFO) · `ampliarConvenio` cobra doble ·
+   `docs/PLAN-COMPLETAR-DATOS.md` (4 preguntas abiertas) · EGRESOS.
 
-✅ **Paso 1 (23-sep):** `docs/memoria/` (126 archivos, antes fuera de git · `npm run memoria:respaldar`)
-· **`DECISIONES.md`** (21; solo se agrega, nunca se edita) · **`DERRAPES.md`** · llave de ZALA a P0.
-✅ **Paso 2 (24-sep):** `CLAUDE.md` de 1.426 → 966 líneas. La bitácora vive en `docs/HISTORIAL.md`
-y **ya no miente**: se corrigieron la rama fantasma, las migraciones, el plan perdido y Taskmaster.
-✅ **Las 5 herramientas caídas, arregladas** — la causa era `npx`, que las bajaba en cada arranque
-(`context7`: 34 s → 1 s). `task-master-ai` se quitó (D-021).
-
-🔑 **Sigue el paso 3:** `npm run arranque`/`cierre` **con hooks** que los disparen solos — sin eso
-el protocolo depende de que yo me acuerde. Después: la *foto de la plata* antes de cada migración ·
-`RUNBOOK.md` · los candados y el **CI (no existe: no hay `.github/`)**.
-
-### 🔴 MAÑANA ARRANCA POR ACÁ: MELISSA BELLO (LIQ-0056) — lo último de D-023
-Su cuenta SÍ cuadra (contrato **quincenal**: base $743.000, puso $404.000 → acuerdo $339.000 =
-$31.000 de su primera quincena + $308.000 de ahorro). Cerrada el 14-sep con −$174.000 y en lista
-negra, porque le cobraron el acuerdo de base entero. Sin ese cobro podría quedar **a su favor**
-(~+$165.000), pero ANTES de decir cifra: revisar cómo cuenta la liquidación su ahorro de $25.000 vs.
-los $140.000 de "pagó adelantado y no alcanzó a usar" (¿se cuentan dos veces?). Método JORDAN/RICARDO.
-🧑 Oficina: reimprimir el papel de JESUS MARIA (LIQ-0011) y los acuerdos de JORDAN y JORGE DAVID.
-
-### ✅ D-026 COMPLETA el 26-sep (migs 173·174·175) — solo mirar a YESID el 2-nov
-Nadie termina debiendo: semanas de más con mora y recolección, opción A en pantalla, ZALA espejo 325/0
-→ [[d026-semanas-de-cierre]] · D-023 (el ahorro del que termina paga la moto) → [[ahorro-de-quien-es-regla-d023]]
-
-### ▶️ DESPUÉS: el arreglo de la fecha de fin
-🔴 **[[fecha-fin-y-semanas-una-sola-verdad]]** — nació de su pregunta *"¿cómo puede ser que se le
-muestre algo y se le cobre otra cosa?"*. La fecha de fin es **decorativa** y las semanas son las
-que cobran; la gente la ha editado creyendo que cambiaba el contrato. **Las 4 reglas están
-confirmadas por él, pero la lista de 7 puntos de implementación NO está aprobada** — repetírsela
-y esperar el sí antes de escribir una línea. Trae plata: JHON NAIDER son $9.696.000 que hoy no se
-le van a exigir.
-
-Después, por orden:
-1. **Medir los demás contratos diarios** (P0, 5 minutos): ¿a cuántos les pasa lo de ADOLFO
-   ($27.000 a tarifa y $0 a ahorro pague lo que pague)? Nunca se midió.
-2. **`ampliarConvenio` cobra doble** — defecto de plata conocido; toca el motor.
-3. **Alimentar el sistema con lo que le falta** → `docs/PLAN-COMPLETAR-DATOS.md` (medido: 168
-   contratos sin papeles, **82 clientes sin firma de habeas data**, 97 motos sin SOAT). Tiene
-   **4 preguntas abiertas** al final que hay que resolver con él antes de construir.
-4. **EGRESOS** — el módulo grande de la pizarra; varias sesiones.
-
-🚫 **CESAR (ZHO34G) y RAMON (RLI25H): el dueño pidió dejarlos quietos** (21-sep). No retomarlos
-sin que él los saque.
-
-> 🆕 **Ahora se puede consultar la base y probar funciones reales desde el navegador**, con la
-> sesión del dueño ya abierta en `localhost:5173`. Las tareas de MEDIR ya no hay que pasárselas
-> como consulta para pegar → **[[consultar-base-desde-el-navegador]]** (incluye las 3 trampas).
-
-🔒 **21-sep: LA FUGA DE DOCUMENTOS QUEDÓ CERRADA, las 3 puertas.** Bodega en privado (enlace viejo
-= **400**, camino nuevo = **200 · 783.675 bytes**), el VISITADOR fuera (mig 161) y el registro de
-Supabase apagado + `mi_rol() is not null` (mig 162). Comprobado midiendo en producción con 8
-documentos reales → [[fuga-documentos-storage]] · `docs/COMPROBAR-ANTES-DE-CERRAR-BUCKETS.md`.
-
-**Se retoma en `docs/PENDIENTES.md`.** Lo más urgente de P0: CESAR (ZHO34G) y RAMON (RLI25H)
-necesitan que el cliente venga para rodarles el tiempo; los $297.000 de ADOLFO; los 8 acuerdos
-viejos sin lista. Y la **regla del sobrante**, que se decidió esperar hasta el ~26-sep a propósito.
+🧑 Oficina: reimprimir JESUS MARIA (LIQ-0011) y los acuerdos de JORDAN y JORGE DAVID · mirar a
+YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
+🚫 **CESAR (ZHO34G) y RAMON (RLI25H): quietos** hasta que el dueño los saque (21-sep).
+🆕 Medir desde el navegador con la sesión del dueño → [[consultar-base-desde-el-navegador]].
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
-- **26-sep (noche)** — Mi error de la tarde corregido: el "pedazo de semana" del acuerdo de base
-  era cobro doble (FRAIRON $102.000, mig 178) · el acuerdo de base nace solo con el ahorro y JORDAN/
-  JORGE DAVID bajaron a $308.000 (mig 179) → [[ahorro-de-quien-es-regla-d023]]
-- **26-sep (tarde)** — **D-023 cerrada por sus 3 caras**: al que se va antes no se le cobra la base no
-  pagada (mig 176: RICARDO −$472.000 → −$164.000 y 5 más) · lo pagado del acuerdo de base suma a su base
-  (mig 177: 35 clientes, $3.671.000) → [[ahorro-de-quien-es-regla-d023]]
-- **26-sep** — **D-026 completa en 4 pasos**: candado de cumplimiento (173), motor sin freno al terminar
-  (174), semanas de más en la cartera con mora y recolección (opción A), y la vitrina de ZALA y Mi Día
-  (175, espejo 325/0) → [[d026-semanas-de-cierre]]
-- **25-sep** — Firma a pantalla completa (b210b16) · **devolver la base se registraba 2-4 veces**:
-  $2.082.000 corregidos + mig 172 con candado → [[devolucion-base-doble-registro]] · **el que termina
-  ya no se lleva el ahorro** (D-023, f5c2ce1) · de ahí **D-026** (plan sin aprobar) · kit de diseño
-  25/25 real → [[kit-diseno-pruebas-estado]]
-- **24-sep (tarde)** — 🔴 **¿De quién es el ahorro?** La regla que faltaba (**D-023**): es de la
-  empresa **solo si el contrato termina bien**; si liquida sin finalizar, se devuelve. De ahí salen
-  **3 defectos por $13,8M** (el peor: la liquidación **no mira el motivo** y le devolvería
-  **$3.801.000** a YESID, que está a 5 semanas). Se corrigió **solo JORDAN** —
-  −$244.000 → **+$157.000** con la fecha real del lunes 21, firmado y listo para su moto nueva
-  → [[ahorro-de-quien-es-regla-d023]]
-- **24-sep (noche)** — **Mig 171 corrida**: el acuerdo por fin recibe ($48.000 donde iba $0, cero
-  pesos movidos en 366 contratos) · la **169 se descartó** por duplicar un aviso que ya existía
-  (**D-024**) · **botón nuevo**: firmar en pantalla una liquidación ya cerrada — eran **24 de 44
-  cerradas sin ninguna firma, $11.276.500** · **manual de liquidación** (18 hojas A4, pantallas
-  reales) con el **candado** que avisa si un botón cambia de nombre y el manual queda mintiendo
-- **22-sep** — Los estados ya no se cambian a mano (fuera el selector de Motos y los 2 botones de
-  Contratos) · el menú de novedades dice si el contrato SIGUE COBRANDO o se suspende · la moto
-  prestada exige 6 fotos + km al salir y al volver (mig 164). Disparado por JORDAN/DQL76I
-  → [[estados-a-mano-y-evidencia-del-prestamo]]
-- **24-sep** — Las 5 herramientas caídas (la causa era `npx`) · `CLAUDE.md` deja de ser un diario:
-  1.426 → 966 líneas, la bitácora a `docs/HISTORIAL.md` → [[estandar-del-proyecto]]
-- **23-sep** — IEW57I: el saldo a favor **trabado** (LUIS 8 días, RAFAEL 1) y el **rastro** de de
-  dónde viene cada peso (mig 167 · `saldoFavor.ts`) → [[saldo-favor-movimiento-atascado]]. De ahí
-  salió **EL ESTÁNDAR** → [[estandar-del-proyecto]]
-- **22-sep** — KEVIN: el saldo a favor podía ser **negativo** y la pantalla lo tapaba con
-  `Math.max(0)`; candado en la base (mig 166) + la empresa asumió sus $195.000
-  → [[candado-saldo-favor-dos-clics]]. De ahí salió **la fecha de fin que no cobra nada**
-  → [[fecha-fin-y-semanas-una-sola-verdad]]
-- **21-sep** — Fuga de documentos, 3 puertas: enlaces sin firmar, el **registro de usuarios de
-  Supabase ABIERTO**, y `NULL IS DISTINCT FROM` (migs 161·162). Nadie había entrado
-  → [[fuga-documentos-storage]]
-- **19-sep** — Revisión de coherencia de toda la flota · YERLIS (saldo aplicado dos veces, mig 160)
-  · JORGE TOVAR (día de pago mal migrado) · pago de $162.000 movido de placa
-  → [[correcciones-a-mano-sep-2026]] · [[candado-saldo-favor-dos-clics]]
-- **17/18-sep** — El acuerdo vencido se sigue cobrando (migs 157-159) · ELKIN: reversa de liquidación cerrada → [[acuerdo-vencido-se-sigue-cobrando]] · [[elkin-revertir-liquidacion-cerrada]]
-- **1-16 sep** — Nómina (119·120), lavada y llave (122·123), taller y deudas etiquetadas, recolección por días vencida (136), regresión mig 124, Mi Día y avisos (140-146), acuerdo vencido (157-159), caja por cuenta, rodar_tiempo → ver cada archivo de tema
-- 🔨 **ZALA** — canal probado (10-sep), los 10 textos vivos. Falta que Meta apruebe las plantillas y **rotar la llave (ahora P0)** → [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
+- **28-sep** — Revisando DPU43I (ELKIN CARDALES) y RNK57H (KATIA, cuenta bien): **los días de mora no
+  saltaban las semanas rodadas** (D-028, mig 180, espejo 325/0): 6 salían en mora pagando ese día y
+  JORGE LUIS TOVAR tenía su semana saltada ($55.000 → $250.000). Subido en día de cobro por decisión
+  del dueño. 🔑 El espejo prueba que las dos cuentas son IGUALES, no que estén BIEN.
+- **26-sep** — **D-023 cerrada por sus 3 caras** (migs 176·177·178·179: la base no se cobra al que se
+  va, lo del acuerdo de base suma a la base, el acuerdo nace solo con el ahorro) →
+  [[ahorro-de-quien-es-regla-d023]] · **D-026 completa** (migs 173·174·175) → [[d026-semanas-de-cierre]]
+- **25-sep** — Firma a pantalla completa · devolver la base se registraba 2-4 veces (mig 172) →
+  [[devolucion-base-doble-registro]] · el que termina no se lleva el ahorro (D-023) · kit de diseño
+  25/25 → [[kit-diseno-pruebas-estado]]
+- **24-sep** — La regla del ahorro (D-023) · mig 171 (el acuerdo recibe) y D-024 · firmar liquidación
+  cerrada · manual de liquidación · 5 herramientas arregladas (`npx`) · CLAUDE.md podado →
+  [[estandar-del-proyecto]]
+- **22/23-sep** — Estados ya no a mano, préstamo con evidencia (mig 164) →
+  [[estados-a-mano-y-evidencia-del-prestamo]] · saldo a favor negativo/trabado (migs 166·167) →
+  [[candado-saldo-favor-dos-clics]] · [[saldo-favor-movimiento-atascado]]
+- **17-21 sep** — Fuga de documentos cerrada (migs 161·162) → [[fuga-documentos-storage]] · coherencia
+  de flota, YERLIS, JORGE TOVAR → [[correcciones-a-mano-sep-2026]] · acuerdo vencido (157-159) →
+  [[acuerdo-vencido-se-sigue-cobrando]] · reversa de ELKIN → [[elkin-revertir-liquidacion-cerrada]]
+- **1-16 sep** — Nómina (119·120), lavada y llave (122·123), recolección por días vencida (136),
+  regresión mig 124, Mi Día y avisos (140-146), caja por cuenta, rodar_tiempo → archivos de tema
+- 🔨 **ZALA** — canal probado, faltan plantillas de Meta y **rotar la llave (P0)** →
+  [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
 
 ## 🚨 Estado vivo
 

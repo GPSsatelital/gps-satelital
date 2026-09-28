@@ -14,6 +14,9 @@ P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendien
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
 paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
 
+0. 🔑 **Al volver: preguntarle qué sigue — saldos a favor (su pedido del 28-sep) o MELISSA** (pendiente
+   del 26-sep). El 28-sep le propuse MELISSA sin decir de dónde salía y no la ubicó →
+   [[feedback-decir-de-donde-sale]].
 1. 🔴 **MELISSA BELLO (LIQ-0056)** — lo último de D-023. Quincenal: base $743.000, puso $404.000 →
    acuerdo $339.000. Cerrada el 14-sep con −$174.000 y en lista negra por cobrarle el acuerdo de base
    entero. Podría quedar a su favor (~+$165.000), pero ANTES revisar si su ahorro de $25.000 y los
@@ -85,6 +88,7 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 ## Reglas de trabajo
 
 - 🔴 **[Que no quede mocho](feedback-nada-queda-mocho.md)** (23-sep) — **antes** de escribir la primera línea se acuerda qué significa TERMINADO, como lista medible; al cerrar se responde una por una con el número real, más lo que NO quedó cubierto. Un `success` o un build verde no son prueba.
+- 🔴 **[Decir PRIMERO de dónde sale un tema](feedback-decir-de-donde-sale.md)** (28-sep) — si viene de otra sesión o de PENDIENTES, la primera frase lo dice.
 - 🔴 **[PREGUNTAR hasta que quede TOTALMENTE claro](feedback-preguntar-hasta-que-quede-claro.md)** (19-sep) — repetir el plan con SUS números y esperar el sí; preguntar el POR QUÉ, no solo el qué.
 - 🔴 **[LA ESENCIA Y EL RASTRO](regla-esencia-y-rastro.md)** · 🔴 **[NO romper lo que ya funciona](regla-no-romper-lo-que-funciona.md)** · 🔴 **[No gastar tokens en agentes](feedback-no-gastar-tokens-en-agentes.md)** (manda sobre ultracode) · 🔴 **[Resumen final para un niño](feedback-resumen-final-para-nino.md)** · **[Explicaciones simples](feedback-explicaciones-simples.md)** · 🔴 **[Guardar y buscar SIEMPRE en memoria](regla-memoria-siempre.md)**.
 - **[Reusar el flujo existente](regla-reusar-flujo-existente.md)** · **[Validar SUBADMIN](auditoria-subadmin-nuevos.md)** · **[Auditoría RLS](auditoria-permisos-rls-julio2026.md)** (toda migración al repo Y a Supabase) · **[Español / inglés](comunicacion-espanol-ingles.md)** · **[Revisar antes de recap](regla-revisar-antes-de-recap.md)** · **[Skills de diseño](regla-usar-design-skills.md)** · **[JSX: funciones anidadas](regla-jsx-funciones-anidadas.md)**.

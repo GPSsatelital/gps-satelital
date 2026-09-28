@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **25-sep-2026**.
+- Última revisión: **28-sep-2026**.
 
 ---
 
@@ -212,6 +212,27 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 🔴 **La nómina tampoco salta las semanas rodadas** (lo vecino a D-028, 28-sep).
+  `exigenciaDe()` en `nominaCobradores.ts` (~línea 358) fecha cada caja desde el arranque del libro
+  sin restar `cajas_exoneradas`, y con esa fecha decide si la caja se pagó **atrasada**. Después de
+  rodar, una semana pagada a tiempo puede salir como atrasada. **Toca la plata de los cobradores:**
+  medir cuántos renglones cambian en las semanas ya cerradas y preguntarle al dueño antes de tocar.
+
+- [ ] 💻 **Saldos a favor más visibles para el funcionario** (pedido del dueño, 28-sep). Que al
+  ver al cliente lo tenga claro. **Primero analizar** dónde se muestra hoy (ficha, cartera, cobro,
+  recibo, Mi Día, ZALA) y dónde lo necesita el que cobra; después proponer el lugar con dibujo.
+
+- [ ] 💻 **KATIA GONZALES (RNK57H): la fecha límite de su acuerdo de base va una semana antes que
+  sus cuotas.** El papel dice 26-oct; con $40.000 cada lunes desde el 14-sep (el acuerdo arranca
+  la semana siguiente al prorrateo) la última cuota, de $28.000, cae el 2-nov. Medir en todos los
+  acuerdos de base y ver qué hace el sistema cuando pasa la fecha límite con saldo, antes de decir
+  si es general.
+
+- [ ] 💻 **El rastro "este pago cubrió la semana del X al Y" no salta las rodadas**
+  (`fechasDeLaSemana`, `cubrimientoPago.ts`). Solo informativo, no cobra. Ojo al arreglarlo: con el
+  número de rodadas solo se sabe CUÁNTAS, no DÓNDE cayeron; `acuerdos_tiempo_rodado` tiene las
+  fechas de entrada y salida de la moto.
+
 - [ ] 💻 🔴 **A una moto guardada TEMPORAL no se le puede cobrar ni conveniar — 12 motos,
   $14.816.500 que la pantalla no puede tocar.** Es **la mitad de un arreglo del 8-sep** que quedó
   sin terminar. Lo levantó el dueño con **XYZ49H (LUIS EDUARDO VEGAS)** el 24-sep: *"la entregó
@@ -400,6 +421,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P2 — Necesita gente, no código
 
+- [ ] 🧑 **El 28-sep ZALA mandó el mensaje de mora a 4 clientes que estaban al día**: JORGE LUIS
+  TOVAR (dos veces), ORLANDO BARRERA, WALTER BAHOQUE y WILLINGTON GARCIA. Era el defecto de las
+  semanas rodadas (D-028, ya arreglado). El dueño decide si se les aclara.
+
 - [ ] 🧑 **NÓMINA: los 63 atrasados de BRANDON** (~$330.750) sin verificar, y **nadie ha cerrado
   una semana todavía** — el primer cierre es **irreversible**.
 
@@ -524,6 +549,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 28-sep | 🔴 **Los días de mora saltan las semanas rodadas** (D-028, commit 879ae45 + mig 180) — 6 clientes salían en mora cuando les tocaba pagar ese día (ELKIN CARDALES, KEVIN, ORLANDO, WALTER, WILLINGTON, JORGE LUIS TOVAR) y 7 con días inflados (LUIS ARMANDO 27 → 6). JORGE LUIS TOVAR tenía su semana saltada: $55.000 → $250.000. Foto de la plata 0, espejo 325/0. Subido en horas de cobro por decisión del dueño |
 | 26-sep | 🔴 **D-023 cerrada por sus tres caras** — el que termina no se lleva el ahorro (f5c2ce1) · al que se va antes no se le cobra la base que no pagó (a20bdf7 + mig 176: RICARDO −$472.000 → −$164.000, JESUS MARIA −$390.000 → −$82.000, FRAIRON, EDER, WILMAR, JORGE LUIS) · lo pagado del acuerdo de base suma a su base (mig 177: 35 clientes, $3.671.000). Queda MELISSA aparte |
 | 26-sep | 🔴 **D-026 completa: nadie termina debiendo** — no se liquida por cumplimiento debiendo (mig 173), el motor manda la semana de más entera a lo que debe (mig 174), la cartera la cobra como cualquier semana con mora y recolección ("Semana de más k de N"), y ZALA y Mi Día dicen lo mismo (mig 175, espejo 0 diferencias). Primer caso real: YESID ~2-nov |
 | 25-sep | 🔴 **El que termina su contrato ya no se lleva el ahorro** (D-023, commit f5c2ce1) — con motivo cumplimiento el ahorro se muestra y se cierra con "Con este ahorro terminó de pagar la moto". Medido: $8.753.000 en 5 contratos. Salió D-026 (nadie termina debiendo), plan arriba en P0 |

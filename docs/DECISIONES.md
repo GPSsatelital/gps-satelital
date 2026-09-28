@@ -404,3 +404,23 @@ deja de pedir la semana y solo cobra la cuota del acuerdo — es decir, hace la 
 **Dónde vive:** `cicloPago.ts` (`semanaDeCierre`, `loQueDebe.cierre`, `etiquetaSemanaDeMas`) ·
 `zala.semana_de_cierre()` · `zala.cuenta_contrato` · `zala.cliente` · `docs/DICCIONARIO-ESTADOS.md` C18.
 **Reemplaza a:** —
+
+### D-028 · 28-sep-2026 · Los días de mora saltan las semanas rodadas, y se subió en día de cobro
+**Decidió:** el dueño, después de ver los casos de ORLANDO, LUIS ARMANDO, ELKIN y KEVIN.
+**Qué se decidió:**
+- **La mora cuenta desde la fecha corrida por las semanas rodadas**, igual que el monto. Si a un
+  cliente se le rodaron N semanas, la semana más vieja que debe se le exige N semanas más tarde.
+  Así nadie queda "en mora desde" un día en que la moto estaba en nuestra bodega o una semana que
+  la empresa asumió (KEVIN, D-010).
+- **Se subió el lunes en horas de cobro**, como excepción a la ventana del lunes y el miércoles.
+  Se le explicaron los riesgos (Cartera sin abrir un rato, dos versiones a la vez, el número que
+  cambia a media jornada) y eligió "apenas pase las pruebas": ese día a 6 clientes los estaba
+  marcando en mora y a 4 les salió el mensaje de mora de ZALA.
+- **JORGE LUIS TOVAR (ZIB64G)** pasa de $55.000 a $250.000 en pantalla y en ZALA: su semana
+  estaba saltada (sin fecha) y solo se le cobraba el acuerdo. Es lo que exige el motor y lo que él
+  pagó el lunes anterior. Único caso en los 371 contratos con motor.
+**Por qué:** rodar (mig 078) ya restaba las semanas del CUÁNTO, pero no del DESDE CUÁNDO. El
+monto y los días de un mismo cliente se contradecían ("debe 1 semana" y "13 días en mora").
+**Dónde vive:** `cicloPago.ts` (`diasEnMoraV2`, `desgloseExigible`) · `zala.dias_en_mora_v2` y
+`zala.cuenta_contrato` (mig 180) · `moraConSemanasRodadas.test.ts`. Espejo 325/0, foto de la plata 0.
+**Reemplaza a:** —

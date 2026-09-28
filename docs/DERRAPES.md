@@ -255,3 +255,22 @@ le devolvía días no usados de esa misma quincena.
 **Qué lo evita ahora:** una nota de pendientes es una pista, no una regla. Antes de cobrar un
 renglón, **buscar si el mismo peso ya entra por otra puerta** de la cuenta (semanas, días usados,
 deudas, acuerdo) — la misma lección de las cuentas que se separan.
+
+### Construí "rodar" restando las semanas del monto pero no de la fecha
+**Lo que hice:** en la mig 078 (31-jul) rodar tiempo se hizo restando las semanas rodadas de
+`cajas_exigidas`. `diasEnMoraV2` y las fechas de `desgloseExigible` siguieron contando desde el
+arranque del libro sin restarlas, y su espejo en ZALA copió lo mismo.
+**Lo que era verdad:** si el monto se corre N semanas, la fecha de la deuda también. El 28-sep, 13
+de los 16 clientes con semanas rodadas salían con más días de mora de los reales: ORLANDO "en mora
+desde el 7-sep" con la moto en nuestra bodega, KEVIN "desde el 21" (la semana que la empresa
+asumió). A 4 les salió el mensaje de mora de ZALA ese mismo día.
+**Por qué no se vio en dos meses:** la prueba espejo compara pantalla contra base, y **las dos
+tenían el mismo defecto**: daba 325/0. Y las pruebas de rodar solo miraban el monto. En el mismo
+archivo, `semanaDeCierre` (D-026) sí sumaba las rodadas a la fecha: dos partes de `cicloPago.ts`
+contaban el calendario distinto y nadie las comparó.
+**Quién lo cazó:** yo, revisando la cuenta de ELKIN CARDALES a pedido del dueño: "debe 1 semana" y
+"13 días en mora" no pueden ser verdad a la vez.
+**Qué lo evita ahora:** `moraConSemanasRodadas.test.ts` prueba la FECHA y los DÍAS con casos
+reales, no solo el monto. Y la lección: **el espejo prueba que las dos cuentas son iguales, no que
+estén bien.** Cuando un campo (acá `cajas_exoneradas`) mueve el calendario, buscar en todo el código
+cada lugar que calcula una fecha de caja y confirmar que lo use.

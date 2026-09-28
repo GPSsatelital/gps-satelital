@@ -1102,9 +1102,13 @@ export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseEx
   const prorrateoRestante = Math.max((contrato.prorrateo_total ?? 0) - (contrato.prorrateo_pagado ?? 0), 0);
   const prorrateoPorVenir = prorrateoRestante > 0 && prorrateoPendiente === 0; // pendiente pero aún no exigible
   const hoyMs = new Date(fechaAISO(hoy) + "T00:00:00").getTime();
+  // Con semanas RODADAS la caja j se exige en la fecha de la j + rodadas: la curva se corrió
+  // (mig 078). Sin esto el monto restaba las rodadas pero las fechas no, y a ELKIN CARDALES
+  // (28-sep-2026) le mostraba "debe desde el 14-sep" cuando le tocaba pagar ese mismo día.
+  const rodadas = contrato.cajas_exoneradas ?? 0;
   const periodos: PeriodoExigible[] = [];
   for (let j = pagadas + 1; j <= exigidas; j++) {
-    const fecha = fechaCaja(contrato, j);
+    const fecha = fechaCaja(contrato, j + rodadas);
     if (!fecha) continue;
     const parcial = j === pagadas + 1 && enCurso > 0;
     const monto = parcial ? Math.max(valorCaja - enCurso, 0) : valorCaja;
@@ -1121,7 +1125,7 @@ export function desgloseExigible(contrato: ContratoCiclo, hoy: Date): DesgloseEx
     proximoMonto = prorrateoRestante;
   } else {
     const proxNum = Math.max(exigidas, pagadas) + 1;
-    proximaFecha = (contrato.total_cajas == null || proxNum <= contrato.total_cajas) ? fechaCaja(contrato, proxNum) : null;
+    proximaFecha = (contrato.total_cajas == null || proxNum <= contrato.total_cajas) ? fechaCaja(contrato, proxNum + rodadas) : null;
     proximoMonto = (proxNum === pagadas + 1 && enCurso > 0) ? Math.max(valorCaja - enCurso, 0) : valorCaja;
   }
   const totalCuotas = prorrateoPendiente + periodos.reduce((s, p) => s + p.monto, 0);
@@ -1146,8 +1150,10 @@ export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
     return Math.max(Math.floor((new Date(fechaAISO(hoy) + "T00:00:00").getTime() - new Date(inicio + "T00:00:00").getTime()) / 86400000), 0);
   }
   // Fecha de exigencia de la caja más vieja sin llenar (la pagadas+1), relativa al
-  // inicio del ledger (las previas quedaron antes del inicio):
-  const k = Math.max(pagadas - (contrato.cajas_previas ?? 0) + 1, 1);
+  // inicio del ledger (las previas quedaron antes del inicio). Las semanas RODADAS corren esa
+  // fecha (mig 078): la caja pagadas+1 se exige cuando las exigidas llegan a ella, que es N
+  // semanas más tarde. Espejo: zala.dias_en_mora_v2 (mig 180).
+  const k = Math.max(pagadas - (contrato.cajas_previas ?? 0) + (contrato.cajas_exoneradas ?? 0) + 1, 1);
   let fechaExigencia = new Date(inicio + "T00:00:00");
   if (contrato.forma_pago === "Semanal") {
     fechaExigencia.setDate(fechaExigencia.getDate() + (k - 1) * 7);

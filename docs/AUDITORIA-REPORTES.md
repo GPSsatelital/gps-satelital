@@ -97,3 +97,48 @@ viven en `src/utils/reportesCifras.ts` (`estadoHoy`, `cumplimientoDelPeriodo`,
   un solo caso: REGINALDO ANTONIO RODRIGUEZ (IEW53I), ver PENDIENTES.
 - El Excel y el PDF se revisaron por código (usan las mismas variables que la pantalla); no se
   descargaron.
+
+---
+
+## Tanda 1 del 29-sep (solo medir, sin cambiar nada)
+
+### Excel y PDF del bloque 1 — comprobados (generados dentro de la app, sin descargar)
+- Excel "Gestión por administrador" con las 5 hojas extra: TOTAL 77% · vencía $227.615.000 ·
+  cubrió $175.166.300 · recaudado $213.572.302 · 330 motos · 66 al día · 146 gabela · 64 en mora ·
+  24% al día. Matriz y Método suman $213.572.302. **Igual a la pantalla.**
+- PDF gerencial: los mismos números y el mismo ranking (81 · 77 · 77 · 74).
+- La hoja "Aging" cuenta 58 en mora y no 64: hay **6 clientes en mora con 0 días** (ver abajo).
+
+### Bloque 2 — medido
+| # | Pestaña | Lo que muestra | La verdad (medida) |
+|---|---|---|---|
+| 11 | Visitas | Septiembre: 64 visitas, pero Aprobadas + Rechazadas + Repetir + Pendientes suman 59 | 5 visitas "Completada" **sin resultado** no caen en ninguna columna. "Pendientes" siempre da 0: el sistema no guarda visitas pendientes |
+| 12 | Flota | "Clientes activos 337" | Solo 330 tienen contrato vigente: **7 clientes figuran Activos sin ningún contrato** (KEINER GOMEZ, JESUS BAYONA, DELCY YEPES, ANGEL GUILLEN, JHONNIER MOYAR, JOSE VILLANUEVA, CAMILO BERROCAL) |
+| 13 | Flota | "Retenciones: 4" | Cuenta fiscalía, tránsito y garantía. Las **25 motos retenidas por mora** (Recuperada) no entran; la etiqueta confunde |
+| 14 | Aviso de SOAT/tecno | "46 motos con SOAT o tecno venciendo en 30 días" | Mezcla vencidos con por vencer: SOAT 12 vencidos + 31 por vencer, tecno 3 vencidas + 2 por vencer. Y **9 motos sin fecha de SOAT** (2 andando en la calle) no aparecen en ningún lado |
+| 15 | Por admin / Por grupo / Guardadas | "Motos 330" · retenidas 54 · guardadas 48 · Cartera 52 | **7 contratos suspendidos cuya moto ya la tiene otro cliente** (en liquidación: FRAIRON IEW54I, JESUS MARIA DE HORTA XZP35H, JORGE PERIÑAN DPW33I, DANIEL DIAZ RNG53H, EDER LEON DQW27I, JHONNY OLIVERO DQG94I, JHEINER PALOMINO IEW47I) cuentan como "retenidas" y la moto sale **dos veces**. Y 2 suspendidos "temporal" con la moto Disponible (FRANCISCO COTERA XZI14H, MARCOS VILLEGAS RLZ98H) |
+| — | Guardadas | 48 motos guardadas, 8 sin recepción registrada | Ya las marca como "sin registro". Sin defecto de cálculo |
+| — | Entregas | 62 entregas en septiembre | Todas con papeles completos. Sin defecto |
+
+### Nómina de cobradores — medido (sin cambiar nada)
+La nómina decide si una semana se cobró **a tiempo ($7.500) o atrasada ($3.750)** comparando el día
+en que se llenó contra el día en que se exigía. Ese día no salta las semanas rodadas (lo mismo que
+arregló D-028 en Cartera). Simulando la corrección en las 5 semanas desde el vigía (24-ago a 27-sep),
+con los datos reales:
+
+| Cobrador | Diferencia en 5 semanas |
+|---|---|
+| CARLOS ALVAREZ | +$33.750 |
+| CARLOS ARIZA | +$15.000 |
+| BRANDON ROJAS | +$11.250 |
+| LUMAR AVENDAÑO | $0 (+$3.750 y −$3.750) |
+| **Total** | **+$60.000** |
+
+- Son unos 16 renglones que hoy pagan $3.750 ("atrasada") y con la corrección pagan $7.500, en motos
+  con semanas rodadas (DQW26I, XZI06H, DPU30I, DPU43I, RLZ91H, XYZ49H…). Unos pocos se mueven de
+  semana o desaparecen (IGC46I, YAL65H, RML44H).
+- `nomina_cierres` está vacía: ninguna semana se ha cerrado en el sistema, nada quedó congelado.
+- ⚠️ **Por decidir con el dueño:** la corrección cuenta las semanas rodadas como si siempre hubieran
+  estado rodadas. Una semana que se pagó ANTES de que se le rodara el tiempo (ej. KEVIN, rodado el
+  22-sep) ese día sí estaba atrasada. ¿Se paga según cómo estaba ese día, o con lo rodado después?
+  Para lo primero hace falta la fecha de cada rodada (`acuerdos_tiempo_rodado` la tiene).

@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **28-sep-2026**.
+- Última revisión: **29-sep-2026**.
 
 ---
 
@@ -211,6 +211,20 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 🧑 **REGINALDO ANTONIO RODRIGUEZ (IEW53I) está en la cola de recolección con la moto en
+  garantía** (visto el 29-sep en la auditoría de Reportes). Contrato activo, 7 días en mora, debe
+  $433.000, y su moto está "en garantía del concesionario" sin moto prestada. Por la regla del
+  30-jul el contrato sigue contando, pero no hay moto que recolectar. **Decisión del dueño:** ¿sale de
+  la cola mientras la moto esté en garantía, o se le cobra igual y se gestiona de otra forma?
+
+- [ ] 💻 **Auditoría de Reportes, bloque 2: Visitas, Flota, Guardadas y Entregas** (el bloque 1 quedó
+  el 29-sep, `docs/AUDITORIA-REPORTES.md`). Y la **nómina** merece su propia pasada: es la plata de
+  los cobradores, tiene semanas cerradas y congeladas, y ya se sabe que no salta las semanas rodadas.
+
+- [ ] 💻 **YHAN CARLOS MIRANDA (YAL55H) sale "en mora" con 0 días de mora** en Cartera y ZALA (visto
+  el 29-sep): la mora le viene del acuerdo y el contador de días solo mira semanas. Revisar la cuenta
+  de días cuando la mora es solo del acuerdo.
 
 - [ ] 💻 🔴 **La nómina tampoco salta las semanas rodadas** (lo vecino a D-028, 28-sep).
   `exigenciaDe()` en `nominaCobradores.ts` (~línea 358) fecha cada caja desde el arranque del libro
@@ -549,6 +563,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 29-sep | 🔴 **Reportes dice la verdad (bloque 1)** (D-029) — "en mora" 187 → 65 (igual a Cartera, 0 diferencias), aviso de recolección 50 → 58, los grupos suman el total ($13.297.200 que faltaban), un solo "vs anterior", y el período se mide por cumplimiento (cambia con la fecha). Medido en la app. `docs/AUDITORIA-REPORTES.md` |
 | 28-sep | 🔴 **Los días de mora saltan las semanas rodadas** (D-028, commit 879ae45 + mig 180) — 6 clientes salían en mora cuando les tocaba pagar ese día (ELKIN CARDALES, KEVIN, ORLANDO, WALTER, WILLINGTON, JORGE LUIS TOVAR) y 7 con días inflados (LUIS ARMANDO 27 → 6). JORGE LUIS TOVAR tenía su semana saltada: $55.000 → $250.000. Foto de la plata 0, espejo 325/0. Subido en horas de cobro por decisión del dueño |
 | 26-sep | 🔴 **D-023 cerrada por sus tres caras** — el que termina no se lleva el ahorro (f5c2ce1) · al que se va antes no se le cobra la base que no pagó (a20bdf7 + mig 176: RICARDO −$472.000 → −$164.000, JESUS MARIA −$390.000 → −$82.000, FRAIRON, EDER, WILMAR, JORGE LUIS) · lo pagado del acuerdo de base suma a su base (mig 177: 35 clientes, $3.671.000). Queda MELISSA aparte |
 | 26-sep | 🔴 **D-026 completa: nadie termina debiendo** — no se liquida por cumplimiento debiendo (mig 173), el motor manda la semana de más entera a lo que debe (mig 174), la cartera la cobra como cualquier semana con mora y recolección ("Semana de más k de N"), y ZALA y Mi Día dicen lo mismo (mig 175, espejo 0 diferencias). Primer caso real: YESID ~2-nov |

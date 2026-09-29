@@ -424,3 +424,21 @@ monto y los días de un mismo cliente se contradecían ("debe 1 semana" y "13 d�
 **Dónde vive:** `cicloPago.ts` (`diasEnMoraV2`, `desgloseExigible`) · `zala.dias_en_mora_v2` y
 `zala.cuenta_contrato` (mig 180) · `moraConSemanasRodadas.test.ts`. Espejo 325/0, foto de la plata 0.
 **Reemplaza a:** —
+
+### D-029 · 29-sep-2026 · En Reportes, un período se mide por cuánto se cumplió; el estado es de hoy
+**Decidió:** el dueño, entre tres opciones (cumplimiento del período · cómo quedó cada cliente al
+cierre · dejar el estado de hoy aclarado).
+**Qué se decidió:**
+- Al elegir un período, cada cobrador y cada grupo muestra su **cumplimiento**: de lo que vencía en
+  ese período (semanas y cuotas de acuerdo), cuánto quedó pagado. El ranking de cobradores se ordena
+  por eso y cambia con la fecha.
+- **Si un cliente paga de más, cuenta hasta el 100% de lo suyo**; el resto sale aparte como
+  "recuperó atrasos", para que un cliente que se pone al día no tape a otro que no pagó.
+- Al día / gabela / en mora son **de hoy**, con la misma cuenta de Cartera, y la pantalla lo dice.
+- Toda la plata del período queda en algún grupo y en algún cobrador (también la de clientes con la
+  moto retenida y la de contratos ya cerrados): las partes suman el total.
+**Por qué:** la auditoría del 29-sep (`docs/AUDITORIA-REPORTES.md`): cambiar la fecha no movía el
+"al día" ni el ranking, había tres cifras de recaudado para el mismo mes, y "en mora" decía 187
+cuando eran 65.
+**Dónde vive:** `src/utils/reportesCifras.ts` · `src/pages/ReportesView.tsx`.
+**Reemplaza a:** —

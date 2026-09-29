@@ -37,6 +37,11 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **29-sep** — **Auditoría de Reportes, bloque 1 arreglado** (D-029, b1c2e53): en mora 187 → 65,
+  recolección 50 → 58, los grupos suman el total, el período se mide por CUMPLIMIENTO (cambia con la
+  fecha). Cuentas en `reportesCifras.ts`. Falta el bloque 2 (Visitas, Flota, Guardadas, Entregas) y
+  la nómina aparte → `docs/AUDITORIA-REPORTES.md`. Nuevo: REGINALDO (IEW53I) en recolección con la
+  moto en garantía (decisión del dueño, P1)
 - **28-sep** — Revisando DPU43I (ELKIN CARDALES) y RNK57H (KATIA, cuenta bien): **los días de mora no
   saltaban las semanas rodadas** (D-028, mig 180, espejo 325/0): 6 salían en mora pagando ese día y
   JORGE LUIS TOVAR tenía su semana saltada ($55.000 → $250.000). Subido en día de cobro por decisión

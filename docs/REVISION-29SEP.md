@@ -106,3 +106,35 @@ diferencia (el mismo botón dos veces):
 3. **Mora solo por el acuerdo (los 6):** los días de mora **cuentan desde la cuota del acuerdo más vieja
    sin pagar**, y a recolección **solo si debe al menos una cuota completa del acuerdo**.
 4. **Nómina y tiempo rodado:** pendiente de respuesta (opción A "como estaba ese día" recomendada).
+
+---
+
+## ROGER VANEGAS BLANCO (RMM68H) — LIQ-0064, retiro voluntario (revisado el 30-sep)
+
+Estado: **calculada, sin cerrar**. Dice **+$1.487.000** a su favor. Migrado de COSTA (entrega 9-sep-2025,
+$195.000/semana, 53 semanas pagadas: 45 en el Excel + 8 en el sistema). Retenido el 11-sep, devuelto
+el 12-sep, entregó la moto para liquidar el lunes 21-sep.
+
+| Renglón | La liquidación dice | Lo correcto | Diferencia |
+|---|---|---|---|
+| Base entregada menos la semana adelantada ($500.000 − $195.000) | +$305.000 | +$305.000 | ok |
+| Su ahorro: $1.150.000 del Excel (≈ 45 semanas × $26.000) + $208.000 en el sistema (8 × $26.000) | +$1.358.000 | +$1.358.000 | ok (el Excel NO traía la base: cuadra con 45 semanas) |
+| El lunes 21-sep que usó y no pagó | −$30.000 | −$30.000 | ok |
+| El ahorro de ese día | +$30.000 | **+$4.000** | **le da $26.000 de más** |
+| Lavada | −$15.000 | $0 (ya la pagó el 30-sep con su saldo a favor) | se la cobra dos veces |
+| Daños del taller | −$161.000 | −$170.000 si son $195.000 (lo que registró el taller el 29-sep; ya pagó $25.000 con su saldo) | **por confirmar cuál cifra es la real** |
+| Multa de recolección del 11-sep | (no aparece) | **+$30.000**: le cobraron DOS el mismo día (11:40 "INMOVILIZACION" a mano y 16:06 la automática) y las pagó las dos; hubo una sola recolección | se le debe devolver una |
+
+Con daños de $195.000 y la multa devuelta: **+$1.497.000**. Sin devolver la multa: +$1.467.000.
+
+### La causa del "ahorro de ese día": un error de la fórmula, no de ROGER
+`ajusteSalidaLedger` calcula el ahorro "ya ganado" con tarifa-primero sobre TODO lo pagado, pero el
+libro acredita el ahorro caja por caja. Con semanas completas pagadas + días sin pagar, devuelve el
+día entero en vez de solo su parte de ahorro. Es el mismo error que a MELISSA le quita $9.000 (el caso
+al revés). Arreglo propuesto: el ahorro ganado = el que el libro acreditó (cajas completas × ahorro +
+lo de la caja en curso por tarifa-primero + el del prorrateo si se pagó); el ahorro a devolver =
+ahorro de los días usados − ese. ROGER queda en $4.000 y MELISSA en +$9.000.
+- **37 liquidaciones tienen ese renglón.** Abiertas y todavía corregibles: LIQ-0064 ROGER, LIQ-0025 JUAN
+  CARLOS OSPINO, LIQ-0050 NELSON ESTUPIÑAN, LIQ-0076 JHEINER PALOMINO, LIQ-0011 JESUS MARIA. Las
+  cerradas hay que medirlas con la fórmula corregida antes de decir cifras (mi estimación rápida es
+  gruesa: no mira domingos ni cajas a medio pagar).

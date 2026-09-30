@@ -153,3 +153,29 @@ base que no puso no se le cobra ni se le devuelve.
 | Lavada (ya pagada con su saldo el 30-sep) | −$15.000 | $0 |
 | Daños ($195.000 − $25.000 ya pagados) | −$161.000 | −$170.000 |
 | **Saldo** | **+$1.487.000** | **+$1.397.000** (−$90.000) |
+
+---
+
+## 30-sep: el arreglo de la fórmula del ahorro en la liquidación (aprobado para ROGER: "Sí, arranca")
+
+`ajusteSalidaLedger` cuenta ahora el ahorro **caja por caja** (como lo acredita el libro) y suma el
+ahorro del prorrateo a lo usado. La regla que queda: **la empresa se queda solo con la tarifa de lo que
+el cliente usó; el resto es del cliente**. Pruebas con los casos reales (ROGER $4.000, MELISSA +$9.000,
+JOSUE, SERAFIN). 772 pruebas en verde.
+
+**Medido contra las 78 liquidaciones** (la fecha de corte se dedujo de sus propios renglones):
+- **Abiertas que cambian** (todas le daban de más al cliente): LIQ-0064 ROGER −$26.000 · LIQ-0025 JUAN
+  CARLOS OSPINO −$78.000 · LIQ-0050 NELSON ESTUPIÑAN −$104.000 · LIQ-0076 JHEINER PALOMINO −$260.000.
+  Cambian al recalcularlas en la app, después de subir el arreglo. Ninguna se cierra sin verla.
+- **Cerradas que tuvieron el error: 28.** Se dio de más **$1.613.200** en total y de menos $21.000
+  (MELISSA $9.000, ANTONIO PEINADO $12.000). **Decisión pendiente del dueño:** qué se hace con las
+  cerradas (esa plata ya se entregó o ya se cruzó con deudas).
+- ⚠️ Límite conocido: las semanas financiadas con un acuerdo que NO se ha cumplido todavía no tienen su
+  ahorro acreditado; la fórmula lo supone acreditado. Hoy solo toca a LIQ-0076 JHEINER (acuerdo activo
+  con 3 semanas financiadas, $56.000 de ahorro): revisar su cifra a mano antes de cerrarla.
+
+## Pendiente de decisión: las semanas rodadas en la liquidación
+La liquidación cuenta las semanas por calendario y **no descuenta las rodadas**: se cobran como usadas,
+aunque la moto estaba guardada en la empresa (choca con la regla del 19-ago). Hoy afecta a **LIQ-0078
+BRADER GUZMAN (YAL65H)**, abierta el 30-sep: 1 semana rodada (1 al 8 de sep, ≈ $202.000). El dueño no
+eligió (30-sep). **No cerrar la de BRADER hasta decidirlo.**

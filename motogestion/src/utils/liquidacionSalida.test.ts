@@ -116,21 +116,80 @@ describe("el ahorro de los días cobrados es del CLIENTE, no de la empresa", () 
     expect(r.ahorroPorCobrar).toBe(0);
   });
 
-  it("el ahorro devuelto nunca puede superar lo que se le cobra", () => {
+  it("nunca devuelve ni cobra montos negativos", () => {
     for (const c of [ANTONIO, SERAFIN, JOSUE]) {
       for (const dia of ["2026-07-20", "2026-08-03", "2026-08-20"]) {
         const r = ajusteSalidaLedger(c, D(dia));
-        expect(r.ahorroPorCobrar).toBeLessThanOrEqual(r.porCobrar);
         expect(r.ahorroPorCobrar).toBeGreaterThanOrEqual(0);
+        expect(r.aFavor).toBeGreaterThanOrEqual(0);
+        expect(r.porCobrar).toBeGreaterThanOrEqual(0);
       }
     }
   });
 
-  it("no se le acredita dos veces el ahorro que sus pagos ya le dieron", () => {
-    // JOSUE tiene 3 cajas propias pagadas + $114.000 abonados a la caja en curso. Ese ahorro ya
-    // está en su ahorro_acumulado; volverlo a sumar acá se lo daría dos veces.
+  it("JOSUE: la empresa se queda SOLO con la tarifa de lo que usó; el resto es suyo", () => {
+    // 30-sep-2026: antes esta prueba decía "el ahorro devuelto nunca supera lo cobrado", que era
+    // un efecto de la cuenta vieja, no una regla. La regla es la del dueño (21-ago): de lo que usó,
+    // la empresa cobra la tarifa y el ahorro es del cliente.
+    // JOSUE pagó 3 cajas + $114.000 = $699.000. Usó 3 semanas + lun-jue = $709.000, de los que
+    // $94.000 son ahorro → tarifa $615.000. Le tocan $699.000 − $615.000 = $84.000. El libro le
+    // acreditó $78.000 (3 cajas × $26.000; lo abonado a la caja en curso fue tarifa primero).
     const r = ajusteSalidaLedger(JOSUE, D("2026-08-20"));
-    expect(r.ahorroPorCobrar).toBeLessThanOrEqual(r.porCobrar);
+    expect(r.porCobrar).toBe(10000);
+    expect(r.ahorroPorCobrar).toBe(16000);
+    const ahorroDelLibro = 3 * 26000;
+    expect(ahorroDelLibro + r.aFavor + r.ahorroPorCobrar - r.porCobrar).toBe(84000);
+  });
+});
+
+describe("el ahorro se cuenta CAJA POR CAJA, como lo acredita el libro (30-sep-2026)", () => {
+  // Antes se sacaba "tarifa primero" sobre todo lo pagado junto, y eso no es lo que el libro
+  // acredita: el libro acredita el ahorro de cada caja al llenarla. Casos reales del 30-sep.
+
+  // ── ROGER VANEGAS (RMM68H) — migrado, 8 semanas pagadas en el libro, entregó el lunes 21-sep ──
+  const ROGER: ContratoCiclo = {
+    forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 195000,
+    tarifa_diaria: 26000, tarifa_domingo: 13000, ahorro_diario: 4000, ahorro_domingo: 2000,
+    es_migrado: true, motor_v2: true,
+    total_cajas: 104, cajas_pagadas: 53, cajas_previas: 45, caja_actual_pagado: 0,
+    prorrateo_total: 0, prorrateo_pagado: 0, fecha_inicio_cajas: "2026-07-27",
+  };
+
+  it("ROGER: el lunes que no pagó se cobra ($30.000) y se le devuelven SOLO sus $4.000 de ahorro", () => {
+    const r = ajusteSalidaLedger(ROGER, D("2026-09-21"));
+    expect(r.porCobrar).toBe(30000);
+    expect(r.ahorroPorCobrar).toBe(4000);   // antes daba $30.000: el día le salía gratis
+    expect(r.aFavor).toBe(0);
+  });
+
+  // ── MELISSA BELLO (RMZ65H) — quincenal, entregó $404.000 de base y devolvió la moto el 11-sep ──
+  const MELISSA: ContratoCiclo = {
+    forma_pago: "Quincenal", dia_pago: "Quincenal", dias_pago_mes: [10, 25], valor_semanal: 202000,
+    tarifa_diaria: 27000, tarifa_domingo: 14000, ahorro_diario: 4000, ahorro_domingo: 2000,
+    es_migrado: false, motor_v2: true, fecha_entrega: "2026-09-03",
+    total_cajas: 38, cajas_pagadas: 0, cajas_previas: 0, caja_actual_pagado: 404000,
+    prorrateo_total: 202000, prorrateo_pagado: 0, prorrateo_ahorro: 26000, fecha_inicio_cajas: "2026-09-10",
+  };
+
+  it("MELISSA: se le devuelve todo lo que no es tarifa de lo que usó ($174.000)", () => {
+    const r = ajusteSalidaLedger(MELISSA, D("2026-09-11"));
+    expect(r.consumido).toBe(264000);        // prorrateo $202.000 + jueves y viernes $62.000
+    expect(r.aFavor).toBe(140000);           // pagó y no alcanzó a usar
+    expect(r.ahorroPorCobrar).toBe(9000);    // ahorro de los días usados que el libro no le acreditó
+    // El libro le acreditó $25.000 (la cola de su quincena, tarifa primero). Tarifa de lo usado:
+    // $264.000 − $34.000 de ahorro = $230.000. $404.000 − $230.000 = $174.000.
+    expect(25000 + r.aFavor + r.ahorroPorCobrar - r.porCobrar).toBe(174000);
+  });
+
+  it("SERAFIN: si pagó por adelantado, el ahorro de esas semanas no se le devuelve dos veces", () => {
+    // Entrega el mismo día que arranca el libro: usó su prorrateo y ese lunes. El libro ya le
+    // acreditó el ahorro de las 4 cajas que pagó ($104.000, en "Ahorro que ganó pagando"); lo
+    // adelantado que se le devuelve va SIN ese ahorro. Antes se lo devolvía dos veces y se
+    // llevaba más de lo que había pagado.
+    const r = ajusteSalidaLedger(SERAFIN, D("2026-07-13"));
+    const ahorroDelLibro = 4 * 26000;
+    const tarifaUsada = 47000 + 27000;       // prorrateo (sin ahorro registrado) + el lunes
+    expect(ahorroDelLibro + r.aFavor + r.ahorroPorCobrar - r.porCobrar).toBe(r.pagado - tarifaUsada);
   });
 });
 

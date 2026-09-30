@@ -1205,6 +1205,9 @@ export function ajusteSalidaLedger(
   const ahorroCaja = ahorroPeriodoExacto(contrato, false);
   if (ret >= inicio) {
     consumido += contrato.prorrateo_total ?? 0; // los días previos al inicio ya se consumieron
+    // …y dentro de esos días también va su ahorro (30-sep-2026: antes no se contaba, y a quien se
+    // iba sin haber pagado el prorrateo se le quedaba ese ahorro — MELISSA, $26.000).
+    ahorroConsumido += contrato.prorrateo_total ? (contrato.prorrateo_ahorro ?? 0) : 0;
     const pagoLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
     const pagoDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
     const ahLS = contrato.ahorro_diario ?? 4000;
@@ -1247,16 +1250,33 @@ export function ajusteSalidaLedger(
   // ahorro — si no, la empresa se queda con plata que no es suya y el cliente PIERDE ahorro, que
   // es justo lo que la spec prohíbe ("nadie pierde ahorro como castigo").
   //
-  // Se descuenta el ahorro que sus pagos YA le acreditaron: dentro de un período rige tarifa
-  // primero, así que lo pagado cubre tarifa antes de generar ahorro, y ese ahorro ya está sumado
-  // en `ahorro_acumulado`. Contarlo otra vez acá sería dárselo dos veces.
-  const tarifaConsumida = consumido - ahorroConsumido;
-  const ahorroYaGanado = Math.max(pagado - tarifaConsumida, 0);
-  const ahorroPorCobrar = porCobrar > 0 ? Math.max(ahorroConsumido - ahorroYaGanado, 0) : 0;
+  // Se descuenta el ahorro que el libro YA le acreditó (va en `ahorro_acumulado`, que la
+  // liquidación le devuelve como "Ahorro que ganó pagando"). Contarlo otra vez sería dárselo dos
+  // veces.
+  //
+  // 🔴 CAJA POR CAJA, no sobre el total (30-sep-2026, ROGER VANEGAS RMM68H y MELISSA BELLO). El libro
+  // acredita el ahorro de cada caja al llenarla (tarifa primero DENTRO de la caja). Antes se sacaba
+  // "tarifa primero" sobre todo lo pagado junto: con 8 semanas completas pagadas y un día sin
+  // pagar, eso daba $26.000 menos de ahorro "ya ganado" del que el libro sí le acreditó, y le
+  // devolvía el día entero ($30.000) en vez de su parte de ahorro ($4.000). A MELISSA, al revés:
+  // le faltaban $9.000.
+  const cajasLlenas = Math.max((contrato.cajas_pagadas ?? 0) - previas, 0);
+  const tarifaCaja = valor - ahorroCaja;
+  const ahorroCajaEnCurso = Math.min(Math.max((contrato.caja_actual_pagado ?? 0) - tarifaCaja, 0), ahorroCaja);
+  const prorTotal = contrato.prorrateo_total ?? 0;
+  const prorAhorro = contrato.prorrateo_ahorro ?? 0;
+  const ahorroProrrateo = Math.min(Math.max((contrato.prorrateo_pagado ?? 0) - (prorTotal - prorAhorro), 0), prorAhorro);
+  const ahorroYaGanado = cajasLlenas * ahorroCaja + ahorroCajaEnCurso + ahorroProrrateo;
+  // Lo que usó y su ahorro no le llegó: se le devuelve.
+  const ahorroPorCobrar = Math.max(ahorroConsumido - ahorroYaGanado, 0);
+  // Lo contrario: el libro le acreditó ahorro de días que NO alcanzó a usar (pagó adelantado). Ese
+  // ahorro ya se le devuelve en "Ahorro que ganó pagando", así que no va otra vez dentro de lo
+  // adelantado que se le devuelve.
+  const ahorroDeDiasNoUsados = Math.max(ahorroYaGanado - ahorroConsumido, 0);
   return {
     pagado,
     consumido,
-    aFavor: Math.max(pagado - consumido, 0),
+    aFavor: Math.max(pagado - consumido - ahorroDeDiasNoUsados, 0),
     porCobrar,
     ahorroPorCobrar,
   };

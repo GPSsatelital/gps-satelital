@@ -138,3 +138,18 @@ ahorro de los días usados − ese. ROGER queda en $4.000 y MELISSA en +$9.000.
   CARLOS OSPINO, LIQ-0050 NELSON ESTUPIÑAN, LIQ-0076 JHEINER PALOMINO, LIQ-0011 JESUS MARIA. Las
   cerradas hay que medirlas con la fórmula corregida antes de decir cifras (mi estimación rápida es
   gruesa: no mira domingos ni cajas a medio pagar).
+
+**Confirmado por el dueño el 30-sep:** los daños son **$195.000** y ROGER entregó **$400.000 de base, no
+$500.000** (el Excel de COSTA traía el valor pactado; el empalme del 8-ago cargó $500.000). Por D-023 la
+base que no puso no se le cobra ni se le devuelve.
+
+| | Hoy | Corregido |
+|---|---|---|
+| Base − semana adelantada | +$305.000 | +$205.000 |
+| Ahorro (Excel + sistema) | +$1.358.000 | +$1.358.000 |
+| Ahorro del día no pagado | +$30.000 | +$4.000 |
+| Multa repetida del 11-sep | — | +$30.000 |
+| Día que usó y no pagó | −$30.000 | −$30.000 |
+| Lavada (ya pagada con su saldo el 30-sep) | −$15.000 | $0 |
+| Daños ($195.000 − $25.000 ya pagados) | −$161.000 | −$170.000 |
+| **Saldo** | **+$1.487.000** | **+$1.397.000** (−$90.000) |

@@ -78,3 +78,31 @@ Cobro Diario y la ficha del cliente.
 
 **La regla que no cambia (del dueño):** el saldo a favor se MUESTRA, nunca se resta solo; se aplica a
 mano. La propuesta es de visibilidad, no de aplicarlo automáticamente.
+
+---
+
+## Hallazgo nuevo (29-sep): tiempo rodado registrado dos veces
+
+De 73 registros de `acuerdos_tiempo_rodado`, **7 rangos quedaron repetidos**, con 1 a 4 minutos de
+diferencia (el mismo botón dos veces):
+- 6 son "cobrar ahora" en contratos con motor, que ya no crean deuda: solo queda el registro repetido
+  (YAL54H ×3, IEW62I, XZI06H —además tiene un "rodar" del mismo rango—, RMY53H, RMZ63H, IGC56I).
+- 🔴 **JESUS RAFAEL QUIÑONEZ (RMU62H):** rodado DOS veces por el mismo tiempo (23-ago al 18-sep): a las
+  16:01 `cajas_exoneradas` 0 → 3 y a las 16:04 3 → 6 (y la fecha de fin corrida dos veces). Debían ser 3.
+  Hoy sale al día debiendo $140.000; con 3 rodadas debería ~3 semanas más (~$606.000). La plata no se
+  pierde (se correría al final), pero hoy se le deja de cobrar.
+- **Falta un candado:** el registro de rodar tiempo no impide repetir el mismo rango (mismo caso que la
+  devolución de base, mig 172).
+
+---
+
+## Tanda 2 — decisiones del dueño (29-sep)
+
+1. **MELISSA BELLO:** primero el taller confirma si la moto RMZ65H tuvo daños y cierra la orden (abierta
+   desde el 14-sep); después se corrige su liquidación a **+$165.000 menos los daños, si hubo** (la
+   fórmula del ahorro, los $9.000, se mide aparte).
+2. **Moto guardada sin moto prestada (REGINALDO IEW53I):** **no entra a recolección.** Sigue en mora y
+   con mensajes y llamadas; se le sigue cobrando.
+3. **Mora solo por el acuerdo (los 6):** los días de mora **cuentan desde la cuota del acuerdo más vieja
+   sin pagar**, y a recolección **solo si debe al menos una cuota completa del acuerdo**.
+4. **Nómina y tiempo rodado:** pendiente de respuesta (opción A "como estaba ese día" recomendada).

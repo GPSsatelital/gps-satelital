@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **29-sep-2026**.
+- Última revisión: **30-sep-2026**.
 
 ---
 
@@ -218,9 +218,23 @@ Lo que está afectando cifras reales de clientes en este momento.
   30-jul el contrato sigue contando, pero no hay moto que recolectar. **Decisión del dueño:** ¿sale de
   la cola mientras la moto esté en garantía, o se le cobra igual y se gestiona de otra forma?
 
-- [ ] 💻 **Auditoría de Reportes, bloque 2: Visitas, Flota, Guardadas y Entregas** (el bloque 1 quedó
-  el 29-sep, `docs/AUDITORIA-REPORTES.md`). Y la **nómina** merece su propia pasada: es la plata de
-  los cobradores, tiene semanas cerradas y congeladas, y ya se sabe que no salta las semanas rodadas.
+- [ ] 💻 **Construir las 3 decisiones del 29-sep** (`docs/REVISION-29SEP.md`, tanda 2): (1) moto
+  guardada sin prestada NO entra a recolección (REGINALDO IEW53I); (2) mora solo por el acuerdo: días
+  desde la cuota vencida y a recolección solo si debe una cuota completa (6 clientes, REINEL 5 cuotas);
+  (3) nómina: opción A, cada semana se paga como estaba el día que se cobró. Tocan Cartera + ZALA
+  (espejo) + nómina: van juntas, con prueba espejo.
+
+- [ ] 🧑 **Decisiones pendientes de liquidaciones** (`docs/REVISION-29SEP.md`): (a) las semanas
+  rodadas al liquidar ¿se cobran o no? — hoy solo BRADER GUZMAN LIQ-0078, **no cerrarla**; (b) las 28
+  liquidaciones cerradas con el error de la fórmula del ahorro ($1.613.200 de más) + ROGER (cerrada el
+  30-sep con $120.000 por encima); (c) JHEINER PALOMINO LIQ-0076: revisar a mano (acuerdo activo con
+  semanas financiadas) antes de cerrar; (d) MELISSA: el taller confirma daños de RMZ65H y se corrige.
+
+- [ ] 🧑💻 **JESUS RAFAEL QUIÑONEZ (RMU62H): tiempo rodado DOS veces** (6 semanas en vez de 3) + falta un
+  candado para que rodar no se registre dos veces. Medir su cuenta con 3 y decidir.
+
+- [ ] 💻 **Saldos a favor más visibles:** propuesta con dibujo (medido: 95 clientes, $5,1M; 10 en
+  recolección con plata a favor). Ver `docs/REVISION-29SEP.md`.
 
 - [ ] 💻 **YHAN CARLOS MIRANDA (YAL55H) sale "en mora" con 0 días de mora** en Cartera y ZALA (visto
   el 29-sep): la mora le viene del acuerdo y el contador de días solo mira semanas. Revisar la cuenta
@@ -563,6 +577,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 30-sep | **Reportes, bloque 2** — visitas suman, clientes con contrato, retenidas por mora separadas, aviso de SOAT separado, motos reasignadas fuera de la cuenta, y las 11 pestañas caben en el celular. `docs/AUDITORIA-REPORTES.md` |
+| 30-sep | 🔴 **Liquidación: el ahorro de los días usados caja por caja** (93c442d) — ROGER $30.000 → $4.000, MELISSA +$9.000; 4 abiertas cambian al recalcularlas |
 | 29-sep | 🔴 **Reportes dice la verdad (bloque 1)** (D-029) — "en mora" 187 → 65 (igual a Cartera, 0 diferencias), aviso de recolección 50 → 58, los grupos suman el total ($13.297.200 que faltaban), un solo "vs anterior", y el período se mide por cumplimiento (cambia con la fecha). Medido en la app. `docs/AUDITORIA-REPORTES.md` |
 | 28-sep | 🔴 **Los días de mora saltan las semanas rodadas** (D-028, commit 879ae45 + mig 180) — 6 clientes salían en mora cuando les tocaba pagar ese día (ELKIN CARDALES, KEVIN, ORLANDO, WALTER, WILLINGTON, JORGE LUIS TOVAR) y 7 con días inflados (LUIS ARMANDO 27 → 6). JORGE LUIS TOVAR tenía su semana saltada: $55.000 → $250.000. Foto de la plata 0, espejo 325/0. Subido en horas de cobro por decisión del dueño |
 | 26-sep | 🔴 **D-023 cerrada por sus tres caras** — el que termina no se lleva el ahorro (f5c2ce1) · al que se va antes no se le cobra la base que no pagó (a20bdf7 + mig 176: RICARDO −$472.000 → −$164.000, JESUS MARIA −$390.000 → −$82.000, FRAIRON, EDER, WILMAR, JORGE LUIS) · lo pagado del acuerdo de base suma a su base (mig 177: 35 clientes, $3.671.000). Queda MELISSA aparte |

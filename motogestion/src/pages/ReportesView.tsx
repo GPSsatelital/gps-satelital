@@ -237,7 +237,11 @@ function fmtFechaCorta(iso: string) {
 // cliente NO puede producir, así que no cuenta ni en el % al día ni en el cumplimiento del cobrador.
 // "cerrado": contrato cancelado o finalizado que pagó algo en el período. No es una moto a cargo,
 // pero su plata entró y tiene que aparecer en algún lado: si no, los grupos no suman el total.
-type EstadoPagoG = "aldia" | "gabela" | "mora" | "retenida" | "cerrado";
+// "reasignada": contrato suspendido cuya moto ya la tiene OTRO cliente con contrato activo — está en
+// liquidación. Antes contaba como "retenida" y la moto salía dos veces (29-sep: 7 casos).
+type EstadoPagoG = "aldia" | "gabela" | "mora" | "retenida" | "cerrado" | "reasignada";
+/** Contratos que ya no son una moto a cargo del cobrador: solo aportan la plata que pagaron. */
+const fueraDeGestion = (e: EstadoPagoG) => e === "cerrado" || e === "reasignada";
 type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string;
   /** Días que lleva VENCIDA la cuota HOY — la cuenta de Cartera. 0 si no está en mora. */
   diasMora: number;
@@ -250,12 +254,12 @@ type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoP
   /** Cuánto cumplió en el período del informe. */
   cum: Cumplimiento;
 };
-type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; retenidas: number; cerrados: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; recupero: number; pctCum: number | null };
+type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; retenidas: number; cerrados: number; reasignadas: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; recupero: number; pctCum: number | null };
 /** Las filas que cuentan para el cumplimiento de un cobrador: ni retenidas ni cerradas, y medibles. */
-const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && m.estado !== "cerrado" && m.cum.medible;
+const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && !fueraDeGestion(m.estado) && m.cum.medible;
 /** La cola de trabajo: los que DEBEN primero (los ordenan los días de mora), después la gabela,
  *  las guardadas —que no pueden pagar—, las al día y al final los contratos ya cerrados. */
-const RANK_COLA: Record<EstadoPagoG, number> = { mora: 0, gabela: 1, retenida: 2, aldia: 3, cerrado: 4 };
+const RANK_COLA: Record<EstadoPagoG, number> = { mora: 0, gabela: 1, retenida: 2, aldia: 3, reasignada: 4, cerrado: 5 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
   const map = new Map<string, MotoRowG[]>();
   rows.forEach(r => {
@@ -269,9 +273,10 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     const mora = motos.filter(m => m.estado === "mora").length;
     const retenidas = motos.filter(m => m.estado === "retenida").length;
     const cerrados = motos.filter(m => m.estado === "cerrado").length;
+    const reasignadas = motos.filter(m => m.estado === "reasignada").length;
     // El % del cobrador se mide sobre las motos que PODÍAN pagar: una guardada en la empresa
     // no puede producir y no debe castigar (ni inflar) su cumplimiento.
-    const evaluables = motos.length - retenidas - cerrados;
+    const evaluables = motos.length - retenidas - cerrados - reasignadas;
     const medibles = motos.filter(cuentaParaCumplimiento);
     return {
       key,
@@ -283,13 +288,13 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
         (RANK_COLA[x.estado] - RANK_COLA[y.estado])
         || (y.diasMora - x.diasMora)
         || x.cliente.localeCompare(y.cliente)),
-      total: motos.length - cerrados, alDia, gabela, mora, retenidas, cerrados,
+      total: motos.length - cerrados - reasignadas, alDia, gabela, mora, retenidas, cerrados, reasignadas,
       debenSinConvenio: motos.filter(m => m.debeSinConvenio).length,
       recaudado: motos.reduce((s, m) => s + m.monto, 0),
       pctv: evaluables > 0 ? Math.round((alDia / evaluables) * 100) : 0,
       debia: medibles.reduce((s, m) => s + m.cum.debia, 0),
       cubrio: medibles.reduce((s, m) => s + m.cum.cubrio, 0),
-      recupero: motos.filter(m => m.estado !== "cerrado").reduce((s, m) => s + m.cum.recupero, 0),
+      recupero: motos.filter(m => !fueraDeGestion(m.estado)).reduce((s, m) => s + m.cum.recupero, 0),
       pctCum: pctCumplimiento(medibles.map(m => m.cum)),
     };
   });
@@ -307,6 +312,7 @@ const EST_META: Record<EstadoPagoG, { punto: string; ink: string; soft: string }
   mora:     { punto: "🔴", ink: "var(--bad-ink)",    soft: "var(--bad-soft)" },
   retenida: { punto: "🔒", ink: "var(--indigo-ink)", soft: "var(--indigo-soft)" },
   cerrado:  { punto: "·",  ink: "var(--muted)",      soft: "var(--soft)" },
+  reasignada: { punto: "·", ink: "var(--muted)",      soft: "var(--soft)" },
 };
 
 function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: BloqueG[]; modo: "admin" | "grupo"; expandido: string | null; onToggle: (k: string) => void }) {
@@ -356,6 +362,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
               <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>🔴 {b.mora} en mora</span>
               {b.retenidas > 0 && <><span style={{ color: "var(--faint)" }}>·</span><span style={{ color: "var(--indigo-ink)", fontWeight: 700 }}>🔒 {b.retenidas} retenida{b.retenidas === 1 ? "" : "s"}</span></>}
               {b.debenSinConvenio > 0 && <span style={{ color: "var(--warn-ink)", fontWeight: 700, background: "var(--warn-soft)", borderRadius: 6, padding: "1px 6px" }}>⚠️ {b.debenSinConvenio} sin convenio</span>}
+              {b.reasignadas > 0 && <span style={{ color: "var(--muted)" }}>· {b.reasignadas} en liquidación (moto ya reasignada)</span>}
               {b.cerrados > 0 && <span style={{ color: "var(--muted)" }}>· {b.cerrados} contrato{b.cerrados === 1 ? "" : "s"} cerrado{b.cerrados === 1 ? "" : "s"} con pagos</span>}
             </div>
             {open && (
@@ -389,18 +396,19 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                             : m.estado === "gabela" ? "🟡 Gabela"
                             : m.estado === "mora" ? `🔴 ${m.diasMora}d en mora`
                             : m.estado === "retenida" ? "🔒 Retenida"
+                            : m.estado === "reasignada" ? "En liquidación · moto ya reasignada"
                             : "Contrato cerrado"}
                         </div>
-                        {m.debeHoy > 0 && m.estado !== "aldia" && m.estado !== "cerrado" && <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", marginTop: 1, whiteSpace: "nowrap" }}>debe hoy $ {fmt(m.debeHoy)}</div>}
+                        {m.debeHoy > 0 && m.estado !== "aldia" && !fueraDeGestion(m.estado) && <div style={{ fontSize: 10, fontWeight: 700, color: "var(--bad-ink)", marginTop: 1, whiteSpace: "nowrap" }}>debe hoy $ {fmt(m.debeHoy)}</div>}
                       </div>
                     </div>
                     {/* Lo del PERÍODO en su propia línea (en el celular no cabía al lado del nombre). */}
                     {(m.cum.debia > 0 || m.monto > 0) && (
                       <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: "2px 8px" }}>
                         <span style={{ fontWeight: 700 }}>Período:</span>
-                        {m.cum.debia > 0 && m.estado !== "cerrado" && <span>vencía $ {fmt(m.cum.debia)}</span>}
-                        {m.cum.debia > 0 && m.estado !== "cerrado" && <span>cubrió $ {fmt(m.cum.cubrio)}</span>}
-                        {m.cum.falto > 0 && m.estado !== "cerrado" && <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>faltó $ {fmt(m.cum.falto)}</span>}
+                        {m.cum.debia > 0 && !fueraDeGestion(m.estado) && <span>vencía $ {fmt(m.cum.debia)}</span>}
+                        {m.cum.debia > 0 && !fueraDeGestion(m.estado) && <span>cubrió $ {fmt(m.cum.cubrio)}</span>}
+                        {m.cum.falto > 0 && !fueraDeGestion(m.estado) && <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>faltó $ {fmt(m.cum.falto)}</span>}
                         {m.monto > 0 && <span>pagó $ {fmt(m.monto)}</span>}
                       </div>
                     )}
@@ -713,6 +721,9 @@ export default function ReportesView({ onNavigate }: Props) {
     // Los Suspendidos también entran: son justamente las retenidas, y el dueño necesita verlas
     // contadas, no invisibles. Los cancelados y finalizados entran SOLO si pagaron algo en el
     // período, para que esa plata aparezca en su grupo y su cobrador (29-sep: eran $1.035.200).
+    // Motos que ya tienen un contrato ACTIVO: si además figuran en un contrato suspendido, ese otro
+    // cliente está en liquidación y la moto no es suya (29-sep: 7 casos contados dos veces).
+    const motosConContratoActivo = new Set(contratos.filter(c => c.estado === "Activo" && c.moto_id).map(c => c.moto_id));
     contratos.forEach(c => {
       const vigente = c.estado === "Activo" || c.estado === "Suspendido";
       const cerrado = (c.estado === "Cancelado" || c.estado === "Finalizado") && (recaudoPorContrato.get(c.id) ?? 0) > 0;
@@ -736,7 +747,8 @@ export default function ReportesView({ onNavigate }: Props) {
         convenios.filter(cv => cv.contrato_id === c.id) as never, desde, hasta, fechaDeCaja as never);
       const deudaP = deudasPend.reduce((s, d) => s + d.monto_pendiente, 0);
       const tieneConvenio = !!convenioACobrar;
-      const estado: EstadoPagoG = cerrado ? "cerrado" : guardada ? "retenida"
+      const reasignada = c.estado === "Suspendido" && motosConContratoActivo.has(c.moto_id);
+      const estado: EstadoPagoG = cerrado ? "cerrado" : reasignada ? "reasignada" : guardada ? "retenida"
         : e.estado === "mora" ? "mora" : e.estado === "gabela" ? "gabela" : "aldia";
       const cli = clientes.find(cl => cl.id === c.cliente_id);
       const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
@@ -744,7 +756,7 @@ export default function ReportesView({ onNavigate }: Props) {
         placa: moto?.placa ?? "—",
         cliente: cli?.nombre ?? "Sin cliente",
         monto, estado, deudaPend: deudaP, tieneConvenio,
-        debeSinConvenio: !cerrado && deudaP > 0 && !tieneConvenio,
+        debeSinConvenio: !cerrado && !reasignada && deudaP > 0 && !tieneConvenio,
         grupo: at.grupo,
         adminId: at.adminId,
         adminNombre: at.adminNombre,
@@ -825,7 +837,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const porAdminData = useMemo(() => agruparBloques(baseFiltrada, "admin"), [baseFiltrada]);
   const porGrupoData = useMemo(() => agruparBloques(baseFiltrada, "grupo"), [baseFiltrada]);
   // "Motos" = las que están a cargo (sin los contratos ya cerrados, que solo aportan su plata).
-  const motosFiltradas = baseFiltrada.filter(r => r.estado !== "cerrado");
+  const motosFiltradas = baseFiltrada.filter(r => !fueraDeGestion(r.estado));
   const gTotMotos = motosFiltradas.length;
   const gAlDia    = motosFiltradas.filter(r => r.estado === "aldia").length;
   const gGabela   = motosFiltradas.filter(r => r.estado === "gabela").length;
@@ -839,7 +851,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const gMedibles = baseFiltrada.filter(cuentaParaCumplimiento);
   const gDebia = gMedibles.reduce((s, r) => s + r.cum.debia, 0);
   const gCubrio = gMedibles.reduce((s, r) => s + r.cum.cubrio, 0);
-  const gRecupero = baseFiltrada.filter(r => r.estado !== "cerrado").reduce((s, r) => s + r.cum.recupero, 0);
+  const gRecupero = baseFiltrada.filter(r => !fueraDeGestion(r.estado)).reduce((s, r) => s + r.cum.recupero, 0);
   const gPctCum = pctCumplimiento(gMedibles.map(r => r.cum));
 
   // C1 — comparación vs período anterior. UNA sola regla para todas las pestañas: la ventana del
@@ -907,7 +919,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const nombreAdmin = (id: string | null | undefined) =>
       id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar / Oficina";
     type VisRow = { cliente: string; fecha: string; estado: string; resultado: string | null; gps: boolean; foto: boolean; estimado: boolean };
-    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number; estimadas: number };
+    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number; sinResultado: number; estimadas: number };
     const map = new Map<string, VisAgg>();
     visitas.filter(v => (v.fecha || "").slice(0, 10) >= desde && (v.fecha || "").slice(0, 10) <= hasta).forEach(v => {
       // Se agrupa por QUIÉN LA HIZO, no por a quién se le encargó. Este informe es la base para
@@ -917,7 +929,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const quien = v.realizada_por ?? v.asignada_a;
       const estimado = !v.realizada_por;
       const key = quien ?? "__none__";
-      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0, estimadas: 0 });
+      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0, sinResultado: 0, estimadas: 0 });
       const agg = map.get(key)!;
       if (estimado) agg.estimadas++;
       agg.visitas.push({
@@ -929,6 +941,9 @@ export default function ReportesView({ onNavigate }: Props) {
       else if (v.resultado === "Aprobado") agg.aprobadas++;
       else if (v.resultado === "Rechazado") agg.rechazadas++;
       else if (v.resultado === "Repetir") agg.repetir++;
+      // Completada pero sin resultado anotado: antes no caía en ninguna columna y las columnas no
+      // sumaban el total (29-sep: 64 visitas en septiembre, 59 en las columnas).
+      else agg.sinResultado++;
     });
     return [...map.values()]
       .map(a => ({ ...a, total: a.visitas.length, visitas: a.visitas.slice().sort((x, y) => y.fecha.localeCompare(x.fecha)) }))
@@ -947,6 +962,8 @@ export default function ReportesView({ onNavigate }: Props) {
         ? { v: "Retenida", color: "#3730a3", fill: "#e0e7ff", align: "center" }
         : m.estado === "cerrado"
           ? { v: "Contrato cerrado", color: "#475569", fill: "#f1f5f9", align: "center" }
+          : m.estado === "reasignada"
+            ? { v: "En liquidación (moto reasignada)", color: "#475569", fill: "#f1f5f9", align: "center" }
           : { v: "En mora", color: "#991b1b", fill: "#fee2e2", align: "center" };
   const xPagado = (m: MotoRowG): CeldaX => m.monto > 0 ? { num: m.monto } : { v: "—", align: "center" };
   // Lo del PERÍODO: lo que vencía, lo que quedó cubierto y lo que faltó (decisión del dueño, 29-sep).
@@ -1098,7 +1115,7 @@ export default function ReportesView({ onNavigate }: Props) {
     ];
     const resTxt = (est: string, res: string | null) => est === "Pendiente" ? "—" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
     const secciones: SeccionX[] = visitasData.map(a => ({
-      titulo: `👤 ${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes`,
+      titulo: `👤 ${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}`,
       color: "#334155",
       filas: a.visitas.map(v => [
         v.cliente.toUpperCase(), { v: fmtFechaCorta(v.fecha), align: "center" as const },
@@ -1226,10 +1243,12 @@ export default function ReportesView({ onNavigate }: Props) {
     const enMora = activos.filter(r => r.estadoCartera === "mora");
     const recoleccion = enMora.filter(r => r.recoleccion).length;
     const retenidas = baseGestion.filter(r => r.estado !== "cerrado" && !r.contratoActivo).length;
+    // De esas, las que en realidad están en liquidación: su moto ya la tiene otro cliente.
+    const reasignadas = baseGestion.filter(r => r.estado === "reasignada").length;
     // Todo lo que se debe hoy (cuota + acuerdo + deudas), activos y retenidas: la cifra de Cartera.
     const debeHoy = baseGestion.filter(r => r.estado !== "cerrado").reduce((s, r) => s + r.debeHoy, 0);
     const detalle = enMora.slice().sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
-    return { activos: activos.length, alDia, gabela, mora: enMora.length, recoleccion, retenidas, debeHoy, detalle };
+    return { activos: activos.length, alDia, gabela, mora: enMora.length, recoleccion, retenidas, reasignadas, debeHoy, detalle };
   }, [baseGestion]);
   const clienteIdDeContrato = useMemo(() => new Map(contratos.map(c => [c.id, c.cliente_id])), [contratos]);
   const motoIdDeContrato = useMemo(() => new Map(contratos.map(c => [c.id, c.moto_id ?? null])), [contratos]);
@@ -1281,7 +1300,11 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [pagosRango, contratos, clientes]);
 
   // ── Clientes ───────────────────────────────────────────────────────────────
-  const clientesActivos     = clientes.filter(c => c.estado === "Activo").length;
+  // "Clientes con contrato": los que tienen un contrato vigente (activo o con la moto retenida). Antes
+  // contaba el estado "Activo" de la ficha: 337 contra 330 reales (29-sep) — 7 figuraban activos sin
+  // ningún contrato. Esos se listan aparte para que la oficina los corrija.
+  const clientesConContratoIds = new Set(contratos.filter(c => c.estado === "Activo" || c.estado === "Suspendido").map(c => c.cliente_id));
+  const clientesActivosSinContrato = clientes.filter(c => c.estado === "Activo" && !clientesConContratoIds.has(c.id));
   const clientesEnProceso   = clientes.filter(c => c.estado === "En proceso" || c.estado === "Aprobado").length;
   const inicioMes           = hoyStr.slice(0, 7) + "-01";
   const clientesNuevosMes   = clientes.filter(c => c.created_at >= inicioMes).length;
@@ -1295,22 +1318,34 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── Alertas vencimiento ────────────────────────────────────────────────────
   const alertasVencimiento = useMemo(() => {
+    const hoyMs = hoyDate().getTime();
     const en30 = hoyDate(); en30.setDate(en30.getDate() + 30);
     const iso30 = en30.toISOString().slice(0, 10);
+    const dias = (f: string) => Math.round((new Date(f + "T00:00:00").getTime() - hoyMs) / 86400000);
     return motos.filter(m => (m.fecha_seguro && m.fecha_seguro <= iso30) || (m.fecha_tecnomecanica && m.fecha_tecnomecanica <= iso30))
-      .map(m => ({
-        id: m.id, placa: m.placa,
-        seguro: m.fecha_seguro ?? null,
-        tecno: m.fecha_tecnomecanica ?? null,
-        diasSeguro: m.fecha_seguro ? Math.ceil((new Date(m.fecha_seguro + "T00:00:00").getTime() - Date.now()) / 86400000) : null,
-        diasTecno:  m.fecha_tecnomecanica ? Math.ceil((new Date(m.fecha_tecnomecanica + "T00:00:00").getTime() - Date.now()) / 86400000) : null,
-      }))
+      .map(m => {
+        const diasSeguro = m.fecha_seguro ? dias(m.fecha_seguro) : null;
+        const diasTecno = m.fecha_tecnomecanica ? dias(m.fecha_tecnomecanica) : null;
+        return {
+          id: m.id, placa: m.placa,
+          seguro: m.fecha_seguro ?? null,
+          tecno: m.fecha_tecnomecanica ?? null,
+          diasSeguro, diasTecno,
+          // Ya vencido (SOAT o tecno) — distinto de "por vencer": el aviso los mezclaba (29-sep).
+          vencida: (diasSeguro !== null && diasSeguro < 0) || (diasTecno !== null && diasTecno < 0),
+        };
+      })
       .sort((a, b) => {
         const ma = Math.min(a.diasSeguro ?? 999, a.diasTecno ?? 999);
         const mb = Math.min(b.diasSeguro ?? 999, b.diasTecno ?? 999);
         return ma - mb;
       });
   }, [motos]);
+
+  // Motos SIN fecha de SOAT: no aparecían en ningún aviso (29-sep: 9 motos, 2 andando en la calle).
+  const motosSinSoat = useMemo(() => motos.filter(m => !m.fecha_seguro), [motos]);
+  const docsVencidos = alertasVencimiento.filter(a => a.vencida).length;
+  const docsPorVencer = alertasVencimiento.length - docsVencidos;
 
   const diasBase = useMemo(() =>
     contratos.filter(c => c.estado === "Activo" && c.tipo_ruta === "diario" && !c.base_completada && ahorroTotal(c) >= 450000),
@@ -1452,7 +1487,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const filas = bloques.map(b => {
         const cab = `<tr class="sec"><td colspan="12">${b.nombre.toUpperCase()} — cumplió ${b.pctCum === null ? "—" : b.pctCum + "%"} del período (cubrió $ ${fmt(b.cubrio)} de $ ${fmt(b.debia)}) · recaudado $ ${fmt(b.recaudado)} · HOY: ${b.total} motos, ${b.alDia} al día, ${b.gabela} gabela, ${b.mora} en mora${b.retenidas > 0 ? `, ${b.retenidas} retenida${b.retenidas === 1 ? "" : "s"}` : ""}${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""}</td></tr>`;
         const motos = b.motos.map(m => {
-          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "gabela" ? { t: "Gabela", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : m.estado === "cerrado" ? { t: "Cerrado", c: "#475569" } : { t: `En mora ${m.diasMora}d`, c: "#991b1b" };
+          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "gabela" ? { t: "Gabela", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : m.estado === "cerrado" ? { t: "Cerrado", c: "#475569" } : m.estado === "reasignada" ? { t: "En liquidación", c: "#475569" } : { t: `En mora ${m.diasMora}d`, c: "#991b1b" };
           const conv = m.tieneConvenio ? "Sí" : (m.debeSinConvenio ? "Falta" : "—");
           const ult = m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos";
           return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : m.adminNombre}</td><td class="c">${m.formaPago}</td><td class="c">${m.diaPago || "—"}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r">${m.cum.debia > 0 ? "$ " + fmt(m.cum.cubrio) + " de $ " + fmt(m.cum.debia) : "—"}</td><td class="r" style="${m.debeHoy > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.debeHoy > 0 ? "$ " + fmt(m.debeHoy) : "—"}</td><td class="c">${ult}</td><td class="c">${m.telefono || "—"}</td><td class="c">${conv}</td></tr>`;
@@ -1473,14 +1508,14 @@ export default function ReportesView({ onNavigate }: Props) {
       let tabla: string;
       if (det) {
         const filas = visitasData.map(a => {
-          const cab = `<tr class="sec"><td colspan="5">👤 ${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend</td></tr>`;
+          const cab = `<tr class="sec"><td colspan="5">👤 ${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}</td></tr>`;
           const vs = a.visitas.map(v => `<tr><td class="up">${v.cliente}</td><td class="c">${fmtFechaCorta(v.fecha)}</td><td class="c">${v.estado}</td><td class="c">${v.estado === "Pendiente" ? "—" : (v.resultado ?? "—")}</td><td class="c">${((v.gps ? "📍" : "") + (v.foto ? " 📷" : "")) || "—"}</td></tr>`).join("");
           return cab + vs;
         }).join("");
         tabla = `<table><thead><tr><th>Cliente</th><th class="c">Fecha</th><th class="c">Estado</th><th class="c">Resultado</th><th class="c">GPS/Foto</th></tr></thead><tbody>${filas}</tbody></table>`;
       } else {
-        const filas = visitasData.map(a => `<tr><td class="up"><b>👤 ${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td></tr>`).join("");
-        tabla = `<table><thead><tr><th>Administrador</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th></tr></thead><tbody>${filas}</tbody></table>`;
+        const filas = visitasData.map(a => `<tr><td class="up"><b>👤 ${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td><td class="c">${a.sinResultado}</td></tr>`).join("");
+        tabla = `<table><thead><tr><th>Administrador</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th><th class="c">Sin resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
       }
       parts.push(`<h2>Visitas por administrador</h2>${tabla}`);
     }
@@ -1531,7 +1566,7 @@ export default function ReportesView({ onNavigate }: Props) {
     // (regla del 9-sep). Antes contaba "más de 7 días desde el último pago": 50 contra 58 reales.
     carteraHoy.recoleccion > 0 && { color: "var(--bad-ink)", bg: "var(--bad-soft)", border: "var(--bad)", text: `🚨 ${carteraHoy.recoleccion} contrato${carteraHoy.recoleccion > 1 ? "s" : ""} en la cola de recolección (más de 3 días con la cuota vencida)` },
     diasBase.length > 0 && { color: "var(--warn-ink)", bg: "var(--warn-soft)", border: "var(--warn2)", text: `⚠️ ${diasBase.length} cliente${diasBase.length > 1 ? "s" : ""} cerca de completar la base ($510.000) — gestionar cambio de contrato` },
-    alertasVencimiento.length > 0 && { color: "var(--warn-ink)", bg: "var(--warn-soft)", border: "var(--warn2)", text: `📋 ${alertasVencimiento.length} moto${alertasVencimiento.length > 1 ? "s" : ""} con SOAT o tecno venciendo en 30 días` },
+    (alertasVencimiento.length > 0 || motosSinSoat.length > 0) && { color: "var(--warn-ink)", bg: "var(--warn-soft)", border: "var(--warn2)", text: `📋 Documentos: ${docsVencidos} moto${docsVencidos === 1 ? "" : "s"} con SOAT o tecno vencido · ${docsPorVencer} por vencer en 30 días${motosSinSoat.length > 0 ? ` · ${motosSinSoat.length} sin fecha de SOAT` : ""}` },
   ].filter(Boolean) as { color: string; bg: string; border: string; text: string }[];
 
   return (
@@ -1634,8 +1669,9 @@ export default function ReportesView({ onNavigate }: Props) {
                   const h = total === 0 ? 2 : Math.max(5, Math.round((total / maxDiario) * 110));
                   const isHoy = fecha === hoyStr;
                   return (
-                    <div key={fecha} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`$ ${fmt(total)}`}>
-                      {total > 0 && <div style={{ fontSize: 8, color: isHoy ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>${fmt(total / 1000)}k</div>}
+                    <div key={fecha} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }} title={`$ ${fmt(total)}`}>
+                      {/* En el celular 14 barras no caben con "$1.633k" encima (30-sep): ahí va en millones. */}
+                      {total > 0 && <div style={{ fontSize: 8, color: isHoy ? "var(--accent)" : "var(--faint)", fontWeight: 700, whiteSpace: "nowrap" }}>{isMobile ? `${(Math.round(total / 100000) / 10).toLocaleString("es-CO")}M` : `$${fmt(total / 1000)}k`}</div>}
                       <div style={{ width: "100%", height: h, borderRadius: "4px 4px 0 0", background: isHoy ? "var(--accent)" : total === 0 ? "var(--line)" : "var(--accent-line)" }} />
                       <div style={{ fontSize: 8, color: isHoy ? "var(--accent)" : "var(--faint)", fontWeight: isHoy ? 700 : 400, textAlign: "center" }}>{label.split(" ")[0]}<br />{label.split(" ")[1]}</div>
                     </div>
@@ -2121,6 +2157,8 @@ export default function ReportesView({ onNavigate }: Props) {
         const tAprob = visitasData.reduce((s, a) => s + a.aprobadas, 0);
         const tRech = visitasData.reduce((s, a) => s + a.rechazadas, 0);
         const tPend = visitasData.reduce((s, a) => s + a.pendientes, 0);
+        const tSinRes = visitasData.reduce((s, a) => s + a.sinResultado, 0);
+        const tRep = visitasData.reduce((s, a) => s + a.repetir, 0);
         const resLabel = (est: string, res: string | null) => est === "Pendiente" ? "⏳ Pendiente" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
         const resColor = (est: string, res: string | null) => est === "Pendiente" ? "var(--warn-ink)" : res === "Aprobado" ? "var(--ok-ink)" : res === "Rechazado" ? "var(--bad-ink)" : "var(--muted)";
         const badge = (n: number, txt: string, color: string, bg: string) => n > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{n} {txt}</span> : null;
@@ -2130,7 +2168,10 @@ export default function ReportesView({ onNavigate }: Props) {
               <KPI label="Visitas" value={`${tVis}`} />
               <KPI label="Aprobadas" value={`${tAprob}`} color="var(--ok-ink)" bg="var(--ok-soft)" />
               <KPI label="Rechazadas" value={`${tRech}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+              {/* Las cajitas suman el total de visitas (antes faltaban "Repetir" y "Sin resultado"). */}
+              <KPI label="Repetir" value={`${tRep}`} color="var(--muted2)" />
               <KPI label="Pendientes" value={`${tPend}`} color="var(--warn-ink)" bg="var(--warn-soft)" />
+              {tSinRes > 0 && <KPI label="Sin resultado" value={`${tSinRes}`} color="var(--muted2)" sub="completadas sin anotar el resultado" />}
             </div>
             <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -2159,6 +2200,7 @@ export default function ReportesView({ onNavigate }: Props) {
                       {badge(a.rechazadas, "✗", "var(--bad-ink)", "var(--bad-soft)")}
                       {badge(a.repetir, "↻", "var(--muted)", "var(--soft)")}
                       {badge(a.pendientes, "⏳", "var(--warn-ink)", "var(--warn-soft)")}
+                      {badge(a.sinResultado, "sin resultado", "var(--muted2)", "var(--soft)")}
                     </div>
                   </div>
                   {open && (
@@ -2185,12 +2227,14 @@ export default function ReportesView({ onNavigate }: Props) {
       {/* La MISMA cuenta de Cartera y del Panel (auditoría del 29-sep): antes decía 187 en mora contando
           "más de 2 días sin pagar"; ahora sale de estadoHoy, contrato por contrato. Es la foto de HOY. */}
       {tab === "cartera" && (
-        <div style={{ display: "grid", gap: 16 }}>
+        // minmax(0, 1fr): sin esto la columna se estiraba al contenido más ancho y en el celular toda
+        // la pestaña quedaba de 448 px en una pantalla de 375 (medido el 30-sep).
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1fr)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
             <KPI label="Al día"      value={String(carteraHoy.alDia)}       color="var(--ok-ink)"   bg="var(--ok-soft)" />
             <KPI label="Gabela"      value={String(carteraHoy.gabela)}      color="var(--warn-ink)" bg="var(--warn-soft)" />
             <KPI label="En mora"     value={String(carteraHoy.mora)}        color="var(--bad-ink)"  bg="var(--bad-soft)" sub={`${carteraHoy.recoleccion} en recolección`} />
-            <KPI label="🔒 Retenidas" value={String(carteraHoy.retenidas)}  color="var(--indigo-ink)" bg="var(--indigo-soft)" />
+            <KPI label="🔒 Retenidas" value={String(carteraHoy.retenidas)}  color="var(--indigo-ink)" bg="var(--indigo-soft)" sub={carteraHoy.reasignadas > 0 ? `${carteraHoy.reasignadas} en liquidación, moto ya reasignada` : undefined} />
             <KPI label="Deben hoy"   value={`$ ${fmt(carteraHoy.debeHoy)}`} color="var(--bad-ink)" sub="cuotas + acuerdos + deudas" />
           </div>
 
@@ -2226,7 +2270,7 @@ export default function ReportesView({ onNavigate }: Props) {
                 );
                 const ultimo = (m: MotoRowG) => m.ultimaFechaPago ? new Date(m.ultimaFechaPago + "T00:00:00").toLocaleDateString("es-CO") : <span style={{ color: "var(--faint)" }}>Sin pagos</span>;
                 return isMobile ? (
-                  <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(0, 1fr)" }}>
                     {carteraHoy.detalle.map(m => (
                       <div key={m.contratoId} onClick={() => irCliente(m.contratoId)}
                         style={{ padding: "12px 14px", borderRadius: 14, background: m.recoleccion ? "var(--bad-soft)" : "var(--warn-soft2)", border: `1px solid ${m.recoleccion ? "var(--bad-line)" : "var(--warn-line)"}`, cursor: "pointer" }}>
@@ -2234,7 +2278,7 @@ export default function ReportesView({ onNavigate }: Props) {
                           <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 13, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</span>
                           <Placa placa={m.placa} grupo={m.grupo} size="sm" />
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
                           {chipDias(m)}
                           <span style={{ fontWeight: 700, color: "var(--bad-ink)", fontSize: 14 }}>debe $ {fmt(m.debeHoy)}</span>
                         </div>
@@ -2323,8 +2367,11 @@ export default function ReportesView({ onNavigate }: Props) {
             <KPI label="Asignadas"        value={String(motos.filter(m => m.estado === "Asignada").length)}                   color="var(--ok-ink)" bg="var(--ok-soft)" />
             <KPI label="Disponibles"      value={String(motos.filter(m => m.estado === "Disponible").length)}                 color="var(--accent)" />
             <KPI label="En taller"        value={String(motos.filter(m => m.estado === "Mantenimiento").length)}                  color="var(--warn-ink)" />
-            <KPI label="Retenciones"      value={String(motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado as string)).length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
-            <KPI label="Clientes activos" value={String(clientesActivos)}                                                     color="var(--ok-ink)" />
+            {/* Antes "Retenciones" contaba fiscalía, tránsito y garantía y dejaba fuera las retenidas por
+                mora (29-sep: 4 contra 25). Ahora cada una con su nombre. */}
+            <KPI label="Retenidas por mora" value={String(motos.filter(m => m.estado === "Recuperada").length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
+            <KPI label="Fiscalía / tránsito / garantía" value={String(motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado as string)).length)} color="var(--warn-ink)" />
+            <KPI label="Clientes con contrato" value={String(clientesConContratoIds.size)} color="var(--ok-ink)" sub={clientesActivosSinContrato.length > 0 ? `${clientesActivosSinContrato.length} activos sin contrato` : undefined} />
             <KPI label="En proceso"       value={String(clientesEnProceso)}                                                   color="var(--warn-ink)" />
             <KPI label="Nuevos este mes"  value={String(clientesNuevosMes)}                                                   color="var(--accent)" />
           </div>
@@ -2351,10 +2398,41 @@ export default function ReportesView({ onNavigate }: Props) {
             </div>
           </div>
 
+          {/* Lo que la oficina tiene que corregir en los datos (auditoría del 29-sep). */}
+          {(motosSinSoat.length > 0 || clientesActivosSinContrato.length > 0) && (
+            <div style={{ ...card, display: "grid", gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--warn-ink)" }}>Para corregir en los datos</div>
+              {motosSinSoat.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{motosSinSoat.length} moto{motosSinSoat.length === 1 ? "" : "s"} sin fecha de SOAT</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {motosSinSoat.map(m => (
+                      <button key={m.id} onClick={() => onNavigate?.("ficha_moto", m.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft2)", cursor: onNavigate ? "pointer" : "default", fontSize: 11, color: "var(--muted2)" }}>
+                        <Placa placa={m.placa} grupo={m.grupo} size="sm" /> {m.estado}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {clientesActivosSinContrato.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{clientesActivosSinContrato.length} cliente{clientesActivosSinContrato.length === 1 ? "" : "s"} figura{clientesActivosSinContrato.length === 1 ? "" : "n"} como Activo sin ningún contrato vigente</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {clientesActivosSinContrato.map(c => (
+                      <button key={c.id} onClick={() => onNavigate?.("ficha_cliente", c.id)} style={{ padding: "4px 10px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft2)", cursor: onNavigate ? "pointer" : "default", fontSize: 11, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase" }}>
+                        {c.nombre}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Vencimientos */}
           {alertasVencimiento.length > 0 && (
             <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "var(--warn-ink)" }}>📋 Documentos venciendo — próximos 30 días</div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "var(--warn-ink)" }}>📋 Documentos vencidos o por vencer (30 días) — {docsVencidos} vencido{docsVencidos === 1 ? "" : "s"} · {docsPorVencer} por vencer</div>
 
               {isMobile ? (
                 <div style={{ display: "grid", gap: 10 }}>
@@ -2516,9 +2594,9 @@ export default function ReportesView({ onNavigate }: Props) {
               {conveniosRep.length === 0 ? (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>No hay convenios para mostrar.</div>
               ) : (
-                <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)" }}>
                   {conveniosRep.map(c => (
-                    <div key={c.convenioId} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${c.atrasado > 0 ? "var(--bad-line)" : "var(--line)"}`, background: "var(--card)", display: "grid", gap: 8, minWidth: 0 }}>
+                    <div key={c.convenioId} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${c.atrasado > 0 ? "var(--bad-line)" : "var(--line)"}`, background: "var(--card)", display: "grid", gap: 8, minWidth: 0, gridTemplateColumns: "minmax(0, 1fr)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                           <Placa placa={c.placa} grupo={c.grupo} size="sm" />
@@ -2948,7 +3026,7 @@ export default function ReportesView({ onNavigate }: Props) {
               },
               ...(alertasVencimiento.length > 0 ? [{
                 label: "⬇️ CSV — Vencimientos SOAT y Tecno",
-                desc: `${alertasVencimiento.length} motos con vencimiento en 30 días`,
+                desc: `${docsVencidos} vencidas · ${docsPorVencer} por vencer en 30 días`,
                 onClick: () => {
                   const filas = alertasVencimiento.map(a => [a.placa, a.seguro ?? "—", a.tecno ?? "—", String(a.diasSeguro ?? ""), String(a.diasTecno ?? "")]);
                   exportarCSV(filas, ["Placa","SOAT vence","Tecno vence","Dias SOAT","Dias Tecno"], `vencimientos-${hoyStr}.csv`);
@@ -2988,7 +3066,7 @@ export default function ReportesView({ onNavigate }: Props) {
             filtros={[
               { titulo: "Grupos", de: m => m.grupo },
               { titulo: "Cobrador", de: m => m.adminNombre.toUpperCase() },
-              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? "En mora" : m.estado === "retenida" ? "Retenida" : "Contrato cerrado" },
+              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? "En mora" : m.estado === "retenida" ? "Retenida" : m.estado === "reasignada" ? "En liquidación (moto reasignada)" : "Contrato cerrado" },
               { titulo: "Modalidad", de: m => m.formaPago },
             ]}
             agrupar={m => porAdmin ? m.adminNombre.toUpperCase() : m.grupo}

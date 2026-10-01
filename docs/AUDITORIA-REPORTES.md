@@ -142,3 +142,25 @@ con los datos reales:
   estado rodadas. Una semana que se pagó ANTES de que se le rodara el tiempo (ej. KEVIN, rodado el
   22-sep) ese día sí estaba atrasada. ¿Se paga según cómo estaba ese día, o con lo rodado después?
   Para lo primero hace falta la fecha de cada rodada (`acuerdos_tiempo_rodado` la tiene).
+
+---
+
+## Bloque 2 — ARREGLADO el miércoles 30-sep-2026 (aprobado: "Sí, arregla los 5")
+
+Medido en la app contra la base del mismo día (los datos cambiaron desde el 29):
+
+| # | Antes | Después (comprobado) |
+|---|---|---|
+| 11 | Visitas: las cajitas no sumaban el total | 65 = 54 aprobadas + 1 rechazada + 4 repetir + 0 pendientes + 6 sin resultado (cajitas nuevas "Repetir" y "Sin resultado") |
+| 12 | Flota: "Clientes activos 337" | "Clientes con contrato 328", y la lista de los 7 que figuran activos sin contrato en "Para corregir en los datos" |
+| 13 | Flota: "Retenciones 4" | "Retenidas por mora 22" y "Fiscalía / tránsito / garantía 3", cada una con su nombre |
+| 14 | Aviso de SOAT mezclado | "14 con SOAT o tecno vencido · 32 por vencer en 30 días · 9 sin fecha de SOAT" (las 9 listadas en Flota) |
+| 15 | 7 clientes en liquidación con la moto ya reasignada contaban como retenidos (moto dos veces) | Salen como "En liquidación · moto ya reasignada": no cuentan como motos ni como retenidas en Por admin / Por grupo. En la pestaña Cartera siguen en "Retenidas" (igual que Cartera) con la nota "7 en liquidación, moto ya reasignada" |
+
+El recaudado sigue cuadrando: Resumen = suma de grupos = Por admin = $221.958.302 (septiembre, al 30).
+
+**Celular (375 px):** las 11 pestañas sin nada que se salga. Se arreglaron de paso 3 desbordes, 2 de
+ellos viejos: el gráfico de recaudo diario del Resumen (en el celular la cifra va en millones), la lista
+"En mora hoy" de Cartera y las tarjetas de Convenios.
+
+**Qué NO se tocó:** las cuentas de plata, Cartera, ZALA, la nómina.

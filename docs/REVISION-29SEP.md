@@ -179,3 +179,10 @@ La liquidación cuenta las semanas por calendario y **no descuenta las rodadas**
 aunque la moto estaba guardada en la empresa (choca con la regla del 19-ago). Hoy afecta a **LIQ-0078
 BRADER GUZMAN (YAL65H)**, abierta el 30-sep: 1 semana rodada (1 al 8 de sep, ≈ $202.000). El dueño no
 eligió (30-sep). **No cerrar la de BRADER hasta decidirlo.**
+
+**ROGER, cierre (30-sep):** la oficina cerró LIQ-0064 a las 5:18 pm con **+$1.487.000**, ANTES de subir el
+arreglo de la fórmula (10:16 pm) y sin correr la mig 181. Quedó **$120.000 por encima** de lo acordado
+(+$1.367.000): base $100.000, ahorro del día $26.000, daños $9.000, menos la lavada cobrada dos veces
+$15.000. La mig 181 NO se corrió y no hay que correrla (la liquidación ya está cerrada; el archivo
+quedó en el repo sin aplicar). La diferencia entra en la decisión pendiente de las liquidaciones
+cerradas con el error de la fórmula.

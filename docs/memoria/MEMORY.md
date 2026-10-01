@@ -37,6 +37,12 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 
 ### Bitácora corta — el detalle está en el archivo de cada tema
 
+- **30-sep** — **Reportes bloque 2 arreglado** (cb1207a) y las 11 pestañas caben a 375 · **liquidación:
+  ahorro de los días caja por caja** (93c442d; ROGER $30.000→$4.000, MELISSA +$9.000; 28 cerradas con
+  el error = $1.613.200 de más, decisión pendiente) · ROGER RMM68H se cerró ANTES del arreglo con
+  $120.000 por encima · decisiones tomadas sin construir y pendientes en PENDIENTES P1 →
+  `docs/REVISION-29SEP.md`
+
 - **29-sep** — **Auditoría de Reportes, bloque 1 arreglado** (D-029, b1c2e53): en mora 187 → 65,
   recolección 50 → 58, los grupos suman el total, el período se mide por CUMPLIMIENTO (cambia con la
   fecha). Cuentas en `reportesCifras.ts`. Falta el bloque 2 (Visitas, Flota, Guardadas, Entregas) y

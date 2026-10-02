@@ -144,7 +144,9 @@ export function createTableStore<T>(
     const filas: T[] = [];
     let errorMsg: string | null = null;
     for (let desde = 0; ; desde += TANDA) {
-      let q = supabase.from(table).select("*").order(orderBy, { ascending }).range(desde, desde + TANDA - 1);
+      // Desempate por `id` (2-oct): con dos filas de la misma hora, Postgres no garantiza el mismo
+      // orden entre una tanda y la siguiente, y en el borde una podía salir dos veces y otra ninguna.
+      let q = supabase.from(table).select("*").order(orderBy, { ascending }).order("id", { ascending }).range(desde, desde + TANDA - 1);
       // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
       // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
       if (!completo && opts?.ventanaDias) {
@@ -161,9 +163,19 @@ export function createTableStore<T>(
     }
     fetchEnCurso = false;
     ultimoFetch = Date.now();
+    // Si entra una fila nueva mientras se bajan las tandas, las de abajo se corren un puesto y la
+    // última de una tanda vuelve a llegar en la siguiente: se queda una sola copia de cada fila.
+    const vistos = new Set<unknown>();
+    const unicas = filas.filter(f => {
+      const id = (f as { id?: unknown }).id;
+      if (id === undefined) return true;
+      if (vistos.has(id)) return false;
+      vistos.add(id);
+      return true;
+    });
     snapshot = errorMsg
       ? { data: snapshot.data, loading: false, error: errorMsg }
-      : { data: filas, loading: false, error: null };
+      : { data: unicas, loading: false, error: null };
     emit();
   }
 

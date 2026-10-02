@@ -84,3 +84,62 @@ Comparado indicador por indicador con "Hoy" contra "Este año":
 
 1. Lo que hoy es "foto de hoy" (en mora, al día, flota, convenios): si se elige "Mes anterior", ¿se
    muestra cómo estaban al cierre de ese mes, o se queda como foto de hoy bien marcada?
+
+## Revisión con agentes (2-oct, tarde)
+
+Pedida por el dueño. 4 revisores (veracidad, negocio, uso y diseño, robustez) y un verificador por cada
+uno que intentó tumbar cada hallazgo leyendo el código: 43 confirmados (muchos repetidos entre sí), 1
+tumbado (visitas y recepciones sin páginas: hoy son 156 y 268, lejos de 1.000). Agrupados:
+
+**Arreglo corto, hecho el 2-oct (tarde):** 1, 2, 3, 5 (textos), 9, 13 y 14, más la lista de los
+selectores en modo noche (punto 8). Medido: septiembre $231.951.802 en 1.450 pagos, igual a la base;
+$3.644.000 del acuerdo de base pasan de Empresa a Base (68 de 68 acuerdos iguales a
+`base_pagada_en_acuerdo`); los 3 grupos suman el total; ningún pago sin repartir; con "En mora hoy"
+marcado en Por admin el Resumen ya no cambia; la nómina dice "Cargando…" y no deja pagar ni imprimir
+hasta tener todo. Hoy no hay ningún cierre de nómina guardado (0): el defecto 14 no alcanzó a pasarle a
+nadie. Tampoco hay pagos registrados como `alquiler_reemplazo` (0): el punto 10 no mueve cifras hoy.
+Quedan para la revisión de cada pantalla: 4, 6, 7, 8 (resto), 10, 11, 12 y los de C y D.
+
+**A. Errores del Resumen subido hoy (chicos, arreglar primero)**
+1. Filtros escondidos: Modalidad y Estado marcados en Por admin / Por grupo / Exportar recortan el
+   Resumen (plata y estados) y la barra no lo dice ni deja quitarlos (ReportesView 843-848, 1560;
+   BarraFiltros 47, 95-105). La tarjeta Por grupo no los usa: la misma pantalla se contradice.
+2. Mientras carga o si se cae la señal: $0 con el sello verde "todo cuadra" (ReportesView 567, 693).
+3. El sello se aprueba solo: "los cobradores suman el total" repite "los grupos suman el total" (misma
+   base, 865/310); con filtro, recaudo = suma de grupos por construcción. Dice "clientes" y cuenta contratos.
+4. "Abrir en Cartera" no lleva el cobrador (en recolección tampoco el grupo) y al volver, Reportes
+   olvida período, filtros y pestaña (ReportesView 520, 1648-1650).
+5. Textos de ayuda: dice que el ahorro siempre se devuelve (contradice D-023) y "fecha en que pagó" (el
+   efectivo cuenta por el día en que se digitó) (ResumenReportes 108).
+6. "Plata sin producir" suma motos cuyo contrato sigue cobrando (taller/garantía/fiscalía/tránsito, regla
+   del 30-jul) y deja fuera las Disponibles quietas; usa tarifa L-S en domingo (ReportesView 1638-1640).
+7. "vs período anterior" en "Este mes" compara días que no se parecen (1-2 oct jue-vie contra 1-2 sep
+   mar-mié, día de cobro) (ReportesView 157).
+8. Visual: barras de la gráfica muy delgadas para tocar; lista de los selectores con letra oscura en modo
+   noche (BarraFiltros 22); en computador una sola columna estirada; la hoja no se cierra con Esc;
+   "Recaudado hoy" de arriba no obedece filtros; las pestañas se mueven al tocarlas.
+
+**B. Cifras que vienen de antes y afectan varias pestañas**
+9. Lo pagado al acuerdo de base sale como "Empresa"; por D-023 y mig 177 es del cliente (reportesResumen 52).
+10. El alquiler de la moto prestada se le suma al grupo de la moto original; la regla del 30-jul dice que
+    es del grupo de la prestada (ReportesView 714).
+11. Filtro por cobrador: se atribuye por quién tiene la moto HOY, no cuando se cobró; existe
+    `motos.subadmin_asignado_desde` y no se usa (ReportesView 717).
+12. "En mora" y "Retenidas" cuentan distinto según la pestaña (174/179, 23/46).
+13. Pagos de a 1.000 ordenados solo por `created_at`, sin desempate: en el borde de una tanda uno puede
+    repetirse y otro perderse. Es de toda la app (createTableStore 147).
+14. Nómina: se puede "Cerrar y pagar" con datos a medias (si falla la consulta cae al método viejo sin
+    avisar; al pasar de semana usa las cajas de la anterior) y puede salir "Pagado" con el cierre de otra
+    semana (useNominaCierres 54-61, 119-121; ReportesView 591, 641-646, 2161). Un cierre no se edita.
+
+**C. Ideas nuevas para directivos**
+15. Por grupo: cuánto deja cada moto, cuántas trabajando, separar lo de la empresa.
+16. Plata de los clientes que guarda la empresa (ahorro + base) y cuánto saldría si se liquidara hoy a
+    los que están en riesgo.
+17. Liquidaciones del período: cuántas, por qué, cuánto se devolvió y cuánto se perdió.
+18. Tendencia: cumplimiento contra el mes anterior y quiénes se dañaron este mes.
+19. Medir al cobrador justo: desde que tiene la moto, y promesas de pago cumplidas.
+
+**D. Fondo**
+20. Partir el archivo de 3.216 líneas, sacar las cuentas de plata a funciones con pruebas; cada pago que
+    entra rehace las 11 pestañas; la hoja de detalle pinta miles de filas de una vez.

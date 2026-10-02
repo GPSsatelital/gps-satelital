@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import ImgPrivada from "../components/ImgPrivada";
+import { primaryBtn } from "../styles/shared";
 import type { ViewKey } from "../App";
 import { usePagos, esPagoDeCaja, fechaDeCaja, calcularCuotaDia } from "../hooks/usePagos";
 import { useContratos, ahorroTotal } from "../hooks/useContratos";
@@ -39,7 +40,7 @@ import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones
 import BarraFiltros from "../components/reportes/BarraFiltros";
 import ResumenReportes, { type FilaEstado } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
-import { desgloseRecaudo, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
+import { desgloseRecaudo, baseDeAcuerdosDeBase, pagosSinRepartir, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
 import { AlertTriangle, PiggyBank, FileWarning, ChevronRight } from "lucide-react";
 
 interface Props {
@@ -564,13 +565,18 @@ export default function ReportesView({ onNavigate }: Props) {
   // La hoja que se abre al tocar un número del Resumen (rediseño, 2-oct-2026).
   const [detalle, setDetalle] = useState<ContenidoDetalle | null>(null);
   const esAdmin       = profile?.role === "ADMIN" || profile?.role === "ADMIN_PRINCIPAL";
-  const { pagos }     = usePagos();
-  const { contratos } = useContratos();
-  const { clientes }  = useClientes();
-  const { motos }     = useMotos();
+  const { pagos, loading: cargandoPagos, error: errorPagos } = usePagos();
+  const { contratos, loading: cargandoContratos, error: errorContratos } = useContratos();
+  const { clientes, loading: cargandoClientes, error: errorClientes }  = useClientes();
+  const { motos, loading: cargandoMotos, error: errorMotos }     = useMotos();
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
-  const { convenios, convenioPorCobrarDelContrato } = useConvenios();
+  const { convenios, convenioPorCobrarDelContrato, loading: cargandoConvenios, error: errorConvenios } = useConvenios();
+  // Mientras llegan los datos de la primera carga las cuentas dan cero, y un $0 con el sello verde
+  // se lee como "no entró nada y todo cuadra". Se dice "cargando" (o "no se pudo") en vez de eso.
+  const cargandoDatos = cargandoPagos || cargandoContratos || cargandoClientes || cargandoMotos || cargandoConvenios;
+  const errorDatos = [errorPagos, errorContratos, errorClientes, errorMotos, errorConvenios].find(Boolean) ?? null;
+  const sinDatos = (pagos.length === 0 || contratos.length === 0) && (cargandoDatos || !!errorDatos);
 
   // ── NÓMINA DE COBRADORES (regla del dueño, 22-ago — memoria regla-nomina-cobradores) ──
   const domingoNomina = useMemo(() => {
@@ -588,16 +594,23 @@ export default function ReportesView({ onNavigate }: Props) {
     d.setDate(d.getDate() - 84);
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
-  const { eventos: eventosNomina } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina");
+  const [intentoNomina, setIntentoNomina] = useState(0);
+  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina", intentoNomina);
   // Las rodadas con su fecha: cada semana se paga según cómo estaba el día en que se cobró (30-sep).
-  const registrosRodadas = useRodadas(tab === "nomina" || tab === "resumen");
+  const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen", intentoNomina);
   const rodadasNomina = useMemo(() => {
     if (!registrosRodadas) return null;
     const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
     return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
   }, [registrosRodadas, contratos]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
-  const { cerrarSemana, cierreDe } = useNominaCierres(lunesNomina, tab === "nomina");
+  const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina");
+  // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
+  // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
+  const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || sinDatos;
+  const nominaError = errorCajas || errorRodadas || errorCierres || (!!errorDatos && sinDatos);
+  const nominaLista = !nominaCargando && !nominaError;
+  const reintentarNomina = () => { setIntentoNomina(i => i + 1); void recargarCierres(); };
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
   const nominaDetalle = useMemo(() => {
     if (tab !== "nomina") return { nominas: [], sinGestion: [] };
@@ -1556,13 +1569,30 @@ export default function ReportesView({ onNavigate }: Props) {
   const irFicha = (contratoId: string) => { const id = contratoPorId.get(contratoId)?.cliente_id; if (id) { setDetalle(null); onNavigate?.("ficha_cliente", id); } };
   const pasaFiltroGC = (grupo: string | null | undefined, adminId: string | null | undefined) =>
     (filtros.grupo.length === 0 || filtros.grupo.includes(grupo ?? "")) && (filtros.cobrador.length === 0 || filtros.cobrador.includes(adminId ?? "__none__"));
-  // Los pagos del período de los contratos que pasan los filtros; sin filtros, todos los del período.
-  const pagosFiltrados = useMemo(() => filtrosActivos ? pagosRango.filter(p => setContratosFiltrados.has(p.contrato_id)) : pagosRango, [pagosRango, filtrosActivos, setContratosFiltrados]);
-  const recaudoR = useMemo(() => desgloseRecaudo(pagosFiltrados), [pagosFiltrados]);
+  // El Resumen obedece SOLO a lo que muestra su barra: período, grupo y cobrador. La modalidad y el
+  // estado que se marquen en Por admin, Por grupo o Exportar no lo tocan (2-oct: sin esto, tocar "En
+  // mora hoy" en otra pestaña dejaba el recaudado del Resumen recortado sin que la barra lo dijera).
+  const baseResumen = useMemo(() => baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId)), [baseGestion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Los pagos del período, uno por uno, con su grupo y cobrador. Sale por otro camino que las filas
+  // de cada contrato: por eso el sello puede comparar el total contra la suma de los grupos.
+  const pagosFiltrados = useMemo(() => pagosRango.filter(p => pasaFiltroGC(atribucion.get(p.contrato_id)?.grupo, atribucion.get(p.contrato_id)?.adminId)), [pagosRango, atribucion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Lo que cada pago le aportó a la base por un acuerdo de base: es del cliente, no de la empresa.
+  const baseAcuerdoR = useMemo(() => {
+    const vs = new Map(contratos.map(c => [c.id, c.valor_semanal]));
+    return baseDeAcuerdosDeBase(pagos as never, convenios as never, id => vs.get(id));
+  }, [pagos, convenios, contratos]);
+  const recaudoR = useMemo(() => desgloseRecaudo(pagosFiltrados as never, baseAcuerdoR), [pagosFiltrados, baseAcuerdoR]);
   const serieR = useMemo(() => serieRecaudo(pagosFiltrados, desde, hasta, fechaDeCaja as never), [pagosFiltrados, desde, hasta]);
-  const activosF = baseFiltrada.filter(r => r.contratoActivo);
+  const medibleR = baseResumen.filter(cuentaParaCumplimiento);
+  const cumplimientoR = {
+    pct: pctCumplimiento(medibleR.map(r => r.cum)),
+    debia: medibleR.reduce((s, r) => s + r.cum.debia, 0),
+    cubrio: medibleR.reduce((s, r) => s + r.cum.cubrio, 0),
+  };
+  const anteriorR = useMemo(() => recaudoAnteriorCon({ ...filtros, modalidad: [], estado: [] }), [pagos, desdeAnt, hastaAnt, atribucion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const activosF = baseResumen.filter(r => r.contratoActivo);
   const enMoraF = activosF.filter(r => r.estadoCartera === "mora").sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
-  const retenidasF = baseFiltrada.filter(r => r.estado !== "cerrado" && !r.contratoActivo);
+  const retenidasF = baseResumen.filter(r => r.estado !== "cerrado" && !r.contratoActivo);
   const tramosR = tramosMora(enMoraF);
   // Cómo estaban AL CIERRE del período (si ya terminó): reconstruido con la fecha de cada pago.
   const cierreR = useMemo(() => {
@@ -1572,7 +1602,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const convPor = new Map<string, typeof convenios>();
     convenios.forEach(cv => { if (!convPor.has(cv.contrato_id)) convPor.set(cv.contrato_id, []); convPor.get(cv.contrato_id)!.push(cv); });
     const filas: { r: MotoRowG; estado: "aldia" | "gabela" | "mora" | "retenida"; diasMora: number; recoleccion: boolean }[] = [];
-    for (const r of baseFiltrada) {
+    for (const r of baseResumen) {
       // Igual que la columna de hoy: las retenidas en liquidación (moto ya reasignada) sí cuentan.
       if (r.estado === "cerrado") continue;
       const c = contratoPorId.get(r.contratoId);
@@ -1599,7 +1629,7 @@ export default function ReportesView({ onNavigate }: Props) {
       filas.push({ r, estado: e.estado === "al-dia" ? "aldia" : e.estado, diasMora: e.diasMora, recoleccion: e.estado === "mora" && e.diasMora > 3 && !plazo });
     }
     return filas;
-  }, [tab, hasta, hoyStr, pagos, convenios, baseFiltrada, contratoPorId, recepciones, gestiones, rodadasNomina]);
+  }, [tab, hasta, hoyStr, pagos, convenios, baseResumen, contratoPorId, recepciones, gestiones, rodadasNomina]);
   const cierreTexto = cierreR ? `${Number(hasta.slice(8, 10))}-${MESES_CORTO[Number(hasta.slice(5, 7)) - 1]}` : null;
   const cuentaCierre = (f: (x: NonNullable<typeof cierreR>[number]) => boolean) => cierreR ? cierreR.filter(f).length : null;
   const estadosR: FilaEstado[] = [
@@ -1609,14 +1639,15 @@ export default function ReportesView({ onNavigate }: Props) {
     { clave: "recoleccion", etiqueta: "En recolección", hoy: enMoraF.filter(r => r.recoleccion).length, cierre: cuentaCierre(x => x.recoleccion) },
     { clave: "retenidas", etiqueta: "Retenidas", hoy: retenidasF.length, cierre: cuentaCierre(x => x.estado === "retenida") },
   ];
-  // El sello: comprobaciones que SÍ pueden fallar (cada una compara contra una cuenta independiente).
+  // El sello: tres comprobaciones que SÍ pueden fallar, cada una entre dos cuentas hechas por caminos
+  // distintos (ver `verificarCifras`).
   const vigentesF = contratos.filter(c => (c.estado === "Activo" || c.estado === "Suspendido") && pasaFiltroGC(atribucion.get(c.id)?.grupo, atribucion.get(c.id)?.adminId)).length;
   const verificacionesR = verificarCifras({
     totalRecaudado: recaudoR.total,
-    sumaGrupos: baseFiltrada.reduce((s, r) => s + r.monto, 0),
-    sumaCobradores: porAdminData.reduce((s, b) => s + b.recaudado, 0),
+    sumaGrupos: baseResumen.reduce((s, r) => s + r.monto, 0),
+    sinRepartir: pagosSinRepartir(pagosFiltrados as never),
     sumaEstados: estadosR[0].hoy + estadosR[1].hoy + estadosR[2].hoy + estadosR[4].hoy,
-    totalClientes: vigentesF,
+    totalContratos: vigentesF,
   });
   // Por grupo: todos los grupos a la vista (para poder cambiar), con el filtro de cobrador puesto.
   const gruposR = useMemo(() => {
@@ -1682,7 +1713,7 @@ export default function ReportesView({ onNavigate }: Props) {
       return;
     }
     if (clave === "cumplimiento") {
-      const filas = baseFiltrada.filter(cuentaParaCumplimiento).filter(r => r.cum.falto > 0).sort((a, b) => b.cum.falto - a.cum.falto);
+      const filas = medibleR.filter(r => r.cum.falto > 0).sort((a, b) => b.cum.falto - a.cum.falto);
       setDetalle({
         titulo: `No completaron lo del período · ${filas.length}`,
         subtitulo: `${per}. El monto es lo que les faltó de lo que se les vencía en el período.`,
@@ -1785,7 +1816,7 @@ export default function ReportesView({ onNavigate }: Props) {
         )}
         <div style={{ textAlign: isMobile ? "left" : "right" }}>
           <div style={{ fontSize: 12, color: "var(--muted2)" }}>Recaudado hoy</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>$ {fmt(recaudadoHoy)}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{sinDatos ? "…" : `$ ${fmt(recaudadoHoy)}`}</div>
         </div>
       </div>
 
@@ -1836,7 +1867,30 @@ export default function ReportesView({ onNavigate }: Props) {
       </div>
 
       {/* ── TAB RESUMEN (rediseño, 2-oct-2026) ── */}
-      {tab === "resumen" && (
+      {tab === "resumen" && sinDatos && (
+        <div role="status" style={{ ...card, display: "grid", gap: 8, justifyItems: "start", textAlign: "left" }}>
+          {errorDatos ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: "var(--bad-ink)" }}>
+                <AlertTriangle size={18} aria-hidden="true" /> No se pudieron traer los datos
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.5 }}>
+                Sin ellos las cifras saldrían en cero. Revisa la conexión a internet y vuelve a intentar.
+              </div>
+              <button onClick={() => window.location.reload()} style={{ ...primaryBtn, minHeight: 44 }}>Volver a intentar</button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Cargando las cifras…</div>
+              <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.5 }}>
+                Se están trayendo los pagos y los contratos. En un momento aparecen.
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === "resumen" && !sinDatos && (
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)" }}>
           {/* Avisos: tocar uno muestra a quiénes se refiere. */}
           {(() => {
@@ -1868,8 +1922,8 @@ export default function ReportesView({ onNavigate }: Props) {
             textoPeriodo={textoRango(desde, hasta)}
             verificaciones={verificacionesR}
             recaudo={recaudoR}
-            anterior={{ total: recaudoAnterior, texto: textoRango(desdeAnt, hastaAnt), delta: deltaRec }}
-            cumplimiento={{ pct: gPctCum, debia: gDebia, cubrio: gCubrio }}
+            anterior={{ total: anteriorR, texto: textoRango(desdeAnt, hastaAnt), delta: deltaRecaudo(recaudoR.total, anteriorR) }}
+            cumplimiento={cumplimientoR}
             estados={estadosR}
             cierreTexto={cierreTexto}
             tramos={tramosR.map(t => ({ clave: t.clave, etiqueta: t.etiqueta, n: t.filas.length, debe: t.debe }))}
@@ -1970,6 +2024,21 @@ export default function ReportesView({ onNavigate }: Props) {
                 que la nómina calcula desde los PAGOS. Antes este aviso dependía de "¿llegaron
                 eventos?" — y con 5 eventos sueltos de una semana de 137 pagos no salía, mientras
                 la pantalla mostraba un total en el que no se podía confiar. */}
+            {!nominaLista && (
+              <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, textAlign: "left",
+                background: nominaError ? "var(--bad-soft)" : "var(--accent-soft2)", border: "1px solid " + (nominaError ? "var(--bad-ink)" : "var(--accent-line)"),
+                fontSize: 13, color: nominaError ? "var(--bad-ink)" : "var(--accent-ink)", lineHeight: 1.5 }}>
+                <span style={{ flex: "1 1 220px", minWidth: 0 }}>
+                  {nominaError
+                    ? <>No se pudo traer toda la información de esta semana. <b>No pagues ni imprimas con estas cifras.</b></>
+                    : <>Cargando la nómina completa de esta semana. Espera a que termine antes de pagar o imprimir.</>}
+                </span>
+                {nominaError && (
+                  <button onClick={reintentarNomina} style={{ ...primaryBtn, minHeight: 44, flexShrink: 0 }}>Volver a intentar</button>
+                )}
+              </div>
+            )}
+
             {!vigiaCubre(lunesNomina) && (
               <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)", fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>
                 ⚠️ <b>Semana anterior al registro exacto de ciclos</b> (existe desde el 22 de agosto).
@@ -2158,18 +2227,18 @@ export default function ReportesView({ onNavigate }: Props) {
                           );
                         })()
                       : (
-                        <button onClick={() => setCerrando(n.subadminId)}
-                          style={{ border: "none", background: "var(--ok-ink)", color: "var(--on-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5, flexShrink: 0 }}>
-                          ✓ Cerrar y pagar
+                        <button onClick={() => setCerrando(n.subadminId)} disabled={!nominaLista}
+                          style={{ border: "none", background: "var(--ok-ink)", color: "var(--on-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: nominaLista ? "pointer" : "not-allowed", fontSize: 12.5, flexShrink: 0, opacity: nominaLista ? 1 : 0.5 }}>
+                          {nominaLista ? "✓ Cerrar y pagar" : nominaError ? "No se puede pagar" : "Cargando…"}
                         </button>
                       ))}
-                    <button onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "", {
+                    <button disabled={!nominaLista} onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "", {
                       // Una semana cerrada se imprime tal como se pagó: sin el reverso vivo, que
                       // hoy podría decir otra cosa que las cifras congeladas de ese día.
                       sinGestion: n.subadminId && cierreDe(n.subadminId) ? [] : (sinGestionPorCobrador.get(n.subadminId ?? "") ?? []),
                       motosAsignadas: n.subadminId && cierreDe(n.subadminId) ? 0 : motos.filter(m => m.subadmin_id === n.subadminId).length,
                     })}
-                      style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
+                      style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: nominaLista ? "pointer" : "not-allowed", fontSize: 12.5, opacity: nominaLista ? 1 : 0.5 }}>
                       🖨️ Desprendible
                     </button>
                   </div>

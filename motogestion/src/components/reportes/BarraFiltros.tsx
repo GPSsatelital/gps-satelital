@@ -19,7 +19,7 @@ function Selector({ icono, etiqueta, valor, opciones, onCambio, activo }: {
       <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{etiqueta}</span>
       <select value={valor} onChange={e => onCambio(e.target.value)}
         style={{ appearance: "none", WebkitAppearance: "none", border: "none", background: "transparent", color: "var(--text)", fontSize: 13, fontWeight: 500, width: "100%", minWidth: 0, height: "100%", cursor: "pointer", outline: "none", fontFamily: "inherit", textOverflow: "ellipsis" }}>
-        {opciones.map(o => <option key={o.valor} value={o.valor} style={{ color: "#0f172a" }}>{o.etiqueta}</option>)}
+        {opciones.map(o => <option key={o.valor} value={o.valor} style={{ background: "var(--card)", color: "var(--text)" }}>{o.etiqueta}</option>)}
       </select>
       <ChevronDown size={16} aria-hidden="true" style={{ position: "absolute", right: 10, color: "var(--muted2)", pointerEvents: "none" }} />
     </label>

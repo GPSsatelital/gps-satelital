@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
 import type { GestionNomina } from "../utils/nominaCobradores";
@@ -47,18 +47,27 @@ async function subir(dataUrl: string, ruta: string): Promise<{ url: string | nul
   }
 }
 
+const SIN_CIERRES: NominaCierre[] = [];
+
 export function useNominaCierres(semanaLunes: string, activo: boolean) {
-  const [cierres, setCierres] = useState<NominaCierre[]>([]);
-  const [cargando, setCargando] = useState(false);
+  // Lo traído se marca con su semana (2-oct). Antes, al pasar de semana se seguían viendo los cierres
+  // de la anterior hasta que llegaba la respuesta (salía "Pagado" con el total de otra semana), y si
+  // dos respuestas llegaban en desorden la vieja pisaba a la nueva y el error quedaba fijo.
+  const [traido, setTraido] = useState<{ semana: string; cierres: NominaCierre[]; error: boolean } | null>(null);
+  const pedido = useRef(0);
 
   const recargar = useCallback(async () => {
     if (!activo) return;
-    setCargando(true);
-    const { data } = await supabase
+    const mio = ++pedido.current;
+    const { data, error } = await supabase
       .from("nomina_cierres").select("*").eq("semana_lunes", semanaLunes);
-    setCierres((data ?? []) as NominaCierre[]);
-    setCargando(false);
+    if (mio !== pedido.current) return;   // llegó tarde: ya se pidió otra semana
+    setTraido({ semana: semanaLunes, cierres: (data ?? []) as NominaCierre[], error: !!error });
   }, [semanaLunes, activo]);
+
+  const vigente = traido?.semana === semanaLunes ? traido : null;
+  const cierres = vigente?.cierres ?? SIN_CIERRES;
+  const cargando = activo && !vigente;
 
   useEffect(() => { void recargar(); }, [recargar]);
 
@@ -117,9 +126,9 @@ export function useNominaCierres(semanaLunes: string, activo: boolean) {
 
   /** El cierre de un cobrador en esta semana, si ya está pagada. */
   const cierreDe = useCallback(
-    (subadminId: string | null) => cierres.find(c => c.subadmin_id === subadminId) ?? null,
-    [cierres],
+    (subadminId: string | null) => cierres.find(c => c.subadmin_id === subadminId && c.semana_lunes === semanaLunes) ?? null,
+    [cierres, semanaLunes],
   );
 
-  return { cierres, cargando, cerrarSemana, cierreDe, recargar, hoy: hoyISO() };
+  return { cierres, cargando, error: !!vigente?.error, cerrarSemana, cierreDe, recargar, hoy: hoyISO() };
 }

@@ -223,6 +223,9 @@ Lo que está afectando cifras reales de clientes en este momento.
   (y el desprendible) mostraba mucho menos de lo real porque traía solo 1.000 registros (D-031,
   arreglado el 2-oct). Ej.: Brandon, semana del 21-sep, $57.500 en vez de $402.500; la semana completa
   $930.000 en vez de $2.006.250. Si se pagó mirando esa pantalla, se les debe la diferencia.
+  **Dato del 2-oct:** en la app no hay NINGÚN cierre de nómina guardado (`nomina_cierres` = 0), así
+  que nunca se usó "Cerrar y pagar": lo que se les pagó se hizo por fuera. Preguntar al dueño con qué
+  cifra les pagó cada semana.
 
 - [ ] 💻 ⚠️ **ZALA no ve el acuerdo VENCIDO** (visto el 2-oct). Desde el 17-sep la pantalla y Mi Día
   siguen cobrando el acuerdo incumplido; la vitrina `zala.cliente` solo mira los acuerdos activos. Hoy:
@@ -582,6 +585,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | **Reportes: arreglo corto tras la revisión con agentes** — el Resumen ya no se recorta con filtros que no muestra; "Cargando" en vez de $0 con sello verde; el sello compara de verdad (grupos contra pagos, cada peso repartido, estados contra vigentes); lo pagado al acuerdo de base va a la parte del cliente ($3.644.000 en septiembre); la nómina no deja pagar ni imprimir con datos a medias ni muestra el cierre de otra semana; los pagos de a 1.000 ya no se repiten ni se pierden en el borde (toda la app). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **Reportes: Resumen nuevo** — filtros de período, grupo y cobrador que mandan sobre todo lo de abajo; cada número se toca y abre la lista de quiénes son, con "Abrir en Cartera" ya filtrada y descarga; columna "hoy" contra "al cierre" del período; recaudado separado empresa / ahorro / base; sello que revisa que las cifras cuadren; modo oscuro sin textos ilegibles (0 de 119). `docs/REDISENO-REPORTES.md` |
 | 2-oct | 🔴 **Recolección y días de mora del acuerdo** (D-030, mig 182) — la moto guardada sin prestada no va a recolección (REGINALDO, JAIRO MARIMON); con acuerdo los días se cuentan sobre el conjunto (REINEL 1 → 15 días); sin mínimo de plata. Cola 36 → 55. Foto de la plata 0, espejo 330/0 |
 | 2-oct | 🔴 **Nómina: semanas rodadas y las 1.000 filas** (D-031) — se paga como estaba el día del cobro; la pantalla y el desprendible traen todos los registros (semana del 21-sep: $930.000 → $2.017.500, impreso = pantalla) |

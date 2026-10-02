@@ -5,16 +5,17 @@ import { supabase } from "../lib/supabase";
 // al cobrador según cómo estaba el contrato el día en que se cobró. La conversión a períodos vive en
 // `rodadasDesdeRegistros` (nominaCobradores), que es pura y tiene sus pruebas.
 //
-// `null` mientras carga o si alguna de las dos consultas falla: la nómina se queda entonces con la
-// cuenta de antes, en vez de pagar con una historia a medias.
+// `registros` es null mientras carga o si alguna de las dos consultas falla: la nómina se queda
+// entonces con la cuenta de antes, en vez de pagar con una historia a medias. `cargando` y `error`
+// lo dicen aparte (2-oct), para que la pantalla no deje cerrar la semana con esa cuenta.
 
 export type RegistrosRodadas = {
   acuerdos: Array<{ contrato_id: string; decision: string; dias_en_empresa: number | null; created_at: string }>;
   auditoria: Array<{ contrato_id: string; campo: string; valor_anterior: string | null; valor_nuevo: string | null; created_at: string }>;
 };
 
-export function useRodadas(activo: boolean) {
-  const [registros, setRegistros] = useState<RegistrosRodadas | null>(null);
+export function useRodadas(activo: boolean, intento = 0) {
+  const [traido, setTraido] = useState<{ intento: number; registros: RegistrosRodadas | null; error: boolean } | null>(null);
 
   useEffect(() => {
     if (!activo) return;
@@ -28,10 +29,12 @@ export function useRodadas(activo: boolean) {
         .like("valor_nuevo", "exoneradas %"),
     ]).then(([a, b]) => {
       if (!vivo) return;
-      setRegistros(a.error || b.error ? null : { acuerdos: a.data ?? [], auditoria: b.data ?? [] });
+      const error = !!(a.error || b.error);
+      setTraido({ intento, registros: error ? null : { acuerdos: a.data ?? [], auditoria: b.data ?? [] }, error });
     });
     return () => { vivo = false; };
-  }, [activo]);
+  }, [activo, intento]);
 
-  return registros;
+  const vigente = traido?.intento === intento ? traido : null;
+  return { registros: vigente?.registros ?? null, cargando: activo && !vigente, error: !!vigente?.error };
 }

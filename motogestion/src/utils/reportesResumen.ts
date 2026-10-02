@@ -10,6 +10,7 @@ import {
 import { exoneradasAlDia, type RodadaNomina } from "./nominaCobradores";
 
 type PagoR = {
+  id?: string;
   contrato_id: string;
   fecha: string;
   created_at?: string | null;
@@ -33,15 +34,16 @@ export type DesgloseRecaudo = {
   efectivo: number;
   transferencia: number;
   campo: number;
-  /** Ahorro de las semanas: es del cliente, se le devuelve al terminar o se usa en su liquidación. */
+  /** Ahorro de las semanas: si termina el contrato paga la moto; si se va antes, se le devuelve (D-023). */
   ahorro: number;
-  /** Base inicial y saldo a favor: también plata del cliente, guardada. */
+  /** Base inicial (también lo que paga de su acuerdo de base) y saldo a favor: plata del cliente, guardada. */
   baseYSaldo: number;
-  /** Lo que es de la empresa: tarifa de las semanas, acuerdos, multas y demás deudas. */
+  /** Lo que es de la empresa: tarifa de las semanas, acuerdos de deudas, multas y demás. */
   empresa: number;
 };
 
-export function desgloseRecaudo(pagos: PagoR[]): DesgloseRecaudo {
+/** `baseDeAcuerdo`: lo que cada pago le aportó a la base por su acuerdo de base (ver `baseDeAcuerdosDeBase`). */
+export function desgloseRecaudo(pagos: PagoR[], baseDeAcuerdo?: Map<string, number>): DesgloseRecaudo {
   const n = (v: number | null | undefined) => Number(v ?? 0);
   let total = 0, efectivo = 0, transferencia = 0, campo = 0, ahorro = 0, baseYSaldo = 0;
   for (const p of pagos) {
@@ -49,9 +51,79 @@ export function desgloseRecaudo(pagos: PagoR[]): DesgloseRecaudo {
     if (p.tipo_registro === "campo") campo += n(p.valor);
     if (p.metodo === "Efectivo") efectivo += n(p.valor); else transferencia += n(p.valor);
     ahorro += n(p.aplicado_ahorro);
-    baseYSaldo += n(p.aplicado_base_inicial) + n(p.aplicado_saldo_favor);
+    baseYSaldo += n(p.aplicado_base_inicial) + n(p.aplicado_saldo_favor) + (p.id ? baseDeAcuerdo?.get(p.id) ?? 0 : 0);
   }
   return { total, efectivo, transferencia, campo, ahorro, baseYSaldo, empresa: total - ahorro - baseYSaldo };
+}
+
+// ── 1b. LO QUE SE PAGA DEL ACUERDO DE BASE ES BASE (D-023 · migs 177 y 178) ─────────────────────
+// Quien entra sin completar su base firma un acuerdo "Base inicial incompleta…". Lo que paga de ese
+// acuerdo el motor lo anota como `aplicado_convenio`, pero es la alcancía del cliente: la base de
+// datos se lo suma a `ahorro_apertura` (disparador `sumar_pago_de_base`). Esta es la MISMA cuenta,
+// pago por pago: lo abonado al acuerdo es base hasta la parte de base del acuerdo (nunca más que el
+// piso de $308.000, o $305.000 en la tarifa vieja). Igual que la base de datos, solo cuando el
+// contrato tiene ese único acuerdo: con otro al lado no se sabe a cuál fue cada peso.
+export const CONCEPTO_ACUERDO_DE_BASE = "Base inicial incompleta al crear el contrato";
+
+export function baseDeAcuerdosDeBase(
+  pagos: Array<{ id: string; contrato_id: string; estado?: string | null; created_at?: string | null; aplicado_convenio?: number | null }>,
+  convenios: Array<{ id: string; contrato_id: string; concepto?: string | null; deuda_total?: number | null; created_at?: string | null }>,
+  valorSemanalDe: (contratoId: string) => number | null | undefined,
+): Map<string, number> {
+  const res = new Map<string, number>();
+  const convPor = new Map<string, typeof convenios>();
+  for (const cv of convenios) {
+    if (!convPor.has(cv.contrato_id)) convPor.set(cv.contrato_id, []);
+    convPor.get(cv.contrato_id)!.push(cv);
+  }
+  const deBase = new Map<string, (typeof convenios)[number]>();
+  for (const [contratoId, lista] of convPor) {
+    if (lista.length === 1 && lista[0].concepto === CONCEPTO_ACUERDO_DE_BASE) deBase.set(contratoId, lista[0]);
+  }
+  const pagosPor = new Map<string, typeof pagos>();
+  for (const p of pagos) {
+    const cv = deBase.get(p.contrato_id);
+    if (!cv || p.estado !== "Confirmado" || (p.created_at ?? "") < (cv.created_at ?? "")) continue;
+    if (!pagosPor.has(p.contrato_id)) pagosPor.set(p.contrato_id, []);
+    pagosPor.get(p.contrato_id)!.push(p);
+  }
+  for (const [contratoId, lista] of pagosPor) {
+    const cv = deBase.get(contratoId)!;
+    const vs = Number(valorSemanalDe(contratoId) ?? 0);
+    const piso = vs > 0 && vs < 202000 ? 305000 : 308000;
+    const tope = Math.min(Number(cv.deuda_total ?? 0), piso);
+    const base = (abonado: number) => Math.min(Math.max(abonado, 0), tope);
+    lista.sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "") || a.id.localeCompare(b.id));
+    let abonado = 0;
+    for (const p of lista) {
+      const antes = base(abonado);
+      abonado += Number(p.aplicado_convenio ?? 0);
+      const aporte = base(abonado) - antes;
+      if (aporte !== 0) res.set(p.id, aporte);
+    }
+  }
+  return res;
+}
+
+// ── 1c. ¿CADA PESO TIENE DICHO A DÓNDE FUE? ─────────────────────────────────────────────────────
+// El motor reparte cada pago en semana (con su ahorro adentro), prorrateo, acuerdo, deudas, base y
+// saldo a favor, y la suma da el valor del pago. En los diarios el ahorro puede ir por fuera de la
+// tarifa. Medido el 2-oct: los 3.106 pagos que cuentan como recaudo cuadran. Uno que no cuadre es
+// plata que el reporte no sabe partir, y el sello lo dice. El alquiler de la prestada no pasa por el
+// motor (todo su valor es el alquiler), así que no se revisa.
+export function pagosSinRepartir(pagos: PagoR[]): { n: number; plata: number } {
+  const n = (v: number | null | undefined) => Number(v ?? 0);
+  let cuantos = 0, plata = 0;
+  for (const p of pagos) {
+    if (p.tipo_registro === "alquiler_reemplazo") continue;
+    const s = n(p.aplicado_tarifa) + n(p.aplicado_prorrateo) + n(p.aplicado_convenio) + n(p.aplicado_deuda)
+      + n(p.aplicado_saldo_favor) + n(p.aplicado_base_inicial);
+    const v = Math.round(n(p.valor));
+    if (Math.round(s) === v || Math.round(s + n(p.aplicado_ahorro)) === v) continue;
+    cuantos++;
+    plata += n(p.valor) - s;
+  }
+  return { n: cuantos, plata };
 }
 
 // ── 2. ANTIGÜEDAD DE LA MORA ────────────────────────────────────────────────────────────────────
@@ -178,14 +250,20 @@ export function estadoAlCierre(
 // El reporte se revisa a sí mismo y lo dice. Si algo no cuadra, lo muestra en vez de esconderlo.
 export type Verificacion = { ok: boolean; texto: string };
 
+// Cada comprobación compara dos cuentas hechas por caminos distintos, para que de verdad pueda fallar:
+// el total sale de los pagos sueltos y los grupos de las filas de cada contrato; el reparto lo hizo
+// la base de datos al confirmar; los estados salen de las filas y los vigentes de los contratos.
 export function verificarCifras(p: {
+  /** Suma de los pagos del período, uno por uno. */
   totalRecaudado: number;
+  /** Suma de lo que se le contó a cada contrato en su grupo. */
   sumaGrupos: number;
-  sumaCobradores: number;
+  /** Pagos cuyo reparto no da su valor (ver `pagosSinRepartir`). */
+  sinRepartir: { n: number; plata: number };
   /** Al día + gabela + en mora + retenidas… */
   sumaEstados: number;
-  /** …contra los clientes con contrato vigente que cuenta el reporte. */
-  totalClientes: number;
+  /** …contra los contratos vigentes (activos o con la moto retenida). */
+  totalContratos: number;
 }): Verificacion[] {
   const plata = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
   const igual = (a: number, b: number) => Math.round(a) === Math.round(b);
@@ -197,16 +275,16 @@ export function verificarCifras(p: {
         : `Los grupos suman ${plata(p.sumaGrupos)} y el total es ${plata(p.totalRecaudado)}`,
     },
     {
-      ok: igual(p.sumaCobradores, p.totalRecaudado),
-      texto: igual(p.sumaCobradores, p.totalRecaudado)
-        ? "Los cobradores suman el total recaudado"
-        : `Los cobradores suman ${plata(p.sumaCobradores)} y el total es ${plata(p.totalRecaudado)}`,
+      ok: p.sinRepartir.n === 0,
+      texto: p.sinRepartir.n === 0
+        ? "Cada peso recaudado tiene dicho a qué se aplicó"
+        : `${p.sinRepartir.n} ${p.sinRepartir.n === 1 ? "pago" : "pagos"} por ${plata(p.sinRepartir.plata)} sin decir a qué se aplicaron`,
     },
     {
-      ok: p.sumaEstados === p.totalClientes,
-      texto: p.sumaEstados === p.totalClientes
-        ? "Al día, gabela, mora y retenidas suman todos los clientes"
-        : `Los estados suman ${p.sumaEstados} y hay ${p.totalClientes} clientes`,
+      ok: p.sumaEstados === p.totalContratos,
+      texto: p.sumaEstados === p.totalContratos
+        ? "Al día, gabela, mora y retenidas suman todos los contratos vigentes"
+        : `Los estados suman ${p.sumaEstados} y hay ${p.totalContratos} contratos vigentes`,
     },
   ];
 }

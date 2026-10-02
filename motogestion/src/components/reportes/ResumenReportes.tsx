@@ -105,7 +105,7 @@ export default function ResumenReportes(p: {
 
       {/* Lo que entró: el número más grande de la pantalla. */}
       <Tarjeta titulo={`Recaudado · ${p.textoPeriodo}`}
-        ayuda="Todo lo que entró en el período, por la fecha en que pagó el cliente. Empresa: tarifa de las semanas, acuerdos, multas y demás deudas. Ahorro: lo que el cliente ahorra en cada semana; es suyo y se le devuelve al terminar. Base y saldo a favor: también plata del cliente, guardada.">
+        ayuda="Todo lo que entró en el período: las transferencias por la fecha del banco y el efectivo por el día en que se recibió en la oficina. Empresa: tarifa de las semanas, acuerdos de deudas, multas y demás. Ahorro: lo que el cliente ahorra cada semana; si termina su contrato, con eso paga la moto, y si se va antes, se le devuelve. Base y saldo a favor: también plata del cliente, guardada, incluido lo que va pagando de su acuerdo de base.">
         <button onClick={() => p.onAbrir("recaudo")} style={boton} aria-label={`Ver los pagos del período: ${plata(r.total)}`}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums" }}>{plata(r.total)}</span>

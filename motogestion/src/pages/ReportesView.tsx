@@ -38,8 +38,10 @@ import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/mo
 import { reporteConvenios, totalesConvenios } from "../utils/reporteConvenios";
 import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
 import BarraFiltros from "../components/reportes/BarraFiltros";
+import PorGrupoReportes, { type DatosGrupo } from "../components/reportes/PorGrupoReportes";
 import ResumenReportes, { type FilaEstado } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
+import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
 import { desgloseRecaudo, baseDeAcuerdosDeBase, pagosSinRepartir, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
 import { AlertTriangle, PiggyBank, FileWarning, ChevronRight } from "lucide-react";
 
@@ -251,13 +253,16 @@ function fmtFechaCorta(iso: string) {
 //     importar el rango de fechas. Antes "Mes anterior" mostraba el estado de hoy como si fuera de agosto.
 //   · CUÁNTO CUMPLIÓ EN EL PERÍODO: de lo que vencía, cuánto quedó pagado (`cumplimientoDelPeriodo`).
 //     Es lo que sí cambia con la fecha, y lo que ordena el ranking (decisión del dueño, 29-sep).
-// "retenida" (pedido del dueño, 22-ago): la moto está guardada/inmovilizada en la empresa — el
-// cliente NO puede producir, así que no cuenta ni en el % al día ni en el cumplimiento del cobrador.
+// "retenida" (D-033, 2-oct): el contrato está detenido por no pagar y la moto no tiene otro cliente,
+// esté donde esté (parqueadero, taller, fiscalía). No cuenta ni en el % al día ni en el cumplimiento.
+// "taller" (D-034, 2-oct, pedido del 22-ago): el contrato sigue corriendo pero la moto está guardada en
+// la empresa (taller, garantía, fiscalía, tránsito). Va aparte: ni al día ni en mora, y no cuenta en
+// el % del cobrador — sin la moto el cliente no puede producir.
 // "cerrado": contrato cancelado o finalizado que pagó algo en el período. No es una moto a cargo,
 // pero su plata entró y tiene que aparecer en algún lado: si no, los grupos no suman el total.
 // "reasignada": contrato suspendido cuya moto ya la tiene OTRO cliente con contrato activo — está en
 // liquidación. Antes contaba como "retenida" y la moto salía dos veces (29-sep: 7 casos).
-type EstadoPagoG = "aldia" | "gabela" | "mora" | "retenida" | "cerrado" | "reasignada";
+type EstadoPagoG = "aldia" | "gabela" | "mora" | "taller" | "retenida" | "cerrado" | "reasignada";
 /** Contratos que ya no son una moto a cargo del cobrador: solo aportan la plata que pagaron. */
 const fueraDeGestion = (e: EstadoPagoG) => e === "cerrado" || e === "reasignada";
 type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string;
@@ -272,12 +277,12 @@ type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoP
   /** Cuánto cumplió en el período del informe. */
   cum: Cumplimiento;
 };
-type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; retenidas: number; cerrados: number; reasignadas: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; recupero: number; pctCum: number | null };
-/** Las filas que cuentan para el cumplimiento de un cobrador: ni retenidas ni cerradas, y medibles. */
-const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && !fueraDeGestion(m.estado) && m.cum.medible;
+type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; taller: number; retenidas: number; cerrados: number; reasignadas: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; aAcuerdo: number; recupero: number; pctCum: number | null };
+/** Las filas que cuentan para el cumplimiento de un cobrador: ni retenidas, ni con la moto en el taller, ni cerradas, y medibles. */
+const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && m.estado !== "taller" && !fueraDeGestion(m.estado) && m.cum.medible;
 /** La cola de trabajo: los que DEBEN primero (los ordenan los días de mora), después la gabela,
  *  las guardadas —que no pueden pagar—, las al día y al final los contratos ya cerrados. */
-const RANK_COLA: Record<EstadoPagoG, number> = { mora: 0, gabela: 1, retenida: 2, aldia: 3, reasignada: 4, cerrado: 5 };
+const RANK_COLA: Record<EstadoPagoG, number> = { mora: 0, gabela: 1, taller: 2, retenida: 3, aldia: 4, reasignada: 5, cerrado: 6 };
 function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
   const map = new Map<string, MotoRowG[]>();
   rows.forEach(r => {
@@ -289,12 +294,13 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     const alDia = motos.filter(m => m.estado === "aldia").length;
     const gabela = motos.filter(m => m.estado === "gabela").length;
     const mora = motos.filter(m => m.estado === "mora").length;
+    const taller = motos.filter(m => m.estado === "taller").length;
     const retenidas = motos.filter(m => m.estado === "retenida").length;
     const cerrados = motos.filter(m => m.estado === "cerrado").length;
     const reasignadas = motos.filter(m => m.estado === "reasignada").length;
     // El % del cobrador se mide sobre las motos que PODÍAN pagar: una guardada en la empresa
     // no puede producir y no debe castigar (ni inflar) su cumplimiento.
-    const evaluables = motos.length - retenidas - cerrados - reasignadas;
+    const evaluables = motos.length - retenidas - taller - cerrados - reasignadas;
     const medibles = motos.filter(cuentaParaCumplimiento);
     return {
       key,
@@ -306,12 +312,13 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
         (RANK_COLA[x.estado] - RANK_COLA[y.estado])
         || (y.diasMora - x.diasMora)
         || x.cliente.localeCompare(y.cliente)),
-      total: motos.length - cerrados - reasignadas, alDia, gabela, mora, retenidas, cerrados, reasignadas,
+      total: motos.length - cerrados - reasignadas, alDia, gabela, mora, taller, retenidas, cerrados, reasignadas,
       debenSinConvenio: motos.filter(m => m.debeSinConvenio).length,
       recaudado: motos.reduce((s, m) => s + m.monto, 0),
       pctv: evaluables > 0 ? Math.round((alDia / evaluables) * 100) : 0,
       debia: medibles.reduce((s, m) => s + m.cum.debia, 0),
       cubrio: medibles.reduce((s, m) => s + m.cum.cubrio, 0),
+      aAcuerdo: medibles.reduce((s, m) => s + m.cum.aAcuerdo, 0),
       recupero: motos.filter(m => !fueraDeGestion(m.estado)).reduce((s, m) => s + m.cum.recupero, 0),
       pctCum: pctCumplimiento(medibles.map(m => m.cum)),
     };
@@ -328,6 +335,7 @@ const EST_META: Record<EstadoPagoG, { punto: string; ink: string; soft: string }
   aldia:    { punto: "🟢", ink: "var(--ok-ink)",     soft: "var(--ok-soft)" },
   gabela:   { punto: "🟡", ink: "var(--warn-ink)",   soft: "var(--warn-soft)" },
   mora:     { punto: "🔴", ink: "var(--bad-ink)",    soft: "var(--bad-soft)" },
+  taller:   { punto: "·",  ink: "var(--warn-ink)",   soft: "var(--warn-soft)" },
   retenida: { punto: "🔒", ink: "var(--indigo-ink)", soft: "var(--indigo-soft)" },
   cerrado:  { punto: "·",  ink: "var(--muted)",      soft: "var(--soft)" },
   reasignada: { punto: "·", ink: "var(--muted)",      soft: "var(--soft)" },
@@ -366,7 +374,8 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
             {b.debia > 0 && (
               <div style={{ padding: "0 16px 4px 42px", fontSize: 11, color: "var(--muted)" }}>
                 Vencía $ {fmt(b.debia)} · cubrió $ {fmt(b.cubrio)}
-                {b.debia - b.cubrio > 0 && <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · faltó $ {fmt(b.debia - b.cubrio)}</span>}
+                {b.aAcuerdo > 0 && <span> · pasó a acuerdo $ {fmt(b.aAcuerdo)}</span>}
+                {b.debia - b.cubrio - b.aAcuerdo > 0 && <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}> · faltó $ {fmt(b.debia - b.cubrio - b.aAcuerdo)}</span>}
                 {b.recupero > 0 && <span> · recuperó $ {fmt(b.recupero)} de atrasos</span>}
               </div>
             )}
@@ -378,6 +387,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
               <span style={{ color: "var(--warn-ink)", fontWeight: 700 }}>🟡 {b.gabela} gabela</span>
               <span style={{ color: "var(--faint)" }}>·</span>
               <span style={{ color: "var(--bad-ink)", fontWeight: 700 }}>🔴 {b.mora} en mora</span>
+              {b.taller > 0 && <><span style={{ color: "var(--faint)" }}>·</span><span style={{ color: "var(--warn-ink)", fontWeight: 700 }}>{b.taller} con la moto en el taller</span></>}
               {b.retenidas > 0 && <><span style={{ color: "var(--faint)" }}>·</span><span style={{ color: "var(--indigo-ink)", fontWeight: 700 }}>🔒 {b.retenidas} retenida{b.retenidas === 1 ? "" : "s"}</span></>}
               {b.debenSinConvenio > 0 && <span style={{ color: "var(--warn-ink)", fontWeight: 700, background: "var(--warn-soft)", borderRadius: 6, padding: "1px 6px" }}>⚠️ {b.debenSinConvenio} sin convenio</span>}
               {b.reasignadas > 0 && <span style={{ color: "var(--muted)" }}>· {b.reasignadas} en liquidación (moto ya reasignada)</span>}
@@ -413,6 +423,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
                           {m.estado === "aldia" ? "🟢 Al día"
                             : m.estado === "gabela" ? "🟡 Gabela"
                             : m.estado === "mora" ? `🔴 ${m.diasMora}d en mora`
+                            : m.estado === "taller" ? "Moto en el taller"
                             : m.estado === "retenida" ? "🔒 Retenida"
                             : m.estado === "reasignada" ? "En liquidación · moto ya reasignada"
                             : "Contrato cerrado"}
@@ -445,7 +456,7 @@ function GestionBloques({ bloques, modo, expandido, onToggle }: { bloques: Bloqu
 type FiltrosG = { grupo: string[]; cobrador: string[]; modalidad: string[]; estado: string[] };
 const MODALIDADES = ["Diario", "Semanal", "Quincenal", "Mensual"];
 // Los estados son los de HOY (la misma cuenta de Cartera): el rango de fechas no los cambia.
-const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día hoy" }, { v: "gabela", l: "Gabela hoy" }, { v: "mora", l: "En mora hoy" }, { v: "retenida", l: "🔒 Retenida" }, { v: "sinconvenio", l: "Sin convenio" }];
+const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día hoy" }, { v: "gabela", l: "Gabela hoy" }, { v: "mora", l: "En mora hoy" }, { v: "taller", l: "Moto en el taller" }, { v: "retenida", l: "🔒 Retenida" }, { v: "sinconvenio", l: "Sin convenio" }];
 const FILTROS_VACIOS: FiltrosG = { grupo: [], cobrador: [], modalidad: [], estado: [] };
 function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: FiltrosG; setFiltros: React.Dispatch<React.SetStateAction<FiltrosG>>; subadmins: { id: string; nombre: string }[]; resumen: string }) {
   const activos = resumen.length > 0;
@@ -475,7 +486,7 @@ function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: 
   );
 }
 
-function CabeceraGestion({ totMotos, alDia, gabela, mora, retenidas = 0, debenSinConvenio, totRec, debia, cubrio, recupero, pctCum, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; gabela: number; mora: number; retenidas?: number; debenSinConvenio: number; totRec: number; debia: number; cubrio: number; recupero: number; pctCum: number | null; rangoLabel: string; desde: string; hasta: string; nota: string; onExport?: () => void }) {
+function CabeceraGestion({ totMotos, alDia, gabela, mora, taller = 0, retenidas = 0, debenSinConvenio, totRec, debia, cubrio, recupero, pctCum, rangoLabel, desde, hasta, nota, onExport }: { totMotos: number; alDia: number; gabela: number; mora: number; taller?: number; retenidas?: number; debenSinConvenio: number; totRec: number; debia: number; cubrio: number; recupero: number; pctCum: number | null; rangoLabel: string; desde: string; hasta: string; nota: string; onExport?: () => void }) {
   return (
     <>
       {/* Lo del PERÍODO: esto sí cambia con la fecha. */}
@@ -489,9 +500,10 @@ function CabeceraGestion({ totMotos, alDia, gabela, mora, retenidas = 0, debenSi
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 12 }}>
         <KPI label="Motos" value={`${totMotos}`} />
         {/* El % de al día se mide sobre las que PODÍAN pagar (sin las retenidas). */}
-        <KPI label="Al día" value={`${alDia}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(alDia, totMotos - retenidas)} />
+        <KPI label="Al día" value={`${alDia}`} color="var(--ok-ink)" bg="var(--ok-soft)" sub={pct(alDia, totMotos - retenidas - taller)} />
         <KPI label="Gabela" value={`${gabela}`} color="var(--warn-ink)" bg="var(--warn-soft)" />
         <KPI label="En mora" value={`${mora}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
+        {taller > 0 && <KPI label="Moto en el taller" value={`${taller}`} color="var(--warn-ink)" sub="contrato andando" />}
         {retenidas > 0 && <KPI label="🔒 Retenidas" value={`${retenidas}`} color="var(--indigo-ink)" bg="var(--indigo-soft)" />}
       </div>
       <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -772,7 +784,11 @@ export default function ReportesView({ onNavigate }: Props) {
       const moto = c.moto_id ? motos.find(m => m.id === c.moto_id) : undefined;
       if (vigente && !moto) return;
       const at = atribucion.get(c.id)!;
-      const guardada = c.estado === "Suspendido" || MOTO_GUARDADA.has(moto?.estado ?? "");
+      // D-033: retenida = contrato detenido por no pagar, esté donde esté la moto (o la moto ya
+      // recogida aunque el contrato siga activo). D-034: contrato andando con la moto en el taller,
+      // garantía, fiscalía o tránsito → aparte.
+      const detenida = c.estado === "Suspendido" || moto?.estado === "Recuperada";
+      const enTaller = !detenida && MOTO_GUARDADA.has(moto?.estado ?? "");
       const monto = recaudoPorContrato.get(c.id) ?? 0;
       const confirmados = confPorContrato.get(c.id) ?? [];
       const deudasPend = deudasPendPorContrato.get(c.id) ?? [];
@@ -789,7 +805,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const deudaP = deudasPend.reduce((s, d) => s + d.monto_pendiente, 0);
       const tieneConvenio = !!convenioACobrar;
       const reasignada = c.estado === "Suspendido" && motosConContratoActivo.has(c.moto_id);
-      const estado: EstadoPagoG = cerrado ? "cerrado" : reasignada ? "reasignada" : guardada ? "retenida"
+      const estado: EstadoPagoG = cerrado ? "cerrado" : reasignada ? "reasignada" : detenida ? "retenida" : enTaller ? "taller"
         : e.estado === "mora" ? "mora" : e.estado === "gabela" ? "gabela" : "aldia";
       const cli = clientes.find(cl => cl.id === c.cliente_id);
       const ultimaFechaPago = confirmados.reduce<string | null>((mx, p) => (!mx || p.fecha > mx ? p.fecha : mx), null);
@@ -860,7 +876,7 @@ export default function ReportesView({ onNavigate }: Props) {
     (filtros.estado.length === 0 || filtros.estado.some(e => e === "sinconvenio" ? r.debeSinConvenio : r.estado === e))
   ), [baseGestion, filtros]);
   const nombreCobradorFiltro = (id: string) => id === "__none__" ? "Sin asignar" : (subadmins.find(s => s.id === id)?.nombre ?? "cobrador");
-  const ESTADO_LBL: Record<string, string> = { aldia: "al día hoy", gabela: "gabela hoy", mora: "en mora hoy", retenida: "retenida", sinconvenio: "sin convenio" };
+  const ESTADO_LBL: Record<string, string> = { aldia: "al día hoy", gabela: "gabela hoy", mora: "en mora hoy", taller: "moto en el taller", retenida: "retenida", sinconvenio: "sin convenio" };
   const filtrosResumen = [
     ...filtros.grupo,
     ...filtros.cobrador.map(nombreCobradorFiltro),
@@ -884,10 +900,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const gGabela   = motosFiltradas.filter(r => r.estado === "gabela").length;
   const gMora     = motosFiltradas.filter(r => r.estado === "mora").length;
   const gRetenidas = motosFiltradas.filter(r => r.estado === "retenida").length;
+  const gTaller = motosFiltradas.filter(r => r.estado === "taller").length;
   const gDebenSinConv = baseFiltrada.filter(r => r.debeSinConvenio).length;
   const gTotRec   = baseFiltrada.reduce((s, r) => s + r.monto, 0);
   // El % al día UNO SOLO (pantalla, Excel, PDF, impresión): sobre las que podían pagar, sin retenidas.
-  const gPctAlDia = gTotMotos - gRetenidas > 0 ? Math.round((gAlDia / (gTotMotos - gRetenidas)) * 100) : 0;
+  const gPctAlDia = gTotMotos - gRetenidas - gTaller > 0 ? Math.round((gAlDia / (gTotMotos - gRetenidas - gTaller)) * 100) : 0;
   // Cumplimiento del período: de lo que vencía, cuánto quedó pagado (decisión del dueño, 29-sep).
   const gMedibles = baseFiltrada.filter(cuentaParaCumplimiento);
   const gDebia = gMedibles.reduce((s, r) => s + r.cum.debia, 0);
@@ -999,6 +1016,8 @@ export default function ReportesView({ onNavigate }: Props) {
     ? { v: "Al día", color: "#166534", fill: "#dcfce7", align: "center" }
     : m.estado === "gabela"
       ? { v: "Gabela", color: "#92400e", fill: "#fef3c7", align: "center" }
+      : m.estado === "taller"
+        ? { v: "Moto en el taller", color: "#92400e", fill: "#fef3c7", align: "center" }
       : m.estado === "retenida"
         ? { v: "Retenida", color: "#3730a3", fill: "#e0e7ff", align: "center" }
         : m.estado === "cerrado"
@@ -1193,7 +1212,7 @@ export default function ReportesView({ onNavigate }: Props) {
       + `</div>`;
     const spark = `<div style="margin:2px 0 6px"><div style="font-size:11px;color:#64748b;margin-bottom:2px">Recaudo diario (últimos 14 días, toda la operación)</div>${sparklineSVG(recaudoDiario.map(d => d.total))}</div>`;
     // Dona + barras
-    const dona = `<div style="text-align:center"><div style="font-size:13px;font-weight:bold;color:#0f172a;text-align:left;margin-bottom:6px">Estado de la cartera hoy</div>${donutSVG(gAlDia, gGabela, gMora, gTotMotos - gRetenidas)}<div style="font-size:11px;color:#334155;margin-top:4px"><span style="color:#159a6d">■</span> Al día ${gAlDia} &nbsp; <span style="color:#e0982a">■</span> Gabela ${gGabela} &nbsp; <span style="color:#d64545">■</span> En mora ${gMora}</div></div>`;
+    const dona = `<div style="text-align:center"><div style="font-size:13px;font-weight:bold;color:#0f172a;text-align:left;margin-bottom:6px">Estado de la cartera hoy</div>${donutSVG(gAlDia, gGabela, gMora, gTotMotos - gRetenidas - gTaller)}<div style="font-size:11px;color:#334155;margin-top:4px"><span style="color:#159a6d">■</span> Al día ${gAlDia} &nbsp; <span style="color:#e0982a">■</span> Gabela ${gGabela} &nbsp; <span style="color:#d64545">■</span> En mora ${gMora}</div></div>`;
     const maxGrupo = Math.max(1, ...porGrupoData.map(b => b.recaudado));
     const barsGrupo = barrasHTML(porGrupoData.map(b => ({ label: b.key, value: b.recaudado, max: maxGrupo, color: "#2f6db0", right: "$ " + fmt(b.recaudado) })));
     const barsCobr = barrasHTML(rankingCobradores.map(b => ({ label: b.nombre.toUpperCase(), value: b.pctCum ?? 0, max: 100, color: (b.pctCum ?? 0) >= 85 ? "#159a6d" : (b.pctCum ?? 0) >= 70 ? "#e0982a" : "#d64545", right: b.pctCum === null ? "—" : b.pctCum + "%" })));
@@ -1484,7 +1503,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const filas = bloques.map(b => {
         const cab = `<tr class="sec"><td colspan="12">${b.nombre.toUpperCase()} — cumplió ${b.pctCum === null ? "—" : b.pctCum + "%"} del período (cubrió $ ${fmt(b.cubrio)} de $ ${fmt(b.debia)}) · recaudado $ ${fmt(b.recaudado)} · HOY: ${b.total} motos, ${b.alDia} al día, ${b.gabela} gabela, ${b.mora} en mora${b.retenidas > 0 ? `, ${b.retenidas} retenida${b.retenidas === 1 ? "" : "s"}` : ""}${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""}</td></tr>`;
         const motos = b.motos.map(m => {
-          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "gabela" ? { t: "Gabela", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : m.estado === "cerrado" ? { t: "Cerrado", c: "#475569" } : m.estado === "reasignada" ? { t: "En liquidación", c: "#475569" } : { t: `En mora ${m.diasMora}d`, c: "#991b1b" };
+          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "gabela" ? { t: "Gabela", c: "#92400e" } : m.estado === "taller" ? { t: "Moto en el taller", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : m.estado === "cerrado" ? { t: "Cerrado", c: "#475569" } : m.estado === "reasignada" ? { t: "En liquidación", c: "#475569" } : { t: `En mora ${m.diasMora}d`, c: "#991b1b" };
           const conv = m.tieneConvenio ? "Sí" : (m.debeSinConvenio ? "Falta" : "—");
           const ult = m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos";
           return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : m.adminNombre}</td><td class="c">${m.formaPago}</td><td class="c">${m.diaPago || "—"}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r">${m.cum.debia > 0 ? "$ " + fmt(m.cum.cubrio) + " de $ " + fmt(m.cum.debia) : "—"}</td><td class="r" style="${m.debeHoy > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.debeHoy > 0 ? "$ " + fmt(m.debeHoy) : "—"}</td><td class="c">${ult}</td><td class="c">${m.telefono || "—"}</td><td class="c">${conv}</td></tr>`;
@@ -1561,6 +1580,8 @@ export default function ReportesView({ onNavigate }: Props) {
   // Todo respeta la barra de filtros (período, grupo, cobrador). Cada número guarda sus filas: al
   // tocarlo se ve exactamente lo que se contó, y desde ahí se llega a Cartera ya filtrada.
   const contratoPorId = useMemo(() => new Map(contratos.map(c => [c.id, c])), [contratos]);
+  // Dónde está cada moto (D-033/034): la misma respuesta en el Resumen, Por grupo y Flota.
+  const lugarDeMoto = useMemo(() => dondeEstaCadaMoto(motos, contratos), [motos, contratos]);
   const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
   const plata = (n: number) => `$ ${fmt(n)}`;
   const placaDe = (contratoId: string) => { const c = contratoPorId.get(contratoId); return c?.moto_id ? motos.find(m => m.id === c.moto_id)?.placa : undefined; };
@@ -1588,11 +1609,20 @@ export default function ReportesView({ onNavigate }: Props) {
     pct: pctCumplimiento(medibleR.map(r => r.cum)),
     debia: medibleR.reduce((s, r) => s + r.cum.debia, 0),
     cubrio: medibleR.reduce((s, r) => s + r.cum.cubrio, 0),
+    aAcuerdo: medibleR.reduce((s, r) => s + r.cum.aAcuerdo, 0),
   };
   const anteriorR = useMemo(() => recaudoAnteriorCon({ ...filtros, modalidad: [], estado: [] }), [pagos, desdeAnt, hastaAnt, atribucion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
-  const activosF = baseResumen.filter(r => r.contratoActivo);
-  const enMoraF = activosF.filter(r => r.estadoCartera === "mora").sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
-  const retenidasF = baseResumen.filter(r => r.estado !== "cerrado" && !r.contratoActivo);
+  // Los estados de hoy salen de las MISMAS filas que Por admin y Por grupo (D-033 y D-034): así "en
+  // mora" dice lo mismo en todas las pestañas. Cartera sigue cobrándole a quien tiene la moto en el
+  // taller (debe su semana); aquí va aparte, como pidió el dueño el 22-ago.
+  const alDiaF = baseResumen.filter(r => r.estado === "aldia");
+  const gabelaF = baseResumen.filter(r => r.estado === "gabela");
+  const enMoraF = baseResumen.filter(r => r.estado === "mora").sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
+  const tallerF = baseResumen.filter(r => r.estado === "taller");
+  const retenidasF = baseResumen.filter(r => r.estado === "retenida");
+  const liquidacionF = baseResumen.filter(r => r.estado === "reasignada");
+  const motoPorId = useMemo(() => new Map(motos.map(m => [m.id, m])), [motos]);
+  const sitioDe = (r: MotoRowG) => sitioFisico(motoPorId.get(contratoPorId.get(r.contratoId)?.moto_id ?? "")?.estado);
   const tramosR = tramosMora(enMoraF);
   // Cómo estaban AL CIERRE del período (si ya terminó): reconstruido con la fecha de cada pago.
   const cierreR = useMemo(() => {
@@ -1632,13 +1662,15 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [tab, hasta, hoyStr, pagos, convenios, baseResumen, contratoPorId, recepciones, gestiones, rodadasNomina]);
   const cierreTexto = cierreR ? `${Number(hasta.slice(8, 10))}-${MESES_CORTO[Number(hasta.slice(5, 7)) - 1]}` : null;
   const cuentaCierre = (f: (x: NonNullable<typeof cierreR>[number]) => boolean) => cierreR ? cierreR.filter(f).length : null;
-  const estadosR: FilaEstado[] = [
-    { clave: "aldia", etiqueta: "Al día", hoy: activosF.filter(r => r.estadoCartera === "al-dia").length, cierre: cuentaCierre(x => x.estado === "aldia") },
-    { clave: "gabela", etiqueta: "Gabela", hoy: activosF.filter(r => r.estadoCartera === "gabela").length, cierre: cuentaCierre(x => x.estado === "gabela") },
+  const estadosR: FilaEstado[] = ([
+    { clave: "aldia", etiqueta: "Al día", hoy: alDiaF.length, cierre: cuentaCierre(x => x.estado === "aldia") },
+    { clave: "gabela", etiqueta: "Gabela (día de gracia)", hoy: gabelaF.length, cierre: cuentaCierre(x => x.estado === "gabela") },
     { clave: "mora", etiqueta: "En mora", hoy: enMoraF.length, cierre: cuentaCierre(x => x.estado === "mora") },
     { clave: "recoleccion", etiqueta: "En recolección", hoy: enMoraF.filter(r => r.recoleccion).length, cierre: cuentaCierre(x => x.recoleccion) },
-    { clave: "retenidas", etiqueta: "Retenidas", hoy: retenidasF.length, cierre: cuentaCierre(x => x.estado === "retenida") },
-  ];
+    { clave: "taller", etiqueta: "Con la moto en el taller", hoy: tallerF.length, cierre: null },
+    { clave: "retenidas", etiqueta: "Retenidas por no pagar", hoy: retenidasF.length, cierre: cuentaCierre(x => x.estado === "retenida") },
+    { clave: "liquidacion", etiqueta: "En liquidación", hoy: liquidacionF.length, cierre: null },
+  ] as FilaEstado[]).filter(e => (e.clave !== "taller" && e.clave !== "liquidacion") || e.hoy > 0);
   // El sello: tres comprobaciones que SÍ pueden fallar, cada una entre dos cuentas hechas por caminos
   // distintos (ver `verificarCifras`).
   const vigentesF = contratos.filter(c => (c.estado === "Activo" || c.estado === "Suspendido") && pasaFiltroGC(atribucion.get(c.id)?.grupo, atribucion.get(c.id)?.adminId)).length;
@@ -1646,7 +1678,7 @@ export default function ReportesView({ onNavigate }: Props) {
     totalRecaudado: recaudoR.total,
     sumaGrupos: baseResumen.reduce((s, r) => s + r.monto, 0),
     sinRepartir: pagosSinRepartir(pagosFiltrados as never),
-    sumaEstados: estadosR[0].hoy + estadosR[1].hoy + estadosR[2].hoy + estadosR[4].hoy,
+    sumaEstados: alDiaF.length + gabelaF.length + enMoraF.length + tallerF.length + retenidasF.length + liquidacionF.length,
     totalContratos: vigentesF,
   });
   // Por grupo: todos los grupos a la vista (para poder cambiar), con el filtro de cobrador puesto.
@@ -1659,13 +1691,145 @@ export default function ReportesView({ onNavigate }: Props) {
         grupo: g, color: GRUPO_COLORS[g] ?? "var(--muted)",
         recaudo: f.reduce((s, r) => s + r.monto, 0),
         pctCum: pctCumplimiento(f.filter(cuentaParaCumplimiento).map(r => r.cum)),
-        enMora: f.filter(r => r.contratoActivo && r.estadoCartera === "mora").length,
-        motosAsignadas: motos.filter(m => m.grupo === g && m.estado === "Asignada" && (filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"))).length,
+        enMora: f.filter(r => r.estado === "mora").length,
+        motosAsignadas: motos.filter(m => m.grupo === g && lugarDeMoto.get(m.id)?.lugar === "trabajando" && (filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"))).length,
         contratosActivos: f.filter(r => r.contratoActivo).length,
         activo: filtros.grupo.length === 1 && filtros.grupo[0] === g,
       };
     }).filter(x => (GRUPOS as readonly string[]).includes(x.grupo) || x.recaudo > 0);
-  }, [baseGestion, filtros, motos]);
+  }, [baseGestion, filtros, motos, lugarDeMoto]);
+  // ── POR GRUPO (rediseño 2-oct · D-032/033/034): las mismas filas del Resumen, por portafolio. ──
+  // Obedece a cobrador y modalidad; el grupo elegido solo decide qué detalle se ve abajo.
+  const datosPG = useMemo(() => {
+    if (tab !== "grupos") return null;
+    const pasaCob = (id: string | null | undefined) => filtros.cobrador.length === 0 || filtros.cobrador.includes(id ?? "__none__");
+    const pasaMod = (fp: string | null | undefined) => filtros.modalidad.length === 0 || filtros.modalidad.includes(fp ?? "");
+    const filas = baseGestion.filter(r => pasaCob(r.adminId) && pasaMod(r.formaPago));
+    const motosF = motos.filter(m => pasaCob(m.subadmin_id) && (filtros.modalidad.length === 0 || pasaMod(contratoPorId.get(lugarDeMoto.get(m.id)?.contratoId ?? "")?.forma_pago)));
+    const pagosF = pagosRango.filter(p => { const at = atribucion.get(p.contrato_id); return !!at && pasaCob(at.adminId) && pasaMod(at.formaPago); });
+    const grupoMoto = (m: { grupo?: string | null }) => m.grupo ?? "SIN GRUPO";
+    const calcular = (grupo: string | null): DatosGrupo => {
+      const fr = grupo === null ? filas : filas.filter(r => r.grupo === grupo);
+      const mr = grupo === null ? motosF : motosF.filter(m => grupoMoto(m) === grupo);
+      const pr = grupo === null ? pagosF : pagosF.filter(p => atribucion.get(p.contrato_id)?.grupo === grupo);
+      const recaudo = desgloseRecaudo(pr as never, baseAcuerdoR);
+      const anteriorTotal = recaudoAnteriorCon({ grupo: grupo === null ? [] : [grupo], cobrador: filtros.cobrador, modalidad: filtros.modalidad, estado: [] });
+      const med = fr.filter(cuentaParaCumplimiento);
+      const enGestion = fr.filter(r => !fueraDeGestion(r.estado));
+      const lugares: Record<LugarMoto, number> = { trabajando: 0, tallerConCliente: 0, retenida: 0, tallerSinCliente: 0, disponible: 0 };
+      mr.forEach(m => { const l = lugarDeMoto.get(m.id)?.lugar; if (l) lugares[l]++; });
+      const cuenta = (f: (r: MotoRowG) => boolean) => fr.filter(f).length;
+      return {
+        grupo, color: grupo ? (GRUPO_COLORS[grupo] ?? "var(--muted)") : "var(--accent)",
+        recaudo, anterior: { total: anteriorTotal, delta: deltaRecaudo(recaudo.total, anteriorTotal) },
+        cum: {
+          pct: pctCumplimiento(med.map(r => r.cum)),
+          debia: med.reduce((s, r) => s + r.cum.debia, 0), cubrio: med.reduce((s, r) => s + r.cum.cubrio, 0), aAcuerdo: med.reduce((s, r) => s + r.cum.aAcuerdo, 0),
+          recupero: enGestion.reduce((s, r) => s + r.cum.recupero, 0), atrasoAAcuerdo: enGestion.reduce((s, r) => s + r.cum.atrasoAAcuerdo, 0),
+        },
+        totalMotos: mr.length, lugares,
+        clientes: {
+          aldia: cuenta(r => r.estado === "aldia"), gabela: cuenta(r => r.estado === "gabela"), mora: cuenta(r => r.estado === "mora"),
+          recoleccion: cuenta(r => r.estado === "mora" && r.recoleccion), liquidacion: cuenta(r => r.estado === "reasignada"),
+          sinAcuerdo: cuenta(r => r.debeSinConvenio), cerrados: cuenta(r => r.estado === "cerrado"),
+        },
+        porMoto: lugares.trabajando > 0 ? Math.round(recaudo.empresa / lugares.trabajando) : null,
+      };
+    };
+    const nombres = [...(GRUPOS as readonly string[]), ...new Set([...motosF.map(grupoMoto), ...filas.map(r => r.grupo)].filter(g => !(GRUPOS as readonly string[]).includes(g)))];
+    const grupos = nombres.map(calcular).filter(g => g.totalMotos > 0 || g.recaudo.total > 0);
+    const sel = filtros.grupo.length === 1 ? filtros.grupo[0] : null;
+    const enSel = <T,>(xs: T[], grupoDe: (x: T) => string | undefined) => sel ? xs.filter(x => grupoDe(x) === sel) : xs;
+    return {
+      grupos, sel,
+      detalle: sel ? (grupos.find(g => g.grupo === sel) ?? calcular(sel)) : calcular(null),
+      filas: enSel(filas, r => r.grupo),
+      motos: enSel(motosF, grupoMoto),
+      pagos: enSel(pagosF, p => atribucion.get(p.contrato_id)?.grupo),
+    };
+  }, [tab, baseGestion, motos, contratoPorId, lugarDeMoto, pagosRango, atribucion, baseAcuerdoR, filtros, desdeAnt, hastaAnt, pagos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function abrirDetallePG(clave: string) {
+    if (!datosPG) return;
+    const per = textoRango(desde, hasta);
+    const quien = datosPG.sel ?? "Todos los grupos";
+    const arch = (x: string) => `${x}_${(datosPG.sel ?? "todos").toLowerCase()}_${desde}_${hasta}`;
+    const f = datosPG.filas;
+    const carteraGrupo = (filtro: string) => ({
+      texto: "Abrir en Cartera",
+      onClick: () => { setDetalle(null); onNavigate?.("cobros", datosPG.sel ? `${filtro};grupo:${datosPG.sel}` : filtro); },
+    });
+    if (clave === "recaudo") { setDetalle(detallePagos(datosPG.pagos, `Pagos de ${quien} · ${per}`, arch("pagos"))); return; }
+    if (clave === "cumplimiento") { setDetalle(detalleCumplimiento(f.filter(cuentaParaCumplimiento), `${quien} · ${per}`)); return; }
+    if (clave.startsWith("lugar:")) {
+      const lugar = clave.slice(6) as LugarMoto;
+      const info = LUGARES.find(l => l.clave === lugar)!;
+      const lista = datosPG.motos.filter(m => lugarDeMoto.get(m.id)?.lugar === lugar);
+      setDetalle({
+        titulo: `${info.etiqueta} · ${lista.length}`,
+        subtitulo: `${quien}. ${info.explica}`,
+        filas: lista.map(m => {
+          const cId = lugarDeMoto.get(m.id)?.contratoId ?? null;
+          const c = cId ? contratoPorId.get(cId) : undefined;
+          const cliente = c ? clientePorId.get(c.cliente_id)?.nombre ?? "—" : "Sin cliente";
+          const fila = cId ? f.find(r => r.contratoId === cId) : undefined;
+          return {
+            id: m.id, placa: m.placa, grupo: m.grupo ?? undefined, titulo: cliente,
+            subtitulo: `Moto ${sitioFisico(m.estado)}${fila && fila.debeHoy > 0 && lugar !== "trabajando" ? ` · debe ${plata(fila.debeHoy)}` : ""}${fila ? ` · ${fila.adminNombre}` : ""}`,
+            monto: null, filtro: sitioFisico(m.estado),
+            onClick: c ? () => irFicha(c.id) : undefined,
+            csv: { Placa: m.placa, Grupo: m.grupo ?? "", Cliente: cliente, Donde: sitioFisico(m.estado), Cobrador: fila?.adminNombre ?? "" },
+          };
+        }),
+        chips: [...new Set(lista.map(m => sitioFisico(m.estado)))].length > 1 ? [...new Set(lista.map(m => sitioFisico(m.estado)))].map(x => ({ clave: x, etiqueta: x.charAt(0).toUpperCase() + x.slice(1) })) : undefined,
+        archivo: arch(lugar),
+      });
+      return;
+    }
+    const conCobrador = (r: MotoRowG, txt: string) => `${txt} · ${r.adminNombre}`;
+    if (clave === "hoy:aldia" || clave === "hoy:gabela") {
+      const k = clave.slice(4);
+      const lista = f.filter(r => r.estado === k);
+      setDetalle({ titulo: `${k === "aldia" ? "Al día" : "Gabela"} · ${quien} · ${lista.length}`, subtitulo: k === "aldia" ? "Hoy no deben nada vencido." : "Les venció ayer: hoy es su día de gracia.",
+        filas: lista.map(r => filaMoto(r, conCobrador(r, k === "aldia" ? `Paga ${r.diaPago || r.formaPago}` : "Día de gracia"), k === "aldia" ? null : r.debeHoy, "var(--warn-ink)")),
+        accion: carteraGrupo(k === "aldia" ? "contratos:al-dia" : "contratos:gabela"), archivo: arch(k) });
+      return;
+    }
+    if (clave === "hoy:mora" || clave === "hoy:recoleccion") {
+      const lista = f.filter(r => r.estado === "mora" && (clave === "hoy:mora" || r.recoleccion)).sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
+      setDetalle({
+        titulo: `${clave === "hoy:mora" ? "En mora" : "Para recoger la moto"} · ${quien} · ${lista.length}`,
+        subtitulo: `Deben ${plata(lista.reduce((s, r) => s + r.debeHoy, 0))} entre todos. Primero los de más días.`,
+        filas: lista.map(r => filaMoto(r, conCobrador(r, `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora`), r.debeHoy, "var(--bad-ink)")),
+        accion: carteraGrupo(clave === "hoy:mora" ? "contratos:mora" : "hoy:recoleccion"), archivo: arch(clave.slice(4)),
+      });
+      return;
+    }
+    if (clave === "hoy:liquidacion" || clave === "sinacuerdo" || clave === "cerrados") {
+      const lista = clave === "hoy:liquidacion" ? f.filter(r => r.estado === "reasignada") : clave === "sinacuerdo" ? f.filter(r => r.debeSinConvenio) : f.filter(r => r.estado === "cerrado");
+      const t = clave === "hoy:liquidacion" ? "En liquidación" : clave === "sinacuerdo" ? "Deben y no tienen acuerdo" : "Contratos cerrados que pagaron";
+      const sub = clave === "hoy:liquidacion" ? "Se les detuvo el contrato y la moto ya la tiene otro cliente: falta cerrarles la cuenta."
+        : clave === "sinacuerdo" ? "Tienen deudas registradas (multas, semanas atrasadas) y no han firmado acuerdo para pagarlas."
+        : "Ya no tienen contrato, pero pagaron algo en el período: su plata cuenta en el grupo.";
+      setDetalle({ titulo: `${t} · ${quien} · ${lista.length}`, subtitulo: sub,
+        filas: lista.map(r => filaMoto(r, conCobrador(r, clave === "cerrados" ? `Pagó ${plata(r.monto)}` : `Debe ${plata(r.debeHoy)}`), clave === "cerrados" ? r.monto : r.debeHoy, clave === "cerrados" ? "var(--ok-ink)" : "var(--bad-ink)")),
+        archivo: arch(clave.replace(":", "_")) });
+      return;
+    }
+    if (clave === "motos") {
+      const orden = (r: MotoRowG) => RANK_COLA[r.estado];
+      const lista = f.slice().sort((a, b) => orden(a) - orden(b) || b.diasMora - a.diasMora || a.cliente.localeCompare(b.cliente));
+      const ESTADO_TXT: Record<EstadoPagoG, string> = { aldia: "Al día", gabela: "Gabela", mora: "En mora", taller: "Moto en el taller", retenida: "Retenida", reasignada: "En liquidación", cerrado: "Contrato cerrado" };
+      setDetalle({
+        titulo: `Contratos de ${quien} · ${lista.length}`,
+        subtitulo: `${per}. Cada uno con su estado de hoy, su cobrador y lo que pagó en el período.`,
+        filas: lista.map(r => filaMoto(r, `${ESTADO_TXT[r.estado]}${r.estado === "mora" ? ` ${r.diasMora}d` : ""} · ${r.adminNombre}${r.monto > 0 ? ` · pagó ${plata(r.monto)}` : ""}`, r.debeHoy > 0 && r.estado !== "cerrado" ? r.debeHoy : null, "var(--bad-ink)", ESTADO_TXT[r.estado])),
+        chips: [...new Set(lista.map(r => ESTADO_TXT[r.estado]))].map(x => ({ clave: x, etiqueta: x })),
+        archivo: arch("contratos"),
+      });
+    }
+  }
+
   const guardadasF = useMemo(() => guardadas.filter(g => pasaFiltroGC(g.grupo, g.subadminId)), [guardadas, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
   const tarifaDiaDe = (g: MotoGuardada) => contratoPorId.get(g.contratoId ?? "")?.tarifa_diaria ?? 27000;
   const sinProducirR = plataSinProducir(guardadasF.map(g => ({ dias: g.dias, tarifaDia: tarifaDiaDe(g) })));
@@ -1692,14 +1856,9 @@ export default function ReportesView({ onNavigate }: Props) {
   const docsF = alertasVencimiento.filter(a => { const m = motos.find(x => x.id === a.id); return pasaFiltroGC(m?.grupo, m?.subadmin_id); });
   const sinSoatF = motosSinSoat.filter(m => pasaFiltroGC(m.grupo, m.subadmin_id));
 
-  function abrirDetalle(clave: string) {
-    const per = textoRango(desde, hasta);
-    if (clave === "recaudo" || clave.startsWith("serie:")) {
-      const [, a, b] = clave.split(":");
-      const lista = clave === "recaudo" ? pagosFiltrados : pagosFiltrados.filter(p => fechaDeCaja(p) >= a && fechaDeCaja(p) <= b);
-      setDetalle({
-        titulo: `Pagos · ${clave === "recaudo" ? per : textoRango(a, b)}`,
-        subtitulo: "Por la fecha en que pagó el cliente. Toca uno para ver la ficha.",
+  const detallePagos = (lista: typeof pagosRango, titulo: string, archivo: string): ContenidoDetalle => ({
+        titulo,
+        subtitulo: "Las transferencias por la fecha del banco y el efectivo por el día en que se recibió. Toca uno para ver la ficha.",
         filas: lista.slice().sort((x, y) => fechaDeCaja(y).localeCompare(fechaDeCaja(x)) || y.valor - x.valor).map(pg => ({
           id: pg.id, placa: placaDe(pg.contrato_id), grupo: grupoDe(pg.contrato_id), titulo: nombreCliente(pg.contrato_id),
           subtitulo: `${fmtFechaCorta(fechaDeCaja(pg))} · ${pg.metodo}${pg.tipo_registro === "campo" ? " · cobrado en la calle" : ""}`,
@@ -1708,35 +1867,55 @@ export default function ReportesView({ onNavigate }: Props) {
           csv: { Fecha: fechaDeCaja(pg), Placa: placaDe(pg.contrato_id) ?? "", Cliente: nombreCliente(pg.contrato_id), Metodo: pg.metodo, Valor: pg.valor },
         })),
         chips: [{ clave: "Efectivo", etiqueta: "Efectivo" }, { clave: "Transferencia", etiqueta: "Transferencias" }],
-        archivo: `pagos_${desde}_${hasta}`,
-      });
+        archivo,
+  });
+  const detalleCumplimiento = (filasMed: MotoRowG[], per: string): ContenidoDetalle => {
+    const filas = filasMed.filter(r => r.cum.falto > 0 || r.cum.aAcuerdo > 0).sort((a, b) => b.cum.falto - a.cum.falto);
+    return {
+      titulo: `No completaron lo del período · ${filas.length}`,
+      subtitulo: `${per}. El monto es lo que les faltó (sin pagar y sin acuerdo) de lo que se les vencía en el período.`,
+      filas: filas.map(r => filaMoto(r, `Se le vencía ${plata(r.cum.debia)} · pagó ${plata(r.cum.cubrio)}${r.cum.aAcuerdo > 0 ? ` · pasó a acuerdo ${plata(r.cum.aAcuerdo)}` : ""}`, r.cum.falto, "var(--bad-ink)")),
+      archivo: `cumplimiento_${desde}_${hasta}`,
+    };
+  };
+
+  function abrirDetalle(clave: string) {
+    const per = textoRango(desde, hasta);
+    if (clave === "recaudo" || clave.startsWith("serie:")) {
+      const [, a, b] = clave.split(":");
+      const lista = clave === "recaudo" ? pagosFiltrados : pagosFiltrados.filter(p => fechaDeCaja(p) >= a && fechaDeCaja(p) <= b);
+      setDetalle(detallePagos(lista, `Pagos · ${clave === "recaudo" ? per : textoRango(a, b)}`, `pagos_${desde}_${hasta}`));
       return;
     }
     if (clave === "cumplimiento") {
-      const filas = medibleR.filter(r => r.cum.falto > 0).sort((a, b) => b.cum.falto - a.cum.falto);
-      setDetalle({
-        titulo: `No completaron lo del período · ${filas.length}`,
-        subtitulo: `${per}. El monto es lo que les faltó de lo que se les vencía en el período.`,
-        filas: filas.map(r => filaMoto(r, `Se le vencía ${plata(r.cum.debia)} · cubrió ${plata(r.cum.cubrio)}`, r.cum.falto, "var(--bad-ink)")),
-        archivo: `cumplimiento_${desde}_${hasta}`,
-      });
+      setDetalle(detalleCumplimiento(medibleR, per));
       return;
     }
     if (clave.startsWith("hoy:") || clave === "aviso:recoleccion" || clave.startsWith("tramo:")) {
       const k = clave === "aviso:recoleccion" ? "recoleccion" : clave.startsWith("tramo:") ? "mora" : clave.slice(4);
       const tramo = clave.startsWith("tramo:") ? clave.slice(6) : null;
       if (k === "aldia") {
-        const f = activosF.filter(r => r.estadoCartera === "al-dia");
-        setDetalle({ titulo: `Al día · ${f.length}`, subtitulo: "Hoy no deben nada vencido.", filas: f.map(r => filaMoto(r, `Paga ${r.diaPago || r.formaPago}`, null)), accion: aCartera("contratos:al-dia"), archivo: "al_dia" });
+        setDetalle({ titulo: `Al día · ${alDiaF.length}`, subtitulo: "Hoy no deben nada vencido.", filas: alDiaF.map(r => filaMoto(r, `Paga ${r.diaPago || r.formaPago}`, null)), accion: aCartera("contratos:al-dia"), archivo: "al_dia" });
       } else if (k === "gabela") {
-        const f = activosF.filter(r => r.estadoCartera === "gabela");
-        setDetalle({ titulo: `Gabela · ${f.length}`, subtitulo: "Les venció ayer: hoy es su día de gracia.", filas: f.map(r => filaMoto(r, "Día de gracia", r.debeHoy, "var(--warn-ink)")), accion: aCartera("contratos:gabela"), archivo: "gabela" });
+        setDetalle({ titulo: `Gabela · ${gabelaF.length}`, subtitulo: "Les venció ayer: hoy es su día de gracia.", filas: gabelaF.map(r => filaMoto(r, "Día de gracia", r.debeHoy, "var(--warn-ink)")), accion: aCartera("contratos:gabela"), archivo: "gabela" });
+      } else if (k === "taller") {
+        setDetalle({
+          titulo: `Con la moto en el taller · ${tallerF.length}`,
+          subtitulo: "Su contrato sigue corriendo y deben su semana, pero no tienen la moto para trabajar. No cuentan como mora ni en el porcentaje del cobrador.",
+          filas: tallerF.map(r => filaMoto(r, `Moto ${sitioDe(r)}`, r.debeHoy, r.debeHoy > 0 ? "var(--bad-ink)" : undefined)), archivo: "moto_en_taller",
+        });
+      } else if (k === "liquidacion") {
+        setDetalle({
+          titulo: `En liquidación · ${liquidacionF.length}`,
+          subtitulo: "Se les detuvo el contrato y la moto ya la tiene otro cliente: falta cerrarles la cuenta.",
+          filas: liquidacionF.map(r => filaMoto(r, "La moto ya la tiene otro cliente", r.debeHoy, r.debeHoy > 0 ? "var(--bad-ink)" : undefined)), archivo: "en_liquidacion",
+        });
       } else if (k === "mora") {
         const f = tramo ? enMoraF.filter(r => tramoDe(r.diasMora) === tramo) : enMoraF;
         const et = tramo ? tramosR.find(t => t.clave === tramo)?.etiqueta : null;
         setDetalle({
           titulo: et ? `En mora · ${et} · ${f.length}` : `En mora · ${f.length}`,
-          subtitulo: `Deben ${plata(f.reduce((s, r) => s + r.debeHoy, 0))} entre todos. Primero los de más días.`,
+          subtitulo: `Deben ${plata(f.reduce((s, r) => s + r.debeHoy, 0))} entre todos. Primero los de más días.${!tramo && tallerF.length > 0 ? ` En Cartera también salen los ${tallerF.length} con la moto en el taller, porque deben su semana.` : ""}`,
           filas: f.map(r => filaMoto(r, `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · en recolección" : ""}`, r.debeHoy, "var(--bad-ink)", tramoDe(r.diasMora))),
           chips: tramo ? undefined : chipsTramos, accion: aCartera("contratos:mora"), archivo: "en_mora",
         });
@@ -1744,14 +1923,21 @@ export default function ReportesView({ onNavigate }: Props) {
         const f = enMoraF.filter(r => r.recoleccion);
         setDetalle({ titulo: `En recolección · ${f.length}`, subtitulo: "Más de 3 días en mora, sin plazo extra y con la moto en la calle.", filas: f.map(r => filaMoto(r, `${r.diasMora} días en mora`, r.debeHoy, "var(--bad-ink)")), accion: aCartera("hoy:recoleccion"), archivo: "recoleccion" });
       } else if (k === "retenidas") {
-        setDetalle({ titulo: `Retenidas · ${retenidasF.length}`, subtitulo: "La moto está en la empresa: el contrato está suspendido.", filas: retenidasF.map(r => filaMoto(r, r.estado === "reasignada" ? "En liquidación · la moto ya la tiene otro cliente" : "Moto retenida", r.debeHoy, "var(--bad-ink)")), accion: aCartera("contratos:retenidos"), archivo: "retenidas" });
+        const sitios = [...new Set(retenidasF.map(sitioDe))];
+        setDetalle({
+          titulo: `Retenidas por no pagar · ${retenidasF.length}`,
+          subtitulo: "Contratos detenidos por falta de pago cuya moto no tiene otro cliente. Al lado de cada uno, dónde está la moto.",
+          filas: retenidasF.map(r => filaMoto(r, `Moto ${sitioDe(r)}`, r.debeHoy, "var(--bad-ink)", sitioDe(r))),
+          chips: sitios.length > 1 ? sitios.map(x => ({ clave: x, etiqueta: x.charAt(0).toUpperCase() + x.slice(1) })) : undefined,
+          accion: aCartera("contratos:retenidos"), archivo: "retenidas",
+        });
       }
       return;
     }
     if (clave.startsWith("cierre:") && cierreR) {
       const k = clave.slice(7);
       const f = cierreR.filter(x => k === "recoleccion" ? x.recoleccion : k === "retenidas" ? x.estado === "retenida" : x.estado === k).sort((a, b) => b.diasMora - a.diasMora);
-      const nombre = ({ aldia: "Al día", gabela: "Gabela", mora: "En mora", recoleccion: "En recolección", retenidas: "Retenidas" } as Record<string, string>)[k] ?? k;
+      const nombre = ({ aldia: "Al día", gabela: "Gabela", mora: "En mora", recoleccion: "En recolección", retenidas: "Retenidas por no pagar" } as Record<string, string>)[k] ?? k;
       setDetalle({
         titulo: `${nombre} al ${cierreTexto} · ${f.length}`,
         subtitulo: "Reconstruido con la fecha de cada pago. Toca uno para ver cómo está hoy.",
@@ -1840,6 +2026,11 @@ export default function ReportesView({ onNavigate }: Props) {
           opcionesCobrador={[{ valor: "", etiqueta: "Todos los cobradores" }, ...subadmins.map(sa => ({ valor: sa.id, etiqueta: sa.nombre })), { valor: "__none__", etiqueta: "Sin asignar" }, ...(filtros.cobrador.length > 1 ? [{ valor: "__varios__", etiqueta: `${filtros.cobrador.length} cobradores` }] : [])]}
           onCobrador={v => { if (v !== "__varios__") setFiltros(f => ({ ...f, cobrador: v ? [v] : [] })); }}
           mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar"}
+          {...(tab === "grupos" ? {
+            modalidad: filtros.modalidad.length === 1 ? filtros.modalidad[0] : "",
+            opcionesModalidad: [{ valor: "", etiqueta: "Todas las modalidades" }, ...MODALIDADES.map(m => ({ valor: m, etiqueta: m }))],
+            onModalidad: (v: string) => setFiltros(f => ({ ...f, modalidad: v ? [v] : [] })),
+          } : {})}
           personalizado={rango === "personalizado" ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontSize: 12 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--muted2)" }}>Desde
@@ -1948,7 +2139,7 @@ export default function ReportesView({ onNavigate }: Props) {
           </div>
           {/* Filtros combinables (grupo · cobrador · modalidad · estado) */}
           <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
-          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} gabela={gGabela} mora={gMora} retenidas={gRetenidas} debenSinConvenio={gDebenSinConv} totRec={gTotRec} debia={gDebia} cubrio={gCubrio} recupero={gRecupero} pctCum={gPctCum} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
+          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} gabela={gGabela} mora={gMora} taller={gTaller} retenidas={gRetenidas} debenSinConvenio={gDebenSinConv} totRec={gTotRec} debia={gDebia} cubrio={gCubrio} recupero={gRecupero} pctCum={gPctCum} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
             nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un cobrador para ver sus motos · cada moto muestra su grupo"} onExport={puedeExportar ? () => setDescarga("admin") : undefined} />
           {/* C1 — comparación de recaudo vs período anterior */}
           <div style={{ ...card, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, fontSize: 12.5 }}>
@@ -2344,13 +2535,19 @@ export default function ReportesView({ onNavigate }: Props) {
       })()}
 
       {/* ── TAB POR GRUPO (cada moto muestra QUIÉN la tiene asignada) ── */}
-      {tab === "grupos" && (
-        <div style={{ display: "grid", gap: 16 }}>
-          <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
-          <CabeceraGestion totMotos={gTotMotos} alDia={gAlDia} gabela={gGabela} mora={gMora} retenidas={gRetenidas} debenSinConvenio={gDebenSinConv} totRec={gTotRec} debia={gDebia} cubrio={gCubrio} recupero={gRecupero} pctCum={gPctCum} rangoLabel={rangoLabel} desde={desde} hasta={hasta}
-            nota={filtrosActivos ? `filtrado: ${filtrosResumen}` : "toca un grupo para ver sus motos · cada moto muestra quién la tiene asignada"} onExport={puedeExportar ? () => setDescarga("grupo") : undefined} />
-          <GestionBloques bloques={porGrupoData} modo="grupo" expandido={expandidoGestion} onToggle={(k) => setExpandidoGestion(expandidoGestion === k ? null : k)} />
-        </div>
+      {tab === "grupos" && sinDatos && <div role="status" style={{ ...card, textAlign: "left", fontSize: 13, color: "var(--muted2)" }}>{errorDatos ? "No se pudieron traer los datos. Revisa la conexión y vuelve a intentar." : "Cargando las cifras…"}</div>}
+      {tab === "grupos" && !sinDatos && datosPG && (
+        <PorGrupoReportes
+          textoPeriodo={textoRango(desde, hasta)}
+          textoAnterior={textoRango(desdeAnt, hastaAnt)}
+          grupos={datosPG.grupos}
+          detalle={datosPG.detalle}
+          seleccionado={datosPG.sel}
+          onElegir={g => setFiltros(f => ({ ...f, grupo: f.grupo.length === 1 && f.grupo[0] === g ? [] : [g] }))}
+          onAbrir={abrirDetallePG}
+          onCartera={() => onNavigate?.("cobros", datosPG.sel ? `contratos:todos;grupo:${datosPG.sel}` : "contratos:todos")}
+          onDescargar={puedeExportar ? () => setDescarga("grupo") : undefined}
+        />
       )}
 
       {/* ── TAB VISITAS por administrador ── */}
@@ -2565,14 +2762,15 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 16 }}>
           {/* KPI flota */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
+            {/* Dónde está cada moto (D-033/034, 2-oct): cada moto en un solo lugar, la misma cuenta del
+                Resumen y de Por grupo. Antes "Retenidas por mora" contaba solo las del parqueadero (23)
+                y el Resumen 50. El detalle por estado físico sigue abajo, en "Flota por estado". */}
             <KPI label="Total motos"      value={String(motos.length)}                                                        color="var(--muted2)" />
-            <KPI label="Asignadas"        value={String(motos.filter(m => m.estado === "Asignada").length)}                   color="var(--ok-ink)" bg="var(--ok-soft)" />
-            <KPI label="Disponibles"      value={String(motos.filter(m => m.estado === "Disponible").length)}                 color="var(--accent)" />
-            <KPI label="En taller"        value={String(motos.filter(m => m.estado === "Mantenimiento").length)}                  color="var(--warn-ink)" />
-            {/* Antes "Retenciones" contaba fiscalía, tránsito y garantía y dejaba fuera las retenidas por
-                mora (29-sep: 4 contra 25). Ahora cada una con su nombre. */}
-            <KPI label="Retenidas por mora" value={String(motos.filter(m => m.estado === "Recuperada").length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
-            <KPI label="Fiscalía / tránsito / garantía" value={String(motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado as string)).length)} color="var(--warn-ink)" />
+            {LUGARES.map(l => {
+              const n = motos.filter(m => lugarDeMoto.get(m.id)?.lugar === l.clave).length;
+              const tono = l.clave === "trabajando" ? { color: "var(--ok-ink)", bg: "var(--ok-soft)" } : l.clave === "retenida" ? { color: "var(--bad-ink)", bg: "var(--bad-soft)" } : l.clave === "disponible" ? { color: "var(--accent)" } : { color: "var(--warn-ink)" };
+              return <KPI key={l.clave} label={l.etiqueta} value={String(n)} {...tono} />;
+            })}
             <KPI label="Clientes con contrato" value={String(clientesConContratoIds.size)} color="var(--ok-ink)" sub={clientesActivosSinContrato.length > 0 ? `${clientesActivosSinContrato.length} activos sin contrato` : undefined} />
             <KPI label="En proceso"       value={String(clientesEnProceso)}                                                   color="var(--warn-ink)" />
             <KPI label="Nuevos este mes"  value={String(clientesNuevosMes)}                                                   color="var(--accent)" />
@@ -3268,7 +3466,7 @@ export default function ReportesView({ onNavigate }: Props) {
             filtros={[
               { titulo: "Grupos", de: m => m.grupo },
               { titulo: "Cobrador", de: m => m.adminNombre.toUpperCase() },
-              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? "En mora" : m.estado === "retenida" ? "Retenida" : m.estado === "reasignada" ? "En liquidación (moto reasignada)" : "Contrato cerrado" },
+              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? "En mora" : m.estado === "taller" ? "Moto en el taller" : m.estado === "retenida" ? "Retenida" : m.estado === "reasignada" ? "En liquidación (moto reasignada)" : "Contrato cerrado" },
               { titulo: "Modalidad", de: m => m.formaPago },
             ]}
             agrupar={m => porAdmin ? m.adminNombre.toUpperCase() : m.grupo}

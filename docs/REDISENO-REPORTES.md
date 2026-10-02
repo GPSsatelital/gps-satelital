@@ -17,7 +17,18 @@
   - Sello "Cifras verificadas": los grupos suman el total, los cobradores suman el total, los estados
     suman los contratos vigentes.
   - Contraste: 0 textos ilegibles en modo oscuro y claro (119 medidos). Sin desbordes a 280/320/375 px.
-- **Partes 2 a 4 — Cobranza, Equipo, Flota:** pendientes, cada una con dibujo aprobado antes.
+- **Por grupo: HECHA (2-oct, tarde)**, con las reglas D-032 (lo pagado y lo recuperado solo con plata;
+  lo que pasó a un acuerdo va aparte), D-033 (retenidas = contratos detenidos sin otro cliente, estén
+  donde estén) y D-034 (contrato andando con la moto en el taller: aparte). Los grupos lado a lado
+  (con su total), y el detalle del elegido: plata (empresa/ahorro/base, cuánto deja cada moto
+  trabajando), cumplimiento, dónde están las motos (`dondeEstaCadaMoto`, suman el total) y cómo van
+  pagando los que tienen la moto; todo se toca. Filtros: período, grupo, cobrador y modalidad (la
+  modalidad que tenía la pantalla vieja no se perdió). Medido con septiembre: los 4 grupos suman
+  $231.951.802; COSTA 226 motos = 172 + 2 + 24 + 2 + 26, y 172 = 69 + 0 + 103. En mora 166 y retenidas
+  42 iguales en Resumen, Por admin, Por grupo y Flota. Contraste: 0 fallas en oscuro y claro (109
+  textos). Sin desbordes a 375/320/280.
+- **Siguen:** Cobranza (cartera, convenios, recolección), Equipo (por admin, nómina, visitas) y Flota
+  (flota, guardadas, entregas), cada una con dibujo aprobado antes.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

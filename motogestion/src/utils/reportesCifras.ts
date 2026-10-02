@@ -16,6 +16,7 @@ type PagoR = {
   fecha: string;
   valor: number;
   estado?: string;
+  tipo_registro?: string | null;
   created_at?: string | null;
   aplicado_tarifa?: number | null;
   aplicado_prorrateo?: number | null;
@@ -106,12 +107,16 @@ export function estadoHoy(
 export type Cumplimiento = {
   /** Lo que VENCÍA dentro del período: semanas + prorrateo + cuotas de acuerdo. */
   debia: number;
-  /** De eso, lo que quedó pagado al cierre del período (aunque lo haya adelantado antes). */
+  /** De eso, lo que quedó pagado CON PLATA al cierre del período (aunque lo haya adelantado antes). */
   cubrio: number;
-  /** debia − cubrio. */
+  /** De eso, las semanas que no se pagaron sino que pasaron a un acuerdo firmado en el período (D-032). */
+  aAcuerdo: number;
+  /** debia − cubrio − aAcuerdo: lo que quedó sin pagar y sin acuerdo. */
   falto: number;
-  /** Lo que pagó en el período de lo que YA venía atrasado: semanas y cuotas viejas + deudas. */
+  /** Lo que pagó en el período, con plata que entró en el período, de lo que YA venía atrasado: semanas y cuotas viejas + deudas. */
   recupero: number;
+  /** Semanas que ya venían atrasadas y pasaron a un acuerdo firmado en el período (no entró plata). */
+  atrasoAAcuerdo: number;
   /** false = no se puede medir con el libro de cajas (Diario o sin motor). */
   medible: boolean;
 };
@@ -138,17 +143,22 @@ export function cumplimientoDelPeriodo(
   hasta: string,
   fechaDeCaja: (p: PagoR) => string,
 ): Cumplimiento {
+  // D-032: lo recuperado sale de la plata que ENTRÓ en el período. La semana que se pagó con la base
+  // al entregar o con un saldo a favor ya se pagó con plata (cuenta como cubierta), pero esa plata no
+  // entró en este período, así que no cuenta como atraso recuperado.
+  const enRango = (p: PagoR) => { const f = fechaDeCaja(p); return f >= desde && f <= hasta; };
+  const entroEnCaja = (p: PagoR) => p.tipo_registro !== "adelanto_base" && p.tipo_registro !== "saldo_favor";
   const deudasEnRango = pagosConfirmados
-    .filter(p => { const f = fechaDeCaja(p); return f >= desde && f <= hasta; })
+    .filter(p => enRango(p) && entroEnCaja(p))
     .reduce((s, p) => s + Math.max(p.aplicado_deuda ?? 0, 0), 0);
   if (!contrato.motor_v2 || contrato.forma_pago === "Diario") {
-    return { debia: 0, cubrio: 0, falto: 0, recupero: 0, medible: false };
+    return { debia: 0, cubrio: 0, aAcuerdo: 0, falto: 0, recupero: 0, atrasoAAcuerdo: 0, medible: false };
   }
   const antes = diaAntes(desde);
   const valor = valorPeriodoReal(contrato);
 
   // ── Semanas (cajas) ──
-  let debia = 0, cubrio = 0, recupero = deudasEnRango;
+  let debia = 0, cubrio = 0, recupero = deudasEnRango, aAcuerdo = 0, atrasoAAcuerdo = 0;
   if (valor > 0) {
     const exAntes = cajasExigidasHasta(contrato, dia(antes));
     const exFin = cajasExigidasHasta(contrato, dia(hasta));
@@ -166,8 +176,25 @@ export function cumplimientoDelPeriodo(
     const llenasFin = llenasA(hasta);
     const vencian = Math.max(exFin - exAntes, 0);
     debia += vencian * valor;
-    cubrio += Math.min(Math.max(llenasFin - exAntes, 0), vencian) * valor;
-    recupero += Math.max(Math.min(llenasFin, exAntes) - llenasAntes, 0) * valor;
+    // D-032 (2-oct): una caja que marcó un acuerdo firmado en el período NO se pagó: se pasó al
+    // acuerdo. Un acuerdo solo financia semanas ya exigidas y sin pagar (las más viejas abiertas), así
+    // que se descuentan primero de las atrasadas y después de las que vencían en el período.
+    const financiadas = conveniosDelContrato
+      .filter(cv => { const f = (cv.created_at ?? "").slice(0, 10); return f > antes && f <= hasta; })
+      .reduce((s, cv) => s + (cv.cajas_financiadas ?? 0), 0);
+    const viejasLlenadas = Math.max(Math.min(llenasFin, exAntes) - llenasAntes, 0);
+    const viejasAlAcuerdo = Math.min(financiadas, viejasLlenadas);
+    const nuevasLlenadas = Math.min(Math.max(llenasFin - exAntes, 0), vencian);
+    const nuevasAlAcuerdo = Math.min(financiadas - viejasAlAcuerdo, nuevasLlenadas);
+    cubrio += (nuevasLlenadas - nuevasAlAcuerdo) * valor;
+    aAcuerdo += nuevasAlAcuerdo * valor;
+    atrasoAAcuerdo += viejasAlAcuerdo * valor;
+    // Las semanas viejas que se llenaron con plata del período: nunca más que la plata que entró a
+    // semanas en el período (el motor llena primero la más vieja).
+    const plataASemanas = pagosConfirmados
+      .filter(p => enRango(p) && entroEnCaja(p))
+      .reduce((s, p) => s + Math.max(p.aplicado_tarifa ?? 0, 0), 0);
+    recupero += Math.min((viejasLlenadas - viejasAlAcuerdo) * valor, plataASemanas);
   }
 
   // ── Prorrateo (la caja 0 se exige el día que arranca el libro) ──
@@ -208,7 +235,8 @@ export function cumplimientoDelPeriodo(
 
   debia = Math.round(debia);
   cubrio = Math.round(Math.min(cubrio, debia));
-  return { debia, cubrio, falto: debia - cubrio, recupero: Math.round(recupero), medible: true };
+  aAcuerdo = Math.round(Math.min(aAcuerdo, debia - cubrio));
+  return { debia, cubrio, aAcuerdo, falto: debia - cubrio - aAcuerdo, recupero: Math.round(recupero), atrasoAAcuerdo: Math.round(atrasoAAcuerdo), medible: true };
 }
 
 /** % de cumplimiento de un grupo de contratos: lo cubierto sobre lo que vencía. null = no vencía nada. */

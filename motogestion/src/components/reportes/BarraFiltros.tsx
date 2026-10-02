@@ -1,7 +1,7 @@
 // LA BARRA DE FILTROS DE REPORTES (rediseño, 2-oct-2026): período, grupo y cobrador en un solo lugar,
 // siempre a la vista, y mandan sobre todo lo que sale debajo. Selectores nativos a propósito: en el
 // celular abren el selector del sistema, que es el más cómodo y accesible.
-import { CalendarDays, Users, User, ChevronDown, X } from "lucide-react";
+import { CalendarDays, Users, User, ChevronDown, X, Repeat } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type OpcionFiltro = { valor: string; etiqueta: string };
@@ -31,6 +31,7 @@ export default function BarraFiltros({
   grupo, opcionesGrupo, onGrupo,
   cobrador, opcionesCobrador, onCobrador,
   mostrarGrupoCobrador, personalizado, isMobile,
+  modalidad = "", opcionesModalidad, onModalidad,
 }: {
   periodo: string; opcionesPeriodo: OpcionFiltro[]; onPeriodo: (v: string) => void;
   /** "1 al 30 de septiembre de 2026" */
@@ -43,8 +44,11 @@ export default function BarraFiltros({
   /** Los campos de fecha del rango personalizado, cuando se elige. */
   personalizado?: ReactNode;
   isMobile: boolean;
+  /** Semanal, quincenal, mensual o diario: solo en las pestañas que lo usan (si no llega, no se muestra). */
+  modalidad?: string; opcionesModalidad?: OpcionFiltro[]; onModalidad?: (v: string) => void;
 }) {
-  const hayFiltro = mostrarGrupoCobrador && (grupo !== "" || cobrador !== "");
+  const conModalidad = !!onModalidad && !!opcionesModalidad;
+  const hayFiltro = mostrarGrupoCobrador && (grupo !== "" || cobrador !== "" || (conModalidad && modalidad !== ""));
   // Cuando la barra sale de la pantalla, una franja delgada fija arriba dice qué se está viendo y lleva
   // de vuelta a los filtros. (Un `sticky` no funciona acá: el marco de la app envuelve el contenido en
   // un contenedor con scroll propio que no es el que se mueve.)
@@ -61,6 +65,7 @@ export default function BarraFiltros({
     opcionesPeriodo.find(o => o.valor === periodo)?.etiqueta,
     mostrarGrupoCobrador && grupo !== "" ? opcionesGrupo.find(o => o.valor === grupo)?.etiqueta : null,
     mostrarGrupoCobrador && cobrador !== "" ? opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta : null,
+    conModalidad && modalidad !== "" ? modalidad : null,
   ].filter(Boolean).join(" · ");
   return (
     <>
@@ -88,6 +93,7 @@ export default function BarraFiltros({
           <>
             <Selector icono={<Users size={16} />} etiqueta="Grupo" valor={grupo} opciones={opcionesGrupo} onCambio={onGrupo} activo={grupo !== ""} />
             <Selector icono={<User size={16} />} etiqueta="Cobrador" valor={cobrador} opciones={opcionesCobrador} onCambio={onCobrador} activo={cobrador !== ""} />
+            {conModalidad && <Selector icono={<Repeat size={16} />} etiqueta="Modalidad" valor={modalidad} opciones={opcionesModalidad!} onCambio={onModalidad!} activo={modalidad !== ""} />}
           </>
         )}
       </div>
@@ -97,9 +103,10 @@ export default function BarraFiltros({
           Viendo: <span style={{ color: "var(--text)", fontWeight: 500 }}>{textoPeriodo}</span>
           {mostrarGrupoCobrador && grupo !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{opcionesGrupo.find(o => o.valor === grupo)?.etiqueta}</span></>}
           {mostrarGrupoCobrador && cobrador !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500, textTransform: "uppercase" }}>{opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta}</span></>}
+          {conModalidad && modalidad !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{modalidad}</span></>}
         </span>
         {hayFiltro && (
-          <button onClick={() => { onGrupo(""); onCobrador(""); }}
+          <button onClick={() => { onGrupo(""); onCobrador(""); onModalidad?.(""); }}
             style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 8px", border: "none", borderRadius: 8, background: "transparent", color: "var(--accent-ink)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
             <X size={14} aria-hidden="true" /> Quitar filtros
           </button>

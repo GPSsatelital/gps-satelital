@@ -87,6 +87,44 @@ describe("cumplimientoDelPeriodo — ELKIN en septiembre (con 2 semanas rodadas)
   });
 });
 
+describe("cumplimientoDelPeriodo — lo que pasa a un acuerdo no cuenta como pagado (D-032)", () => {
+  // ELKIN en septiembre, como si el 10-sep hubiera firmado un acuerdo que se llevó la semana que le
+  // faltaba: el contador de semanas llenas sube en 1 sin que entre un peso.
+  const ELKIN_CON_ACUERDO = { ...ELKIN, cajas_pagadas: 26 } as typeof ELKIN;
+  const ACUERDO = { id: "cv", cuota_por_periodo: 0, cajas_financiadas: 1, created_at: "2026-09-10T15:00:00Z" };
+  const c = cumplimientoDelPeriodo(ELKIN_CON_ACUERDO, PAGOS_ELKIN, [ACUERDO], "2026-09-01", "2026-09-28", fechaPago);
+
+  it("lo pagado con plata sigue siendo 3 semanas, igual que sin el acuerdo", () => {
+    const sinAcuerdo = cumplimientoDelPeriodo(ELKIN, PAGOS_ELKIN, [], "2026-09-01", "2026-09-28", fechaPago);
+    expect(sinAcuerdo.cubrio).toBe(3 * 202000);
+    expect(c.cubrio).toBe(3 * 202000);
+  });
+
+  it("la semana que se llevó el acuerdo sale aparte, y no queda como faltante", () => {
+    expect(c.aAcuerdo).toBe(202000);
+    expect(c.falto).toBe(0);
+    expect(c.debia).toBe(c.cubrio + c.aAcuerdo + c.falto);
+  });
+
+  it("si el acuerdo se llevó semanas que ya venían atrasadas, no cuentan como atraso recuperado", () => {
+    // Al 31-ago le faltaba una semana de agosto, y el acuerdo del 10-sep se la llevó: el contador de
+    // hoy (25) son 21 llenas al 31-ago + 1 del acuerdo + 3 pagadas con plata en septiembre.
+    const atrasado = { ...ELKIN, cajas_pagadas: 25 } as typeof ELKIN;
+    const x = cumplimientoDelPeriodo(atrasado, PAGOS_ELKIN, [ACUERDO], "2026-09-01", "2026-09-28", fechaPago);
+    expect(x.atrasoAAcuerdo).toBe(202000);
+    expect(x.recupero).toBe(30000 + 123000);
+    expect(x.cubrio).toBe(3 * 202000);
+  });
+});
+
+describe("cumplimientoDelPeriodo — lo recuperado sale de la plata que entró en el período (D-032)", () => {
+  it("una deuda pagada con saldo a favor ya estaba pagada: no es plata nueva del período", () => {
+    const P = [...PAGOS_ELKIN, { contrato_id: "elkin", fecha: "2026-09-25", valor: 50000, created_at: "2026-09-25T15:00:00Z", tipo_registro: "saldo_favor", aplicado_deuda: 50000 }];
+    const c = cumplimientoDelPeriodo(ELKIN, P, [], "2026-09-01", "2026-09-28", fechaPago);
+    expect(c.recupero).toBe(30000 + 123000);
+  });
+});
+
 describe("cumplimientoDelPeriodo — el que paga antes no queda debiendo en la semana siguiente", () => {
   const C = {
     id: "x", forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 202000,

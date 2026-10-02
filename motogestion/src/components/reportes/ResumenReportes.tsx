@@ -4,21 +4,21 @@
 // y abre la lista de lo mismo que contó (`onAbrir`). Cada tarjeta explica qué cuenta (botón de ayuda).
 // La plata manda: el recaudo es lo más grande de la pantalla.
 import { useState, type ReactNode } from "react";
-import { ChevronRight, Info, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownRight, Lock, Circle, Triangle, X } from "lucide-react";
+import { ChevronRight, Info, ShieldCheck, ShieldAlert, ArrowUpRight, ArrowDownRight, Lock, Circle, Triangle, X, Wrench, FileText } from "lucide-react";
 import type { DesgloseRecaudo, Verificacion, PuntoSerie } from "../../utils/reportesResumen";
 
-const plata = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
-const corto = (n: number) => n >= 1_000_000 ? `${(Math.round(n / 100_000) / 10).toLocaleString("es-CO")}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
-const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+export const plata = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
+export const corto = (n: number) => n >= 1_000_000 ? `${(Math.round(n / 100_000) / 10).toLocaleString("es-CO")}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
+export const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
-export type FilaEstado = { clave: "aldia" | "gabela" | "mora" | "recoleccion" | "retenidas"; etiqueta: string; hoy: number; cierre: number | null };
+export type FilaEstado = { clave: "aldia" | "gabela" | "mora" | "recoleccion" | "taller" | "retenidas" | "liquidacion"; etiqueta: string; hoy: number; cierre: number | null };
 export type GrupoResumen = { grupo: string; color: string; recaudo: number; pctCum: number | null; enMora: number; motosAsignadas: number; contratosActivos: number; activo: boolean };
 
-const card: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, boxSizing: "border-box", minWidth: 0 };
-const boton: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "inherit", font: "inherit", padding: 0, cursor: "pointer" };
-const etiqueta: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "var(--muted2)" };
+export const card: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, boxSizing: "border-box", minWidth: 0 };
+export const boton: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "inherit", font: "inherit", padding: 0, cursor: "pointer" };
+export const etiqueta: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "var(--muted2)" };
 
-function Tarjeta({ titulo, ayuda, children, extra }: { titulo: string; ayuda: string; children: ReactNode; extra?: ReactNode }) {
+export function Tarjeta({ titulo, ayuda, children, extra }: { titulo: string; ayuda: string; children: ReactNode; extra?: ReactNode }) {
   const [abierta, setAbierta] = useState(false);
   return (
     <section style={{ ...card, padding: 16 }}>
@@ -36,11 +36,11 @@ function Tarjeta({ titulo, ayuda, children, extra }: { titulo: string; ayuda: st
   );
 }
 
-function Delta({ txt, up }: { txt: string; up: boolean | null }) {
+export function Delta({ txt, up }: { txt: string; up: boolean | null }) {
   if (up === null) return <span style={{ fontSize: 12, color: "var(--muted2)" }}>{txt}</span>;
   const Icono = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 12, fontWeight: 600, color: up ? "var(--ok)" : "var(--bad)", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 12, fontWeight: 600, color: up ? "var(--ok-ink)" : "var(--bad-ink)", whiteSpace: "nowrap" }}>
       <Icono size={14} aria-hidden="true" />{txt.replace(/[▲▼]\s?/, "")}
     </span>
   );
@@ -51,7 +51,9 @@ const MARCA_ESTADO: Record<FilaEstado["clave"], ReactNode> = {
   gabela: <Triangle size={10} fill="var(--warn)" color="var(--warn)" aria-hidden="true" />,
   mora: <X size={12} color="var(--bad)" strokeWidth={3} aria-hidden="true" />,
   recoleccion: null,
+  taller: <Wrench size={12} color="var(--warn)" aria-hidden="true" />,
   retenidas: <Lock size={12} color="var(--muted2)" aria-hidden="true" />,
+  liquidacion: <FileText size={12} color="var(--muted2)" aria-hidden="true" />,
 };
 
 export default function ResumenReportes(p: {
@@ -60,7 +62,7 @@ export default function ResumenReportes(p: {
   verificaciones: Verificacion[];
   recaudo: DesgloseRecaudo;
   anterior: { total: number; texto: string; delta: { txt: string; up: boolean | null } };
-  cumplimiento: { pct: number | null; debia: number; cubrio: number };
+  cumplimiento: { pct: number | null; debia: number; cubrio: number; aAcuerdo: number };
   estados: FilaEstado[];
   /** "30-sep" si el período cerró antes de hoy; null si el período llega a hoy (no hay qué comparar). */
   cierreTexto: string | null;
@@ -148,10 +150,10 @@ export default function ResumenReportes(p: {
 
       {/* Cumplimiento: de lo que se vencía, cuánto quedó pagado. */}
       <Tarjeta titulo="Cumplimiento del período"
-        ayuda="De lo que se le vencía a cada cliente en el período (semanas y cuotas de acuerdo), cuánto quedó pagado. Lo que pagaron de atrasos viejos no cuenta aquí: así un cliente que se pone al día no tapa a otro que no pagó.">
+        ayuda="De lo que se le vencía a cada cliente en el período (semanas y cuotas de acuerdo), cuánto quedó pagado con plata. Las semanas que pasaron a un acuerdo no cuentan como pagadas: se muestran aparte. Lo que pagaron de atrasos viejos tampoco cuenta aquí, para que un cliente que se pone al día no tape a otro que no pagó. No entran los que tienen la moto retenida o en el taller.">
         <button onClick={() => p.onAbrir("cumplimiento")} style={boton} aria-label="Ver quiénes no completaron lo del período">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: p.cumplimiento.pct === null ? "var(--muted2)" : p.cumplimiento.pct >= 85 ? "var(--ok)" : p.cumplimiento.pct >= 70 ? "var(--warn)" : "var(--bad)" }}>
+            <span style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: p.cumplimiento.pct === null ? "var(--muted2)" : p.cumplimiento.pct >= 85 ? "var(--ok-ink)" : p.cumplimiento.pct >= 70 ? "var(--warn-ink)" : "var(--bad-ink)" }}>
               {p.cumplimiento.pct === null ? "—" : `${p.cumplimiento.pct}%`}
             </span>
             <ChevronRight size={18} color="var(--muted2)" aria-hidden="true" />
@@ -161,7 +163,7 @@ export default function ResumenReportes(p: {
           </div>
           <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 8, lineHeight: 1.5 }}>
             {p.cumplimiento.debia > 0
-              ? <>Se debía <b style={{ color: "var(--text)", fontWeight: 500 }}>{plata(p.cumplimiento.debia)}</b> · se cubrió <b style={{ color: "var(--text)", fontWeight: 500 }}>{plata(p.cumplimiento.cubrio)}</b> · faltó <b style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{plata(p.cumplimiento.debia - p.cumplimiento.cubrio)}</b></>
+              ? <>Se debía <b style={{ color: "var(--text)", fontWeight: 500 }}>{plata(p.cumplimiento.debia)}</b> · se pagó <b style={{ color: "var(--text)", fontWeight: 500 }}>{plata(p.cumplimiento.cubrio)}</b>{p.cumplimiento.aAcuerdo > 0 && <> · pasó a acuerdo <b style={{ color: "var(--text)", fontWeight: 500 }}>{plata(p.cumplimiento.aAcuerdo)}</b></>} · faltó <b style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{plata(p.cumplimiento.debia - p.cumplimiento.cubrio - p.cumplimiento.aAcuerdo)}</b></>
               : "En este período no se le vencía nada a nadie."}
           </div>
         </button>
@@ -182,7 +184,7 @@ export default function ResumenReportes(p: {
             <div key={e.clave} style={{ display: "grid", gridTemplateColumns: p.cierreTexto ? "minmax(0, 1fr) 64px 72px" : "minmax(0, 1fr) 64px", gap: 8, alignItems: "center" }}>
               <button onClick={() => p.onAbrir("hoy:" + e.clave)} style={{ ...boton, gridColumn: "1 / 3", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 64px", gap: 8, alignItems: "center", minHeight: 44, padding: "0 8px", borderRadius: 10 }}
                 aria-label={`${e.etiqueta}: ${e.hoy} hoy. Ver la lista`}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, paddingLeft: e.clave === "recoleccion" ? 18 : 0, color: e.clave === "recoleccion" ? "var(--muted2)" : "var(--text)" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, paddingLeft: e.clave === "recoleccion" ? 18 : 0, color: e.clave === "recoleccion" || e.clave === "liquidacion" ? "var(--muted2)" : "var(--text)" }}>
                   {MARCA_ESTADO[e.clave]}{e.etiqueta}
                 </span>
                 <span style={{ textAlign: "right", fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: e.clave === "mora" ? "var(--bad-ink)" : "var(--text)" }}>{e.hoy}</span>
@@ -253,7 +255,7 @@ export default function ResumenReportes(p: {
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 13, fontWeight: 600 }}>{g.grupo}</span>
                   <span style={{ display: "block", fontSize: 11, color: "var(--muted2)" }}>
-                    {g.motosAsignadas} motos · {g.contratosActivos} contratos · cumplió {g.pctCum === null ? "—" : `${g.pctCum}%`} · {g.enMora} en mora hoy
+                    {g.motosAsignadas} motos trabajando · cumplió {g.pctCum === null ? "—" : `${g.pctCum}%`} · {g.enMora} en mora hoy
                   </span>
                 </span>
               </span>

@@ -482,3 +482,40 @@ totales iguales a la pantalla ($2.017.500). Cuesta ~1 segundo más al abrir la p
 **Dónde vive:** `src/utils/nominaCobradores.ts` (`rodadasDesdeRegistros`, `exoneradasAlDia`) ·
 `src/hooks/useRodadas.ts` · `src/hooks/useCajasLlenadas.ts`.
 **Reemplaza a:** —
+
+### D-032 · 2-oct-2026 · En Reportes, "se pagó" y "se recuperó" cuentan solo plata; lo que pasó a un acuerdo va aparte
+**Decidió:** el dueño (opción A).
+**Qué se decidió:** una semana que se pasa a un acuerdo **no cuenta como pagada** en el cumplimiento
+ni como "atrasos recuperados". Solo cuenta lo que se pagó con plata. Lo que pasó a un acuerdo se
+muestra aparte ("pasado a acuerdo"), y el acuerdo cuenta a medida que el cliente paga sus cuotas.
+**Por qué:** en septiembre, Por grupo decía "se cubrió $189.237.300" y "se recuperaron $55.070.300 de
+atrasos": $244 millones cuando entraron $231.951.802. Las semanas financiadas por acuerdos firmados
+en el período (el 1-oct, dos acuerdos se llevaron 5 semanas sin que entrara un peso) contaban como
+llenadas. Lo pagado y lo recuperado nunca deben sumar más de lo que entró.
+**Dónde vive:** 🔲 por construir — `cumplimientoDelPeriodo` en `src/utils/reportesCifras.ts`
+(`llenasA` resta las `cajas_financiadas`, pero las cuenta como llenadas dentro del período).
+**Reemplaza a:** precisa D-029 (el período se mide por cumplimiento): el cumplimiento es con plata.
+
+### D-033 · 2-oct-2026 · "Retenidas" son las motos de contratos detenidos por no pagar que no tienen otro cliente, estén donde estén
+**Decidió:** el dueño (opción A).
+**Qué se decidió:** en Reportes, "retenidas por no pagar" = las motos de los contratos detenidos
+(suspendidos) que todavía no tienen otro cliente, estén en el parqueadero, en el taller o en
+fiscalía; al tocar el número se ve dónde está cada una. Las que ya trabajan con otro cliente cuentan
+como "trabajando" (producen) y el cliente viejo sale aparte como "en liquidación".
+**Medido el 2-oct:** 50 contratos detenidos → motos: 23 en el parqueadero, 16 en el taller, 1 en
+fiscalía, 1 marcada disponible, 9 ya con otro cliente. Retenidas = 41, en liquidación = 9. Antes Flota
+decía 23 (solo el parqueadero), el Resumen 50 y Por admin / Por grupo 45-46.
+**Dónde vive:** 🔲 por construir — las filas de `baseGestion` en `ReportesView.tsx` y Flota.
+**Reemplaza a:** —
+
+### D-034 · 2-oct-2026 · El cliente con contrato andando y la moto en el taller va aparte: ni al día ni atrasado
+**Decidió:** el dueño (opción A), confirmando su pedido del 22-ago (commit 642d478).
+**Qué se decidió:** en Reportes, el cliente cuyo contrato sigue corriendo pero tiene la moto guardada
+en la empresa (taller, garantía, fiscalía, tránsito) sale en su propia línea, "con la moto en el
+taller", con lo que debe a la vista. No cuenta como atrasado ni entra al porcentaje del cobrador.
+Sigue debiendo su semana (regla del 30-jul): esto es cómo se cuenta en los reportes, no cuánto debe.
+**Por qué:** sin la moto no puede producir, y contarlo como atrasado le dañaba el porcentaje al
+cobrador. El Resumen nuevo (3955e28) los contaba como atrasados — error mío del 2-oct: lo di por
+decidido sin revisar el pedido del 22-ago. Medido el 2-oct: 4 clientes.
+**Dónde vive:** 🔲 por construir — `baseGestion` y el Resumen en `ReportesView.tsx`.
+**Reemplaza a:** —

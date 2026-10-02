@@ -212,9 +212,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 🧑 ⚠️ **NELSON ESTUPIÑAN (RMZ58H): $30.000 que nadie cobra.** Firmó el acuerdo por $840.000 y su
-  deuda de migración dice $870.000. Con la mig 183 se le cobra lo del acuerdo firmado. Preguntar al
-  dueño si esos $30.000 se le cobran aparte.
+- [ ] 🧑 🔴 **Volver a calcular LIQ-0050 (NELSON ESTUPIÑAN, RMZ58H).** Se calculó el 16-sep con el
+  cobro doble de la mig 130 (deuda del Excel $870.000 + saldo del acuerdo $840.000, la misma plata):
+  dice −$1.488.000. Ya corrida la 183 y la 184, recalcularla en Liquidaciones (sigue "calculada", no
+  firmada). Es la única de las 61 liquidaciones movidas desde el 7-sep con ese problema.
 - [ ] 💻 ⚠️ **Acuerdo nuevo sobre uno vencido** (riesgo que abre la mig 183, hoy 0 casos): las deudas
   del vencido se quedan dentro de él, así que un acuerdo NUEVO no las recoge, y como se cobra primero
   el activo, lo que falta del vencido dejaría de verse. Decidir si la pantalla de acuerdos lo bloquea
@@ -597,6 +598,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | **NELSON ESTUPIÑAN (RMZ58H): la multa de inmovilización de julio, aparte** (mig 184) — el 9-jul se le sumaron $30.000 a mano a la deuda del Excel (840 → 870) y el acuerdo se firmó por $840.000. Ahora: Excel $840.000 dentro del acuerdo + multa $30.000 pendiente. Debe $3.227.400, igual en pantalla y ZALA |
 | 2-oct | 🔴 **El acuerdo vencido ya no se cobra dos veces** (D-036, mig 183) — la mig 130 devolvía sus deudas a 'pendiente' y desde el 17-sep el acuerdo también se cobraba. 6 clientes, $2.718.000 de más (ARISMEL MUÑOZ RMY48H $889.000 → $447.000). ZALA ya ve el acuerdo vencido (era el pendiente de WILLINGTON y ARISMEL). La prueba espejo ahora elige el acuerdo como la pantalla: 330 comparados, 0 diferencias |
 | 2-oct | **Reportes: arreglo corto tras la revisión con agentes** — el Resumen ya no se recorta con filtros que no muestra; "Cargando" en vez de $0 con sello verde; el sello compara de verdad (grupos contra pagos, cada peso repartido, estados contra vigentes); lo pagado al acuerdo de base va a la parte del cliente ($3.644.000 en septiembre); la nómina no deja pagar ni imprimir con datos a medias ni muestra el cierre de otra semana; los pagos de a 1.000 ya no se repiten ni se pierden en el borde (toda la app). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **Reportes: Resumen nuevo** — filtros de período, grupo y cobrador que mandan sobre todo lo de abajo; cada número se toca y abre la lista de quiénes son, con "Abrir en Cartera" ya filtrada y descarga; columna "hoy" contra "al cierre" del período; recaudado separado empresa / ahorro / base; sello que revisa que las cifras cuadren; modo oscuro sin textos ilegibles (0 de 119). `docs/REDISENO-REPORTES.md` |

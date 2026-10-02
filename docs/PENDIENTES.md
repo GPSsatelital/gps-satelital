@@ -212,10 +212,21 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 🧑 🔴 **Volver a calcular LIQ-0050 (NELSON ESTUPIÑAN, RMZ58H).** Se calculó el 16-sep con el
-  cobro doble de la mig 130 (deuda del Excel $870.000 + saldo del acuerdo $840.000, la misma plata):
-  dice −$1.488.000. Ya corrida la 183 y la 184, recalcularla en Liquidaciones (sigue "calculada", no
-  firmada). Es la única de las 61 liquidaciones movidas desde el 7-sep con ese problema.
+- [ ] 🧑 🔴 **LIQ-0050 (NELSON ESTUPIÑAN, RMZ58H): corregir su lista de deudas y volver a calcular.**
+  Se inició el 11-sep copiando las deudas de ese momento (la del Excel estaba "devuelta" por la mig 130)
+  y quedó con el cobro doble: dice −$1.488.000. El cálculo usa la lista guardada en la liquidación, no
+  la del sistema: hay que corregirla a mano en Liquidaciones (sigue "calculada", no firmada). Decidido
+  con el dueño el 2-oct:
+  · Quitar "Deuda de apertura — migración RMZ58H" $870.000 (está dentro del acuerdo).
+  · "Saldo de convenio incumplido": $840.000 → **$830.000** (el 26-jul se le acreditaron $10.000).
+  · Agregar "Multa por inmovilización (4 y 7 de julio)" $30.000 (mig 184).
+  · Daños que se le cobran: **$387.400 completos** (la orden del taller; el dueño: "todo").
+  · ⏸️ **Falta que la oficina confirme:** ¿el motocarro de $50.000 (deuda del 11-sep) es el mismo
+    "transporte desde casa a bodega" que ya va dentro de los $387.400 del taller? Si es el mismo, no se
+    agrega; si son dos viajes, se agrega. Preguntar también por "ENRRADIADA DE LLANTA DELANTERA" $25.000
+    (escrita a mano en la liquidación): el taller ya cobra "rin delantero" y "radios delanteros".
+  Al cerrarla, el cierre salda todas las deudas del contrato (incluida la de daños de $387.400) y deja
+  una sola deuda con el saldo en contra: no hay cobro doble por cerrar.
 - [ ] 💻 ⚠️ **Acuerdo nuevo sobre uno vencido** (riesgo que abre la mig 183, hoy 0 casos): las deudas
   del vencido se quedan dentro de él, así que un acuerdo NUEVO no las recoge, y como se cobra primero
   el activo, lo que falta del vencido dejaría de verse. Decidir si la pantalla de acuerdos lo bloquea

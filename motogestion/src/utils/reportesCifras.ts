@@ -8,7 +8,7 @@
 
 import {
   calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo, cajasExigidasHasta, valorPeriodoReal,
-  faltaDelAcuerdo, loQueDebe, type ContratoCiclo, type EstadoCartera,
+  faltaDelAcuerdo, loQueDebe, vaARecoleccion, type ContratoCiclo, type EstadoCartera,
 } from "./cicloPago";
 
 type PagoR = {
@@ -59,7 +59,8 @@ export type EstadoHoy = {
   estado: EstadoCartera;
   /** Días que lleva VENCIDA la cuota (la cuenta que manda). No la reinicia un abono. */
   diasMora: number;
-  /** Más de 3 días con la cuota vencida y sin plazo extra vigente (regla del 9-sep). */
+  /** La misma regla de la cola de Cartera (`vaARecoleccion`): más de 3 días en mora, sin plazo
+   *  extra vigente y con su moto en la calle (o en una prestada). */
   recoleccion: boolean;
   /** Todo lo que debe hoy: cuota + acuerdo + deudas. La misma cifra que Cartera. */
   debeHoy: number;
@@ -79,6 +80,9 @@ export function estadoHoy(
   hoyISO: string,
   conPlazoVigente: Set<string>,
   diario?: { toca: number; pagado: number },
+  // La moto del contrato y si anda en una prestada: con la suya guardada y sin prestada no va a
+  // recolección (decisión del dueño, 29-sep).
+  moto: { estado?: string | null; conPrestada: boolean } = { conPrestada: false },
 ): EstadoHoy {
   const cuotaConvenio = cuotaConvenioDelPeriodo(convenioACobrar as never, contrato, hoy);
   const cubierto = !!(convenioACobrar?.cubre_periodo_hasta && convenioACobrar.cubre_periodo_hasta >= hoyISO);
@@ -91,7 +95,10 @@ export function estadoHoy(
   return {
     estado,
     diasMora: dias,
-    recoleccion: estado === "mora" && dias > 3 && !conPlazoVigente.has(contrato.id),
+    recoleccion: vaARecoleccion({
+      estado, diasMora: dias, plazoVigente: conPlazoVigente.has(contrato.id),
+      estadoMoto: moto.estado, conPrestada: moto.conPrestada,
+    }),
     debeHoy: lq.totalFalta,
   };
 }

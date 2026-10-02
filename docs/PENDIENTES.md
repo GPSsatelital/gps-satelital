@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **30-sep-2026**.
+- Última revisión: **2-oct-2026**.
 
 ---
 
@@ -212,17 +212,20 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 🧑 **REGINALDO ANTONIO RODRIGUEZ (IEW53I) está en la cola de recolección con la moto en
-  garantía** (visto el 29-sep en la auditoría de Reportes). Contrato activo, 7 días en mora, debe
-  $433.000, y su moto está "en garantía del concesionario" sin moto prestada. Por la regla del
-  30-jul el contrato sigue contando, pero no hay moto que recolectar. **Decisión del dueño:** ¿sale de
-  la cola mientras la moto esté en garantía, o se le cobra igual y se gestiona de otra forma?
+- [ ] 🧑 **¿Cómo se les pagó a los cobradores desde la semana del 31-ago?** La pantalla de nómina
+  (y el desprendible) mostraba mucho menos de lo real porque traía solo 1.000 registros (D-031,
+  arreglado el 2-oct). Ej.: Brandon, semana del 21-sep, $57.500 en vez de $402.500; la semana completa
+  $930.000 en vez de $2.006.250. Si se pagó mirando esa pantalla, se les debe la diferencia.
 
-- [ ] 💻 **Construir las 3 decisiones del 29-sep** (`docs/REVISION-29SEP.md`, tanda 2): (1) moto
-  guardada sin prestada NO entra a recolección (REGINALDO IEW53I); (2) mora solo por el acuerdo: días
-  desde la cuota vencida y a recolección solo si debe una cuota completa (6 clientes, REINEL 5 cuotas);
-  (3) nómina: opción A, cada semana se paga como estaba el día que se cobró. Tocan Cartera + ZALA
-  (espejo) + nómina: van juntas, con prueba espejo.
+- [ ] 💻 ⚠️ **ZALA no ve el acuerdo VENCIDO** (visto el 2-oct). Desde el 17-sep la pantalla y Mi Día
+  siguen cobrando el acuerdo incumplido; la vitrina `zala.cliente` solo mira los acuerdos activos. Hoy:
+  Cartera y Mi Día 57 en recolección, ZALA 55 (WILLINGTON GARCIA DQW26I y ARISMEL MUÑOZ RMY48H).
+  **Preguntar al dueño** antes de cambiar la vitrina.
+
+- [ ] 💻 **El registro de cambios del contrato no se guarda en algunas rodadas** (visto el 1-oct). En 7
+  de 18 rodadas (las de Lumar, Carlos Ariza y algunas de Carlos Alvarez) no quedó la fila en
+  `contratos_auditoria`: el insert falla en silencio (`editarContrato`, `useContratos.ts`), probable
+  permiso de SUBADMIN. La rodada sí quedó (y `acuerdos_tiempo_rodado` también). Medir y arreglar.
 
 - [ ] 🧑 **Decisiones pendientes de liquidaciones** (`docs/REVISION-29SEP.md`): (a) las semanas
   rodadas al liquidar ¿se cobran o no? — hoy solo BRADER GUZMAN LIQ-0078, **no cerrarla**; (b) las 28
@@ -235,16 +238,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **Saldos a favor más visibles:** propuesta con dibujo (medido: 95 clientes, $5,1M; 10 en
   recolección con plata a favor). Ver `docs/REVISION-29SEP.md`.
-
-- [ ] 💻 **YHAN CARLOS MIRANDA (YAL55H) sale "en mora" con 0 días de mora** en Cartera y ZALA (visto
-  el 29-sep): la mora le viene del acuerdo y el contador de días solo mira semanas. Revisar la cuenta
-  de días cuando la mora es solo del acuerdo.
-
-- [ ] 💻 🔴 **La nómina tampoco salta las semanas rodadas** (lo vecino a D-028, 28-sep).
-  `exigenciaDe()` en `nominaCobradores.ts` (~línea 358) fecha cada caja desde el arranque del libro
-  sin restar `cajas_exoneradas`, y con esa fecha decide si la caja se pagó **atrasada**. Después de
-  rodar, una semana pagada a tiempo puede salir como atrasada. **Toca la plata de los cobradores:**
-  medir cuántos renglones cambian en las semanas ya cerradas y preguntarle al dueño antes de tocar.
 
 - [ ] 💻 **Saldos a favor más visibles para el funcionario** (pedido del dueño, 28-sep). Que al
   ver al cliente lo tenga claro. **Primero analizar** dónde se muestra hoy (ficha, cartera, cobro,
@@ -548,6 +541,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P4 — Limpieza y optimización
 
+- [ ] 💻 **Traer por páginas todo lo que va a crecer** (propuesta del 2-oct, sin aprobar). Supabase
+  entrega máximo 1.000 filas sin avisar (D-031). Hoy piden de un solo viaje: Mi Día (429), recepciones
+  (268), historial de ubicaciones (274), visitas (156). Con 1.000 motos, Mi Día pasaría de 1.000.
+  Propuesta: una sola función "traer todo por páginas" + una alarma si una consulta llega justo a 1.000.
+
 - [ ] 💻 **`npm run cierre` compara fechas en UTC** (`cierre.mjs`, líneas 77-80): después de las 7 pm de Colombia ya es el día siguiente en UTC y no ve lo registrado hoy en `DECISIONES.md`/`DERRAPES.md` (pasó el 25-sep con D-026). Usar la fecha de Colombia, como `hoyISO()`.
 - [ ] 💻 **Aviso en "Cerrar y pagar" de la nómina** cuando la semana todavía no terminó. Hoy deja
   cerrar una semana a medias y **no se puede deshacer**.
@@ -577,6 +575,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | 🔴 **Recolección y días de mora del acuerdo** (D-030, mig 182) — la moto guardada sin prestada no va a recolección (REGINALDO, JAIRO MARIMON); con acuerdo los días se cuentan sobre el conjunto (REINEL 1 → 15 días); sin mínimo de plata. Cola 36 → 55. Foto de la plata 0, espejo 330/0 |
+| 2-oct | 🔴 **Nómina: semanas rodadas y las 1.000 filas** (D-031) — se paga como estaba el día del cobro; la pantalla y el desprendible traen todos los registros (semana del 21-sep: $930.000 → $2.017.500, impreso = pantalla) |
 | 30-sep | **Reportes, bloque 2** — visitas suman, clientes con contrato, retenidas por mora separadas, aviso de SOAT separado, motos reasignadas fuera de la cuenta, y las 11 pestañas caben en el celular. `docs/AUDITORIA-REPORTES.md` |
 | 30-sep | 🔴 **Liquidación: el ahorro de los días usados caja por caja** (93c442d) — ROGER $30.000 → $4.000, MELISSA +$9.000; 4 abiertas cambian al recalcularlas |
 | 29-sep | 🔴 **Reportes dice la verdad (bloque 1)** (D-029) — "en mora" 187 → 65 (igual a Cartera, 0 diferencias), aviso de recolección 50 → 58, los grupos suman el total ($13.297.200 que faltaban), un solo "vs anterior", y el período se mide por cumplimiento (cambia con la fecha). Medido en la app. `docs/AUDITORIA-REPORTES.md` |

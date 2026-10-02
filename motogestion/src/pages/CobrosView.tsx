@@ -90,6 +90,8 @@ import {
   valorPeriodoReal,
   diasEnMora,
   diaPagoFrase,
+  vaARecoleccion,
+  MOTO_GUARDADA_NO_SE_RECOLECTA,
   type ContratoCiclo,
 } from "../utils/cicloPago";
 import { marcaDeFirma } from "../utils/convenioFirmas";
@@ -600,12 +602,16 @@ type TabKey = "hoy" | "contratos" | "dinero" | "historial";
 type FiltroContratos = "todos" | "mora" | "gabela" | "al-dia" | "pagan-hoy" | "convenio" | "retenidos" | "empalme";
 
 type ProtocoloStep = { paso: number; label: string; color: string; bg: string; accionRecomendada: string };
-/** `dias` = días que lleva VENCIDA la cuota (`diasMora`), no días desde el último pago: el paso 4
- *  es la misma decisión que el balde Recolección del panel Hoy y tienen que coincidir. */
-function calcProtocoloStep(dias: number): ProtocoloStep {
+/** `dias` = días que lleva VENCIDA la cuota (`diasMora`), no días desde el último pago. El paso 4
+ *  es la misma decisión que el balde Recolección del panel Hoy (`vaARecoleccion`) y tienen que
+ *  coincidir: por eso llega `recolectable` ya decidido, en vez de volver a mirar solo los días.
+ *  Con la moto guardada en la empresa no hay sirena, apagado ni recolección: mensajes y llamadas
+ *  (decisión del dueño, 29-sep). */
+function calcProtocoloStep(dias: number, recolectable: boolean, motoGuardada: boolean): ProtocoloStep {
+  if (motoGuardada && dias >= 1) return { paso: 2, label: "Llamada (moto guardada)", color: "var(--warn-ink)", bg: "var(--warn-soft)", accionRecomendada: "llamada" };
   if (dias <= 0) return { paso: 1, label: "Recordatorio", color: "var(--accent)", bg: "var(--accent-soft)", accionRecomendada: "mensaje_recordatorio" };
   if (dias === 1) return { paso: 2, label: "Llamada + Sirena", color: "var(--warn-ink)", bg: "var(--warn-soft)", accionRecomendada: "llamada" };
-  if (dias <= 3) return { paso: 3, label: "Apagado Remoto", color: "var(--bad-ink)", bg: "var(--bad-soft)", accionRecomendada: "otro" };
+  if (dias <= 3 || !recolectable) return { paso: 3, label: "Apagado Remoto", color: "var(--bad-ink)", bg: "var(--bad-soft)", accionRecomendada: "otro" };
   return { paso: 4, label: "RECOLECCION FISICA", color: "var(--card)", bg: "var(--bad-ink2)", accionRecomendada: "recoleccion" };
 }
 
@@ -1051,6 +1057,29 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     return set;
   }, [gestiones, hoyISOPlazo]);
 
+  // Su moto está guardada en la empresa (taller, garantía, fiscalía, tránsito) y no anda en una
+  // prestada: no hay nada que recoger ni que apagar (decisión del dueño, 29-sep).
+  function motoGuardadaSinPrestada(c: typeof resumenContratos[number]): boolean {
+    const estadoMoto = motos.find(m => m.id === c.moto_id)?.estado ?? "";
+    return MOTO_GUARDADA_NO_SE_RECOLECTA.includes(estadoMoto)
+      && !prestamos.some(p => p.contrato_id === c.id && p.estado === "activo");
+  }
+
+  // UNA regla para la cola de Recolección y el paso 4 del protocolo (`vaARecoleccion`, cicloPago).
+  function vaARecoleccionHoy(c: typeof resumenContratos[number]): boolean {
+    return vaARecoleccion({
+      estado: c.estadoCartera,
+      diasMora: c.diasMora,
+      plazoVigente: contratosConPlazoVigente.has(c.id),
+      estadoMoto: motos.find(m => m.id === c.moto_id)?.estado,
+      conPrestada: prestamos.some(p => p.contrato_id === c.id && p.estado === "activo"),
+    });
+  }
+
+  function protocoloDe(c: typeof resumenContratos[number]): ProtocoloStep | null {
+    return c.estadoCartera === "mora" ? calcProtocoloStep(c.diasMora, vaARecoleccionHoy(c), motoGuardadaSinPrestada(c)) : null;
+  }
+
   const panelHoy = useMemo(() => {
     const idsPaganHoy = new Set([...paganHoyDiario, ...paganHoyPeriodico].map(c => c.id));
     const recoleccion: typeof resumenContratos = [];
@@ -1066,13 +1095,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       // 137 en la cola en vez de 64. La cuenta correcta es `diasMora`, que es la que respeta el
       // protocolo (mensaje → llamada → apagado o recolección) y no la reinicia un abono parcial.
       // Si tiene un plazo extra vigente, se queda en Mora — no se puede recolectar durante ese margen.
-      if (c.estadoCartera === "mora" && c.diasMora > 3 && !contratosConPlazoVigente.has(c.id)) recoleccion.push(c);
+      // Tampoco va la moto guardada sin prestada (decisión del 29-sep): todo vive en `vaARecoleccion`.
+      if (vaARecoleccionHoy(c)) recoleccion.push(c);
       else if (c.estadoCartera === "mora") mora.push(c);
       else if (c.estadoCartera === "gabela") gabela.push(c);
       else if (idsPaganHoy.has(c.id)) paganHoy.push(c);
     });
     return { recoleccion, mora, gabela, paganHoy };
-  }, [operativos, paganHoyDiario, paganHoyPeriodico, contratosConPlazoVigente]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operativos, paganHoyDiario, paganHoyPeriodico, contratosConPlazoVigente, motos, prestamos]);
 
   const totalTareasHoy = panelHoy.recoleccion.length + panelHoy.mora.length + panelHoy.gabela.length + panelHoy.paganHoy.length;
 
@@ -1800,7 +1831,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     // de verdad en mora (mismo criterio que el Panel Hoy). Antes se mostraba con "días
     // desde el último pago" > 0, que es > 0 aunque esté al día → salía "Paso 4 Recolección"
     // a clientes al día (ej. migrados que pagaron hace unos días).
-    const protocolo = contratoDetalle.estadoCartera === "mora" ? calcProtocoloStep(contratoDetalle.diasMora) : null;
+    const protocolo = protocoloDe(contratoDetalle);
     // Con convenio: la deuda la paga el convenio → NO se suma completa (contaría doble).
     // A pagar este período = cuota pendiente + cuota del convenio. Si está al día, 0.
     // Sin convenio: cuota pendiente + deuda (esa deuda sí se cobra).
@@ -3085,7 +3116,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           const cliente = clientes.find(cl => cl.id === c.cliente_id);
           const moto = motos.find(m => m.id === c.moto_id);
           const seleccionado = c.id === contratoSeleccionadoId;
-          const paso = c.estadoCartera === "mora" ? calcProtocoloStep(c.diasMora) : null;
+          const paso = protocoloDe(c);
 
           const enProrrateoLista = estaEnProrrateo(c, c.sinPagosNunca ?? true);
           // Fuente única (ledger + convenio + deuda) — misma cifra que el detalle y Panel Hoy.

@@ -11,7 +11,7 @@ import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useMotos } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
-import { hoyISO, hoyDate } from "../utils/fecha";
+import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
 import { useBackGuard } from "../contexts/BackNav";
 import { Chip } from "../components/atomos";
@@ -30,9 +30,10 @@ import { useNominaCierres } from "../hooks/useNominaCierres";
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemanaDetallada, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
+import { useRodadas } from "../hooks/useRodadas";
 import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
 import { reporteConvenios, totalesConvenios } from "../utils/reporteConvenios";
 import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
@@ -570,6 +571,13 @@ export default function ReportesView({ onNavigate }: Props) {
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
   const { eventos: eventosNomina } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina");
+  // Las rodadas con su fecha: cada semana se paga según cómo estaba el día en que se cobró (30-sep).
+  const registrosRodadas = useRodadas(tab === "nomina");
+  const rodadasNomina = useMemo(() => {
+    if (!registrosRodadas) return null;
+    const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
+    return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
+  }, [registrosRodadas, contratos]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
   const { cerrarSemana, cierreDe } = useNominaCierres(lunesNomina, tab === "nomina");
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
@@ -590,8 +598,9 @@ export default function ReportesView({ onNavigate }: Props) {
       referidos: clientes
         .filter(c => c.referido_por_funcionario)
         .map(c => ({ cliente_id: c.id, funcionario_id: c.referido_por_funcionario! })),
+      rodadas: rodadasNomina,
     });
-  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas]);
+  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas, rodadasNomina]);
   const nominas = nominaDetalle.nominas;
   // EL REVERSO (15-sep): las motos asignadas que NO generaron gestión, agrupadas por cobrador.
   // Sin esto, una moto sin pago desaparecía de la pantalla y no había cómo distinguir "no trabajó"
@@ -742,7 +751,8 @@ export default function ReportesView({ onNavigate }: Props) {
       const e = estadoHoy(c as never, confirmados as never, deudasPend as never, convenioACobrar as never, hoy, hoyStr, plazosVigentes,
         c.forma_pago === "Diario"
           ? { toca: calcularCuotaDia(c.tarifa_diaria ?? 27000, new Date().getDay() === 0, c.tarifa_domingo), pagado: recaudadoHoyC }
-          : undefined);
+          : undefined,
+        { estado: moto?.estado, conPrestada: prestamos.some(p => p.contrato_id === c.id && p.estado === "activo") });
       const cum = cumplimientoDelPeriodo(c as never, confirmados as never,
         convenios.filter(cv => cv.contrato_id === c.id) as never, desde, hasta, fechaDeCaja as never);
       const deudaP = deudasPend.reduce((s, d) => s + d.monto_pendiente, 0);
@@ -775,7 +785,7 @@ export default function ReportesView({ onNavigate }: Props) {
       });
     });
     return rows;
-  }, [contratos, motos, clientes, pagos, pagosRango, deudas, convenios, atribucion, plazosVigentes, convenioPorCobrarDelContrato, hoyStr, desde, hasta]);
+  }, [contratos, motos, clientes, pagos, pagosRango, deudas, convenios, atribucion, plazosVigentes, convenioPorCobrarDelContrato, prestamos, hoyStr, desde, hasta]);
 
   // ── MOTOS GUARDADAS: las que no están produciendo (pedido del dueño, 25-ago) ──
   // Todo derivado: el estado dice que está guardada, la última recepción dice desde cuándo y

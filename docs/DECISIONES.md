@@ -442,3 +442,43 @@ cierre · dejar el estado de hoy aclarado).
 cuando eran 65.
 **Dónde vive:** `src/utils/reportesCifras.ts` · `src/pages/ReportesView.tsx`.
 **Reemplaza a:** —
+
+### D-030 · 2-oct-2026 · Días de mora del conjunto, recolección sin mínimo y la moto guardada no se recoge
+**Decidió:** el dueño, en tres pasos (29-sep, 1-oct y 2-oct).
+**Qué se decidió:**
+- **Moto guardada** (taller, garantía, fiscalía, tránsito) y el cliente **sin moto prestada**: no
+  entra a recolección, porque no hay moto que recoger. Sigue en mora, con mensajes y llamadas. En
+  Cartera el paso del protocolo dice "Llamada (moto guardada)", y con plazo extra vigente no dice
+  "Recolección física", para que el letrero coincida con la cola.
+- **Con acuerdo, los días de mora se cuentan sobre el CONJUNTO** (semana + cuota del acuerdo, la
+  misma idea de D-022): se suma todo lo que le falta y se mira desde cuándo lo debe.
+- **Sin mínimo de plata para recolección**: lo que lleve más de 3 días de mora va, sean $2.000 o
+  $200.000. Textual: *"si le faltaron $2.000 no pagó completo, y tienen que guardarlo o que
+  cancele; no tendría que pasar al siguiente pago debiendo"*. Reemplaza el mínimo de una cuota que
+  se había elegido el 29-sep.
+**Por qué:** REGINALDO (IEW53I) estaba en la cola con la moto en garantía. REINEL (XYZ53H) debía 5
+cuotas del acuerdo y cada día de pago salía "al día"; varios salían "en mora con 0 días". Contar
+el acuerdo por separado tampoco servía: antes del 24-sep el motor metía la plata en las semanas y
+el acuerdo no recibía nada, y JAIDER (YAC80H) habría salido con 58 días cuando como conjunto son 9.
+**Medido el 2-oct:** la cola de recolección pasó de 36 a 55 (entran 21, salen REGINALDO y JAIRO
+MARIMON). Ni un peso cambia. Pantalla y vitrina: 330 contratos, 0 diferencias.
+**Dónde vive:** `diasDelConjunto` y `vaARecoleccion` en `src/utils/cicloPago.ts` · mig 182
+(`zala.dias_conjunto`, `zala.se_puede_recolectar`) · pruebas en `src/utils/recoleccionYAcuerdo.test.ts`.
+**Reemplaza a:** el mínimo de una cuota del acuerdo (decisión del 29-sep, nunca subida).
+
+### D-031 · 2-oct-2026 · La nómina paga cada semana según cómo estaba el día del cobro, y trae todos los registros
+**Decidió:** el dueño (opción A, 30-sep) y el arreglo de las 1.000 filas (2-oct).
+**Qué se decidió:**
+- Una semana rodada se exige más tarde. La nómina lo respeta **desde el día en que se registró la
+  rodada**: lo cobrado antes sigue como estaba ese día (atrasado = $3.750); lo cobrado después, con
+  la fecha corrida. Las fechas salen de `acuerdos_tiempo_rodado` y de la semana que asumió la empresa
+  (KEVIN, 22-sep).
+- La nómina trae los registros de cajas llenadas **por páginas**: Supabase entrega máximo 1.000 sin
+  avisar, y desde la semana del 31-ago la pantalla y el desprendible mostraban mucho menos de lo real
+  (Brandon, semana del 21-sep: $57.500 en vez de $402.500).
+**Medido:** 5 semanas (24-ago a 27-sep), por las rodadas: Brandon +$11.250, Carlos Alvarez +$15.000,
+Carlos Ariza +$7.500, Lumar −$3.750. Desprendibles impresos de la semana del 21-sep: renglones y
+totales iguales a la pantalla ($2.017.500). Cuesta ~1 segundo más al abrir la pestaña Nómina.
+**Dónde vive:** `src/utils/nominaCobradores.ts` (`rodadasDesdeRegistros`, `exoneradasAlDia`) ·
+`src/hooks/useRodadas.ts` · `src/hooks/useCajasLlenadas.ts`.
+**Reemplaza a:** —

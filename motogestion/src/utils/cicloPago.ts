@@ -530,6 +530,76 @@ export function faltaDelAcuerdo(
   };
 }
 
+/**
+ * EL CONJUNTO, PARA LOS DÍAS DE MORA (decisión del dueño, 1-oct-2026; extiende D-022 del 24-sep).
+ *
+ * Quien tiene acuerdo paga "como si su tarifa cambiara": su semana MÁS la cuota del acuerdo, un solo
+ * conjunto. D-022 ya lo aplicó al reparto de la plata (mig 171); esto lo aplica a los días: se suma
+ * todo lo que le falta (semana + acuerdo) y se mira desde cuándo lo debe, recorriendo hacia atrás
+ * lo que se le fue exigiendo (semanas y cuotas, cada una en su fecha) hasta cubrir lo que falta.
+ *
+ * POR QUÉ: antes del 24-sep el motor llenaba primero TODAS las semanas y el acuerdo no recibía nada.
+ * Contados por separado, JAIDER (YAC80H) "debía una cuota desde el 27-jul" (58 días) cuando lo que
+ * pasó es que su plata se fue a las semanas. Como conjunto: 9 días. REINEL (XYZ53H): 48 → 14.
+ *
+ * Devuelve hace cuántos días venció lo más viejo que le falta (0 = vence hoy). `null` = no aplica
+ * (sin motor, o sin acuerdo con cuota): ahí manda la cuenta de las semanas.
+ * Espejo: `zala.dias_conjunto` (mig 182).
+ */
+export function diasDelConjunto(
+  convenio: { cuota_por_periodo?: number | null; deuda_total?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; periodos_exonerados?: number | null } | null | undefined,
+  contrato: ContratoCiclo,
+  pagosConfirmados: Array<{ aplicado_convenio?: number | null; created_at?: string | null; fecha?: string | null }>,
+  hoy: Date,
+): number | null {
+  if (!contrato.motor_v2 || contrato.forma_pago === "Diario") return null;
+  const cuota = convenio?.cuota_por_periodo ?? 0;
+  if (!convenio?.created_at || cuota <= 0) return null;
+  const debe = desgloseExigible(contrato, hoy).totalCuotas + (faltaDelAcuerdo(convenio, contrato, pagosConfirmados, hoy)?.falta ?? 0);
+  if (debe <= 0) return 0;
+
+  // Las cuotas del acuerdo que se le exigieron, cada una en su fecha (el mismo recorrido de
+  // `periodosConvenioExigidos`; las rodadas corren la k-ésima, y la última es el resto del total).
+  const total = convenio.deuda_total;
+  const cuotas: Array<{ f: string; m: number }> = [];
+  const hoyIni = fechaAISO(inicioPeriodoActual(contrato, hoy));
+  let d = inicioPeriodoActual(contrato, new Date(convenio.created_at.slice(0, 10) + "T12:00:00"));
+  let n = 0;
+  for (let i = 0; i < 200 && fechaAISO(d) <= hoyIni; i++) {
+    if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) {
+      n++;
+      const k = n - (convenio.periodos_exonerados ?? 0);
+      if (k >= 1) {
+        const m = total == null ? cuota : Math.min(k * cuota, total) - Math.min((k - 1) * cuota, total);
+        if (m > 0) cuotas.push({ f: fechaAISO(d), m });
+      }
+    }
+    d = proximoDiaPago(contrato, d);
+  }
+
+  // Hacia atrás desde hoy. La semana y la cuota del mismo día van juntas; primero se cuenta la
+  // cuota, que en el conjunto es la plata que entra después de la semana.
+  const valor = valorPeriodoReal(contrato);
+  const rodadas = contrato.cajas_exoneradas ?? 0;
+  const previas = contrato.cajas_previas ?? 0;
+  let j = cajasExigidasHasta(contrato, hoy);
+  let ic = cuotas.length - 1;
+  let acum = 0;
+  let fecha: string | null = null;
+  for (let guarda = 0; guarda < 1000; guarda++) {
+    const fj = j > previas ? fechaCaja(contrato, j + rodadas) : null;
+    if (fj === null && ic < 0) break;
+    let m: number;
+    if (ic >= 0 && (fj === null || cuotas[ic].f >= fj)) { fecha = cuotas[ic].f; m = cuotas[ic].m; ic--; }
+    else { fecha = fj!; m = valor; j--; }
+    acum += m;
+    if (acum >= debe) break;
+  }
+  if (fecha === null) return null;
+  const ms = new Date(fechaAISO(hoy) + "T00:00:00").getTime() - new Date(fecha + "T00:00:00").getTime();
+  return Math.max(Math.floor(ms / 86400000), 0);
+}
+
 export function calcularEstadoCartera(
   contrato: ContratoCiclo,
   // aplicado_convenio es opcional: solo lo usa la rama del motor v2, para saber si la cuota
@@ -562,6 +632,11 @@ export function calcularEstadoCartera(
     if (cierre) {
       if (cierre.falta <= 0 || cierre.diasVencida === 0) return "al-dia";
       return cierre.diasVencida === 1 ? "gabela" : "mora";
+    }
+    // Con acuerdo: el CONJUNTO (semana + cuota) decide, desde lo más viejo que le falta (1-oct).
+    if (convenio && (convenio.cuota_por_periodo ?? 0) > 0) {
+      const conj = diasDelConjunto(convenio, contrato, pagosConfirmados, hoy);
+      if (conj !== null) return conj >= 2 ? "mora" : conj === 1 ? "gabela" : "al-dia";
     }
     const estadoLedger = estadoCarteraV2(contrato, hoy);
     if (estadoLedger !== "al-dia") return estadoLedger;
@@ -644,6 +719,12 @@ export function diasEnMora(
     // D-026: en semanas de más, desde la semana de más más vieja sin cubrir, menos la gabela.
     const cierre = semanaDeCierre(contrato, pagosConfirmados, deudasPendientes ?? [], convenio, hoy);
     if (cierre) return Math.max(cierre.diasVencida - 1, 0);
+    // Con acuerdo: desde lo más viejo que le falta al CONJUNTO (1-oct). Antes solo contaban las
+    // semanas, y quien debía solo el acuerdo salía en mora con 0 días.
+    if (convenio && (convenio.cuota_por_periodo ?? 0) > 0) {
+      const conj = diasDelConjunto(convenio, contrato, pagosConfirmados, hoy);
+      if (conj !== null) return Math.max(conj - 1, 0);
+    }
     return Math.max(diasEnMoraV2(contrato, hoy) - 1, 0);
   }
   const hoyDia = new Date(hoy);
@@ -651,6 +732,35 @@ export function diasEnMora(
   const inicio = inicioPeriodoActual(contrato, hoyDia);
   const diasDesde = Math.floor((hoyDia.getTime() - inicio.getTime()) / 86400000);
   return Math.max(diasDesde - 1, 0);
+}
+
+/** Estados en que la empresa tiene la moto GUARDADA (taller, garantía, fiscalía, tránsito). */
+export const MOTO_GUARDADA_NO_SE_RECOLECTA = ["Mantenimiento", "Fiscalia", "Transito", "Garantia"];
+
+/**
+ * ¿Va a la cola de RECOLECCIÓN hoy? UNA sola regla para el panel Hoy y el protocolo de Cartera y
+ * para Reportes. Espejo en la base: `zala.se_puede_recolectar` (vitrina de ZALA y Mi Día, mig 182).
+ *
+ *   · Más de 3 días en mora y sin plazo extra vigente (regla del 9-sep).
+ *   · Su moto no está guardada en la empresa — salvo que ande en una prestada. Decisión del dueño
+ *     (29-sep, REGINALDO IEW53I, moto en garantía): no hay moto que recoger; sigue en mora, con
+ *     mensajes y llamadas, y se le sigue cobrando.
+ *   · Sin mínimo de plata: lo que lleve más de 3 días de mora va, sea de la semana o del acuerdo,
+ *     $2.000 o $200.000. Decisión del dueño (2-oct-2026, reemplaza el mínimo de una cuota del
+ *     29-sep): "si le faltaron $2.000 no pagó completo, y tienen que cobrárselo o guardar la moto;
+ *     no tendría que pasar al siguiente pago debiendo". Con acuerdo, los días son los del conjunto.
+ */
+export function vaARecoleccion(p: {
+  estado: EstadoCartera;
+  diasMora: number;
+  plazoVigente: boolean;
+  /** Estado de la moto del contrato (`motos.estado`). Con préstamo, es la prestada. */
+  estadoMoto?: string | null;
+  conPrestada: boolean;
+}): boolean {
+  if (p.estado !== "mora" || p.diasMora <= 3 || p.plazoVigente) return false;
+  if (!p.conPrestada && MOTO_GUARDADA_NO_SE_RECOLECTA.includes(p.estadoMoto ?? "")) return false;
+  return true;
 }
 
 // Calcula el valor real del primer pago (prorrateo) para contratos nuevos — itera día a

@@ -35,6 +35,12 @@
   const deudas = await porLotes("deudas?estado=eq.pendiente&contrato_id=in.({IDS})&select=contrato_id,monto,monto_pendiente,created_at");
   const convenios = await q("convenios?estado=eq.activo&select=*");
   const vitrina = await rpc("zala_vitrina", { p_vista: "cliente" });
+  // Para la cola de recolección (mig 182): plazo extra vigente, estado de la moto y préstamo activo.
+  const plazos = await q("gestiones_cobro?tipo=eq.plazo_extra&plazo_extra_fecha_limite=not.is.null&select=contrato_id,plazo_extra_fecha_limite");
+  const motos = await q("motos?select=id,estado");
+  const prestados = new Set((await q("prestamos_reemplazo?estado=eq.activo&select=contrato_id")).map(x => x.contrato_id));
+  const plazoHasta = new Map();
+  for (const g of plazos) if (!plazoHasta.has(g.contrato_id) || g.plazo_extra_fecha_limite > plazoHasta.get(g.contrato_id)) plazoHasta.set(g.contrato_id, g.plazo_extra_fecha_limite);
   const porContrato = new Map(vitrina.map(r => [r.contrato_id, r]));
 
   const num = (x) => x == null ? 0 : Number(x);
@@ -63,12 +69,19 @@
       estado_cartera: estado, dias_mora: dias,
       en_semanas_de_mas: lqd.cierre ? 1 : 0, semana_de_mas: lqd.cierre?.semana ?? 0,
       semanas_de_mas: lqd.cierre?.semanas ?? 0, debe_para_terminar: lqd.cierre?.debeTotal ?? 0,
+      // La misma regla del panel Hoy (vaARecoleccion) contra balde_hoy de la vitrina.
+      recoleccion: c.estado === "Activo" && cp.vaARecoleccion({
+        estado, diasMora: dias,
+        plazoVigente: (plazoHasta.get(c.id) ?? "") >= hoyISO,
+        estadoMoto: motos.find(m => m.id === c.moto_id)?.estado, conPrestada: prestados.has(c.id),
+      }) ? 1 : 0,
     };
     comparados++;
     for (const [campo, ts] of Object.entries(esperado)) {
-      const sql = campo === "estado_cartera" ? v[campo] : campo === "en_semanas_de_mas" ? (v[campo] ? 1 : 0) : num(v[campo]);
+      const sql = campo === "estado_cartera" ? v[campo] : campo === "en_semanas_de_mas" ? (v[campo] ? 1 : 0)
+        : campo === "recoleccion" ? (v.balde_hoy === "recoleccion" ? 1 : 0) : num(v[campo]);
       const igual = campo === "estado_cartera" ? sql === ts : Math.abs(sql - ts) < 0.5;
-      if (!igual) diffs.push({ placa: v.placa, cliente: v.cliente, campo, pantalla: ts, base: v[campo] });
+      if (!igual) diffs.push({ placa: v.placa, cliente: v.cliente, campo, pantalla: ts, base: campo === "recoleccion" ? sql : v[campo] });
     }
   }
   const porCampo = diffs.reduce((a, d) => { a[d.campo] = (a[d.campo] || 0) + 1; return a; }, {});

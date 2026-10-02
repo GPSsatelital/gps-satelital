@@ -706,7 +706,8 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 - **Días en mora** (`diasEnMora()` · `zala.cliente.dias_mora`): desde el día que le tocaba pagar su
   ciclo y **no lo pagó o no lo completó**. Un abono parcial **NO** la reinicia. **Es la que manda:**
   decide quién entra a Recolección (>3 días), ordena la lista de Cartera y el panel Hoy, y marca el
-  paso del protocolo. En pantalla: *"6d en mora"*.
+  paso del protocolo. En pantalla: *"6d en mora"*. **Con acuerdo**, semana y cuota son un solo pago
+  (el conjunto, D-030): se cuenta desde lo más viejo que le falta a ese conjunto (`diasDelConjunto`).
 - **Días desde su último pago** (`diasSinPago` · `zala.cliente.dias_sin_pago`): desde el último
   abono confirmado, del monto que sea. **Cualquier abono la reinicia.** Es informativa; se le nombra
   al cliente en el mensaje porque él la reconoce. En pantalla: *"Último pago hace 13 días"*.
@@ -940,7 +941,7 @@ Ahora:
 
 ### Completado — Panel HOY ✅
 - Pestaña **"📋 Hoy"** (por defecto) en CobrosView, organizada por TAREA no por estado.
-- Agrupa por urgencia sin duplicar: Recolección (**más de 3 días con la CUOTA VENCIDA** — `diasMora`, no días desde el último pago; decisión del dueño 9-sep-2026, ver mig 136) → Mora → Gabela → Pagan hoy. Solo muestra pendientes (Al día no aparece).
+- Agrupa por urgencia sin duplicar: Recolección (**más de 3 días con la CUOTA VENCIDA** — `diasMora`, no días desde el último pago; decisión del dueño 9-sep-2026, ver mig 136; **sin mínimo de plata**, y **la moto guardada sin prestada no va** — D-030, `vaARecoleccion`) → Mora → Gabela → Pagan hoy. Solo muestra pendientes (Al día no aparece).
 - Tareas como botones: Mensaje (abre WhatsApp + registra), Llamar (abre `tel:` + registra), Sirena (registra, 3 seg, GPS real pendiente), Recolección (registra orden).
 - "Tarea hecha hoy" = existe gestión de ese tipo con `fecha=hoy` → check verde. Todo queda en `gestiones_cobro`.
 - Hereda filtrado SUBADMIN (cada quien ve solo tareas de sus motos).

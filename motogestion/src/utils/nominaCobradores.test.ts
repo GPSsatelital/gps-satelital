@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, nominaSemanaDetallada, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
+import { nominaSemana, nominaSemanaDetallada, exoneradasAlDia, rodadasDesdeRegistros, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -665,5 +665,73 @@ describe("el referido propio vale $30.000 a quien trajo al cliente", () => {
 
   it("sin nadie anotado, nada cambia respecto a como funcionaba antes", () => {
     expect(correrRef({ referidos: [] })).toHaveLength(0);
+  });
+});
+
+// ── TIEMPO RODADO: cada semana se paga según cómo estaba el día en que se cobró ──────────────────
+// Decisión del dueño (30-sep-2026, opción A). Rodar corre la exigencia de las semanas (mig 078,
+// D-028): la caja 7, que se exigía el lunes 24-ago, con 1 semana rodada se exige el lunes 31.
+describe("nómina con semanas rodadas (opción A del dueño, 30-sep)", () => {
+  const RODADO: ContratoNomina = { ...CONTRATO, cajas_exoneradas: 1 };
+  const correrRodado = (rodadas: Parameters<typeof nominaSemana>[0]["rodadas"]) => nominaSemana({
+    desde: "2026-08-31", hasta: "2026-09-06",
+    contratos: [RODADO], pagos: [], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+    eventos: [{ contrato_id: "ct1", caja_numero: 7, fecha: "2026-08-31", fuente: "pago" }],
+    rodadas,
+  });
+  const rodada = (fecha: string) => ({ contrato_id: "ct1", fecha, periodos: 1, creada: fecha + "T15:00:00Z", corrioAcuerdo: true });
+
+  it("rodada ANTES de cobrarla: la semana ya se exigía el 31 → a tiempo, $7.500", () => {
+    const n = correrRodado([rodada("2026-08-26")]);
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("rodada DESPUÉS de cobrarla: ese día estaba atrasada → $3.750 (lo de después no la cambia)", () => {
+    const n = correrRodado([rodada("2026-09-02")]);
+    expect(n[0].ciclosAtrasados).toBe(1);
+    expect(n[0].total).toBe(VALOR_ATRASADO);
+  });
+
+  it("rodada el MISMO día del cobro: ese día ya estaba rodada → a tiempo", () => {
+    expect(correrRodado([rodada("2026-08-31")])[0].ciclosATiempo).toBe(1);
+  });
+
+  it("sin las rodadas a la mano se queda la cuenta de antes (no corre nada)", () => {
+    expect(correrRodado(undefined)[0].ciclosAtrasados).toBe(1);
+  });
+
+  it("corridas desde antes de cualquier registro (JORGE LUIS TOVAR): se conservan siempre", () => {
+    expect(exoneradasAlDia(28, [], "2026-08-01")).toBe(28);
+    expect(correrRodado([])[0].ciclosATiempo).toBe(1);
+  });
+});
+
+describe("rodadasDesdeRegistros — de lo registrado a semanas corridas", () => {
+  const formaPago = () => "Semanal";
+  const diaLocal = (ts: string) => ts.slice(0, 10);
+
+  it("rodar 26 días de una semanal = 3 semanas, y corre también el acuerdo", () => {
+    const r = rodadasDesdeRegistros(
+      [{ contrato_id: "c", decision: "rodar_al_final", dias_en_empresa: 26, created_at: "2026-09-18T16:01:00Z" }],
+      [], formaPago, diaLocal);
+    expect(r).toEqual([{ contrato_id: "c", fecha: "2026-09-18", periodos: 3, creada: "2026-09-18T16:01:00Z", corrioAcuerdo: true }]);
+  });
+
+  it("'cobrar ahora' no corre nada, y menos de un período tampoco", () => {
+    expect(rodadasDesdeRegistros([
+      { contrato_id: "c", decision: "cobrar_ahora", dias_en_empresa: 12, created_at: "2026-09-01T21:33:00Z" },
+      { contrato_id: "c", decision: "rodar_al_final", dias_en_empresa: 5, created_at: "2026-09-01T21:34:00Z" },
+    ], [], formaPago, diaLocal)).toHaveLength(0);
+  });
+
+  it("la semana que asumió la empresa (KEVIN, 22-sep) cuenta desde ese día, sin tocar el acuerdo", () => {
+    const r = rodadasDesdeRegistros([], [
+      { contrato_id: "k", campo: "La empresa asume una semana", valor_anterior: "exoneradas 0 / total 100", valor_nuevo: "exoneradas 1 / total 99 — 22-sep-2026", created_at: "2026-09-22T23:15:00Z" },
+      // Las del acuerdo y las que deja el propio rodar no se cuentan aparte: ya vienen del acuerdo de tiempo.
+      { contrato_id: "k", campo: "Convenio #1: cuotas corridas al final", valor_anterior: "exoneradas=0 · x", valor_nuevo: "exoneradas=1 · y", created_at: "2026-09-01T21:34:00Z" },
+      { contrato_id: "k", campo: "Períodos rodados al final", valor_anterior: "0", valor_nuevo: "1", created_at: "2026-09-01T21:34:00Z" },
+    ], formaPago, diaLocal);
+    expect(r).toEqual([{ contrato_id: "k", fecha: "2026-09-22", periodos: 1, creada: "2026-09-22T23:15:00Z", corrioAcuerdo: false }]);
   });
 });

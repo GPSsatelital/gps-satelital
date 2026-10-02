@@ -246,6 +246,65 @@ export function totalesPorGrupo(renglones: GestionNomina[]): Array<{ grupo: stri
 }
 export type RecepcionNomina = { moto_id: string; motivo: string; created_at: string };
 
+/**
+ * TIEMPO RODADO (decisión del dueño, 30-sep-2026, opción A): desde el día en que se le rueda tiempo
+ * a un contrato, sus semanas se exigen N períodos más tarde (el mismo corrimiento de D-028 en
+ * Cartera). Cada semana se le paga al cobrador según cómo estaba el día en que se cobró: lo que se
+ * rodó DESPUÉS no la vuelve "a tiempo". Ej.: KEVIN (RLY45H), rodado el 22-sep — la semana que pagó
+ * atrasada antes de esa fecha se queda en $3.750.
+ */
+export type RodadaNomina = {
+  contrato_id: string;
+  /** El día (hora de Colombia) en que se registró. */
+  fecha: string;
+  /** Cuántos períodos se corrieron. */
+  periodos: number;
+  /** Cuándo se registró, para saber si el acuerdo ya existía. */
+  creada: string;
+  /** Si también corrió las cuotas del acuerdo vivo (rodar sí; "la empresa asume una semana" no). */
+  corrioAcuerdo: boolean;
+};
+
+/** Cuántos períodos tenía corridos ese día: los de hoy menos los que se rodaron después. Así un
+ *  contrato con períodos corridos desde antes del registro (JORGE LUIS TOVAR, ZIB64G) los conserva. */
+export function exoneradasAlDia(actuales: number, rodadas: RodadaNomina[], diaISO: string): number {
+  const despues = rodadas.filter(r => r.fecha > diaISO).reduce((s, r) => s + r.periodos, 0);
+  return Math.max(actuales - despues, 0);
+}
+
+// Los días de cada período al rodar — el mismo conteo de ModalResolverTiempoFueraServicio.
+const DIAS_PERIODO_RODAR: Record<string, number> = { Semanal: 7, Quincenal: 15, Mensual: 30 };
+
+/**
+ * Las rodadas de cada contrato, a partir de lo que quedó registrado:
+ *   · `acuerdos_tiempo_rodado` con decisión rodar_al_final: corre floor(días / días del período).
+ *   · `contratos_auditoria` con "exoneradas N" → "exoneradas M" (la semana que asumió la empresa, D-010).
+ * Medido el 30-sep: con esto cuadran los 17 contratos con semanas corridas; el de JORGE LUIS TOVAR
+ * no tiene registro y conserva las suyas de siempre.
+ */
+export function rodadasDesdeRegistros(
+  acuerdos: Array<{ contrato_id: string; decision: string; dias_en_empresa: number | null; created_at: string }>,
+  auditoria: Array<{ contrato_id: string; campo: string; valor_anterior: string | null; valor_nuevo: string | null; created_at: string }>,
+  formaPagoDe: (contratoId: string) => string | null | undefined,
+  diaLocal: (timestamp: string) => string,
+): RodadaNomina[] {
+  const out: RodadaNomina[] = [];
+  for (const a of acuerdos) {
+    if (a.decision !== "rodar_al_final") continue;
+    const largo = DIAS_PERIODO_RODAR[formaPagoDe(a.contrato_id) ?? ""] ?? 0;
+    const periodos = largo > 0 ? Math.floor((a.dias_en_empresa ?? 0) / largo) : 0;
+    if (periodos > 0) out.push({ contrato_id: a.contrato_id, fecha: diaLocal(a.created_at), periodos, creada: a.created_at, corrioAcuerdo: true });
+  }
+  const n = (v: string | null) => { const m = /^exoneradas (\d+)/.exec(v ?? ""); return m ? Number(m[1]) : null; };
+  for (const r of auditoria) {
+    if (r.campo.startsWith("Convenio")) continue;   // esas son las cuotas del acuerdo, no las semanas
+    const antes = n(r.valor_anterior), despues = n(r.valor_nuevo);
+    if (antes == null || despues == null || despues === antes) continue;
+    out.push({ contrato_id: r.contrato_id, fecha: diaLocal(r.created_at), periodos: despues - antes, creada: r.created_at, corrioAcuerdo: false });
+  }
+  return out;
+}
+
 const dia = (iso: string) => iso.slice(0, 10);
 
 /** El lunes de la semana de una fecha (la semana de nómina va de lunes a domingo). */
@@ -291,8 +350,18 @@ export function nominaSemanaDetallada(opts: {
   visitas?: VisitaNomina[];
   /** Quién trajo a cada cliente — $30.000 a esa persona al entregarse la moto (ver VALOR_REFERIDO). */
   referidos?: ReferidoNomina[];
+  /**
+   * Las rodadas con su fecha (ver RodadaNomina). Sin ellas no se puede saber cómo estaba cada
+   * semana el día en que se cobró, y se queda la cuenta de antes: sin correr las semanas.
+   */
+  rodadas?: RodadaNomina[] | null;
 }): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [], referidos = [] } = opts;
+  const rodadasPorContrato = new Map<string, RodadaNomina[]>();
+  for (const r of opts.rodadas ?? []) {
+    if (!rodadasPorContrato.has(r.contrato_id)) rodadasPorContrato.set(r.contrato_id, []);
+    rodadasPorContrato.get(r.contrato_id)!.push(r);
+  }
   // El interruptor MIRA LA SEMANA, no si existe algún evento suelto (ver VIGIA_DESDE): con
   // anotaciones incompletas el modo exacto deja fuera a todo el que no aparezca en ellas.
   const eventos = vigiaCubre(desde) ? (opts.eventos ?? null) : null;
@@ -370,13 +439,24 @@ export function nominaSemanaDetallada(opts: {
     // La cuota 1 se exige la semana SIGUIENTE a la firma: el convenio arranca el período
     // completo que sigue, igual que el convenio de base del wizard.
     const cvInfo = convenioPorContrato.get(c.id);
+
+    // CÓMO ESTABA EL CONTRATO el día en que se cobró cada semana (opción A, 30-sep): las semanas
+    // rodadas hasta ESE día corren su fecha de exigencia; las rodadas después, no. Sin las rodadas
+    // a la mano se queda la cuenta de antes (semanas sin correr, acuerdo con lo corrido a hoy).
+    const conHistoria = opts.rodadas != null;
+    const rodadasC = rodadasPorContrato.get(c.id) ?? [];
+    const semanasCorridasAl = (d: string) => conHistoria ? exoneradasAlDia(c.cajas_exoneradas ?? 0, rodadasC, d) : 0;
+    const cuotasCorridasAl = (d: string) => !cvInfo ? 0 : conHistoria
+      ? exoneradasAlDia(cvInfo.cv.periodos_exonerados ?? 0, rodadasC.filter(r => r.corrioAcuerdo && r.creada > cvInfo.cv.created_at), d)
+      : (cvInfo.cv.periodos_exonerados ?? 0);
+
     const fechaPaquete = (exigencia: string, fechaCaja: string): string | null => {
       if (!cvInfo) return fechaCaja;
       // Las cuotas RODADAS (moto guardada, mig 118) no son pata del paquete esa semana:
       // se corren al final igual que la semana. Mismo resta-antes-del-tope de siempre.
       const req = Math.min(
         Math.max(
-          semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)) - (cvInfo.cv.periodos_exonerados ?? 0),
+          semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)) - cuotasCorridasAl(fechaCaja),
           0,
         ),
         cvInfo.cv.numero_cuotas,
@@ -404,7 +484,7 @@ export function nominaSemanaDetallada(opts: {
         if (c.total_cajas != null && ev.caja_numero > c.total_cajas) continue;
         const rel = ev.caja_numero - previas;
         if (rel < 1) continue;   // cajas del corte de migración: no son gestión de nadie acá
-        const exigencia = exigenciaDe(rel);
+        const exigencia = exigenciaDe(rel + semanasCorridasAl(ev.fecha));
         // El renglón se fecha cuando se completó el PAQUETE (la pata que llegó de última):
         // una caja llena de una semana vieja puede volverse renglón esta semana, si la cuota
         // del convenio que le faltaba recién entró.
@@ -467,7 +547,7 @@ export function nominaSemanaDetallada(opts: {
         if (c.total_cajas != null && cajaAbs > c.total_cajas) break;
         // La semana ADELANTADA del wizard nace paga con la base: nadie la cobró, no se paga.
         if (esAdelanto) continue;
-        const exigencia = exigenciaDe(rel);
+        const exigencia = exigenciaDe(rel + semanasCorridasAl(dia(p.fecha)));
         // Misma regla del paquete que el modo exacto: el renglón nace (y se fecha) cuando la
         // última pata entró — caja llena Y convenio al día hasta esa semana.
         const paq = fechaPaquete(exigencia, dia(p.fecha));

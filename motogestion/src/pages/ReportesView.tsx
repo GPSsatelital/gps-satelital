@@ -34,16 +34,18 @@ import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesD
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useRodadas } from "../hooks/useRodadas";
-import { motosGuardadas, agruparGuardadas, type MotoGuardada } from "../utils/motosGuardadas";
+import { motosGuardadas } from "../utils/motosGuardadas";
 import { reporteConvenios, totalesConvenios } from "../utils/reporteConvenios";
 import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
 import BarraFiltros from "../components/reportes/BarraFiltros";
 import PortafoliosReportes, { type DatosPortafolio } from "../components/reportes/PortafoliosReportes";
+import MenuReportes, { type TabReportes } from "../components/reportes/MenuReportes";
+import { FlotaMotos, FlotaGuardadas } from "../components/reportes/FlotaReportes";
 import ResumenReportes, { type FilaEstado } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
 import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
 import { desgloseRecaudo, baseDeAcuerdosDeBase, pagosSinRepartir, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
-import { AlertTriangle, PiggyBank, FileWarning, ChevronRight, Wallet } from "lucide-react";
+import { AlertTriangle, PiggyBank, FileWarning, ChevronRight, Wallet, Download, Printer, CalendarDays, Gauge, ExternalLink, Check, X } from "lucide-react";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -54,7 +56,7 @@ function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
 function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
-type Tab   = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas" | "exportar";
+type Tab   = TabReportes;
 
 const RANGOS: { key: Rango; label: string }[] = [
   { key: "hoy",           label: "Hoy" },
@@ -68,19 +70,6 @@ const RANGOS: { key: Rango; label: string }[] = [
   { key: "personalizado", label: "Personalizado" },
 ];
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "resumen",  label: "Resumen",   icon: "📊" },
-  { key: "admins",   label: "Por admin", icon: "👤" },
-  { key: "nomina",   label: "Nómina",    icon: "💰" },
-  { key: "grupos",   label: "Por grupo", icon: "📁" },
-  { key: "visitas",  label: "Visitas",   icon: "🏠" },
-  { key: "cartera",  label: "Cartera",   icon: "💳" },
-  { key: "convenios",label: "Convenios", icon: "🤝" },
-  { key: "flota",    label: "Flota",     icon: "🏍️" },
-  { key: "guardadas",label: "Guardadas", icon: "🔒" },
-  { key: "entregas", label: "Entregas",  icon: "🛵" },
-  { key: "exportar", label: "Exportar",  icon: "⬇️" },
-];
 
 // Pestañas que NO usan el rango de fechas, con lo que se muestra en su lugar.
 const TABS_SIN_FECHA: Partial<Record<Tab, string>> = {
@@ -98,11 +87,6 @@ const ANG_LABEL: Record<string, string> = {
 const GRUPOS = ["RASTREADOR", "COSTA", "PRADERA", "USADAS"] as const;
 const GRUPO_COLORS: Record<string, string> = {
   RASTREADOR: "var(--accent)", COSTA: "var(--ok2)", PRADERA: "var(--warn2)", USADAS: "var(--orange)",
-};
-const ESTADO_MOTO_COLOR: Record<string, string> = {
-  Asignada: "var(--ok-ink)", Disponible: "var(--accent-ink)", "En taller": "var(--warn-ink)",
-  Recuperada: "var(--accent-ink)", Suspendida: "var(--violet)", Fiscalia: "var(--bad-ink)",
-  Transito: "var(--bad)", Garantia: "#6b7280",
 };
 
 function getRango(r: Rango): { desde: string; hasta: string } {
@@ -384,7 +368,6 @@ export default function ReportesView({ onNavigate }: Props) {
   const [rango, setRango] = useState<Rango>("mes");
   const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => getRango("ult7")); // rango personalizado de-fecha-a-fecha
   const [tab, setTab]     = useState<Tab>("resumen");
-  const [grupoEnt, setGrupoEnt] = useState<string>("Todos");     // filtro de grupo en la pestaña Entregas
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
   useBackGuard(fotosVer !== null, () => setFotosVer(null)); // atrás cierra el lightbox
   // Regeneración de documentos en blanco (bug histórico del PDF)
@@ -720,7 +703,6 @@ export default function ReportesView({ onNavigate }: Props) {
     m => MOTIVO_RECEPCION_LABEL[m as keyof typeof MOTIVO_RECEPCION_LABEL] ?? m,
     u => UBICACION_LABEL[u as keyof typeof UBICACION_LABEL] ?? u,
   ), [motos, recepciones, contratos, clientes, subadmins]);
-  const [guardadasPor, setGuardadasPor] = useState<"grupo" | "encargado" | "donde">("grupo");
 
   // ── CONVENIOS: cómo se han pagado desde que se firmaron (pedido del dueño, 25-ago) ──
   // Lo exigido lo calcula `faltaDelAcuerdo` (la misma función del cobro), así que este informe
@@ -734,12 +716,6 @@ export default function ReportesView({ onNavigate }: Props) {
     hoyISO(), !conveniosTodos,
   ), [convenios, pagos, contratos, motos, clientes, subadmins, conveniosTodos]);
   const totConv = useMemo(() => totalesConvenios(conveniosRep), [conveniosRep]);
-  const guardadasAgrupadas = useMemo(() => agruparGuardadas(
-    guardadas,
-    guardadasPor === "grupo" ? (f: MotoGuardada) => f.grupo
-      : guardadasPor === "encargado" ? (f: MotoGuardada) => f.subadminNombre
-      : (f: MotoGuardada) => f.donde,
-  ), [guardadas, guardadasPor]);
 
   // ── FILTROS COMBINABLES (multi-selección) — baseFiltrada es la fuente de TODO ──
   // Array vacío en una dimensión = "todos"; con valores = OR dentro, AND entre dimensiones.
@@ -1269,7 +1245,7 @@ export default function ReportesView({ onNavigate }: Props) {
           id: c.id, clienteId: c.cliente_id, motoId: c.moto_id ?? null,
           fecha: c.fecha_entrega as string,
           cliente: cliente?.nombre ?? "—", cedula: cliente?.cedula ?? "—",
-          placa: moto?.placa ?? "—", grupo: (moto?.grupo ?? "—") as string,
+          placa: moto?.placa ?? "—", grupo: (moto?.grupo ?? "—") as string, subadminId: moto?.subadmin_id ?? null,
           km: moto?.kilometraje_inicial ?? null,
           fotos, nFotos: fotos.length,
           docs, docsOk,
@@ -1282,9 +1258,10 @@ export default function ReportesView({ onNavigate }: Props) {
           meses: c.meses ?? null,
         };
       })
-      .filter(e => grupoEnt === "Todos" || e.grupo === grupoEnt)
+      .filter(e => (filtros.grupo.length === 0 || filtros.grupo.includes(e.grupo)) && (filtros.cobrador.length === 0 || filtros.cobrador.includes(e.subadminId ?? "__none__")))
       .sort((a, b) => b.fecha.localeCompare(a.fecha));
-  }, [contratos, clientes, motos, desde, hasta, grupoEnt]);
+  }, [contratos, clientes, motos, desde, hasta, filtros]);
+  const grupoEnt = filtros.grupo.length === 1 ? filtros.grupo[0] : "Todos";
 
   const entregasCompletas   = entregas.filter(e => e.docsOk).length;
   const entregasIncompletas = entregas.length - entregasCompletas;
@@ -1453,9 +1430,38 @@ export default function ReportesView({ onNavigate }: Props) {
   // Todo respeta la barra de filtros (período, grupo, cobrador). Cada número guarda sus filas: al
   // tocarlo se ve exactamente lo que se contó, y desde ahí se llega a Cartera ya filtrada.
   const contratoPorId = useMemo(() => new Map(contratos.map(c => [c.id, c])), [contratos]);
+  const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
   // Dónde está cada moto (D-033/034): la misma respuesta en el Resumen, Por grupo y Flota.
   const lugarDeMoto = useMemo(() => dondeEstaCadaMoto(motos, contratos), [motos, contratos]);
-  const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
+  // Las motos guardadas en la empresa, con la regla de D-033/034: retenidas por no pagar (estén donde
+  // estén) y en el taller con o sin cliente. Los días, el sitio y el encargado salen de `motosGuardadas`
+  // (la última recepción); si una de estas no figura ahí, va sin fecha en vez de inventarla. Antes
+  // Guardadas contaba por el estado de la moto (47) y Flota por el contrato (49).
+  const quietas = useMemo(() => {
+    const info = new Map(guardadas.map(g => [g.motoId, g]));
+    const nombreSub = new Map(subadmins.map(sa => [sa.id, sa.nombre]));
+    const LUGAR_MOTIVO: Partial<Record<LugarMoto, string>> = { retenida: "Retenida por no pagar", tallerConCliente: "En el taller, el contrato sigue", tallerSinCliente: "En el taller, sin cliente" };
+    return motos.flatMap(m => {
+      const lm = lugarDeMoto.get(m.id);
+      if (!lm || !["retenida", "tallerConCliente", "tallerSinCliente"].includes(lm.lugar)) return [];
+      const c = lm.contratoId ? contratoPorId.get(lm.contratoId) : undefined;
+      // Una recepción que no es la de esta retención no dice desde cuándo está guardada: la de ANTES de
+      // entregarle la moto al cliente, o el alta de la moto en el sistema ("nuevo registro", p. ej. en
+      // la migración de julio). Se descarta y la moto va sin fecha, en vez de con días de más.
+      const g0 = info.get(m.id);
+      const noSirve = !!g0 && (g0.motivo === MOTIVO_RECEPCION_LABEL.nuevo_registro
+        || (!!c?.fecha_entrega && !!g0.desde && g0.desde.slice(0, 10) < c.fecha_entrega));
+      const g = noSirve ? undefined : g0;
+      return [{
+        motoId: m.id, placa: m.placa, grupo: m.grupo ?? "SIN GRUPO", estado: m.estado as string, lugar: lm.lugar,
+        donde: sitioFisico(m.estado), motivo: g?.motivo ?? LUGAR_MOTIVO[lm.lugar] ?? "",
+        clienteNombre: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : (g?.clienteNombre || "Sin cliente"),
+        contratoId: lm.contratoId ?? g?.contratoId ?? null,
+        subadminId: m.subadmin_id ?? null, subadminNombre: m.subadmin_id ? (nombreSub.get(m.subadmin_id) ?? "Cobrador") : "Sin cobrador",
+        desde: g?.desde ?? null, dias: g?.dias ?? null, sinRegistro: g ? g.sinRegistro : true,
+      }];
+    });
+  }, [motos, lugarDeMoto, guardadas, contratoPorId, clientePorId, subadmins]);
   const plata = (n: number) => `$ ${fmt(n)}`;
   const placaDe = (contratoId: string) => { const c = contratoPorId.get(contratoId); return c?.moto_id ? motos.find(m => m.id === c.moto_id)?.placa : undefined; };
   const grupoDe = (contratoId: string) => atribucion.get(contratoId)?.grupo;
@@ -1769,8 +1775,146 @@ export default function ReportesView({ onNavigate }: Props) {
     }
   }
 
-  const guardadasF = useMemo(() => guardadas.filter(g => pasaFiltroGC(g.grupo, g.subadminId)), [guardadas, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tarifaDiaDe = (g: MotoGuardada) => contratoPorId.get(g.contratoId ?? "")?.tarifa_diaria ?? 27000;
+  const guardadasF = useMemo(() => quietas.filter(g => pasaFiltroGC(g.grupo, g.subadminId ?? "__none__")), [quietas, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tarifaDiaDe = (g: { contratoId: string | null }) => contratoPorId.get(g.contratoId ?? "")?.tarifa_diaria ?? 27000;
+
+  // ── FLOTA (rediseño 2-oct): foto de hoy, con los filtros de grupo y cobrador ──
+  const flotaF = useMemo(() => motos.filter(m => pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__")), [motos, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lugaresFlota = useMemo(() => {
+    const r: Record<LugarMoto, number> = { trabajando: 0, tallerConCliente: 0, retenida: 0, tallerSinCliente: 0, disponible: 0 };
+    flotaF.forEach(m => { const l = lugarDeMoto.get(m.id)?.lugar; if (l) r[l]++; });
+    return r;
+  }, [flotaF, lugarDeMoto]);
+  const gruposFlota = useMemo(() => {
+    const base = motos.filter(m => filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"));
+    const extras = [...new Set(base.map(m => m.grupo ?? "SIN GRUPO"))].filter(g => !(GRUPOS as readonly string[]).includes(g));
+    return [...(GRUPOS as readonly string[]), ...extras].map(g => {
+      const f = base.filter(m => (m.grupo ?? "SIN GRUPO") === g);
+      return { grupo: g, color: GRUPO_COLORS[g] ?? "var(--muted)", total: f.length, trabajando: f.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length };
+    }).filter(g => g.total > 0);
+  }, [motos, filtros, lugarDeMoto]);
+  const motoPasaGC = (motoId: string) => { const m = motoPorId.get(motoId); return !!m && pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__"); };
+  const alertasF = alertasVencimiento.filter(a => motoPasaGC(a.id));
+  const sinSoatFlota = motosSinSoat.filter(m => motoPasaGC(m.id));
+  const contratosFlota = contratos.filter(c => (c.estado === "Activo" || c.estado === "Suspendido") && c.moto_id && motoPasaGC(c.moto_id));
+  const hayFiltroGC = filtros.grupo.length > 0 || filtros.cobrador.length > 0;
+  const clientesConContratoF = new Set(contratosFlota.map(c => c.cliente_id));
+  const estadosFlota = useMemo(() => {
+    const m: Record<string, number> = {};
+    flotaF.forEach(x => { m[x.estado] = (m[x.estado] ?? 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [flotaF]);
+
+  function abrirDetalleFlota(clave: string) {
+    const listaMotos = (lista: typeof motos, titulo: string, subtitulo: string, archivo: string): ContenidoDetalle => ({
+      titulo, subtitulo,
+      filas: lista.map(m => {
+        const lm = lugarDeMoto.get(m.id);
+        const c = lm?.contratoId ? contratoPorId.get(lm.contratoId) : undefined;
+        const cliente = c ? clientePorId.get(c.cliente_id)?.nombre ?? "—" : "Sin cliente";
+        const lugar = LUGARES.find(l => l.clave === lm?.lugar)?.etiqueta ?? "";
+        const cob = m.subadmin_id ? (subadmins.find(sa => sa.id === m.subadmin_id)?.nombre ?? "Cobrador") : "Sin cobrador";
+        return {
+          id: m.id, placa: m.placa, grupo: m.grupo ?? undefined, titulo: cliente,
+          subtitulo: `${lugar} · moto ${sitioFisico(m.estado)} · ${cob}`, monto: null, filtro: lugar,
+          onClick: () => { setDetalle(null); if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", m.id); },
+          csv: { Placa: m.placa, Grupo: m.grupo ?? "", Cliente: cliente, Donde: lugar, Cobrador: cob },
+        };
+      }),
+      chips: [...new Set(lista.map(m => LUGARES.find(l => l.clave === lugarDeMoto.get(m.id)?.lugar)?.etiqueta ?? ""))].filter(Boolean).map(x => ({ clave: x, etiqueta: x })),
+      archivo,
+    });
+    if (clave.startsWith("lugar:")) {
+      const lugar = clave.slice(6) as LugarMoto;
+      const info = LUGARES.find(l => l.clave === lugar)!;
+      setDetalle({ ...listaMotos(flotaF.filter(m => lugarDeMoto.get(m.id)?.lugar === lugar), `${info.etiqueta} · ${flotaF.filter(m => lugarDeMoto.get(m.id)?.lugar === lugar).length}`, info.explica, `flota_${lugar}`), chips: undefined });
+      return;
+    }
+    if (clave.startsWith("grupo:")) {
+      const g = clave.slice(6);
+      const lista = motos.filter(m => (m.grupo ?? "SIN GRUPO") === g && (filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__")));
+      setDetalle(listaMotos(lista, `Motos de ${g} · ${lista.length}`, "Cada una con dónde está y quién la tiene a cargo.", `flota_${g.toLowerCase()}`));
+      return;
+    }
+    if (clave.startsWith("clientes:")) {
+      const k = clave.slice(9);
+      const lista = k === "con" ? clientes.filter(cl => (hayFiltroGC ? clientesConContratoF : clientesConContratoIds).has(cl.id))
+        : k === "tramite" ? clientes.filter(cl => cl.estado === "En proceso" || cl.estado === "Aprobado")
+        : clientes.filter(cl => cl.created_at >= inicioMes);
+      const titulo = k === "con" ? "Clientes con contrato" : k === "tramite" ? "Clientes en trámite" : "Clientes nuevos en el mes";
+      setDetalle({
+        titulo: `${titulo} · ${lista.length}`,
+        subtitulo: k === "con" ? "Tienen un contrato activo o con la moto retenida." : k === "tramite" ? "Registrados o aprobados que todavía no tienen moto." : "Registrados desde el día 1 de este mes.",
+        filas: lista.map(cl => ({ id: cl.id, titulo: cl.nombre, subtitulo: `${cl.estado}${cl.created_at ? ` · registrado el ${fmtFechaCorta(cl.created_at.slice(0, 10))}` : ""}`, monto: null,
+          onClick: () => { setDetalle(null); onNavigate?.("ficha_cliente", cl.id); }, csv: { Cliente: cl.nombre, Estado: cl.estado, Registro: (cl.created_at ?? "").slice(0, 10) } })),
+        archivo: `clientes_${k}`,
+      });
+      return;
+    }
+    if (clave.startsWith("papeles:")) {
+      const k = clave.slice(8);
+      if (k === "sinsoat") {
+        setDetalle({ ...listaMotos(sinSoatFlota as typeof motos, `Sin fecha de SOAT · ${sinSoatFlota.length}`, "No tienen la fecha del SOAT anotada: no se sabe si está al día.", "motos_sin_soat"), chips: undefined });
+        return;
+      }
+      const lista = alertasF.filter(a => k === "vencidos" ? a.vencida : !a.vencida);
+      const txt = (d: number | null, n: string) => d === null ? null : d < 0 ? `${n} vencido hace ${Math.abs(d)} días` : `${n} vence en ${d} días`;
+      setDetalle({
+        titulo: `${k === "vencidos" ? "Papeles vencidos" : "Papeles por vencer"} · ${lista.length}`,
+        subtitulo: k === "vencidos" ? "SOAT o tecnomecánica ya vencidos: la moto no debería circular." : "SOAT o tecnomecánica que vencen en los próximos 30 días.",
+        filas: lista.map(a => {
+          const m = motoPorId.get(a.id);
+          return { id: a.id, placa: a.placa, grupo: m?.grupo ?? undefined, titulo: a.placa,
+            subtitulo: [txt(a.diasSeguro, "SOAT"), txt(a.diasTecno, "Tecno")].filter(Boolean).join(" · "), monto: null,
+            onClick: () => { setDetalle(null); onNavigate?.("ficha_moto", a.id); },
+            csv: { Placa: a.placa, SOAT: a.seguro ?? "", Tecnomecanica: a.tecno ?? "" } };
+        }),
+        archivo: `papeles_${k}`,
+      });
+      return;
+    }
+    if (clave === "activos-sin-contrato") {
+      setDetalle({
+        titulo: `Clientes "activos" sin contrato · ${clientesActivosSinContrato.length}`,
+        subtitulo: "Figuran como activos pero no tienen ningún contrato vigente: hay que corregirles el estado.",
+        filas: clientesActivosSinContrato.map(cl => ({ id: cl.id, titulo: cl.nombre, subtitulo: "Activo sin contrato", monto: null,
+          onClick: () => { setDetalle(null); onNavigate?.("ficha_cliente", cl.id); }, csv: { Cliente: cl.nombre } })),
+        archivo: "activos_sin_contrato",
+      });
+    }
+  }
+
+  function excelQuietas() {
+    const cols: ColX[] = [
+      { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
+      { label: "Motivo", ancho: 190 }, { label: "Dónde está", ancho: 120 },
+      { label: "Guardada desde", align: "center", ancho: 100 },
+      { label: "Días", align: "center", ancho: 55 },
+      { label: "Encargado", ancho: 150 },
+    ];
+    const grupos = [...new Set(guardadasF.map(g => g.grupo))];
+    const secciones: SeccionX[] = grupos.map(gr => {
+      const filas = guardadasF.filter(g => g.grupo === gr).slice().sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1));
+      return {
+        titulo: `${gr}   —   ${filas.length} moto${filas.length === 1 ? "" : "s"} · ${filas.reduce((sm, f) => sm + (f.dias ?? 0), 0)} días acumulados sin trabajar`,
+        color: GRUPO_HEX[gr] ?? "#334155",
+        filas: filas.map(f => [
+          f.placa, f.clienteNombre.toUpperCase(), f.motivo, f.donde,
+          { v: f.desde ? fmtFechaCorta(f.desde) : "sin registro", align: "center" as const, color: f.sinRegistro ? "#991b1b" : undefined },
+          { v: f.dias == null ? "—" : String(f.dias), align: "center" as const, bold: (f.dias ?? 0) > 30, color: (f.dias ?? 0) > 30 ? "#991b1b" : undefined },
+          f.subadminNombre.toUpperCase(),
+        ]),
+      };
+    });
+    descargarExcel({
+      archivo: `motos_guardadas_${hoyISO()}`,
+      titulo: "Motos guardadas en la empresa — no están trabajando",
+      periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
+      leyenda: "Retenidas por no pagar (estén donde estén) y en el taller con o sin cliente. 'Sin registro' = no hay recepción que diga desde cuándo.",
+      columnas: cols, secciones,
+      totalGeneral: [{ v: `TOTAL: ${guardadasF.length} motos guardadas`, bold: true }, "", "", "", "", { v: String(guardadasF.reduce((sm, f) => sm + (f.dias ?? 0), 0)), align: "center" as const, bold: true }, ""],
+    });
+  }
   const sinProducirR = plataSinProducir(guardadasF.map(g => ({ dias: g.dias, tarifaDia: tarifaDiaDe(g) })));
   const mejoresR = useMemo(() => {
     const map: Record<string, number> = {};
@@ -1943,11 +2087,22 @@ export default function ReportesView({ onNavigate }: Props) {
           <div style={{ fontSize: 12, color: "var(--muted2)" }}>Recaudado hoy</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{sinDatos ? "…" : `$ ${fmt(recaudadoHoy)}`}</div>
         </div>
+        {/* Descargar (antes la pestaña "Exportar"): PDF gerencial, Excel e impresión. Solo con el permiso. */}
+        {puedeExportar && (
+          <button onClick={() => setTab("exportar")} aria-pressed={tab === "exportar"}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, padding: "0 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 500,
+              border: "1px solid " + (tab === "exportar" ? "var(--accent-line)" : "var(--line2)"), background: tab === "exportar" ? "var(--accent-soft)" : "var(--card)", color: tab === "exportar" ? "var(--accent-ink)" : "var(--text)" }}>
+            <Download size={16} aria-hidden="true" /> Descargar
+          </button>
+        )}
       </div>
+
+      {/* El menú: 5 secciones por la pregunta que responden, y sus partes (rediseño 2-oct). */}
+      <MenuReportes tab={tab} onTab={setTab} />
 
       {/* La barra de filtros: período, grupo y cobrador mandan sobre todo lo de abajo. En las pestañas
           que son "foto de hoy" (o tienen su propio selector, como Nómina) se dice en vez de mostrarla. */}
-      {TABS_SIN_FECHA[tab] ? (
+      {TABS_SIN_FECHA[tab] && tab !== "flota" && tab !== "guardadas" ? (
         <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", fontSize: 12, color: "var(--muted2)" }}>
           {TABS_SIN_FECHA[tab]}
         </div>
@@ -1964,7 +2119,8 @@ export default function ReportesView({ onNavigate }: Props) {
           cobrador={filtros.cobrador.length === 1 ? filtros.cobrador[0] : filtros.cobrador.length > 1 ? "__varios__" : ""}
           opcionesCobrador={[{ valor: "", etiqueta: "Todos los cobradores" }, ...subadmins.map(sa => ({ valor: sa.id, etiqueta: sa.nombre })), { valor: "__none__", etiqueta: "Sin asignar" }, ...(filtros.cobrador.length > 1 ? [{ valor: "__varios__", etiqueta: `${filtros.cobrador.length} cobradores` }] : [])]}
           onCobrador={v => { if (v !== "__varios__") setFiltros(f => ({ ...f, cobrador: v ? [v] : [] })); }}
-          mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar"}
+          mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar" || tab === "flota" || tab === "guardadas" || tab === "entregas"}
+          soloHoy={tab === "flota" || tab === "guardadas"}
           {...(tab === "grupos" || tab === "admins" ? {
             modalidad: filtros.modalidad.length === 1 ? filtros.modalidad[0] : "",
             opcionesModalidad: [{ valor: "", etiqueta: "Todas las modalidades" }, ...MODALIDADES.map(m => ({ valor: m, etiqueta: m }))],
@@ -1984,17 +2140,6 @@ export default function ReportesView({ onNavigate }: Props) {
           ) : undefined}
         />
       )}
-
-      {/* Tabs */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, background: "var(--card)", borderRadius: 14, padding: 4, boxShadow: "0 2px 8px rgba(15,23,42,0.06)" }}>
-          {TABS.filter(t => t.key !== "exportar" || puedeExportar).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "7px 3px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: tab === t.key ? "var(--text)" : "transparent", color: tab === t.key ? "var(--card)" : "var(--muted)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, minWidth: 0, lineHeight: 1.1 }}>
-              <span style={{ fontSize: 15 }}>{t.icon}</span><span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{t.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* ── TAB RESUMEN (rediseño, 2-oct-2026) ── */}
       {tab === "resumen" && sinDatos && (
@@ -2671,162 +2816,16 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* ── TAB FLOTA ── */}
       {tab === "flota" && (
-        <div style={{ display: "grid", gap: 16 }}>
-          {/* KPI flota */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
-            {/* Dónde está cada moto (D-033/034, 2-oct): cada moto en un solo lugar, la misma cuenta del
-                Resumen y de Por grupo. Antes "Retenidas por mora" contaba solo las del parqueadero (23)
-                y el Resumen 50. El detalle por estado físico sigue abajo, en "Flota por estado". */}
-            <KPI label="Total motos"      value={String(motos.length)}                                                        color="var(--muted2)" />
-            {LUGARES.map(l => {
-              const n = motos.filter(m => lugarDeMoto.get(m.id)?.lugar === l.clave).length;
-              const tono = l.clave === "trabajando" ? { color: "var(--ok-ink)", bg: "var(--ok-soft)" } : l.clave === "retenida" ? { color: "var(--bad-ink)", bg: "var(--bad-soft)" } : l.clave === "disponible" ? { color: "var(--accent)" } : { color: "var(--warn-ink)" };
-              return <KPI key={l.clave} label={l.etiqueta} value={String(n)} {...tono} />;
-            })}
-            <KPI label="Clientes con contrato" value={String(clientesConContratoIds.size)} color="var(--ok-ink)" sub={clientesActivosSinContrato.length > 0 ? `${clientesActivosSinContrato.length} activos sin contrato` : undefined} />
-            <KPI label="En proceso"       value={String(clientesEnProceso)}                                                   color="var(--warn-ink)" />
-            <KPI label="Nuevos este mes"  value={String(clientesNuevosMes)}                                                   color="var(--accent)" />
-          </div>
-
-          {/* Flota por estado */}
-          <div style={card}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Flota por estado ({motos.length} motos)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8 }}>
-              {motosPorEstado.map(([estado, count]) => {
-                const color = ESTADO_MOTO_COLOR[estado] ?? "var(--muted2)";
-                return (
-                  <div key={estado} style={{ padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)", textAlign: "center" }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, color }}>{count}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color, marginTop: 2 }}>{estado}</div>
-                    <div style={{ fontSize: 10, color: "var(--faint)" }}>{pct(count, motos.length)}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ marginTop: 14 }}>
-              {motosPorEstado.map(([estado, count]) => (
-                <BarraN key={estado} label={estado} valor={count} total={motos.length} color={ESTADO_MOTO_COLOR[estado] ?? "var(--faint)"} />
-              ))}
-            </div>
-          </div>
-
-          {/* Lo que la oficina tiene que corregir en los datos (auditoría del 29-sep). */}
-          {(motosSinSoat.length > 0 || clientesActivosSinContrato.length > 0) && (
-            <div style={{ ...card, display: "grid", gap: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--warn-ink)" }}>Para corregir en los datos</div>
-              {motosSinSoat.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{motosSinSoat.length} moto{motosSinSoat.length === 1 ? "" : "s"} sin fecha de SOAT</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {motosSinSoat.map(m => (
-                      <button key={m.id} onClick={() => onNavigate?.("ficha_moto", m.id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft2)", cursor: onNavigate ? "pointer" : "default", fontSize: 11, color: "var(--muted2)" }}>
-                        <Placa placa={m.placa} grupo={m.grupo} size="sm" /> {m.estado}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {clientesActivosSinContrato.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{clientesActivosSinContrato.length} cliente{clientesActivosSinContrato.length === 1 ? "" : "s"} figura{clientesActivosSinContrato.length === 1 ? "" : "n"} como Activo sin ningún contrato vigente</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {clientesActivosSinContrato.map(c => (
-                      <button key={c.id} onClick={() => onNavigate?.("ficha_cliente", c.id)} style={{ padding: "4px 10px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--soft2)", cursor: onNavigate ? "pointer" : "default", fontSize: 11, fontWeight: 700, color: "var(--muted2)", textTransform: "uppercase" }}>
-                        {c.nombre}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Vencimientos */}
-          {alertasVencimiento.length > 0 && (
-            <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: "var(--warn-ink)" }}>📋 Documentos vencidos o por vencer (30 días) — {docsVencidos} vencido{docsVencidos === 1 ? "" : "s"} · {docsPorVencer} por vencer</div>
-
-              {isMobile ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {alertasVencimiento.map(a => (
-                    <div key={a.id} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--warn-soft2)", border: "1px solid var(--warn-line)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>{a.placa}</span>
-                        {onNavigate && (
-                          <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Ver moto</button>
-                        )}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>SOAT vence</div>
-                          <div style={{ color: (a.diasSeguro ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>{a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
-                          {a.diasSeguro !== null && (
-                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "var(--bad-soft)" : a.diasSeguro < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasSeguro < 0 ? "var(--bad-ink)" : a.diasSeguro < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
-                              {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Tecno vence</div>
-                          <div style={{ color: (a.diasTecno ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>{a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}</div>
-                          {a.diasTecno !== null && (
-                            <span style={{ display: "inline-block", marginTop: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "var(--bad-soft)" : a.diasTecno < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasTecno < 0 ? "var(--bad-ink)" : a.diasTecno < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
-                              {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ borderBottom: "2px solid var(--line)" }}>
-                        {["Placa","SOAT vence","Días","Tecno vence","Días",""].map((h, i) => (
-                          <th key={i} style={{ textAlign: "left", padding: "8px 10px", color: "var(--muted)", fontWeight: 700 }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {alertasVencimiento.map(a => (
-                        <tr key={a.id} style={{ borderBottom: "1px solid var(--soft)" }}>
-                          <td style={{ padding: "8px 10px", fontWeight: 700 }}>{a.placa}</td>
-                          <td style={{ padding: "8px 10px", color: (a.diasSeguro ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>
-                            {a.seguro ? new Date(a.seguro + "T00:00:00").toLocaleDateString("es-CO") : "—"}
-                          </td>
-                          <td style={{ padding: "8px 10px" }}>
-                            {a.diasSeguro !== null && (
-                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasSeguro < 0 ? "var(--bad-soft)" : a.diasSeguro < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasSeguro < 0 ? "var(--bad-ink)" : a.diasSeguro < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
-                                {a.diasSeguro < 0 ? `${Math.abs(a.diasSeguro)}d vencida` : `${a.diasSeguro}d`}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: "8px 10px", color: (a.diasTecno ?? 999) < 0 ? "var(--bad-ink)" : "var(--muted2)" }}>
-                            {a.tecno ? new Date(a.tecno + "T00:00:00").toLocaleDateString("es-CO") : "—"}
-                          </td>
-                          <td style={{ padding: "8px 10px" }}>
-                            {a.diasTecno !== null && (
-                              <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: a.diasTecno < 0 ? "var(--bad-soft)" : a.diasTecno < 10 ? "var(--warn-soft)" : "var(--ok-soft)", color: a.diasTecno < 0 ? "var(--bad-ink)" : a.diasTecno < 10 ? "var(--warn-ink)" : "var(--ok-ink)" }}>
-                                {a.diasTecno < 0 ? `${Math.abs(a.diasTecno)}d vencida` : `${a.diasTecno}d`}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: "8px 6px" }}>
-                            {onNavigate && (
-                              <button onClick={() => onNavigate("ficha_moto", a.id)} style={{ padding: "3px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Ficha</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <FlotaMotos
+          total={flotaF.length}
+          lugares={lugaresFlota}
+          grupos={gruposFlota}
+          clientes={{ conContrato: hayFiltroGC ? clientesConContratoF.size : clientesConContratoIds.size, enTramite: clientesEnProceso, nuevosMes: clientesNuevosMes }}
+          papeles={{ vencidos: alertasF.filter(a => a.vencida).length, porVencer: alertasF.filter(a => !a.vencida).length, sinSoat: sinSoatFlota.length }}
+          activosSinContrato={clientesActivosSinContrato.length}
+          estadosSistema={estadosFlota}
+          onAbrir={abrirDetalleFlota}
+        />
       )}
 
       {/* ── TAB ENTREGAS ── */}
@@ -2957,176 +2956,47 @@ export default function ReportesView({ onNavigate }: Props) {
         );
       })()}
 
-      {/* ── GUARDADAS: las motos que no están produciendo ─────────────────────────────────── */}
-      {tab === "guardadas" && (() => {
-        const enBodega = guardadas.filter(g => /bodega/i.test(g.donde)).length;
-        const enTaller = guardadas.filter(g => /taller/i.test(g.donde)).length;
-        const legal = guardadas.filter(g => /fiscal|tránsito|transito|patios/i.test(g.donde)).length;
-        const sinReg = guardadas.filter(g => g.sinRegistro).length;
-        const masDe30 = guardadas.filter(g => (g.dias ?? 0) > 30).length;
-        const diasTotal = guardadas.reduce((s, g) => s + (g.dias ?? 0), 0);
-
-        function excelGuardadas() {
-          const cols: ColX[] = [
-            { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
-            { label: "Motivo", ancho: 190 }, { label: "Dónde está", ancho: 110 },
-            { label: "Guardada desde", align: "center", ancho: 100 },
-            { label: "Días", align: "center", ancho: 55 },
-            { label: "Encargado", ancho: 150 },
-          ];
-          const secciones: SeccionX[] = guardadasAgrupadas.map(g => ({
-            titulo: `${g.clave.toUpperCase()}   —   ${g.filas.length} moto${g.filas.length === 1 ? "" : "s"} · ${g.dias} días acumulados sin producir`,
-            color: guardadasPor === "grupo" ? (GRUPO_HEX[g.clave] ?? "#334155") : "#334155",
-            filas: g.filas.map(f => [
-              f.placa, f.clienteNombre.toUpperCase(), f.motivo, f.donde,
-              { v: f.desde ? fmtFechaCorta(f.desde) : "sin registro", align: "center" as const, color: f.sinRegistro ? "#991b1b" : undefined },
-              { v: f.dias == null ? "—" : String(f.dias), align: "center" as const, bold: (f.dias ?? 0) > 30, color: (f.dias ?? 0) > 30 ? "#991b1b" : undefined },
-              f.subadminNombre.toUpperCase(),
-            ]),
-          }));
-          descargarExcel({
-            archivo: `motos_guardadas_${hoyISO()}`,
-            titulo: "Motos guardadas — no están produciendo",
-            periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
-            leyenda: "Una moto guardada no genera arriendo. 'Sin registro' = figura guardada pero no tiene recepción que lo respalde.",
-            columnas: cols, secciones,
-            totalGeneral: [{ v: `TOTAL: ${guardadas.length} motos guardadas`, bold: true }, "", "", "", "", { v: String(diasTotal), align: "center" as const, bold: true }, ""],
-          });
-        }
-
-        return (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
-              <KPI label="Guardadas"        value={String(guardadas.length)} color="var(--bad-ink)" bg="var(--bad-soft)" />
-              <KPI label="En bodega"        value={String(enBodega)}         color="var(--warn-ink)" />
-              <KPI label="En taller"        value={String(enTaller)}         color="var(--accent)" />
-              <KPI label="Retención legal"  value={String(legal)}            color="var(--violet)" />
-              <KPI label="Más de 30 días"   value={String(masDe30)}          color="var(--bad-ink)" bg={masDe30 > 0 ? "var(--bad-soft)" : undefined} />
-              <KPI label="Sin registro"     value={String(sinReg)}           color={sinReg > 0 ? "var(--bad-ink)" : "var(--muted2)"} />
-            </div>
-
-            <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Motos que no están produciendo</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    {guardadas.length} guardadas · {diasTotal} días acumulados sin generar arriendo
-                  </div>
-                </div>
-                <button onClick={excelGuardadas} disabled={guardadas.length === 0}
-                  style={{ padding: "8px 14px", borderRadius: 10, border: "none", cursor: guardadas.length ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, background: "var(--ok-soft)", color: "var(--ok-ink)", opacity: guardadas.length ? 1 : 0.5 }}>
-                  ⬇️ Excel
-                </button>
-              </div>
-
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                <span style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center", fontWeight: 700 }}>Agrupar por:</span>
-                {([["grupo", "📁 Portafolio"], ["encargado", "👤 Encargado"], ["donde", "📍 Dónde está"]] as const).map(([k, l]) => (
-                  <button key={k} onClick={() => setGuardadasPor(k)}
-                    style={{ padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
-                      background: guardadasPor === k ? "var(--text)" : "var(--soft2)", color: guardadasPor === k ? "var(--card)" : "var(--muted2)" }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              {guardadas.length === 0 ? (
-                <div style={{ color: "var(--ok-ink)", fontSize: 14, fontWeight: 700, background: "var(--ok-soft)", borderRadius: 12, padding: "14px 16px" }}>
-                  ✓ Ninguna moto guardada — toda la flota está produciendo.
-                </div>
-              ) : guardadasAgrupadas.map(g => (
-                <div key={g.clave} style={{ marginBottom: 18 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "var(--soft2)", marginBottom: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 13.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.clave}</span>
-                    <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                      {g.filas.length} moto{g.filas.length === 1 ? "" : "s"} · {g.dias}d
-                    </span>
-                  </div>
-                  <div style={{ display: "grid", gap: 8 }}>
-                    {g.filas.map(f => (
-                      <div key={f.motoId} style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--card)", display: "grid", gap: 6, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                            <Placa placa={f.placa} grupo={f.grupo} size="sm" />
-                            <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.clienteNombre}</span>
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap",
-                            background: f.dias == null ? "var(--bad-soft)" : (f.dias > 30 ? "var(--bad-soft)" : f.dias > 7 ? "var(--warn-soft)" : "var(--soft2)"),
-                            color: f.dias == null ? "var(--bad-ink)" : (f.dias > 30 ? "var(--bad-ink)" : f.dias > 7 ? "var(--warn-ink)" : "var(--muted2)") }}>
-                            {f.dias == null ? "⚠️ sin registro" : `${f.dias} día${f.dias === 1 ? "" : "s"} guardada`}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
-                          <strong>{f.motivo}</strong> · 📍 {f.donde}
-                          {f.desde && <> · desde el {fmtFechaCorta(f.desde)}</>}
-                          {guardadasPor !== "encargado" && <> · 👤 {f.subadminNombre}</>}
-                          {guardadasPor !== "grupo" && <> · 📁 {f.grupo}</>}
-                        </div>
-                        {f.sinRegistro && (
-                          <div style={{ fontSize: 11.5, color: "var(--bad-ink)", fontWeight: 700 }}>
-                            Figura guardada pero no tiene recepción registrada — no se sabe desde cuándo ni quién la recibió.
-                          </div>
-                        )}
-                        {onNavigate && (
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <button onClick={() => onNavigate("ficha_moto", f.motoId)} style={{ padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent-ink)" }}>🏍️ Ver moto</button>
-                            <button onClick={() => onNavigate("inmovilizaciones")} style={{ padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 700, background: "var(--soft2)", color: "var(--muted2)" }}>🔒 Inmovilizaciones</button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
+      {/* ── GUARDADAS: las motos en la empresa sin trabajar (D-033/034) ── */}
+      {tab === "guardadas" && (
+        <FlotaGuardadas
+          isMobile={isMobile}
+          lista={guardadasF}
+          onFicha={m => { const c = m.contratoId ? contratoPorId.get(m.contratoId) : undefined; if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", m.motoId); }}
+          onInmovilizaciones={onNavigate ? () => onNavigate("inmovilizaciones") : undefined}
+          onDescargar={puedeExportar ? excelQuietas : undefined}
+        />
+      )}
 
       {tab === "entregas" && (
         <div style={{ display: "grid", gap: 16 }}>
-          {/* Filtro por grupo */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {["Todos", ...GRUPOS].map(g => {
-              const activo = grupoEnt === g;
-              const color = g === "Todos" ? "var(--text)" : GRUPO_COLORS[g];
-              return (
-                <button key={g} onClick={() => setGrupoEnt(g)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, border: `1.5px solid ${activo ? color : "var(--line)"}`, cursor: "pointer", fontSize: 12, fontWeight: 700, background: activo ? color : "var(--card)", color: activo ? "var(--card)" : "var(--muted)" }}>
-                  {g !== "Todos" && <span style={{ width: 8, height: 8, borderRadius: 999, background: activo ? "var(--card)" : color }} />}
-                  {g}
-                </button>
-              );
-            })}
-          </div>
-
           {/* KPIs de entregas */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
             <KPI label="Motos entregadas"   value={String(entregas.length)}       color="var(--text)" />
-            <KPI label="Documentación completa"   value={String(entregasCompletas)}   color="var(--ok-ink)" bg="var(--ok-soft)" />
+            <KPI label="Documentación completa"   value={String(entregasCompletas)}   color="var(--ok-ink)" />
             <KPI label="Documentación incompleta" value={String(entregasIncompletas)} color="var(--bad-ink)" bg={entregasIncompletas > 0 ? "var(--bad-soft)" : "var(--card)"} />
             <KPI label="Con fotos de entrega"     value={String(entregasConFotos)}    color="var(--accent)" />
           </div>
 
           {/* Botón imprimir/enviar */}
-          <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "var(--line)" : "var(--accent)", color: entregas.length === 0 ? "var(--faint)" : "var(--card)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            🖨️ Imprimir reporte para los socios
+          <button onClick={imprimirEntregas} disabled={entregas.length === 0} style={{ padding: "12px 18px", borderRadius: 14, border: "none", cursor: entregas.length === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: entregas.length === 0 ? "var(--line)" : "var(--accent)", color: entregas.length === 0 ? "var(--muted2)" : "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Printer size={18} aria-hidden="true" /> Imprimir reporte para los socios
           </button>
 
           {/* Regenerar documentos en blanco (solo ADMIN/AP) — bug histórico del PDF */}
           {esAdmin && (
             <div style={{ ...card, padding: "14px 16px", border: "1px solid var(--warn-line)", background: "var(--warn-soft2)" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--warn-ink)", marginBottom: 4 }}>🔄 Regenerar documentos en blanco</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--warn-ink)", marginBottom: 4 }}>Regenerar documentos en blanco</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
                 Vuelve a armar el contrato y pagaré de las entregas cuyo PDF salió en blanco, usando las firmas y huellas ya guardadas. Nadie tiene que volver a firmar. Úsalo una vez; los que no tengan firma guardada se omiten.
               </div>
               <button
                 onClick={regenerarDocumentosEnBlanco}
                 disabled={regen.estado === "buscando" || regen.estado === "regenerando"}
-                style={{ padding: "10px 16px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 13, background: "var(--warn)", color: "var(--card)", cursor: regen.estado === "buscando" || regen.estado === "regenerando" ? "default" : "pointer", opacity: regen.estado === "buscando" || regen.estado === "regenerando" ? 0.6 : 1 }}
+                style={{ padding: "10px 16px", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 13, background: "var(--warn)", color: "var(--on-accent)", cursor: regen.estado === "buscando" || regen.estado === "regenerando" ? "default" : "pointer", opacity: regen.estado === "buscando" || regen.estado === "regenerando" ? 0.6 : 1 }}
               >
                 {regen.estado === "buscando" ? "Buscando…"
                   : regen.estado === "regenerando" ? `Regenerando ${regen.hechos} de ${regen.total}…`
-                  : "🔄 Buscar y regenerar"}
+                  : "Buscar y regenerar"}
               </button>
               {regen.estado === "hecho" && regen.msg && (
                 <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: "var(--ok-ink)" }}>{regen.msg}</div>
@@ -3146,32 +3016,32 @@ export default function ReportesView({ onNavigate }: Props) {
                 <div key={e.id} style={{ ...card, padding: 16, borderTop: `4px solid ${GRUPO_COLORS[e.grupo] ?? "var(--faint)"}` }}>
                   {/* Encabezado */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                    <div style={{ minWidth: 0 }}>
+                    <button onClick={() => onNavigate?.("ficha_cliente", e.clienteId)} aria-label={`Ver la ficha de ${e.cliente}`}
+                      style={{ minWidth: 0, background: "transparent", border: "none", padding: 0, textAlign: "left", color: "inherit", font: "inherit", cursor: onNavigate ? "pointer" : "default" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 700, fontSize: 18 }}>{e.placa}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: GRUPO_COLORS[e.grupo] ?? "var(--muted)", background: "var(--soft2)", border: `1px solid ${GRUPO_COLORS[e.grupo] ?? "var(--line)"}`, borderRadius: 999, padding: "1px 8px" }}>{e.grupo}</span>
+                        <Placa placa={e.placa} grupo={e.grupo} size="sm" />
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "var(--muted2)", marginTop: 4 }}>{e.cliente}</div>
-                      <div style={{ fontSize: 12, color: "var(--faint)" }}>C.C. {e.cedula}</div>
-                    </div>
+                      <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", color: "var(--text)", marginTop: 6 }}>{e.cliente}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted2)" }}>C.C. {e.cedula}</div>
+                    </button>
                     <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: e.docsOk ? "var(--ok-soft)" : "var(--bad-soft)", color: e.docsOk ? "var(--ok-ink)" : "var(--bad-ink)" }}>
-                      {e.docsOk ? "✓ Completo" : "⚠ Incompleto"}
+                      {e.docsOk ? "Completo" : "Incompleto"}
                     </span>
                   </div>
 
                   {/* Fecha + km */}
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-                    <span>📅 {new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                    {e.km != null && <span>⏱️ {fmt(e.km)} km</span>}
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted2)", marginBottom: 10 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><CalendarDays size={14} aria-hidden="true" /> Entregada el {new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                    {e.km != null && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Gauge size={14} aria-hidden="true" /> {fmt(e.km)} km</span>}
                   </div>
 
                   {/* Documentos */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: e.nFotos > 0 ? 12 : 0 }}>
                     {[
-                      { key: "contrato", label: "📄 Contrato", ok: e.docs.contrato, url: e.urls.contrato },
-                      { key: "pagare", label: "📝 Pagaré", ok: e.docs.pagare, url: e.urls.pagare },
-                      { key: "certificado", label: "🪪 Certificado", ok: e.docs.certificado, url: e.urls.certificado },
-                      { key: "firma", label: "✍️ Firma", ok: e.docs.firma, url: null },
+                      { key: "contrato", label: "Contrato", ok: e.docs.contrato, url: e.urls.contrato },
+                      { key: "pagare", label: "Pagaré", ok: e.docs.pagare, url: e.urls.pagare },
+                      { key: "certificado", label: "Certificado", ok: e.docs.certificado, url: e.urls.certificado },
+                      { key: "firma", label: "Firma", ok: e.docs.firma, url: null },
                     ].map(d => (
                       <button
                         key={d.key}
@@ -3181,7 +3051,7 @@ export default function ReportesView({ onNavigate }: Props) {
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, padding: "7px 10px", borderRadius: 10, border: "1px solid " + (d.ok ? "var(--ok-line)" : "var(--bad-line)"), background: d.ok ? "var(--ok-soft)" : "var(--bad-soft)", color: d.ok ? "var(--ok-ink)" : "var(--bad-ink)", fontSize: 12, fontWeight: 700, cursor: d.url ? "pointer" : "default", minWidth: 0 }}
                       >
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
-                        <span style={{ flexShrink: 0 }}>{d.ok ? (d.url ? "↗" : "✓") : "✗"}</span>
+                        <span style={{ flexShrink: 0, display: "inline-flex" }} aria-label={d.ok ? (d.url ? "abrir" : "listo") : "falta"}>{d.ok ? (d.url ? <ExternalLink size={14} aria-hidden="true" /> : <Check size={14} aria-hidden="true" />) : <X size={14} aria-hidden="true" />}</span>
                       </button>
                     ))}
                   </div>
@@ -3210,9 +3080,9 @@ export default function ReportesView({ onNavigate }: Props) {
 
                   {/* Acciones */}
                   <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--soft)", paddingTop: 10 }}>
-                    <button onClick={() => verResumenEntrega(e)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "#f5f3ff", color: "var(--violet)" }}>📄 Resumen</button>
-                    {onNavigate && <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent)" }}>👤 Cliente</button>}
-                    {onNavigate && e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>🏍️ Moto</button>}
+                    <button onClick={() => verResumenEntrega(e)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--soft2)", color: "var(--text)" }}>Resumen</button>
+                    {onNavigate && <button onClick={() => onNavigate("ficha_cliente", e.clienteId)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--accent-soft2)", color: "var(--accent-ink)" }}>Cliente</button>}
+                    {onNavigate && e.motoId && <button onClick={() => onNavigate("ficha_moto", e.motoId!)} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-soft)", color: "var(--ok-ink)" }}>Moto</button>}
                   </div>
                 </div>
               ))}

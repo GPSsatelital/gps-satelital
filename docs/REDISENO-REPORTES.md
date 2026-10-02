@@ -38,8 +38,23 @@
   compara la plata con el período anterior (sus motos cambian de un mes a otro: en septiembre se
   asignaron 200), ni en Por admin ni en el Resumen con un cobrador filtrado; para comparar cobradores
   está el cumplimiento. Contraste 0 fallas (125 textos), sin desbordes a 375/280.
-- **Siguen:** Cobranza (cartera, convenios, recolección), Equipo (nómina, visitas) y Flota (flota,
-  guardadas, entregas), cada una con dibujo aprobado antes.
+- **Menú nuevo y Flota: HECHOS (2-oct, noche).** Las 11 pestañas con emojis pasan a 5 secciones
+  (`MenuReportes.tsx`): Resumen · Cobranza (Cartera, Acuerdos) · Portafolios (Por grupo, Por cobrador)
+  · Equipo (Nómina, Visitas) · Flota (Motos, Guardadas, Entregas). "Exportar" es el botón Descargar
+  del encabezado. Flota y Guardadas tienen filtro de grupo y cobrador ("foto de hoy", sin período);
+  Entregas usa el grupo y el cobrador de la barra (antes tenía sus botones de grupo).
+  · Motos: dónde está cada moto (la misma pieza del Resumen y los portafolios), por grupo, clientes,
+    papeles (vencidos, por vencer, sin SOAT) y lo que hay que corregir; el estado del sistema, plegado.
+  · Guardadas: UNA lista con la regla de D-033/034 (retenidas por no pagar + taller con o sin
+    cliente), la misma que usa la plata sin producir del Resumen. Antes Guardadas contaba por el estado
+    de la moto (47) y Flota por el contrato (49): ahora 48 en las dos. Los días salen de la última
+    recepción, pero se descarta la de "nuevo registro de moto" y la de antes de la entrega al cliente:
+    XZZ69H salía con 69 días por su alta en julio. Total 697 días (antes 800).
+  · Entregas: sin emojis, la placa amarilla, el encabezado lleva a la ficha.
+  Contraste 0 fallas en las tres partes, oscuro y claro. Sin desbordes a 280 px.
+- **Siguen:** Cobranza (Cartera, Acuerdos) y Equipo (Nómina, Visitas), cada una con dibujo aprobado.
+  ⚠️ La pestaña Cartera de Reportes dice 129 al día y 149 en mora, contra 109 y 166 del resto: se
+  cuadra al rehacerla.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

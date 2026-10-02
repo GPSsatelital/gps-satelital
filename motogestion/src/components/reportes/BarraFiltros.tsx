@@ -31,7 +31,7 @@ export default function BarraFiltros({
   grupo, opcionesGrupo, onGrupo,
   cobrador, opcionesCobrador, onCobrador,
   mostrarGrupoCobrador, personalizado, isMobile,
-  modalidad = "", opcionesModalidad, onModalidad,
+  modalidad = "", opcionesModalidad, onModalidad, soloHoy = false,
 }: {
   periodo: string; opcionesPeriodo: OpcionFiltro[]; onPeriodo: (v: string) => void;
   /** "1 al 30 de septiembre de 2026" */
@@ -46,6 +46,8 @@ export default function BarraFiltros({
   isMobile: boolean;
   /** Semanal, quincenal, mensual o diario: solo en las pestañas que lo usan (si no llega, no se muestra). */
   modalidad?: string; opcionesModalidad?: OpcionFiltro[]; onModalidad?: (v: string) => void;
+  /** Pestañas que son "foto de hoy" (Flota, Guardadas): sin selector de período, pero con grupo y cobrador. */
+  soloHoy?: boolean;
 }) {
   const conModalidad = !!onModalidad && !!opcionesModalidad;
   const hayFiltro = mostrarGrupoCobrador && (grupo !== "" || cobrador !== "" || (conModalidad && modalidad !== ""));
@@ -62,7 +64,7 @@ export default function BarraFiltros({
     return () => io.disconnect();
   }, []);
   const resumen = [
-    opcionesPeriodo.find(o => o.valor === periodo)?.etiqueta,
+    soloHoy ? "Hoy" : opcionesPeriodo.find(o => o.valor === periodo)?.etiqueta,
     mostrarGrupoCobrador && grupo !== "" ? opcionesGrupo.find(o => o.valor === grupo)?.etiqueta : null,
     mostrarGrupoCobrador && cobrador !== "" ? opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta : null,
     conModalidad && modalidad !== "" ? modalidad : null,
@@ -88,7 +90,7 @@ export default function BarraFiltros({
       margin: "0 0 12px", padding: 8, textAlign: "left",
     }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Selector icono={<CalendarDays size={16} />} etiqueta="Período" valor={periodo} opciones={opcionesPeriodo} onCambio={onPeriodo} activo={false} />
+        {!soloHoy && <Selector icono={<CalendarDays size={16} />} etiqueta="Período" valor={periodo} opciones={opcionesPeriodo} onCambio={onPeriodo} activo={false} />}
         {mostrarGrupoCobrador && (
           <>
             <Selector icono={<Users size={16} />} etiqueta="Grupo" valor={grupo} opciones={opcionesGrupo} onCambio={onGrupo} activo={grupo !== ""} />
@@ -100,7 +102,7 @@ export default function BarraFiltros({
       {personalizado}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, minHeight: 20, fontSize: 12, color: "var(--muted2)" }}>
         <span style={{ flex: 1, minWidth: 0 }}>
-          Viendo: <span style={{ color: "var(--text)", fontWeight: 500 }}>{textoPeriodo}</span>
+          Viendo: <span style={{ color: "var(--text)", fontWeight: 500 }}>{soloHoy ? "cómo está hoy (no depende de fechas)" : textoPeriodo}</span>
           {mostrarGrupoCobrador && grupo !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{opcionesGrupo.find(o => o.valor === grupo)?.etiqueta}</span></>}
           {mostrarGrupoCobrador && cobrador !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500, textTransform: "uppercase" }}>{opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta}</span></>}
           {conModalidad && modalidad !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{modalidad}</span></>}

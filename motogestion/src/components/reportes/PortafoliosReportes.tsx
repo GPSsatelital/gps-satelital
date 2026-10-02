@@ -31,7 +31,7 @@ export type DatosPortafolio = {
   gestiones?: Array<{ clave: string; etiqueta: string; n: number }>;
 };
 
-const COLOR_LUGAR: Record<LugarMoto, string> = {
+export const COLOR_LUGAR: Record<LugarMoto, string> = {
   trabajando: "var(--ok)",
   tallerConCliente: "var(--warn)",
   retenida: "var(--bad)",
@@ -124,28 +124,7 @@ export default function PortafoliosReportes(p: {
         : <><Plata d={d} esCobrador={false} textoAnterior={p.textoAnterior} onAbrir={p.onAbrir} /><Cumplimiento d={d} esCobrador={false} onAbrir={p.onAbrir} /></>}
 
       {/* Dónde están las motos: motos de verdad, suman el total. */}
-      <Tarjeta titulo={`Dónde están ${esCobrador && d.clave ? "sus" : "las"} ${d.totalMotos} motos · hoy`}
-        ayuda="Cada moto está en un solo lugar, así que los números suman el total. Retenidas por no pagar: el contrato está detenido y la moto no tiene otro cliente, esté en el parqueadero o en el taller. Con la moto en el taller: el contrato sigue corriendo pero el cliente no tiene la moto.">
-        {d.totalMotos > 0 && (
-          <div style={{ display: "flex", height: 12, borderRadius: 4, overflow: "hidden", gap: 1, background: "var(--soft)" }} aria-hidden="true">
-            {LUGARES.map(l => d.lugares[l.clave] > 0 && (
-              <div key={l.clave} style={{ width: `${(d.lugares[l.clave] / d.totalMotos) * 100}%`, background: COLOR_LUGAR[l.clave] }} />
-            ))}
-          </div>
-        )}
-        <div style={{ display: "grid", gap: 2, marginTop: 8 }}>
-          {LUGARES.filter(l => l.clave === "trabajando" || d.lugares[l.clave] > 0).map(l => (
-            <button key={l.clave} onClick={() => p.onAbrir("lugar:" + l.clave)} aria-label={`${l.etiqueta}: ${d.lugares[l.clave]}. Ver cuáles`}
-              style={{ ...boton, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto 16px", gap: 8, alignItems: "center", minHeight: 44, padding: "0 4px", borderRadius: 10 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, minWidth: 0 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: COLOR_LUGAR[l.clave], flexShrink: 0 }} aria-hidden="true" />{l.etiqueta}
-              </span>
-              <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{d.lugares[l.clave]}</span>
-              <ChevronRight size={16} color="var(--muted2)" aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </Tarjeta>
+      <DondeEstanLasMotos titulo={`Dónde están ${esCobrador && d.clave ? "sus" : "las"} ${d.totalMotos} motos · hoy`} total={d.totalMotos} lugares={d.lugares} onAbrir={p.onAbrir} />
 
       {/* Cómo van pagando los que tienen la moto. */}
       <Tarjeta titulo={`Cómo van pagando los ${conMoto} que tienen la moto · hoy`}
@@ -208,6 +187,34 @@ export default function PortafoliosReportes(p: {
         {p.onDescargar && <button onClick={p.onDescargar} style={botonAccion}><Download size={16} aria-hidden="true" /> Descargar Excel</button>}
       </div>
     </div>
+  );
+}
+
+/** Dónde está cada moto: barra + una fila tocable por lugar (Por grupo, Por cobrador y Flota). */
+export function DondeEstanLasMotos({ titulo, total, lugares, onAbrir }: { titulo: string; total: number; lugares: Record<LugarMoto, number>; onAbrir: (clave: string) => void }) {
+  return (
+    <Tarjeta titulo={titulo}
+      ayuda="Cada moto está en un solo lugar, así que los números suman el total. Retenidas por no pagar: el contrato está detenido y la moto no tiene otro cliente, esté en el parqueadero o en el taller. Con la moto en el taller: el contrato sigue corriendo pero el cliente no tiene la moto.">
+      {total > 0 && (
+        <div style={{ display: "flex", height: 12, borderRadius: 4, overflow: "hidden", gap: 1, background: "var(--soft)" }} aria-hidden="true">
+          {LUGARES.map(l => lugares[l.clave] > 0 && (
+            <div key={l.clave} style={{ width: `${(lugares[l.clave] / total) * 100}%`, background: COLOR_LUGAR[l.clave] }} />
+          ))}
+        </div>
+      )}
+      <div style={{ display: "grid", gap: 2, marginTop: 8 }}>
+        {LUGARES.filter(l => l.clave === "trabajando" || lugares[l.clave] > 0).map(l => (
+          <button key={l.clave} onClick={() => onAbrir("lugar:" + l.clave)} aria-label={`${l.etiqueta}: ${lugares[l.clave]}. Ver cuáles`}
+            style={{ ...boton, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto 16px", gap: 8, alignItems: "center", minHeight: 44, padding: "0 4px", borderRadius: 10 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, minWidth: 0 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: COLOR_LUGAR[l.clave], flexShrink: 0 }} aria-hidden="true" />{l.etiqueta}
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{lugares[l.clave]}</span>
+            <ChevronRight size={16} color="var(--muted2)" aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+    </Tarjeta>
   );
 }
 

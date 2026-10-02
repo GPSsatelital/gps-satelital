@@ -33,7 +33,12 @@
   // ejercitaría el respaldo por `fecha` y no el camino real.
   const pagos = await porLotes("pagos?estado=eq.Confirmado&contrato_id=in.({IDS})&select=contrato_id,fecha,created_at,valor,aplicado_convenio,aplicado_saldo_favor,aplicado_deuda");
   const deudas = await porLotes("deudas?estado=eq.pendiente&contrato_id=in.({IDS})&select=contrato_id,monto,monto_pendiente,created_at");
-  const convenios = await q("convenios?estado=eq.activo&select=*");
+  // El acuerdo QUE SE COBRA, igual que la pantalla (`elegirConvenioPorCobrar`) y la vitrina (mig 183):
+  // el activo, y si no hay, el incumplido más viejo. Antes se cargaban solo los activos y la prueba
+  // daba "0 diferencias" mientras la pantalla cobraba los vencidos y ZALA no (2-oct, D-036).
+  const convenios = await q("convenios?estado=in.(activo,incumplido)&select=*");
+  const elegido = (contratoId) => convenios.filter(x => x.contrato_id === contratoId)
+    .sort((a, b) => (a.estado === "activo" ? 0 : 1) - (b.estado === "activo" ? 0 : 1) || a.created_at.localeCompare(b.created_at))[0] ?? null;
   const vitrina = await rpc("zala_vitrina", { p_vista: "cliente" });
   // Para la cola de recolección (mig 182): plazo extra vigente, estado de la moto y préstamo activo.
   const plazos = await q("gestiones_cobro?tipo=eq.plazo_extra&plazo_extra_fecha_limite=not.is.null&select=contrato_id,plazo_extra_fecha_limite");
@@ -52,7 +57,7 @@
     if (c.forma_pago === "Diario" || !c.motor_v2) { sinMotor++; continue; }
     const pagosC = pagos.filter(p => p.contrato_id === c.id);
     const deudasC = deudas.filter(d => d.contrato_id === c.id);
-    const cv = convenios.find(x => x.contrato_id === c.id) ?? null;
+    const cv = elegido(c.id);
     const lqd = cp.loQueDebe(c, pagosC, deudasC, cv, hoy);
     const cuotaConv = cp.cuotaConvenioDelPeriodo(cv, c, hoy);
     const cubierto = !!(cv?.cubre_periodo_hasta && cv.cubre_periodo_hasta >= hoyISO);

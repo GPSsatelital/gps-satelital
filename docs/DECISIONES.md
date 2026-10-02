@@ -532,3 +532,14 @@ $11.537.000, Carlos Ariza $11.588.200, Lumar $3.773.000). El sistema no guarda q
 (mig 058: solo la asignación actual), así que esa plata no se le puede atribuir a nadie.
 **Dónde vive:** 🔲 por construir — filas de `baseGestion` y Por admin en `ReportesView.tsx`.
 **Reemplaza a:** el aviso de Por admin "todo su recaudo aparece en el cobrador de ahora".
+
+### D-036 · 2-oct-2026 · Las deudas de un acuerdo se quedan dentro de él aunque se venza
+**Decidió:** el dueño ("si hazla").
+**Qué se decidió:** cuando un acuerdo se incumple, sus deudas NO vuelven a cobrarse aparte: siguen
+dentro del acuerdo, y lo que se cobra es lo que le falta al acuerdo (la regla del 17-sep, mig 157: el acuerdo vencido se sigue cobrando). ZALA ve el acuerdo vencido igual que la app.
+**Por qué:** la mig 130 (7-sep) devolvía las deudas a 'pendiente' y las migs 157-159 (17-sep) seguían
+cobrando el acuerdo: desde el 17-sep se cobraban las dos cosas. Medido el 2-oct: 6 clientes con
+$2.718.000 de más (ARISMEL MUÑOZ RMY48H: $889.000 en vez de $447.000). Nadie había pagado todavía a
+esas deudas devueltas.
+**Dónde vive:** mig 183 (`convenio_incumplido_devuelve_deudas`, las 6 deudas, `zala.cliente`).
+**Reemplaza a:** la mig 130 en su mitad "al incumplirse, las deudas vuelven a cobrarse".

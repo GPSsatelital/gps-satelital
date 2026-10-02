@@ -212,6 +212,22 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 🧑 ⚠️ **NELSON ESTUPIÑAN (RMZ58H): $30.000 que nadie cobra.** Firmó el acuerdo por $840.000 y su
+  deuda de migración dice $870.000. Con la mig 183 se le cobra lo del acuerdo firmado. Preguntar al
+  dueño si esos $30.000 se le cobran aparte.
+- [ ] 💻 ⚠️ **Acuerdo nuevo sobre uno vencido** (riesgo que abre la mig 183, hoy 0 casos): las deudas
+  del vencido se quedan dentro de él, así que un acuerdo NUEVO no las recoge, y como se cobra primero
+  el activo, lo que falta del vencido dejaría de verse. Decidir si la pantalla de acuerdos lo bloquea
+  ("cóbralo o liquídalo") o si el nuevo debe recoger lo que le falta al vencido.
+
+- [ ] 🧑💻 ⏸️ **Quitar dos motos que ya no están en la empresa: XYZ51H y YAV66H** (pedido del 2-oct,
+  en pausa por el dueño). No se borran (perderían su historia). Propuesta: estado nuevo "Fuera de la
+  empresa" con fecha y motivo, que las saque de flota, disponibles y reportes. Falta la respuesta del
+  dueño: **¿qué pasó con ellas?** (devueltas al socio de PRADERA / vendidas / perdidas o robadas).
+  Lo abierto de cada una: XYZ51H (BLEIMER CASTELLANO, LIQ-0053 cerrada con +$959.000) figura
+  "Disponible" y tiene una entrada al taller abierta desde el 14-sep. YAV66H (JESUS DAVID SABALLET)
+  tiene el contrato suspendido, deuda de migración $260.500, cliente "Activo", sin pagos ni liquidación.
+
 - [ ] 💻 **Rediseño de Reportes — faltan 3 partes** (`docs/REDISENO-REPORTES.md`). El Resumen, Por
   grupo y Por admin quedaron hechos el 2-oct. ⚠️ La pestaña **Exportar** (Excel "resumen gerencial" y el
   PDF) todavía le cuenta a cada cobrador todo lo de sus motos de hoy, sin D-035: se arregla al rehacerla. Siguen, cada una con su dibujo aprobado antes de construir: **Cobranza**
@@ -227,11 +243,6 @@ Lo que está afectando cifras reales de clientes en este momento.
   **Dato del 2-oct:** en la app no hay NINGÚN cierre de nómina guardado (`nomina_cierres` = 0), así
   que nunca se usó "Cerrar y pagar": lo que se les pagó se hizo por fuera. Preguntar al dueño con qué
   cifra les pagó cada semana.
-
-- [ ] 💻 ⚠️ **ZALA no ve el acuerdo VENCIDO** (visto el 2-oct). Desde el 17-sep la pantalla y Mi Día
-  siguen cobrando el acuerdo incumplido; la vitrina `zala.cliente` solo mira los acuerdos activos. Hoy:
-  Cartera y Mi Día 57 en recolección, ZALA 55 (WILLINGTON GARCIA DQW26I y ARISMEL MUÑOZ RMY48H).
-  **Preguntar al dueño** antes de cambiar la vitrina.
 
 - [ ] 💻 **El registro de cambios del contrato no se guarda en algunas rodadas** (visto el 1-oct). En 7
   de 18 rodadas (las de Lumar, Carlos Ariza y algunas de Carlos Alvarez) no quedó la fila en
@@ -586,6 +597,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | 🔴 **El acuerdo vencido ya no se cobra dos veces** (D-036, mig 183) — la mig 130 devolvía sus deudas a 'pendiente' y desde el 17-sep el acuerdo también se cobraba. 6 clientes, $2.718.000 de más (ARISMEL MUÑOZ RMY48H $889.000 → $447.000). ZALA ya ve el acuerdo vencido (era el pendiente de WILLINGTON y ARISMEL). La prueba espejo ahora elige el acuerdo como la pantalla: 330 comparados, 0 diferencias |
 | 2-oct | **Reportes: arreglo corto tras la revisión con agentes** — el Resumen ya no se recorta con filtros que no muestra; "Cargando" en vez de $0 con sello verde; el sello compara de verdad (grupos contra pagos, cada peso repartido, estados contra vigentes); lo pagado al acuerdo de base va a la parte del cliente ($3.644.000 en septiembre); la nómina no deja pagar ni imprimir con datos a medias ni muestra el cierre de otra semana; los pagos de a 1.000 ya no se repiten ni se pierden en el borde (toda la app). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **Reportes: Resumen nuevo** — filtros de período, grupo y cobrador que mandan sobre todo lo de abajo; cada número se toca y abre la lista de quiénes son, con "Abrir en Cartera" ya filtrada y descarga; columna "hoy" contra "al cierre" del período; recaudado separado empresa / ahorro / base; sello que revisa que las cifras cuadren; modo oscuro sin textos ilegibles (0 de 119). `docs/REDISENO-REPORTES.md` |
 | 2-oct | 🔴 **Recolección y días de mora del acuerdo** (D-030, mig 182) — la moto guardada sin prestada no va a recolección (REGINALDO, JAIRO MARIMON); con acuerdo los días se cuentan sobre el conjunto (REINEL 1 → 15 días); sin mínimo de plata. Cola 36 → 55. Foto de la plata 0, espejo 330/0 |

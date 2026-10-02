@@ -599,7 +599,14 @@ function Shell() {
       "Mantenimiento": "En mantenimiento",
       "Finalizado": "Finalizados", "Cancelado": "Cancelados",
     };
-    filterLabel = FILTER_LABELS[ctx.filter] ?? ctx.filter;
+    // Cartera abierta ya filtrada desde Reportes ("contratos:mora;grupo:COSTA"): se dice en palabras.
+    const etiquetaCartera = (f: string): string | null => {
+      const partes = Object.fromEntries(f.split(";").map(x => [x.slice(0, x.indexOf(":")), x.slice(x.indexOf(":") + 1)]));
+      const NOMBRES: Record<string, string> = { mora: "En mora", gabela: "Gabela", "al-dia": "Al día", retenidos: "Retenidos", recoleccion: "Cola de recolección", "pagan-hoy": "Pagan hoy", convenio: "Con convenio", empalme: "Empalme", todos: "Todos" };
+      const base = NOMBRES[partes.contratos ?? partes.hoy ?? ""];
+      return base ? [base, partes.grupo].filter(Boolean).join(" · ") : null;
+    };
+    filterLabel = (ctx.view === "cobros" ? etiquetaCartera(ctx.filter) : null) ?? FILTER_LABELS[ctx.filter] ?? ctx.filter;
   }
 
   const contentView = (
@@ -617,7 +624,7 @@ function Shell() {
       {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
       {ctx.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
-      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
+      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} initialFilter={ctx.filter !== "new" ? ctx.filter : ""} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
       {ctx.view === "caja"          && puedeVer("caja") && <CajaView />}
       {ctx.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
       {ctx.view === "cobro_diario"  && puedeVer("cobro_diario") && <CobroDiarioView onNavigate={navigate} />}

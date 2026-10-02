@@ -616,7 +616,10 @@ function calcProtocoloStep(dias: number, recolectable: boolean, motoGuardada: bo
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CobrosView({ initialOpenForm = false, onNavigate, puedeHistorial = true }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void; puedeHistorial?: boolean }) {
+export default function CobrosView({ initialOpenForm = false, onNavigate, puedeHistorial = true, initialFilter = "" }: { initialOpenForm?: boolean; onNavigate?: (view: ViewKey, filter?: string) => void; puedeHistorial?: boolean;
+  /** Abrir Cartera ya filtrada desde otra pantalla (Reportes, 2-oct-2026). Formato: "contratos:mora",
+   *  "contratos:retenidos", "hoy:recoleccion"…, y opcional ";grupo:COSTA". Vacío = como siempre. */
+  initialFilter?: string }) {
   const { profile, puede } = useAuth();
   const { filtrarContratos } = useScope();
   const { nombreSubadmin } = useSubadmins();
@@ -1295,6 +1298,23 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [fabOpen, setFabOpen] = useState(false);
   type FiltroHoy = "todos" | "recoleccion" | "mora" | "gabela" | "pagan-hoy";
   const [filtroHoy, setFiltroHoy] = useState<FiltroHoy>("todos");
+  // Llegar ya filtrada (desde Reportes). Sin filtro no toca nada: Cartera abre como siempre.
+  useEffect(() => {
+    if (!initialFilter) return;
+    const partes = Object.fromEntries(initialFilter.split(";").map(x => { const i = x.indexOf(":"); return [x.slice(0, i), x.slice(i + 1)]; }));
+    const CONTRATOS: FiltroContratos[] = ["todos", "mora", "gabela", "al-dia", "pagan-hoy", "convenio", "retenidos", "empalme"];
+    const HOY: FiltroHoy[] = ["todos", "recoleccion", "mora", "gabela", "pagan-hoy"];
+    if (partes.contratos && (CONTRATOS as string[]).includes(partes.contratos)) {
+      setActiveTab("contratos");
+      setFiltroContratos(partes.contratos as FiltroContratos);
+    } else if (partes.hoy && (HOY as string[]).includes(partes.hoy)) {
+      setActiveTab("hoy");
+      setFiltroHoy(partes.hoy as FiltroHoy);
+    }
+    if (partes.grupo && ["COSTA", "PRADERA", "RASTREADOR", "USADAS", "OTRO"].includes(partes.grupo)) {
+      setFiltroGrupoContratos(partes.grupo as GrupoMoto);
+    }
+  }, [initialFilter]);
   const [envioMasivo, setEnvioMasivo] = useState<{ filas: DestinatarioMasivo[]; titulo: string; omitidos: number } | null>(null);
   const [busquedaHoy, setBusquedaHoy] = useState("");
   // El acuerdo del panel de detalle: activo O incumplido. El incumplido tiene que VERSE —

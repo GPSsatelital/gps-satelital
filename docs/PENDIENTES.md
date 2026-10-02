@@ -212,6 +212,13 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 **Rediseño de Reportes — faltan 3 de 4 partes** (`docs/REDISENO-REPORTES.md`). El Resumen
+  quedó hecho el 2-oct. Siguen, cada una con su dibujo aprobado antes de construir: **Cobranza**
+  (cartera, convenios, recolección), **Equipo** (por admin, nómina, visitas) y **Flota** (flota,
+  guardadas, entregas); pasar de 11 pestañas a 5 secciones y quitar los emojis de las pestañas.
+  Aprobadas como idea, sin construir: **la foto automática de cada noche** (para que "cómo estaban al
+  cierre" deje de ser reconstruido) y **"lo que falta por cobrar este mes"**.
+
 - [ ] 🧑 **¿Cómo se les pagó a los cobradores desde la semana del 31-ago?** La pantalla de nómina
   (y el desprendible) mostraba mucho menos de lo real porque traía solo 1.000 registros (D-031,
   arreglado el 2-oct). Ej.: Brandon, semana del 21-sep, $57.500 en vez de $402.500; la semana completa
@@ -575,6 +582,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | **Reportes: Resumen nuevo** — filtros de período, grupo y cobrador que mandan sobre todo lo de abajo; cada número se toca y abre la lista de quiénes son, con "Abrir en Cartera" ya filtrada y descarga; columna "hoy" contra "al cierre" del período; recaudado separado empresa / ahorro / base; sello que revisa que las cifras cuadren; modo oscuro sin textos ilegibles (0 de 119). `docs/REDISENO-REPORTES.md` |
 | 2-oct | 🔴 **Recolección y días de mora del acuerdo** (D-030, mig 182) — la moto guardada sin prestada no va a recolección (REGINALDO, JAIRO MARIMON); con acuerdo los días se cuentan sobre el conjunto (REINEL 1 → 15 días); sin mínimo de plata. Cola 36 → 55. Foto de la plata 0, espejo 330/0 |
 | 2-oct | 🔴 **Nómina: semanas rodadas y las 1.000 filas** (D-031) — se paga como estaba el día del cobro; la pantalla y el desprendible traen todos los registros (semana del 21-sep: $930.000 → $2.017.500, impreso = pantalla) |
 | 30-sep | **Reportes, bloque 2** — visitas suman, clientes con contrato, retenidas por mora separadas, aviso de SOAT separado, motos reasignadas fuera de la cuenta, y las 11 pestañas caben en el celular. `docs/AUDITORIA-REPORTES.md` |

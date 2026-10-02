@@ -122,6 +122,7 @@ code {
   --soft2: #f8fafc;         /* relleno aún más tenue */
   --ink: #0f172a;           /* superficies oscuras fijas (sidebar) — igual en ambos modos */
   --on-ink: #f8fafc;        /* texto SOBRE --ink: siempre claro en ambos modos (nunca usar --card, que es navy en noche) */
+  --on-accent: #0a1020;     /* texto SOBRE --accent (botón principal): oscuro en ambos modos — 4,7:1 de día, 10:1 de noche */
   --text: #0f172a;
   --muted: #64748b;
   --muted2: #334155;

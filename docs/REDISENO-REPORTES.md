@@ -52,9 +52,29 @@
     XZZ69H salía con 69 días por su alta en julio. Total 697 días (antes 800).
   · Entregas: sin emojis, la placa amarilla, el encabezado lleva a la ficha.
   Contraste 0 fallas en las tres partes, oscuro y claro. Sin desbordes a 280 px.
-- **Siguen:** Cobranza (Cartera, Acuerdos) y Equipo (Nómina, Visitas), cada una con dibujo aprobado.
-  ⚠️ La pestaña Cartera de Reportes dice 129 al día y 149 en mora, contra 109 y 166 del resto: se
-  cuadra al rehacerla.
+- **Cobranza: HECHA (2-oct, noche)** — `CobranzaReportes.tsx`, con las mismas filas del Resumen
+  (estados D-033/034) y el grupo y cobrador de la barra ("foto de hoy", sin período).
+  · Cartera: lo que se debe hoy partido en cuotas del contrato · cuotas de acuerdos · deudas (sale de
+    `loQueDebe`; las deudas dentro de un acuerdo no se cuentan dos veces) · qué tan cobrable es (de
+    los que siguen con su contrato contra retenidas y en liquidación) · cómo van pagando · quién tiene
+    la deuda por grupo o por cobrador · los que más deben · plata a favor de los clientes · contratos
+    por forma de pago. Todo se toca y abre su lista; "Abrir en Cartera" lleva grupo y cobrador.
+  · Acuerdos: lo pactado, pagado, lo que falta y lo atrasado · los que vencen en 14 días sin terminar
+    de pagar · cómo van (al día + atrasados + vencidos = total; aparte, los que no han pagado un peso)
+    · quién los lleva · la lista, y al tocar uno, sus pagos uno por uno. Se conservan el Excel y
+    "ver también los ya pagados".
+  · Medido el 2-oct: se debe $113.573.800 ($77.678.200 + $21.786.000 + $14.109.600); $43.206.400 de
+    los que siguen con su contrato y $70.367.400 de retenidas o en liquidación; los grupos y los
+    cobradores suman el total. 163 acuerdos (51 + 102 + 10), 31 vencen en 14 días con $6.331.500 por
+    pagar. **El atrasado de Acuerdos ($21.786.000) es igual a "cuotas de acuerdos" de Cartera** por dos
+    caminos distintos (`reporteConvenios` y `loQueDebe`), también con COSTA filtrado ($10.007.500).
+  · Se corrigió una etiqueta antes de mostrarla: "semanas vencidas" incluía la cuota que vence hoy
+    (SINDY, NGY24I, quincenal que paga el 2). Ahora dice "cuotas del contrato" y lo explica.
+  · La pestaña vieja decía 129 al día y 149 en mora con otra regla: ahora 129 · 1 · 146, igual al
+    Resumen; la diferencia con Cartera (150) son los 4 con la moto en el taller (D-034).
+  · Contraste 0 fallas en Cartera, Acuerdos y sus hojas, oscuro y claro (solo falla la barra de abajo
+    de la app, que no es de Reportes). Sin desbordes a 280 px. 822 pruebas, build en verde.
+- **Sigue:** Equipo (Nómina, Visitas), con dibujo aprobado.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

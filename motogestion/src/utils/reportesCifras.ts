@@ -65,6 +65,11 @@ export type EstadoHoy = {
   recoleccion: boolean;
   /** Todo lo que debe hoy: cuota + acuerdo + deudas. La misma cifra que Cartera. */
   debeHoy: number;
+  /** Lo mismo, partido: semanas, cuota del acuerdo y deudas. Las tres suman `debeHoy` exacto (en
+   *  semanas de más, lo que no es semana ni acuerdo va a deudas). */
+  debe: { semanas: number; acuerdo: number; deudas: number };
+  /** Plata del cliente a su favor (se muestra, nunca se resta). */
+  saldoAFavor: number;
 };
 
 /**
@@ -101,6 +106,12 @@ export function estadoHoy(
       estadoMoto: moto.estado, conPrestada: moto.conPrestada,
     }),
     debeHoy: lq.totalFalta,
+    debe: {
+      semanas: lq.cuota.falta,
+      acuerdo: lq.acuerdo?.falta ?? 0,
+      deudas: Math.max(lq.totalFalta - lq.cuota.falta - (lq.acuerdo?.falta ?? 0), 0),
+    },
+    saldoAFavor: Math.max(lq.saldoAFavor ?? 0, 0),
   };
 }
 

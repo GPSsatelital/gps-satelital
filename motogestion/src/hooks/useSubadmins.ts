@@ -12,6 +12,11 @@ export type Subadmin = { id: string; nombre: string };
 // role/permisos/acciones.
 let cache: Subadmin[] | null = null;
 
+/** El nombre desde la lista ya traída (sin consultar): para rótulos fuera de un componente. */
+export function nombreSubadminCacheado(id: string | null | undefined): string | null {
+  return id ? cache?.find(s => s.id === id)?.nombre ?? null : null;
+}
+
 export function useSubadmins() {
   const [subadmins, setSubadmins] = useState<Subadmin[]>(cache ?? []);
   const [loading, setLoading] = useState(cache === null);

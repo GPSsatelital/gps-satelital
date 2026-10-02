@@ -27,8 +27,19 @@
   $231.951.802; COSTA 226 motos = 172 + 2 + 24 + 2 + 26, y 172 = 69 + 0 + 103. En mora 166 y retenidas
   42 iguales en Resumen, Por admin, Por grupo y Flota. Contraste: 0 fallas en oscuro y claro (109
   textos). Sin desbordes a 375/320/280.
-- **Siguen:** Cobranza (cartera, convenios, recolección), Equipo (por admin, nómina, visitas) y Flota
-  (flota, guardadas, entregas), cada una con dibujo aprobado antes.
+- **Por admin: HECHA (2-oct, tarde)**, con D-035 (a cada cobrador solo lo de sus motos desde que las
+  tiene). Es la misma pieza de Por grupo (`PortafoliosReportes.tsx`) en la mirada del cobrador: los
+  cobradores lado a lado (del que más cumplió al que menos) más una fila "de antes de que se asignaran
+  las motos" para que sume el total; el detalle con cumplimiento, plata, motos, clientes y **lo que hizo
+  en el período** (gestiones que registró: mensajes, llamadas, WhatsApp, recolecciones, sirenas, plazos,
+  cobros en la calle). Botones: sus contratos, su nómina, Cartera (ahora filtra por cobrador:
+  `;cobrador:<id>`), Excel. Septiembre: Ariza $44,8M, Alvarez $51,7M, Brandon $59,7M, Lumar $49M + $26,7M
+  de antes de asignar = $232M. **Decisión de diseño mía, para que el dueño la vea:** al cobrador no se le
+  compara la plata con el período anterior (sus motos cambian de un mes a otro: en septiembre se
+  asignaron 200), ni en Por admin ni en el Resumen con un cobrador filtrado; para comparar cobradores
+  está el cumplimiento. Contraste 0 fallas (125 textos), sin desbordes a 375/280.
+- **Siguen:** Cobranza (cartera, convenios, recolección), Equipo (nómina, visitas) y Flota (flota,
+  guardadas, entregas), cada una con dibujo aprobado antes.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

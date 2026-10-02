@@ -14,6 +14,7 @@ import { useContratos } from "./hooks/useContratos";
 import Login from "./pages/Login";
 import DashboardView from "./pages/DashboardView";
 import CampanaAlertas from "./components/CampanaAlertas";
+import { nombreSubadminCacheado } from "./hooks/useSubadmins";
 // Vistas cargadas bajo demanda (code-splitting): el arranque solo baja Login + Dashboard,
 // las demás pantallas se descargan al navegar a ellas.
 const MotosView = lazy(() => import("./pages/MotosView"));
@@ -604,7 +605,8 @@ function Shell() {
       const partes = Object.fromEntries(f.split(";").map(x => [x.slice(0, x.indexOf(":")), x.slice(x.indexOf(":") + 1)]));
       const NOMBRES: Record<string, string> = { mora: "En mora", gabela: "Gabela", "al-dia": "Al día", retenidos: "Retenidos", recoleccion: "Cola de recolección", "pagan-hoy": "Pagan hoy", convenio: "Con convenio", empalme: "Empalme", todos: "Todos" };
       const base = NOMBRES[partes.contratos ?? partes.hoy ?? ""];
-      return base ? [base, partes.grupo].filter(Boolean).join(" · ") : null;
+      const cobrador = partes.cobrador ? (partes.cobrador === "__none__" ? "Sin cobrador" : nombreSubadminCacheado(partes.cobrador)?.toUpperCase() ?? "Un cobrador") : null;
+      return base ? [base, partes.grupo, cobrador].filter(Boolean).join(" · ") : null;
     };
     filterLabel = (ctx.view === "cobros" ? etiquetaCartera(ctx.filter) : null) ?? FILTER_LABELS[ctx.filter] ?? ctx.filter;
   }

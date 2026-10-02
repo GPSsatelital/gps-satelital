@@ -212,8 +212,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 **Rediseño de Reportes — faltan 3 partes** (`docs/REDISENO-REPORTES.md`). El Resumen y Por
-  grupo quedaron hechos el 2-oct. Siguen, cada una con su dibujo aprobado antes de construir: **Cobranza**
+- [ ] 💻 **Rediseño de Reportes — faltan 3 partes** (`docs/REDISENO-REPORTES.md`). El Resumen, Por
+  grupo y Por admin quedaron hechos el 2-oct. ⚠️ La pestaña **Exportar** (Excel "resumen gerencial" y el
+  PDF) todavía le cuenta a cada cobrador todo lo de sus motos de hoy, sin D-035: se arregla al rehacerla. Siguen, cada una con su dibujo aprobado antes de construir: **Cobranza**
   (cartera, convenios, recolección), **Equipo** (por admin, nómina, visitas) y **Flota** (flota,
   guardadas, entregas); pasar de 11 pestañas a 5 secciones y quitar los emojis de las pestañas.
   Aprobadas como idea, sin construir: **la foto automática de cada noche** (para que "cómo estaban al

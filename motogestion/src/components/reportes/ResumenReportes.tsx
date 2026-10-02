@@ -61,7 +61,10 @@ export default function ResumenReportes(p: {
   textoPeriodo: string;
   verificaciones: Verificacion[];
   recaudo: DesgloseRecaudo;
-  anterior: { total: number; texto: string; delta: { txt: string; up: boolean | null } };
+  /** Con un cobrador filtrado: lo que sus motos pagaron antes de que se las asignaran (D-035). */
+  antes?: number;
+  /** null = no se compara (con un cobrador filtrado: sus motos cambian de un mes a otro). */
+  anterior: { total: number; texto: string; delta: { txt: string; up: boolean | null } } | null;
   cumplimiento: { pct: number | null; debia: number; cubrio: number; aAcuerdo: number };
   estados: FilaEstado[];
   /** "30-sep" si el período cerró antes de hoy; null si el período llega a hoy (no hay qué comparar). */
@@ -113,10 +116,12 @@ export default function ResumenReportes(p: {
             <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums" }}>{plata(r.total)}</span>
             <ChevronRight size={18} color="var(--muted2)" aria-hidden="true" />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap", fontSize: 12, color: "var(--muted2)" }}>
-            <Delta txt={p.anterior.delta.txt} up={p.anterior.delta.up} />
-            <span>vs {p.anterior.texto} ({plata(p.anterior.total)})</span>
-          </div>
+          {p.anterior && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap", fontSize: 12, color: "var(--muted2)" }}>
+              <Delta txt={p.anterior.delta.txt} up={p.anterior.delta.up} />
+              <span>vs {p.anterior.texto} ({plata(p.anterior.total)})</span>
+            </div>
+          )}
           {r.total > 0 && (
             <>
               <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", marginTop: 12, background: "var(--soft)" }} aria-hidden="true">
@@ -124,6 +129,11 @@ export default function ResumenReportes(p: {
                 <div style={{ width: `${pct(r.ahorro, r.total)}%`, background: "var(--violet)" }} />
                 <div style={{ width: `${pct(r.baseYSaldo, r.total)}%`, background: "var(--muted)" }} />
               </div>
+              {(p.antes ?? 0) > 0 && (
+                <div style={{ fontSize: 12, marginTop: 8, padding: "8px 10px", borderRadius: 10, background: "var(--warn-soft)", color: "var(--warn-ink)", lineHeight: 1.5 }}>
+                  Además entraron {plata(p.antes!)} de motos que se le pasaron en el período, de antes de que fueran suyas. No cuentan aquí.
+                </div>
+              )}
               <div style={{ display: "grid", gap: 4, marginTop: 8, fontSize: 12 }}>
                 {[
                   { c: "var(--accent)", l: "Empresa", v: r.empresa },

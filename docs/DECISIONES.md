@@ -519,3 +519,16 @@ cobrador. El Resumen nuevo (3955e28) los contaba como atrasados — error mío d
 decidido sin revisar el pedido del 22-ago. Medido el 2-oct: 4 clientes.
 **Dónde vive:** 🔲 por construir — `baseGestion` y el Resumen en `ReportesView.tsx`.
 **Reemplaza a:** —
+
+### D-035 · 2-oct-2026 · A cada cobrador se le cuenta solo lo de sus motos desde que las tiene
+**Decidió:** el dueño (opción A).
+**Qué se decidió:** en Reportes, la plata y el cumplimiento de una moto cuentan para su cobrador
+**desde la fecha en que se la asignaron** (`motos.subadmin_asignado_desde`). Lo que esa moto pagó
+antes sale aparte ("además entraron $X de antes de que fueran suyas"), y lo que se le vencía antes
+tampoco entra en su porcentaje. Los totales de la empresa y de cada grupo no cambian: esa plata entró.
+**Por qué:** a 200 de las 346 motos con cobrador se les asignó su cobrador actual en septiembre. Ese
+mes, $26.898.200 se le contaban a un cobrador que todavía no tenía la moto (Carlos Alvarez
+$11.537.000, Carlos Ariza $11.588.200, Lumar $3.773.000). El sistema no guarda quién la tenía antes
+(mig 058: solo la asignación actual), así que esa plata no se le puede atribuir a nadie.
+**Dónde vive:** 🔲 por construir — filas de `baseGestion` y Por admin en `ReportesView.tsx`.
+**Reemplaza a:** el aviso de Por admin "todo su recaudo aparece en el cobrador de ahora".

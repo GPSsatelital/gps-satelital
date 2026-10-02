@@ -654,6 +654,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [activeTab, setActiveTab] = useState<TabKey>(profile?.role === "SUBADMIN" ? "hoy" : "contratos");
   const [filtroContratos, setFiltroContratos] = useState<FiltroContratos>("todos");
   const [filtroGrupoContratos, setFiltroGrupoContratos] = useState<"todos" | GrupoMoto>("todos");
+  // Solo llega desde Reportes ("Abrir en Cartera" de un cobrador): los contratos de las motos que tiene a cargo.
+  const [filtroCobradorContratos, setFiltroCobradorContratos] = useState<string | null>(null);
   const [modalCampoAbierto, setModalCampoAbierto] = useState(false);
   const [contratoSeleccionadoId, setContratoSeleccionadoId] = useState<string | null>(null);
   // Atrás cierra el detalle del contrato en vez de saltar de módulo.
@@ -1192,6 +1194,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (filtroGrupoContratos !== "todos") {
       base = base.filter(c => motos.find(m => m.id === c.moto_id)?.grupo === filtroGrupoContratos);
     }
+    if (filtroCobradorContratos) {
+      base = base.filter(c => (motos.find(m => m.id === c.moto_id)?.subadmin_id ?? "__none__") === filtroCobradorContratos);
+    }
 
     const q = busqueda.toLowerCase();
     const filtrada = !q ? base : base.filter(c => {
@@ -1217,7 +1222,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       if (a.suspendido !== b.suspendido) return a.suspendido ? 1 : -1;
       return b.diasMora - a.diasMora;
     });
-  }, [filtroContratos, filtroGrupoContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, conEmpalme, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
+  }, [filtroContratos, filtroGrupoContratos, filtroCobradorContratos, resumenContratos, enMora, enGabela, alDia, conConvenio, retenidos, conEmpalme, paganHoyDiario, paganHoyPeriodico, busqueda, clientes, motos]);
 
   // ── Contrato seleccionado ─────────────────────────────────────────────────
   const contratoDetalle = contratoSeleccionadoId
@@ -1314,6 +1319,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     if (partes.grupo && ["COSTA", "PRADERA", "RASTREADOR", "USADAS", "OTRO"].includes(partes.grupo)) {
       setFiltroGrupoContratos(partes.grupo as GrupoMoto);
     }
+    setFiltroCobradorContratos(partes.cobrador || null);
   }, [initialFilter]);
   const [envioMasivo, setEnvioMasivo] = useState<{ filas: DestinatarioMasivo[]; titulo: string; omitidos: number } | null>(null);
   const [busquedaHoy, setBusquedaHoy] = useState("");
@@ -4081,6 +4087,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                   {g === "todos" ? "Todos" : g}
                 </Chip>
               ))}
+              {filtroCobradorContratos && (
+                <Chip activo onClick={() => setFiltroCobradorContratos(null)}>
+                  <span style={{ textTransform: "uppercase" }}>{filtroCobradorContratos === "__none__" ? "Sin cobrador" : (nombreSubadmin(filtroCobradorContratos) ?? "Cobrador")}</span> · quitar
+                </Chip>
+              )}
             </div>
             <div style={{ ...card, padding: isMobile ? 10 : 16 }}>
               <input

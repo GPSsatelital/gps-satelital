@@ -20,7 +20,7 @@ import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { abrirDocumento, firmarImagenesHtml } from "../lib/storagePrivado";
 import { formatDiaPago, valorPeriodoReal, type EstadoCartera } from "../utils/cicloPago";
 import {
-  exportarCSV, descargarExcel, GRUPO_HEX,
+  descargarExcel, GRUPO_HEX,
   type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
 } from "../utils/exportar";
 import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../components/ModalDescargar";
@@ -43,6 +43,8 @@ import MenuReportes, { type TabReportes } from "../components/reportes/MenuRepor
 import { FlotaMotos, FlotaGuardadas } from "../components/reportes/FlotaReportes";
 import { CobranzaCartera, CobranzaAcuerdos, type FilaReparto } from "../components/reportes/CobranzaReportes";
 import { EquipoNomina, EquipoVisitas, type CeldaSemana, type DatosNomina, type DatosVisitas } from "../components/reportes/EquipoReportes";
+import DescargarReportes from "../components/reportes/DescargarReportes";
+import { informeSociosHTML, type DatosInforme, type SeccionInforme } from "../utils/informeSocios";
 import ResumenReportes, { type FilaEstado, plata as plataT } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
 import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
@@ -55,7 +57,6 @@ interface Props {
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(15,23,42,0.08)" };
 function fmt(n: number) { return Math.round(n).toLocaleString("es-CO"); }
-function pct(a: number, b: number) { return b === 0 ? "0%" : `${Math.round((a / b) * 100)}%`; }
 
 type Rango = "hoy" | "semana" | "semana_pasada" | "ult7" | "mes" | "mes_anterior" | "ult30" | "anio" | "personalizado";
 type Tab   = TabReportes;
@@ -175,36 +176,6 @@ function KPI({ label, value, sub, color, bg }: { label: string; value: string; s
 // El motor de descargas (Excel estilizado + CSV) vive en src/utils/exportar.ts — fuente unica
 // para que toda pantalla con boton de descargar saque el mismo formato. Ver los imports arriba.
 
-// ── Gráficos del PDF (SVG inline con hex — html2canvas los rasteriza bien) ──
-function donutSVG(al: number, par: number, no: number, total: number): string {
-  const C = 326.726; // circunferencia r=52
-  const seg = (v: number) => (total > 0 ? (v / total) * C : 0);
-  const a = seg(al), p = seg(par), nn = seg(no);
-  const pctAl = total > 0 ? Math.round((al / total) * 100) : 0;
-  return `<svg viewBox="0 0 140 140" width="150" height="150" xmlns="http://www.w3.org/2000/svg">`
-    + `<circle cx="70" cy="70" r="52" fill="none" stroke="#eef2f7" stroke-width="22"></circle>`
-    + `<g transform="rotate(-90 70 70)" fill="none" stroke-width="22">`
-    + `<circle cx="70" cy="70" r="52" stroke="#159a6d" stroke-dasharray="${a} ${C - a}"></circle>`
-    + `<circle cx="70" cy="70" r="52" stroke="#e0982a" stroke-dasharray="${p} ${C - p}" stroke-dashoffset="${-a}"></circle>`
-    + `<circle cx="70" cy="70" r="52" stroke="#d64545" stroke-dasharray="${nn} ${C - nn}" stroke-dashoffset="${-(a + p)}"></circle>`
-    + `</g>`
-    + `<text x="70" y="66" text-anchor="middle" font-size="26" font-weight="bold" fill="#0f172a">${pctAl}%</text>`
-    + `<text x="70" y="86" text-anchor="middle" font-size="11" fill="#64748b">al día</text></svg>`;
-}
-function barrasHTML(rows: { label: string; value: number; max: number; color: string; right: string }[]): string {
-  return rows.map(r => {
-    const w = r.max > 0 ? Math.max(2, Math.round((r.value / r.max) * 100)) : 0;
-    return `<div style="margin-bottom:9px">`
-      + `<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#475569">${r.label}</span><span style="font-weight:bold;color:#0f172a">${r.right}</span></div>`
-      + `<div style="height:12px;background:#eef2f7;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:${r.color};border-radius:6px"></div></div></div>`;
-  }).join("");
-}
-function sparklineSVG(vals: number[]): string {
-  if (vals.length < 2) return "";
-  const w = 240, h = 40, max = Math.max(1, ...vals), den = vals.length - 1;
-  const pts = vals.map((v, i) => `${((i / den) * (w - 4) + 2).toFixed(1)},${(h - (v / max) * (h - 6) - 3).toFixed(1)}`).join(" ");
-  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><polyline points="${pts}" fill="none" stroke="#2f6db0" stroke-width="2" stroke-linejoin="round"/></svg>`;
-}
 type ResultadoVisita = "aprobadas" | "esperando" | "repetir" | "rechazadas" | "sinResultado" | "pendientes";
 const ETIQUETA_RESULTADO: Record<ResultadoVisita, string> = {
   aprobadas: "Aprobada", esperando: "Esperando decisión", repetir: "Para repetir", rechazadas: "Rechazada",
@@ -355,36 +326,7 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
 
 type FiltrosG = { grupo: string[]; cobrador: string[]; modalidad: string[]; estado: string[] };
 const MODALIDADES = ["Diario", "Semanal", "Quincenal", "Mensual"];
-// Los estados son los de HOY (la misma cuenta de Cartera): el rango de fechas no los cambia.
-const ESTADOS_FILTRO = [{ v: "aldia", l: "Al día hoy" }, { v: "gabela", l: "Gabela hoy" }, { v: "mora", l: "En mora hoy" }, { v: "taller", l: "Moto en el taller" }, { v: "retenida", l: "🔒 Retenida" }, { v: "sinconvenio", l: "Sin convenio" }];
 const FILTROS_VACIOS: FiltrosG = { grupo: [], cobrador: [], modalidad: [], estado: [] };
-function FiltrosGestion({ filtros, setFiltros, subadmins, resumen }: { filtros: FiltrosG; setFiltros: React.Dispatch<React.SetStateAction<FiltrosG>>; subadmins: { id: string; nombre: string }[]; resumen: string }) {
-  const activos = resumen.length > 0;
-  const toggle = (dim: keyof FiltrosG, val: string) => setFiltros(f => ({ ...f, [dim]: f[dim].includes(val) ? f[dim].filter(x => x !== val) : [...f[dim], val] }));
-  const chip = (dim: keyof FiltrosG, val: string, label: string) => {
-    const on = filtros[dim].includes(val);
-    return <button key={dim + val} onClick={() => toggle(dim, val)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999, border: `1px solid ${on ? "var(--accent)" : "var(--line2)"}`, background: on ? "var(--accent-soft)" : "var(--card)", color: on ? "var(--accent-ink)" : "var(--muted2)", cursor: "pointer", textTransform: dim === "cobrador" ? "uppercase" : "none", whiteSpace: "nowrap" }}>{on ? "✓ " : ""}{label}</button>;
-  };
-  const fila = (titulo: string, chips: React.ReactNode) => (
-    <div style={{ display: "grid", gap: 5 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>{titulo}</div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{chips}</div>
-    </div>
-  );
-  return (
-    <div style={{ ...card, display: "grid", gap: 11, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>🔎 Filtros <span style={{ fontWeight: 400, fontSize: 11, color: "var(--faint)" }}>· toca varios para combinar</span></div>
-        {activos && <button onClick={() => setFiltros(FILTROS_VACIOS)} style={{ fontSize: 12, fontWeight: 700, padding: "4px 9px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>limpiar</button>}
-      </div>
-      {fila("Grupo", (GRUPOS as readonly string[]).map(g => chip("grupo", g, g)))}
-      {fila("Cobrador", [...subadmins.map(s => chip("cobrador", s.id, s.nombre)), chip("cobrador", "__none__", "Sin asignar")])}
-      {fila("Modalidad", MODALIDADES.map(m => chip("modalidad", m, m)))}
-      {fila("Estado", ESTADOS_FILTRO.map(x => chip("estado", x.v, x.l)))}
-      {activos && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Mostrando: <b style={{ color: "var(--accent-ink)" }}>{resumen}</b></div>}
-    </div>
-  );
-}
 
 const KPI_ICONS: Record<string, string> = {
   "Total recaudado": "💰",
@@ -416,12 +358,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { cesiones } = useCesiones();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
-  const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
-  // Armador de impresión: qué secciones incluir + nivel de detalle (por defecto todo detallado)
-  const [detalleImpr, setDetalleImpr] = useState(true);
-  const [secImpr, setSecImpr] = useState<Record<string, boolean>>({
-    kpis: true, recaudoGrupo: true, porAdmin: true, porGrupo: true, visitas: true, mora: true, flota: false, entregas: false,
-  });
+  const [generandoPdf, setGenerandoPdf] = useState(false); // botón del informe para los socios (PDF)
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -469,16 +406,16 @@ export default function ReportesView({ onNavigate }: Props) {
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
   const [intentoNomina, setIntentoNomina] = useState(0);
-  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina", intentoNomina);
+  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina" || tab === "exportar", intentoNomina);
   // Las rodadas con su fecha: cada semana se paga según cómo estaba el día en que se cobró (30-sep).
-  const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen", intentoNomina);
+  const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen" || tab === "exportar", intentoNomina);
   const rodadasNomina = useMemo(() => {
     if (!registrosRodadas) return null;
     const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
     return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
   }, [registrosRodadas, contratos]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
-  const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina");
+  const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina" || tab === "exportar");
   // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
   // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
   const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || sinDatos;
@@ -503,7 +440,7 @@ export default function ReportesView({ onNavigate }: Props) {
       rodadas: rodadasNomina,
   }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina]);
   const nominaDetalle = useMemo(() => {
-    if (tab !== "nomina") return { nominas: [], sinGestion: [] };
+    if (tab !== "nomina" && tab !== "exportar") return { nominas: [], sinGestion: [] };
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
   }, [tab, lunesNomina, domingoNomina, entradasNomina, eventosNomina]);
   const nominas = nominaDetalle.nominas;
@@ -1089,127 +1026,7 @@ export default function ReportesView({ onNavigate }: Props) {
     });
   }
 
-  // ── INFORME GERENCIAL EN PDF (portada + gráficos + estadísticas) — html2canvas→jsPDF ──
-  function informeGerencialHTML(): string {
-    const esc = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    // El MISMO % de la pantalla: sobre las motos que podían pagar (sin retenidas). Antes el PDF
-    // dividía por todas y decía 64% donde la pantalla decía 77%.
-    const pctAld = gPctAlDia;
-    const sem = pctAld >= 85 ? "#159a6d" : pctAld >= 70 ? "#e0982a" : "#d64545";
-    const th = (t: string, al = "left") => `<th style="background:#0f2740;color:#fff;padding:6px 8px;text-align:${al};font-size:11px">${t}</th>`;
-    const td = (t: string, al = "left", color = "#0f172a", bold = false) => `<td style="padding:5px 8px;border-bottom:1px solid #e2e8f0;text-align:${al};font-size:11px;color:${color};${bold ? "font-weight:bold" : ""}">${t}</td>`;
-    // PORTADA — KPIs grandes (+Δ, cumplimiento $) + tendencia
-    const kpi = (label: string, value: string, color: string, extra = "") => `<div style="flex:1;min-width:104px;background:#f6f8fb;border-radius:10px;padding:10px 12px"><div style="font-size:10.5px;color:#64748b">${label}</div><div style="font-size:20px;font-weight:bold;color:${color}">${value}</div>${extra}</div>`;
-    const deltaHtml = recaudoAnterior > 0 ? `<div style="font-size:10px;margin-top:2px;color:${deltaRec.up ? "#0f7a52" : "#a3202d"}">${deltaRec.txt} vs anterior</div>` : "";
-    const portada = `<div style="display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 6px">`
-      + kpi("Recaudado", "$ " + fmt(gTotRec), "#0f172a", deltaHtml)
-      + kpi("Al día hoy", pctAld + "%", sem)
-      + kpi("Cumplimiento del período", gPctCum === null ? "—" : gPctCum + "%", "#0f172a", `<div style="font-size:9.5px;margin-top:2px;color:#64748b">cubrió $ ${fmt(gCubrio)} de $ ${fmt(gDebia)}</div>`)
-      + kpi("Motos activas", String(gTotMotos), "#0f172a")
-      + kpi("Sin convenio", String(gDebenSinConv), "#a35a12")
-      + `</div>`;
-    const spark = `<div style="margin:2px 0 6px"><div style="font-size:11px;color:#64748b;margin-bottom:2px">Recaudo diario (últimos 14 días, toda la operación)</div>${sparklineSVG(recaudoDiario.map(d => d.total))}</div>`;
-    // Dona + barras
-    const dona = `<div style="text-align:center"><div style="font-size:13px;font-weight:bold;color:#0f172a;text-align:left;margin-bottom:6px">Estado de la cartera hoy</div>${donutSVG(gAlDia, gGabela, gMora, gTotMotos - gRetenidas - gTaller)}<div style="font-size:11px;color:#334155;margin-top:4px"><span style="color:#159a6d">■</span> Al día ${gAlDia} &nbsp; <span style="color:#e0982a">■</span> Gabela ${gGabela} &nbsp; <span style="color:#d64545">■</span> En mora ${gMora}</div></div>`;
-    const maxGrupo = Math.max(1, ...porGrupoData.map(b => b.recaudado));
-    const barsGrupo = barrasHTML(porGrupoData.map(b => ({ label: b.key, value: b.recaudado, max: maxGrupo, color: "#2f6db0", right: "$ " + fmt(b.recaudado) })));
-    const barsCobr = barrasHTML(rankingCobradores.map(b => ({ label: b.nombre.toUpperCase(), value: b.pctCum ?? 0, max: 100, color: (b.pctCum ?? 0) >= 85 ? "#159a6d" : (b.pctCum ?? 0) >= 70 ? "#e0982a" : "#d64545", right: b.pctCum === null ? "—" : b.pctCum + "%" })));
-    const graficos = `<div style="display:flex;gap:22px;align-items:flex-start;margin:6px 0 12px"><div style="flex:0 0 170px">${dona}</div><div style="flex:1"><div style="font-size:13px;font-weight:bold;color:#0f172a;margin-bottom:8px">Recaudo por grupo</div>${barsGrupo}<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:14px 0 8px">Cumplimiento por cobrador</div>${barsCobr}</div></div>`;
-    // E1 — aging
-    const agN = aging.reduce((s, t) => s + t.n, 0), agColors = ["#f0b32e", "#e0982a", "#d3691a", "#d64545"];
-    const agBar = agN > 0 ? `<div style="display:flex;height:14px;border-radius:6px;overflow:hidden;margin:4px 0 5px">${aging.map((t, i) => t.n > 0 ? `<div style="width:${(t.n / agN) * 100}%;background:${agColors[i]}"></div>` : "").join("")}</div>` : "";
-    const agingHtml = agN === 0 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:12px 0 5px">Antigüedad de la mora</div>${agBar}<table style="width:100%;border-collapse:collapse"><tr>${th("Tramo")}${th("Motos", "center")}${th("Deuda", "right")}</tr>${aging.map((t, i) => `<tr>${td(t.k, "left", agColors[i], true)}${td(String(t.n), "center")}${td("$ " + fmt(t.d), "right")}</tr>`).join("")}</table>`;
-    // Ranking
-    const tablaRanking = rankingCobradores.length < 2 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:14px 0 5px">Ranking por cobrador</div><table style="width:100%;border-collapse:collapse"><tr>${th("#", "center")}${th("Cobrador")}${th("Cumplió", "center")}${th("Vencía", "right")}${th("Cubrió", "right")}${th("Motos", "center")}${th("Al día hoy", "center")}${th("En mora hoy", "center")}${th("Recaudado", "right")}</tr>${rankingCobradores.map((b, i) => `<tr>${td(String(i + 1), "center")}${td(esc(b.nombre.toUpperCase()))}${td(b.pctCum === null ? "—" : b.pctCum + "%", "center", "#0f172a", true)}${td("$ " + fmt(b.debia), "right")}${td("$ " + fmt(b.cubrio), "right")}${td(String(b.total), "center")}${td(String(b.alDia), "center", "#166534")}${td(String(b.mora), "center", "#991b1b")}${td("$ " + fmt(b.recaudado), "right")}</tr>`).join("")}</table>`;
-    // E4 — matriz + método
-    const matrizHtml = (matriz.admins.length < 2 && matriz.grupos.length < 2) ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:14px 0 5px">Matriz cobrador × grupo (recaudado)</div><table style="width:100%;border-collapse:collapse"><tr>${th("Cobrador")}${matriz.grupos.map(g => th(g, "right")).join("")}${th("Total", "right")}</tr>${matriz.admins.map(nom => { let tot = 0; const cs = matriz.grupos.map(g => { const c = matriz.cell(nom, g); tot += c.rec; return td(c.motos > 0 ? "$ " + fmt(c.rec) : "—", "right"); }).join(""); return `<tr>${td(esc(nom.toUpperCase()))}${cs}${td("$ " + fmt(tot), "right", "#0f172a", true)}</tr>`; }).join("")}</table>`;
-    const metodoHtml = metodoPorAdmin.length === 0 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:14px 0 5px">Recaudo por método</div><table style="width:100%;border-collapse:collapse"><tr>${th("Cobrador")}${th("Efectivo", "right")}${th("Transferencia", "right")}${th("Total", "right")}</tr>${metodoPorAdmin.map(m => `<tr>${td(esc(m.nom.toUpperCase()))}${td("$ " + fmt(m.efectivo), "right")}${td("$ " + fmt(m.transf), "right")}${td("$ " + fmt(m.total), "right", "#0f172a", true)}</tr>`).join("")}</table>`;
-    const convenirHtml = porConvenir.length === 0 ? "" : `<div style="font-size:13px;font-weight:bold;color:#0f172a;margin:16px 0 6px">Por convenir — tarea de la semana</div>${porConvenir.map(b => `<div style="margin-bottom:8px"><div style="background:#fff7ed;color:#92400e;font-weight:bold;font-size:12px;padding:4px 8px;border-radius:5px">${esc(b.nombre.toUpperCase())} — ${b.motos.length} por convenir · debe $ ${fmt(b.motos.reduce((s, m) => s + m.deudaPend, 0))}</div><table style="width:100%;border-collapse:collapse">${b.motos.map(m => `<tr>${td(esc(m.cliente.toUpperCase()))}${td(m.placa, "center")}${td(m.telefono || "—", "center", "#185fa5")}${td(m.formaPago, "center")}${td("debe $ " + fmt(m.deudaPend), "right", "#991b1b", true)}</tr>`).join("")}</table></div>`).join("")}`;
-    const titulo = filtrosActivos ? `Informe gerencial — ${esc(filtrosResumen)}` : "Informe gerencial de cartera";
-    return `<div style="font-family:Arial,sans-serif;color:#0f172a;width:794px">`
-      + `<div style="background:#0f2740;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">${titulo}</div><div style="font-size:12px;color:#7fb2e6;margin-top:2px">Recaudo y gestión por cobrador</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB MOTEROS CARTAGENA</div></div>`
-      + `<div style="padding:6px 18px;background:#f1f5f9;font-size:11px;color:#475569">del ${fmtFechaCorta(desde)} al ${fmtFechaCorta(hasta)} &nbsp;·&nbsp; generado ${fmtFechaCorta(hoyISO())}${filtrosActivos ? ` &nbsp;·&nbsp; filtros: ${esc(filtrosResumen)}` : ""}</div>`
-      + `<div style="padding:8px 18px 18px">${portada}${spark}${graficos}${agingHtml}${tablaRanking}${matrizHtml}${metodoHtml}${convenirHtml}<div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#94a3b8;text-align:center">Cumplimiento del período = de lo que vencía en el período (semanas y cuotas de acuerdo), cuánto quedó pagado. Al día / gabela / en mora = estado de HOY, la misma cuenta de Cartera. Las motos retenidas no cuentan en ninguno de los dos. El recaudo se atribuye al cobrador que tiene la moto actualmente.<br>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div></div></div>`;
-  }
 
-  async function descargarInformePdf() {
-    if (generandoPdf) return;
-    setGenerandoPdf(true);
-    try {
-      const html = informeGerencialHTML();
-      const { htmlAPdfBlob } = await import("../utils/pdf");
-      const blob = await htmlAPdfBlob(html);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `informe_gerencial${filtrosSlug ? "_" + filtrosSlug : ""}_${desde}_a_${hasta}.pdf`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch (e) {
-      alert("No se pudo generar el PDF: " + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setGenerandoPdf(false);
-    }
-  }
-
-  const totalRecaudado    = pagosRango.reduce((a, p) => a + p.valor, 0);
-  const totalEfectivo     = pagosRango.filter(p => p.metodo === "Efectivo").reduce((a, p) => a + p.valor, 0);
-  const totalTransferencia= pagosRango.filter(p => p.metodo !== "Efectivo").reduce((a, p) => a + p.valor, 0);
-
-  // ── Recaudo diario últimos 14d ─────────────────────────────────────────────
-  const recaudoDiario = useMemo(() => {
-    return Array.from({ length: 14 }, (_, i) => {
-      const d = hoyDate(); d.setDate(d.getDate() - (13 - i));
-      const fecha = d.toISOString().slice(0, 10);
-      const total = pagos.filter(p => p.estado === "Confirmado" && fechaDeCaja(p) === fecha && esPagoDeCaja(p)).reduce((a, p) => a + p.valor, 0);
-      const label = `${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]} ${d.getDate()}`;
-      return { fecha, total, label };
-    });
-  }, [pagos]);
-
-  // ── Cartera HOY para la impresión y Descargar: la MISMA cuenta de Cartera (auditoría del 29-sep) ──
-  // Sale de `estadoHoy`, contrato por contrato, con la clasificación de Cartera. La pestaña Cartera
-  // de Reportes ya no la usa: tiene sus propias cuentas (Cobranza, más abajo) con los filtros.
-  const carteraHoy = useMemo(() => {
-    const activos = baseGestion.filter(r => r.contratoActivo);
-    const alDia = activos.filter(r => r.estadoCartera === "al-dia").length;
-    const gabela = activos.filter(r => r.estadoCartera === "gabela").length;
-    const enMora = activos.filter(r => r.estadoCartera === "mora");
-    const recoleccion = enMora.filter(r => r.recoleccion).length;
-    const retenidas = baseGestion.filter(r => r.estado !== "cerrado" && !r.contratoActivo).length;
-    // De esas, las que en realidad están en liquidación: su moto ya la tiene otro cliente.
-    const reasignadas = baseGestion.filter(r => r.estado === "reasignada").length;
-    // Todo lo que se debe hoy (cuota + acuerdo + deudas), activos y retenidas: la cifra de Cartera.
-    const debeHoy = baseGestion.filter(r => r.estado !== "cerrado").reduce((s, r) => s + r.debeHoy, 0);
-    const detalle = enMora.slice().sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
-    return { activos: activos.length, alDia, gabela, mora: enMora.length, recoleccion, retenidas, reasignadas, debeHoy, detalle };
-  }, [baseGestion]);
-
-  // ── Recaudo por grupo (Resumen e impresión): del MISMO dato que "Por grupo", sin filtros ──
-  // Antes solo sumaba los contratos Activos por la moto de hoy: a los grupos les faltaban $13.297.200
-  // en septiembre (sobre todo lo que pagaron clientes con la moto retenida para recuperarla).
-  const reporteGrupos = useMemo(() => {
-    const extras = [...new Set(baseGestion.map(r => r.grupo))].filter(g => !(GRUPOS as readonly string[]).includes(g));
-    return [...GRUPOS, ...extras].map(grupo => {
-      const filas = baseGestion.filter(r => r.grupo === grupo);
-      const motosGrupo = flotaMotos.filter(m => m.grupo === grupo);
-      return {
-        grupo,
-        motosAsignadas: motosGrupo.filter(m => m.estado === "Asignada").length,
-        recaudo: filas.reduce((s, r) => s + r.monto, 0),
-        contratosActivos: filas.filter(r => r.contratoActivo).length,
-        // En mora HOY con la cuenta de Cartera (contratos activos), la misma del número de arriba y del
-        // Panel. En "Por grupo" la moto guardada en taller cuenta como retenida (regla del 22-ago).
-        enMora: filas.filter(r => r.contratoActivo && r.estadoCartera === "mora").length,
-        pctCum: pctCumplimiento(filas.filter(cuentaParaCumplimiento).map(r => r.cum)),
-      };
-    }).filter(g => (GRUPOS as readonly string[]).includes(g.grupo) || g.recaudo > 0);
-  }, [baseGestion, motos]);
-  // Resumen sin filtros: el cumplimiento de toda la operación en el período.
-  const cumTotal = useMemo(() => {
-    const med = baseGestion.filter(cuentaParaCumplimiento);
-    return { debia: med.reduce((s, r) => s + r.cum.debia, 0), cubrio: med.reduce((s, r) => s + r.cum.cubrio, 0), pct: pctCumplimiento(med.map(r => r.cum)) };
-  }, [baseGestion]);
 
   // ── Clientes ───────────────────────────────────────────────────────────────
   // "Clientes con contrato": los que tienen un contrato vigente (activo o con la moto retenida). Antes
@@ -1221,12 +1038,6 @@ export default function ReportesView({ onNavigate }: Props) {
   const inicioMes           = hoyStr.slice(0, 7) + "-01";
   const clientesNuevosMes   = clientes.filter(c => c.created_at >= inicioMes).length;
 
-  // ── Motos por estado ───────────────────────────────────────────────────────
-  const motosPorEstado = useMemo(() => {
-    const map: Record<string, number> = {};
-    flotaMotos.forEach(m => { map[m.estado] = (map[m.estado] ?? 0) + 1; });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [flotaMotos]);
 
   // ── Alertas vencimiento ────────────────────────────────────────────────────
   const alertasVencimiento = useMemo(() => {
@@ -1256,8 +1067,6 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // Motos SIN fecha de SOAT: no aparecían en ningún aviso (29-sep: 9 motos, 2 andando en la calle).
   const motosSinSoat = useMemo(() => flotaMotos.filter(m => !m.fecha_seguro), [flotaMotos]);
-  const docsVencidos = alertasVencimiento.filter(a => a.vencida).length;
-  const docsPorVencer = alertasVencimiento.length - docsVencidos;
 
   const diasBase = useMemo(() =>
     contratos.filter(c => c.estado === "Activo" && c.tipo_ruta === "diario" && !c.base_completada && ahorroTotal(c) >= 450000),
@@ -1363,106 +1172,6 @@ export default function ReportesView({ onNavigate }: Props) {
     setTimeout(() => win.print(), 500);
   }
 
-  // ── Armador de impresión: genera UN documento solo con las secciones marcadas ─
-  //    Respeta el período elegido arriba. `detalleImpr` decide detalle vs resumen.
-  function imprimirSeleccion() {
-    if (!Object.values(secImpr).some(Boolean)) return;
-    const win = window.open("", "_blank", "width=900,height=700");
-    if (!win) return;
-    const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
-    const rangoLbl = RANGOS.find(r => r.key === rango)?.label ?? rango;
-    const S = secImpr, det = detalleImpr;
-    const parts: string[] = [];
-
-    if (S.kpis) parts.push(`<h2>KPIs de recaudo</h2><div class="kpis">
-      <div class="kpi"><div class="kpi-val">$ ${fmt(totalRecaudado)}</div><div class="kpi-lbl">Total recaudado</div></div>
-      <div class="kpi"><div class="kpi-val">$ ${fmt(totalEfectivo)}</div><div class="kpi-lbl">Efectivo</div></div>
-      <div class="kpi"><div class="kpi-val">$ ${fmt(totalTransferencia)}</div><div class="kpi-lbl">Transferencias</div></div>
-      <div class="kpi"><div class="kpi-val">${cumTotal.pct === null ? "—" : cumTotal.pct + "%"}</div><div class="kpi-lbl">Cumplimiento del período</div></div>
-      <div class="kpi"><div class="kpi-val">${carteraHoy.activos}</div><div class="kpi-lbl">Contratos activos</div></div>
-      <div class="kpi"><div class="kpi-val">${carteraHoy.mora}</div><div class="kpi-lbl">En mora hoy</div></div></div>`);
-
-    if (S.recaudoGrupo) {
-      const filas = reporteGrupos.map(g => `<tr><td><b>${g.grupo}</b></td><td class="c">${g.motosAsignadas}</td><td class="r">$ ${fmt(g.recaudo)}</td><td class="c">${g.contratosActivos}</td><td class="c" style="color:${g.enMora > 0 ? "#991b1b" : "#166534"};font-weight:700">${g.enMora}</td><td class="c">${g.pctCum === null ? "—" : g.pctCum + "%"}</td></tr>`).join("");
-      parts.push(`<h2>Recaudo por grupo</h2><table><thead><tr><th>Grupo</th><th class="c">Motos asignadas</th><th class="r">Recaudo período</th><th class="c">Contratos activos</th><th class="c">En mora hoy</th><th class="c">Cumplió período</th></tr></thead><tbody>${filas}</tbody><tfoot><tr><td><b>TOTAL</b></td><td></td><td class="r"><b>$ ${fmt(reporteGrupos.reduce((s, g) => s + g.recaudo, 0))}</b></td><td></td><td></td><td></td></tr></tfoot></table>`);
-    }
-
-    const gDetalle = (bloques: BloqueG[], modo: "admin" | "grupo", cross: string) => {
-      const filas = bloques.map(b => {
-        const cab = `<tr class="sec"><td colspan="12">${b.nombre.toUpperCase()} — cumplió ${b.pctCum === null ? "—" : b.pctCum + "%"} del período (cubrió $ ${fmt(b.cubrio)} de $ ${fmt(b.debia)}) · recaudado $ ${fmt(b.recaudado)} · HOY: ${b.total} motos, ${b.alDia} al día, ${b.gabela} gabela, ${b.mora} en mora${b.retenidas > 0 ? `, ${b.retenidas} retenida${b.retenidas === 1 ? "" : "s"}` : ""}${b.debenSinConvenio > 0 ? ` · ${b.debenSinConvenio} sin convenio` : ""}</td></tr>`;
-        const motos = b.motos.map(m => {
-          const e = m.estado === "aldia" ? { t: "Al día", c: "#166534" } : m.estado === "gabela" ? { t: "Gabela", c: "#92400e" } : m.estado === "taller" ? { t: "Moto en el taller", c: "#92400e" } : m.estado === "retenida" ? { t: "Retenida", c: "#3730a3" } : m.estado === "cerrado" ? { t: "Cerrado", c: "#475569" } : m.estado === "reasignada" ? { t: "En liquidación", c: "#475569" } : { t: `En mora ${m.diasMora}d`, c: "#991b1b" };
-          const conv = m.tieneConvenio ? "Sí" : (m.debeSinConvenio ? "Falta" : "—");
-          const ult = m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos";
-          return `<tr><td>${m.placa}</td><td class="up">${m.cliente}</td><td>${modo === "admin" ? m.grupo : m.adminNombre}</td><td class="c">${m.formaPago}</td><td class="c">${m.diaPago || "—"}</td><td class="c" style="color:${e.c};font-weight:700">${e.t}</td><td class="r">${m.monto > 0 ? "$ " + fmt(m.monto) : "—"}</td><td class="r">${m.cum.debia > 0 ? "$ " + fmt(m.cum.cubrio) + " de $ " + fmt(m.cum.debia) : "—"}</td><td class="r" style="${m.debeHoy > 0 ? "color:#991b1b;font-weight:700" : ""}">${m.debeHoy > 0 ? "$ " + fmt(m.debeHoy) : "—"}</td><td class="c">${ult}</td><td class="c">${m.telefono || "—"}</td><td class="c">${conv}</td></tr>`;
-        }).join("");
-        return cab + motos;
-      }).join("");
-      return `<table><thead><tr><th>Placa</th><th>Cliente</th><th>${cross}</th><th class="c">Modalidad</th><th class="c">Día pago</th><th class="c">Estado hoy</th><th class="r">Pagó período</th><th class="r">Cubrió del período</th><th class="r">Debe hoy</th><th class="c">Últ. pago</th><th class="c">Teléfono</th><th class="c">Convenio</th></tr></thead><tbody>${filas}</tbody></table>`;
-    };
-    const gResumen = (bloques: BloqueG[], modo: "admin" | "grupo") => {
-      const filas = bloques.map(b => `<tr><td class="up"><b>${modo === "admin" ? "👤 " : ""}${b.nombre}</b></td><td class="c"><b>${b.pctCum === null ? "—" : b.pctCum + "%"}</b></td><td class="c">${b.total}</td><td class="c" style="color:#166534;font-weight:700">${b.alDia}</td><td class="c" style="color:#92400e;font-weight:700">${b.gabela}</td><td class="c" style="color:#991b1b;font-weight:700">${b.mora}</td><td class="c" style="color:#92400e">${b.debenSinConvenio || "—"}</td><td class="r">$ ${fmt(b.recaudado)}</td></tr>`).join("");
-      return `<table><thead><tr><th>${modo === "admin" ? "Administrador" : "Grupo"}</th><th class="c">Cumplió período</th><th class="c">Motos</th><th class="c">Al día hoy</th><th class="c">Gabela hoy</th><th class="c">En mora hoy</th><th class="c">Sin conv.</th><th class="r">Recaudado</th></tr></thead><tbody>${filas}</tbody></table>`;
-    };
-
-    if (S.porAdmin) parts.push(`<h2>Gestión por administrador${filtrosActivos ? ` — ${filtrosResumen}` : ""}${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porAdminData, "admin", "Grupo") : gResumen(porAdminData, "admin")}`);
-    if (S.porGrupo) parts.push(`<h2>Gestión por grupo${det ? " — detalle" : " — resumen"}</h2>${det ? gDetalle(porGrupoData, "grupo", "Administrador") : gResumen(porGrupoData, "grupo")}`);
-
-    if (S.visitas) {
-      let tabla: string;
-      if (det) {
-        const filas = visitasData.map(a => {
-          const cab = `<tr class="sec"><td colspan="5">${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob${a.esperando ? ` · ${a.esperando} esperando decisión` : ""} · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}</td></tr>`;
-          const vs = a.visitas.map(v => `<tr><td class="up">${v.cliente}</td><td class="c">${fmtFechaCorta(v.fecha)}</td><td class="c">${v.estado}</td><td class="c">${v.porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[v.res]}</td><td class="c">${[v.gps ? "GPS" : "", v.foto ? "foto" : ""].filter(Boolean).join(" y ") || "—"}</td></tr>`).join("");
-          return cab + vs;
-        }).join("");
-        tabla = `<table><thead><tr><th>Cliente</th><th class="c">Fecha</th><th class="c">Estado</th><th class="c">Resultado</th><th class="c">GPS/Foto</th></tr></thead><tbody>${filas}</tbody></table>`;
-      } else {
-        const filas = visitasData.map(a => `<tr><td class="up"><b>${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.esperando}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td><td class="c">${a.sinResultado}</td></tr>`).join("");
-        tabla = `<table><thead><tr><th>Quién la hizo</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Esperando</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th><th class="c">Sin resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
-      }
-      parts.push(`<h2>Visitas por administrador</h2>${tabla}`);
-    }
-
-    if (S.mora) {
-      // Los días son los de Cartera (cuota vencida) y la deuda es todo lo que debe HOY.
-      const filas = carteraHoy.detalle.map(m => `<tr><td class="up">${m.cliente}</td><td>${m.placa}</td><td class="c" style="color:#991b1b;font-weight:700">${m.diasMora}${m.recoleccion ? " · recolección" : ""}</td><td class="r">$ ${fmt(m.debeHoy)}</td><td>${m.ultimaFechaPago ? new Date(m.ultimaFechaPago + "T00:00:00").toLocaleDateString("es-CO") : "—"}</td></tr>`).join("");
-      parts.push(`<h2>Mora y cartera vencida (${carteraHoy.detalle.length})</h2>${carteraHoy.detalle.length === 0 ? "<p class='ok'>Sin contratos en mora.</p>" : `<table><thead><tr><th>Cliente</th><th>Placa</th><th class="c">Días en mora</th><th class="r">Debe hoy</th><th>Último pago</th></tr></thead><tbody>${filas}</tbody></table>`}`);
-    }
-
-    if (S.flota) {
-      const filas = motosPorEstado.map(([est, n]) => `<tr><td>${est}</td><td class="c">${n}</td><td class="c">${pct(n, flotaMotos.length)}</td></tr>`).join("");
-      parts.push(`<h2>Flota por estado (${flotaMotos.length} motos)</h2><table><thead><tr><th>Estado</th><th class="c">Cantidad</th><th class="c">%</th></tr></thead><tbody>${filas}</tbody></table>`);
-    }
-
-    if (S.entregas) {
-      const filas = entregas.map(e => `<tr><td class="c">${fmtFechaCorta(e.fecha)}</td><td class="up">${e.cliente}</td><td>${e.placa}</td><td>${e.grupo}</td><td>${e.formaPago}</td><td class="r">$ ${fmt(e.cuota)}</td><td class="c">${e.docsOk ? "✓" : "⚠"}</td></tr>`).join("");
-      parts.push(`<h2>Entregas del período (${entregas.length})</h2>${entregas.length === 0 ? "<p>Sin entregas en el período.</p>" : `<table><thead><tr><th class="c">Fecha</th><th>Cliente</th><th>Placa</th><th>Grupo</th><th>Forma</th><th class="r">Cuota</th><th class="c">Docs</th></tr></thead><tbody>${filas}</tbody></table>`}`);
-    }
-
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte MotoGestión</title><style>
-      body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}
-      h1{font-size:22px;margin-bottom:4px;} h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #cbd5e1;padding-bottom:6px;}
-      .sub{color:#64748b;margin:0 0 4px;}
-      .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
-      .kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;min-width:120px;}
-      .kpi-val{font-size:18px;font-weight:800;color:#0891b2;} .kpi-lbl{font-size:10px;color:#64748b;text-transform:uppercase;margin-top:2px;}
-      table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px;}
-      th{background:#f1f5f9;padding:6px 9px;text-align:left;font-weight:700;color:#334155;border:1px solid #e2e8f0;}
-      td{padding:5px 9px;border:1px solid #e2e8f0;}
-      tr:nth-child(even) td{background:#f8fafc;} tr.sec td{background:#334155;color:#fff;font-weight:700;}
-      .c{text-align:center;} .r{text-align:right;} .up{text-transform:uppercase;} .ok{color:#166534;}
-      footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;}
-      @media print{h2{page-break-after:avoid;} tr{page-break-inside:avoid;}}
-    </style></head><body>
-      <h1>Reporte MotoGestión — Club Moteros Cartagena</h1>
-      <p class="sub">Período: <strong>${rangoLbl}</strong> (${desde} → ${hasta}) · Generado el ${fechaHoy} · ${det ? "con detalle" : "resumen"}</p>
-      ${parts.join("\n")}
-      <footer>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
-    </body></html>`);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
-  }
 
   // ── RESUMEN (rediseño del 2-oct-2026, docs/REDISENO-REPORTES.md) ─────────────────────────────
   // Todo respeta la barra de filtros (período, grupo, cobrador). Cada número guarda sus filas: al
@@ -2463,6 +2172,203 @@ export default function ReportesView({ onNavigate }: Props) {
     }
   }
 
+  // ── DESCARGAR (rediseño 2-oct): el informe para los socios con las MISMAS cifras de cada pantalla ──
+  function armarInforme(): DatosInforme {
+    const per = textoRango(desde, hasta);
+    const filtrosTxt = [filtros.grupo.length ? filtros.grupo.join(", ") : "todos los grupos",
+      filtros.cobrador.length ? filtros.cobrador.map(nombreCobradorFiltro).join(", ") : "todos los cobradores"].join(" · ");
+    // Por cobrador, cada moto desde que la tiene (D-035), igual que Portafolios.
+    const filasGC = baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId)).map(comoCobrador);
+    const antesGC = baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId)).reduce((a, r) => a + r.montoAntes, 0);
+    const porCob = new Map<string, MotoRowG[]>();
+    filasGC.forEach(r => { const k = r.adminNombre || "Sin asignar"; porCob.set(k, [...(porCob.get(k) ?? []), r]); });
+    const gruposMatriz = [...new Set(filasGC.filter(r => r.monto > 0).map(r => r.grupo))].sort();
+    const porCobrarA = conveniosF.filter(c => c.estado === "activo" || c.estado === "incumplido");
+    const en14 = masDias(hoyISO(), 14);
+    const prontoA = porCobrarA.filter(c => c.estado === "activo" && c.fechaLimite >= hoyISO() && c.fechaLimite <= en14 && c.saldo > 0);
+    const metodo = new Map<string, { efectivo: number; transferencia: number }>();
+    pagosDelFiltro.forEach(pg => {
+      const k = pagoAntesDeAsignar(pg) ? "Antes de asignar" : (atribucion.get(pg.contrato_id)?.adminNombre || "Sin asignar");
+      const m = metodo.get(k) ?? { efectivo: 0, transferencia: 0 };
+      if (pg.metodo === "Efectivo") m.efectivo += pg.valor; else m.transferencia += pg.valor;
+      metodo.set(k, m);
+    });
+    const sinAc = new Map<string, MotoRowG[]>();
+    baseResumen.filter(r => r.debeSinConvenio && r.estado !== "cerrado").forEach(r => { const k = r.adminNombre || "Sin asignar"; sinAc.set(k, [...(sinAc.get(k) ?? []), r]); });
+    const nom = datosNomina;
+    return {
+      periodo: per,
+      filtros: filtrosTxt,
+      generado: textoRango(hoyISO(), hoyISO()),
+      resumen: {
+        recaudo: { total: recaudoR.total, empresa: recaudoR.empresa, ahorro: recaudoR.ahorro, baseYSaldo: recaudoR.baseYSaldo, anterior: cobradorFiltrado ? null : anteriorR, textoAnterior: textoRango(desdeAnt, hastaAnt), antes: antesR },
+        cumplimiento: cumplimientoR,
+        estados: estadosR.map(e => ({ etiqueta: e.etiqueta, hoy: e.hoy, cierre: e.cierre })),
+        cierreTexto,
+        tramos: tramosR.map(t => ({ etiqueta: t.etiqueta, n: t.filas.length, debe: t.debe })),
+        sinProducir: { motos: sinProducirR.motos, dias: sinProducirR.dias, estimado: sinProducirR.estimado },
+      },
+      cobranza: {
+        debe: cobranzaC.debe,
+        cobrable: cobranzaC.cobrable,
+        estados: [
+          { etiqueta: "Al día", n: cobranzaC.estados.aldia }, { etiqueta: "Gabela (día de gracia)", n: cobranzaC.estados.gabela },
+          { etiqueta: "En mora", n: cobranzaC.estados.mora }, { etiqueta: "De los que están en mora, para recoger la moto", n: cobranzaC.estados.recoleccion },
+          { etiqueta: "Con la moto en el taller", n: cobranzaC.estados.taller }, { etiqueta: "Retenidas por no pagar", n: cobranzaC.estados.retenidas },
+          { etiqueta: "En liquidación", n: cobranzaC.estados.liquidacion },
+        ],
+        porGrupo: cobranzaC.porGrupo.map(g => ({ nombre: g.nombre, debe: g.debe, clientes: g.clientes })),
+        porCobrador: cobranzaC.porCobrador.map(g => ({ nombre: g.nombre, debe: g.debe, clientes: g.clientes })),
+        mayores: debenC.slice(0, 10).map(r => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, detalle: comoVa(r), debe: r.debeHoy })),
+        saldoFavor: cobranzaC.saldoFavor,
+        acuerdos: {
+          n: porCobrarA.length, pactado: porCobrarA.reduce((a, c) => a + c.total, 0), pagado: porCobrarA.reduce((a, c) => a + c.abonado, 0),
+          falta: porCobrarA.reduce((a, c) => a + c.saldo, 0), atrasado: porCobrarA.reduce((a, c) => a + c.atrasado, 0),
+          aldia: porCobrarA.filter(c => c.estado === "activo" && c.alDia).length, atrasados: porCobrarA.filter(c => c.estado === "activo" && !c.alDia).length,
+          vencidos: porCobrarA.filter(c => c.estado === "incumplido").length, sinAbono: porCobrarA.filter(c => c.abonos.length === 0).length,
+          vencenPronto: prontoA.length, faltaPronto: prontoA.reduce((a, c) => a + c.saldo, 0),
+        },
+      },
+      portafolios: {
+        grupos: gruposR.filter(g => (filtros.grupo.length === 0 || filtros.grupo.includes(g.grupo)) && (g.recaudo > 0 || g.contratosActivos > 0 || g.motosAsignadas > 0))
+          .map(g => ({ grupo: g.grupo, recaudo: g.recaudo, pctCum: g.pctCum, enMora: g.enMora, trabajando: g.motosAsignadas, contratos: g.contratosActivos })),
+        cobradores: [...porCob.entries()].map(([nombre, rs]) => ({
+          nombre, recaudo: rs.reduce((a, r) => a + r.monto, 0), pctCum: pctCumplimiento(rs.filter(cuentaParaCumplimiento).map(r => r.cum)),
+          enMora: rs.filter(r => r.estado === "mora").length, motos: rs.filter(r => !fueraDeGestion(r.estado)).length,
+        })).filter(c => c.recaudo > 0 || c.motos > 0).sort((a, b) => b.recaudo - a.recaudo),
+        antesDeAsignar: antesGC,
+      },
+      equipo: {
+        nomina: nom.cargando || nom.error ? null : {
+          semana: nom.textoSemana, total: nom.total, cobros: nom.partes.cobros, visitas: nom.partes.visitas, nVisitas: nom.partes.nVisitas,
+          referidos: nom.partes.referidos, nReferidos: nom.partes.nReferidos, pagadas: nom.cobradores.filter(c => c.pagada).length,
+          cobradores: nom.cobradores.map(c => ({ nombre: c.nombre, total: c.total, cobros: c.partes.cobros, visitas: c.partes.visitas, referidos: c.partes.referidos,
+            motos: c.motos ? `${c.motos.generaron} de ${c.motos.tenia}` : "—", pagada: c.pagada })),
+        },
+        visitas: {
+          total: datosVisitas.total, ...datosVisitas.resultados,
+          conMoto: datosVisitas.entregas.conMoto, mediana: datosVisitas.entregas.mediana, maximo: datosVisitas.entregas.maximo,
+          hechas: datosVisitas.evidencia.hechas, conGps: datosVisitas.evidencia.conGps, conFoto: datosVisitas.evidencia.conFoto,
+          personas: datosVisitas.personas.map(x => ({ nombre: x.nombre, total: x.total, aprobadas: x.aprobadas })),
+        },
+      },
+      flota: {
+        total: flotaF.length,
+        lugares: LUGARES.map(l => ({ etiqueta: l.etiqueta, n: lugaresFlota[l.clave] })),
+        grupos: gruposFlota.map(g => ({ grupo: g.grupo, total: g.total, trabajando: g.trabajando })),
+        papeles: { vencidos: alertasF.filter(a => a.vencida).length, porVencer: alertasF.filter(a => !a.vencida).length, sinSoat: sinSoatFlota.length },
+        guardadas: { motos: guardadasF.length, dias: guardadasF.reduce((a, g) => a + (g.dias ?? 0), 0) },
+      },
+      anexos: {
+        matriz: {
+          grupos: gruposMatriz,
+          filas: [...porCob.entries()].map(([nombre, rs]) => {
+            const celdas = gruposMatriz.map(g => rs.filter(r => r.grupo === g).reduce((a, r) => a + r.monto, 0));
+            return { nombre, celdas, total: celdas.reduce((a, c) => a + c, 0) };
+          }).filter(f => f.total > 0).sort((a, b) => b.total - a.total),
+          antes: antesGC,
+        },
+        metodo: [...metodo.entries()].map(([nombre, m]) => ({ nombre, ...m }))
+          .sort((a, b) => Number(a.nombre === "Antes de asignar") - Number(b.nombre === "Antes de asignar") || (b.efectivo + b.transferencia) - (a.efectivo + a.transferencia)),
+        sinAcuerdo: [...sinAc.entries()].map(([cobrador, rs]) => ({ cobrador, clientes: rs.slice().sort((a, b) => b.deudaPend - a.deudaPend).map(r => ({ cliente: r.cliente, placa: r.placa, telefono: r.telefono, debe: r.deudaPend })) }))
+          .sort((a, b) => b.clientes.length - a.clientes.length),
+      },
+      detalle: {
+        enMora: enMoraF.map(r => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, dias: r.diasMora, debe: r.debeHoy })),
+        retenidas: [...retenidasF.map(r => ({ r, donde: `Moto ${sitioDe(r)}` })), ...liquidacionF.map(r => ({ r, donde: "En liquidación: la moto ya la tiene otro cliente" }))]
+          .map(({ r, donde }) => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, donde, debe: r.debeHoy })),
+        acuerdos: porCobrarA.filter(c => c.estado === "incumplido" || c.atrasado > 0)
+          .map(c => ({ cliente: c.cliente, placa: c.placa, total: c.total, pagado: c.abonado, atrasado: c.estado === "incumplido" ? c.saldo : c.atrasado, vence: fmtFechaCorta(c.fechaLimite), estado: c.estado })),
+        guardadas: guardadasF.slice().sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1)).map(g => ({ placa: g.placa, cliente: g.clienteNombre, motivo: g.motivo, dias: g.dias })),
+      },
+    };
+  }
+  const nombreInforme = () => `informe_socios${filtrosSlug ? "_" + filtrosSlug : ""}_${desde}_a_${hasta}`;
+  async function descargarInformeSocios(secciones: SeccionInforme[], detalle: boolean) {
+    if (generandoPdf) return;
+    setGenerandoPdf(true);
+    try {
+      const { htmlAPdfBlob } = await import("../utils/pdf");
+      const blob = await htmlAPdfBlob(informeSociosHTML(armarInforme(), { secciones, detalle }));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreInforme() + ".pdf";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      alert("No se pudo generar el PDF: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setGenerandoPdf(false);
+    }
+  }
+  function imprimirInformeSocios(secciones: SeccionInforme[], detalle: boolean) {
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${nombreInforme()}</title><style>@page{size:A4;margin:10mm}body{margin:0}</style></head><body>${informeSociosHTML(armarInforme(), { secciones, detalle })}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  }
+  function excelPagosPeriodo() {
+    const filas = pagosFiltrados.slice().sort((a, b) => fechaDeCaja(a).localeCompare(fechaDeCaja(b)));
+    const grupos = [...new Set(filas.map(pg => atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO"))].sort();
+    descargarExcel({
+      archivo: `pagos_${desde}_a_${hasta}`, titulo: "Pagos del período", periodo: textoRango(desde, hasta),
+      leyenda: "Confirmados. Las transferencias por la fecha del banco y el efectivo por el día en que se recibió.",
+      columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cobrador", ancho: 170 }, { label: "Método", align: "center", ancho: 105 }, { label: "Valor", align: "right", ancho: 100 }],
+      secciones: grupos.map(g => {
+        const fs = filas.filter(pg => (atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO") === g);
+        return {
+          titulo: `${g}   —   ${fs.length} pagos · $${fmt(fs.reduce((a, pg) => a + pg.valor, 0))}`, color: GRUPO_HEX[g] ?? "#334155",
+          filas: fs.map(pg => [{ v: fmtFechaCorta(fechaDeCaja(pg)), align: "center" as const }, nombreCliente(pg.contrato_id).toUpperCase(), { v: placaDe(pg.contrato_id) ?? "—", align: "center" as const },
+            (atribucion.get(pg.contrato_id)?.adminNombre ?? "—").toUpperCase(), { v: pg.metodo, align: "center" as const }, { num: pg.valor, align: "right" as const }]),
+        };
+      }),
+      totalGeneral: [{ v: `TOTAL: ${filas.length} pagos`, bold: true }, "", "", "", "", { num: filas.reduce((a, pg) => a + pg.valor, 0), align: "right" as const, bold: true }],
+    });
+  }
+  function excelLoQueSeDebe() {
+    const grupos = [...new Set(debenC.map(r => r.grupo))].sort();
+    descargarExcel({
+      archivo: `lo_que_se_debe_${hoyISO()}`, titulo: "Lo que se debe hoy", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
+      leyenda: "La misma cuenta de Cartera, cliente por cliente. Las deudas que están dentro de un acuerdo van en la cuota del acuerdo.",
+      columnas: [{ label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cobrador", ancho: 160 }, { label: "Cómo va", ancho: 200 },
+        { label: "Cuotas del contrato", align: "right", ancho: 110 }, { label: "Cuotas de acuerdos", align: "right", ancho: 110 }, { label: "Deudas", align: "right", ancho: 100 }, { label: "Total", align: "right", ancho: 110 }],
+      secciones: grupos.map(g => {
+        const fs = debenC.filter(r => r.grupo === g);
+        return {
+          titulo: `${g}   —   ${fs.length} clientes · $${fmt(fs.reduce((a, r) => a + r.debeHoy, 0))}`, color: GRUPO_HEX[g] ?? "#334155",
+          filas: fs.map(r => [r.cliente.toUpperCase(), { v: r.placa, align: "center" as const }, r.adminNombre.toUpperCase(), comoVa(r),
+            { num: r.debe.semanas, align: "right" as const }, { num: r.debe.acuerdo, align: "right" as const }, { num: r.debe.deudas, align: "right" as const }, { num: r.debeHoy, align: "right" as const, bold: true }]),
+        };
+      }),
+      totalGeneral: [{ v: `TOTAL: ${debenC.length} clientes`, bold: true }, "", "", "",
+        { num: sumaDebe(debenC, "semanas"), align: "right" as const, bold: true }, { num: sumaDebe(debenC, "acuerdo"), align: "right" as const, bold: true },
+        { num: sumaDebe(debenC, "deudas"), align: "right" as const, bold: true }, { num: sumaDebe(debenC), align: "right" as const, bold: true }],
+    });
+  }
+  function excelPapeles() {
+    const fila = (m: (typeof motos)[number] | undefined, placa: string, soat: string | null, dSoat: number | null, tecno: string | null, dTecno: number | null, estado: string): CeldaX[] => [
+      { v: placa, align: "center" as const }, m?.grupo ?? "—", (nombreCobradorN(m?.subadmin_id ?? null)).toUpperCase(),
+      { v: soat ? fmtFechaCorta(soat) : "sin fecha", align: "center" as const }, { v: dSoat === null ? "—" : String(dSoat), align: "center" as const },
+      { v: tecno ? fmtFechaCorta(tecno) : "sin fecha", align: "center" as const }, { v: dTecno === null ? "—" : String(dTecno), align: "center" as const },
+      { v: estado, color: estado === "Vencido" ? "#991b1b" : estado === "Por vencer" ? "#92400e" : "#334155", align: "center" as const },
+    ];
+    descargarExcel({
+      archivo: `soat_y_tecno_${hoyISO()}`, titulo: "SOAT y tecnomecánica", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
+      leyenda: "Vencidos, por vencer en 30 días y motos sin la fecha del SOAT anotada. Días = los que faltan (negativo = ya venció).",
+      columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Grupo", ancho: 100 }, { label: "Cobrador", ancho: 160 }, { label: "SOAT vence", align: "center", ancho: 95 }, { label: "Días", align: "center", ancho: 55 },
+        { label: "Tecno vence", align: "center", ancho: 95 }, { label: "Días", align: "center", ancho: 55 }, { label: "Estado", align: "center", ancho: 95 }],
+      secciones: [
+        { titulo: `Vencidos o por vencer   —   ${alertasF.length}`, color: "#92400e",
+          filas: alertasF.map(a => fila(motoPorId.get(a.id), a.placa, a.seguro, a.diasSeguro, a.tecno, a.diasTecno, a.vencida ? "Vencido" : "Por vencer")) },
+        { titulo: `Sin la fecha del SOAT   —   ${sinSoatFlota.length}`, color: "#334155",
+          filas: sinSoatFlota.map(m => fila(m, m.placa, null, null, m.fecha_tecnomecanica ?? null, null, "Sin fecha")) },
+      ],
+    });
+  }
+
   function abrirDetalle(clave: string) {
     const per = textoRango(desde, hasta);
     if (clave === "recaudo" || clave.startsWith("serie:")) {
@@ -2958,121 +2864,26 @@ export default function ReportesView({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* ── TAB EXPORTAR ── */}
-      {/* El `puedeExportar` va también acá y no solo en la pestaña: si alguien ya estaba parado en
-          Exportar cuando le quitan el permiso, el contenido tiene que desaparecer igual. */}
-      {tab === "exportar" && puedeExportar && (() => {
-        const SECCIONES: { key: string; label: string; desc: string }[] = [
-          { key: "kpis",        label: "KPIs de recaudo",           desc: "Total, efectivo, transferencias, activos, mora" },
-          { key: "recaudoGrupo",label: "Recaudo por grupo",         desc: "Tabla por COSTA/PRADERA/RASTREADOR/USADAS" },
-          { key: "porAdmin",    label: "Gestión por administrador", desc: "Motos que pagaron/no por admin (base de nómina)" },
-          { key: "porGrupo",    label: "Gestión por grupo",         desc: "Motos que pagaron/no por grupo" },
-          { key: "visitas",     label: "Visitas por administrador", desc: "Visitas hechas y su resultado por admin" },
-          { key: "mora",        label: "Mora y cartera vencida",    desc: "Clientes en mora con deuda y días" },
-          { key: "flota",       label: "Flota por estado",          desc: "Motos por estado (asignadas, taller, etc.)" },
-          { key: "entregas",    label: "Entregas del período",      desc: "Contratos entregados en el rango" },
-        ];
-        const nSel = Object.values(secImpr).filter(Boolean).length;
-        const toggle = (k: string) => setSecImpr(s => ({ ...s, [k]: !s[k] }));
-        const setTodas = (v: boolean) => setSecImpr(Object.fromEntries(SECCIONES.map(s => [s.key, v])));
-        return (
-        <div style={{ display: "grid", gap: 16 }}>
-          {/* Informe Gerencial en PDF (gráficos + estadísticas) */}
-          <div style={{ ...card, display: "grid", gap: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>📊 Informe Gerencial (PDF)</div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
-              Documento profesional con <b>gráficos y estadísticas</b>: portada + tendencia, dona de estado, recaudo por grupo, ranking, antigüedad de mora, matriz cobrador×grupo, método y “por convenir”.
-              Respeta el período <b style={{ color: "var(--text)" }}>{rangoLabel}</b>{filtrosActivos ? <> · filtros <b style={{ color: "var(--text)" }}>{filtrosResumen}</b></> : null}.
-            </p>
-            <FiltrosGestion filtros={filtros} setFiltros={setFiltros} subadmins={subadmins} resumen={filtrosResumen} />
-            <button onClick={descargarInformePdf} disabled={generandoPdf}
-              style={{ padding: "13px 18px", borderRadius: 14, border: "none", cursor: generandoPdf ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: "var(--accent)", color: "var(--card)", opacity: generandoPdf ? 0.7 : 1 }}>
-              {generandoPdf ? "Generando PDF…" : "📊 Descargar Informe Gerencial (PDF)"}
-            </button>
-          </div>
-          {/* Armador de impresión */}
-          <div style={{ ...card, display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>🖨️ Armar impresión</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setTodas(true)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>Todas</button>
-                <button onClick={() => setTodas(false)} style={{ fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--line2)", background: "var(--soft)", color: "var(--muted2)", cursor: "pointer" }}>Ninguna</button>
-              </div>
-            </div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>Marca qué secciones incluir. Se imprime <b>solo lo marcado</b>, con el período <b>{RANGOS.find(r => r.key === rango)?.label}</b> ({desde} → {hasta}).</p>
-            <div style={{ display: "grid", gap: 8 }}>
-              {SECCIONES.map(s => {
-                const on = !!secImpr[s.key];
-                return (
-                  <label key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--card)", cursor: "pointer" }}>
-                    <input type="checkbox" checked={on} onChange={() => toggle(s.key)} style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>{s.label}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{s.desc}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "var(--soft2)", cursor: "pointer" }}>
-              <input type="checkbox" checked={detalleImpr} onChange={() => setDetalleImpr(v => !v)} style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>Incluir detalle completo</div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{detalleImpr ? "Cada moto/visita una por una (placa, cliente, monto…)" : "Solo el resumen por admin/grupo (sin la lista de motos)"}</div>
-              </div>
-            </label>
-            <button onClick={imprimirSeleccion} disabled={nSel === 0}
-              style={{ padding: "13px 18px", borderRadius: 14, border: "none", cursor: nSel === 0 ? "default" : "pointer", fontWeight: 700, fontSize: 14, background: nSel === 0 ? "var(--line)" : "var(--accent)", color: nSel === 0 ? "var(--faint)" : "var(--card)", opacity: nSel === 0 ? 0.7 : 1 }}>
-              🖨️ Imprimir selección{nSel > 0 ? ` (${nSel})` : ""}
-            </button>
-          </div>
-
-          <div style={{ ...card, display: "grid", gap: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Exportar datos (CSV)</div>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>Período seleccionado: <strong>{RANGOS.find(r => r.key === rango)?.label}</strong> ({desde} → {hasta})</p>
-            {[
-              {
-                label: "⬇️ CSV — Pagos del período",
-                desc: `${pagosRango.length} registros · Fecha, Cliente, Placa, Método, Tipo, Valor`,
-                onClick: () => {
-                  const filas = pagosRango.map(p => {
-                    const c  = contratos.find(ct => ct.id === p.contrato_id);
-                    const cl = c ? clientes.find(cl => cl.id === c.cliente_id) : null;
-                    const m  = c?.moto_id ? motos.find(mo => mo.id === c.moto_id) : null;
-                    return [p.fecha, cl?.nombre ?? "—", m?.placa ?? "—", p.metodo, p.tipo_registro ?? "", String(p.valor)];
-                  });
-                  exportarCSV(filas, ["Fecha","Cliente","Placa","Metodo","Tipo","Valor"], `pagos-${desde}-${hasta}.csv`);
-                },
-              },
-              {
-                label: "⬇️ CSV — Mora actual",
-                desc: `${carteraHoy.detalle.length} contratos en mora hoy · Cliente, Placa, Días en mora, Debe hoy, Último pago`,
-                onClick: () => {
-                  const filas = carteraHoy.detalle.map(m => [m.cliente, m.placa, String(m.diasMora), String(m.debeHoy), m.ultimaFechaPago ?? "Sin pagos"]);
-                  exportarCSV(filas, ["Cliente","Placa","Dias en mora","Debe hoy","Ultimo pago"], `mora-${hoyStr}.csv`);
-                },
-              },
-              ...(alertasVencimiento.length > 0 ? [{
-                label: "⬇️ CSV — Vencimientos SOAT y Tecno",
-                desc: `${docsVencidos} vencidas · ${docsPorVencer} por vencer en 30 días`,
-                onClick: () => {
-                  const filas = alertasVencimiento.map(a => [a.placa, a.seguro ?? "—", a.tecno ?? "—", String(a.diasSeguro ?? ""), String(a.diasTecno ?? "")]);
-                  exportarCSV(filas, ["Placa","SOAT vence","Tecno vence","Dias SOAT","Dias Tecno"], `vencimientos-${hoyStr}.csv`);
-                },
-              }] : []),
-            ].map((btn, i) => (
-              <button key={i} onClick={btn.onClick} style={{ padding: "14px 18px", borderRadius: 14, border: "1px solid var(--line)", background: "var(--card)", cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text)" }}>{btn.label}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{btn.desc}</div>
-                </div>
-                <span style={{ fontSize: 20, color: "var(--line2)" }}>›</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        );
-      })()}
+      {/* ── DESCARGAR (rediseño 2-oct): informe para los socios y listas en Excel ──
+          El `puedeExportar` va también acá y no solo en el botón: si a alguien le quitan el permiso
+          estando aquí, el contenido desaparece igual. */}
+      {tab === "exportar" && puedeExportar && (
+        <DescargarReportes
+          generando={generandoPdf}
+          noListo={sinDatos ? (errorDatos ? "No se pudieron traer los datos. Revisa la conexión." : "Cargando las cifras…")
+            : datosNomina.error ? null : datosNomina.cargando ? "Preparando la nómina de la semana…" : null}
+          onPdf={descargarInformeSocios}
+          onImprimir={imprimirInformeSocios}
+          listas={[
+            { clave: "pagos", etiqueta: "Pagos del período", cuenta: pagosFiltrados.length.toLocaleString("es-CO"), onDescargar: excelPagosPeriodo },
+            { clave: "debe", etiqueta: "Lo que se debe hoy", cuenta: `${debenC.length} clientes`, onDescargar: excelLoQueSeDebe },
+            { clave: "acuerdos", etiqueta: "Acuerdos de pago", cuenta: String(conveniosVista.length), onDescargar: excelConvenios },
+            { clave: "guardadas", etiqueta: "Motos guardadas", cuenta: String(guardadasF.length), onDescargar: excelQuietas },
+            { clave: "visitas", etiqueta: "Visitas del período", cuenta: String(datosVisitas.total), onDescargar: exportarVisitas },
+            { clave: "papeles", etiqueta: "SOAT y tecno vencidos, por vencer o sin fecha", cuenta: String(alertasF.length + sinSoatFlota.length), onDescargar: excelPapeles },
+          ]}
+        />
+      )}
 
       {descarga && (() => {
         const porAdmin = descarga === "admin";

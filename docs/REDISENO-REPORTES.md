@@ -93,7 +93,21 @@
   · Motos: `asignarSubadmin` ya no cambia la fecha si se escoge el mismo cobrador.
   · Contraste 0 fallas en Nómina, Visitas y sus hojas, oscuro y claro (antes: "Cerrar y pagar" 1,1 a 1
     en oscuro y 9 textos en Visitas). Sin desbordes a 280 px. 822 pruebas, build en verde.
-- **Sigue:** la pestaña Descargar (PDF y Excel "resumen gerencial"), que todavía usa la cuenta vieja.
+- **Descargar: HECHO (2-oct, noche) — REPORTES TERMINADO.** `DescargarReportes.tsx` + `informeSocios.ts`.
+  · Informe para los socios en PDF o impreso: las 5 secciones (se escogen) con las MISMAS cifras de
+    cada pantalla, y tres anexos que solo vivían en el PDF viejo, ya con D-035: recaudado por cobrador y
+    grupo, efectivo y transferencias por cobrador (con "antes de asignar"), clientes que deben sin
+    acuerdo. Opción "con las listas completas". Obedece a la barra; se quitó el segundo juego de filtros.
+  · Listas en Excel: pagos del período, lo que se debe hoy (partido), acuerdos, motos guardadas,
+    visitas, SOAT y tecno.
+  · Medido con septiembre: recaudado $236.919.802 = por grupo; por cobrador $210.211.602 + $26.708.200
+    de antes de asignar = el total; efectivo + transferencias = el total. (El 29-sep septiembre daba
+    $231.951.802 en 1.450 pagos: desde entonces se confirmaron 33 pagos más con fecha de septiembre.)
+  · Antes: 15-17 textos ilegibles, emojis, el PDF le daba a cada cobrador la plata de motos que no eran
+    suyas ($26.898.200 en septiembre) y su "mora" decía 150 contra 146. Ahora 0 fallas de contraste
+    en los dos modos, sin desbordes a 280 px. 826 pruebas (3 nuevas del informe), build en verde.
+  · Se quitó el código del informe y la impresión viejos (`informeGerencialHTML`, `imprimirSeleccion`,
+    `FiltrosGestion` y sus gráficos).
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

@@ -228,15 +228,10 @@ Lo que está afectando cifras reales de clientes en este momento.
   el activo, lo que falta del vencido dejaría de verse. Decidir si la pantalla de acuerdos lo bloquea
   ("cóbralo o liquídalo") o si el nuevo debe recoger lo que le falta al vencido.
 
-- [ ] 🧑💻 ⏸️ **Quitar dos motos que ya no están en la empresa: XYZ51H y YAV66H** (pedido del 2-oct,
-  en pausa por el dueño). No se borran (perderían su historia). Propuesta: estado nuevo "Fuera de la
-  empresa" con fecha y motivo, que las saque de flota, disponibles y reportes. Falta la respuesta del
-  dueño: **¿qué pasó con ellas?** (devueltas al socio de PRADERA / vendidas / perdidas o robadas).
-  Lo abierto de cada una: XYZ51H (BLEIMER CASTELLANO, LIQ-0053 cerrada con +$959.000) figura
-  "Disponible" y tiene una entrada al taller abierta desde el 14-sep. YAV66H (JESUS DAVID SABALLET)
-  tiene el contrato suspendido, deuda de migración $260.500, cliente "Activo", sin pagos ni liquidación.
-
-- [ ] 💻 **Rediseño de Reportes — falta Descargar** (`docs/REDISENO-REPORTES.md`). Hechos el 2-oct:
+- [x] 💻 **Rediseño de Reportes — TERMINADO el 2-oct** (`docs/REDISENO-REPORTES.md`). Sigue el mismo
+  trabajo en el resto de la app, pantalla por pantalla (pedido del dueño, 2-oct): orden propuesto
+  Cartera y Cobros → Panel → Mi Día → Clientes y ficha → Contratos → Motos y ficha → Caja, Historial y
+  Cobro diario → Liquidaciones → las demás. Lo de abajo es la historia de Reportes. Hechos el 2-oct:
   Resumen, Por grupo, Por admin, el menú de 5 secciones, Flota (Motos, Guardadas, Entregas), Cobranza
   (Cartera, Acuerdos) y Equipo (Nómina, Visitas). Las visitas "sin resultado" quedaron resueltas
   (D-038): eran clientes aprobados con "Aprobar cliente", y su pago en la nómina estaba bien.
@@ -607,6 +602,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | **Reportes terminado: Descargar nuevo** — informe para los socios (PDF o impreso) con las 5 secciones y las mismas cifras de cada pantalla, más tres anexos ya con D-035; listas en Excel. El PDF viejo le daba a cada cobrador plata de motos que no eran suyas ($26.898.200 en septiembre). `docs/REDISENO-REPORTES.md` |
+| 2-oct | **XYZ51H y YAV66H vendidas, dadas de baja** (D-039, migs 186·187) — estado nuevo "Vendida": salen de Motos (filtro "Vendidas"), Flota, Reportes, Panel, portal del socio y nómina; su historia se queda. Contrato de JESUS DAVID SABALLET cerrado y él Retirado (sus $260.500 quedan anotados; las 14 semanas no). La entrada al taller de XYZ51H cerrada. Flota 376 → 374, retenidas 42 → 41, lo que se debe hoy −$3.088.500 |
 | 2-oct | **Borradas las 3 motos de prueba de USADAS** (mig 185): ZZB01T, ZZC01T y ZZC02T ("MOTO DE PRUEBA - BORRAR", sin contratos ni pagos), con los 2 movimientos de prueba de ZZC02T. La primera vez el seguro encontró esos movimientos y se detuvo sin tocar nada. USADAS queda en 0 motos |
 | 2-oct | **Las 8 visitas "sin resultado"** (D-038) — 7 eran clientes aprobados con "Aprobar cliente" en la decisión final, que no marcaba la visita (todos ya con su moto); la otra, ORLANDO JAVIER FRANCO, espera la decisión. Reportes las cuenta como aprobadas o "esperando decisión", y aprobar al cliente ahora marca la visita. Septiembre: 60 aprobadas de 65 (antes 55 y 5 "sin resultado") |
 | 2-oct | **Reportes: Equipo nuevo** (D-037) — Nómina: cobros, visitas y referidos por separado (antes "cobros" traía los referidos), si quedó pagada en la app (ninguna lo está), cada cobrador con las motos que ya tenía esa semana, las semanas de cada cobrador juntas desde el 14-sep, filtro de grupo (sin poder pagar recortado). Visitas: resultados, cuántas terminaron en moto entregada y en cuántos días, GPS y fotos, quién las hizo. Motos: volver a escoger el mismo cobrador ya no le cambia la fecha. `docs/REDISENO-REPORTES.md` |

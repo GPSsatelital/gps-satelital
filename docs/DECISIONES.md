@@ -586,6 +586,9 @@ nómina y de las listas para escoger moto. Su historia —contratos, pagos, liqu
 se sigue viendo con la placa. Primeras: XYZ51H y YAV66H (PRADERA). El contrato de JESUS DAVID
 SABALLET (YAV66H, suspendido) se cerró y él pasó a Retirado; sus $260.500 de deuda de migración
 quedan anotados en el contrato cerrado, como los de los otros 20 clientes que salieron debiendo.
+Las 14 semanas que el sistema le exigía a su contrato suspendido ($2.828.000) NO se anotan como deuda
+(el dueño: "dejarlo así, eso no es del todo cierto"); al cerrar el contrato dejaron de contarse, y
+"lo que se debe hoy" bajó $3.088.500 en total.
 **Por qué:** borrarlas se llevaba la historia (el contrato y los pagos de BLEIMER, la LIQ-0053). Y
 los avisos de SOAT del servidor no miran el estado de la moto: XYZ51H habría avisado en noviembre.
 **Dónde vive:** mig 186 · `enLaEmpresa` en `useMotos.ts` · `dondeEstaCadaMoto` las salta.

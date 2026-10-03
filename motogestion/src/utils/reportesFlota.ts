@@ -52,6 +52,8 @@ export function dondeEstaCadaMoto(
   }
   const res = new Map<string, { lugar: LugarMoto; contratoId: string | null }>();
   for (const m of motos) {
+    // Vendida (mig 186): ya no es de la empresa — no está trabajando, ni guardada, ni disponible.
+    if (m.estado === "Vendida") continue;
     const guardada = GUARDADA.has(m.estado ?? "");
     const act = activo.get(m.id);
     // Recogida por no pagar aunque el contrato no se haya detenido todavía: retenida, igual que en las filas de Reportes.

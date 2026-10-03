@@ -44,6 +44,7 @@ const ESTADO_MOTO_COLORS: Record<string, { bg: string; color: string; border: st
   Fiscalia:    { bg: "var(--bad-soft)", color: "var(--bad-ink)", border: "var(--bad)" },
   Transito:    { bg: "var(--bad-soft)", color: "var(--bad)", border: "#f43f5e" },
   Garantia:    { bg: "var(--soft)", color: "var(--muted2)", border: "var(--faint)" },
+  Vendida:     { bg: "var(--soft)", color: "var(--muted2)", border: "var(--line2)" },
   // legacy display names
   "En taller": { bg: "var(--warn-soft)", color: "var(--warn-ink)", border: "var(--warn2)" },
   Suspendida:  { bg: "var(--indigo-soft)", color: "var(--violet)", border: "var(--violet)" },

@@ -10,7 +10,7 @@ import { useClientes } from "../hooks/useClientes";
 import { usePrestamos, motoDelPortafolio } from "../hooks/usePrestamos";
 import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useSubadmins } from "../hooks/useSubadmins";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
@@ -441,6 +441,8 @@ export default function ReportesView({ onNavigate }: Props) {
   const { contratos, loading: cargandoContratos, error: errorContratos } = useContratos();
   const { clientes, loading: cargandoClientes, error: errorClientes }  = useClientes();
   const { motos, loading: cargandoMotos, error: errorMotos }     = useMotos();
+  // La flota de verdad, sin las vendidas (mig 186). `motos` sigue completa para buscar la placa de un contrato viejo.
+  const flotaMotos = useMemo(() => motos.filter(enLaEmpresa), [motos]);
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
   const { convenios, convenioPorCobrarDelContrato, loading: cargandoConvenios, error: errorConvenios } = useConvenios();
@@ -1190,7 +1192,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const extras = [...new Set(baseGestion.map(r => r.grupo))].filter(g => !(GRUPOS as readonly string[]).includes(g));
     return [...GRUPOS, ...extras].map(grupo => {
       const filas = baseGestion.filter(r => r.grupo === grupo);
-      const motosGrupo = motos.filter(m => m.grupo === grupo);
+      const motosGrupo = flotaMotos.filter(m => m.grupo === grupo);
       return {
         grupo,
         motosAsignadas: motosGrupo.filter(m => m.estado === "Asignada").length,
@@ -1222,9 +1224,9 @@ export default function ReportesView({ onNavigate }: Props) {
   // ── Motos por estado ───────────────────────────────────────────────────────
   const motosPorEstado = useMemo(() => {
     const map: Record<string, number> = {};
-    motos.forEach(m => { map[m.estado] = (map[m.estado] ?? 0) + 1; });
+    flotaMotos.forEach(m => { map[m.estado] = (map[m.estado] ?? 0) + 1; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [motos]);
+  }, [flotaMotos]);
 
   // ── Alertas vencimiento ────────────────────────────────────────────────────
   const alertasVencimiento = useMemo(() => {
@@ -1232,7 +1234,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const en30 = hoyDate(); en30.setDate(en30.getDate() + 30);
     const iso30 = en30.toISOString().slice(0, 10);
     const dias = (f: string) => Math.round((new Date(f + "T00:00:00").getTime() - hoyMs) / 86400000);
-    return motos.filter(m => (m.fecha_seguro && m.fecha_seguro <= iso30) || (m.fecha_tecnomecanica && m.fecha_tecnomecanica <= iso30))
+    return flotaMotos.filter(m => (m.fecha_seguro && m.fecha_seguro <= iso30) || (m.fecha_tecnomecanica && m.fecha_tecnomecanica <= iso30))
       .map(m => {
         const diasSeguro = m.fecha_seguro ? dias(m.fecha_seguro) : null;
         const diasTecno = m.fecha_tecnomecanica ? dias(m.fecha_tecnomecanica) : null;
@@ -1250,10 +1252,10 @@ export default function ReportesView({ onNavigate }: Props) {
         const mb = Math.min(b.diasSeguro ?? 999, b.diasTecno ?? 999);
         return ma - mb;
       });
-  }, [motos]);
+  }, [flotaMotos]);
 
   // Motos SIN fecha de SOAT: no aparecían en ningún aviso (29-sep: 9 motos, 2 andando en la calle).
-  const motosSinSoat = useMemo(() => motos.filter(m => !m.fecha_seguro), [motos]);
+  const motosSinSoat = useMemo(() => flotaMotos.filter(m => !m.fecha_seguro), [flotaMotos]);
   const docsVencidos = alertasVencimiento.filter(a => a.vencida).length;
   const docsPorVencer = alertasVencimiento.length - docsVencidos;
 
@@ -1429,8 +1431,8 @@ export default function ReportesView({ onNavigate }: Props) {
     }
 
     if (S.flota) {
-      const filas = motosPorEstado.map(([est, n]) => `<tr><td>${est}</td><td class="c">${n}</td><td class="c">${pct(n, motos.length)}</td></tr>`).join("");
-      parts.push(`<h2>Flota por estado (${motos.length} motos)</h2><table><thead><tr><th>Estado</th><th class="c">Cantidad</th><th class="c">%</th></tr></thead><tbody>${filas}</tbody></table>`);
+      const filas = motosPorEstado.map(([est, n]) => `<tr><td>${est}</td><td class="c">${n}</td><td class="c">${pct(n, flotaMotos.length)}</td></tr>`).join("");
+      parts.push(`<h2>Flota por estado (${flotaMotos.length} motos)</h2><table><thead><tr><th>Estado</th><th class="c">Cantidad</th><th class="c">%</th></tr></thead><tbody>${filas}</tbody></table>`);
     }
 
     if (S.entregas) {
@@ -1640,7 +1642,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const grupoMoto = (m: { grupo?: string | null }) => m.grupo ?? "SIN GRUPO";
     const contratoDeMoto = (m: { id: string }) => contratoPorId.get(lugarDeMoto.get(m.id)?.contratoId ?? "");
     const filas = baseGestion.filter(r => pasaMod(r.formaPago) && pasaOtro(r.grupo, r.adminId)).map(r => desdeAsignacion ? comoCobrador(r) : r);
-    const motosF = motos.filter(m => pasaOtro(grupoMoto(m), m.subadmin_id ?? "__none__") && (filtros.modalidad.length === 0 || pasaMod(contratoDeMoto(m)?.forma_pago)));
+    const motosF = flotaMotos.filter(m => pasaOtro(grupoMoto(m), m.subadmin_id ?? "__none__") && (filtros.modalidad.length === 0 || pasaMod(contratoDeMoto(m)?.forma_pago)));
     const pasaPago = (pg: (typeof pagosRango)[number]) => { const at = atribucion.get(pg.contrato_id); return !!at && pasaMod(at.formaPago) && pasaOtro(at.grupo, at.adminId); };
     const pagosBase = pagosRango.filter(pasaPago);
     const pagosF = desdeAsignacion ? pagosBase.filter(pg => !pagoAntesDeAsignar(pg)) : pagosBase;
@@ -1815,20 +1817,20 @@ export default function ReportesView({ onNavigate }: Props) {
   const tarifaDiaDe = (g: { contratoId: string | null }) => contratoPorId.get(g.contratoId ?? "")?.tarifa_diaria ?? 27000;
 
   // ── FLOTA (rediseño 2-oct): foto de hoy, con los filtros de grupo y cobrador ──
-  const flotaF = useMemo(() => motos.filter(m => pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__")), [motos, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const flotaF = useMemo(() => flotaMotos.filter(m => pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__")), [flotaMotos, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
   const lugaresFlota = useMemo(() => {
     const r: Record<LugarMoto, number> = { trabajando: 0, tallerConCliente: 0, retenida: 0, tallerSinCliente: 0, disponible: 0 };
     flotaF.forEach(m => { const l = lugarDeMoto.get(m.id)?.lugar; if (l) r[l]++; });
     return r;
   }, [flotaF, lugarDeMoto]);
   const gruposFlota = useMemo(() => {
-    const base = motos.filter(m => filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"));
+    const base = flotaMotos.filter(m => filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__"));
     const extras = [...new Set(base.map(m => m.grupo ?? "SIN GRUPO"))].filter(g => !(GRUPOS as readonly string[]).includes(g));
     return [...(GRUPOS as readonly string[]), ...extras].map(g => {
       const f = base.filter(m => (m.grupo ?? "SIN GRUPO") === g);
       return { grupo: g, color: GRUPO_COLORS[g] ?? "var(--muted)", total: f.length, trabajando: f.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length };
     }).filter(g => g.total > 0);
-  }, [motos, filtros, lugarDeMoto]);
+  }, [flotaMotos, filtros, lugarDeMoto]);
   const motoPasaGC = (motoId: string) => { const m = motoPorId.get(motoId); return !!m && pasaFiltroGC(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? "__none__"); };
   const alertasF = alertasVencimiento.filter(a => motoPasaGC(a.id));
   const sinSoatFlota = motosSinSoat.filter(m => motoPasaGC(m.id));
@@ -1868,7 +1870,7 @@ export default function ReportesView({ onNavigate }: Props) {
     }
     if (clave.startsWith("grupo:")) {
       const g = clave.slice(6);
-      const lista = motos.filter(m => (m.grupo ?? "SIN GRUPO") === g && (filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__")));
+      const lista = flotaMotos.filter(m => (m.grupo ?? "SIN GRUPO") === g && (filtros.cobrador.length === 0 || filtros.cobrador.includes(m.subadmin_id ?? "__none__")));
       setDetalle(listaMotos(lista, `Motos de ${g} · ${lista.length}`, "Cada una con dónde está y quién la tiene a cargo.", `flota_${g.toLowerCase()}`));
       return;
     }

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import ImgPrivada from "../components/ImgPrivada";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
@@ -97,6 +97,8 @@ export default function SocioDashboard() {
 
   const misMotos = useMemo(() => motos.filter(m => m.grupo === grupo), [motos, grupo]);
   const idsMisMotos = useMemo(() => new Set(misMotos.map(m => m.id)), [misMotos]);
+  // Lo que tiene hoy: sin las vendidas (mig 186). Sus contratos de antes siguen siendo historia suya.
+  const misMotosHoy = useMemo(() => misMotos.filter(enLaEmpresa), [misMotos]);
 
   /** Contratos de MIS motos (todos, no solo activos: las entregas viejas también son mías). */
   const misContratos = useMemo(
@@ -139,9 +141,9 @@ export default function SocioDashboard() {
   const enGabela = cuentas.filter(x => x.estado === "gabela");
   const alDia = cuentas.filter(x => x.estado !== "mora" && x.estado !== "gabela");
 
-  const flota = useMemo(() => resumenFlota(misMotos), [misMotos]);
+  const flota = useMemo(() => resumenFlota(misMotosHoy), [misMotosHoy]);
   const entregas = useMemo(() => entregasRecientes(misContratos, 15), [misContratos]);
-  const vencimientos = useMemo(() => vencimientosProximos(misMotos, hoy), [misMotos, hoy]);
+  const vencimientos = useMemo(() => vencimientosProximos(misMotosHoy, hoy), [misMotosHoy, hoy]);
   const porMes = useMemo(() => recaudoPorMes(misPagos.map(p => ({ fecha: fechaDeCaja(p), valor: p.valor })), hoy, 6), [misPagos, hoy]);
 
   const ancho = isMobile ? "100%" : 760;
@@ -274,12 +276,12 @@ export default function SocioDashboard() {
                 </div>
               </div>
             )}
-            {misMotos.length === 0
+            {misMotosHoy.length === 0
               ? <Vacio>Este grupo todavía no tiene motos registradas.</Vacio>
               : <div style={card}>
-                  <Rotulo>Tus {misMotos.length} motos</Rotulo>
+                  <Rotulo>Tus {misMotosHoy.length} motos</Rotulo>
                   <div style={{ display: "grid", gap: 8, marginTop: 10, maxHeight: isMobile ? "58vh" : "64vh", overflowY: "auto" }}>
-                    {misMotos.slice().sort((a, b) => a.placa.localeCompare(b.placa)).map(m => {
+                    {misMotosHoy.slice().sort((a, b) => a.placa.localeCompare(b.placa)).map(m => {
                       const cta = cuentas.find(x => x.moto?.id === m.id);
                       return (
                         <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>

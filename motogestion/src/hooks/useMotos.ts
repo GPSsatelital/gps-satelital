@@ -3,7 +3,12 @@ import { createTableStore } from "./createTableStore";
 
 // "En traspaso": el cliente cumplió su contrato y la moto pasa a ser suya — dejó la
 // flota para siempre. fecha_traspaso_completado marca cuándo terminó el trámite legal.
-export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia" | "En traspaso";
+// "Vendida": la empresa la vendió (mig 186, 2-oct-2026). Sale de la flota, de las listas y de los
+// conteos, pero se sigue encontrando por su historia (contratos, pagos, liquidaciones).
+export type MotoStatus = "Disponible" | "Reservada" | "Asignada" | "Mantenimiento" | "Recuperada" | "Fiscalia" | "Transito" | "Garantia" | "En traspaso" | "Vendida";
+
+/** ¿Sigue en la empresa? Las vendidas no cuentan en la flota ni se ofrecen en ninguna lista. */
+export const enLaEmpresa = (m: { estado?: string | null }) => m.estado !== "Vendida";
 export type GrupoMoto = "COSTA" | "PRADERA" | "RASTREADOR" | "USADAS" | "OTRO";
 export type CondicionIngreso = "nueva" | "usada";
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTareas, EVIDENCIA_LABEL, type TipoEvidencia } from "../hooks/useTareas";
 import { useSubadmins } from "../hooks/useSubadmins";
-import { useMotos } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
 import { card, inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import { hoyISO } from "../utils/fecha";
@@ -103,7 +103,7 @@ export default function ModalAsignarTarea({ onClose, onHecho }: { onClose: () =>
               <input style={inputStyle} list="placas-tarea" value={placa}
                 onChange={e => setPlaca(e.target.value.toUpperCase())} placeholder="Si es sobre una moto" />
               <datalist id="placas-tarea">
-                {motos.map(m => <option key={m.id} value={m.placa} />)}
+                {motos.filter(enLaEmpresa).map(m => <option key={m.id} value={m.placa} />)}
               </datalist>
             </div>
           </div>

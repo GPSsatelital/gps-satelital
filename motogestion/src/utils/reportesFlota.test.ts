@@ -30,6 +30,12 @@ describe("dónde está cada moto (D-033 y D-034)", () => {
     });
   });
 
+  it("la vendida no está en ningún lugar, aunque su contrato viejo siga suspendido (mig 186)", () => {
+    const v = dondeEstaCadaMoto([{ id: "mv", estado: "Vendida" }, { id: "md", estado: "Disponible" }], [{ id: "cv", moto_id: "mv", estado: "Suspendido" }]);
+    expect(v.has("mv")).toBe(false);
+    expect(v.get("md")?.lugar).toBe("disponible");
+  });
+
   it("la retenida que ya tiene otro cliente cuenta con el contrato nuevo", () => {
     expect(r.get("m5")?.contratoId).toBe("c5nuevo");
     expect(r.get("m4")?.contratoId).toBe("c4");

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMotos, type Moto } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa, type Moto } from "../hooks/useMotos";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { usePrestamosDoc, type TipoDoc } from "../hooks/usePrestamosDoc";
@@ -75,7 +75,7 @@ export default function TarjetasLlavesView() {
   const motosFiltradas = useMemo(() => {
     const q = buscaMoto.toLowerCase().trim();
     if (!q) return [];
-    return motos.filter(m => m.placa.toLowerCase().includes(q)).slice(0, 8);
+    return motos.filter(m => enLaEmpresa(m) && m.placa.toLowerCase().includes(q)).slice(0, 8);
   }, [buscaMoto, motos]);
 
   function elegirMoto(m: Moto) {

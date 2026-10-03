@@ -575,3 +575,18 @@ de esas visitas en la nómina estaba bien: la regla no pide resultado, se paga a
 **Dónde vive:** `resultadoDeVisita` en `ReportesView.tsx` (pantalla, Excel e impresión) ·
 `DetalleClienteContenido` en `ClientesView.tsx`.
 **Reemplaza a:** "sin anotar el resultado" para visitas cuyo cliente ya se aprobó.
+
+### D-039 · 2-oct-2026 · Las motos vendidas se dan de baja, no se borran
+**Decidió:** el dueño ("Darlas de baja", "Se vendieron", "cerrarlo y darlo de baja enseguida, que no
+siga saliendo en las cuentas ni en ningún lugar que no deba", "Sí, hazlo así").
+**Qué se decidió:** una moto que la empresa vende pasa al estado **"Vendida"**: sin cobrador, sin
+fechas de SOAT ni tecno (quedan escritas en la nota), y sale de la lista de Motos (con un filtro
+"Vendidas" para encontrarla), de la Flota y los Reportes, del Panel, del portal del socio, de la
+nómina y de las listas para escoger moto. Su historia —contratos, pagos, liquidaciones— se queda y
+se sigue viendo con la placa. Primeras: XYZ51H y YAV66H (PRADERA). El contrato de JESUS DAVID
+SABALLET (YAV66H, suspendido) se cerró y él pasó a Retirado; sus $260.500 de deuda de migración
+quedan anotados en el contrato cerrado, como los de los otros 20 clientes que salieron debiendo.
+**Por qué:** borrarlas se llevaba la historia (el contrato y los pagos de BLEIMER, la LIQ-0053). Y
+los avisos de SOAT del servidor no miran el estado de la moto: XYZ51H habría avisado en noviembre.
+**Dónde vive:** mig 186 · `enLaEmpresa` en `useMotos.ts` · `dondeEstaCadaMoto` las salta.
+**Reemplaza a:** la propuesta "Fuera de la empresa" de PENDIENTES (2-oct).

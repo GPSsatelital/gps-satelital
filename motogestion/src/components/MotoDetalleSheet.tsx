@@ -47,6 +47,7 @@ function getBadgeEstado(status: MotoStatus): { bg: string; color: string; label:
     case "Transito":      return { bg: "var(--bad-soft)", color: "var(--bad)", label: "Tránsito" };
     case "Garantia":      return { bg: "#f3f4f6", color: "#6b7280", label: "Garantía" };
     case "En traspaso":   return { bg: "#ecfdf5", color: "#047857", label: "En traspaso" };
+    default:              return { bg: "var(--soft)", color: "var(--muted2)", label: status };
   }
 }
 

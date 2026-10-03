@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, Fragment } from "react";
-import { useMotos, type GrupoMoto } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa, type GrupoMoto } from "../hooks/useMotos";
 import { useClientes } from "../hooks/useClientes";
 import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../hooks/useContratos";
 import { usePagos, esPagoDeCaja, fechaDeCaja } from "../hooks/usePagos";
@@ -72,6 +72,8 @@ export default function DashboardView({ onNavigate }: {
   const { deudas } = useDeudas();
 
   const motos = filtrarMotos(todasMotos);
+  // La flota de verdad: sin las vendidas (mig 186). `motos` queda para buscar la placa de un contrato.
+  const motosFlota = motos.filter(enLaEmpresa);
   const clientes = filtrarPorCliente(todosClientes);
   const contratos = filtrarContratos(todosContratos);
   const pagos = filtrarPorContrato(todosPagos);
@@ -88,10 +90,10 @@ export default function DashboardView({ onNavigate }: {
   const stats = useMemo(() => {
     if (loading) return null;
 
-    const motosAsignadas   = motos.filter(m => m.estado === "Asignada").length;
-    const motosDisponibles = motos.filter(m => m.estado === "Disponible").length;
-    const motosTaller      = motos.filter(m => m.estado === "Mantenimiento").length;
-    const motosRetencion   = motos.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado)).length;
+    const motosAsignadas   = motosFlota.filter(m => m.estado === "Asignada").length;
+    const motosDisponibles = motosFlota.filter(m => m.estado === "Disponible").length;
+    const motosTaller      = motosFlota.filter(m => m.estado === "Mantenimiento").length;
+    const motosRetencion   = motosFlota.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado)).length;
 
     const contratosActivos   = contratos.filter(c => c.estado === "Activo").length;
     const contratosEnProceso = contratos.filter(c => c.estado === "En proceso").length;
@@ -156,9 +158,9 @@ export default function DashboardView({ onNavigate }: {
     const grupos = ["COSTA","PRADERA","RASTREADOR","USADAS","OTRO"] as const;
     const porGrupo = grupos.map(g => ({
       g,
-      asignadas:   motos.filter(m => m.grupo === g && m.estado === "Asignada").length,
-      disponibles: motos.filter(m => m.grupo === g && m.estado === "Disponible").length,
-      total:       motos.filter(m => m.grupo === g).length,
+      asignadas:   motosFlota.filter(m => m.grupo === g && m.estado === "Asignada").length,
+      disponibles: motosFlota.filter(m => m.grupo === g && m.estado === "Disponible").length,
+      total:       motosFlota.filter(m => m.grupo === g).length,
     }));
 
     const activos = contratos.filter(c => c.estado === "Activo");
@@ -176,7 +178,7 @@ export default function DashboardView({ onNavigate }: {
     const prevClientesActivos = clientesActivos;
     const prevClientesMora = contratosMora;
 
-    const recuperadasSemana = motos.filter(m => m.estado === "Recuperada").length;
+    const recuperadasSemana = motosFlota.filter(m => m.estado === "Recuperada").length;
 
     // Motos por inmovilizar: contratos activos con cliente en mora
     const motosInmovilizar = contratos
@@ -329,10 +331,10 @@ export default function DashboardView({ onNavigate }: {
   // Grupo selector data
 const grupoActualStats = grupoSeleccionado === "todos"
     ? {
-        total:       motos.length,
+        total:       motosFlota.length,
         asignadas:   stats.motosAsignadas,
         disponibles: stats.motosDisponibles,
-        pct:         motos.length > 0 ? Math.round((stats.motosAsignadas / motos.length) * 100) : 0,
+        pct:         motosFlota.length > 0 ? Math.round((stats.motosAsignadas / motosFlota.length) * 100) : 0,
       }
     : (() => {
         const g = stats.porGrupo.find(x => x.g === grupoSeleccionado);
@@ -442,7 +444,7 @@ const grupoActualStats = grupoSeleccionado === "todos"
         {/* Selector de grupo dentro del panel */}
         <div style={{ display: "flex", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
           {[
-            { key: "todos" as const, label: "Toda la flota", total: motos.length },
+            { key: "todos" as const, label: "Toda la flota", total: motosFlota.length },
             ...gruposVisibles.map(g => ({ key: g.g as GrupoMoto, label: g.g, total: g.total })),
           ].map(op => {
             const isSelected = grupoSeleccionado === op.key;

@@ -12,7 +12,7 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
 }
 import { listaConScroll } from "../styles/shared";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
-import { useMotos, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData, type DestinoLiberacion } from "../hooks/useMotos";
+import { useMotos, enLaEmpresa, type GrupoMoto, type Moto, type MotoStatus, type CondicionIngreso, type RetencionData, type DestinoLiberacion } from "../hooks/useMotos";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useUbicaciones, UBICACION_LABEL, type UbicacionFisica, type MotivoRecepcion, type CondicionVehiculo } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
@@ -50,6 +50,7 @@ const MOTO_TONE: Record<MotoStatus, BadgeTone> = {
   Transito: "warn",
   Garantia: "indigo",
   "En traspaso": "ok",
+  Vendida: "neutral",
 };
 
 function getStatusColors(status: MotoStatus) {
@@ -63,6 +64,7 @@ function getStatusColors(status: MotoStatus) {
     case "Transito":      return { bg: "var(--orange-soft)", color: "var(--orange-ink)", border: "#fdba74" };
     case "Garantia":      return { bg: "#f3e8ff", color: "#6b21a8", border: "#d8b4fe" };
     case "En traspaso":   return { bg: "#ecfdf5", color: "#047857", border: "#6ee7b7" };
+    default:              return { bg: "var(--soft)", color: "var(--muted2)", border: "var(--line2)" };
   }
 }
 
@@ -76,6 +78,7 @@ const ESTADO_LABEL: Record<MotoStatus, string> = {
   Transito: "Tránsito",
   Garantia: "Garantía",
   "En traspaso": "En traspaso",
+  Vendida: "Vendida",
 };
 
 // De dónde venía físicamente la moto según el motivo de la retención — solo para dejar el rastro
@@ -149,6 +152,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [filtroEstado] = useState(initialFilter);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
   const [soloSinAsignar, setSoloSinAsignar] = useState(false);
+  // Las vendidas (mig 186) no salen en la lista; este filtro las muestra solas, para encontrarlas.
+  const [verVendidas, setVerVendidas] = useState(false);
   // Moto sobre la que se abre la hoja rápida de asignación de sub-admin (solo ADMIN/AP).
   const [asignarMotoId, setAsignarMotoId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -257,8 +262,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
     if (filtroGrupo !== "todos") list = list.filter(m => m.grupo === filtroGrupo);
     if (soloSinAsignar) list = list.filter(m => !m.subadmin_id);
-    return list;
-  }, [motos, query, filtroEstado, filtroGrupo, soloSinAsignar, filtrarMotos]);
+    return list.filter(m => verVendidas ? !enLaEmpresa(m) : enLaEmpresa(m));
+  }, [motos, query, filtroEstado, filtroGrupo, soloSinAsignar, filtrarMotos, verVendidas]);
+  const nVendidas = useMemo(() => filtrarMotos(motos).filter(m => !enLaEmpresa(m)).length, [motos, filtrarMotos]);
 
   // Nombre del sub-admin a cargo (solo ADMIN/AP puede leer estos nombres por RLS).
   const nombreSubadmin = (id: string | null | undefined) =>
@@ -332,6 +338,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <Chip activo={soloSinAsignar} onClick={() => setSoloSinAsignar(v => !v)}>
             👤 Sin asignar
           </Chip>
+        )}
+        {nVendidas > 0 && (
+          <Chip activo={verVendidas} onClick={() => setVerVendidas(v => !v)}>Vendidas · {nVendidas}</Chip>
         )}
         {/* Va acá dentro y no en el encabezado porque ChipsGrupo se dibuja en las DOS ramas
             (lista móvil y lista de escritorio): puesto en una sola, el botón desaparecería
@@ -1179,6 +1188,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           resumenFiltro={[
             filtroGrupo !== "todos" ? filtroGrupo : null,
             soloSinAsignar ? "sin encargado" : null,
+            verVendidas ? "vendidas" : null,
             query.trim() ? `"${query.trim()}"` : null,
           ].filter(Boolean).join(" · ") || "toda la flota visible"}
           columnas={COLUMNAS_MOTOS}

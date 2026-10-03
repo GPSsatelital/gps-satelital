@@ -543,3 +543,19 @@ $2.718.000 de más (ARISMEL MUÑOZ RMY48H: $889.000 en vez de $447.000). Nadie h
 esas deudas devueltas.
 **Dónde vive:** mig 183 (`convenio_incumplido_devuelve_deudas`, las 6 deudas, `zala.cliente`).
 **Reemplaza a:** la mig 130 en su mitad "al incumplirse, las deudas vuelven a cobrarse".
+
+### D-037 · 2-oct-2026 · Las semanas de cada cobrador, desde el 14-sep y con las motos que ya tenía
+**Decidió:** el dueño (pidió mi recomendación y la aprobó: "Sí, y arregla la fecha").
+**Qué se decidió:** en Nómina, "de cuántas motos le generaron pago" cuenta solo las motos que el
+cobrador **ya tenía al empezar esa semana** (`motos.subadmin_asignado_desde`; sin fecha = de antes de
+la mig 058). Las semanas de cada cobrador, juntas, se muestran **desde el 14 de septiembre** (las
+últimas 6). Las semanas viejas se siguen viendo una por una, con un aviso de que se calculan con el
+cobrador de hoy. Y en Motos, volver a escoger el **mismo** cobrador ya no le cambia la fecha.
+La plata de la nómina no cambia: sigue saliendo de `nominaSemanaDetallada`.
+**Por qué:** entre el 7 y el 13-sep se les puso fecha nueva a 176 de las 346 motos con cobrador, y no
+se sabe si cambiaron de cobrador o se guardaron otra vez con el mismo (`asignarSubadmin` ponía la
+fecha de hoy aunque el cobrador fuera el mismo). Según esas fechas, Carlos Alvarez y Carlos Ariza no
+tenían motos antes del 7-sep, y la nómina de agosto, vista hoy, les contaba 41 y 43. Desde el 14-sep
+el 93% de las motos ya tenía su cobrador de hoy.
+**Dónde vive:** `EquipoReportes.tsx` + `ReportesView.tsx` (Equipo) · `useMotos.asignarSubadmin`.
+**Reemplaza a:** "motos asignadas" contadas con las de hoy en cualquier semana.

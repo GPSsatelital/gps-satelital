@@ -26,11 +26,11 @@ import {
 import ModalDescargar, { type ColumnaDescarga, type HojaExtra } from "../components/ModalDescargar";
 import Placa from "../components/Placa";
 import { useVisitas } from "../hooks/useVisitas";
-import { useNominaCierres } from "../hooks/useNominaCierres";
+import { useNominaCierres, useCierresDeSemanas } from "../hooks/useNominaCierres";
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useRodadas } from "../hooks/useRodadas";
@@ -42,6 +42,7 @@ import PortafoliosReportes, { type DatosPortafolio } from "../components/reporte
 import MenuReportes, { type TabReportes } from "../components/reportes/MenuReportes";
 import { FlotaMotos, FlotaGuardadas } from "../components/reportes/FlotaReportes";
 import { CobranzaCartera, CobranzaAcuerdos, type FilaReparto } from "../components/reportes/CobranzaReportes";
+import { EquipoNomina, EquipoVisitas, type CeldaSemana, type DatosNomina, type DatosVisitas } from "../components/reportes/EquipoReportes";
 import ResumenReportes, { type FilaEstado, plata as plataT } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
 import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
@@ -72,10 +73,6 @@ const RANGOS: { key: Rango; label: string }[] = [
 ];
 
 
-// Pestañas que NO usan el rango de fechas, con lo que se muestra en su lugar.
-const TABS_SIN_FECHA: Partial<Record<Tab, string>> = {
-  nomina:    "La nómina se liquida por semana: usa su propio selector de semana, más abajo.",
-};
 
 const ANG_LABEL: Record<string, string> = {
   delantera: "Delantera", lateral_izquierdo: "Lateral izq.", arriba: "Arriba",
@@ -208,6 +205,31 @@ function sparklineSVG(vals: number[]): string {
   const pts = vals.map((v, i) => `${((i / den) * (w - 4) + 2).toFixed(1)},${(h - (v / max) * (h - 6) - 3).toFixed(1)}`).join(" ");
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><polyline points="${pts}" fill="none" stroke="#2f6db0" stroke-width="2" stroke-linejoin="round"/></svg>`;
 }
+/** Desde cuándo se muestran las semanas de cada cobrador (ver `semanasTendencia`). */
+const DESDE_TENDENCIA = "2026-09-14";
+const masDias = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const mesCorto = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { month: "short" }).replace(".", "");
+/** "Semana del 21 al 27 de sept" · "Semana del 31 de ago al 6 de sept" */
+function textoSemana(lunes: string, domingo: string) {
+  const d1 = Number(lunes.slice(8, 10)), d2 = Number(domingo.slice(8, 10));
+  return lunes.slice(0, 7) === domingo.slice(0, 7) ? `Semana del ${d1} al ${d2} de ${mesCorto(lunes)}` : `Semana del ${d1} de ${mesCorto(lunes)} al ${d2} de ${mesCorto(domingo)}`;
+}
+/** "21-27 sept" para las columnas de las semanas de cada cobrador. */
+function textoSemanaCorto(lunes: string) {
+  const dom = masDias(lunes, 6);
+  return lunes.slice(0, 7) === dom.slice(0, 7) ? `${Number(lunes.slice(8, 10))}-${Number(dom.slice(8, 10))} ${mesCorto(lunes)}` : `${Number(lunes.slice(8, 10))} ${mesCorto(lunes)}-${Number(dom.slice(8, 10))} ${mesCorto(dom)}`;
+}
+/** Los pagos de nómina por COBRAR (no la visita ni el referido): los que dicen que una moto "le generó pago". */
+const TIPOS_COBRO = new Set<TipoGestion>(["ciclo", "ciclo_atrasado", "prorrateo", "retencion", "cuota_convenio"]);
+const TIPO_NOMINA: Record<TipoGestion, string> = {
+  ciclo: "Semana cobrada a tiempo", ciclo_atrasado: "Semana atrasada", prorrateo: "Primer pago (prorrateo)",
+  retencion: "Retención", cuota_convenio: "Cuota de acuerdo de una retenida", visita: "Visita domiciliaria", referido: "Referido: trajo al cliente",
+};
+const TIPO_NOMINA_CORTO: Record<TipoGestion, string> = {
+  ciclo: "A tiempo", ciclo_atrasado: "Atrasadas", prorrateo: "Prorrateo", retencion: "Retenciones",
+  cuota_convenio: "Acuerdo de retenida", visita: "Visitas", referido: "Referidos",
+};
+
 function fmtFechaCorta(iso: string) {
   const s = (iso || "").slice(0, 10).split("-");
   return s.length === 3 ? `${s[2]}/${s[1]}/${s[0]}` : (iso || "—");
@@ -369,12 +391,10 @@ export default function ReportesView({ onNavigate }: Props) {
     d.setDate(d.getDate() - 7);
     return d.toISOString().slice(0, 10);
   });
-  const [nominaExp, setNominaExp] = useState<string | null>(null);   // drill-down abierto
   const { cesiones } = useCesiones();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
   const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
   const [generandoPdf, setGenerandoPdf] = useState(false); // botón del Informe Gerencial (PDF)
-  const [expandidoVisita, setExpandidoVisita] = useState<string | null>(null);
   // Armador de impresión: qué secciones incluir + nivel de detalle (por defecto todo detallado)
   const [detalleImpr, setDetalleImpr] = useState(true);
   const [secImpr, setSecImpr] = useState<Record<string, boolean>>({
@@ -441,18 +461,15 @@ export default function ReportesView({ onNavigate }: Props) {
   const nominaError = errorCajas || errorRodadas || errorCierres || (!!errorDatos && sinDatos);
   const nominaLista = !nominaCargando && !nominaError;
   const reintentarNomina = () => { setIntentoNomina(i => i + 1); void recargarCierres(); };
+  const textoSemanaNomina = textoSemana(lunesNomina, domingoNomina);
+
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
-  const nominaDetalle = useMemo(() => {
-    if (tab !== "nomina") return { nominas: [], sinGestion: [] };
-    return nominaSemanaDetallada({
-      desde: lunesNomina,
-      hasta: domingoNomina,
+  const entradasNomina = useMemo(() => ({
       contratos,
       pagos,
       motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null, grupo: m.grupo ?? null })),
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
-      eventos: eventosNomina,
       convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, created_at: cv.created_at })),
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
       // Quién trajo a cada cliente (mig 153): $30.000 a esa persona en la semana de la entrega.
@@ -460,9 +477,35 @@ export default function ReportesView({ onNavigate }: Props) {
         .filter(c => c.referido_por_funcionario)
         .map(c => ({ cliente_id: c.id, funcionario_id: c.referido_por_funcionario! })),
       rodadas: rodadasNomina,
-    });
-  }, [tab, lunesNomina, domingoNomina, contratos, pagos, motos, recepciones, clientes, eventosNomina, convenios, visitas, rodadasNomina]);
+  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina]);
+  const nominaDetalle = useMemo(() => {
+    if (tab !== "nomina") return { nominas: [], sinGestion: [] };
+    return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
+  }, [tab, lunesNomina, domingoNomina, entradasNomina, eventosNomina]);
   const nominas = nominaDetalle.nominas;
+  // LAS SEMANAS DE CADA COBRADOR (2-oct): desde el 14-sep. Entre el 7 y el 13 se les puso fecha nueva
+  // a 176 motos y no se sabe si cambiaron de cobrador o se guardaron otra vez con el mismo; desde el
+  // 14 ya el 93% tenía su cobrador de hoy. Cada semana se calcula como la nómina de esa semana (sus
+  // cajas desde 84 días antes, igual que arriba), y se muestran las últimas 6.
+  const lunesDeHoy = lunesDe(hoyISO());
+  const semanasTendencia = useMemo(() => {
+    const fin = lunesDeHoy;
+    const out: string[] = [];
+    for (let l = DESDE_TENDENCIA; l <= fin; l = masDias(l, 7)) out.push(l);
+    return out.slice(-6);
+  }, [lunesDeHoy]);
+  const { eventos: eventosTendencia, cargando: cargandoEventosTend } = useCajasLlenadas(masDias(semanasTendencia[0], -84), masDias(semanasTendencia[semanasTendencia.length - 1], 6), tab === "nomina", intentoNomina);
+  const { cierres: cierresTendencia, cargando: cargandoCierresTend } = useCierresDeSemanas(semanasTendencia, tab === "nomina", intentoNomina);
+  const tendenciaNomina = useMemo(() => {
+    if (tab !== "nomina" || !eventosTendencia) return [];
+    return semanasTendencia.map(l => {
+      const desdeEv = masDias(l, -84);
+      const hastaSem = masDias(l, 6);
+      const ev = eventosTendencia.filter(e => e.fecha >= desdeEv && e.fecha <= hastaSem);
+      return nominaSemanaDetallada({ ...entradasNomina, desde: l, hasta: hastaSem, eventos: ev.length ? ev : null }).nominas;
+    });
+  }, [tab, eventosTendencia, semanasTendencia, entradasNomina]);
+  const cargandoTendencia = cargandoEventosTend || cargandoCierresTend || nominaCargando;
   // EL REVERSO (15-sep): las motos asignadas que NO generaron gestión, agrupadas por cobrador.
   // Sin esto, una moto sin pago desaparecía de la pantalla y no había cómo distinguir "no trabajó"
   // de "el sistema no lo contó" — que es justo lo que el dueño preguntó.
@@ -2116,6 +2159,288 @@ export default function ReportesView({ onNavigate }: Props) {
     });
   }
 
+  // ── EQUIPO · NÓMINA (rediseño 2-oct) ──────────────────────────────────────────────────────────
+  // La plata sale de `nominaSemanaDetallada`, igual que siempre (nominasVista: lo congelado si la
+  // semana ya se pagó). Lo nuevo: grupo y cobrador de la barra, los referidos aparte de los cobros,
+  // si quedó pagada en la app, y las motos de cada cobrador contadas SOLO si ya las tenía al empezar
+  // la semana (la fecha de asignación, mig 058) — antes se contaban las de hoy en cualquier semana.
+  const grupoNomina = filtros.grupo.length > 0 ? filtros.grupo : null;
+  const pasaGrupoN = (g: string) => !grupoNomina || grupoNomina.includes(g);
+  const pasaCobradorN = (id: string | null) => filtros.cobrador.length === 0 || filtros.cobrador.includes(id ?? "__none__");
+  const asignadaElMoto = (m: (typeof motos)[number]) => m.subadmin_asignado_desde ? fechaISO(new Date(m.subadmin_asignado_desde)) : null;
+  /** ¿El cobrador de hoy ya tenía esta moto al empezar la semana? Sin fecha = de antes de la mig 058. */
+  const teniaAlEmpezar = (m: (typeof motos)[number], lunes: string) => { const a = asignadaElMoto(m); return !a || a <= lunes; };
+  const motosQueTenia = (id: string, lunes: string) => motos.filter(m => m.subadmin_id === id && teniaAlEmpezar(m, lunes) && pasaGrupoN(m.grupo ?? "—"));
+  const celdaCobrador = (id: string, lunes: string, renglones: GestionNomina[]): CeldaSemana => {
+    const suyas = motosQueTenia(id, lunes);
+    if (suyas.length === 0) return null;
+    const conPago = new Set(renglones.filter(r => TIPOS_COBRO.has(r.tipo)).map(r => r.motoId));
+    return { tenia: suyas.length, generaron: suyas.filter(m => conPago.has(m.id)).length };
+  };
+  const partesDe = (rs: GestionNomina[]) => {
+    const visitasR = rs.filter(r => r.tipo === "visita");
+    const referidosR = rs.filter(r => r.tipo === "referido");
+    const suma = (x: GestionNomina[]) => x.reduce((a, r) => a + r.valor, 0);
+    return { cobros: suma(rs.filter(r => r.tipo !== "visita" && r.tipo !== "referido")), visitas: suma(visitasR), nVisitas: visitasR.length, referidos: suma(referidosR), nReferidos: referidosR.length };
+  };
+  const nombreCobradorN = (id: string | null) => id === null ? "Sin cobrador" : (subadmins.find(sa => sa.id === id)?.nombre ?? "Cobrador");
+  const fechaCortaN = (iso: string) => new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+  const cobradoresN = nominasVista.filter(n => n.subadminId !== null && pasaCobradorN(n.subadminId))
+    .map(n => ({ n, renglones: grupoNomina ? n.renglones.filter(r => pasaGrupoN(r.grupo)) : n.renglones }))
+    .filter(x => !grupoNomina || x.renglones.length > 0);
+  const sinCobradorN = filtros.cobrador.length === 0 ? nominasVista.find(n => n.subadminId === null) : undefined;
+  const renglonesN = cobradoresN.flatMap(x => x.renglones.map(r => ({ r, quien: x.n.subadminId })));
+  // Las motos con gestión que hoy son de un cobrador que no las tenía cuando empezó la semana.
+  const motosDeOtroN = new Set(renglonesN.filter(({ r }) => TIPOS_COBRO.has(r.tipo)).map(({ r }) => r.motoId)
+    .filter(id => { const m = motoPorId.get(id); return !!m && !teniaAlEmpezar(m, lunesNomina); })).size;
+  const datosNomina: DatosNomina = {
+    textoSemana: textoSemanaNomina,
+    puedeSiguiente: domingoNomina < hoyISO(),
+    cargando: nominaCargando, error: !!nominaError,
+    vigia: vigiaCubre(lunesNomina),
+    motosDeOtro: motosDeOtroN,
+    sinCobrador: sinCobradorN && sinCobradorN.renglones.some(r => pasaGrupoN(r.grupo)) ? (() => {
+      const rs = sinCobradorN.renglones.filter(r => pasaGrupoN(r.grupo));
+      return { n: rs.length, total: rs.reduce((a, r) => a + r.valor, 0), placas: [...new Set(rs.map(r => r.placa))] };
+    })() : null,
+    grupoFiltrado: grupoNomina ? grupoNomina.join(", ") : null,
+    total: grupoNomina ? renglonesN.reduce((a, { r }) => a + r.valor, 0) : cobradoresN.reduce((a, x) => a + x.n.total, 0),
+    partes: partesDe(renglonesN.map(x => x.r)),
+    cobradores: cobradoresN.map(({ n, renglones }) => {
+      const p = partesDe(renglones);
+      const ci = cierreDe(n.subadminId!);
+      return {
+        id: n.subadminId!, nombre: nombreCobradorN(n.subadminId),
+        total: grupoNomina ? renglones.reduce((a, r) => a + r.valor, 0) : n.total,
+        partes: { cobros: p.cobros, visitas: p.visitas, referidos: p.referidos },
+        // En una semana ya pagada mandan las cifras congeladas: el reverso vivo podría contradecirlas.
+        motos: ci ? null : celdaCobrador(n.subadminId!, lunesNomina, n.renglones),
+        pagada: ci ? fechaCortaN(ci.created_at) : null,
+      };
+    }),
+    portafolios: (() => {
+      const m = new Map<string, number>();
+      renglonesN.forEach(({ r }) => m.set(r.grupo, (m.get(r.grupo) ?? 0) + r.valor));
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([grupo, total]) => ({ grupo, total, color: GRUPO_COLORS[grupo] ?? "var(--muted)" }));
+    })(),
+    tendencia: {
+      semanas: semanasTendencia.map((l, i) => ({
+        lunes: l, texto: textoSemanaCorto(l), enCurso: masDias(l, 6) >= hoyISO(),
+        pagadas: new Set(cierresTendencia.filter(c => c.semana_lunes === l && c.subadmin_id).map(c => c.subadmin_id)).size,
+        cobradores: (tendenciaNomina[i] ?? []).filter(n => n.subadminId !== null).length,
+      })),
+      filas: [...new Set(motos.map(m => m.subadmin_id).filter((x): x is string => !!x))]
+        .filter(id => pasaCobradorN(id))
+        .map(id => ({ id, nombre: nombreCobradorN(id), celdas: semanasTendencia.map((l, i) => celdaCobrador(id, l, (tendenciaNomina[i] ?? []).find(n => n.subadminId === id)?.renglones ?? [])) }))
+        .filter(f => f.celdas.some(c => c && c.tenia > 0))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      cargando: cargandoTendencia,
+    },
+    valores: { ciclo: VALOR_CICLO, atrasado: VALOR_ATRASADO, retencion: VALOR_RETENCION, visita: VALOR_VISITA, referido: VALOR_REFERIDO, pctAtrasado: PCT_ATRASADO },
+  };
+  const contratoDeMotoN = (motoId: string) => contratos.filter(c => c.moto_id === motoId)
+    .sort((a, b) => Number(b.estado === "Activo" || b.estado === "Suspendido") - Number(a.estado === "Activo" || a.estado === "Suspendido") || (b.fecha_entrega ?? "").localeCompare(a.fecha_entrega ?? ""))[0];
+  const irDesdeMoto = (motoId: string) => { const c = contratoDeMotoN(motoId); setDetalle(null); if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", motoId); };
+  const filaRenglon = (r: GestionNomina, i: number, quien?: string | null): FilaDetalle => ({
+    id: `${r.motoId}|${r.tipo}|${r.fecha}|${i}`, placa: r.placa, grupo: r.grupo, titulo: r.cliente,
+    subtitulo: `${TIPO_NOMINA[r.tipo]} · ${fechaCortaN(r.fecha)}${quien !== undefined ? ` · ${nombreCobradorN(quien)}` : ""}`,
+    monto: r.valor, montoColor: "var(--ok-ink)", filtro: r.tipo, onClick: () => irDesdeMoto(r.motoId),
+    csv: { Placa: r.placa, Cliente: r.cliente, Grupo: r.grupo, Pago: TIPO_NOMINA[r.tipo], Fecha: r.fecha, Valor: r.valor, ...(quien !== undefined ? { Cobrador: nombreCobradorN(quien) } : {}) },
+  });
+  const chipsTipos = (rs: GestionNomina[], extra: { clave: string; etiqueta: string }[] = []) => {
+    const tipos = (Object.keys(TIPO_NOMINA) as TipoGestion[]).filter(t => rs.some(r => r.tipo === t));
+    const chips = [...tipos.map(t => ({ clave: t as string, etiqueta: TIPO_NOMINA_CORTO[t] })), ...extra];
+    return chips.length > 1 ? chips : undefined;
+  };
+  const nombreArchivo = (x: string) => x.toLowerCase().replace(/\s+/g, "_");
+  function abrirDetalleNomina(clave: string) {
+    const i = clave.indexOf(":");
+    const tipo = clave.slice(0, i);
+    const valor = clave.slice(i + 1);
+    const semana = textoSemanaNomina;
+    if (tipo === "parte") {
+      const deLaParte = renglonesN.filter(({ r }) => valor === "visitas" ? r.tipo === "visita" : valor === "referidos" ? r.tipo === "referido" : r.tipo !== "visita" && r.tipo !== "referido");
+      const titulo = { cobros: "Cobro de cuotas", visitas: "Visitas domiciliarias", referidos: "Referidos" }[valor] ?? valor;
+      const explica = {
+        cobros: "Lo que se paga por cobrar: semanas a tiempo, atrasadas, retenciones y cuotas de acuerdo de motos retenidas.",
+        visitas: "Las visitas se pagan a quien las hizo, en la semana en que se entrega la moto.",
+        referidos: "Cada referido se le paga a quien trajo al cliente, en la semana en que se entrega la moto.",
+      }[valor] ?? "";
+      setDetalle({
+        titulo: `${titulo} · ${deLaParte.length}`, subtitulo: `${semana}. ${explica}`,
+        filas: deLaParte.map(({ r, quien }, k) => filaRenglon(r, k, quien)),
+        chips: valor === "cobros" ? chipsTipos(deLaParte.map(x => x.r)) : undefined,
+        archivo: `nomina_${valor}_${lunesNomina}`,
+      });
+      return;
+    }
+    if (tipo === "grupo") {
+      const delGrupo = renglonesN.filter(({ r }) => r.grupo === valor);
+      setDetalle({
+        titulo: `Lo que pone ${valor} · ${delGrupo.length}`, subtitulo: `${semana}. La gestión de las motos de ${valor}, cobrador por cobrador.`,
+        filas: delGrupo.map(({ r, quien }, k) => filaRenglon(r, k, quien)), chips: chipsTipos(delGrupo.map(x => x.r)),
+        archivo: `nomina_${nombreArchivo(valor)}_${lunesNomina}`,
+      });
+      return;
+    }
+    if (tipo === "cobrador") {
+      const x = cobradoresN.find(c => c.n.subadminId === valor);
+      if (!x) return;
+      const nombre = nombreCobradorN(valor);
+      const ci = cierreDe(valor);
+      const p = partesDe(x.renglones);
+      const total = grupoNomina ? x.renglones.reduce((a, r) => a + r.valor, 0) : x.n.total;
+      // Las motos que ya tenía al empezar la semana y no le generaron pago, con su motivo. En una
+      // semana pagada no se muestran: mandan las cifras congeladas de ese día.
+      const motivoDe = new Map((sinGestionPorCobrador.get(valor) ?? []).map(sg => [sg.motoId, sg.motivo]));
+      const conPago = new Set(x.n.renglones.filter(r => TIPOS_COBRO.has(r.tipo)).map(r => r.motoId));
+      const sinPago = ci ? [] : motosQueTenia(valor, lunesNomina).filter(m => !conPago.has(m.id));
+      const filasSinPago: FilaDetalle[] = sinPago.map(m => {
+        const mv = motivoDe.get(m.id);
+        const c = contratoDeMotoN(m.id);
+        return {
+          id: "sinpago|" + m.id, placa: m.placa, grupo: m.grupo ?? "—",
+          titulo: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : "Sin cliente",
+          subtitulo: mv ? TEXTO_SIN_GESTION[mv] : "Solo tuvo una visita o un referido esta semana",
+          monto: 0, montoColor: "var(--muted2)", filtro: "sinpago", onClick: () => irDesdeMoto(m.id),
+          csv: { Placa: m.placa, Cliente: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "") : "", Grupo: m.grupo ?? "", Pago: "No generó pago", Motivo: mv ? TEXTO_SIN_GESTION[mv] : "Solo visita o referido", Valor: 0 },
+        };
+      });
+      const puedeCerrar = nominaLista && !grupoNomina;
+      const porQueNo = grupoNomina ? "Quita el filtro de grupo para pagar o imprimir." : nominaError ? "No se pudo traer toda la semana." : "Cargando la semana…";
+      const deriva = derivaNomina.get(valor);
+      const botonPie: React.CSSProperties = { flex: "1 1 140px", height: 44, borderRadius: 12, cursor: puedeCerrar ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: puedeCerrar ? 1 : 0.5, fontFamily: "inherit" };
+      setDetalle({
+        titulo: nombre.toUpperCase(),
+        subtitulo: `${semana} · ${ci ? `pagada en la app el ${fechaCortaN(ci.created_at)}${ci.firma_url ? ", firmada" : ", sin firma"}` : "pago no registrado en la app"}`,
+        encabezado: (
+          <div style={{ display: "grid", gap: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plataT(total)}</div>
+            {([["Cobro de cuotas", p.cobros], [`${p.nVisitas} ${p.nVisitas === 1 ? "visita" : "visitas"}`, p.visitas], [`${p.nReferidos} ${p.nReferidos === 1 ? "referido" : "referidos"}`, p.referidos]] as const)
+              .filter(([, v], k) => k === 0 || v > 0).map(([t, v]) => (
+                <div key={t} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>{t}</span><span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plataT(v)}</span></div>
+              ))}
+            {!ci && <div style={{ fontSize: 12, color: "var(--muted2)" }}>De las {motosQueTenia(valor, lunesNomina).length} motos que ya tenía al empezar la semana, {motosQueTenia(valor, lunesNomina).length - sinPago.length} le generaron pago.</div>}
+            {deriva !== undefined && (
+              <div style={{ fontSize: 12, color: "var(--warn-ink)", background: "var(--warn-soft)", border: "1px solid var(--warn-line)", borderRadius: 10, padding: "6px 10px", lineHeight: 1.45 }}>
+                Entró plata de esta semana después de pagarla. Se le pagó {plataT(x.n.total)}; con lo de hoy daría {plataT(deriva)}. La diferencia de {plataT(Math.abs(deriva - x.n.total))} va en la próxima.
+              </div>
+            )}
+            {!puedeCerrar && <div style={{ fontSize: 12, color: "var(--muted2)" }}>{porQueNo}</div>}
+          </div>
+        ),
+        filas: [...x.renglones.map((r, k) => filaRenglon(r, k)), ...filasSinPago],
+        chips: chipsTipos(x.renglones, filasSinPago.length > 0 ? [{ clave: "sinpago", etiqueta: "No generaron pago" }] : []),
+        archivo: `nomina_${nombreArchivo(nombre)}_${lunesNomina}`,
+        acciones: (
+          <>
+            <button disabled={!puedeCerrar} onClick={() => {
+              const tenia = motosQueTenia(valor, lunesNomina);
+              const idsTenia = new Set(tenia.map(m => m.id));
+              generarDesprendibleNomina(x.n, nombre, lunesNomina, domingoNomina, profile?.nombre ?? "", {
+                // Una semana cerrada se imprime tal como se pagó: sin el reverso vivo, que hoy podría
+                // decir otra cosa que las cifras congeladas de ese día. Si no, las motos que ya tenía
+                // al empezar la semana, igual que en la pantalla.
+                sinGestion: ci ? [] : (sinGestionPorCobrador.get(valor) ?? []).filter(sg => idsTenia.has(sg.motoId)),
+                motosAsignadas: ci ? 0 : tenia.length,
+              });
+            }} style={{ ...botonPie, border: "1px solid var(--line2)", background: "transparent", color: "var(--text)" }}>
+              <Printer size={16} aria-hidden="true" /> Desprendible
+            </button>
+            {ci ? (
+              <span style={{ ...botonPie, cursor: "default", opacity: 1, border: "1px solid var(--ok-line)", background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
+                <Check size={16} aria-hidden="true" /> Pagada el {fechaCortaN(ci.created_at)}
+              </span>
+            ) : (
+              <button disabled={!puedeCerrar} onClick={() => { setDetalle(null); setCerrando(valor); }}
+                style={{ ...botonPie, border: "none", background: "var(--accent)", color: "var(--on-accent)" }}>
+                <Check size={16} aria-hidden="true" /> Cerrar y pagar
+              </button>
+            )}
+          </>
+        ),
+      });
+    }
+  }
+
+  // ── EQUIPO · VISITAS (rediseño 2-oct): período y cobrador (quién la hizo); el grupo no aplica ──
+  const quienVisita = (v: (typeof visitas)[number]) => v.realizada_por ?? v.asignada_a ?? "__none__";
+  const resultadoVisita = (v: (typeof visitas)[number]) => v.estado === "Pendiente" ? "pendientes" : v.resultado === "Aprobado" ? "aprobadas" : v.resultado === "Rechazado" ? "rechazadas" : v.resultado === "Repetir" ? "repetir" : "sinResultado";
+  const ETIQUETA_RESULTADO: Record<string, string> = { aprobadas: "Aprobada", repetir: "Para repetir", rechazadas: "Rechazada", sinResultado: "Sin anotar el resultado", pendientes: "Pendiente por hacer" };
+  const nombreQuienVisita = (id: string) => id === "__none__" ? "Sin asignar" : (subadmins.find(sa => sa.id === id)?.nombre ?? "—");
+  const visitasP = visitas.filter(v => { const f = (v.fecha || "").slice(0, 10); return f >= desde && f <= hasta && (filtros.cobrador.length === 0 || filtros.cobrador.includes(quienVisita(v))); });
+  /** La primera entrega de moto a ese cliente desde el día de la visita (sus contratos anteriores no cuentan). */
+  const entregaDeVisita = (v: (typeof visitas)[number]) => contratos
+    .filter(c => c.cliente_id === v.cliente_id && c.fecha_entrega && c.fecha_entrega >= (v.fecha || "").slice(0, 10))
+    .map(c => c.fecha_entrega!).sort()[0] ?? null;
+  const diasEntre = (a: string, b: string) => Math.round((new Date(b + "T12:00:00").getTime() - new Date(a + "T12:00:00").getTime()) / 86_400_000);
+  const aprobadasV = visitasP.filter(v => resultadoVisita(v) === "aprobadas");
+  const conMotoV = aprobadasV.filter(v => entregaDeVisita(v) !== null);
+  const diasV = conMotoV.map(v => diasEntre((v.fecha || "").slice(0, 10), entregaDeVisita(v)!)).sort((a, b) => a - b);
+  const hechasV = visitasP.filter(v => v.estado !== "Pendiente");
+  const tieneFoto = (v: (typeof visitas)[number]) => !!(v.fotos?.clienteFuncionario || v.fotos?.fachada);
+  const datosVisitas: DatosVisitas = {
+    total: visitasP.length,
+    resultados: {
+      aprobadas: aprobadasV.length,
+      repetir: visitasP.filter(v => resultadoVisita(v) === "repetir").length,
+      rechazadas: visitasP.filter(v => resultadoVisita(v) === "rechazadas").length,
+      sinResultado: visitasP.filter(v => resultadoVisita(v) === "sinResultado").length,
+      pendientes: visitasP.filter(v => resultadoVisita(v) === "pendientes").length,
+    },
+    entregas: {
+      conMoto: conMotoV.length, esperando: aprobadasV.length - conMotoV.length,
+      mediana: diasV.length ? diasV[Math.floor((diasV.length - 1) / 2)] : null,
+      maximo: diasV.length ? diasV[diasV.length - 1] : null,
+    },
+    evidencia: { hechas: hechasV.length, conGps: hechasV.filter(v => !!v.ubicacion).length, conFoto: hechasV.filter(tieneFoto).length },
+    estimadas: visitasP.filter(v => !v.realizada_por).length,
+    personas: [...new Set(visitasP.map(quienVisita))].map(id => {
+      const suyas = visitasP.filter(v => quienVisita(v) === id);
+      return { id, nombre: nombreQuienVisita(id), total: suyas.length, aprobadas: suyas.filter(v => resultadoVisita(v) === "aprobadas").length };
+    }).sort((a, b) => Number(a.id === "__none__") - Number(b.id === "__none__") || b.total - a.total),
+  };
+  const filaVisita = (v: (typeof visitas)[number], extra?: string): FilaDetalle => {
+    const cliente = clientePorId.get(v.cliente_id)?.nombre ?? "Sin cliente";
+    const res = resultadoVisita(v);
+    return {
+      id: v.id, titulo: cliente,
+      subtitulo: `${fechaCortaN((v.fecha || "").slice(0, 10))} · ${nombreQuienVisita(quienVisita(v))} · ${ETIQUETA_RESULTADO[res]}${extra ? ` · ${extra}` : ""}`,
+      filtro: res, rielColor: res === "aprobadas" ? "var(--ok)" : res === "rechazadas" ? "var(--bad)" : res === "repetir" ? "var(--warn)" : undefined,
+      onClick: () => { setDetalle(null); onNavigate?.("ficha_cliente", v.cliente_id); },
+      csv: { Fecha: (v.fecha || "").slice(0, 10), Cliente: cliente, Hizo: nombreQuienVisita(quienVisita(v)), Resultado: ETIQUETA_RESULTADO[res], GPS: v.ubicacion ? "si" : "no", Fotos: tieneFoto(v) ? "si" : "no" },
+    };
+  };
+  const chipsResultado = (lista: (typeof visitas)) => {
+    const presentes = (["aprobadas", "repetir", "rechazadas", "sinResultado", "pendientes"] as const).filter(k => lista.some(v => resultadoVisita(v) === k));
+    return presentes.length > 1 ? presentes.map(k => ({ clave: k as string, etiqueta: ETIQUETA_RESULTADO[k] })) : undefined;
+  };
+  function abrirDetalleVisitas(clave: string) {
+    const per = textoRango(desde, hasta);
+    const i = clave.indexOf(":");
+    const tipo = i < 0 ? clave : clave.slice(0, i);
+    const valor = i < 0 ? "" : clave.slice(i + 1);
+    if (tipo === "res") {
+      const lista = visitasP.filter(v => resultadoVisita(v) === valor);
+      setDetalle({ titulo: `${ETIQUETA_RESULTADO[valor]} · ${lista.length}`, subtitulo: `${per}. Toca una para ver la ficha del cliente.`, filas: lista.map(v => filaVisita(v)), archivo: `visitas_${valor}_${desde}_${hasta}` });
+    } else if (tipo === "entregas") {
+      setDetalle({
+        titulo: `Ya recibieron su moto · ${conMotoV.length}`, subtitulo: `${per}. Al lado de cada uno, los días entre la visita y la entrega.`,
+        filas: conMotoV.map(v => { const e = entregaDeVisita(v)!; const n = diasEntre((v.fecha || "").slice(0, 10), e); return filaVisita(v, `moto entregada el ${fechaCortaN(e)} (${n === 0 ? "el mismo día" : n === 1 ? "1 día después" : `${n} días después`})`); }),
+        archivo: `visitas_entregas_${desde}_${hasta}`,
+      });
+    } else if (tipo === "esperando") {
+      const lista = aprobadasV.filter(v => entregaDeVisita(v) === null);
+      setDetalle({ titulo: `Aprobados sin moto todavía · ${lista.length}`, subtitulo: `${per}. Tienen la visita aprobada pero aún no se les ha entregado la moto.`, filas: lista.map(v => filaVisita(v)), archivo: `visitas_sin_moto_${desde}_${hasta}` });
+    } else if (tipo === "singps" || tipo === "sinfoto") {
+      const lista = hechasV.filter(v => tipo === "singps" ? !v.ubicacion : !tieneFoto(v));
+      setDetalle({ titulo: `${tipo === "singps" ? "Sin la ubicación del GPS" : "Sin fotos"} · ${lista.length}`, subtitulo: `${per}. Visitas hechas que quedaron sin esa evidencia.`, filas: lista.map(v => filaVisita(v)), chips: chipsResultado(lista), archivo: `visitas_${tipo}_${desde}_${hasta}` });
+    } else if (tipo === "persona") {
+      const lista = visitasP.filter(v => quienVisita(v) === valor);
+      setDetalle({ titulo: `${nombreQuienVisita(valor).toUpperCase()} · ${lista.length}`, subtitulo: `${per}. Sus visitas, de la más reciente a la más vieja.`, filas: lista.slice().sort((a, b) => (b.fecha || "").localeCompare(a.fecha || "")).map(v => filaVisita(v)), chips: chipsResultado(lista), archivo: `visitas_${nombreArchivo(nombreQuienVisita(valor))}_${desde}_${hasta}` });
+    }
+  }
+
   function abrirDetalle(clave: string) {
     const per = textoRango(desde, hasta);
     if (clave === "recaudo" || clave.startsWith("serie:")) {
@@ -2256,11 +2581,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* La barra de filtros: período, grupo y cobrador mandan sobre todo lo de abajo. En las pestañas
           que son "foto de hoy" (o tienen su propio selector, como Nómina) se dice en vez de mostrarla. */}
-      {TABS_SIN_FECHA[tab] ? (
-        <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", fontSize: 12, color: "var(--muted2)" }}>
-          {TABS_SIN_FECHA[tab]}
-        </div>
-      ) : (
+      {(
         <BarraFiltros
           isMobile={isMobile}
           periodo={rango}
@@ -2273,8 +2594,10 @@ export default function ReportesView({ onNavigate }: Props) {
           cobrador={filtros.cobrador.length === 1 ? filtros.cobrador[0] : filtros.cobrador.length > 1 ? "__varios__" : ""}
           opcionesCobrador={[{ valor: "", etiqueta: "Todos los cobradores" }, ...subadmins.map(sa => ({ valor: sa.id, etiqueta: sa.nombre })), { valor: "__none__", etiqueta: "Sin asignar" }, ...(filtros.cobrador.length > 1 ? [{ valor: "__varios__", etiqueta: `${filtros.cobrador.length} cobradores` }] : [])]}
           onCobrador={v => { if (v !== "__varios__") setFiltros(f => ({ ...f, cobrador: v ? [v] : [] })); }}
-          mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar" || tab === "flota" || tab === "guardadas" || tab === "entregas" || tab === "cartera" || tab === "convenios"}
+          mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar" || tab === "flota" || tab === "guardadas" || tab === "entregas" || tab === "cartera" || tab === "convenios" || tab === "nomina" || tab === "visitas"}
           soloHoy={tab === "flota" || tab === "guardadas" || tab === "cartera" || tab === "convenios"}
+          textoFijo={tab === "nomina" ? textoSemanaNomina : undefined}
+          sinGrupo={tab === "visitas"}
           {...(tab === "grupos" || tab === "admins" ? {
             modalidad: filtros.modalidad.length === 1 ? filtros.modalidad[0] : "",
             opcionesModalidad: [{ valor: "", etiqueta: "Todas las modalidades" }, ...MODALIDADES.map(m => ({ valor: m, etiqueta: m }))],
@@ -2370,369 +2693,33 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* ── POR ADMIN: la misma pieza de Por grupo, en la mirada del cobrador (arriba, junto a Por grupo). ── */}
 
-      {/* ── TAB NÓMINA de cobradores (regla del dueño, 22-ago) ── */}
-      {tab === "nomina" && (() => {
-        const fmtDia = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
-        const nombreDe = (id: string | null) => id === null ? null : (subadmins.find(s => s.id === id)?.nombre ?? "COBRADOR");
-        const TIPO_TXT: Record<TipoGestion, string> = {
-          ciclo: "Ciclo a tiempo", ciclo_atrasado: `Ciclo atrasado (${PCT_ATRASADO}%)`,
-          prorrateo: "Prorrateo", retencion: "Retención",
-          cuota_convenio: `Convenio de retenida (${PCT_ATRASADO}%)`,
-          visita: "Visita domiciliaria",
-          referido: "Referido propio (lo trajo)",
-        };
-        const conCobrador = nominasVista.filter(n => n.subadminId !== null);
-        const sinCobrador = nominasVista.find(n => n.subadminId === null);
-        const totalSemana = conCobrador.reduce((s, n) => s + n.total, 0);
+      {/* ── EQUIPO · NÓMINA (rediseño 2-oct; regla de nómina del dueño, 22-ago) ── */}
+      {tab === "nomina" && (
+        <EquipoNomina d={datosNomina} onMover={moverSemanaNomina} onReintentar={reintentarNomina} onAbrir={abrirDetalleNomina} />
+      )}
+      {/* CERRAR Y PAGAR la semana de un cobrador (mig 120): se cierra con el cálculo VIVO y completo. */}
+      {tab === "nomina" && cerrando && (() => {
+        const n = nominas.find(x => x.subadminId === cerrando);
+        if (!n) return null;
+        const nombre = nombreCobradorN(n.subadminId);
         return (
-          <div style={{ display: "grid", gap: 16 }}>
-            {/* Selector de semana (lunes a domingo) */}
-            <div style={{ ...card, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => moverSemanaNomina(-1)} style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer" }}>◀ Semana anterior</button>
-              <div style={{ textAlign: "center", minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>Semana del {fmtDia(lunesNomina)} al {fmtDia(domingoNomina)}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>Total nómina: <b style={{ color: "var(--text)" }}>$ {fmt(totalSemana)}</b></div>
-              </div>
-              <button onClick={() => moverSemanaNomina(1)} disabled={domingoNomina >= hoyISO()}
-                style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: domingoNomina >= hoyISO() ? "not-allowed" : "pointer", opacity: domingoNomina >= hoyISO() ? 0.4 : 1 }}>Siguiente ▶</button>
-            </div>
-
-            {/* La regla, visible siempre: el texto se explica solo */}
-            <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)", fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.5 }}>
-              Se paga por <b>moto gestionada</b>: ciclo cobrado a tiempo <b>$ {fmt(VALOR_CICLO)}</b> (una vez por ciclo del cliente) ·
-              ciclo atrasado que entra después <b>$ {fmt(VALOR_ATRASADO)}</b> ({PCT_ATRASADO}%) ·
-              retención <b>$ {fmt(VALOR_RETENCION)}</b> (una sola vez, la semana en que se retiene) ·
-              en mora sin pagar y sin retener <b>$ 0</b>. Los contratos <b>Diarios no entran</b>.
-              <br />
-              El cliente con <b>convenio</b> paga su semana y su cuota como <b>un solo paquete</b>: el
-              ciclo se paga cuando el paquete queda completo — nunca por cuota suelta. Única excepción:
-              la moto <b>retenida</b>, que paga <b>$ {fmt(VALOR_ATRASADO)}</b> por semana en que abone a su convenio.
-              <br />
-              La <b>visita domiciliaria</b> vale <b>$ {fmt(VALOR_VISITA)}</b> y la cobra <b>quien la hizo</b>,
-              en la semana en que se <b>entrega la moto</b>. Si después la validación dice que la moto
-              no duerme donde el cliente declaró, esa visita <b>no se paga</b>.
-            </div>
-
-            {/* Semana anterior al vigía (mig 112, 22-ago): sus anotaciones estarían incompletas, así
-                que la nómina calcula desde los PAGOS. Antes este aviso dependía de "¿llegaron
-                eventos?" — y con 5 eventos sueltos de una semana de 137 pagos no salía, mientras
-                la pantalla mostraba un total en el que no se podía confiar. */}
-            {!nominaLista && (
-              <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, textAlign: "left",
-                background: nominaError ? "var(--bad-soft)" : "var(--accent-soft2)", border: "1px solid " + (nominaError ? "var(--bad-ink)" : "var(--accent-line)"),
-                fontSize: 13, color: nominaError ? "var(--bad-ink)" : "var(--accent-ink)", lineHeight: 1.5 }}>
-                <span style={{ flex: "1 1 220px", minWidth: 0 }}>
-                  {nominaError
-                    ? <>No se pudo traer toda la información de esta semana. <b>No pagues ni imprimas con estas cifras.</b></>
-                    : <>Cargando la nómina completa de esta semana. Espera a que termine antes de pagar o imprimir.</>}
-                </span>
-                {nominaError && (
-                  <button onClick={reintentarNomina} style={{ ...primaryBtn, minHeight: 44, flexShrink: 0 }}>Volver a intentar</button>
-                )}
-              </div>
-            )}
-
-            {!vigiaCubre(lunesNomina) && (
-              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)", fontSize: 12.5, color: "var(--warn-ink)", lineHeight: 1.5 }}>
-                ⚠️ <b>Semana anterior al registro exacto de ciclos</b> (existe desde el 22 de agosto).
-                Estas cifras se calculan releyendo los pagos, y son confiables para los contratos con
-                motor sin convenios ni ajustes hechos a mano. <b>Revisa el desprendible antes de pagar.</b>
-              </div>
-            )}
-
-            {/* LAS VISITAS, APARTE (pedido del dueño, 1-sep: "separa las visitas aparte para ver
-                solo el total de las visitas"). Es plata de otra naturaleza: no es cobrar una
-                semana, es haber ido a la casa. Y la cobra quien la hizo, no el dueño de la moto. */}
-            {(() => {
-              const visitas = conCobrador.flatMap(n =>
-                n.renglones.filter(r => r.tipo === "visita").map(r => ({ ...r, quien: nombreDe(n.subadminId) ?? "SIN COBRADOR" })));
-              if (visitas.length === 0) return null;
-              const total = visitas.reduce((a, r) => a + r.valor, 0);
-              const porQuien = new Map<string, number>();
-              const porGrupo = new Map<string, number>();
-              for (const v of visitas) {
-                porQuien.set(v.quien, (porQuien.get(v.quien) ?? 0) + v.valor);
-                porGrupo.set(v.grupo, (porGrupo.get(v.grupo) ?? 0) + v.valor);
-              }
-              return (
-                <div style={{ ...card, display: "grid", gap: 10, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--accent-ink)" }}>🏠 Visitas domiciliarias</div>
-                      <div style={{ fontSize: 12, color: "var(--accent-ink)", marginTop: 2 }}>
-                        {visitas.length} visita{visitas.length === 1 ? "" : "s"} × $ {fmt(VALOR_VISITA)} — se pagan al entregarse la moto
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 22, fontVariantNumeric: "tabular-nums", color: "var(--accent-ink)", flexShrink: 0 }}>$ {fmt(total)}</div>
-                  </div>
-                  <div style={{ display: "grid", gap: 6 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-ink)" }}>Quién las hizo</div>
-                    {[...porQuien.entries()].sort((a, b) => b[1] - a[1]).map(([q, v]) => (
-                      <div key={q} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, color: "var(--accent-ink)" }}>
-                        <span style={{ minWidth: 0, textTransform: "uppercase" }}>{q}</span>
-                        <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>$ {fmt(v)}</b>
-                      </div>
-                    ))}
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--accent-ink)", marginTop: 4 }}>Qué portafolio las paga</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {[...porGrupo.entries()].sort((a, b) => b[1] - a[1]).map(([g, v]) => (
-                        <span key={g} style={{ fontSize: 11, fontWeight: 700, background: "var(--card)", border: "1px solid var(--accent-line)", borderRadius: 999, padding: "3px 9px", color: "var(--accent-ink)" }}>
-                          {g} $ {fmt(v)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <details>
-                    <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--accent-ink)" }}>Ver las {visitas.length} visitas</summary>
-                    <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-                      {visitas.sort((a, b) => a.fecha.localeCompare(b.fecha)).map((v, i) => (
-                        <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0, fontSize: 12, color: "var(--accent-ink)", borderTop: "1px solid var(--accent-line)", paddingTop: 4 }}>
-                          <span style={{ fontWeight: 700, flexShrink: 0 }}>{v.placa}</span>
-                          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "uppercase" }}>{v.cliente}</span>
-                          <span style={{ flexShrink: 0, opacity: 0.8 }}>{fmtDia(v.fecha)}</span>
-                          <b style={{ flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>$ {fmt(v.valor)}</b>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                </div>
-              );
-            })()}
-
-            {/* LO QUE PAGA CADA PORTAFOLIO (pedido del dueño, 1-sep): cada grupo paga la gestión de
-                SUS motos. Los chips de cada cobrador dicen de dónde sale su plata; este bloque lo
-                muestra al revés — cuánto pone cada portafolio en total y entre quiénes se reparte. */}
-            {conCobrador.length > 0 && (() => {
-              const porGrupo = new Map<string, { total: number; porCobrador: Map<string, number> }>();
-              for (const n of conCobrador) {
-                for (const r of n.renglones) {
-                  if (!porGrupo.has(r.grupo)) porGrupo.set(r.grupo, { total: 0, porCobrador: new Map() });
-                  const g = porGrupo.get(r.grupo)!;
-                  g.total += r.valor;
-                  const quien = nombreDe(n.subadminId) ?? "SIN COBRADOR";
-                  g.porCobrador.set(quien, (g.porCobrador.get(quien) ?? 0) + r.valor);
-                }
-              }
-              const filas = [...porGrupo.entries()].sort((a, b) => b[1].total - a[1].total);
-              return (
-                <div style={{ ...card, display: "grid", gap: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14 }}>Lo que pone cada portafolio</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>
-                    Cada grupo paga la gestión de sus propias motos. Las visitas las paga el portafolio
-                    de la moto que se entregó.
-                  </div>
-                  {filas.map(([grupo, g]) => (
-                    <div key={grupo} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "8px 10px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 13.5 }}>{grupo}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                          {[...g.porCobrador.entries()].sort((a, b) => b[1] - a[1])
-                            .map(([q, v]) => `${q}: $ ${fmt(v)}`).join(" · ")}
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: 17, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>$ {fmt(g.total)}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-
-            {conCobrador.length === 0 && (
-              <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>Sin gestiones pagables en esta semana.</div>
-            )}
-
-            {conCobrador.map(n => {
-              const abierto = nominaExp === (n.subadminId ?? "");
-              return (
-                <div key={n.subadminId} style={card}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase" }}>{nombreDe(n.subadminId)}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                        {n.ciclosATiempo > 0 && <span>{n.ciclosATiempo} a tiempo · </span>}
-                        {n.prorrateos > 0 && <span>{n.prorrateos} prorrateo{n.prorrateos === 1 ? "" : "s"} · </span>}
-                        {n.ciclosAtrasados > 0 && <span>{n.ciclosAtrasados} atrasado{n.ciclosAtrasados === 1 ? "" : "s"} · </span>}
-                        {n.cuotasConvenio > 0 && <span>{n.cuotasConvenio} cuota{n.cuotasConvenio === 1 ? "" : "s"} de convenio · </span>}
-                        {n.retenciones > 0 && <span>{n.retenciones} retención{n.retenciones === 1 ? "" : "es"} · </span>}
-                        {n.visitas > 0 && <span>{n.visitas} visita{n.visitas === 1 ? "" : "s"} · </span>}
-                        {n.referidos > 0 && <span>{n.referidos} referido{n.referidos === 1 ? "" : "s"} · </span>}
-                        {n.renglones.length} gestiones
-                      </div>
-                      {/* CUÁNTAS TIENE vs CUÁNTAS PAGARON (15-sep). Antes solo se veía lo que se
-                          paga: un cobrador con 99 motos veía 30 renglones y no sabía qué pasó con
-                          las otras 69. */}
-                      {(() => {
-                        // 🔴 SOLO MIENTRAS LA SEMANA SIGA ABIERTA. El reverso se calcula EN VIVO y una
-                        // semana cerrada muestra las cifras CONGELADAS: si un pago se rechaza después
-                        // del cierre, la misma tarjeta diría "se le pagó por esta moto" arriba y "no
-                        // pagó" abajo. Dos cuentas del mismo hecho no pueden convivir (regla del dinero).
-                        if (n.subadminId && cierreDe(n.subadminId)) return null;
-                        const asignadas = motos.filter(m => m.subadmin_id === n.subadminId).length;
-                        const noPagaron = sinGestionPorCobrador.get(n.subadminId ?? "")?.length ?? 0;
-                        if (asignadas === 0) return null;
-                        return (
-                          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                            <b style={{ color: "var(--text)" }}>{asignadas}</b> motos asignadas ·{" "}
-                            <b style={{ color: "var(--ok-ink)" }}>{asignadas - noPagaron}</b> con gestión ·{" "}
-                            <b style={{ color: noPagaron > 0 ? "var(--warn-ink)" : "var(--muted)" }}>{noPagaron}</b> sin gestión
-                          </div>
-                        );
-                      })()}
-                      {/* De qué portafolio sale la plata de esta nómina (pedido del dueño):
-                          la gestión de cada moto la paga el grupo dueño de esa moto. */}
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                        {totalesPorGrupo(n.renglones).map(g => (
-                          <span key={g.grupo} style={{ fontSize: 11, fontWeight: 700, background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 8px", color: "var(--muted2)" }}>
-                            {g.grupo} paga $ {fmt(g.total)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    {(() => {
-                      // El total del cobrador, partido: lo de COBRAR y lo de VISITAR son trabajos
-                      // distintos y el dueño los quiere ver por separado.
-                      const enVisitas = n.renglones.filter(r => r.tipo === "visita").reduce((a, r) => a + r.valor, 0);
-                      return (
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>$ {fmt(n.total)}</div>
-                          {enVisitas > 0 && (
-                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1, whiteSpace: "nowrap" }}>
-                              cobros $ {fmt(n.total - enVisitas)} · visitas $ {fmt(enVisitas)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    <button onClick={() => setNominaExp(abierto ? null : (n.subadminId ?? ""))}
-                      style={{ border: "1px solid var(--line)", background: "var(--soft2)", color: "var(--text)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 12.5 }}>
-                      {abierto ? "Ocultar detalle" : "Ver detalle"}
-                    </button>
-                    {/* CERRAR Y PAGAR (mig 120): congela las cifras, guarda firma y foto. Si ya
-                        está cerrada, en vez del botón va el sello de pagado. */}
-                    {n.subadminId && (cierreDe(n.subadminId)
-                      ? (() => {
-                          const ci = cierreDe(n.subadminId)!;
-                          return (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", color: "var(--ok-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
-                              ✓ Pagado {new Date(ci.created_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
-                              {ci.firma_url ? " · firmado" : " · SIN FIRMA"}
-                            </span>
-                          );
-                        })()
-                      : (
-                        <button onClick={() => setCerrando(n.subadminId)} disabled={!nominaLista}
-                          style={{ border: "none", background: "var(--ok-ink)", color: "var(--on-ink)", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: nominaLista ? "pointer" : "not-allowed", fontSize: 12.5, flexShrink: 0, opacity: nominaLista ? 1 : 0.5 }}>
-                          {nominaLista ? "✓ Cerrar y pagar" : nominaError ? "No se puede pagar" : "Cargando…"}
-                        </button>
-                      ))}
-                    <button disabled={!nominaLista} onClick={() => generarDesprendibleNomina(n, nombreDe(n.subadminId) ?? "", lunesNomina, domingoNomina, profile?.nombre ?? "", {
-                      // Una semana cerrada se imprime tal como se pagó: sin el reverso vivo, que
-                      // hoy podría decir otra cosa que las cifras congeladas de ese día.
-                      sinGestion: n.subadminId && cierreDe(n.subadminId) ? [] : (sinGestionPorCobrador.get(n.subadminId ?? "") ?? []),
-                      motosAsignadas: n.subadminId && cierreDe(n.subadminId) ? 0 : motos.filter(m => m.subadmin_id === n.subadminId).length,
-                    })}
-                      style={{ border: "none", background: "var(--accent)", color: "#0f172a", borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: nominaLista ? "pointer" : "not-allowed", fontSize: 12.5, opacity: nominaLista ? 1 : 0.5 }}>
-                      🖨️ Desprendible
-                    </button>
-                  </div>
-                  {n.subadminId && derivaNomina.has(n.subadminId) && (
-                    <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.45 }}>
-                      Entró plata de esta semana <b>después</b> de pagarla. Se le pagó $ {fmt(n.total)};
-                      con lo de hoy daría $ {fmt(derivaNomina.get(n.subadminId)!)} —
-                      la diferencia de $ {fmt(Math.abs(derivaNomina.get(n.subadminId)! - n.total))} va en la próxima.
-                    </div>
-                  )}
-                  {abierto && (
-                    <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 8, maxHeight: "48vh", overflowY: "auto" }}>
-                      {n.renglones.map((r, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--line)", fontSize: 12.5, minWidth: 0 }}>
-                          <span style={{ fontWeight: 800, letterSpacing: 0.5, flexShrink: 0 }}>{r.placa}</span>
-                          <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--faint)" }}>{r.grupo}</span>
-                          <span style={{ flex: 1, minWidth: 0, textTransform: "uppercase", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.cliente}</span>
-                          <span style={{ flexShrink: 0, fontSize: 11.5, color: r.tipo === "retencion" ? "var(--warn-ink)" : r.tipo === "ciclo_atrasado" ? "var(--bad-ink)" : "var(--ok-ink)" }}>{TIPO_TXT[r.tipo]}</span>
-                          <span style={{ flexShrink: 0, color: "var(--faint)", fontSize: 11.5 }}>{fmtDia(r.fecha)}</span>
-                          <span style={{ flexShrink: 0, fontWeight: 800, fontVariantNumeric: "tabular-nums", width: 72, textAlign: "right" }}>$ {fmt(r.valor)}</span>
-                        </div>
-                      ))}
-                      {/* EL REVERSO: lo que NO se pagó, con el motivo de cada moto. Pedido del
-                          dueño (15-sep): "quiero que salgan ahí también los que no pagaron".
-                          Va con placa y cliente para que el cobrador pueda reclamar con el papel
-                          en la mano — mismo criterio que el desprendible. */}
-                      {(() => {
-                        // Misma razón que el contador: en una semana ya pagada manda lo congelado.
-                        if (n.subadminId && cierreDe(n.subadminId)) return null;
-                        const faltantes = sinGestionPorCobrador.get(n.subadminId ?? "") ?? [];
-                        if (faltantes.length === 0) return null;
-                        const porMotivo = [...new Set(faltantes.map(f => f.motivo))]
-                          .map(mv => ({ mv, lista: faltantes.filter(f => f.motivo === mv) }))
-                          // Primero lo que es gestión pendiente de verdad; al final lo que no tiene cliente.
-                          .sort((a, b) => a.lista.length - b.lista.length)
-                          .sort((a, b) => Number(a.mv === "sin_contrato") - Number(b.mv === "sin_contrato"));
-                        return (
-                          <div style={{ marginTop: 14, paddingTop: 10, borderTop: "2px dashed var(--line2)" }}>
-                            <div style={{ fontWeight: 800, fontSize: 12.5, color: "var(--warn-ink)", marginBottom: 6 }}>
-                              NO SE PAGÓ — {faltantes.length} moto{faltantes.length === 1 ? "" : "s"}
-                            </div>
-                            {porMotivo.map(({ mv, lista }) => (
-                              <div key={mv} style={{ marginBottom: 8 }}>
-                                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted2)", marginBottom: 2 }}>
-                                  {lista.length} · {TEXTO_SIN_GESTION[mv]}
-                                </div>
-                                {lista.map(f => (
-                                  <div key={f.motoId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12, minWidth: 0, opacity: mv === "sin_contrato" || mv === "diario" ? 0.6 : 1 }}>
-                                    <span style={{ fontWeight: 800, letterSpacing: 0.5, flexShrink: 0 }}>{f.placa}</span>
-                                    <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--faint)" }}>{f.grupo}</span>
-                                    <span style={{ flex: 1, minWidth: 0, textTransform: "uppercase", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.cliente}</span>
-                                    <span style={{ flexShrink: 0, fontWeight: 800, color: "var(--faint)", fontVariantNumeric: "tabular-nums", width: 72, textAlign: "right" }}>$ 0</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              );
+          <ModalCerrarNomina
+            nomina={n}
+            cobradorNombre={nombre}
+            lunes={lunesNomina}
+            domingo={domingoNomina}
+            onClose={() => setCerrando(null)}
+            onCerrar={({ firmaDataUrl, fotoDataUrl, observacion }) => cerrarSemana({
+              semanaLunes: lunesNomina,
+              subadminId: n.subadminId,
+              cobradorNombre: nombre,
+              total: n.total,
+              renglones: n.renglones,
+              totalesGrupo: totalesPorGrupo(n.renglones),
+              firmaDataUrl, fotoDataUrl, observacion,
+              cerradoPor: profile?.id ?? "",
             })}
-
-            {/* Gestiones de motos SIN cobrador: esa plata no se le paga a nadie — para que el dueño asigne */}
-            {sinCobrador && (
-              <div style={{ ...card, background: "var(--warn-soft)", border: "1px solid var(--warn-ink)" }}>
-                <div style={{ fontWeight: 800, color: "var(--warn-ink)" }}>⚠️ {sinCobrador.renglones.length} gestiones de motos SIN cobrador asignado (valdrían $ {fmt(sinCobrador.total)})</div>
-                <div style={{ fontSize: 12.5, color: "var(--warn-ink)", marginTop: 4 }}>
-                  No se le pagan a nadie. Asigna el cobrador en Motos → editar → sub-admin a cargo: {[...new Set(sinCobrador.renglones.map(r => r.placa))].join(" · ")}
-                </div>
-              </div>
-            )}
-
-            {/* CERRAR Y PAGAR la semana de un cobrador (mig 120) */}
-            {cerrando && (() => {
-              const n = nominas.find(x => x.subadminId === cerrando);   // se cierra con el cálculo VIVO
-              if (!n) return null;
-              const nombre = nombreDe(n.subadminId) ?? "COBRADOR";
-              return (
-                <ModalCerrarNomina
-                  nomina={n}
-                  cobradorNombre={nombre}
-                  lunes={lunesNomina}
-                  domingo={domingoNomina}
-                  onClose={() => setCerrando(null)}
-                  onCerrar={({ firmaDataUrl, fotoDataUrl, observacion }) => cerrarSemana({
-                    semanaLunes: lunesNomina,
-                    subadminId: n.subadminId,
-                    cobradorNombre: nombre,
-                    total: n.total,
-                    renglones: n.renglones,
-                    totalesGrupo: totalesPorGrupo(n.renglones),
-                    firmaDataUrl, fotoDataUrl, observacion,
-                    cerradoPor: profile?.id ?? "",
-                  })}
-                />
-              );
-            })()}
-          </div>
+          />
         );
       })()}
 
@@ -2761,77 +2748,10 @@ export default function ReportesView({ onNavigate }: Props) {
         />
       )}
 
-      {/* ── TAB VISITAS por administrador ── */}
-      {tab === "visitas" && (() => {
-        const tVis = visitasData.reduce((s, a) => s + a.total, 0);
-        const tAprob = visitasData.reduce((s, a) => s + a.aprobadas, 0);
-        const tRech = visitasData.reduce((s, a) => s + a.rechazadas, 0);
-        const tPend = visitasData.reduce((s, a) => s + a.pendientes, 0);
-        const tSinRes = visitasData.reduce((s, a) => s + a.sinResultado, 0);
-        const tRep = visitasData.reduce((s, a) => s + a.repetir, 0);
-        const resLabel = (est: string, res: string | null) => est === "Pendiente" ? "⏳ Pendiente" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
-        const resColor = (est: string, res: string | null) => est === "Pendiente" ? "var(--warn-ink)" : res === "Aprobado" ? "var(--ok-ink)" : res === "Rechazado" ? "var(--bad-ink)" : "var(--muted)";
-        const badge = (n: number, txt: string, color: string, bg: string) => n > 0 ? <span style={{ fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" }}>{n} {txt}</span> : null;
-        return (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
-              <KPI label="Visitas" value={`${tVis}`} />
-              <KPI label="Aprobadas" value={`${tAprob}`} color="var(--ok-ink)" bg="var(--ok-soft)" />
-              <KPI label="Rechazadas" value={`${tRech}`} color="var(--bad-ink)" bg="var(--bad-soft)" />
-              {/* Las cajitas suman el total de visitas (antes faltaban "Repetir" y "Sin resultado"). */}
-              <KPI label="Repetir" value={`${tRep}`} color="var(--muted2)" />
-              <KPI label="Pendientes" value={`${tPend}`} color="var(--warn-ink)" bg="var(--warn-soft)" />
-              {tSinRes > 0 && <KPI label="Sin resultado" value={`${tSinRes}`} color="var(--muted2)" sub="completadas sin anotar el resultado" />}
-            </div>
-            <div style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Período: <b style={{ color: "var(--text)" }}>{rangoLabel}</b>
-                <span style={{ color: "var(--faint)" }}> ({desde} → {hasta})</span> · visitas por administrador
-              </div>
-              {puedeExportar && (
-                <button onClick={exportarVisitas} style={{ background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 10, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--ok-ink)", whiteSpace: "nowrap" }}>⬇️ Exportar Excel</button>
-              )}
-            </div>
-            {visitasData.length === 0 && <div style={{ ...card, textAlign: "center", color: "var(--muted)" }}>No hay visitas registradas en este período.</div>}
-            {visitasData.map(a => {
-              const k = "vis|" + a.key;
-              const open = expandidoVisita === k;
-              return (
-                <div key={a.key} style={{ ...card, padding: 0, overflow: "hidden" }}>
-                  <div onClick={() => setExpandidoVisita(open ? null : k)} style={{ display: "grid", gridTemplateColumns: "16px 1fr auto", alignItems: "center", gap: 10, padding: "13px 16px", cursor: "pointer", background: open ? "var(--soft2)" : "var(--card)" }}>
-                    <span style={{ color: "var(--faint)", transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
-                    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 15, flexShrink: 0 }}>👤</span>
-                      <span style={{ fontWeight: 800, fontSize: 15, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.nombre}</span>
-                      <span style={{ fontSize: 12, color: "var(--faint)", flexShrink: 0 }}>{a.total} visitas</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      {badge(a.aprobadas, "✓", "var(--ok-ink)", "var(--ok-soft)")}
-                      {badge(a.rechazadas, "✗", "var(--bad-ink)", "var(--bad-soft)")}
-                      {badge(a.repetir, "↻", "var(--muted)", "var(--soft)")}
-                      {badge(a.pendientes, "⏳", "var(--warn-ink)", "var(--warn-soft)")}
-                      {badge(a.sinResultado, "sin resultado", "var(--muted2)", "var(--soft)")}
-                    </div>
-                  </div>
-                  {open && (
-                    <div style={{ background: "var(--soft2)", padding: "2px 16px 14px" }}>
-                      {a.visitas.map((v, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.cliente}</div>
-                            <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 1 }}>{fmtFechaCorta(v.fecha)}{v.gps && " · 📍 GPS"}{v.foto && " · 📷 Foto"}</div>
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: resColor(v.estado, v.resultado), whiteSpace: "nowrap" }}>{resLabel(v.estado, v.resultado)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
+      {/* ── EQUIPO · VISITAS (rediseño 2-oct): cuántas, resultado, quién, entregas y evidencia ── */}
+      {tab === "visitas" && (
+        <EquipoVisitas d={datosVisitas} onAbrir={abrirDetalleVisitas} onDescargar={puedeExportar ? exportarVisitas : undefined} />
+      )}
 
       {/* ── COBRANZA · CARTERA (rediseño 2-oct): cuánto se debe hoy, qué tan cobrable es y quién lo tiene ── */}
       {tab === "cartera" && (

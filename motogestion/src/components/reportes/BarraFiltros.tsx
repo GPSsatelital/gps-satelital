@@ -31,7 +31,7 @@ export default function BarraFiltros({
   grupo, opcionesGrupo, onGrupo,
   cobrador, opcionesCobrador, onCobrador,
   mostrarGrupoCobrador, personalizado, isMobile,
-  modalidad = "", opcionesModalidad, onModalidad, soloHoy = false,
+  modalidad = "", opcionesModalidad, onModalidad, soloHoy = false, textoFijo, sinGrupo = false,
 }: {
   periodo: string; opcionesPeriodo: OpcionFiltro[]; onPeriodo: (v: string) => void;
   /** "1 al 30 de septiembre de 2026" */
@@ -48,9 +48,16 @@ export default function BarraFiltros({
   modalidad?: string; opcionesModalidad?: OpcionFiltro[]; onModalidad?: (v: string) => void;
   /** Pestañas que son "foto de hoy" (Flota, Guardadas): sin selector de período, pero con grupo y cobrador. */
   soloHoy?: boolean;
+  /** Pestañas con su propio selector de fecha (Nómina, por semana): sin el período de la barra, y
+   *  "Viendo:" dice esto ("semana del 21 al 27 de sept"). */
+  textoFijo?: string;
+  /** Pestañas donde el grupo no aplica (Visitas: cuando se visita todavía no hay moto). */
+  sinGrupo?: boolean;
 }) {
+  const sinPeriodo = soloHoy || !!textoFijo;
+  const conGrupo = mostrarGrupoCobrador && !sinGrupo;
   const conModalidad = !!onModalidad && !!opcionesModalidad;
-  const hayFiltro = mostrarGrupoCobrador && (grupo !== "" || cobrador !== "" || (conModalidad && modalidad !== ""));
+  const hayFiltro = mostrarGrupoCobrador && ((conGrupo && grupo !== "") || cobrador !== "" || (conModalidad && modalidad !== ""));
   // Cuando la barra sale de la pantalla, una franja delgada fija arriba dice qué se está viendo y lleva
   // de vuelta a los filtros. (Un `sticky` no funciona acá: el marco de la app envuelve el contenido en
   // un contenedor con scroll propio que no es el que se mueve.)
@@ -64,8 +71,8 @@ export default function BarraFiltros({
     return () => io.disconnect();
   }, []);
   const resumen = [
-    soloHoy ? "Hoy" : opcionesPeriodo.find(o => o.valor === periodo)?.etiqueta,
-    mostrarGrupoCobrador && grupo !== "" ? opcionesGrupo.find(o => o.valor === grupo)?.etiqueta : null,
+    textoFijo ?? (soloHoy ? "Hoy" : opcionesPeriodo.find(o => o.valor === periodo)?.etiqueta),
+    conGrupo && grupo !== "" ? opcionesGrupo.find(o => o.valor === grupo)?.etiqueta : null,
     mostrarGrupoCobrador && cobrador !== "" ? opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta : null,
     conModalidad && modalidad !== "" ? modalidad : null,
   ].filter(Boolean).join(" · ");
@@ -90,10 +97,10 @@ export default function BarraFiltros({
       margin: "0 0 12px", padding: 8, textAlign: "left",
     }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {!soloHoy && <Selector icono={<CalendarDays size={16} />} etiqueta="Período" valor={periodo} opciones={opcionesPeriodo} onCambio={onPeriodo} activo={false} />}
+        {!sinPeriodo && <Selector icono={<CalendarDays size={16} />} etiqueta="Período" valor={periodo} opciones={opcionesPeriodo} onCambio={onPeriodo} activo={false} />}
         {mostrarGrupoCobrador && (
           <>
-            <Selector icono={<Users size={16} />} etiqueta="Grupo" valor={grupo} opciones={opcionesGrupo} onCambio={onGrupo} activo={grupo !== ""} />
+            {conGrupo && <Selector icono={<Users size={16} />} etiqueta="Grupo" valor={grupo} opciones={opcionesGrupo} onCambio={onGrupo} activo={grupo !== ""} />}
             <Selector icono={<User size={16} />} etiqueta="Cobrador" valor={cobrador} opciones={opcionesCobrador} onCambio={onCobrador} activo={cobrador !== ""} />
             {conModalidad && <Selector icono={<Repeat size={16} />} etiqueta="Modalidad" valor={modalidad} opciones={opcionesModalidad!} onCambio={onModalidad!} activo={modalidad !== ""} />}
           </>
@@ -102,8 +109,8 @@ export default function BarraFiltros({
       {personalizado}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, minHeight: 20, fontSize: 12, color: "var(--muted2)" }}>
         <span style={{ flex: 1, minWidth: 0 }}>
-          Viendo: <span style={{ color: "var(--text)", fontWeight: 500 }}>{soloHoy ? "cómo está hoy (no depende de fechas)" : textoPeriodo}</span>
-          {mostrarGrupoCobrador && grupo !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{opcionesGrupo.find(o => o.valor === grupo)?.etiqueta}</span></>}
+          Viendo: <span style={{ color: "var(--text)", fontWeight: 500 }}>{textoFijo ?? (soloHoy ? "cómo está hoy (no depende de fechas)" : textoPeriodo)}</span>
+          {conGrupo && grupo !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{opcionesGrupo.find(o => o.valor === grupo)?.etiqueta}</span></>}
           {mostrarGrupoCobrador && cobrador !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500, textTransform: "uppercase" }}>{opcionesCobrador.find(o => o.valor === cobrador)?.etiqueta}</span></>}
           {conModalidad && modalidad !== "" && <> · <span style={{ color: "var(--text)", fontWeight: 500 }}>{modalidad}</span></>}
         </span>

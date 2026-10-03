@@ -74,7 +74,26 @@
     Resumen; la diferencia con Cartera (150) son los 4 con la moto en el taller (D-034).
   · Contraste 0 fallas en Cartera, Acuerdos y sus hojas, oscuro y claro (solo falla la barra de abajo
     de la app, que no es de Reportes). Sin desbordes a 280 px. 822 pruebas, build en verde.
-- **Sigue:** Equipo (Nómina, Visitas), con dibujo aprobado.
+- **Equipo: HECHO (2-oct, noche)** — `EquipoReportes.tsx` (D-037).
+  · Nómina: lo que se paga la semana partido en cobro de cuotas · visitas · referidos (antes "cobros"
+    traía los referidos adentro: a LUMAR le decía $293.750 y $60.000 eran 2 referidos) · si quedó
+    registrada como pagada en la app (hoy ninguna semana: 0 cierres) · cuánto vale cada cosa a la vista
+    y las reglas detrás de (i), ahora con el referido · por cobrador, de las motos que ya tenía al
+    empezar la semana, cuántas le generaron pago · las semanas de cada cobrador juntas desde el 14-sep
+    · lo que pone cada portafolio. Al tocar un cobrador: cada pago, las motos que no le generaron pago
+    y por qué, el desprendible y cerrar y pagar. Filtro de grupo y cobrador; con grupo no se puede
+    pagar ni imprimir.
+  · Visitas: período y cobrador (quién la hizo); el grupo no aplica. Resultados que suman el total,
+    cuántas terminaron en moto entregada y en cuántos días, GPS y fotos, quién las hizo. Todo se toca.
+  · Medido el 2-oct, semana del 21 al 27-sep: $2.017.500 = $1.287.500 + $640.000 + $90.000, igual que
+    antes. Carlos Alvarez pasa de "53 de 91" a "48 de 85" y Carlos Ariza de "58 de 80" a "49 de 76"
+    (las que ya tenían esa semana); LUMAR y BRANDON igual. Septiembre: 65 visitas (55 aprobadas, 4 para
+    repetir, 1 rechazada, 5 sin resultado), las 55 aprobadas ya con moto, la mitad en 1 día o menos y
+    la que más tardó 6; 65 de 65 con GPS y fotos.
+  · Motos: `asignarSubadmin` ya no cambia la fecha si se escoge el mismo cobrador.
+  · Contraste 0 fallas en Nómina, Visitas y sus hojas, oscuro y claro (antes: "Cerrar y pagar" 1,1 a 1
+    en oscuro y 9 textos en Visitas). Sin desbordes a 280 px. 822 pruebas, build en verde.
+- **Sigue:** la pestaña Descargar (PDF y Excel "resumen gerencial"), que todavía usa la cuenta vieja.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

@@ -4,7 +4,7 @@
 // solicitada, y las cosas en específico que se estén mostrando". Cada número del Resumen abre esta
 // hoja con las MISMAS filas que contó: el total y su detalle salen del mismo dato.
 // En el celular sube desde abajo; en el computador sale al centro. "Atrás" la cierra.
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X, Download, ExternalLink } from "lucide-react";
 import { ItemLista } from "../ListaEstandar";
@@ -39,6 +39,10 @@ export type ContenidoDetalle = {
   accion?: { texto: string; onClick: () => void };
   archivo?: string;
   vacio?: string;
+  /** Lo que va debajo del título y antes de la lista (cifras, avisos). */
+  encabezado?: ReactNode;
+  /** Botones propios al pie, antes de "Descargar lista" (el desprendible y el pago de la nómina). */
+  acciones?: ReactNode;
 };
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -96,6 +100,7 @@ export default function HojaDetalle({ contenido, onCerrar, isMobile, puedeDescar
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>{contenido.titulo}</div>
                 {contenido.subtitulo && <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4, lineHeight: 1.45 }}>{contenido.subtitulo}</div>}
+                {contenido.encabezado && <div style={{ marginTop: 8 }}>{contenido.encabezado}</div>}
               </div>
               <button onClick={onCerrar} aria-label="Cerrar"
                 style={{ width: 44, height: 44, marginTop: -8, marginRight: -8, flexShrink: 0, border: "none", borderRadius: 12, background: "transparent", color: "var(--muted2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -146,8 +151,9 @@ export default function HojaDetalle({ contenido, onCerrar, isMobile, puedeDescar
               ))}
             </div>
 
-            {(contenido.accion || puedeDescargar) && (
-              <div style={{ padding: 12, borderTop: "1px solid var(--line)", display: "flex", gap: 8 }}>
+            {(contenido.accion || contenido.acciones || puedeDescargar) && (
+              <div style={{ padding: 12, borderTop: "1px solid var(--line)", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {contenido.acciones}
                 {contenido.accion && (
                   <button onClick={contenido.accion.onClick}
                     style={{ flex: 1, height: 44, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "var(--on-accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>

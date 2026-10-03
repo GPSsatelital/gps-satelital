@@ -140,6 +140,11 @@ export function useMotos() {
   async function asignarSubadmin(motoId: string, subadminId: string | null) {
     // Registrar DESDE CUÁNDO tiene la moto este cobrador (null si se desasigna) — mig 058.
     // Es la base para que el informe de recaudo por cobrador sea justo hacia adelante.
+    // Solo si de verdad cambia de cobrador (2-oct): volver a escoger al mismo movía la fecha a hoy
+    // y Reportes dejaba de contarle lo de antes — 176 motos quedaron con fecha del 7 al 13-sep.
+    const { data: actual, error: errorLeer } = await supabase.from("motos").select("subadmin_id").eq("id", motoId).single();
+    if (errorLeer) return { error: errorLeer.message };
+    if ((actual?.subadmin_id ?? null) === subadminId) return { error: null };
     const { error } = await supabase.from("motos").update({
       subadmin_id: subadminId,
       subadmin_asignado_desde: subadminId ? new Date().toISOString() : null,

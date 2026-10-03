@@ -49,6 +49,26 @@ async function subir(dataUrl: string, ruta: string): Promise<{ url: string | nul
 
 const SIN_CIERRES: NominaCierre[] = [];
 
+export type CierreCorto = Pick<NominaCierre, "semana_lunes" | "subadmin_id" | "created_at">;
+const SIN_CORTOS: CierreCorto[] = [];
+
+/** Qué cobradores quedaron pagados en la app en VARIAS semanas (las semanas de cada cobrador, en
+ *  Equipo). Solo lo necesario para decir "pagada" o "no registrada": las cifras congeladas de cada
+ *  semana las sigue trayendo `useNominaCierres` al abrir esa semana. */
+export function useCierresDeSemanas(semanas: string[], activo: boolean, intento = 0) {
+  const clave = `${semanas.join(",")}|${intento}`;
+  const [traido, setTraido] = useState<{ clave: string; cierres: CierreCorto[]; error: boolean } | null>(null);
+  useEffect(() => {
+    if (!activo || semanas.length === 0) return;
+    let vivo = true;
+    void supabase.from("nomina_cierres").select("semana_lunes, subadmin_id, created_at").in("semana_lunes", semanas)
+      .then(({ data, error }) => { if (vivo) setTraido({ clave, cierres: (data ?? []) as CierreCorto[], error: !!error }); });
+    return () => { vivo = false; };
+  }, [clave, activo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const vigente = traido?.clave === clave ? traido : null;
+  return { cierres: vigente?.cierres ?? SIN_CORTOS, cargando: activo && semanas.length > 0 && !vigente, error: !!vigente?.error };
+}
+
 export function useNominaCierres(semanaLunes: string, activo: boolean) {
   // Lo traído se marca con su semana (2-oct). Antes, al pasar de semana se seguían viendo los cierres
   // de la anterior hasta que llegaba la respuesta (salía "Pagado" con el total de otra semana), y si

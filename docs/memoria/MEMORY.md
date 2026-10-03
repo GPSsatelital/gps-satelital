@@ -8,13 +8,23 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (28-sep)
+## ▶️ DÓNDE RETOMAR (3-oct, madrugada)
 
 🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
 paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
 
-0. 🔑 **Al volver: preguntarle qué sigue — saldos a favor (su pedido del 28-sep) o MELISSA** (pendiente
+🔴 **HAY UN COMMIT LOCAL SIN SUBIR: "Descargar" de Reportes** (informe para los socios + Excel). El
+dueño NO ha dado el sí para subirlo (rechazó la pregunta y pidió "guarda todo para seguir en otra
+sesión"). **NO hacer push sin preguntarle** — el push a `main` publica en Vercel. Al volver: mostrarle
+qué trae y preguntar "¿lo subo?". Probado: 826 pruebas, build, contraste 0, cifras cuadran por 3
+caminos; NO se descargó un PDF de verdad (pedirle que baje uno al subirlo).
+🔴 **Mig 187 SIN CORRER** (taller de XYZ51H a 'Finalizado'): el aviso "Lleva días en el taller —
+XYZ51H" sigue saliendo. El SQL está en `motogestion/supabase/187_*.sql`; pegárselo otra vez.
+▶️ Después: **la misma mejora de Reportes en toda la app**, pantalla por pantalla →
+[[rediseno-toda-la-app-metodo-reportes]] (orden propuesto, sin confirmar: Cartera y Cobros primero).
+
+0. Pendientes viejos (antes del rediseño): **saldos a favor (pedido del 28-sep) o MELISSA** (pendiente
    del 26-sep). El 28-sep le propuse MELISSA sin decir de dónde salía y no la ubicó →
    [[feedback-decir-de-donde-sale]].
 1. 🔴 **MELISSA BELLO (LIQ-0056)** — lo último de D-023. Quincenal: base $743.000, puso $404.000 →
@@ -23,8 +33,6 @@ paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no e
    $140.000 de "pagó adelantado y no alcanzó a usar" se cuentan dos veces. Método JORDAN/RICARDO.
 2. **Saldos a favor más visibles para el funcionario** (pedido del 28-sep) — analizar dónde se ven
    hoy y proponer el lugar con dibujo, antes de tocar. Está en P1.
-3. **La nómina no salta las semanas rodadas** (lo vecino a D-028) — toca plata de cobradores: medir
-   y preguntar. P1.
 4. **La fecha de fin** → [[fecha-fin-y-semanas-una-sola-verdad]]: 4 reglas confirmadas, los 7
    puntos de implementación SIN aprobar (JHON NAIDER, $9.696.000). Repetírselos y esperar el sí.
 5. Después: medir los demás diarios (lo de ADOLFO) · `ampliarConvenio` cobra doble ·
@@ -35,42 +43,29 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 🚫 **CESAR (ZHO34G) y RAMON (RLI25H): quietos** hasta que el dueño los saque (21-sep).
 🆕 Medir desde el navegador con la sesión del dueño → [[consultar-base-desde-el-navegador]].
 
-### Bitácora corta — el detalle está en el archivo de cada tema
+### Bitácora corta — el detalle está en `docs/PENDIENTES.md` (cerrados) y en cada tema
 
-- **30-sep** — **Reportes bloque 2 arreglado** (cb1207a) y las 11 pestañas caben a 375 · **liquidación:
-  ahorro de los días caja por caja** (93c442d; ROGER $30.000→$4.000, MELISSA +$9.000; 28 cerradas con
-  el error = $1.613.200 de más, decisión pendiente) · ROGER RMM68H se cerró ANTES del arreglo con
-  $120.000 por encima · decisiones tomadas sin construir y pendientes en PENDIENTES P1 →
-  `docs/REVISION-29SEP.md`
-
-- **29-sep** — **Auditoría de Reportes, bloque 1 arreglado** (D-029, b1c2e53): en mora 187 → 65,
-  recolección 50 → 58, los grupos suman el total, el período se mide por CUMPLIMIENTO (cambia con la
-  fecha). Cuentas en `reportesCifras.ts`. Falta el bloque 2 (Visitas, Flota, Guardadas, Entregas) y
-  la nómina aparte → `docs/AUDITORIA-REPORTES.md`. Nuevo: REGINALDO (IEW53I) en recolección con la
-  moto en garantía (decisión del dueño, P1)
-- **28-sep** — Revisando DPU43I (ELKIN CARDALES) y RNK57H (KATIA, cuenta bien): **los días de mora no
-  saltaban las semanas rodadas** (D-028, mig 180, espejo 325/0): 6 salían en mora pagando ese día y
-  JORGE LUIS TOVAR tenía su semana saltada ($55.000 → $250.000). Subido en día de cobro por decisión
-  del dueño. 🔑 El espejo prueba que las dos cuentas son IGUALES, no que estén BIEN.
-- **26-sep** — **D-023 cerrada por sus 3 caras** (migs 176·177·178·179: la base no se cobra al que se
-  va, lo del acuerdo de base suma a la base, el acuerdo nace solo con el ahorro) →
-  [[ahorro-de-quien-es-regla-d023]] · **D-026 completa** (migs 173·174·175) → [[d026-semanas-de-cierre]]
-- **25-sep** — Firma a pantalla completa · devolver la base se registraba 2-4 veces (mig 172) →
-  [[devolucion-base-doble-registro]] · el que termina no se lleva el ahorro (D-023) · kit de diseño
-  25/25 → [[kit-diseno-pruebas-estado]]
-- **24-sep** — La regla del ahorro (D-023) · mig 171 (el acuerdo recibe) y D-024 · firmar liquidación
-  cerrada · manual de liquidación · 5 herramientas arregladas (`npx`) · CLAUDE.md podado →
-  [[estandar-del-proyecto]]
-- **22/23-sep** — Estados ya no a mano, préstamo con evidencia (mig 164) →
-  [[estados-a-mano-y-evidencia-del-prestamo]] · saldo a favor negativo/trabado (migs 166·167) →
-  [[candado-saldo-favor-dos-clics]] · [[saldo-favor-movimiento-atascado]]
-- **17-21 sep** — Fuga de documentos cerrada (migs 161·162) → [[fuga-documentos-storage]] · coherencia
-  de flota, YERLIS, JORGE TOVAR → [[correcciones-a-mano-sep-2026]] · acuerdo vencido (157-159) →
-  [[acuerdo-vencido-se-sigue-cobrando]] · reversa de ELKIN → [[elkin-revertir-liquidacion-cerrada]]
-- **1-16 sep** — Nómina (119·120), lavada y llave (122·123), recolección por días vencida (136),
-  regresión mig 124, Mi Día y avisos (140-146), caja por cuenta, rodar_tiempo → archivos de tema
-- 🔨 **ZALA** — canal probado, faltan plantillas de Meta y **rotar la llave (P0)** →
-  [[zala-integracion-mensajes-plan]] · [[zala-vitrina-lectura]]
+- **2-oct** — **Reportes completo** (D-032…D-039, migs 183-187) → `docs/REDISENO-REPORTES.md` y
+  [[rediseno-toda-la-app-metodo-reportes]]. Acuerdo vencido cobrado dos veces (mig 183, D-036): la
+  prueba espejo solo cargaba acuerdos ACTIVOS. Motos de prueba borradas (185); XYZ51H y YAV66H
+  "Vendida" (186, D-039). Error mío: anuncié que "lo que se debe" bajaba $260.500 y bajó $3.088.500
+  → **medir ANTES de anunciar el efecto de un cambio**.
+- **1-2 oct** — D-030 días de mora del conjunto · D-031 nómina por semanas rodadas. Rompí la regla de
+  autorización (7 cosas sin preguntar) → [[feedback-preguntar-hasta-que-quede-claro]].
+- **29-30 sep** — Auditoría de Reportes (D-029) → `docs/AUDITORIA-REPORTES.md` · liquidación: ahorro
+  caja por caja (28 cerradas con $1.613.200 de más, decisión pendiente) → `docs/REVISION-29SEP.md`.
+- **28-sep** — los días de mora saltan las semanas rodadas (D-028, mig 180). 🔑 El espejo prueba que las
+  dos cuentas son IGUALES, no que estén BIEN.
+- **22-26 sep** — D-023 por sus 3 caras → [[ahorro-de-quien-es-regla-d023]] · D-026 →
+  [[d026-semanas-de-cierre]] · devolver base 2-4 veces (172) → [[devolucion-base-doble-registro]] ·
+  estados ya no a mano (164) → [[estados-a-mano-y-evidencia-del-prestamo]] · saldo a favor (166·167) →
+  [[candado-saldo-favor-dos-clics]] · [[saldo-favor-movimiento-atascado]] · [[kit-diseno-pruebas-estado]] ·
+  [[estandar-del-proyecto]].
+- **1-21 sep** — [[fuga-documentos-storage]] · [[correcciones-a-mano-sep-2026]] ·
+  [[acuerdo-vencido-se-sigue-cobrando]] · [[elkin-revertir-liquidacion-cerrada]] · nómina, lavada,
+  recolección, Mi Día → archivos de tema.
+- 🔨 **ZALA** — faltan plantillas de Meta y **rotar la llave (P0)** → [[zala-integracion-mensajes-plan]] ·
+  [[zala-vitrina-lectura]]
 
 ## 🚨 Estado vivo
 

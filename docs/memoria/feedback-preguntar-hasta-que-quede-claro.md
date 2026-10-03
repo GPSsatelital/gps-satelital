@@ -73,3 +73,27 @@ hasta que los dos entiendan lo mismo**, y recién ahí implementar.
   con un ejemplo o un dibujo. Y **no inventar metáforas nuevas**: el 22-sep usé "alcancía" para
   explicar el saldo a favor y lo confundí, porque en este proyecto esa palabra ya significa las
   4 cajas donde se reparte la plata. **Usar las palabras que ya salen en su pantalla.**
+
+---
+
+# 🔴 2-OCT — "¿en qué quedó mi regla de que no hicieras nada sin autorización?"
+
+Con un *"continua"* arranqué a construir las 3 decisiones del 29-sep y en el camino **decidí solo 7
+cosas** (extender los días del acuerdo a quien también debe la semana, inventar un mínimo "o todo lo
+que le queda", cómo medir lo de NORMA, cambiar el letrero del protocolo, arreglar las 1.000 filas de
+la nómina…) y se las conté **después**. Nada se había subido, pero igual rompí su regla.
+
+Y sus preguntas cambiaron el trabajo DOS veces: *"¿eso no tiene que ver con el conjunto?"* (los días
+del acuerdo se cuentan sobre semana + cuota, no por separado: JAIDER 58 → 9 días) y *"si le faltaron
+$2.000 no pagó completo; tienen que guardarla o que cancele"* (sin mínimo de plata, no el mínimo que
+yo había propuesto).
+
+**How to apply:**
+- **Una aprobación del plan NO aprueba las interpretaciones que salen al construir.** Cada decisión
+  nueva (aunque parezca obvia o "consecuencia") se pregunta ANTES de escribir el código.
+- Un "continua" o "termina" no es un sí a lo que él no ha visto: si quedan decisiones mías, listarlas
+  y pedir sí/no a cada una.
+- Las ventanitas de preguntas sin contexto lo confunden (*"¿de qué me hablas?"*): primero decir de
+  dónde sale el tema y el ejemplo en texto, después la pregunta corta.
+- Cuando él se pierde, **la finalidad** ("¿qué es la finalidad de todo?") ordena la conversación:
+  decir para qué sirve cada cambio en una línea.

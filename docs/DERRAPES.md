@@ -274,3 +274,24 @@ contaban el calendario distinto y nadie las comparó.
 reales, no solo el monto. Y la lección: **el espejo prueba que las dos cuentas son iguales, no que
 estén bien.** Cuando un campo (acá `cajas_exoneradas`) mueve el calendario, buscar en todo el código
 cada lugar que calcula una fecha de caja y confirmar que lo use.
+
+### Anuncié cuánto iba a bajar una cifra sin medirlo (2-oct)
+**Lo que hice:** al proponer dar de baja YAV66H le dije al dueño que "lo que se debe hoy" bajaría
+$260.500 (la deuda de migración de JESUS DAVID SABALLET). Lo dije razonando, sin medir.
+**Lo que era verdad:** bajó **$3.088.500**. Al cerrar su contrato suspendido también dejaron de
+contarse 14 semanas ($2.828.000) que el libro de cajas le seguía exigiendo.
+**Quién lo cazó:** yo, al verificar después en la app; se lo dije y él decidió ("dejarlo así, eso
+no es del todo cierto").
+**Qué lo evita ahora:** antes de anunciar el efecto de un cambio de datos, **medir el desglose
+actual del caso** (`estadoHoy`/`loQueDebe` de ese contrato) y decir cada parte, no solo la que se ve.
+
+### Cerré una entrada al taller por la fecha y el sistema la lee por el estado (2-oct)
+**Lo que hice:** en la mig 186 le puse `fecha_salida` a la entrada abierta de XYZ51H y lo di por
+cerrado sin revisar cómo se lee "abierta".
+**Lo que era verdad:** la vista `pendientes` (y la pantalla de Taller) leen `estado_tecnico <>
+'Finalizado'`. El aviso "Lleva días en el taller" siguió saliendo; hizo falta la mig 187.
+**Quién lo cazó:** yo, al verificar los avisos después de correr la 186.
+**Qué lo evita ahora:** antes de "cerrar" algo a mano en la base, **leer la condición con que lo
+leen la pantalla y las vistas** (grep del campo en `supabase/*.sql` y en `src/`) y cambiar ESE campo.
+También: dije "aquí está el SQL" y no lo pegué; el dueño no tenía cómo correrlo. Revisar que lo que
+anuncio esté en el mensaje.

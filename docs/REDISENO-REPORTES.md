@@ -87,8 +87,8 @@
     cuántas terminaron en moto entregada y en cuántos días, GPS y fotos, quién las hizo. Todo se toca.
   · Medido el 2-oct, semana del 21 al 27-sep: $2.017.500 = $1.287.500 + $640.000 + $90.000, igual que
     antes. Carlos Alvarez pasa de "53 de 91" a "48 de 85" y Carlos Ariza de "58 de 80" a "49 de 76"
-    (las que ya tenían esa semana); LUMAR y BRANDON igual. Septiembre: 65 visitas (55 aprobadas, 4 para
-    repetir, 1 rechazada, 5 sin resultado), las 55 aprobadas ya con moto, la mitad en 1 día o menos y
+    (las que ya tenían esa semana); LUMAR y BRANDON igual. Septiembre: 65 visitas (60 aprobadas, 4 para
+    repetir, 1 rechazada; 5 de las aprobadas sin marca en la visita, D-038), las 60 aprobadas ya con moto, la mitad en 1 día o menos y
     la que más tardó 6; 65 de 65 con GPS y fotos.
   · Motos: `asignarSubadmin` ya no cambia la fecha si se escoge el mismo cobrador.
   · Contraste 0 fallas en Nómina, Visitas y sus hojas, oscuro y claro (antes: "Cerrar y pagar" 1,1 a 1

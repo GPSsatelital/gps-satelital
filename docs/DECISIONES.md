@@ -559,3 +559,19 @@ tenían motos antes del 7-sep, y la nómina de agosto, vista hoy, les contaba 41
 el 93% de las motos ya tenía su cobrador de hoy.
 **Dónde vive:** `EquipoReportes.tsx` + `ReportesView.tsx` (Equipo) · `useMotos.asignarSubadmin`.
 **Reemplaza a:** "motos asignadas" contadas con las de hoy en cualquier semana.
+
+### D-038 · 2-oct-2026 · Aprobar al cliente aprueba su visita
+**Decidió:** el dueño ("Las dos cosas").
+**Qué se decidió:** una visita hecha que no quedó marcada, cuyo cliente ya se aprobó (o ya recibió su
+moto), cuenta como **aprobada** en Reportes, con la nota "se aprobó el cliente, no la visita". Si el
+cliente sigue en "Pendiente evaluación", la visita sale como **esperando decisión**. Y desde ahora,
+"Aprobar cliente" en la decisión final también marca la visita como aprobada. Las visitas viejas no
+se tocan en la base: Reportes las lee con esta regla.
+**Por qué:** hay dos botones para aprobar. "Aprobar visita" marca la visita; "Decisión final → Aprobar
+cliente" aprobaba al cliente sin marcarla. Medido el 2-oct: 8 visitas sin resultado; 7 con la moto ya
+entregada (MIGUEL ANGEL DIAZ, JAVIER POSSO, MARIA CONCEPCION TORRES, EVER LUIS DE LA ROSA, MANUEL
+MENDOZA, MARGARITA LABIOSA, ROIMAN VILLALBA) y ORLANDO JAVIER FRANCO esperando la decisión. El pago
+de esas visitas en la nómina estaba bien: la regla no pide resultado, se paga al entregar la moto.
+**Dónde vive:** `resultadoDeVisita` en `ReportesView.tsx` (pantalla, Excel e impresión) ·
+`DetalleClienteContenido` en `ClientesView.tsx`.
+**Reemplaza a:** "sin anotar el resultado" para visitas cuyo cliente ya se aprobó.

@@ -1479,6 +1479,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   onEliminar={() => handleEliminarCliente(selectedCliente.id)}
                   subadmins={subadmins}
                   onAsignarVisitaCliente={async (clienteId, subadminId) => { await asignarVisitaCliente(clienteId, subadminId); }}
+                  onMarcarVisitaAprobada={visitaId => resolverVisita(visitaId, "Aprobado")}
                 />
               </div>
             </div>
@@ -1652,6 +1653,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     onEliminar={() => handleEliminarCliente(selectedCliente.id)}
                     subadmins={subadmins}
                     onAsignarVisitaCliente={async (clienteId, subadminId) => { await asignarVisitaCliente(clienteId, subadminId); }}
+                  onMarcarVisitaAprobada={visitaId => resolverVisita(visitaId, "Aprobado")}
                   />
                 </>
               ) : (
@@ -1767,13 +1769,15 @@ type DetalleProps = {
   onEliminar?: () => void;
   subadmins?: { id: string; nombre: string }[];
   onAsignarVisitaCliente?: (clienteId: string, subadminId: string | null) => Promise<void>;
+  /** Marca como aprobada la visita que quedó sin resultado, al aprobar al cliente en la decisión final. */
+  onMarcarVisitaAprobada?: (visitaId: string) => Promise<{ error: string | null }>;
 };
 
 function miniBtn2(bg: string, color: string): React.CSSProperties {
   return { background: bg, color, border: "none", borderRadius: 999, padding: "8px 12px", fontWeight: 700, fontSize: 13, cursor: "pointer" };
 }
 
-function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente }: DetalleProps) {
+function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVisita, onExcepcion, onEstado, onAprobarVisita, onRepetirVisita, onEliminar, subadmins, onAsignarVisitaCliente, onMarcarVisitaAprobada }: DetalleProps) {
   const { puede } = useAuth();
   const esPrincipal = role === "ADMIN_PRINCIPAL";
   // Aprobar/repetir visita y la decisión final usan el permiso por persona (igual que
@@ -2081,7 +2085,17 @@ function DetalleClienteContenido({ selectedCliente, role, visitas, onEdit, onVis
 
       {/* Decisión final — siempre al final del detalle */}
       {puedeAprobarVisita && selectedCliente.estado === "Pendiente evaluación" && (
-        <DecisionFinal clienteId={selectedCliente.id} onEstado={onEstado} />
+        <DecisionFinal clienteId={selectedCliente.id} onEstado={async (id, estado) => {
+          const r = (await onEstado(id, estado)) ?? { error: null };
+          if (estado !== "Aprobado" || r.error) return r;
+          // Aprobar al cliente aprueba su visita (2-oct): antes la visita quedaba sin resultado y en
+          // Reportes salía como "sin anotar" aunque el cliente ya tuviera su moto (7 visitas así).
+          const sinMarcar = visitas.filter(v => v.estado !== "Pendiente" && !v.resultado)
+            .sort((a, b) => (b.fecha ?? "").localeCompare(a.fecha ?? ""))[0];
+          if (!sinMarcar || !onMarcarVisitaAprobada) return r;
+          const m = await onMarcarVisitaAprobada(sinMarcar.id);
+          return m.error ? { error: `El cliente quedó aprobado, pero no se pudo marcar su visita (${m.error}).` } : r;
+        }} />
       )}
     </div>
   );

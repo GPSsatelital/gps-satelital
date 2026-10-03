@@ -238,9 +238,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 💻 **Rediseño de Reportes — falta Descargar** (`docs/REDISENO-REPORTES.md`). Hechos el 2-oct:
   Resumen, Por grupo, Por admin, el menú de 5 secciones, Flota (Motos, Guardadas, Entregas), Cobranza
-  (Cartera, Acuerdos) y Equipo (Nómina, Visitas). Visto al hacer Visitas: hay visitas "sin anotar el
-  resultado" que igual se pagaron en la nómina (EVER LUIS DE LA ROSA, DQL76I) — preguntarle al dueño
-  si una visita sin resultado se debe pagar.
+  (Cartera, Acuerdos) y Equipo (Nómina, Visitas). Las visitas "sin resultado" quedaron resueltas
+  (D-038): eran clientes aprobados con "Aprobar cliente", y su pago en la nómina estaba bien.
   ⚠️ La pestaña **Exportar** (Excel "resumen gerencial" y el PDF) todavía le cuenta a cada cobrador
   todo lo de sus motos de hoy, sin D-035, y su "Mora y cartera vencida" usa la cuenta vieja de la
   pestaña Cartera (sin taller ni liquidación aparte): se arregla al rehacerla.
@@ -608,6 +607,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 2-oct | **Las 8 visitas "sin resultado"** (D-038) — 7 eran clientes aprobados con "Aprobar cliente" en la decisión final, que no marcaba la visita (todos ya con su moto); la otra, ORLANDO JAVIER FRANCO, espera la decisión. Reportes las cuenta como aprobadas o "esperando decisión", y aprobar al cliente ahora marca la visita. Septiembre: 60 aprobadas de 65 (antes 55 y 5 "sin resultado") |
 | 2-oct | **Reportes: Equipo nuevo** (D-037) — Nómina: cobros, visitas y referidos por separado (antes "cobros" traía los referidos), si quedó pagada en la app (ninguna lo está), cada cobrador con las motos que ya tenía esa semana, las semanas de cada cobrador juntas desde el 14-sep, filtro de grupo (sin poder pagar recortado). Visitas: resultados, cuántas terminaron en moto entregada y en cuántos días, GPS y fotos, quién las hizo. Motos: volver a escoger el mismo cobrador ya no le cambia la fecha. `docs/REDISENO-REPORTES.md` |
 | 2-oct | **Reportes: Cobranza nueva** — Cartera: lo que se debe hoy partido (cuotas del contrato, de acuerdos y deudas), qué tan cobrable es, quién tiene la deuda por grupo y cobrador, los que más deben, la plata a favor de los clientes. Acuerdos: cómo van, los 31 que vencen en 14 días con $6.331.500 por pagar, quién los lleva y los pagos de cada uno. Con filtro de grupo y cobrador, todo se toca. El atrasado de los acuerdos cuadra con Cartera por dos caminos ($21.786.000). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **Comprobado: los acuerdos ya reciben** (verificación de D-024). De 26 acuerdos que el 24-sep tenían $0 aunque el cliente pagaba: 11 ya reciben, 11 no han vuelto a pagar, 1 ya está cumplido (BRAYAN) y 3 pagaron después pero debían semanas, que van primero por la regla (LUIS EDUARDO PEREZ DQF58I le faltan $12.000 de la semana, ANTONY CABARCAS IGJ76I y YAIR DIAZ YAL54H debían semanas). El motor está bien |

@@ -219,10 +219,12 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
 
 export type DatosVisitas = {
   total: number;
-  resultados: { aprobadas: number; repetir: number; rechazadas: number; sinResultado: number; pendientes: number };
+  resultados: { aprobadas: number; esperando: number; repetir: number; rechazadas: number; sinResultado: number; pendientes: number };
   entregas: { conMoto: number; esperando: number; mediana: number | null; maximo: number | null };
   evidencia: { hechas: number; conGps: number; conFoto: number };
   estimadas: number;
+  /** Aprobadas porque se aprobó el cliente, sin que la visita quedara marcada. */
+  aprobadasPorCliente: number;
   personas: Array<{ id: string; nombre: string; total: number; aprobadas: number }>;
 };
 
@@ -238,6 +240,7 @@ export function EquipoVisitas({ d, onAbrir, onDescargar }: {
   const maxPersona = Math.max(...d.personas.map(p => p.total), 1);
   const partes = ([
     ["aprobadas", "Aprobadas", r.aprobadas, "var(--ok)"],
+    ["esperando", "Esperando tu decisión", r.esperando, "var(--violet)"],
     ["repetir", "Para repetir", r.repetir, "var(--warn)"],
     ["rechazadas", "Rechazadas", r.rechazadas, "var(--bad)"],
     ["sinResultado", "Sin anotar el resultado", r.sinResultado, "var(--muted2)"],
@@ -265,6 +268,11 @@ export function EquipoVisitas({ d, onAbrir, onDescargar }: {
             </button>
           ))}
         </div>
+        {d.aprobadasPorCliente > 0 && (
+          <div style={{ ...muted, fontSize: 11, padding: "6px 4px 0", lineHeight: 1.5 }}>
+            {d.aprobadasPorCliente} de las aprobadas no quedaron marcadas en la visita: se aprobó al cliente directamente. Se cuentan como aprobadas.
+          </div>
+        )}
       </Tarjeta>
 
       {r.aprobadas > 0 && (
@@ -284,7 +292,9 @@ export function EquipoVisitas({ d, onAbrir, onDescargar }: {
           )}
           {d.entregas.mediana !== null && d.entregas.maximo !== null && (
             <div style={{ ...muted, fontSize: 13, padding: "6px 4px 0", lineHeight: 1.5 }}>
-              La mitad de las motos se entregó <b style={{ color: "var(--text)" }}>{d.entregas.mediana === 0 ? "el mismo día de la visita" : `${dias(d.entregas.mediana)} o menos después de la visita`}</b>; la que más se demoró, {dias(d.entregas.maximo)}.
+              {d.entregas.maximo === 0 ? <>Todas se entregaron <b style={{ color: "var(--text)" }}>el mismo día de la visita</b>.</> : (
+                <>La mitad de las motos se entregó <b style={{ color: "var(--text)" }}>{d.entregas.mediana === 0 ? "el mismo día de la visita" : `${dias(d.entregas.mediana)} o menos después de la visita`}</b>; la que más se demoró, {dias(d.entregas.maximo)}.</>
+              )}
             </div>
           )}
         </Tarjeta>

@@ -205,6 +205,28 @@ function sparklineSVG(vals: number[]): string {
   const pts = vals.map((v, i) => `${((i / den) * (w - 4) + 2).toFixed(1)},${(h - (v / max) * (h - 6) - 3).toFixed(1)}`).join(" ");
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><polyline points="${pts}" fill="none" stroke="#2f6db0" stroke-width="2" stroke-linejoin="round"/></svg>`;
 }
+type ResultadoVisita = "aprobadas" | "esperando" | "repetir" | "rechazadas" | "sinResultado" | "pendientes";
+const ETIQUETA_RESULTADO: Record<ResultadoVisita, string> = {
+  aprobadas: "Aprobada", esperando: "Esperando decisión", repetir: "Para repetir", rechazadas: "Rechazada",
+  sinResultado: "Sin anotar el resultado", pendientes: "Pendiente por hacer",
+};
+/** Estados del cliente que solo se alcanzan después de aprobarlo. */
+const CLIENTE_YA_APROBADO = ["Aprobado", "Activo", "En riesgo", "En mora", "En seguimiento"];
+/**
+ * El resultado de una visita. Si la visita no quedó marcada pero el cliente ya se aprobó, cuenta como
+ * aprobada (`porCliente`): "Aprobar cliente" en la decisión final no marcaba la visita (2-oct: 7 visitas
+ * así, todas con la moto entregada). Si el cliente sigue esperando la decisión, "esperando".
+ */
+function resultadoDeVisita(v: { estado: string; resultado: string | null }, estadoCliente: string | undefined, recibioMoto: boolean): { res: ResultadoVisita; porCliente: boolean } {
+  if (v.estado === "Pendiente") return { res: "pendientes", porCliente: false };
+  if (v.resultado === "Aprobado") return { res: "aprobadas", porCliente: false };
+  if (v.resultado === "Rechazado") return { res: "rechazadas", porCliente: false };
+  if (v.resultado === "Repetir") return { res: "repetir", porCliente: false };
+  if (recibioMoto || CLIENTE_YA_APROBADO.includes(estadoCliente ?? "")) return { res: "aprobadas", porCliente: true };
+  if (estadoCliente === "Pendiente evaluación") return { res: "esperando", porCliente: false };
+  return { res: "sinResultado", porCliente: false };
+}
+
 /** Desde cuándo se muestran las semanas de cada cobrador (ver `semanasTendencia`). */
 const DESDE_TENDENCIA = "2026-09-14";
 const masDias = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
@@ -854,8 +876,8 @@ export default function ReportesView({ onNavigate }: Props) {
   const visitasData = useMemo(() => {
     const nombreAdmin = (id: string | null | undefined) =>
       id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar / Oficina";
-    type VisRow = { cliente: string; fecha: string; estado: string; resultado: string | null; gps: boolean; foto: boolean; estimado: boolean };
-    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; rechazadas: number; repetir: number; pendientes: number; sinResultado: number; estimadas: number };
+    type VisRow = { cliente: string; fecha: string; estado: string; res: ResultadoVisita; porCliente: boolean; gps: boolean; foto: boolean; estimado: boolean };
+    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; esperando: number; rechazadas: number; repetir: number; pendientes: number; sinResultado: number; estimadas: number };
     const map = new Map<string, VisAgg>();
     visitas.filter(v => (v.fecha || "").slice(0, 10) >= desde && (v.fecha || "").slice(0, 10) <= hasta).forEach(v => {
       // Se agrupa por QUIÉN LA HIZO, no por a quién se le encargó. Este informe es la base para
@@ -865,26 +887,23 @@ export default function ReportesView({ onNavigate }: Props) {
       const quien = v.realizada_por ?? v.asignada_a;
       const estimado = !v.realizada_por;
       const key = quien ?? "__none__";
-      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, rechazadas: 0, repetir: 0, pendientes: 0, sinResultado: 0, estimadas: 0 });
+      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, esperando: 0, rechazadas: 0, repetir: 0, pendientes: 0, sinResultado: 0, estimadas: 0 });
       const agg = map.get(key)!;
       if (estimado) agg.estimadas++;
+      const cl = clientes.find(c => c.id === v.cliente_id);
+      const fecha = (v.fecha || "").slice(0, 10);
+      const { res, porCliente } = resultadoDeVisita(v, cl?.estado, contratos.some(c => c.cliente_id === v.cliente_id && !!c.fecha_entrega && c.fecha_entrega >= fecha));
       agg.visitas.push({
-        cliente: clientes.find(cl => cl.id === v.cliente_id)?.nombre ?? "Sin cliente",
-        fecha: (v.fecha || "").slice(0, 10), estado: v.estado, resultado: v.resultado,
+        cliente: cl?.nombre ?? "Sin cliente", fecha, estado: v.estado, res, porCliente,
         gps: !!v.ubicacion, foto: !!(v.fotos?.clienteFuncionario || v.fotos?.fachada), estimado,
       });
-      if (v.estado === "Pendiente") agg.pendientes++;
-      else if (v.resultado === "Aprobado") agg.aprobadas++;
-      else if (v.resultado === "Rechazado") agg.rechazadas++;
-      else if (v.resultado === "Repetir") agg.repetir++;
-      // Completada pero sin resultado anotado: antes no caía en ninguna columna y las columnas no
-      // sumaban el total (29-sep: 64 visitas en septiembre, 59 en las columnas).
-      else agg.sinResultado++;
+      // Cada visita cae en una sola columna, y las columnas suman el total (29-sep).
+      agg[res]++;
     });
     return [...map.values()]
       .map(a => ({ ...a, total: a.visitas.length, visitas: a.visitas.slice().sort((x, y) => y.fecha.localeCompare(x.fecha)) }))
       .sort((a, b) => (a.key === "__none__" ? 1 : 0) - (b.key === "__none__" ? 1 : 0) || b.total - a.total);
-  }, [visitas, clientes, subadmins, desde, hasta]);
+  }, [visitas, clientes, contratos, subadmins, desde, hasta]);
 
   const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
   const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club Moteros Cartagena`;
@@ -1051,15 +1070,14 @@ export default function ReportesView({ onNavigate }: Props) {
       { label: "Estado", align: "center", ancho: 90 }, { label: "Resultado", align: "center", ancho: 110 },
       { label: "GPS", align: "center", ancho: 55 }, { label: "Foto", align: "center", ancho: 55 },
     ];
-    const resTxt = (est: string, res: string | null) => est === "Pendiente" ? "—" : res === "Aprobado" ? "✓ Aprobado" : res === "Rechazado" ? "✗ Rechazado" : res === "Repetir" ? "↻ Repetir" : "—";
     const secciones: SeccionX[] = visitasData.map(a => ({
-      titulo: `👤 ${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}`,
+      titulo: `${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas${a.esperando ? ` · ${a.esperando} esperando decisión` : ""} · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}`,
       color: "#334155",
       filas: a.visitas.map(v => [
         v.cliente.toUpperCase(), { v: fmtFechaCorta(v.fecha), align: "center" as const },
         { v: v.estado, align: "center" as const },
-        v.estado === "Pendiente" ? { v: "—", align: "center" as const } : { v: resTxt(v.estado, v.resultado), color: v.resultado === "Aprobado" ? "#166534" : v.resultado === "Rechazado" ? "#991b1b" : "#92400e", align: "center" as const },
-        { v: v.gps ? "✓" : "—", align: "center" as const }, { v: v.foto ? "✓" : "—", align: "center" as const },
+        { v: v.porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[v.res], color: v.res === "aprobadas" ? "#166534" : v.res === "rechazadas" ? "#991b1b" : "#92400e", align: "center" as const },
+        { v: v.gps ? "Sí" : "No", align: "center" as const }, { v: v.foto ? "Sí" : "No", align: "center" as const },
       ]),
     }));
     const tv = visitasData.reduce((s, a) => s + a.total, 0);
@@ -1392,14 +1410,14 @@ export default function ReportesView({ onNavigate }: Props) {
       let tabla: string;
       if (det) {
         const filas = visitasData.map(a => {
-          const cab = `<tr class="sec"><td colspan="5">👤 ${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}</td></tr>`;
-          const vs = a.visitas.map(v => `<tr><td class="up">${v.cliente}</td><td class="c">${fmtFechaCorta(v.fecha)}</td><td class="c">${v.estado}</td><td class="c">${v.estado === "Pendiente" ? "—" : (v.resultado ?? "—")}</td><td class="c">${((v.gps ? "📍" : "") + (v.foto ? " 📷" : "")) || "—"}</td></tr>`).join("");
+          const cab = `<tr class="sec"><td colspan="5">${a.nombre.toUpperCase()} — ${a.total} visitas · ${a.aprobadas} aprob${a.esperando ? ` · ${a.esperando} esperando decisión` : ""} · ${a.rechazadas} rech · ${a.repetir} repetir · ${a.pendientes} pend${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}</td></tr>`;
+          const vs = a.visitas.map(v => `<tr><td class="up">${v.cliente}</td><td class="c">${fmtFechaCorta(v.fecha)}</td><td class="c">${v.estado}</td><td class="c">${v.porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[v.res]}</td><td class="c">${[v.gps ? "GPS" : "", v.foto ? "foto" : ""].filter(Boolean).join(" y ") || "—"}</td></tr>`).join("");
           return cab + vs;
         }).join("");
         tabla = `<table><thead><tr><th>Cliente</th><th class="c">Fecha</th><th class="c">Estado</th><th class="c">Resultado</th><th class="c">GPS/Foto</th></tr></thead><tbody>${filas}</tbody></table>`;
       } else {
-        const filas = visitasData.map(a => `<tr><td class="up"><b>👤 ${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td><td class="c">${a.sinResultado}</td></tr>`).join("");
-        tabla = `<table><thead><tr><th>Administrador</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th><th class="c">Sin resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
+        const filas = visitasData.map(a => `<tr><td class="up"><b>${a.nombre}</b></td><td class="c">${a.total}</td><td class="c">${a.aprobadas}</td><td class="c">${a.esperando}</td><td class="c">${a.rechazadas}</td><td class="c">${a.repetir}</td><td class="c">${a.pendientes}</td><td class="c">${a.sinResultado}</td></tr>`).join("");
+        tabla = `<table><thead><tr><th>Quién la hizo</th><th class="c">Visitas</th><th class="c">Aprob.</th><th class="c">Esperando</th><th class="c">Rech.</th><th class="c">Repetir</th><th class="c">Pend.</th><th class="c">Sin resultado</th></tr></thead><tbody>${filas}</tbody></table>`;
       }
       parts.push(`<h2>Visitas por administrador</h2>${tabla}`);
     }
@@ -2365,8 +2383,8 @@ export default function ReportesView({ onNavigate }: Props) {
 
   // ── EQUIPO · VISITAS (rediseño 2-oct): período y cobrador (quién la hizo); el grupo no aplica ──
   const quienVisita = (v: (typeof visitas)[number]) => v.realizada_por ?? v.asignada_a ?? "__none__";
-  const resultadoVisita = (v: (typeof visitas)[number]) => v.estado === "Pendiente" ? "pendientes" : v.resultado === "Aprobado" ? "aprobadas" : v.resultado === "Rechazado" ? "rechazadas" : v.resultado === "Repetir" ? "repetir" : "sinResultado";
-  const ETIQUETA_RESULTADO: Record<string, string> = { aprobadas: "Aprobada", repetir: "Para repetir", rechazadas: "Rechazada", sinResultado: "Sin anotar el resultado", pendientes: "Pendiente por hacer" };
+  const clasificarVisita = (v: (typeof visitas)[number]) => resultadoDeVisita(v, clientePorId.get(v.cliente_id)?.estado, entregaDeVisita(v) !== null);
+  const resultadoVisita = (v: (typeof visitas)[number]) => clasificarVisita(v).res;
   const nombreQuienVisita = (id: string) => id === "__none__" ? "Sin asignar" : (subadmins.find(sa => sa.id === id)?.nombre ?? "—");
   const visitasP = visitas.filter(v => { const f = (v.fecha || "").slice(0, 10); return f >= desde && f <= hasta && (filtros.cobrador.length === 0 || filtros.cobrador.includes(quienVisita(v))); });
   /** La primera entrega de moto a ese cliente desde el día de la visita (sus contratos anteriores no cuentan). */
@@ -2383,6 +2401,7 @@ export default function ReportesView({ onNavigate }: Props) {
     total: visitasP.length,
     resultados: {
       aprobadas: aprobadasV.length,
+      esperando: visitasP.filter(v => resultadoVisita(v) === "esperando").length,
       repetir: visitasP.filter(v => resultadoVisita(v) === "repetir").length,
       rechazadas: visitasP.filter(v => resultadoVisita(v) === "rechazadas").length,
       sinResultado: visitasP.filter(v => resultadoVisita(v) === "sinResultado").length,
@@ -2395,6 +2414,7 @@ export default function ReportesView({ onNavigate }: Props) {
     },
     evidencia: { hechas: hechasV.length, conGps: hechasV.filter(v => !!v.ubicacion).length, conFoto: hechasV.filter(tieneFoto).length },
     estimadas: visitasP.filter(v => !v.realizada_por).length,
+    aprobadasPorCliente: aprobadasV.filter(v => clasificarVisita(v).porCliente).length,
     personas: [...new Set(visitasP.map(quienVisita))].map(id => {
       const suyas = visitasP.filter(v => quienVisita(v) === id);
       return { id, nombre: nombreQuienVisita(id), total: suyas.length, aprobadas: suyas.filter(v => resultadoVisita(v) === "aprobadas").length };
@@ -2402,17 +2422,17 @@ export default function ReportesView({ onNavigate }: Props) {
   };
   const filaVisita = (v: (typeof visitas)[number], extra?: string): FilaDetalle => {
     const cliente = clientePorId.get(v.cliente_id)?.nombre ?? "Sin cliente";
-    const res = resultadoVisita(v);
+    const { res, porCliente } = clasificarVisita(v);
     return {
       id: v.id, titulo: cliente,
-      subtitulo: `${fechaCortaN((v.fecha || "").slice(0, 10))} · ${nombreQuienVisita(quienVisita(v))} · ${ETIQUETA_RESULTADO[res]}${extra ? ` · ${extra}` : ""}`,
+      subtitulo: `${fechaCortaN((v.fecha || "").slice(0, 10))} · ${nombreQuienVisita(quienVisita(v))} · ${porCliente ? "Aprobada (se aprobó el cliente, no la visita)" : ETIQUETA_RESULTADO[res]}${extra ? ` · ${extra}` : ""}`,
       filtro: res, rielColor: res === "aprobadas" ? "var(--ok)" : res === "rechazadas" ? "var(--bad)" : res === "repetir" ? "var(--warn)" : undefined,
       onClick: () => { setDetalle(null); onNavigate?.("ficha_cliente", v.cliente_id); },
-      csv: { Fecha: (v.fecha || "").slice(0, 10), Cliente: cliente, Hizo: nombreQuienVisita(quienVisita(v)), Resultado: ETIQUETA_RESULTADO[res], GPS: v.ubicacion ? "si" : "no", Fotos: tieneFoto(v) ? "si" : "no" },
+      csv: { Fecha: (v.fecha || "").slice(0, 10), Cliente: cliente, Hizo: nombreQuienVisita(quienVisita(v)), Resultado: porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[res], GPS: v.ubicacion ? "si" : "no", Fotos: tieneFoto(v) ? "si" : "no" },
     };
   };
   const chipsResultado = (lista: (typeof visitas)) => {
-    const presentes = (["aprobadas", "repetir", "rechazadas", "sinResultado", "pendientes"] as const).filter(k => lista.some(v => resultadoVisita(v) === k));
+    const presentes = (["aprobadas", "esperando", "repetir", "rechazadas", "sinResultado", "pendientes"] as const).filter(k => lista.some(v => resultadoVisita(v) === k));
     return presentes.length > 1 ? presentes.map(k => ({ clave: k as string, etiqueta: ETIQUETA_RESULTADO[k] })) : undefined;
   };
   function abrirDetalleVisitas(clave: string) {
@@ -2422,7 +2442,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const valor = i < 0 ? "" : clave.slice(i + 1);
     if (tipo === "res") {
       const lista = visitasP.filter(v => resultadoVisita(v) === valor);
-      setDetalle({ titulo: `${ETIQUETA_RESULTADO[valor]} · ${lista.length}`, subtitulo: `${per}. Toca una para ver la ficha del cliente.`, filas: lista.map(v => filaVisita(v)), archivo: `visitas_${valor}_${desde}_${hasta}` });
+      setDetalle({ titulo: `${ETIQUETA_RESULTADO[valor as ResultadoVisita]} · ${lista.length}`, subtitulo: `${per}. Toca una para ver la ficha del cliente.`, filas: lista.map(v => filaVisita(v)), archivo: `visitas_${valor}_${desde}_${hasta}` });
     } else if (tipo === "entregas") {
       setDetalle({
         titulo: `Ya recibieron su moto · ${conMotoV.length}`, subtitulo: `${per}. Al lado de cada uno, los días entre la visita y la entrega.`,

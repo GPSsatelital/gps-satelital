@@ -1,9 +1,13 @@
 // Convierte un HTML (el de useDocumentos.ts, con firma/huella ya incrustadas) a un PDF
 // real de varias páginas y lo devuelve como Blob para subir a Storage.
-// Usa html2pdf.js (html2canvas + jsPDF). Respeta `page-break-inside:avoid` de las cláusulas.
-// La librería se importa de forma dinámica: es pesada y solo se necesita al firmar, así
-// no infla la carga inicial de la app.
-export async function htmlAPdfBlob(htmlEntrada: string): Promise<Blob> {
+// Usa html2canvas + jsPDF. La librería se importa de forma dinámica: es pesada y solo se necesita
+// al firmar, así no infla la carga inicial de la app.
+//
+// OJO: por defecto la imagen se parte en franjas del alto exacto de la hoja, sin mirar qué queda
+// en el corte (puede partir una línea en dos). Con `cortesSeguros` corta entre filas y bloques y
+// respeta `page-break-before:always`. Por ahora solo lo usa el informe de Reportes (5-oct): los
+// contratos, pagarés y liquidaciones siguen como estaban hasta revisarlos aparte.
+export async function htmlAPdfBlob(htmlEntrada: string, opciones: { cortesSeguros?: boolean } = {}): Promise<Blob> {
   let html = htmlEntrada;
   // Se captura DIRECTO con html2canvas sobre el elemento montado en pantalla y se arma el PDF
   // con jsPDF a mano. Antes se usaba html2pdf.js, que internamente RE-CLONA el contenido a un
@@ -43,6 +47,9 @@ export async function htmlAPdfBlob(htmlEntrada: string): Promise<Blob> {
     await Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })));
     await new Promise((r) => setTimeout(r, 150));
 
+    // Los bloques que no se deben partir se miden ANTES de capturar, sobre el elemento montado.
+    const zonas = opciones.cortesSeguros ? medirZonas(cont) : null;
+
     const canvas = await html2canvas(cont, {
       scale: 2,
       useCORS: true,
@@ -64,10 +71,15 @@ export async function htmlAPdfBlob(htmlEntrada: string): Promise<Blob> {
       // Multipágina: recortar el canvas en franjas del alto de una página A4.
       const pxPerMm = canvas.width / usableW;               // misma escala px/mm en vertical
       const sliceHpx = Math.floor(usableH * pxPerMm);
+      // Con cortes seguros, dónde termina cada página (en px del canvas); si no, franjas parejas.
+      const escala = canvas.width / cont.offsetWidth;
+      const finales = zonas
+        ? [...calcularCortes(canvas.height / escala, sliceHpx / escala, zonas.bloques, zonas.forzados).map(c => Math.round(c * escala)), canvas.height]
+        : null;
       let y = 0;
       let primera = true;
       while (y < canvas.height) {
-        const hpx = Math.min(sliceHpx, canvas.height - y);
+        const hpx = finales ? (finales.find(f => f > y) ?? canvas.height) - y : Math.min(sliceHpx, canvas.height - y);
         const franja = document.createElement("canvas");
         franja.width = canvas.width;
         franja.height = hpx;
@@ -86,6 +98,63 @@ export async function htmlAPdfBlob(htmlEntrada: string): Promise<Blob> {
   } finally {
     document.body.removeChild(cont);
   }
+}
+
+/** Lo que no se debe partir entre dos páginas, en px del documento (0 = arriba del todo):
+ *  cada fila de tabla, lo marcado `data-no-cortar`, lo que pide `page-break-inside:avoid` (si cabe
+ *  en una hoja) y cada título `data-con-siguiente` junto con lo que lo sigue (para que no quede
+ *  solo al pie de una hoja). `forzados` = donde una sección pide empezar en hoja nueva. */
+function medirZonas(cont: HTMLElement): { bloques: Array<[number, number]>; forzados: number[] } {
+  const y0 = cont.getBoundingClientRect().top;
+  const caja = (el: Element): [number, number] => { const r = el.getBoundingClientRect(); return [r.top - y0, r.bottom - y0]; };
+  const hoja = cont.offsetWidth * (281 / 194); // alto útil de una hoja A4 con 8 mm de margen, en px
+  const estilo = (el: Element) => el.getAttribute("style") ?? "";
+  const bloques: Array<[number, number]> = [];
+  cont.querySelectorAll("tr, [data-no-cortar]").forEach(el => bloques.push(caja(el)));
+  cont.querySelectorAll("[style*='page-break-inside']").forEach(el => {
+    const [a, b] = caja(el);
+    if (/page-break-inside:\s*avoid/.test(estilo(el)) && b - a <= hoja * 0.6) bloques.push([a, b]);
+  });
+  cont.querySelectorAll("[data-con-siguiente]").forEach(el => {
+    const [a, b] = caja(el);
+    const sig = el.nextElementSibling;
+    if (!sig) return;
+    const filas = sig.tagName === "TABLE" ? sig.querySelectorAll("tr") : null;
+    const fin = filas && filas.length > 0 ? caja(filas[Math.min(1, filas.length - 1)])[1] : caja(sig)[1];
+    bloques.push([a, fin - a <= hoja * 0.5 ? fin : b]);
+  });
+  const forzados = [...cont.querySelectorAll("[style*='page-break-before']")]
+    .filter(el => /page-break-before:\s*always/.test(estilo(el)))
+    .map(el => caja(el)[0]);
+  return { bloques: bloques.filter(([a, b]) => b > a), forzados };
+}
+
+/**
+ * Dónde termina cada página para no partir nada por la mitad. Arranca con la hoja llena y, si el
+ * corte cae dentro de un bloque, lo sube al comienzo de ese bloque (sin dejar la hoja con menos de
+ * un cuarto de contenido: un bloque más alto que una hoja sí se parte). Una sección que pide hoja
+ * nueva corta ahí. Devuelve los cortes intermedios (sin el final del documento).
+ */
+export function calcularCortes(total: number, hoja: number, bloques: Array<[number, number]>, forzados: number[]): number[] {
+  const cortes: number[] = [];
+  let y = 0;
+  for (let vueltas = 0; vueltas < 1000; vueltas++) {
+    const forzado = forzados.filter(f => f > y + 1 && f < Math.min(y + hoja, total)).sort((a, b) => a - b)[0];
+    if (forzado === undefined && total - y <= hoja) break;
+    let fin = forzado ?? y + hoja;
+    if (forzado === undefined) {
+      let movio = true;
+      while (movio) {
+        movio = false;
+        for (const [a, b] of bloques) {
+          if (a < fin - 0.5 && b > fin + 0.5 && a > y + hoja * 0.25) { fin = a; movio = true; }
+        }
+      }
+    }
+    cortes.push(fin);
+    y = fin;
+  }
+  return cortes;
 }
 
 // Descarga una imagen remota (ej. huella del registro en Storage) y la convierte a

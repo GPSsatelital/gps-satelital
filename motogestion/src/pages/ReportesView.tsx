@@ -18,7 +18,7 @@ import { useBackGuard } from "../contexts/BackNav";
 import { necesitaRegenerar, regenerarDocsContrato } from "../utils/regenerarDocs";
 import { generarHTMLResumenEntrega } from "../hooks/useDocumentos";
 import { abrirDocumento, firmarImagenesHtml } from "../lib/storagePrivado";
-import { formatDiaPago, valorPeriodoReal, type EstadoCartera } from "../utils/cicloPago";
+import { esDiaDePago, formatDiaPago, valorPeriodoReal, type EstadoCartera } from "../utils/cicloPago";
 import {
   descargarExcel, GRUPO_HEX,
   type CeldaX, type ColX, type SeccionX, type SeccionesOpts,
@@ -282,6 +282,10 @@ type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoP
   /** Estado de Cartera tal cual (sin la regla de moto guardada): para la pestaña Cartera y el aviso. */
   estadoCartera: EstadoCartera;
   recoleccion: boolean;
+  /** Hoy es su día de pago (la misma pregunta que Cartera: `esDiaDePago`; el diario paga todos los días). */
+  pagaHoy: boolean;
+  /** Tiene un plazo extra vigente: por eso, aunque lleve días en mora, no va a recolección. */
+  conPlazo: boolean;
   contratoActivo: boolean;
   /** Cuánto cumplió en el período del informe. */
   cum: Cumplimiento;
@@ -700,6 +704,8 @@ export default function ReportesView({ onNavigate }: Props) {
         saldoAFavor: cerrado ? 0 : e.saldoAFavor,
         estadoCartera: e.estado,
         recoleccion: c.estado === "Activo" && e.recoleccion,
+        pagaHoy: c.forma_pago === "Diario" || esDiaDePago(c as never, hoy),
+        conPlazo: plazosVigentes.has(c.id),
         contratoActivo: c.estado === "Activo",
         cum,
         ...(() => {
@@ -758,6 +764,18 @@ export default function ReportesView({ onNavigate }: Props) {
     ...filtros.estado.map(e => ESTADO_LBL[e] ?? e),
   ].join(" · ");
   const filtrosActivos = filtrosResumen.length > 0;
+  /** Qué se está viendo, para escribirlo en el archivo: "COSTA · LUMAR AVENDAÑO PINEDA" o "todos los
+   *  grupos · todos los cobradores". Visitas no se filtran por grupo (`conGrupo` = false). */
+  const textoFiltrosGC = (conGrupo = true) => [
+    ...(conGrupo ? [filtros.grupo.length ? filtros.grupo.join(", ") : "todos los grupos"] : []),
+    filtros.cobrador.length ? filtros.cobrador.map(id => nombreCobradorFiltro(id).toUpperCase()).join(", ") : "todos los cobradores",
+  ].join(" · ");
+  /** Los Excel de cada sección dicen, debajo del título, con qué filtro se bajaron (5-oct: uno de
+   *  LUMAR suelto parecía de toda la empresa). */
+  const descargarExcelR = (o: Parameters<typeof descargarExcel>[0], conGrupo = true) => {
+    const conFiltro = (periodo: string) => `${periodo} · ${textoFiltrosGC(conGrupo)}`;
+    descargarExcel({ ...o, periodo: conFiltro(o.periodo), hojasExtra: o.hojasExtra?.map(h => ({ ...h, periodo: conFiltro(h.periodo) })) });
+  };
   const filtrosSlug = [
     ...filtros.grupo,
     ...filtros.cobrador.map(id => nombreCobradorFiltro(id).replace(/\s+/g, "_")),
@@ -1008,7 +1026,7 @@ export default function ReportesView({ onNavigate }: Props) {
   /** Las visitas del período con el filtro de cobrador (antes bajaba las de todos), por quién las hizo. */
   function exportarVisitas() {
     const personas = [...new Set(visitasP.map(quienVisita))];
-    descargarExcel({
+    descargarExcelR({
       archivo: `visitas_${desde}_a_${hasta}`, titulo: "Visitas domiciliarias", periodo: textoRango(desde, hasta),
       leyenda: "Por quién la hizo. 'Aprobada (se aprobó el cliente)' = la visita no quedó marcada, pero el cliente se aprobó (D-038).",
       columnas: [{ label: "Cliente", ancho: 220 }, { label: "Fecha", align: "center", ancho: 90 }, { label: "Resultado", ancho: 200 },
@@ -1027,7 +1045,7 @@ export default function ReportesView({ onNavigate }: Props) {
         };
       }),
       totalGeneral: [{ v: `TOTAL: ${visitasP.length} visitas`, bold: true }, "", "", "", "", ""],
-    });
+    }, false);
   }
 
 
@@ -1656,7 +1674,7 @@ export default function ReportesView({ onNavigate }: Props) {
         ]),
       };
     });
-    descargarExcel({
+    descargarExcelR({
       archivo: `motos_guardadas_${hoyISO()}`,
       titulo: "Motos guardadas en la empresa — no están trabajando",
       periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
@@ -1721,9 +1739,11 @@ export default function ReportesView({ onNavigate }: Props) {
   const debenC = vigentesC.filter(r => r.debeHoy > 0).sort((a, b) => b.debeHoy - a.debeHoy);
   const sumaDebe = (f: MotoRowG[], k?: "semanas" | "acuerdo" | "deudas") => f.reduce((s, r) => s + (k ? r.debe[k] : r.debeHoy), 0);
   const siguenConContrato = (r: MotoRowG) => r.estado === "aldia" || r.estado === "gabela" || r.estado === "mora" || r.estado === "taller";
-  const comoVa = (r: MotoRowG) => r.estado === "mora" ? `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · para recoger la moto" : ""}`
+  // 5-oct: "al día" al lado de $202.000 confundía — es que hoy le toca pagar (las mismas palabras de ZALA).
+  const comoVa = (r: MotoRowG) => r.estado === "mora" ? `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · para recoger la moto" : r.conPlazo ? " · con plazo extra" : ""}`
     : r.estado === "gabela" ? "en gabela" : r.estado === "taller" ? "moto en el taller" : r.estado === "retenida" ? `moto retenida, ${sitioDe(r)}`
-    : r.estado === "reasignada" ? "en liquidación" : "al día";
+    : r.estado === "reasignada" ? "en liquidación · la moto ya la tiene otro cliente"
+    : r.pagaHoy && r.debe.semanas + r.debe.acuerdo > 0 ? "al día, le toca pagar hoy" : "al día";
   const ETIQUETA_ESTADO_C: Record<string, string> = { aldia: "Al día", gabela: "Gabela", mora: "En mora", taller: "Moto en el taller", retenida: "Retenida", reasignada: "En liquidación" };
   const chipsEstadoC = (f: MotoRowG[]) => {
     const presentes = [...new Set(f.map(r => r.estado))];
@@ -1876,16 +1896,16 @@ export default function ReportesView({ onNavigate }: Props) {
             { v: a.cuotasCompletadas > 0 ? String(a.cuotasCompletadas) : "—", align: "center" as const },
           ]),
     }));
-    descargarExcel({
+    descargarExcelR({
       archivo: `acuerdos_${hoyISO()}`,
       titulo: conveniosTodos ? "Acuerdos de pago — todos, incluidos los ya pagados" : "Acuerdos de pago que se están cobrando — cómo se han pagado desde que se firmaron",
       periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
       leyenda: "Cada bloque es un acuerdo y sus abonos reales, en orden. 'Atrasado' = lo que se le ha cobrado menos lo que abonó (con arrastre); es la MISMA cuenta que ve el funcionario en Cartera. Un acuerdo vencido se sigue cobrando.",
       columnas: cols, secciones,
       totalGeneral: [
-        { v: `${totConv.cantidad} acuerdos · pactado $${fmt(totConv.pactado)}`, bold: true }, "",
+        { v: `${totConv.cantidad} acuerdos · pactado $${fmt(totConv.pactado)} · falta $${fmt(totConv.saldo)}`, bold: true }, "",
         { num: totConv.abonado, align: "right" as const, bold: true },
-        { num: totConv.saldo, align: "right" as const, bold: true },
+        { num: totConv.abonado, align: "right" as const, bold: true },
         { v: totConv.atrasado > 0 ? `atraso $${fmt(totConv.atrasado)}` : "al día", align: "center" as const, bold: true },
       ],
     });
@@ -2178,8 +2198,7 @@ export default function ReportesView({ onNavigate }: Props) {
   // ── DESCARGAR (rediseño 2-oct): el informe para los socios con las MISMAS cifras de cada pantalla ──
   function armarInforme(): DatosInforme {
     const per = textoRango(desde, hasta);
-    const filtrosTxt = [filtros.grupo.length ? filtros.grupo.join(", ") : "todos los grupos",
-      filtros.cobrador.length ? filtros.cobrador.map(nombreCobradorFiltro).join(", ") : "todos los cobradores"].join(" · ");
+    const filtrosTxt = textoFiltrosGC();
     // Por cobrador, cada moto desde que la tiene (D-035), igual que Portafolios.
     const filasGC = baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId)).map(comoCobrador);
     const antesGC = baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId)).reduce((a, r) => a + r.montoAntes, 0);
@@ -2292,7 +2311,7 @@ export default function ReportesView({ onNavigate }: Props) {
     setGenerandoPdf(true);
     try {
       const { htmlAPdfBlob } = await import("../utils/pdf");
-      const blob = await htmlAPdfBlob(informeSociosHTML(armarInforme(), { secciones, detalle, anexos }));
+      const blob = await htmlAPdfBlob(informeSociosHTML(armarInforme(), { secciones, detalle, anexos }), { cortesSeguros: true });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -2317,7 +2336,7 @@ export default function ReportesView({ onNavigate }: Props) {
     const filas = pagosFiltrados.slice().sort((a, b) => fechaDeCaja(a).localeCompare(fechaDeCaja(b)));
     const grupoDePago = (pg: (typeof filas)[number]) => atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO";
     const cobradorDePago = (pg: (typeof filas)[number]) => pagoAntesDeAsignar(pg) ? "Antes de asignar" : (atribucion.get(pg.contrato_id)?.adminNombre || "Sin asignar");
-    descargarExcel({
+    descargarExcelR({
       archivo: `pagos_${desde}_a_${hasta}`, titulo: "Pagos del período", periodo: textoRango(desde, hasta),
       leyenda: "Confirmados. Las transferencias por la fecha del banco y el efectivo por el día en que se recibió. A cada cobrador, lo de sus motos desde que las tiene (D-035).",
       columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 170 }, { label: "Método", align: "center", ancho: 105 }, { label: "Valor", align: "right", ancho: 100 }],
@@ -2330,7 +2349,7 @@ export default function ReportesView({ onNavigate }: Props) {
     });
   }
   function excelLoQueSeDebe(separar: SepararPor = "grupo") {
-    descargarExcel({
+    descargarExcelR({
       archivo: `lo_que_se_debe_${hoyISO()}`, titulo: "Lo que se debe hoy", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
       leyenda: "La misma cuenta de Cartera, cliente por cliente. Las deudas que están dentro de un acuerdo van en la cuota del acuerdo.",
       columnas: [{ label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Cómo va", ancho: 200 },
@@ -2348,7 +2367,7 @@ export default function ReportesView({ onNavigate }: Props) {
   /** La nómina de la semana que se ve en Equipo, pago por pago, con los mismos filtros. */
   function excelNomina(separar: SepararPor = "cobrador") {
     const filas = renglonesN;
-    descargarExcel({
+    descargarExcelR({
       archivo: `nomina_${lunesNomina}`, titulo: `Nómina de cobradores · ${textoSemanaNomina}`, periodo: textoSemanaNomina,
       leyenda: "Cada pago de la semana. Las visitas y los referidos los cobra quien los hizo, en la semana en que se entregó la moto.",
       columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Cliente", ancho: 220 }, { label: separar === "cobrador" ? "Grupo" : "Cobrador", ancho: 170 }, { label: "Pago", ancho: 190 }, { label: "Fecha", align: "center", ancho: 90 }, { label: "Valor", align: "right", ancho: 100 }],
@@ -2364,7 +2383,7 @@ export default function ReportesView({ onNavigate }: Props) {
   function excelFlotaMotos(separar: SepararPor = "grupo") {
     const etiquetaLugar = (id: string) => LUGARES.find(l => l.clave === lugarDeMoto.get(id)?.lugar)?.etiqueta ?? "—";
     const clienteDeMoto = (id: string) => { const c = contratoPorId.get(lugarDeMoto.get(id)?.contratoId ?? ""); return c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : "—"; };
-    descargarExcel({
+    descargarExcelR({
       archivo: `flota_${hoyISO()}`, titulo: "La flota hoy: dónde está cada moto", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
       columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Dónde está", ancho: 200 }, { label: "Cliente", ancho: 220 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Estado de la moto", ancho: 120 }],
       secciones: bloquesPor(flotaF, m => m.grupo ?? "SIN GRUPO", m => (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar"), separar).map(b => ({
@@ -2380,7 +2399,7 @@ export default function ReportesView({ onNavigate }: Props) {
   /** Las motos entregadas en el período, con sus papeles. */
   function excelEntregas(separar: SepararPor = "grupo") {
     const cobradorDe = (e: (typeof entregas)[number]) => (e.subadminId ? nombreCobradorN(e.subadminId) : "Sin asignar");
-    descargarExcel({
+    descargarExcelR({
       archivo: `entregas_${desde}_a_${hasta}`, titulo: "Motos entregadas", periodo: textoRango(desde, hasta),
       columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cliente", ancho: 220 }, { label: "Cédula", align: "center", ancho: 110 },
         { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Forma de pago", align: "center", ancho: 110 }, { label: "Papeles", align: "center", ancho: 100 }],

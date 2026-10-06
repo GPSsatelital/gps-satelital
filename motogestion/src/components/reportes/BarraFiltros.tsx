@@ -130,7 +130,8 @@ export default function BarraFiltros({
     return () => window.removeEventListener("keydown", h);
   }, [abierto]);
   const textoGrupo = textoVarios(grupos, opcionesGrupo, "Todos los grupos", "grupos");
-  const textoCobrador = textoVarios(cobradores, opcionesCobrador, "Todos los cobradores", "cobradores");
+  // Los nombres de personas, en mayúscula (convención): en el botón, en "Viendo:" y en la etiqueta que flota.
+  const textoCobrador = textoVarios(cobradores, opcionesCobrador.map(o => ({ ...o, etiqueta: o.etiqueta.toUpperCase() })), "Todos los cobradores", "cobradores");
   // Cuando la barra sale de la pantalla, una franja delgada fija arriba dice qué se está viendo y lleva
   // de vuelta a los filtros. (Un `sticky` no funciona acá: el marco de la app envuelve el contenido en
   // un contenedor con scroll propio que no es el que se mueve.)

@@ -568,6 +568,14 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P4 — Limpieza y optimización
 
+- [ ] **(Código) Los PDF de contratos, pagarés, liquidaciones y acuerdos de tiempo pueden partir una línea
+  entre dos hojas** (5-oct). Es el mismo cortador de `utils/pdf.ts` que partía las filas del informe de
+  Reportes. Reportes ya usa `cortesSeguros`; los demás siguen igual porque son documentos firmados:
+  antes de activarlo ahí, generar un contrato real y mirar sus cambios de hoja.
+- [ ] **(Oficina) DQL79I tiene la tecnomecánica con año 0028** (debe ser 2028-03-25 o parecido). Por eso sale
+  como vencida en Flota y en el PDF. Falta la fecha real del papel. Además, el formulario de motos dejó
+  guardar un año imposible: conviene que no lo acepte.
+
 - [ ] 💻 **Traer por páginas todo lo que va a crecer** (propuesta del 2-oct, sin aprobar). Supabase
   entrega máximo 1.000 filas sin avisar (D-031). Hoy piden de un solo viaje: Mi Día (429), recepciones
   (268), historial de ubicaciones (274), visitas (156). Con 1.000 motos, Mi Día pasaría de 1.000.
@@ -602,6 +610,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 5-oct | **Reportes: los archivos revisados abriéndolos** — cifras: las 48 filas del Excel de LUMAR iguales a la base, 65 clientes y $43.886.400; toda la empresa $147.436.100 (la única diferencia, $27.000 de ADOLFO, el diario). Arreglado: columnas que salían cortadas en los Excel (en todos los de la app), cada Excel dice con qué filtro se bajó, el total de Acuerdos ponía lo que falta bajo "Lleva abonado", "Cómo va" dice "al día, le toca pagar hoy" / "con plazo extra" / "la moto ya la tiene otro cliente" (las palabras de ZALA), y el PDF de Reportes ya no parte filas entre hojas y cada sección empieza en hoja nueva |
 | 5-oct | **Reportes: descargar en cada sección y filtros de a varios** (D-040) — Excel y PDF donde se está viendo, lo que baja es lo que se ve; un cobrador sale partido por grupo y un grupo por cobrador; Reportes recuerda dónde estabas. Falta el manual (PDF con pantallas reales) |
 | 2-oct | **Reportes terminado: Descargar nuevo** — informe para los socios (PDF o impreso) con las 5 secciones y las mismas cifras de cada pantalla, más tres anexos ya con D-035; listas en Excel. El PDF viejo le daba a cada cobrador plata de motos que no eran suyas ($26.898.200 en septiembre). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **XYZ51H y YAV66H vendidas, dadas de baja** (D-039, migs 186·187) — estado nuevo "Vendida": salen de Motos (filtro "Vendidas"), Flota, Reportes, Panel, portal del socio y nómina; su historia se queda. Contrato de JESUS DAVID SABALLET cerrado y él Retirado (sus $260.500 quedan anotados; las 14 semanas no). La entrada al taller de XYZ51H cerrada. Flota 376 → 374, retenidas 42 → 41, lo que se debe hoy −$3.088.500 |

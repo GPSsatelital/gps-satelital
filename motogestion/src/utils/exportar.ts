@@ -47,6 +47,17 @@ export function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {
   const kinds: RK[] = [];
   let r = 0;
   const fullRow = (txt: string, k: RK["k"], sec?: string) => { aoa.push([txt]); merges.push({ s: { r, c: 0 }, e: { r, c: n - 1 } }); kinds.push({ k, sec }); r++; };
+  const vacia = (c: CeldaX | undefined) => c === undefined || val(c) === "";
+  // Hasta qué columna se une el texto de la primera celda: una NOTA (solo trae la primera celda,
+  // ej. "SIN UN SOLO ABONO…") va de lado a lado, y la etiqueta del TOTAL ocupa las celdas vacías que
+  // la siguen. Así se leen enteras sin ensanchar la primera columna (5-oct: Excel las cortaba).
+  const unirHasta = (fila: CeldaX[], soloSiTodaVacia: boolean) => {
+    if (n < 2 || typeof val(fila[0] ?? "") !== "string" || vacia(fila[0])) return 0;
+    let hasta = 0;
+    while (hasta + 1 < n && vacia(fila[hasta + 1])) hasta++;
+    return soloSiTodaVacia && hasta < n - 1 ? 0 : hasta;
+  };
+  const unidaHasta = new Map<number, number>();
   fullRow(opts.titulo, "title");
   fullRow(opts.periodo, "period");
   if (opts.leyenda) fullRow(opts.leyenda, "leyenda");
@@ -55,13 +66,38 @@ export function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {
   opts.secciones.forEach(sec => {
     fullRow(sec.titulo, "section", sec.color);
     let di = 0;
-    sec.filas.forEach(fila => { aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); kinds.push({ k: "data", cells: fila, zebra: di % 2 === 1 }); di++; r++; });
+    sec.filas.forEach(fila => {
+      const hasta = unirHasta(fila, true);
+      if (hasta > 0) { merges.push({ s: { r, c: 0 }, e: { r, c: hasta } }); unidaHasta.set(r, hasta); }
+      aoa.push(opts.columnas.map((_, ci) => val(fila[ci] ?? ""))); kinds.push({ k: "data", cells: fila, zebra: di % 2 === 1 }); di++; r++;
+    });
   });
-  if (opts.totalGeneral) { const tg = opts.totalGeneral; aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); kinds.push({ k: "total" }); r++; }
+  if (opts.totalGeneral) {
+    const tg = opts.totalGeneral;
+    const hasta = unirHasta(tg, false);
+    if (hasta > 0) { merges.push({ s: { r, c: 0 }, e: { r, c: hasta } }); unidaHasta.set(r, hasta); }
+    aoa.push(opts.columnas.map((_, ci) => val(tg[ci] ?? ""))); kinds.push({ k: "total" }); r++;
+  }
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!merges"] = merges as XLSX.Range[];
-  ws["!cols"] = opts.columnas.map(c => ({ wch: Math.max(9, Math.round((c.ancho ?? 120) / 6.5)) }));
+  // Cada columna, del ancho que pidió quien arma el archivo pero nunca menos de lo que ocupan su
+  // título (en negrita, más la flechita del filtro) y su dato más largo: con el ancho fijo, Excel
+  // mostraba "otas del contra", "Deud" y "para recoger la mot". Tope de 60 para que un texto
+  // larguísimo no deje la hoja inmanejable.
+  const anchoDato = (v: string | number) => typeof v === "number"
+    ? Math.round(v).toLocaleString("es-CO").length + 2
+    : Math.ceil(String(v).length * 1.12) + 2;
+  ws["!cols"] = opts.columnas.map((c, ci) => {
+    let wch = Math.max(9, Math.round((c.ancho ?? 120) / 6.5), Math.ceil(c.label.length * 1.2) + 4);
+    kinds.forEach((rk, ri) => {
+      if (rk.k !== "data" && rk.k !== "total") return;
+      if (ci <= (unidaHasta.get(ri) ?? -1)) return;
+      const v = aoa[ri][ci];
+      if (v !== undefined && v !== "") wch = Math.max(wch, anchoDato(v));
+    });
+    return { wch: Math.min(wch, 60) };
+  });
   const headerRow = kinds.findIndex(k => k.k === "header");
   if (headerRow >= 0) ws["!autofilter"] = { ref: `${XLSX.utils.encode_cell({ r: headerRow, c: 0 })}:${XLSX.utils.encode_cell({ r: headerRow, c: n - 1 })}` };
 
@@ -76,7 +112,8 @@ export function estilarSeccionesWS(opts: SeccionesOpts): XLSX.WorkSheet {
       if (rk.k === "title") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 14, bold: true, color: { rgb: XLC.white } } });
       else if (rk.k === "period") put(addr, { font: { name: "Arial", sz: 10, color: { rgb: XLC.gray } } });
       else if (rk.k === "leyenda") put(addr, { font: { name: "Arial", sz: 9, italic: true, color: { rgb: XLC.grayL } } });
-      else if (rk.k === "header") put(addr, { fill: { fgColor: { rgb: XLC.cyan } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? "left", vertical: "center" }, border: bordeAll });
+      // Los títulos de las columnas de plata van centrados: a la derecha, la flechita del filtro los tapa.
+      else if (rk.k === "header") put(addr, { fill: { fgColor: { rgb: XLC.cyan } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align === "right" ? "center" : (col.align ?? "left"), vertical: "center" }, border: bordeAll });
       else if (rk.k === "section") put(addr, { fill: { fgColor: { rgb: hexNo(rk.sec) || XLC.sec } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } } });
       else if (rk.k === "total") put(addr, { fill: { fgColor: { rgb: XLC.navy } }, font: { name: "Arial", sz: 11, bold: true, color: { rgb: XLC.white } }, alignment: { horizontal: col.align ?? (numeric ? "right" : "left") }, border: bordeAll, ...(numeric ? { numFmt: "#,##0" } : {}) });
       else {

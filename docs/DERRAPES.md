@@ -295,3 +295,30 @@ cerrado sin revisar cómo se lee "abierta".
 leen la pantalla y las vistas** (grep del campo en `supabase/*.sql` y en `src/`) y cambiar ESE campo.
 También: dije "aquí está el SQL" y no lo pegué; el dueño no tenía cómo correrlo. Revisar que lo que
 anuncio esté en el mensaje.
+
+### 🔴 Volví a hacer un manual sin el formato que ya estaba definido (5-oct)
+**Lo que hice:** el dueño pidió un manual de Reportes y escribí `docs/MANUAL-REPORTES.md`: solo texto,
+sin una sola pantalla. No busqué antes cómo se hacen los manuales en este proyecto.
+**Lo que era verdad:** está definido desde el 10-sep y se reafirmó el 24-sep (este mismo archivo, el
+derrape del manual de liquidación): **PDF A4 con capturas REALES de la app**, pantalla a la izquierda
+y explicación a la derecha, lenguaje sencillo, el PDF fuera del repo (datos de clientes), los nombres
+de botón en `<span class="boton">` para el candado `manualesAlDia.test.ts`, y mirarlo página por
+página antes de entregar. Receta en `docs/manual-liquidacion/README.md`.
+**Quién lo cazó:** el dueño: *"¿ya no habíamos definido cómo iban a ser los manuales?"*.
+**Qué lo evita ahora:** es la segunda vez del MISMO error, así que la regla sube al índice de la
+memoria (Reglas de trabajo): **un manual nuevo = copiar `docs/manual-liquidacion/` y su guion de
+capturas**, nunca un formato nuevo. Antes de cualquier entregable, buscar si ya existe uno igual.
+
+### Dije que lo que se descarga coincidía con la pantalla sin abrir un solo archivo (5-oct)
+**Lo que hice:** le respondí al dueño que lo descargado era lo mismo que se veía. Lo había medido con
+las cifras dentro del navegador, pero nunca generé un archivo para mirarlo como lo mira él.
+**Lo que era verdad:** las cifras sí cuadraban (las 48 filas de su archivo de LUMAR, la prueba espejo
+332 contratos y 0 diferencias), pero los archivos tenían defectos que solo se ven abriéndolos: columnas
+cortadas en casi todos los Excel ("otas del contra", "Deud"), el total de Acuerdos con lo que FALTA
+($77.438.900) bajo "Lleva abonado" (lo abonado era $23.908.000), ningún Excel decía con qué filtro se
+bajó, y el PDF partía filas por la mitad entre una hoja y otra.
+**Quién lo cazó:** el dueño, con la foto del Excel abierto: *"¿probaste generando y descargando los
+archivos para ver qué significa cada fila?"*.
+**Qué lo evita ahora:** `exportar.test.ts` (anchos, notas y total) y `pdfCortes.test.ts` (dónde se
+corta cada hoja). Y la regla: **una descarga se da por buena solo después de generar el archivo y
+leerlo**: el Excel celda por celda contra la base, el PDF pasado a imágenes y mirado en cada cambio de hoja.

@@ -85,12 +85,12 @@ function tabla(cols: Col[], filas: string[][], total?: string[]): string {
   return `<table style="width:100%;border-collapse:collapse;margin:4px 0 12px;page-break-inside:avoid">${`<tr>${th}</tr>`}${cuerpo}${pie}</table>`;
 }
 function kpis(lista: Array<{ l: string; v: string; s?: string; color?: string }>): string {
-  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px">${lista.map(k =>
+  return `<div data-no-cortar style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px;page-break-inside:avoid">${lista.map(k =>
     `<div style="flex:1;min-width:120px;background:${C.fondo};border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:${C.suave}">${esc(k.l)}</div><div style="font-size:17px;font-weight:bold;color:${k.color ?? C.tinta}">${esc(k.v)}</div>${k.s ? `<div style="font-size:9.5px;color:${C.suave};margin-top:2px">${esc(k.s)}</div>` : ""}</div>`).join("")}</div>`;
 }
 const titulo = (t: string, nuevaPagina: boolean) =>
-  `<div style="${nuevaPagina ? "page-break-before:always;" : ""}margin:18px 0 6px;padding-bottom:4px;border-bottom:2px solid ${C.navy};font-size:15px;font-weight:bold;color:${C.navy}">${esc(t)}</div>`;
-const sub = (t: string) => `<div style="font-size:12px;font-weight:bold;color:${C.tinta};margin:10px 0 2px">${esc(t)}</div>`;
+  `<div data-con-siguiente style="${nuevaPagina ? "page-break-before:always;" : ""}margin:18px 0 6px;padding-bottom:4px;border-bottom:2px solid ${C.navy};font-size:15px;font-weight:bold;color:${C.navy}">${esc(t)}</div>`;
+const sub = (t: string) => `<div data-con-siguiente style="font-size:12px;font-weight:bold;color:${C.tinta};margin:10px 0 2px">${esc(t)}</div>`;
 const nota = (t: string) => `<p style="font-size:10px;color:${C.suave};margin:2px 0 8px;line-height:1.45">${esc(t)}</p>`;
 
 export function informeSociosHTML(d: DatosInforme, opciones: { secciones: SeccionInforme[]; detalle: boolean; anexos?: boolean }): string {
@@ -218,7 +218,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
   partes.push(sub("C. Clientes que deben y no tienen acuerdo"));
   if (a.sinAcuerdo.length === 0) partes.push(nota("Ninguno."));
   for (const b of a.sinAcuerdo) {
-    partes.push(`<div style="font-size:11px;font-weight:bold;color:${C.alerta};margin:6px 0 2px">${esc(b.cobrador.toUpperCase())} — ${b.clientes.length} ${b.clientes.length === 1 ? "cliente" : "clientes"} · deben ${plata(b.clientes.reduce((s, x) => s + x.debe, 0))}</div>`);
+    partes.push(`<div data-con-siguiente style="font-size:11px;font-weight:bold;color:${C.alerta};margin:6px 0 2px">${esc(b.cobrador.toUpperCase())} — ${b.clientes.length} ${b.clientes.length === 1 ? "cliente" : "clientes"} · deben ${plata(b.clientes.reduce((s, x) => s + x.debe, 0))}</div>`);
     partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Teléfono", al: "center" }, { t: "Debe", al: "right" }],
       b.clientes.map(x => [esc(x.cliente.toUpperCase()), esc(x.placa), esc(x.telefono || "—"), plata(x.debe)])));
   }
@@ -245,7 +245,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
     + `<div style="background:${C.navy};color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:19px;font-weight:bold">Informe para los socios</div><div style="font-size:12px;color:#c7dcf2;margin-top:2px">${esc(d.periodo)}</div></div><div style="background:#FFD100;color:#111;font-size:12px;font-weight:bold;padding:5px 10px;border-radius:6px;border:2px solid #111">CLUB MOTEROS CARTAGENA</div></div>`
     + `<div style="padding:6px 18px;background:#f1f5f9;font-size:11px;color:${C.suave}">${esc(d.filtros)} · generado el ${esc(d.generado)}</div>`
     + `<div style="padding:4px 18px 18px">${partes.join("")}`
-    + `<div style="margin-top:18px;border-top:1px solid ${C.linea};padding-top:8px;font-size:9.5px;color:#64748b;text-align:center;line-height:1.5">Las cifras son las mismas que se ven en Reportes, con los mismos filtros. Al día, gabela y en mora son el estado de HOY, la misma cuenta de Cartera; la moto en el taller y la liquidación van aparte.<br>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div>`
+    + `<div data-no-cortar style="margin-top:18px;border-top:1px solid ${C.linea};padding-top:8px;font-size:9.5px;color:#64748b;text-align:center;line-height:1.5">Las cifras son las mismas que se ven en Reportes, con los mismos filtros. Al día, gabela y en mora son el estado de HOY, la misma cuenta de Cartera; la moto en el taller y la liquidación van aparte.<br>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</div>`
     + `</div></div>`;
 }
 

@@ -1,6 +1,9 @@
 # Cómo usar Reportes — manual
 
 **24 páginas A4.** A la izquierda la foto real de la pantalla, a la derecha qué es cada cosa.
+Cada cosa que se explica lleva un **número al borde de la foto con una línea fina** hasta ella, y el
+mismo número en el texto; el botón que hay que tocar lleva un **anillo azul** (versión 2, 6-oct: el
+dueño pidió señales "más gráficas" y luego "más profesional y no tan empachado").
 Mismo formato que `docs/manual-liquidacion/`, porque es el que funcionó.
 
 **El PDF y las capturas NO se versionan**: llevan nombres, placas y saldos de clientes reales.
@@ -9,7 +12,10 @@ Están en `.gitignore`, igual que los de los otros manuales.
 Lo que sí vive acá:
 
 - `manual-reportes.html` — el texto y la maqueta.
-- `../../motogestion/scripts/manual/capturas-reportes.mjs` — lo que toma las capturas.
+- `../../motogestion/scripts/manual/capturas-reportes.mjs` — lo que toma las capturas y **mide**
+  dónde está cada cosa que lleva número (la lista `SENALES`); deja `img/<foto>.marcas.json`.
+- `../../motogestion/scripts/manual/poner-senales.mjs` — pinta los números y el anillo sobre cada
+  foto del manual con esas medidas.
 
 ## Cómo volver a generarlo
 
@@ -29,13 +35,21 @@ Hay que hacerlo **cuando Reportes cambie de aspecto**, para que las fotos no que
      body: JSON.stringify({ clave: k, valor: localStorage.getItem(k) }) });
    ```
 
-3. Tomar las capturas (19 fotos en `img/`; con números, solo esas: `... 18 19`):
+3. Tomar las capturas (19 fotos y sus medidas en `img/`):
 
    ```
    node motogestion/scripts/manual/capturas-reportes.mjs
    ```
 
-4. Armar el PDF:
+   Si dice **"señales que no encontré"**, un texto de la pantalla cambió: corregirlo en `SENALES`.
+
+4. Poner los números sobre las fotos:
+
+   ```
+   node motogestion/scripts/manual/poner-senales.mjs
+   ```
+
+5. Armar el PDF:
 
    ```
    chrome --headless=new --no-pdf-header-footer ^
@@ -43,7 +57,7 @@ Hay que hacerlo **cuando Reportes cambie de aspecto**, para que las fotos no que
      "file:///.../docs/manual-reportes/manual-reportes.html"
    ```
 
-5. Borrar lo que deja la sesión: `%TEMP%\mg-sesion-manual.json` y la carpeta del Chrome de las
+6. Borrar lo que deja la sesión: `%TEMP%\mg-sesion-manual.json` y la carpeta del Chrome de las
    capturas, `%TEMP%\mg-chrome-manual-rep` (guarda la sesión abierta).
 
 ## Lo que hay que revisar cada vez

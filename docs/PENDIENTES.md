@@ -25,11 +25,6 @@ Lo que está afectando cifras reales de clientes en este momento.
   en la plataforma del GPS), la base que entregó de verdad, el ahorro y las deudas que traía al 27-jul.
   Con eso: cargarlos, y en Liquidaciones registrar la revisión con esa fecha, calcular, firmar y cerrar.
   Mientras tanto aparece "en liquidación" y suma $1.950.000 a "Lo que se debe hoy".
-- [ ] **(Código) Borrar una deuda NO deja rastro en producción** (visto el 6-oct). La mig 101 creaba un
-  renglón "Deuda ELIMINADA" en el historial al borrar una deuda, pero no hay ni uno en toda la base y al
-  borrar la de LIQ-0032 no se creó: la protección no está viva. Revisar con
-  `select tgname from pg_trigger where tgrelid='public.deudas'::regclass and not tgisinternal;` y volver
-  a correr la parte de la mig 101 si no está.
 
 - [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN — su acuerdo vence el 12 de octubre y no le alcanza.**
   Cuota **$48.000**, **0 abonado**, y quedan **18 días** (medido el 24-sep). Con el motor ya
@@ -630,6 +625,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 6-oct | **Borrar una deuda vuelve a dejar rastro** (mig 189) — la protección de la mig 101 nunca quedó viva en producción: ni un renglón "Deuda ELIMINADA" en toda la base. Se puso de nuevo con una prueba que borra una deuda de mentira y comprueba el renglón (se deshace sola). Verificado: activa, 0 restos de la prueba |
+| 6-oct | **Manual de Reportes v2** — números al borde de cada foto con una línea hasta lo que explican y anillo azul donde hay que tocar; las señales se miden en la pantalla real al tomar las fotos (`poner-senales.mjs`). 24 hojas. Y el botón «Descargar / Imprimir» del reporte de cada entrega ya se ve |
 | 5-oct | **Reportes: los archivos revisados abriéndolos** — cifras: las 48 filas del Excel de LUMAR iguales a la base, 65 clientes y $43.886.400; toda la empresa $147.436.100 (la única diferencia, $27.000 de ADOLFO, el diario). Arreglado: columnas que salían cortadas en los Excel (en todos los de la app), cada Excel dice con qué filtro se bajó, el total de Acuerdos ponía lo que falta bajo "Lleva abonado", "Cómo va" dice "al día, le toca pagar hoy" / "con plazo extra" / "la moto ya la tiene otro cliente" (las palabras de ZALA), y el PDF de Reportes ya no parte filas entre hojas y cada sección empieza en hoja nueva |
 | 5-oct | **Reportes: descargar en cada sección y filtros de a varios** (D-040) — Excel y PDF donde se está viendo, lo que baja es lo que se ve; un cobrador sale partido por grupo y un grupo por cobrador; Reportes recuerda dónde estabas. Manual en `docs/manual-reportes/` (PDF de 24 páginas con pantallas reales) |
 | 2-oct | **Reportes terminado: Descargar nuevo** — informe para los socios (PDF o impreso) con las 5 secciones y las mismas cifras de cada pantalla, más tres anexos ya con D-035; listas en Excel. El PDF viejo le daba a cada cobrador plata de motos que no eran suyas ($26.898.200 en septiembre). `docs/REDISENO-REPORTES.md` |

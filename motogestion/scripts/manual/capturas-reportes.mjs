@@ -129,9 +129,132 @@ const resumenDeEntrega = `
   })()`;
 
 // ── El guion ──────────────────────────────────────────────────────────────────
+// ── LAS SEÑALES DEL MANUAL (6-oct) ────────────────────────────────────────────────────────────
+// Para cada foto, qué cosas llevan número. Se miden EN LA PANTALLA REAL al tomar la foto y se guardan
+// en img/<foto>.marcas.json; `poner-senales.mjs` las pinta sobre la foto en el manual. Así, si la
+// pantalla cambia, la línea sigue cayendo donde debe.
+//   texto: el texto que se busca (exacto: igual; ci: sin mayúsculas) · sel: un selector CSS en vez de texto
+//   cual: si hay varios visibles, cuál (0 = el primero) · cerca: subir hasta ese selector
+//   tarjeta: subir hasta el recuadro que lo contiene · dy: correr la altura de la línea
+//   lado: 'izq' | 'der' (si no, el más cercano) · tipo: 'anillo' = donde hay que tocar
+//   yMin: ignorar lo que esté más arriba (la etiqueta flotante de arriba repite textos)
+const SENALES = {
+  "01-entrada": [
+    { n: 1, texto: "Recaudado hoy" }, { n: 2, texto: "Cobranza", exacto: true, cerca: "nav" },
+    { n: 3, sel: "select", cerca: "div" }, { n: 4, texto: "Viendo:" },
+    { n: 5, texto: "PDF", exacto: true, cerca: "button", lado: "der" },
+    { n: 6, texto: "en la cola de recolección", tarjeta: true },
+    { tipo: "anillo", texto: "Más", exacto: true, cerca: "button" },
+  ],
+  "02-grupo": [
+    { n: 1, sel: 'button[aria-label^="Grupo:"]', lado: "der" }, { n: 2, texto: "RASTREADOR", exacto: true, tarjeta: true },
+    { n: 3, texto: "Listo", exacto: true, cerca: "button", lado: "der" }, { n: 4, texto: "Todos", exacto: true, cerca: "button" },
+    { n: 5, texto: "Quitar filtros", lado: "der" },
+  ],
+  "03-combinados": [
+    { n: 1, sel: 'button[aria-label^="Grupo:"]', lado: "der" }, { n: 2, sel: 'button[aria-label^="Cobrador:"]', lado: "izq" },
+    { n: 3, sel: "select", cerca: "div", lado: "izq" }, { n: 4, texto: "Viendo:" },
+  ],
+  "04-resumen": [
+    { n: 1, texto: "Recaudado ·", tarjeta: true }, { n: 2, texto: "vs ", cerca: "div" }, { n: 3, texto: "Ahorro de los clientes", cerca: "div" },
+    { n: 4, texto: "Efectivo" }, { n: 5, texto: "Cumplimiento del período", tarjeta: true }, { n: 6, texto: "Cifras verificadas", cerca: "button" },
+  ],
+  "05-resumen-estados": [
+    { n: 1, texto: "Cómo están los clientes", tarjeta: true }, { n: 2, texto: "Antigüedad de la mora", tarjeta: true },
+  ],
+  "06-cartera": [
+    { n: 1, texto: "Lo que se debe hoy", tarjeta: true }, { n: 2, texto: "Cuotas de acuerdos" },
+    { n: 3, texto: "Qué tan cobrable es", tarjeta: true }, { n: 4, texto: "Cómo van pagando hoy", tarjeta: true },
+  ],
+  "07-hoja": [
+    { n: 1, texto: "Cuotas del contrato ·" }, { n: 2, texto: "Retenida", cerca: "button" },
+    { n: 3, texto: "registros", dy: 52 },
+    { n: 4, texto: "Abrir en Cartera", cerca: "button" }, { n: 5, texto: "Descargar lista", cerca: "button", lado: "der" },
+    { n: 6, sel: '[role="dialog"] [aria-label="Cerrar"]', lado: "der" },
+  ],
+  "08-acuerdos": [
+    { n: 1, texto: "Acuerdos de pago", tarjeta: true }, { n: 2, texto: "Todavía les faltan", tarjeta: true },
+    { n: 3, texto: "Cómo van", exacto: true, tarjeta: true }, { n: 4, texto: "Quién los lleva", tarjeta: true },
+  ],
+  "09-por-grupo": [
+    { n: 1, texto: "RASTREADOR", exacto: true }, { n: 2, texto: "Cumplió", exacto: true, lado: "der" },
+    { n: 3, texto: "Total", exacto: true }, { n: 4, sel: "select", cual: 1, lado: "der" },
+  ],
+  "10-por-cobrador": [
+    { n: 1, texto: "Cobrador", exacto: true, dy: 42 }, { n: 2, texto: "Cumplió", exacto: true, lado: "der" },
+    { n: 3, texto: "Sin cobrador", exacto: true, ci: true },
+  ],
+  "11-nomina": [
+    { n: 1, texto: "Semana del", tarjeta: true, yMin: 80 }, { n: 2, texto: "Lo que se paga esta semana", tarjeta: true },
+    { n: 3, texto: "Cuánto vale cada cosa", tarjeta: true }, { n: 4, texto: "Por cobrador", exacto: true, tarjeta: true },
+  ],
+  "12-visitas": [
+    { n: 1, texto: "Visitas domiciliarias", tarjeta: true }, { n: 2, texto: "Terminaron en moto entregada", tarjeta: true },
+    { n: 3, texto: "Con su evidencia", tarjeta: true }, { n: 4, texto: "Quién las hizo", tarjeta: true },
+  ],
+  "13-flota": [
+    { n: 1, texto: "Dónde están las", tarjeta: true }, { n: 2, texto: "Por grupo", exacto: true, tarjeta: true },
+  ],
+  "14-guardadas": [
+    { n: 1, texto: "Motos guardadas en la empresa", tarjeta: true }, { n: 2, texto: "Por no pagar" },
+    { n: 3, texto: "1 a 7 días" }, { n: 4, texto: "Abrir Inmovilizaciones", cerca: "button" },
+  ],
+  "17-entregas": [
+    { n: 1, texto: "Motos entregadas", ci: true, lado: "izq" }, { n: 2, texto: "Documentación completa", ci: true, lado: "der" },
+    { n: 3, texto: "Documentación incompleta", ci: true, lado: "izq" }, { n: 4, texto: "Con fotos de entrega", ci: true, lado: "der" },
+    { n: 5, texto: "Imprimir reporte para los socios", cerca: "button" }, { n: 6, texto: "Regenerar documentos en blanco" },
+  ],
+  "18-entrega-tarjeta": [
+    { n: 1, texto: "C.C." }, { n: 2, texto: "Contrato", exacto: true, cerca: "button" },
+    { n: 3, texto: "Ver", exacto: true, yMin: 300 }, { n: 4, texto: "Resumen", exacto: true, cerca: "button", cual: 1 },
+  ],
+  "19-entrega-resumen": [
+    { n: 1, texto: "Cliente", ci: true, exacto: true }, { n: 2, texto: "Lo que se pactó", ci: true },
+    { n: 3, texto: "Base pendiente" }, { n: 4, texto: "Fotos de la entrega", ci: true, dy: 70 },
+    { n: 5, texto: "Descargar / Imprimir", cerca: "button", lado: "der" },
+  ],
+  "15-excel": [
+    { n: 1, texto: "Excel", exacto: true, cerca: "button", lado: "der" }, { n: 2, texto: "Lo que debe cada cliente" },
+    { n: 3, texto: "Separar por" }, { n: 4, texto: "Descargar Excel", cerca: "button" },
+  ],
+  "16-pdf": [
+    { n: 1, texto: "PDF", exacto: true, cerca: "button", lado: "der" }, { n: 2, texto: "Qué incluir" },
+    { n: 3, texto: "Todo el informe", cerca: "button", lado: "der" },
+    { n: 4, texto: "Con las listas completas", cerca: "label" }, { n: 5, texto: "Descargar PDF", cerca: "button" },
+  ],
+};
+
+/** Mide en la página dónde está cada señal (px de la pantalla). `alto` = el alto de la foto. */
+const MEDIR = (marcas, alto) => `
+  (() => {
+    const marcas = ${JSON.stringify(marcas)};
+    const W = innerWidth, H = ${alto ? alto : "innerHeight"};
+    const visible = r => r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < H;
+    const norm = (t, ci) => ci ? t.toLowerCase() : t;
+    const conTexto = (m, t) => [...document.querySelectorAll('*')].filter(x =>
+      [...x.childNodes].some(n => n.nodeType === 3 && (m.exacto ? norm(n.textContent.trim(), m.ci) === norm(t, m.ci) : norm(n.textContent, m.ci).includes(norm(t, m.ci))))
+      && visible(x.getBoundingClientRect()));
+    const esTarjeta = e => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect();
+      return parseFloat(cs.borderTopLeftRadius) >= 10 && r.width < W - 4 && (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || parseFloat(cs.borderTopWidth) > 0); };
+    return { W, H, marcas: marcas.map(m => {
+      const lista = (m.sel ? [...document.querySelectorAll(m.sel)].filter(x => visible(x.getBoundingClientRect())) : conTexto(m, m.texto))
+        .filter(x => x.getBoundingClientRect().top >= (m.yMin || 0));
+      const base = lista[m.cual || 0];
+      if (!base) return { n: m.n ?? null, falta: m.sel || m.texto };
+      let cont = base;
+      if (m.cerca) cont = base.closest(m.cerca) || base;
+      if (m.tarjeta) { let e = base; while (e && e !== document.body && !esTarjeta(e)) e = e.parentElement; if (e && e !== document.body) cont = e; }
+      const rb = base.getBoundingClientRect(), rc = cont.getBoundingClientRect();
+      const lado = m.lado || ((rc.left + rc.right) / 2 > W * 0.62 ? 'der' : 'izq');
+      return { n: m.n ?? null, tipo: m.tipo || 'call', lado,
+        y: Math.round((rb.top + rb.bottom) / 2 + (m.dy || 0)),
+        x: Math.round(rc.left), y0: Math.round(rc.top), x2: Math.round(rc.right), y2: Math.round(rc.bottom) };
+    }) };
+  })()`;
+
 const PANTALLAS = [
   { archivo: "01-entrada", titulo: "Reportes: el menú y la barra de filtros",
-    abrir: [clic("Más"), clic("Reportes"), arriba], espera: 9000 },
+    abrir: [clic("Más"), clic("Reportes"), arriba], espera: 20000 },   // que carguen todas las cifras
 
   { archivo: "02-grupo", titulo: "Escoger grupos (se pueden marcar varios)",
     abrir: [clicAria("Grupo:"), clic("COSTA")], espera: 1200 },
@@ -239,6 +362,12 @@ await evaluar(`
   })()`);
 await dormir(600);
 
+function guardarSenales(nombre, med) {
+  writeFileSync(join(SALIDA, nombre + ".marcas.json"), JSON.stringify(med, null, 1));
+  const faltan = med.marcas.filter(m => m.falta).map(m => m.falta);
+  if (faltan.length) console.log("  (señales que no encontré: " + faltan.join(", ") + ")");
+}
+
 /** Lo que se le pide al navegador entero (no a la pestaña): ver y cerrar ventanas. */
 async function alNavegador(fn) { const s = nav.sesion; nav.sesion = null; try { return await fn(); } finally { nav.sesion = s; } }
 async function ventanasAbiertas() { return (await alNavegador(() => nav.enviar("Target.getTargets"))).targetInfos.filter(t => t.type === "page").map(t => t.targetId); }
@@ -255,6 +384,10 @@ async function capturarVentanaNueva(nombre, antes) {
         await nav.enviar("Emulation.setDeviceMetricsOverride", { width: 840, height: 1100, deviceScaleFactor: 2, mobile: false });
         await dormir(5000);   // las fotos de la entrega llegan firmadas, un poco después
         const alto = (await nav.enviar("Runtime.evaluate", { expression: "Math.ceil(Math.max(...[...document.body.querySelectorAll('*')].map(e => e.getBoundingClientRect().bottom)) + 24)", returnByValue: true })).result.value;
+        if (SENALES[nombre]) {
+          const med = (await nav.enviar("Runtime.evaluate", { expression: MEDIR(SENALES[nombre], Math.min(alto, 1100)), returnByValue: true })).result.value;
+          guardarSenales(nombre, med);
+        }
         const { data } = await nav.enviar("Page.captureScreenshot", { format: "png", clip: { x: 0, y: 0, width: 840, height: Math.min(alto, 1100), scale: 1 } });
         writeFileSync(join(SALIDA, nombre + ".png"), Buffer.from(data, "base64"));
         console.log("  guardada: " + nombre + ".png (ventana aparte)");
@@ -279,7 +412,10 @@ for (const p of PANTALLAS) {
   }
   await dormir(p.espera ?? 2000);
   if (p.ventanaNueva) await capturarVentanaNueva(p.archivo, antes);
-  else await capturar(p.archivo);
+  else {
+    if (SENALES[p.archivo]) guardarSenales(p.archivo, await evaluar(MEDIR(SENALES[p.archivo])));
+    await capturar(p.archivo);
+  }
 }
 
 console.log("\nListo. Las capturas están en docs/manual-reportes/img/");

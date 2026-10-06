@@ -523,6 +523,12 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P3 — Módulos por construir
 
+- [ ] **(Código) Reportes › Cobranza con fecha: la cartera como estaba en un día pasado** (pedido del
+  dueño, 6-oct). Ej.: "¿cuánto se debía al 30 de septiembre y quiénes estaban en mora ese día?". Hoy
+  Cartera y Acuerdos son solo "cómo está hoy". OJO al construirlo: no basta con pasarle otra fecha a
+  `loQueDebe()` — las cajas guardadas en el contrato (`cajas_pagadas`, `caja_actual_pagado`) son las de
+  HOY; hay que reconstruir con los pagos, deudas y acuerdos que existían hasta ese día. Plan con dibujo
+  y su sí antes de tocar nada.
 - [ ] 💻 📋 **EGRESOS, con detalles y evidencias** — diseñado, sin construir. Hoy la plata que SALE
   no se registra en ningún lado (se vio con ELKIN: no había forma de saber si se le entregó su
   saldo a favor). El dueño pide que lleve **evidencia adjunta**, no solo el monto.

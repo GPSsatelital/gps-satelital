@@ -18,3 +18,5 @@ docs/manual-liquidacion/*.pdf
 PEGAR-EN-SUPABASE-*.sql
 .mcp.json.respaldo-*
 .claude.json.respaldo-*
+docs/manual-reportes/img/
+docs/manual-reportes/*.pdf

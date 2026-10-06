@@ -122,8 +122,9 @@
     semana de Equipo y cuántos "más deben" trae; el Excel de acuerdos dice si trae los ya pagados.
   · Reportes recuerda pestaña, período, filtros y semana al volver de Cartera o de una ficha.
   · El Excel de Flota trae el SOAT y la tecno en una segunda hoja (antes era una descarga aparte).
-  · Falta el manual de Reportes, en el formato de los manuales (PDF A4 con pantallas reales, como
-    `docs/manual-liquidacion/`). El 5-oct se hizo uno de solo texto y se retiró: no era el formato.
+  · Manual de Reportes en `docs/manual-reportes/` (5-oct): PDF A4 de 24 páginas con pantallas
+    reales, como `docs/manual-liquidacion/`. El PDF y las fotos no se versionan; la receta está en
+    su README. (El primero, de solo texto, se retiró: no era el formato.)
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

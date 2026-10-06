@@ -1146,13 +1146,15 @@ export default function ReportesView({ onNavigate }: Props) {
     // El navegador usa el <title> como nombre por defecto al "Guardar como PDF".
     const nombreDoc = `Rep_entrega (${e.placa})(${e.cliente})`;
     // La ventana se abre ANTES de firmar las fotos, o el navegador la bloquea por emergente.
+    // Es una ventana aparte, sin el CSS de la app: los colores van fijos, nunca var(--…) (6-oct: el
+    // botón «Descargar / Imprimir» quedaba blanco sobre blanco, invisible).
     const win = window.open("", "_blank", "width=840,height=920");
     if (!win) return;
     const cuerpo = await firmarImagenesHtml(generarHTMLResumenEntrega(c, cliente, moto, fotos));
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${nombreDoc}</title>
-      <style>@media print{.no-print{display:none}} body{margin:0;background:var(--soft)}</style></head><body>
-      <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:flex-end">
-        <button onclick="window.print()" style="padding:9px 18px;border:none;border-radius:8px;background:var(--accent);color:white;font-weight:700;cursor:pointer">🖨️ Descargar / Imprimir</button>
+      <style>@media print{.no-print{display:none}} body{margin:0;background:#f1f5f9}</style></head><body>
+      <div class="no-print" style="position:sticky;top:0;background:white;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:flex-end">
+        <button onclick="window.print()" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:none;border-radius:8px;background:#0284c7;color:#0a1020;font-weight:700;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Descargar / Imprimir</button>
       </div>${cuerpo}</body></html>`);
     win.document.close();
   }
@@ -1163,8 +1165,8 @@ export default function ReportesView({ onNavigate }: Props) {
     if (!win) return;
     const fechaHoy = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
     const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? rango;
-    const si = "<span style='color:var(--ok-ink);font-weight:700;'>✓</span>";
-    const no = "<span style='color:var(--bad-ink);font-weight:700;'>✗</span>";
+    const si = "<span style='color:#166534;font-weight:700;'>Completos</span>";
+    const no = "<span style='color:#991b1b;font-weight:700;'>Faltan</span>";
     const filas = entregas.map(e => `<tr>
       <td style="padding:7px 8px;">${new Date(e.fecha + "T00:00:00").toLocaleDateString("es-CO")}</td>
       <td style="padding:7px 8px;font-weight:700;">${e.placa}</td>
@@ -1178,16 +1180,16 @@ export default function ReportesView({ onNavigate }: Props) {
       <td style="padding:7px 8px;text-align:center;">${e.docs.contrato && e.docs.pagare && e.docs.certificado && e.docs.firma ? si : no}</td>
       <td style="padding:7px 8px;text-align:center;">${e.nFotos}</td>
     </tr>`).join("");
-    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:var(--text);padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:var(--soft);padding:8px 10px;text-align:left;font-weight:700;color:var(--muted3);}tr:nth-child(even){background:var(--soft2);}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:var(--faint);text-align:center;}</style></head><body>
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte de entregas</title><style>body{font-family:Arial,sans-serif;color:#0f172a;padding:32px;font-size:13px;}h1{font-size:22px;margin-bottom:4px;}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;color:#475569;}tr:nth-child(even){background:#f8fafc;}.kpis{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;}.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:12px 18px;}.kpi-val{font-size:20px;font-weight:800;}footer{margin-top:28px;font-size:11px;color:#94a3b8;text-align:center;}</style></head><body>
       <h1>Reporte de entregas de motos</h1>
-      <p style="color:var(--muted);margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Grupo: <strong>${grupoEnt}</strong> · Generado el ${fechaHoy}</p>
+      <p style="color:#64748b;margin:0;">Período: <strong>${rangoLabel}</strong> (${desde} → ${hasta}) · Grupo: <strong>${grupoEnt}</strong> · Generado el ${fechaHoy}</p>
       <div class="kpis">
         <div class="kpi"><div class="kpi-val">${entregas.length}</div><div>Motos entregadas</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:var(--ok-ink);">${entregasCompletas}</div><div>Documentación completa</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:var(--bad-ink);">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:var(--accent);">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#166534;">${entregasCompletas}</div><div>Documentación completa</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#991b1b;">${entregasIncompletas}</div><div>Documentación incompleta</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:#0284c7;">${entregasConFotos}</div><div>Con fotos de entrega</div></div>
       </div>
-      ${entregas.length === 0 ? "<p style='color:var(--muted);margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
+      ${entregas.length === 0 ? "<p style='color:#64748b;margin-top:20px;'>No hay entregas en este período.</p>" : `<table><thead><tr><th>Fecha</th><th>Placa</th><th>Grupo</th><th>Cliente</th><th>Cédula</th><th>Modalidad</th><th>Cuota</th><th>Día pago</th><th>Plazo</th><th>Docs</th><th>Fotos</th></tr></thead><tbody>${filas}</tbody></table>`}
       <footer>Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901</footer>
       </body></html>`);
     win.document.close();

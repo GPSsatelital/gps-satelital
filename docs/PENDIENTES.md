@@ -16,6 +16,21 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 Lo que está afectando cifras reales de clientes en este momento.
 
+- [ ] **(Oficina) ANDRÉS BALLESTAS (RLZ85H) — rehacer su liquidación LIQ-0032** (devuelta el 6-oct,
+  mig 188). Se había cerrado el 14-sep sin validar el ahorro ni las deudas: decía que debía $35.000.
+  Su base nunca se confirmó (entró con COSTA, empalme abierto) y no se le cobraron las semanas que
+  rodó sin pagar desde el 27-jul. Con base $500.000 y la moto recogida el 1-sep debería $627.000.
+  Quedó en "en_taller", contrato Suspendido con el contador parado el 29-sep (la moto ya es de
+  SILFREDO PEDROZA). **Faltan 4 datos:** el día en que se recogió la moto (no quedó registrado; buscar
+  en la plataforma del GPS), la base que entregó de verdad, el ahorro y las deudas que traía al 27-jul.
+  Con eso: cargarlos, y en Liquidaciones registrar la revisión con esa fecha, calcular, firmar y cerrar.
+  Mientras tanto aparece "en liquidación" y suma $1.950.000 a "Lo que se debe hoy".
+- [ ] **(Código) Borrar una deuda NO deja rastro en producción** (visto el 6-oct). La mig 101 creaba un
+  renglón "Deuda ELIMINADA" en el historial al borrar una deuda, pero no hay ni uno en toda la base y al
+  borrar la de LIQ-0032 no se creó: la protección no está viva. Revisar con
+  `select tgname from pg_trigger where tgrelid='public.deudas'::regclass and not tgisinternal;` y volver
+  a correr la parte de la mig 101 si no está.
+
 - [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN — su acuerdo vence el 12 de octubre y no le alcanza.**
   Cuota **$48.000**, **0 abonado**, y quedan **18 días** (medido el 24-sep). Con el motor ya
   arreglado (mig 171) le van a entrar unas 2 cuotas antes del vencimiento: **no alcanza**.
@@ -572,6 +587,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   entre dos hojas** (5-oct). Es el mismo cortador de `utils/pdf.ts` que partía las filas del informe de
   Reportes. Reportes ya usa `cortesSeguros`; los demás siguen igual porque son documentos firmados:
   antes de activarlo ahí, generar un contrato real y mirar sus cambios de hoja.
+- [ ] **(Código) Ventanas aparte que usan los colores de la app (`var(--…)`)** (6-oct). Una ventana
+  que se abre aparte no tiene el CSS de la app: esos colores no existen ahí. En Entregas el botón
+  «Descargar / Imprimir» del reporte de cada entrega quedaba blanco sobre blanco (arreglado el 6-oct,
+  junto con «Imprimir reporte para los socios»). Hay más ventanas así en Cobros, Ficha del cliente,
+  Liquidaciones, Taller, la línea de tiempo y otras: revisarlas una por una.
 - [ ] **(Oficina) DQL79I tiene la tecnomecánica con año 0028** (debe ser 2028-03-25 o parecido). Por eso sale
   como vencida en Flota y en el PDF. Falta la fecha real del papel. Además, el formulario de motos dejó
   guardar un año imposible: conviene que no lo acepte.
@@ -611,7 +631,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 | Fecha | Qué |
 |---|---|
 | 5-oct | **Reportes: los archivos revisados abriéndolos** — cifras: las 48 filas del Excel de LUMAR iguales a la base, 65 clientes y $43.886.400; toda la empresa $147.436.100 (la única diferencia, $27.000 de ADOLFO, el diario). Arreglado: columnas que salían cortadas en los Excel (en todos los de la app), cada Excel dice con qué filtro se bajó, el total de Acuerdos ponía lo que falta bajo "Lleva abonado", "Cómo va" dice "al día, le toca pagar hoy" / "con plazo extra" / "la moto ya la tiene otro cliente" (las palabras de ZALA), y el PDF de Reportes ya no parte filas entre hojas y cada sección empieza en hoja nueva |
-| 5-oct | **Reportes: descargar en cada sección y filtros de a varios** (D-040) — Excel y PDF donde se está viendo, lo que baja es lo que se ve; un cobrador sale partido por grupo y un grupo por cobrador; Reportes recuerda dónde estabas. Falta el manual (PDF con pantallas reales) |
+| 5-oct | **Reportes: descargar en cada sección y filtros de a varios** (D-040) — Excel y PDF donde se está viendo, lo que baja es lo que se ve; un cobrador sale partido por grupo y un grupo por cobrador; Reportes recuerda dónde estabas. Manual en `docs/manual-reportes/` (PDF de 24 páginas con pantallas reales) |
 | 2-oct | **Reportes terminado: Descargar nuevo** — informe para los socios (PDF o impreso) con las 5 secciones y las mismas cifras de cada pantalla, más tres anexos ya con D-035; listas en Excel. El PDF viejo le daba a cada cobrador plata de motos que no eran suyas ($26.898.200 en septiembre). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **XYZ51H y YAV66H vendidas, dadas de baja** (D-039, migs 186·187) — estado nuevo "Vendida": salen de Motos (filtro "Vendidas"), Flota, Reportes, Panel, portal del socio y nómina; su historia se queda. Contrato de JESUS DAVID SABALLET cerrado y él Retirado (sus $260.500 quedan anotados; las 14 semanas no). La entrada al taller de XYZ51H cerrada. Flota 376 → 374, retenidas 42 → 41, lo que se debe hoy −$3.088.500 |
 | 2-oct | **Borradas las 3 motos de prueba de USADAS** (mig 185): ZZB01T, ZZC01T y ZZC02T ("MOTO DE PRUEBA - BORRAR", sin contratos ni pagos), con los 2 movimientos de prueba de ZZC02T. La primera vez el seguro encontró esos movimientos y se detuvo sin tocar nada. USADAS queda en 0 motos |

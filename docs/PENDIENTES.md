@@ -8,7 +8,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **2-oct-2026**.
+- Última revisión: **6-oct-2026**.
 
 ---
 
@@ -211,6 +211,29 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 🔴 **REPORTES › CARTERA DE UN DÍA PASADO — a medio hacer (D-043, 6-oct).** El dueño aprobó
+  "Las dos" y "empieza por el paso 1".
+  · ✅ **Paso 1, la base: HECHO.** Mig 190 corrida y verificada el 6-oct: reloj `cartera-cada-noche`
+    prendido (55 4 * * * UTC = 11:55 p.m.), 338 contratos anotados el 6-oct que deben $135.322.100
+    (= cuenta en vivo). Desde el 7-oct ya se puede escoger el 6-oct.
+  · 🔨 **Paso 1, la pantalla: A MEDIAS en la rama `wip/cartera-del-dia`** (NO está en main, a
+    propósito: así como está, el PDF diría "Lo que se debe hoy" con cifras de otro día). Falta:
+    1. `CobranzaReportes.tsx`: importar `CalendarDays` de lucide (es el ÚNICO error de `tsc`);
+       "Los que más debían", "Ver los N que debían", "tenían plata a su favor" y esconder
+       «Abrir Cartera» en un día pasado (las 5 ediciones que se detuvieron).
+    2. `informeSocios.ts` (PDF): `cobranza.dia` → títulos "Lo que se debía el …", "Cómo iban pagando
+       ese día", y sin el bloque de acuerdos ese día (son de hoy). Pasarlo desde `armarInforme`.
+    3. Probar en el navegador a 375 px: escoger el 6-oct (desde el 7-oct), que el total dé $135.322.100
+       sin filtros, que los filtros de grupo y cobrador funcionen, abrir cada lista, bajar Excel y PDF
+       ABRIÉNDOLOS. Después `npm run build` + `npm test`, y su sí para subir.
+  · ⏳ **Paso 2, la cuenta hacia atrás** para el 31-ago y el 30-sep (marca "calculado después").
+    Medido el 6-oct: reconstruyendo las semanas pagadas hacia atrás con `cajas_llenadas`, 354 de 365
+    contratos dieron igual que la foto de la plata del 25-sep; revisar los 11 que no (casi todos
+    "pred = foto − 1"). Antes de guardar, medir contra las fotos del 24 y 25-sep y decirle cuántos dan
+    exacto. El Resumen ya tiene `estadoAlCierre` (estados, sin plata) que puede servir.
+  · ⏳ Después: **#7 Proyección de lo que debería entrar** (lo eligió con la 6). Falta definir con él si
+    es por semana, por mes o por grupo — con dibujo.
 
 - [ ] 🧑 🔴 **LIQ-0050 (NELSON ESTUPIÑAN, RMZ58H): corregir su lista de deudas y volver a calcular.**
   Se inició el 11-sep copiando las deudas de ese momento (la del Excel estaba "devuelta" por la mig 130)
@@ -523,12 +546,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P3 — Módulos por construir
 
-- [ ] **(Código) Reportes › Cobranza con fecha: la cartera como estaba en un día pasado** (pedido del
-  dueño, 6-oct). Ej.: "¿cuánto se debía al 30 de septiembre y quiénes estaban en mora ese día?". Hoy
-  Cartera y Acuerdos son solo "cómo está hoy". OJO al construirlo: no basta con pasarle otra fecha a
-  `loQueDebe()` — las cajas guardadas en el contrato (`cajas_pagadas`, `caja_actual_pagado`) son las de
-  HOY; hay que reconstruir con los pagos, deudas y acuerdos que existían hasta ese día. Plan con dibujo
-  y su sí antes de tocar nada.
 - [ ] 💻 📋 **EGRESOS, con detalles y evidencias** — diseñado, sin construir. Hoy la plata que SALE
   no se registra en ningún lado (se vio con ELKIN: no había forma de saber si se le entregó su
   saldo a favor). El dueño pide que lleve **evidencia adjunta**, no solo el monto.

@@ -631,3 +631,25 @@ sin registrar a propósito.
 que el sistema nunca tuvo registrada (entró con COSTA sin empalme).
 **Dónde vive:** el historial de su contrato (`contratos_auditoria`, notas del 6-oct) · mig 188 ·
 `docs/PENDIENTES.md` (falta su firma). Es una decisión de UN caso, no una regla para los demás.
+
+### D-043 · 6-oct-2026 · El cuaderno de la cartera: cada noche se anota cuánto se debía
+**Decidió:** el dueño ("La cartera en una fecha pasada"; ante las dos formas de lograrlo: "Las dos
+(Recomendado)"; y "Sí, empieza por el paso 1").
+**Qué se decidió:** Reportes → Cobranza → Cartera va a poder mostrar cómo estaba la cartera un día
+pasado, con un cuadrito "Día". Se hace de dos maneras:
+1. **El cuaderno de cada noche** (hecho, mig 190): a las 11:55 p.m. de Colombia la base copia, contrato
+   por contrato, lo que debía ese día (cuotas, acuerdo, deudas), su plata a favor y cómo iba (al día,
+   gabela, mora, taller, retenida, en liquidación). Copia la MISMA cuenta de la pantalla
+   (`zala.cliente` = `loQueDebe()`), no una nueva. Desde el 6-oct, cada día queda exacto.
+2. **La cuenta hacia atrás** (pendiente, paso 2): solo para el 31-ago y el 30-sep, con la marca
+   "calculado después (aproximado)". Antes de guardarla se compara contra las fotos de la plata del 24 y
+   25-sep; si salen muchos mal, no se guarda. Antes del 22-ago no se puede (no hay `cajas_llenadas`).
+**Lo que no sabe, y se dice en la pantalla:** anota lo que la app sabía esa noche (un pago de ese día
+confirmado al otro día sale como no pagado), y los contratos Diario no traen cifra (hoy solo ADOLFO).
+**Por qué:** la app nunca guardaba cómo quedaba la cartera cada noche; sin cuaderno, un día pasado solo
+se puede sacar hacia atrás y aproximado. Cada noche sin cuaderno es un día que ya no se ve exacto.
+**Dónde vive:** `supabase/190_cartera_del_dia.sql` (tabla `cartera_del_dia`, `anotar_cartera_del_dia()`,
+`cartera_fechas()`, reloj `cartera-cada-noche`) · la pantalla en la rama `wip/cartera-del-dia`
+(`useCarteraDelDia.ts`, `utils/carteraDelDia.ts`, `ReportesView.tsx`, `CobranzaReportes.tsx`,
+`BarraFiltros.tsx`). Quién lo lee: los mismos que pueden ver ese contrato (la regla de `contratos`).
+ZALA no lo lee.

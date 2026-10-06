@@ -322,3 +322,19 @@ archivos para ver qué significa cada fila?"*.
 **Qué lo evita ahora:** `exportar.test.ts` (anchos, notas y total) y `pdfCortes.test.ts` (dónde se
 corta cada hoja). Y la regla: **una descarga se da por buena solo después de generar el archivo y
 leerlo**: el Excel celda por celda contra la base, el PDF pasado a imágenes y mirado en cada cambio de hoja.
+
+### Prometí que borrar una deuda dejaba rastro solo, sin mirar si esa protección estaba viva (6-oct)
+**Lo que hice:** en la mig 188 escribí "el borrado deja su rastro solo (mig 101)" y se lo dije al dueño
+como un hecho. Lo saqué del archivo de la migración, no de la base.
+**Lo que era verdad:** la protección de la mig 101 nunca estuvo viva en producción: no había ni un
+renglón "Deuda ELIMINADA" en toda la base. Lo vi al comprobar después de correr la 188.
+**Quién lo cazó:** yo, al verificar después; se lo dije al dueño y se arregló con la mig 189 (con una
+prueba que borra una deuda de mentira y se deshace sola).
+**Qué lo evita ahora:** lo que una migración vieja promete se comprueba EN LA BASE antes de contar con
+ello (`pg_trigger`, `pg_proc`, una fila de prueba), igual que la lección de la mig 124.
+
+### Le mandé al dueño un mensaje entero en inglés (6-oct)
+**Lo que hice:** los pasos para terminar la liquidación de ANDRÉS salieron en inglés.
+**Quién lo cazó:** el dueño: *"siempre haz todo en español"*.
+**Qué lo evita ahora:** revisar el idioma antes de mandar, sobre todo los mensajes largos con tablas
+(quedó también en la memoria de comunicación).

@@ -16,16 +16,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 Lo que está afectando cifras reales de clientes en este momento.
 
-- [ ] **(Oficina) ANDRÉS BALLESTAS (RLZ85H) — rehacer su liquidación LIQ-0032** (devuelta el 6-oct,
-  mig 188). Se había cerrado el 14-sep sin validar el ahorro ni las deudas: decía que debía $35.000.
-  Su base nunca se confirmó (entró con COSTA, empalme abierto) y no se le cobraron las semanas que
-  rodó sin pagar desde el 27-jul. Con base $500.000 y la moto recogida el 1-sep debería $627.000.
-  Quedó en "en_taller", contrato Suspendido con el contador parado el 29-sep (la moto ya es de
-  SILFREDO PEDROZA). **Faltan 4 datos:** el día en que se recogió la moto (no quedó registrado; buscar
-  en la plataforma del GPS), la base que entregó de verdad, el ahorro y las deudas que traía al 27-jul.
-  Con eso: cargarlos, y en Liquidaciones registrar la revisión con esa fecha, calcular, firmar y cerrar.
-  Mientras tanto aparece "en liquidación" y suma $1.950.000 a "Lo que se debe hoy".
-
+- [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
+  venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
+  dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
+  SIN registrar a propósito (decisión del dueño): cuando aparezca en el Nequi, darle destino.
 - [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN — su acuerdo vence el 12 de octubre y no le alcanza.**
   Cuota **$48.000**, **0 abonado**, y quedan **18 días** (medido el 24-sep). Con el motor ya
   arreglado (mig 171) le van a entrar unas 2 cuotas antes del vencimiento: **no alcanza**.
@@ -578,6 +572,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P4 — Limpieza y optimización
 
+- [ ] **(Código) «Cerrar sin firma» no trae la casilla "Sigue con la empresa"** (6-oct). La casilla solo
+  sale en el paso de después de firmar; si se cierra sin firma, el cliente queda Retirado y el contrato
+  nuevo no lo ofrece (con ANDRÉS BALLESTAS hubo que dejarlo Aprobado a mano). Mostrar la casilla también ahí.
 - [ ] **(Código) Los PDF de contratos, pagarés, liquidaciones y acuerdos de tiempo pueden partir una línea
   entre dos hojas** (5-oct). Es el mismo cortador de `utils/pdf.ts` que partía las filas del informe de
   Reportes. Reportes ya usa `cortesSeguros`; los demás siguen igual porque son documentos firmados:
@@ -625,6 +622,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 6-oct | **ANDRÉS BALLESTAS: LIQ-0032 cerrada en $0** (decisión del dueño): se le perdonó la deuda vieja ($1.339.000) cruzándola con su ahorro ($910.000) y su base ($300.000); retrovisores fuera. Cerrada sin firma; él quedó Aprobado, sin deuda ni lista negra, con $150.000 de base para la moto nueva. Antes (migs 188) se había devuelto porque se cerró el 14-sep sin validar ahorro ni deudas |
 | 6-oct | **Borrar una deuda vuelve a dejar rastro** (mig 189) — la protección de la mig 101 nunca quedó viva en producción: ni un renglón "Deuda ELIMINADA" en toda la base. Se puso de nuevo con una prueba que borra una deuda de mentira y comprueba el renglón (se deshace sola). Verificado: activa, 0 restos de la prueba |
 | 6-oct | **Manual de Reportes v2** — números al borde de cada foto con una línea hasta lo que explican y anillo azul donde hay que tocar; las señales se miden en la pantalla real al tomar las fotos (`poner-senales.mjs`). 24 hojas. Y el botón «Descargar / Imprimir» del reporte de cada entrega ya se ve |
 | 5-oct | **Reportes: los archivos revisados abriéndolos** — cifras: las 48 filas del Excel de LUMAR iguales a la base, 65 clientes y $43.886.400; toda la empresa $147.436.100 (la única diferencia, $27.000 de ADOLFO, el diario). Arreglado: columnas que salían cortadas en los Excel (en todos los de la app), cada Excel dice con qué filtro se bajó, el total de Acuerdos ponía lo que falta bajo "Lleva abonado", "Cómo va" dice "al día, le toca pagar hoy" / "con plazo extra" / "la moto ya la tiene otro cliente" (las palabras de ZALA), y el PDF de Reportes ya no parte filas entre hojas y cada sección empieza en hoja nueva |

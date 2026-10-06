@@ -607,3 +607,27 @@ también. Y el informe estaba en otra pestaña, lejos de lo que se estaba mirand
 **Dónde vive:** `DescargarSeccion.tsx` · `BarraFiltros.tsx` · `EXCEL_DE_TAB` y `bloquesPor` en
 `ReportesView.tsx`.
 **Reemplaza a:** la pestaña Descargar del 2-oct y los botones de descarga sueltos de cada pantalla.
+
+### D-041 · 6-oct-2026 · Los manuales señalan con números al borde y una línea, no con recuadros
+**Decidió:** el dueño. Pidió señales "más gráficas, que hasta un niño que apenas sabe leer lo entienda";
+vio una muestra con recuadros rojos y dijo "que se vea más profesional y no tan empachado"; con la
+segunda muestra: "Sí, así en todas".
+**Qué se decidió:** en las fotos del manual, cada cosa que se explica lleva un número azul oscuro al
+borde de la foto con una línea fina hasta ella, y el mismo número en el texto; el botón que hay que
+tocar lleva un anillo azul. La foto queda limpia: sin recuadros ni letreros encima.
+**Por qué:** que se entienda sin leer mucho, sin que la foto quede cargada.
+**Dónde vive:** `docs/manual-reportes/` (estilos `.call` y `.anillo`) · las medidas las toma
+`capturas-reportes.mjs` (`SENALES`) y las pinta `poner-senales.mjs`. Los manuales que vengan, igual.
+
+### D-042 · 6-oct-2026 · ANDRÉS BALLESTAS: se le perdona la deuda vieja y sigue con otra moto
+**Decidió:** el dueño ("se le va a condonar la deuda para que quede al día", "A. Empieza de cero",
+"cerremos en 0 y que los 150 queden ahí para la siguiente moto").
+**Qué se decidió:** su liquidación LIQ-0032 se cierra en $0. Lo que debía al guardar la moto
+($1.339.000: acuerdo y tarifas del sistema viejo) se perdona, cruzado con su ahorro ($910.000) y su
+base ($300.000); los retrovisores ($35.000) tampoco se le cobran en la liquidación. Sigue con la empresa:
+los $150.000 que dio el 6-oct son la base de su moto nueva. Su transferencia de $35.000 del 6-oct quedó
+sin registrar a propósito.
+**Por qué:** se le va a entregar otra moto y el dueño prefirió dejarlo al día que cobrarle una deuda
+que el sistema nunca tuvo registrada (entró con COSTA sin empalme).
+**Dónde vive:** el historial de su contrato (`contratos_auditoria`, notas del 6-oct) · mig 188 ·
+`docs/PENDIENTES.md` (falta su firma). Es una decisión de UN caso, no una regla para los demás.

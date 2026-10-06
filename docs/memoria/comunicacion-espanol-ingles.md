@@ -12,3 +12,7 @@ Toda la comunicación con el usuario va en **español** (explicaciones, planes, 
 **Why:** El usuario quiere distinguir qué es lenguaje conversacional (español) vs qué pertenece al código (inglés), probablemente para ir aprendiendo los términos técnicos.
 
 **How to apply:** Responder siempre en español. Dejar en inglés los identificadores y términos del código tal como viven en el sistema. Si un concepto técnico necesita explicarse, ofrecer la forma en español además de la inglesa cuando ayude a entender.
+
+**6-oct-2026:** se me fue un mensaje entero en inglés (los pasos de la liquidación de ANDRÉS) y el dueño
+lo corrigió: *"siempre haz todo en español"*. Revisar el idioma antes de mandar cada mensaje, sobre
+todo los largos con tablas y pasos.

@@ -8,17 +8,19 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (3-oct, madrugada)
+## ▶️ DÓNDE RETOMAR (6-oct, noche)
 
 🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
 paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
 
-🔴 **HAY UN COMMIT LOCAL SIN SUBIR: "Descargar" de Reportes** (informe para los socios + Excel). El
-dueño NO ha dado el sí para subirlo (rechazó la pregunta y pidió "guarda todo para seguir en otra
-sesión"). **NO hacer push sin preguntarle** — el push a `main` publica en Vercel. Al volver: mostrarle
-qué trae y preguntar "¿lo subo?". Probado: 826 pruebas, build, contraste 0, cifras cuadran por 3
-caminos; NO se descargó un PDF de verdad (pedirle que baje uno al subirlo).
+✅ **6-oct, todo subido** (dd13576 · f072d63 · e20ff8d): Reportes revisado ABRIENDO los archivos (columnas,
+filtro escrito, total de Acuerdos, PDF sin filas partidas) · botón «Descargar / Imprimir» de Entregas visible ·
+**manual de Reportes v2** con señales medidas en la pantalla (`poner-senales.mjs`) · migs **188** (LIQ-0032
+devuelta) y **189** (rastro al borrar una deuda: la 101 nunca estuvo viva) corridas y verificadas.
+✅ **ANDRÉS BALLESTAS**: LIQ-0032 cerrada en $0 (deuda vieja perdonada, decisión del dueño), Aprobado, $150.000
+de base para la moto nueva; **falta su firma** y **sus $35.000 por transferencia del 6-oct quedaron SIN
+registrar a propósito** → [[andres-ballestas-liq0032-devuelta]].
 🔴 **Mig 187 SIN CORRER** (taller de XYZ51H a 'Finalizado'): el aviso "Lleva días en el taller —
 XYZ51H" sigue saliendo. El SQL está en `motogestion/supabase/187_*.sql`; pegárselo otra vez.
 ▶️ Después: **la misma mejora de Reportes en toda la app**, pantalla por pantalla →
@@ -74,6 +76,7 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 - ✅ **[Correcciones a mano — el método](correcciones-a-mano-sep-2026.md)** — leer la función que hizo el daño e invertirla; parchar nunca regenerar; antes/después siempre (un "success" no prueba el commit).
 - 🔨 **[Mapa financiero + PARTITURA](mapa-financiero-y-partitura.md)** — `repartoPago.ts` = espejo del motor v2. 🔲 fase D · egresos.
 - 🔴 **Reportes 25-ago** — 78 convenios activos · $64,4M pactados · 25 sin abono · 45 guardadas, 463 días sin producir.
+- 🔨 **[ANDRÉS BALLESTAS: LIQ-0032 devuelta](andres-ballestas-liq0032-devuelta.md)** (6-oct, mig 188) — faltan 4 datos para rehacerla; cómo devolver una liquidación cuando la moto ya es de otro.
 - ✅ **[El acuerdo vencido se sigue cobrando](acuerdo-vencido-se-sigue-cobrando.md)** · **[El excedente de la base a saldo a favor](excedente-base-a-saldo-favor.md)** · **[Caja por cuenta bancaria](caja-por-cuenta-bancaria.md)** · **[Permiso rodar_tiempo](permiso-rodar-tiempo.md)**.
 - 🔨 **[Cambio de moto](graduacion-cambio-moto-flujo.md)** (114+115) sin probar · **[Liquidaciones: firma + REGLA MADRE](liquidacion-firma-digital-y-desglose.md)** · **[Definición cerrada](liquidaciones-definicion-cerrada.md)** · 🔴 **[83 hallazgos](liquidaciones-auditoria-y-huecos.md)**.
 - 🔨 **[Diarios: ahorro no acumula](bug-diario-ahorro-no-acumula.md)** — no más diarios, motor NO se toca.
@@ -93,6 +96,9 @@ YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
 
 ## Reglas de trabajo
 
+- 🔴 **MANUALES = el formato de `docs/manual-liquidacion/`** (PDF A4 con capturas REALES, pantalla
+  izq. + explicación der., lenguaje de niño, PDF fuera del repo, botones en `<span class="boton">`,
+  mirar página por página). Lo rompí DOS veces (24-sep y 5-oct) → [[manual-operacion-pdf]].
 - 🔴 **[Que no quede mocho](feedback-nada-queda-mocho.md)** (23-sep) — **antes** de escribir la primera línea se acuerda qué significa TERMINADO, como lista medible; al cerrar se responde una por una con el número real, más lo que NO quedó cubierto. Un `success` o un build verde no son prueba.
 - 🔴 **[Decir PRIMERO de dónde sale un tema](feedback-decir-de-donde-sale.md)** (28-sep) — si viene de otra sesión o de PENDIENTES, la primera frase lo dice.
 - 🔴 **[PREGUNTAR hasta que quede TOTALMENTE claro](feedback-preguntar-hasta-que-quede-claro.md)** (19-sep) — repetir el plan con SUS números y esperar el sí; preguntar el POR QUÉ, no solo el qué.

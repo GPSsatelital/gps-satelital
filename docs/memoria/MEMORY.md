@@ -8,11 +8,16 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (6-oct, noche)
+## ▶️ DÓNDE RETOMAR (6-oct, tarde-noche)
 
 🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
 paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
+
+🔨 **LO PRIMERO: la cartera de un día pasado (D-043)** → [[cartera-del-dia-cuaderno]]. La mig 190 (el
+cuaderno de cada noche) YA corre en la base; **la pantalla quedó a medias en la rama local
+`wip/cartera-del-dia`** (el dueño paró la sesión a mitad). Qué falta: `docs/PENDIENTES.md` → P1, primer
+punto. Después: paso 2 (31-ago y 30-sep hacia atrás) y la #7 (proyección).
 
 ✅ **6-oct, todo subido** (dd13576 · f072d63 · e20ff8d): Reportes revisado ABRIENDO los archivos (columnas,
 filtro escrito, total de Acuerdos, PDF sin filas partidas) · botón «Descargar / Imprimir» de Entregas visible ·

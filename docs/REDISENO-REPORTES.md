@@ -108,6 +108,22 @@
     en los dos modos, sin desbordes a 280 px. 826 pruebas (3 nuevas del informe), build en verde.
   · Se quitó el código del informe y la impresión viejos (`informeGerencialHTML`, `imprimirSeleccion`,
     `FiltrosGestion` y sus gráficos).
+- **Descargar en cada sección + filtros de a varios (5-oct, D-040).** Pedido del dueño: "que el botón
+  descargar salga donde se esté viendo cada sección y que no quede separado", y que un cobrador y un
+  grupo se puedan ver por separado o combinados. `DescargarSeccion.tsx` + `BarraFiltros` nueva.
+  · Grupo y Cobrador de a varios (se combinan). Excel y PDF al lado del "Viendo:" de cada sección;
+    el PDF abre con esa sección marcada. Se quitó la pestaña "Descargar" aparte y los botones de
+    descarga sueltos dentro de cada pantalla (quedó uno por sección).
+  · El Excel sale en bloques: con un cobrador, por grupo; con un grupo, por cobrador (se puede cambiar).
+    Medido: LUMAR → COSTA 27 + PRADERA 52; COSTA → Brandon 94, Ariza 78, Lumar 27, Alvarez 19, sin
+    asignar 8; COSTA + LUMAR → 27. Cartera COSTA $84.784.500 y pagos COSTA $17.216.700 iguales a la
+    pantalla; visitas de LUMAR 30 = 30; nómina de LUMAR $531.250 = pantalla.
+  · Arreglado: el Excel de visitas no respetaba el cobrador; el PDF ahora dice que la nómina es la
+    semana de Equipo y cuántos "más deben" trae; el Excel de acuerdos dice si trae los ya pagados.
+  · Reportes recuerda pestaña, período, filtros y semana al volver de Cartera o de una ficha.
+  · El Excel de Flota trae el SOAT y la tecno en una segunda hoja (antes era una descarga aparte).
+  · Falta el manual de Reportes, en el formato de los manuales (PDF A4 con pantallas reales, como
+    `docs/manual-liquidacion/`). El 5-oct se hizo uno de solo texto y se retiró: no era el formato.
 
 Pedido del dueño (2-oct): *"organizar, optimizar, darle practicidad y dinamismo a la pantalla de reportes"*,
 en 7 puntos: modo oscuro legible · las fechas aplican a todo · todo se puede tocar · el toque lleva a

@@ -93,7 +93,7 @@ const titulo = (t: string, nuevaPagina: boolean) =>
 const sub = (t: string) => `<div style="font-size:12px;font-weight:bold;color:${C.tinta};margin:10px 0 2px">${esc(t)}</div>`;
 const nota = (t: string) => `<p style="font-size:10px;color:${C.suave};margin:2px 0 8px;line-height:1.45">${esc(t)}</p>`;
 
-export function informeSociosHTML(d: DatosInforme, opciones: { secciones: SeccionInforme[]; detalle: boolean }): string {
+export function informeSociosHTML(d: DatosInforme, opciones: { secciones: SeccionInforme[]; detalle: boolean; anexos?: boolean }): string {
   const incluye = new Set(opciones.secciones);
   const partes: string[] = [];
   let primera = true;
@@ -142,7 +142,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
     partes.push(tabla([{ t: "Grupo" }, { t: "Debe", al: "right" }, { t: "Clientes", al: "center" }], c.porGrupo.map(g => [esc(g.nombre), plata(g.debe), String(g.clientes)])));
     partes.push(sub("Quién tiene la deuda, por cobrador"));
     partes.push(tabla([{ t: "Cobrador" }, { t: "Debe", al: "right" }, { t: "Clientes", al: "center" }], c.porCobrador.map(g => [esc(g.nombre.toUpperCase()), plata(g.debe), String(g.clientes)])));
-    partes.push(sub("Los que más deben"));
+    partes.push(sub(`Los ${c.mayores.length} que más deben`));
     partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Grupo", al: "center" }, { t: "Cómo va" }, { t: "Debe", al: "right" }],
       c.mayores.map(m => [esc(m.cliente.toUpperCase()), esc(m.placa), esc(m.grupo), esc(m.detalle), plata(m.debe)])));
     partes.push(nota(`Plata a favor de los clientes: ${c.saldoFavor.clientes} clientes tienen ${plata(c.saldoFavor.total)} a su favor. Se les aplica a mano, cuando el cliente lo decide.`));
@@ -175,7 +175,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
     abrir("Equipo");
     if (e.nomina) {
       const n = e.nomina;
-      partes.push(sub(`Nómina · ${n.semana}`));
+      partes.push(sub(`Nómina · ${n.semana} (la semana escogida en Equipo; la nómina va por semana, no por el período)`));
       partes.push(kpis([
         { l: "Se paga", v: plata(n.total), s: `pago registrado en la app: ${n.pagadas === 0 ? "ninguno" : `${n.pagadas} de ${n.cobradores.length}`}` },
         { l: "Cobro de cuotas", v: plata(n.cobros) },
@@ -204,6 +204,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
 
   // ── ANEXOS ──
   const a = d.anexos;
+  if (opciones.anexos !== false) {
   abrir("Anexos");
   partes.push(sub("A. Recaudado por cobrador y grupo"));
   partes.push(tabla([{ t: "Cobrador" }, ...a.matriz.grupos.map(g => ({ t: g, al: "right" as const })), { t: "Total", al: "right" }],
@@ -220,6 +221,7 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
     partes.push(`<div style="font-size:11px;font-weight:bold;color:${C.alerta};margin:6px 0 2px">${esc(b.cobrador.toUpperCase())} — ${b.clientes.length} ${b.clientes.length === 1 ? "cliente" : "clientes"} · deben ${plata(b.clientes.reduce((s, x) => s + x.debe, 0))}</div>`);
     partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Teléfono", al: "center" }, { t: "Debe", al: "right" }],
       b.clientes.map(x => [esc(x.cliente.toUpperCase()), esc(x.placa), esc(x.telefono || "—"), plata(x.debe)])));
+  }
   }
 
   if (opciones.detalle) {

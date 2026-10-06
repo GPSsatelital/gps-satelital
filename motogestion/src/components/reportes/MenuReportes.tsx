@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import { LayoutDashboard, Banknote, Briefcase, Users, Motorbike } from "lucide-react";
 
-export type TabReportes = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas" | "exportar";
+export type TabReportes = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas";
 
 export const SECCIONES: Array<{ clave: string; etiqueta: string; icono: ReactNode; partes: Array<{ tab: TabReportes; etiqueta: string }> }> = [
   { clave: "resumen", etiqueta: "Resumen", icono: <LayoutDashboard size={18} aria-hidden="true" />, partes: [{ tab: "resumen", etiqueta: "Resumen" }] },

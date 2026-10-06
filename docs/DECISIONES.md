@@ -593,3 +593,17 @@ Las 14 semanas que el sistema le exigía a su contrato suspendido ($2.828.000) N
 los avisos de SOAT del servidor no miran el estado de la moto: XYZ51H habría avisado en noviembre.
 **Dónde vive:** mig 186 · `enLaEmpresa` en `useMotos.ts` · `dondeEstaCadaMoto` las salta.
 **Reemplaza a:** la propuesta "Fuera de la empresa" de PENDIENTES (2-oct).
+
+### D-040 · 5-oct-2026 · Se descarga donde se está viendo, y lo que baja es lo que se ve
+**Decidió:** el dueño ("es lo más práctico, profesional y funcional?" → "Sí, con el ajuste").
+**Qué se decidió:** cada sección de Reportes tiene su Excel y su PDF al lado del "Viendo:", con los
+mismos filtros y las mismas cifras de la pantalla; ya no hay una pestaña "Descargar" aparte. Grupo y
+cobrador se marcan de a varios y se combinan. El Excel sale en bloques: con un cobrador escogido, por
+grupo; con un grupo, por cobrador (se puede cambiar). El PDF abre con la sección donde se está marcada
+y las demás a un toque. Reportes recuerda pestaña, período y filtros al volver.
+**Por qué:** "que la información quede centralizada y separada como estaba antes" — un supervisor
+con motos de varios grupos tiene que poder ver solo lo suyo, y un grupo con varios supervisores
+también. Y el informe estaba en otra pestaña, lejos de lo que se estaba mirando.
+**Dónde vive:** `DescargarSeccion.tsx` · `BarraFiltros.tsx` · `EXCEL_DE_TAB` y `bloquesPor` en
+`ReportesView.tsx`.
+**Reemplaza a:** la pestaña Descargar del 2-oct y los botones de descarga sueltos de cada pantalla.

@@ -43,13 +43,13 @@ import MenuReportes, { type TabReportes } from "../components/reportes/MenuRepor
 import { FlotaMotos, FlotaGuardadas } from "../components/reportes/FlotaReportes";
 import { CobranzaCartera, CobranzaAcuerdos, type FilaReparto } from "../components/reportes/CobranzaReportes";
 import { EquipoNomina, EquipoVisitas, type CeldaSemana, type DatosNomina, type DatosVisitas } from "../components/reportes/EquipoReportes";
-import DescargarReportes from "../components/reportes/DescargarReportes";
+import DescargarSeccion, { type SepararPor } from "../components/reportes/DescargarSeccion";
 import { informeSociosHTML, type DatosInforme, type SeccionInforme } from "../utils/informeSocios";
 import ResumenReportes, { type FilaEstado, plata as plataT } from "../components/reportes/ResumenReportes";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
 import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
 import { desgloseRecaudo, baseDeAcuerdosDeBase, pagosSinRepartir, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
-import { AlertTriangle, PiggyBank, FileWarning, ChevronRight, Wallet, Download, Printer, CalendarDays, Gauge, ExternalLink, Check, X } from "lucide-react";
+import { AlertTriangle, PiggyBank, FileWarning, ChevronRight, Wallet, Printer, CalendarDays, Gauge, ExternalLink, Check, X } from "lucide-react";
 
 interface Props {
   onNavigate?: (view: ViewKey, filter?: string) => void;
@@ -198,6 +198,12 @@ function resultadoDeVisita(v: { estado: string; resultado: string | null }, esta
   return { res: "sinResultado", porCliente: false };
 }
 
+/** A qué parte del informe para los socios corresponde cada pestaña (llega marcada en el PDF). */
+const SECCION_DE_TAB: Record<Tab, SeccionInforme> = {
+  resumen: "resumen", cartera: "cobranza", convenios: "cobranza", grupos: "portafolios", admins: "portafolios",
+  nomina: "equipo", visitas: "equipo", flota: "flota", guardadas: "flota", entregas: "flota",
+};
+
 /** Desde cuándo se muestran las semanas de cada cobrador (ver `semanasTendencia`). */
 const DESDE_TENDENCIA = "2026-09-14";
 const masDias = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
@@ -222,6 +228,25 @@ const TIPO_NOMINA_CORTO: Record<TipoGestion, string> = {
   ciclo: "A tiempo", ciclo_atrasado: "Atrasadas", prorrateo: "Prorrateo", retencion: "Retenciones",
   cuota_convenio: "Acuerdo de retenida", visita: "Visitas", referido: "Referidos",
 };
+
+/** Dónde quedó Reportes la última vez en esta pestaña del navegador (ver `vista` en ReportesView). */
+const CLAVE_VISTA = "reportes:vista:v1";
+type VistaReportes = { tab: Tab; rango: Rango; rangoCustom: { desde: string; hasta: string }; filtros: FiltrosG; lunesNomina: string };
+function leerVistaReportes(): Partial<VistaReportes> | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(CLAVE_VISTA) ?? "null") as Partial<VistaReportes> | null;
+    if (!v || typeof v !== "object") return null;
+    const f = v.filtros;
+    const filtrosOk = f && Array.isArray(f.grupo) && Array.isArray(f.cobrador) && Array.isArray(f.modalidad) && Array.isArray(f.estado);
+    return {
+      tab: typeof v.tab === "string" && Object.prototype.hasOwnProperty.call(SECCION_DE_TAB, v.tab) ? v.tab : undefined,
+      rango: RANGOS.some(r => r.key === v.rango) ? v.rango : undefined,
+      rangoCustom: v.rangoCustom && typeof v.rangoCustom.desde === "string" && typeof v.rangoCustom.hasta === "string" ? v.rangoCustom : undefined,
+      filtros: filtrosOk ? f : undefined,
+      lunesNomina: typeof v.lunesNomina === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.lunesNomina) ? v.lunesNomina : undefined,
+    };
+  } catch { return null; }
+}
 
 function fmtFechaCorta(iso: string) {
   const s = (iso || "").slice(0, 10).split("-");
@@ -336,9 +361,12 @@ const KPI_ICONS: Record<string, string> = {
 };
 
 export default function ReportesView({ onNavigate }: Props) {
-  const [rango, setRango] = useState<Rango>("mes");
-  const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => getRango("ult7")); // rango personalizado de-fecha-a-fecha
-  const [tab, setTab]     = useState<Tab>("resumen");
+  // Al volver de Cartera (o de una ficha), Reportes queda donde estaba: misma pestaña, período,
+  // filtros y semana de nómina (pedido del dueño, 5-oct). Dura lo que dure la pestaña del navegador.
+  const vista = useMemo(leerVistaReportes, []);
+  const [rango, setRango] = useState<Rango>(vista?.rango ?? "mes");
+  const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => vista?.rangoCustom ?? getRango("ult7")); // rango personalizado de-fecha-a-fecha
+  const [tab, setTab]     = useState<Tab>(vista?.tab ?? "resumen");
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
   useBackGuard(fotosVer !== null, () => setFotosVer(null)); // atrás cierra el lightbox
   // Regeneración de documentos en blanco (bug histórico del PDF)
@@ -351,14 +379,20 @@ export default function ReportesView({ onNavigate }: Props) {
   // Nómina: por defecto la última semana COMPLETA (lunes a domingo) — la nómina se liquida
   // cuando la semana ya cerró. Las flechas mueven de a una semana.
   const [lunesNomina, setLunesNomina] = useState<string>(() => {
+    if (vista?.lunesNomina) return vista.lunesNomina;
     const d = new Date(lunesDe(hoyISO()) + "T12:00:00");
     d.setDate(d.getDate() - 7);
     return d.toISOString().slice(0, 10);
   });
   const { cesiones } = useCesiones();
   // Filtros combinables (AND) que afinan TODOS los informes de gestión + PDF + Excel.
-  const [filtros, setFiltros] = useState<FiltrosG>(FILTROS_VACIOS);
+  const [filtros, setFiltros] = useState<FiltrosG>(vista?.filtros ?? FILTROS_VACIOS);
   const [generandoPdf, setGenerandoPdf] = useState(false); // botón del informe para los socios (PDF)
+  useEffect(() => {
+    try { sessionStorage.setItem(CLAVE_VISTA, JSON.stringify({ tab, rango, rangoCustom, filtros, lunesNomina })); } catch { /* sin almacenamiento: solo no se recuerda */ }
+  }, [tab, rango, rangoCustom, filtros, lunesNomina]);
+  // El PDF puede traer la nómina desde cualquier sección: al abrirlo se carga (si no, solo en Equipo).
+  const [pdfPideNomina, setPdfPideNomina] = useState(false);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 900);
@@ -406,16 +440,16 @@ export default function ReportesView({ onNavigate }: Props) {
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
   const [intentoNomina, setIntentoNomina] = useState(0);
-  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina" || tab === "exportar", intentoNomina);
+  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina" || pdfPideNomina, intentoNomina);
   // Las rodadas con su fecha: cada semana se paga según cómo estaba el día en que se cobró (30-sep).
-  const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen" || tab === "exportar", intentoNomina);
+  const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen" || pdfPideNomina, intentoNomina);
   const rodadasNomina = useMemo(() => {
     if (!registrosRodadas) return null;
     const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
     return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
   }, [registrosRodadas, contratos]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
-  const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina" || tab === "exportar");
+  const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina" || pdfPideNomina);
   // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
   // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
   const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || sinDatos;
@@ -440,9 +474,9 @@ export default function ReportesView({ onNavigate }: Props) {
       rodadas: rodadasNomina,
   }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina]);
   const nominaDetalle = useMemo(() => {
-    if (tab !== "nomina" && tab !== "exportar") return { nominas: [], sinGestion: [] };
+    if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [] };
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
-  }, [tab, lunesNomina, domingoNomina, entradasNomina, eventosNomina]);
+  }, [tab, pdfPideNomina, lunesNomina, domingoNomina, entradasNomina, eventosNomina]);
   const nominas = nominaDetalle.nominas;
   // LAS SEMANAS DE CADA COBRADOR (2-oct): desde el 14-sep. Entre el 7 y el 13 se les puso fecha nueva
   // a 176 motos y no se sabe si cambiaron de cobrador o se guardaron otra vez con el mismo; desde el
@@ -811,38 +845,6 @@ export default function ReportesView({ onNavigate }: Props) {
     return { admins, grupos, cell };
   }, [baseFiltrada]);
 
-  // ── INFORME "Visitas por administrador" ────────────────────────────────────
-  const visitasData = useMemo(() => {
-    const nombreAdmin = (id: string | null | undefined) =>
-      id ? (subadmins.find(s => s.id === id)?.nombre ?? "—") : "Sin asignar / Oficina";
-    type VisRow = { cliente: string; fecha: string; estado: string; res: ResultadoVisita; porCliente: boolean; gps: boolean; foto: boolean; estimado: boolean };
-    type VisAgg = { key: string; nombre: string; visitas: VisRow[]; aprobadas: number; esperando: number; rechazadas: number; repetir: number; pendientes: number; sinResultado: number; estimadas: number };
-    const map = new Map<string, VisAgg>();
-    visitas.filter(v => (v.fecha || "").slice(0, 10) >= desde && (v.fecha || "").slice(0, 10) <= hasta).forEach(v => {
-      // Se agrupa por QUIÉN LA HIZO, no por a quién se le encargó. Este informe es la base para
-      // pagar las visitas: si uno cubre a otro, el pago tiene que ir a quien fue. `realizada_por`
-      // se empezó a escribir después, así que las visitas viejas caen a `asignada_a` y se marcan
-      // como estimadas — mejor decirlo que dar por exacto un dato que no lo es.
-      const quien = v.realizada_por ?? v.asignada_a;
-      const estimado = !v.realizada_por;
-      const key = quien ?? "__none__";
-      if (!map.has(key)) map.set(key, { key, nombre: nombreAdmin(quien), visitas: [], aprobadas: 0, esperando: 0, rechazadas: 0, repetir: 0, pendientes: 0, sinResultado: 0, estimadas: 0 });
-      const agg = map.get(key)!;
-      if (estimado) agg.estimadas++;
-      const cl = clientes.find(c => c.id === v.cliente_id);
-      const fecha = (v.fecha || "").slice(0, 10);
-      const { res, porCliente } = resultadoDeVisita(v, cl?.estado, contratos.some(c => c.cliente_id === v.cliente_id && !!c.fecha_entrega && c.fecha_entrega >= fecha));
-      agg.visitas.push({
-        cliente: cl?.nombre ?? "Sin cliente", fecha, estado: v.estado, res, porCliente,
-        gps: !!v.ubicacion, foto: !!(v.fotos?.clienteFuncionario || v.fotos?.fachada), estimado,
-      });
-      // Cada visita cae en una sola columna, y las columnas suman el total (29-sep).
-      agg[res]++;
-    });
-    return [...map.values()]
-      .map(a => ({ ...a, total: a.visitas.length, visitas: a.visitas.slice().sort((x, y) => y.fecha.localeCompare(x.fecha)) }))
-      .sort((a, b) => (a.key === "__none__" ? 1 : 0) - (b.key === "__none__" ? 1 : 0) || b.total - a.total);
-  }, [visitas, clientes, contratos, subadmins, desde, hasta]);
 
   const rangoLabel = RANGOS.find(r => r.key === rango)?.label ?? "";
   const periodoTxt = `Período: ${rangoLabel} (${desde} → ${hasta}) · Club Moteros Cartagena`;
@@ -1003,26 +1005,28 @@ export default function ReportesView({ onNavigate }: Props) {
     }));
   };
 
+  /** Las visitas del período con el filtro de cobrador (antes bajaba las de todos), por quién las hizo. */
   function exportarVisitas() {
-    const cols: ColX[] = [
-      { label: "Cliente", ancho: 210 }, { label: "Fecha", align: "center", ancho: 90 },
-      { label: "Estado", align: "center", ancho: 90 }, { label: "Resultado", align: "center", ancho: 110 },
-      { label: "GPS", align: "center", ancho: 55 }, { label: "Foto", align: "center", ancho: 55 },
-    ];
-    const secciones: SeccionX[] = visitasData.map(a => ({
-      titulo: `${a.nombre.toUpperCase()}   —   ${a.total} visitas · ${a.aprobadas} aprobadas${a.esperando ? ` · ${a.esperando} esperando decisión` : ""} · ${a.rechazadas} rechazadas · ${a.repetir} repetir · ${a.pendientes} pendientes${a.sinResultado ? ` · ${a.sinResultado} sin resultado` : ""}`,
-      color: "#334155",
-      filas: a.visitas.map(v => [
-        v.cliente.toUpperCase(), { v: fmtFechaCorta(v.fecha), align: "center" as const },
-        { v: v.estado, align: "center" as const },
-        { v: v.porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[v.res], color: v.res === "aprobadas" ? "#166534" : v.res === "rechazadas" ? "#991b1b" : "#92400e", align: "center" as const },
-        { v: v.gps ? "Sí" : "No", align: "center" as const }, { v: v.foto ? "Sí" : "No", align: "center" as const },
-      ]),
-    }));
-    const tv = visitasData.reduce((s, a) => s + a.total, 0);
+    const personas = [...new Set(visitasP.map(quienVisita))];
     descargarExcel({
-      archivo: `visitas_${desde}_a_${hasta}`, titulo: "Visitas por administrador", periodo: periodoTxt, columnas: cols, secciones,
-      totalGeneral: [{ v: `TOTAL: ${tv} visitas`, bold: true }, "", "", "", "", ""],
+      archivo: `visitas_${desde}_a_${hasta}`, titulo: "Visitas domiciliarias", periodo: textoRango(desde, hasta),
+      leyenda: "Por quién la hizo. 'Aprobada (se aprobó el cliente)' = la visita no quedó marcada, pero el cliente se aprobó (D-038).",
+      columnas: [{ label: "Cliente", ancho: 220 }, { label: "Fecha", align: "center", ancho: 90 }, { label: "Resultado", ancho: 200 },
+        { label: "GPS", align: "center", ancho: 55 }, { label: "Fotos", align: "center", ancho: 55 }, { label: "Moto entregada", align: "center", ancho: 110 }],
+      secciones: personas.map(id => {
+        const vs = visitasP.filter(v => quienVisita(v) === id).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+        return {
+          titulo: `${nombreQuienVisita(id).toUpperCase()}   —   ${vs.length} visitas · ${vs.filter(v => resultadoVisita(v) === "aprobadas").length} aprobadas`, color: "#334155",
+          filas: vs.map(v => {
+            const { res, porCliente } = clasificarVisita(v);
+            const e = entregaDeVisita(v);
+            return [(clientePorId.get(v.cliente_id)?.nombre ?? "Sin cliente").toUpperCase(), { v: fmtFechaCorta((v.fecha || "").slice(0, 10)), align: "center" as const },
+              porCliente ? "Aprobada (se aprobó el cliente)" : ETIQUETA_RESULTADO[res], { v: v.ubicacion ? "Sí" : "No", align: "center" as const },
+              { v: tieneFoto(v) ? "Sí" : "No", align: "center" as const }, { v: e ? fmtFechaCorta(e) : "—", align: "center" as const }];
+          }),
+        };
+      }),
+      totalGeneral: [{ v: `TOTAL: ${visitasP.length} visitas`, bold: true }, "", "", "", "", ""],
     });
   }
 
@@ -1631,25 +1635,24 @@ export default function ReportesView({ onNavigate }: Props) {
     }
   }
 
-  function excelQuietas() {
+  function excelQuietas(separar: SepararPor = "grupo") {
     const cols: ColX[] = [
       { label: "Placa", ancho: 80 }, { label: "Cliente", ancho: 200 },
       { label: "Motivo", ancho: 190 }, { label: "Dónde está", ancho: 120 },
       { label: "Guardada desde", align: "center", ancho: 100 },
       { label: "Días", align: "center", ancho: 55 },
-      { label: "Encargado", ancho: 150 },
+      { label: separar === "grupo" ? "Encargado" : "Grupo", ancho: 150 },
     ];
-    const grupos = [...new Set(guardadasF.map(g => g.grupo))];
-    const secciones: SeccionX[] = grupos.map(gr => {
-      const filas = guardadasF.filter(g => g.grupo === gr).slice().sort((a, b) => (b.dias ?? -1) - (a.dias ?? -1));
+    const secciones: SeccionX[] = bloquesPor(guardadasF, g => g.grupo, g => g.subadminNombre || "Sin asignar", separar).map(b => {
+      const filas = b.items.slice().sort((a, c) => (c.dias ?? -1) - (a.dias ?? -1));
       return {
-        titulo: `${gr}   —   ${filas.length} moto${filas.length === 1 ? "" : "s"} · ${filas.reduce((sm, f) => sm + (f.dias ?? 0), 0)} días acumulados sin trabajar`,
-        color: GRUPO_HEX[gr] ?? "#334155",
+        titulo: `${b.nombre}   —   ${filas.length} moto${filas.length === 1 ? "" : "s"} · ${filas.reduce((sm, f) => sm + (f.dias ?? 0), 0)} días acumulados sin trabajar`,
+        color: b.color,
         filas: filas.map(f => [
           f.placa, f.clienteNombre.toUpperCase(), f.motivo, f.donde,
           { v: f.desde ? fmtFechaCorta(f.desde) : "sin registro", align: "center" as const, color: f.sinRegistro ? "#991b1b" : undefined },
           { v: f.dias == null ? "—" : String(f.dias), align: "center" as const, bold: (f.dias ?? 0) > 30, color: (f.dias ?? 0) > 30 ? "#991b1b" : undefined },
-          f.subadminNombre.toUpperCase(),
+          separar === "grupo" ? f.subadminNombre.toUpperCase() : f.grupo,
         ]),
       };
     });
@@ -1875,7 +1878,7 @@ export default function ReportesView({ onNavigate }: Props) {
     }));
     descargarExcel({
       archivo: `acuerdos_${hoyISO()}`,
-      titulo: "Acuerdos de pago — cómo se han pagado desde que se firmaron",
+      titulo: conveniosTodos ? "Acuerdos de pago — todos, incluidos los ya pagados" : "Acuerdos de pago que se están cobrando — cómo se han pagado desde que se firmaron",
       periodo: `Al ${new Date(hoyISO() + "T12:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
       leyenda: "Cada bloque es un acuerdo y sus abonos reales, en orden. 'Atrasado' = lo que se le ha cobrado menos lo que abonó (con arrastre); es la MISMA cuenta que ve el funcionario en Cartera. Un acuerdo vencido se sigue cobrando.",
       columnas: cols, secciones,
@@ -2284,12 +2287,12 @@ export default function ReportesView({ onNavigate }: Props) {
     };
   }
   const nombreInforme = () => `informe_socios${filtrosSlug ? "_" + filtrosSlug : ""}_${desde}_a_${hasta}`;
-  async function descargarInformeSocios(secciones: SeccionInforme[], detalle: boolean) {
+  async function descargarInformeSocios(secciones: SeccionInforme[], detalle: boolean, anexos: boolean) {
     if (generandoPdf) return;
     setGenerandoPdf(true);
     try {
       const { htmlAPdfBlob } = await import("../utils/pdf");
-      const blob = await htmlAPdfBlob(informeSociosHTML(armarInforme(), { secciones, detalle }));
+      const blob = await htmlAPdfBlob(informeSociosHTML(armarInforme(), { secciones, detalle, anexos }));
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -2302,61 +2305,116 @@ export default function ReportesView({ onNavigate }: Props) {
       setGenerandoPdf(false);
     }
   }
-  function imprimirInformeSocios(secciones: SeccionInforme[], detalle: boolean) {
+  function imprimirInformeSocios(secciones: SeccionInforme[], detalle: boolean, anexos: boolean) {
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
-    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${nombreInforme()}</title><style>@page{size:A4;margin:10mm}body{margin:0}</style></head><body>${informeSociosHTML(armarInforme(), { secciones, detalle })}</body></html>`);
+    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${nombreInforme()}</title><style>@page{size:A4;margin:10mm}body{margin:0}</style></head><body>${informeSociosHTML(armarInforme(), { secciones, detalle, anexos })}</body></html>`);
     win.document.close();
     win.focus();
     setTimeout(() => win.print(), 400);
   }
-  function excelPagosPeriodo() {
+  function excelPagosPeriodo(separar: SepararPor = "grupo") {
     const filas = pagosFiltrados.slice().sort((a, b) => fechaDeCaja(a).localeCompare(fechaDeCaja(b)));
-    const grupos = [...new Set(filas.map(pg => atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO"))].sort();
+    const grupoDePago = (pg: (typeof filas)[number]) => atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO";
+    const cobradorDePago = (pg: (typeof filas)[number]) => pagoAntesDeAsignar(pg) ? "Antes de asignar" : (atribucion.get(pg.contrato_id)?.adminNombre || "Sin asignar");
     descargarExcel({
       archivo: `pagos_${desde}_a_${hasta}`, titulo: "Pagos del período", periodo: textoRango(desde, hasta),
-      leyenda: "Confirmados. Las transferencias por la fecha del banco y el efectivo por el día en que se recibió.",
-      columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cobrador", ancho: 170 }, { label: "Método", align: "center", ancho: 105 }, { label: "Valor", align: "right", ancho: 100 }],
-      secciones: grupos.map(g => {
-        const fs = filas.filter(pg => (atribucion.get(pg.contrato_id)?.grupo ?? "SIN GRUPO") === g);
-        return {
-          titulo: `${g}   —   ${fs.length} pagos · $${fmt(fs.reduce((a, pg) => a + pg.valor, 0))}`, color: GRUPO_HEX[g] ?? "#334155",
-          filas: fs.map(pg => [{ v: fmtFechaCorta(fechaDeCaja(pg)), align: "center" as const }, nombreCliente(pg.contrato_id).toUpperCase(), { v: placaDe(pg.contrato_id) ?? "—", align: "center" as const },
-            (atribucion.get(pg.contrato_id)?.adminNombre ?? "—").toUpperCase(), { v: pg.metodo, align: "center" as const }, { num: pg.valor, align: "right" as const }]),
-        };
-      }),
+      leyenda: "Confirmados. Las transferencias por la fecha del banco y el efectivo por el día en que se recibió. A cada cobrador, lo de sus motos desde que las tiene (D-035).",
+      columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 170 }, { label: "Método", align: "center", ancho: 105 }, { label: "Valor", align: "right", ancho: 100 }],
+      secciones: bloquesPor(filas, grupoDePago, cobradorDePago, separar).map(b => ({
+        titulo: `${b.nombre}   —   ${b.items.length} pagos · $${fmt(b.items.reduce((a, pg) => a + pg.valor, 0))}`, color: b.color,
+        filas: b.items.map(pg => [{ v: fmtFechaCorta(fechaDeCaja(pg)), align: "center" as const }, nombreCliente(pg.contrato_id).toUpperCase(), { v: placaDe(pg.contrato_id) ?? "—", align: "center" as const },
+          (separar === "grupo" ? cobradorDePago(pg) : grupoDePago(pg)).toUpperCase(), { v: pg.metodo, align: "center" as const }, { num: pg.valor, align: "right" as const }]),
+      })),
       totalGeneral: [{ v: `TOTAL: ${filas.length} pagos`, bold: true }, "", "", "", "", { num: filas.reduce((a, pg) => a + pg.valor, 0), align: "right" as const, bold: true }],
     });
   }
-  function excelLoQueSeDebe() {
-    const grupos = [...new Set(debenC.map(r => r.grupo))].sort();
+  function excelLoQueSeDebe(separar: SepararPor = "grupo") {
     descargarExcel({
       archivo: `lo_que_se_debe_${hoyISO()}`, titulo: "Lo que se debe hoy", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
       leyenda: "La misma cuenta de Cartera, cliente por cliente. Las deudas que están dentro de un acuerdo van en la cuota del acuerdo.",
-      columnas: [{ label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cobrador", ancho: 160 }, { label: "Cómo va", ancho: 200 },
+      columnas: [{ label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Cómo va", ancho: 200 },
         { label: "Cuotas del contrato", align: "right", ancho: 110 }, { label: "Cuotas de acuerdos", align: "right", ancho: 110 }, { label: "Deudas", align: "right", ancho: 100 }, { label: "Total", align: "right", ancho: 110 }],
-      secciones: grupos.map(g => {
-        const fs = debenC.filter(r => r.grupo === g);
-        return {
-          titulo: `${g}   —   ${fs.length} clientes · $${fmt(fs.reduce((a, r) => a + r.debeHoy, 0))}`, color: GRUPO_HEX[g] ?? "#334155",
-          filas: fs.map(r => [r.cliente.toUpperCase(), { v: r.placa, align: "center" as const }, r.adminNombre.toUpperCase(), comoVa(r),
-            { num: r.debe.semanas, align: "right" as const }, { num: r.debe.acuerdo, align: "right" as const }, { num: r.debe.deudas, align: "right" as const }, { num: r.debeHoy, align: "right" as const, bold: true }]),
-        };
-      }),
+      secciones: bloquesPor(debenC, r => r.grupo, r => r.adminNombre || "Sin asignar", separar).map(b => ({
+        titulo: `${b.nombre}   —   ${b.items.length} clientes · $${fmt(b.items.reduce((a, r) => a + r.debeHoy, 0))}`, color: b.color,
+        filas: b.items.map(r => [r.cliente.toUpperCase(), { v: r.placa, align: "center" as const }, (separar === "grupo" ? r.adminNombre : r.grupo).toUpperCase(), comoVa(r),
+          { num: r.debe.semanas, align: "right" as const }, { num: r.debe.acuerdo, align: "right" as const }, { num: r.debe.deudas, align: "right" as const }, { num: r.debeHoy, align: "right" as const, bold: true }]),
+      })),
       totalGeneral: [{ v: `TOTAL: ${debenC.length} clientes`, bold: true }, "", "", "",
         { num: sumaDebe(debenC, "semanas"), align: "right" as const, bold: true }, { num: sumaDebe(debenC, "acuerdo"), align: "right" as const, bold: true },
         { num: sumaDebe(debenC, "deudas"), align: "right" as const, bold: true }, { num: sumaDebe(debenC), align: "right" as const, bold: true }],
     });
   }
-  function excelPapeles() {
+  /** La nómina de la semana que se ve en Equipo, pago por pago, con los mismos filtros. */
+  function excelNomina(separar: SepararPor = "cobrador") {
+    const filas = renglonesN;
+    descargarExcel({
+      archivo: `nomina_${lunesNomina}`, titulo: `Nómina de cobradores · ${textoSemanaNomina}`, periodo: textoSemanaNomina,
+      leyenda: "Cada pago de la semana. Las visitas y los referidos los cobra quien los hizo, en la semana en que se entregó la moto.",
+      columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Cliente", ancho: 220 }, { label: separar === "cobrador" ? "Grupo" : "Cobrador", ancho: 170 }, { label: "Pago", ancho: 190 }, { label: "Fecha", align: "center", ancho: 90 }, { label: "Valor", align: "right", ancho: 100 }],
+      secciones: bloquesPor(filas, x => x.r.grupo, x => nombreCobradorN(x.quien), separar).map(b => ({
+        titulo: `${b.nombre}   —   ${b.items.length} pagos · $${fmt(b.items.reduce((a, x) => a + x.r.valor, 0))}`, color: b.color,
+        filas: b.items.map(x => [{ v: x.r.placa, align: "center" as const }, x.r.cliente.toUpperCase(), (separar === "cobrador" ? x.r.grupo : nombreCobradorN(x.quien)).toUpperCase(),
+          TIPO_NOMINA[x.r.tipo], { v: fmtFechaCorta(x.r.fecha), align: "center" as const }, { num: x.r.valor, align: "right" as const }]),
+      })),
+      totalGeneral: [{ v: `TOTAL: ${filas.length} pagos`, bold: true }, "", "", "", "", { num: filas.reduce((a, x) => a + x.r.valor, 0), align: "right" as const, bold: true }],
+    });
+  }
+  /** Cada moto de la flota (sin las vendidas) y dónde está hoy. */
+  function excelFlotaMotos(separar: SepararPor = "grupo") {
+    const etiquetaLugar = (id: string) => LUGARES.find(l => l.clave === lugarDeMoto.get(id)?.lugar)?.etiqueta ?? "—";
+    const clienteDeMoto = (id: string) => { const c = contratoPorId.get(lugarDeMoto.get(id)?.contratoId ?? ""); return c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : "—"; };
+    descargarExcel({
+      archivo: `flota_${hoyISO()}`, titulo: "La flota hoy: dónde está cada moto", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
+      columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Dónde está", ancho: 200 }, { label: "Cliente", ancho: 220 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Estado de la moto", ancho: 120 }],
+      secciones: bloquesPor(flotaF, m => m.grupo ?? "SIN GRUPO", m => (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar"), separar).map(b => ({
+        titulo: `${b.nombre}   —   ${b.items.length} motos · ${b.items.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length} trabajando`, color: b.color,
+        filas: b.items.slice().sort((a, c) => a.placa.localeCompare(c.placa)).map(m => [{ v: m.placa, align: "center" as const }, etiquetaLugar(m.id), clienteDeMoto(m.id).toUpperCase(),
+          (separar === "grupo" ? (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar") : (m.grupo ?? "—")).toUpperCase(), m.estado]),
+      })),
+      totalGeneral: [{ v: `TOTAL: ${flotaF.length} motos`, bold: true }, "", "", "", ""],
+      hoja: "Dónde está cada moto",
+      hojasExtra: [hojaPapeles()],
+    });
+  }
+  /** Las motos entregadas en el período, con sus papeles. */
+  function excelEntregas(separar: SepararPor = "grupo") {
+    const cobradorDe = (e: (typeof entregas)[number]) => (e.subadminId ? nombreCobradorN(e.subadminId) : "Sin asignar");
+    descargarExcel({
+      archivo: `entregas_${desde}_a_${hasta}`, titulo: "Motos entregadas", periodo: textoRango(desde, hasta),
+      columnas: [{ label: "Fecha", align: "center", ancho: 90 }, { label: "Placa", align: "center", ancho: 80 }, { label: "Cliente", ancho: 220 }, { label: "Cédula", align: "center", ancho: 110 },
+        { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Forma de pago", align: "center", ancho: 110 }, { label: "Papeles", align: "center", ancho: 100 }],
+      secciones: bloquesPor(entregas, e => e.grupo, cobradorDe, separar).map(b => ({
+        titulo: `${b.nombre}   —   ${b.items.length} entregas`, color: b.color,
+        filas: b.items.map(e => [{ v: fmtFechaCorta(e.fecha), align: "center" as const }, { v: e.placa, align: "center" as const }, e.cliente.toUpperCase(), { v: e.cedula, align: "center" as const },
+          (separar === "grupo" ? cobradorDe(e) : e.grupo).toUpperCase(), { v: e.formaPago, align: "center" as const },
+          { v: e.docsOk ? "Completos" : "Incompletos", align: "center" as const, color: e.docsOk ? "#166534" : "#991b1b" }]),
+      })),
+      totalGeneral: [{ v: `TOTAL: ${entregas.length} entregas`, bold: true }, "", "", "", "", "", ""],
+    });
+  }
+  /**
+   * Parte una lista en bloques para el Excel: por grupo (en el orden de siempre) o por cobrador
+   * (alfabético, "Sin asignar" y "Antes de asignar" al final). Pedido del dueño (5-oct): si se escoge
+   * un cobrador sale partido por grupo, y si se escoge un grupo, partido por cobrador.
+   */
+  function bloquesPor<T>(items: T[], grupoDe: (t: T) => string, cobradorDe: (t: T) => string, separar: SepararPor): Array<{ nombre: string; color: string; items: T[] }> {
+    const clave = separar === "grupo" ? grupoDe : cobradorDe;
+    const nombres = [...new Set(items.map(clave))];
+    const orden = (n: string) => separar === "grupo" ? ((GRUPOS as readonly string[]).indexOf(n) + 1 || 99) : (n === "Sin asignar" || n === "Antes de asignar" ? 99 : 0);
+    nombres.sort((a, b) => orden(a) - orden(b) || a.localeCompare(b));
+    return nombres.map(n => ({ nombre: separar === "grupo" ? n : n.toUpperCase(), color: separar === "grupo" ? (GRUPO_HEX[n] ?? "#334155") : "#334155", items: items.filter(t => clave(t) === n) }));
+  }
+  /** SOAT y tecno: va como segunda hoja del Excel de Flota (antes era una descarga aparte). */
+  function hojaPapeles(): SeccionesOpts & { nombre: string } {
     const fila = (m: (typeof motos)[number] | undefined, placa: string, soat: string | null, dSoat: number | null, tecno: string | null, dTecno: number | null, estado: string): CeldaX[] => [
-      { v: placa, align: "center" as const }, m?.grupo ?? "—", (nombreCobradorN(m?.subadmin_id ?? null)).toUpperCase(),
+      { v: placa, align: "center" as const }, m?.grupo ?? "—", (m?.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar").toUpperCase(),
       { v: soat ? fmtFechaCorta(soat) : "sin fecha", align: "center" as const }, { v: dSoat === null ? "—" : String(dSoat), align: "center" as const },
       { v: tecno ? fmtFechaCorta(tecno) : "sin fecha", align: "center" as const }, { v: dTecno === null ? "—" : String(dTecno), align: "center" as const },
       { v: estado, color: estado === "Vencido" ? "#991b1b" : estado === "Por vencer" ? "#92400e" : "#334155", align: "center" as const },
     ];
-    descargarExcel({
-      archivo: `soat_y_tecno_${hoyISO()}`, titulo: "SOAT y tecnomecánica", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
+    return {
+      nombre: "SOAT y tecno", titulo: "SOAT y tecnomecánica", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
       leyenda: "Vencidos, por vencer en 30 días y motos sin la fecha del SOAT anotada. Días = los que faltan (negativo = ya venció).",
       columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Grupo", ancho: 100 }, { label: "Cobrador", ancho: 160 }, { label: "SOAT vence", align: "center", ancho: 95 }, { label: "Días", align: "center", ancho: 55 },
         { label: "Tecno vence", align: "center", ancho: 95 }, { label: "Días", align: "center", ancho: 55 }, { label: "Estado", align: "center", ancho: 95 }],
@@ -2366,8 +2424,21 @@ export default function ReportesView({ onNavigate }: Props) {
         { titulo: `Sin la fecha del SOAT   —   ${sinSoatFlota.length}`, color: "#334155",
           filas: sinSoatFlota.map(m => fila(m, m.placa, null, null, m.fecha_tecnomecanica ?? null, null, "Sin fecha")) },
       ],
-    });
+    };
   }
+
+  const EXCEL_DE_TAB: Partial<Record<Tab, { etiqueta: string; separable: boolean; onDescargar: (s: SepararPor) => void }>> = {
+    resumen: { etiqueta: "Los pagos del período, uno por uno", separable: true, onDescargar: excelPagosPeriodo },
+    cartera: { etiqueta: "Lo que debe cada cliente: semanas, acuerdo y deudas", separable: true, onDescargar: excelLoQueSeDebe },
+    convenios: { etiqueta: "Cada acuerdo con sus pagos", separable: false, onDescargar: () => excelConvenios() },
+    grupos: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
+    admins: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
+    nomina: { etiqueta: "Lo que se le paga a cada cobrador, pago por pago", separable: true, onDescargar: excelNomina },
+    visitas: { etiqueta: "Las visitas del período, por quién las hizo", separable: false, onDescargar: () => exportarVisitas() },
+    flota: { etiqueta: "Cada moto y dónde está, y en otra hoja el SOAT y la tecno", separable: true, onDescargar: excelFlotaMotos },
+    guardadas: { etiqueta: "Las motos guardadas y desde cuándo", separable: true, onDescargar: excelQuietas },
+    entregas: { etiqueta: "Las motos entregadas en el período", separable: true, onDescargar: excelEntregas },
+  };
 
   function abrirDetalle(clave: string) {
     const per = textoRango(desde, hasta);
@@ -2494,14 +2565,6 @@ export default function ReportesView({ onNavigate }: Props) {
           <div style={{ fontSize: 12, color: "var(--muted2)" }}>Recaudado hoy</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{sinDatos ? "…" : `$ ${fmt(recaudadoHoy)}`}</div>
         </div>
-        {/* Descargar (antes la pestaña "Exportar"): PDF gerencial, Excel e impresión. Solo con el permiso. */}
-        {puedeExportar && (
-          <button onClick={() => setTab("exportar")} aria-pressed={tab === "exportar"}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, padding: "0 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 500,
-              border: "1px solid " + (tab === "exportar" ? "var(--accent-line)" : "var(--line2)"), background: tab === "exportar" ? "var(--accent-soft)" : "var(--card)", color: tab === "exportar" ? "var(--accent-ink)" : "var(--text)" }}>
-            <Download size={16} aria-hidden="true" /> Descargar
-          </button>
-        )}
       </div>
 
       {/* El menú: 5 secciones por la pregunta que responden, y sus partes (rediseño 2-oct). */}
@@ -2516,13 +2579,27 @@ export default function ReportesView({ onNavigate }: Props) {
           opcionesPeriodo={RANGOS.map(r => ({ valor: r.key, etiqueta: r.label }))}
           onPeriodo={v => setRango(v as Rango)}
           textoPeriodo={textoRango(desde, hasta)}
-          grupo={filtros.grupo.length === 1 ? filtros.grupo[0] : filtros.grupo.length > 1 ? "__varios__" : ""}
-          opcionesGrupo={[{ valor: "", etiqueta: "Todos los grupos" }, ...GRUPOS.map(g => ({ valor: g, etiqueta: g })), ...(filtros.grupo.length > 1 ? [{ valor: "__varios__", etiqueta: `${filtros.grupo.length} grupos` }] : [])]}
-          onGrupo={v => { if (v !== "__varios__") setFiltros(f => ({ ...f, grupo: v ? [v] : [] })); }}
-          cobrador={filtros.cobrador.length === 1 ? filtros.cobrador[0] : filtros.cobrador.length > 1 ? "__varios__" : ""}
-          opcionesCobrador={[{ valor: "", etiqueta: "Todos los cobradores" }, ...subadmins.map(sa => ({ valor: sa.id, etiqueta: sa.nombre })), { valor: "__none__", etiqueta: "Sin asignar" }, ...(filtros.cobrador.length > 1 ? [{ valor: "__varios__", etiqueta: `${filtros.cobrador.length} cobradores` }] : [])]}
-          onCobrador={v => { if (v !== "__varios__") setFiltros(f => ({ ...f, cobrador: v ? [v] : [] })); }}
-          mostrarGrupoCobrador={tab === "resumen" || tab === "admins" || tab === "grupos" || tab === "exportar" || tab === "flota" || tab === "guardadas" || tab === "entregas" || tab === "cartera" || tab === "convenios" || tab === "nomina" || tab === "visitas"}
+          grupos={filtros.grupo}
+          opcionesGrupo={GRUPOS.map(g => ({ valor: g, etiqueta: g }))}
+          onGrupos={v => setFiltros(f => ({ ...f, grupo: v }))}
+          cobradores={filtros.cobrador}
+          opcionesCobrador={[...subadmins.map(sa => ({ valor: sa.id, etiqueta: sa.nombre })), { valor: "__none__", etiqueta: "Sin asignar" }]}
+          onCobradores={v => setFiltros(f => ({ ...f, cobrador: v }))}
+          mostrarGrupoCobrador
+          accion={(puedeExportar || tab === "convenios") && EXCEL_DE_TAB[tab] ? (
+            <DescargarSeccion
+              key={tab}
+              seccion={SECCION_DE_TAB[tab]}
+              sinPdf={!puedeExportar}
+              excel={{ ...EXCEL_DE_TAB[tab]!, separarInicial: filtros.cobrador.length > 0 && filtros.grupo.length === 0 ? "grupo" : "cobrador" }}
+              generando={generandoPdf}
+              noListo={piezas => sinDatos ? (errorDatos ? "No se pudieron traer los datos. Revisa la conexión." : "Cargando las cifras…")
+                : piezas.includes("equipo") && !datosNomina.error && datosNomina.cargando ? "Preparando la nómina de la semana…" : null}
+              onAbrirPdf={() => setPdfPideNomina(true)}
+              onPdf={descargarInformeSocios}
+              onImprimir={imprimirInformeSocios}
+            />
+          ) : undefined}
           soloHoy={tab === "flota" || tab === "guardadas" || tab === "cartera" || tab === "convenios"}
           textoFijo={tab === "nomina" ? textoSemanaNomina : undefined}
           sinGrupo={tab === "visitas"}
@@ -2667,7 +2744,6 @@ export default function ReportesView({ onNavigate }: Props) {
             : ({ ...f, cobrador: f.cobrador.length === 1 && f.cobrador[0] === k ? [] : [k] }))}
           onAbrir={abrirDetallePortafolio}
           onCartera={() => onNavigate?.("cobros", portafolio.sel ? `contratos:todos;${portafolio.modo === "grupo" ? "grupo" : "cobrador"}:${portafolio.sel}` : "contratos:todos")}
-          onDescargar={puedeExportar ? () => setDescarga(portafolio.modo === "grupo" ? "grupo" : "admin") : undefined}
           extraBotones={portafolio.modo === "cobrador" ? (
             <button onClick={() => setTab("nomina")} style={{ display: "inline-flex", flex: "1 1 140px", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, borderRadius: 10, border: "1px solid var(--line2)", background: "transparent", color: "var(--text)", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
               <Wallet size={16} aria-hidden="true" /> Ver {portafolio.sel ? "su" : "la"} nómina
@@ -2678,7 +2754,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
       {/* ── EQUIPO · VISITAS (rediseño 2-oct): cuántas, resultado, quién, entregas y evidencia ── */}
       {tab === "visitas" && (
-        <EquipoVisitas d={datosVisitas} onAbrir={abrirDetalleVisitas} onDescargar={puedeExportar ? exportarVisitas : undefined} />
+        <EquipoVisitas d={datosVisitas} onAbrir={abrirDetalleVisitas} />
       )}
 
       {/* ── COBRANZA · CARTERA (rediseño 2-oct): cuánto se debe hoy, qué tan cobrable es y quién lo tiene ── */}
@@ -2705,7 +2781,7 @@ export default function ReportesView({ onNavigate }: Props) {
       {tab === "convenios" && (
         <CobranzaAcuerdos isMobile={isMobile} lista={conveniosF} hoyISO={hoyISO()} incluirCerrados={conveniosTodos}
           onIncluirCerrados={() => setConveniosTodos(v => !v)} onAbonos={abrirAbonos}
-          onDescargar={conveniosVista.length > 0 ? excelConvenios : undefined} />
+          />
       )}
 
       {/* ── GUARDADAS: las motos en la empresa sin trabajar (D-033/034) ── */}
@@ -2715,7 +2791,6 @@ export default function ReportesView({ onNavigate }: Props) {
           lista={guardadasF}
           onFicha={m => { const c = m.contratoId ? contratoPorId.get(m.contratoId) : undefined; if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", m.motoId); }}
           onInmovilizaciones={onNavigate ? () => onNavigate("inmovilizaciones") : undefined}
-          onDescargar={puedeExportar ? excelQuietas : undefined}
         />
       )}
 
@@ -2864,26 +2939,6 @@ export default function ReportesView({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* ── DESCARGAR (rediseño 2-oct): informe para los socios y listas en Excel ──
-          El `puedeExportar` va también acá y no solo en el botón: si a alguien le quitan el permiso
-          estando aquí, el contenido desaparece igual. */}
-      {tab === "exportar" && puedeExportar && (
-        <DescargarReportes
-          generando={generandoPdf}
-          noListo={sinDatos ? (errorDatos ? "No se pudieron traer los datos. Revisa la conexión." : "Cargando las cifras…")
-            : datosNomina.error ? null : datosNomina.cargando ? "Preparando la nómina de la semana…" : null}
-          onPdf={descargarInformeSocios}
-          onImprimir={imprimirInformeSocios}
-          listas={[
-            { clave: "pagos", etiqueta: "Pagos del período", cuenta: pagosFiltrados.length.toLocaleString("es-CO"), onDescargar: excelPagosPeriodo },
-            { clave: "debe", etiqueta: "Lo que se debe hoy", cuenta: `${debenC.length} clientes`, onDescargar: excelLoQueSeDebe },
-            { clave: "acuerdos", etiqueta: "Acuerdos de pago", cuenta: String(conveniosVista.length), onDescargar: excelConvenios },
-            { clave: "guardadas", etiqueta: "Motos guardadas", cuenta: String(guardadasF.length), onDescargar: excelQuietas },
-            { clave: "visitas", etiqueta: "Visitas del período", cuenta: String(datosVisitas.total), onDescargar: exportarVisitas },
-            { clave: "papeles", etiqueta: "SOAT y tecno vencidos, por vencer o sin fecha", cuenta: String(alertasF.length + sinSoatFlota.length), onDescargar: excelPapeles },
-          ]}
-        />
-      )}
 
       {descarga && (() => {
         const porAdmin = descarga === "admin";

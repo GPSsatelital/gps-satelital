@@ -602,6 +602,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 | Fecha | Qué |
 |---|---|
+| 5-oct | **Reportes: descargar en cada sección y filtros de a varios** (D-040) — Excel y PDF donde se está viendo, lo que baja es lo que se ve; un cobrador sale partido por grupo y un grupo por cobrador; Reportes recuerda dónde estabas. Falta el manual (PDF con pantallas reales) |
 | 2-oct | **Reportes terminado: Descargar nuevo** — informe para los socios (PDF o impreso) con las 5 secciones y las mismas cifras de cada pantalla, más tres anexos ya con D-035; listas en Excel. El PDF viejo le daba a cada cobrador plata de motos que no eran suyas ($26.898.200 en septiembre). `docs/REDISENO-REPORTES.md` |
 | 2-oct | **XYZ51H y YAV66H vendidas, dadas de baja** (D-039, migs 186·187) — estado nuevo "Vendida": salen de Motos (filtro "Vendidas"), Flota, Reportes, Panel, portal del socio y nómina; su historia se queda. Contrato de JESUS DAVID SABALLET cerrado y él Retirado (sus $260.500 quedan anotados; las 14 semanas no). La entrada al taller de XYZ51H cerrada. Flota 376 → 374, retenidas 42 → 41, lo que se debe hoy −$3.088.500 |
 | 2-oct | **Borradas las 3 motos de prueba de USADAS** (mig 185): ZZB01T, ZZC01T y ZZC02T ("MOTO DE PRUEBA - BORRAR", sin contratos ni pagos), con los 2 movimientos de prueba de ZZC02T. La primera vez el seguro encontró esos movimientos y se detuvo sin tocar nada. USADAS queda en 0 motos |

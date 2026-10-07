@@ -136,6 +136,14 @@ export function htmlRodadoPorDeuda(c: CalculoRodado, o: OpcionesDocRodado = {}):
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
   .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; font-weight: 700; text-align: center; }
   .contenido { position: relative; z-index: 1; }
+  /* En el celular (la vista previa que lee el cliente): una columna y las cifras sin cortarse. */
+  @media (max-width: 640px) {
+    body { padding: 12px; font-size: 12.5px; }
+    .fila { flex-basis: 100%; }
+    td { padding: 6px 4px; }
+    td:last-child { white-space: normal; min-width: 96px; }
+    .marca-borrador { font-size: 48px; }
+  }
 </style></head>
 <body>
 ${o.borrador ? `<div class="marca-borrador">BORRADOR</div>` : ""}

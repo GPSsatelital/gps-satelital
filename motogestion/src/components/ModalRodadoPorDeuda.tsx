@@ -21,7 +21,9 @@ function Fila({ l, v, fuerte, color }: { l: string; v: string; fuerte?: boolean;
   return (
     <div style={fila}>
       <span style={{ color: "var(--muted2)", minWidth: 0 }}>{l}</span>
-      <span style={{ fontWeight: fuerte ? 700 : 600, color: color ?? "var(--text)", fontVariantNumeric: "tabular-nums", textAlign: "right", minWidth: 0, maxWidth: "62%", overflowWrap: "break-word" }}>{v}</span>
+      {/* Las cifras cortas nunca se parten; solo los textos largos (una fecha "pasa al…") bajan de renglón. */}
+      <span style={{ fontWeight: fuerte ? 700 : 600, color: color ?? "var(--text)", fontVariantNumeric: "tabular-nums", textAlign: "right",
+        ...(v.length > 18 ? { minWidth: 0, maxWidth: "62%", overflowWrap: "break-word" } : { whiteSpace: "nowrap", flexShrink: 0 }) }}>{v}</span>
     </div>
   );
 }

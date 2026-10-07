@@ -4,13 +4,15 @@
 <meta charset="UTF-8"/>
 <title>Grabar video</title>
 <!-- Graba un video de la capacitación como archivo MP4 (para mandarlo por WhatsApp): dibuja cada escena
-     en un lienzo 1280x720 —la foto real, el recuadro que señala, el subtítulo— con la voz de audio/.
-     Lo maneja hacer-videos.mjs (Chrome sin ventana). ?v=v1 dice cuál video. -->
+     en un lienzo 1280x720 —la foto real, el recuadro que señala, el subtítulo— con la voz de audio/ y los
+     timbres de sonidos.js. Lo maneja hacer-videos.mjs (Chrome sin ventana), que después lo rearma con
+     rearmar-mp4.mjs porque Chrome lo entrega "en pedazos". ?v=v1 dice cuál video. -->
 <style>body { margin: 0; background: #000; } canvas { display: block; }</style>
 </head>
 <body>
 <canvas id="c" width="1280" height="720"></canvas>
 <script src="contenido.js"></script>
+<script src="sonidos.js"></script>
 <script>
 (async () => {
   const id = new URLSearchParams(location.search).get("v") || "v1";
@@ -28,11 +30,10 @@
     const buf = await (await fetch(`audio/${id}-${String(k + 1).padStart(2, "0")}.wav`)).arrayBuffer();
     escenas.push({ ...e, foto: await img(e.img), audio: await ac.decodeAudioData(buf) });
   }
-  // La línea de tiempo: portada, escenas (su voz + una pausa), cierre.
-  const PORTADA = 3.0, PAUSA = 0.7, CIERRE = 3.0;
-  let t = PORTADA;
-  escenas.forEach(e => { e.ini = t; e.fin = t + e.audio.duration + PAUSA; t = e.fin; });
-  const TOTAL = t + CIERRE;
+  // La línea de tiempo (la misma que usa comprobar-video.html): portada, escenas (timbre, voz, pausa), cierre
+  const linea = window.SONIDOS.linea(escenas.map(e => e.audio.duration));
+  escenas.forEach((e, k) => Object.assign(e, linea.escenas[k]));
+  const { PORTADA, CIERRE, total: TOTAL } = linea;
 
   // Texto en varias líneas
   function parrafo(txt, x, y, ancho, alto, tam, color, peso = 500) {
@@ -85,8 +86,7 @@
     }
     const k = Math.max(0, escenas.findIndex(e => ahora >= e.ini && ahora < e.fin));
     const e = escenas[k], previa = escenas[k - 1];
-    // Teléfono a la izquierda
-    // Debajo del encabezado (que va hasta y=62): el teléfono no lo tapa.
+    // Teléfono a la izquierda, debajo del encabezado (que va hasta y=62)
     const alto = e.img.startsWith("t5-06") ? 560 : 596, ancho = e.img.startsWith("t5-06") ? Math.round(560 * 1680 / 2200) : Math.round(596 * 780 / 1688);
     const px = 80, py = 96;
     redondo(px - 10, py - 10, ancho + 20, alto + 20, 30); g.fillStyle = "#020617"; g.fill();
@@ -104,20 +104,30 @@
     const pulso = ((ahora - e.ini) % 1.6) / 1.6;
     g.globalAlpha = 1 - pulso; g.lineWidth = 2; redondo(rx - 6 - 8 * pulso, ry - 6 - 8 * pulso, rw + 12 + 16 * pulso, rh + 12 + 16 * pulso, 12); g.stroke(); g.globalAlpha = 1;
     g.restore();
-    // A la derecha: título, número de escena y lo que dice la voz
+    // A la derecha: título, número de escena y lo que dice la voz (el texto entra con la voz, después del timbre)
     const dx = px + ancho + 80, dw = W - dx - 70;
     parrafo(V.titulo, dx, 150, dw, 48, 40, "#f1f5f9", 700);
-    g.font = '600 20px "Segoe UI", Arial'; g.fillStyle = "#38bdf8"; g.fillText(`Paso ${k + 1} de ${escenas.length}`, dx, 200);
+    g.font = '600 20px "Segoe UI", Arial'; g.fillStyle = e.alerta ? "#f87171" : "#38bdf8"; g.fillText(e.alerta ? `Ojo · paso ${k + 1} de ${escenas.length}` : `Paso ${k + 1} de ${escenas.length}`, dx, 200);
     redondo(dx, 230, dw, 330, 18); g.fillStyle = "#12264d"; g.fill();
     g.fillStyle = color; g.fillRect(dx, 230, 8, 330);
+    g.globalAlpha = suave((ahora - e.ini) / window.SONIDOS.ANTES_DE_LA_VOZ);
     parrafo(e.voz, dx + 34, 285, dw - 64, 44, 31, "#f1f5f9", 500);
+    g.globalAlpha = 1;
     // Puntos de avance
     escenas.forEach((_, j) => { g.beginPath(); g.arc(dx + 10 + j * 26, 600, 8, 0, 7); g.fillStyle = j <= k ? "#38bdf8" : "#2a4a80"; g.fill(); });
   }
 
-  // Programar las voces en su sitio de la línea de tiempo
+  // Programar los sonidos en su sitio de la línea de tiempo: timbre, y medio segundo después la voz
   const t0 = ac.currentTime + 0.3;
-  escenas.forEach(e => { const s = ac.createBufferSource(); s.buffer = e.audio; s.connect(destino); s.start(t0 + e.ini); });
+  window.SONIDOS.tocar(ac, destino, "inicio", t0 + 0.4);
+  escenas.forEach(e => {
+    window.SONIDOS.tocar(ac, destino, e.alerta ? "ojo" : "paso", t0 + e.ini);
+    const s = ac.createBufferSource(); s.buffer = e.audio; s.connect(destino); s.start(t0 + e.voz);
+  });
+  window.SONIDOS.tocar(ac, destino, "fin", t0 + TOTAL - CIERRE + 0.3);
+  // Un hilo de audio inaudible de principio a fin, para que la pista de sonido dure lo mismo que la imagen
+  const hilo = ac.createConstantSource(); hilo.offset.value = 0.00002; hilo.connect(destino); hilo.start(t0 - 0.3); hilo.stop(t0 + TOTAL + 1);
+
   const flujo = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...destino.stream.getAudioTracks()]);
   const tipo = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1.42E01E,mp4a.40.2") ? "video/mp4;codecs=avc1.42E01E,mp4a.40.2" : "video/webm;codecs=vp9,opus";
   const rec = new MediaRecorder(flujo, { mimeType: tipo, videoBitsPerSecond: 2_500_000 });
@@ -134,7 +144,7 @@
   const reloj = setInterval(() => {
     const ahora = ac.currentTime - t0;
     dibujar(Math.max(0, ahora));
-    if (ahora > TOTAL) { clearInterval(reloj); rec.stop(); }
+    if (ahora > TOTAL + 0.5) { clearInterval(reloj); rec.stop(); }
   }, 33);
 })().catch(e => { document.title = "ERROR " + e.message; });
 </script>

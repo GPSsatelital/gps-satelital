@@ -103,6 +103,13 @@
   .marca { position: absolute; border: 4px solid var(--cian); border-radius: 12px; box-shadow: 0 0 0 4000px rgba(2,6,23,0); transition: box-shadow .3s; }
   .marca .bola { position: absolute; right: -16px; top: -20px; width: 40px; height: 40px; border-radius: 50%; background: var(--cian); color: #04111f; font-weight: 800; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
   .explica h2 { margin-bottom: 26px; }
+  /* Cómo llegar: el camino de botones, paso a paso (pedido del dueño) */
+  .ruta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 8px; margin: -10px 0 24px; }
+  .ruta .etq { width: 100%; font-size: 16px; font-weight: 700; letter-spacing: 2px; color: var(--cian); text-transform: uppercase; margin-bottom: -2px; }
+  .ruta .r { display: inline-flex; align-items: center; gap: 9px; background: rgba(56,189,248,.12); border: 2px solid rgba(56,189,248,.45); border-radius: 999px; padding: 5px 16px 5px 7px; font-size: 21px; font-weight: 600; color: #e0f2fe; white-space: nowrap; }
+  .ruta .r .n { width: 27px; height: 27px; border-radius: 50%; background: var(--cian); color: #04111f; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .ruta .f { color: var(--cian); font-size: 26px; line-height: 1; opacity: .85; }
+  .explica.apretada h2 { margin-bottom: 18px; } .explica.apretada ol { gap: 10px; } .explica.apretada li { font-size: 26px; } .explica.apretada .ojo { margin-top: 18px; font-size: 24px; padding: 14px 20px; }
   .explica ol { list-style: none; display: grid; gap: 16px; }
   .explica li { display: grid; grid-template-columns: 52px 1fr; gap: 18px; align-items: start; font-size: 29px; line-height: 1.32; }
   .explica li .bola { width: 46px; height: 46px; border-radius: 50%; background: var(--cian); color: #04111f; font-weight: 800; font-size: 24px; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
@@ -178,6 +185,7 @@
 
 <script>window.TEMA = 1;</script>
 <script src="contenido.js"></script>
+<script src="sonidos.js"></script>
 <script>
 const C = window.CAP;
 const ic = (n, extra = "") => `<svg class="ico ${extra}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
@@ -229,7 +237,8 @@ function html(s, i) {
     }
     case "pantalla": return `<div class="pantalla">
         <div class="telefono ${s.ancho ? "ancho" : ""}"><img src="img/${s.img}" alt="Pantalla de la app: ${esc(s.titulo)}">${marcasHtml(s.marcas)}</div>
-        <div class="explica">${chipTema(s)}<h2>${esc(s.titulo)}</h2>
+        <div class="explica ${s.ruta && (s.marcas.length + (s.ojo ? 1 : 0) >= 5 || s.ruta.length >= 5) ? "apretada" : ""}">${chipTema(s)}<h2>${esc(s.titulo)}</h2>
+          ${s.ruta ? `<div class="ruta"><span class="etq">Cómo llegar</span>${s.ruta.map((r, k) => `${k ? '<span class="f">›</span>' : ""}<span class="r"><span class="n">${k + 1}</span>${esc(r)}</span>`).join("")}</div>` : ""}
           <ol>${s.marcas.map((m, k) => `<li><span class="bola">${k + 1}</span><span>${esc(m.t)}</span></li>`).join("")}</ol>
           ${s.ojo ? `<div class="ojo">${ic("alerta")}<span>${esc(s.ojo)}</span></div>` : ""}</div></div>`;
     case "video": {
@@ -302,7 +311,8 @@ function prepararVideo(cont) {
   const subt = cont.querySelector(".subt"), puntos = [...cont.querySelectorAll(".puntos span")];
   const btn = cont.querySelector(".reproducir"), otra = cont.querySelector(".otra");
   const audio = new Audio();
-  let k = 0, sonando = false;
+  let k = 0, sonando = false, timbre = null;
+  const sonar = tipo => { if (!window.AC) window.AC = new AudioContext(); window.SONIDOS.tocar(window.AC, window.AC.destination, tipo, window.AC.currentTime); };
   function escena(i, enfocar) {
     k = i;
     const e = v.escenas[i];
@@ -321,12 +331,14 @@ function prepararVideo(cont) {
     foco.style.cssText = `left:${x * zoom + tx}%;top:${y * zoom + ty}%;width:${w * zoom}%;height:${h * zoom}%`;
     subt.textContent = e.voz;
     audio.src = `audio/${cont.querySelector(".video").dataset.video}-${String(i + 1).padStart(2, "0")}.wav`;
-    audio.play().catch(() => { /* sin audio: se avanza por tiempo */ setTimeout(siguiente, 7000); });
+    sonar(e.alerta ? "ojo" : "paso");
+    clearTimeout(timbre);
+    timbre = setTimeout(() => sonando && audio.play().catch(() => { /* sin audio: se avanza por tiempo */ setTimeout(siguiente, 7000); }), window.SONIDOS.ANTES_DE_LA_VOZ * 1000);
   }
   function siguiente() {
     if (!sonando) return;
     if (k + 1 < v.escenas.length) setTimeout(() => sonando && escena(k + 1, true), 500);
-    else { sonando = false; btn.innerHTML = `${ic("play")} Reproducir`; subt.textContent = "Fin del video. «Desde el principio» para verlo otra vez."; }
+    else { sonando = false; sonar("fin"); btn.innerHTML = `${ic("play")} Reproducir`; subt.textContent = "Fin del video. «Desde el principio» para verlo otra vez."; }
   }
   audio.addEventListener("ended", siguiente);
   btn.onclick = () => {
@@ -337,7 +349,7 @@ function prepararVideo(cont) {
   otra.onclick = () => { audio.pause(); sonando = true; btn.innerHTML = `${ic("pausa")} Pausa`; escena(0, true); };
   escena(0, false);
   subt.textContent = "Toque «Reproducir» para ver el video.";
-  reproduccion = { detener: () => { sonando = false; audio.pause(); } };
+  reproduccion = { detener: () => { sonando = false; clearTimeout(timbre); audio.pause(); } };
 }
 function detenerVideo() { if (reproduccion) { reproduccion.detener(); reproduccion = null; } }
 

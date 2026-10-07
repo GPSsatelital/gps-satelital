@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"/><title>Iconos en PNG</title>
+<!-- Dibuja cada icono de la presentación (los <symbol> de presentacion.html) como PNG, en cada color del
+     PowerPoint. Los PowerPoint llevan PNG y no SVG porque un PowerPoint viejo o el visor de un celular no
+     muestran SVG. Guarda en powerpoint/_iconos/. Lo abre hacer-iconos.mjs con el servidor andando. -->
+</head>
+<body>
+<script>
+(async () => {
+  const html = await (await fetch("presentacion.html")).text();
+  const COLORES = { amarillo: "FFD100", cian: "38BDF8", alerta: "FBBF24", bien: "4ADE80", mal: "F87171", texto: "F1F5F9", suave: "B6C3D8", oscuro: "04111F" };
+  const iconos = [...html.matchAll(/<symbol id="i-([a-z]+)" viewBox="0 0 24 24">([\s\S]*?)<\/symbol>/g)];
+  let n = 0;
+  for (const [, nombre, cuerpo] of iconos) for (const color of Object.values(COLORES)) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="192" height="192" fill="none" stroke="#${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${cuerpo}</svg>`;
+    const img = new Image();
+    await new Promise((ok, mal) => { img.onload = ok; img.onerror = mal; img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg))); });
+    const cv = document.createElement("canvas"); cv.width = 192; cv.height = 192;
+    cv.getContext("2d").drawImage(img, 0, 0, 192, 192);
+    const png = await new Promise(ok => cv.toBlob(ok, "image/png"));
+    await fetch(`/guardar?carpeta=powerpoint/_iconos&nombre=${nombre}-${color}.png`, { method: "POST", body: png });
+    n++;
+  }
+  await fetch(`/guardar?carpeta=powerpoint/_iconos&nombre=listo.json`, { method: "POST", body: JSON.stringify({ iconos: n }) });
+  document.title = "LISTO";
+})();
+</script>
+</body>
+</html>

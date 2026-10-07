@@ -21,8 +21,17 @@ const C = window.CAP;
 const htmlWeb = fs.readFileSync(path.join(CAP_DIR, "presentacion.html"), "utf8");
 const ICONOS = {};
 for (const m of htmlWeb.matchAll(/<symbol id="i-([a-z]+)" viewBox="0 0 24 24">([\s\S]*?)<\/symbol>/g)) ICONOS[m[1]] = m[2];
-const icono = (nombre, color) => "data:image/svg+xml;base64," + Buffer.from(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="192" height="192" fill="none" stroke="#${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre] ?? ICONOS.check}</svg>`).toString("base64");
+// Los iconos van en PNG (los hace docs/capacitacion/hacer-iconos.mjs): un PowerPoint viejo o el visor de un celular
+// no muestran SVG. Si falta el PNG se avisa y se usa el SVG.
+const sinPng = new Set();
+const icono = (nombre, color) => {
+  if (!ICONOS[nombre]) nombre = "check";
+  const png = path.join(CAP_DIR, "powerpoint", "_iconos", `${nombre}-${color}.png`);
+  if (fs.existsSync(png)) return "data:image/png;base64," + fs.readFileSync(png).toString("base64");
+  sinPng.add(`${nombre}-${color}`);
+  return "data:image/svg+xml;base64," + Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="192" height="192" fill="none" stroke="#${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre]}</svg>`).toString("base64");
+};
 
 // Colores y letra (los de la app)
 const K = { fondo: "0B1A36", tarjeta: "12264D", linea: "24406F", texto: "F1F5F9", suave: "B6C3D8", cian: "38BDF8",
@@ -30,7 +39,6 @@ const K = { fondo: "0B1A36", tarjeta: "12264D", linea: "24406F", texto: "F1F5F9"
 const F = "Segoe UI";
 const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
 const ARCHIVOS = { 1: "Tema 1 - El dia del administrador", 2: "Tema 2 - Liquidaciones", 3: "Tema 3 - Taller, prestamo y rodar el tiempo", 4: "Tema 4 - Rodar por deuda", 5: "Tema 5 - Ceder un contrato" };
-const VIDEOS = { v1: "Video 1 - Cerrar una liquidacion sin firma y firmar despues.mp4", v2: "Video 2 - Moto al taller con prestamo.mp4", v3: "Video 3 - Rodar por deuda.mp4", v4: "Video 4 - Ceder un contrato.mp4" };
 const temaDe = s => s.tema ?? s.n ?? null;
 const W = 13.333, H = 7.5, MX = 0.75;
 
@@ -182,14 +190,32 @@ const TIPOS = {
     const t = temaDe(s);
     if (t) sl.addText(`TEMA ${t} · ${NOMBRES[t].toUpperCase()}`, { x: tx, y: 1.0, w: tw, h: 0.35, fontFace: F, fontSize: 13, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
     titulo(sl, s.titulo, 1.4, tx, tw, 27);
-    const n = s.marcas.length, paso = n > 4 ? 0.72 : 0.85;
+    // Cómo llegar: el camino de botones en fichas numeradas, en una o dos filas (pedido del dueño)
+    let yMarcas = 2.35;
+    if (s.ruta) {
+      sl.addText("CÓMO LLEGAR", { x: tx, y: 2.2, w: tw, h: 0.25, fontFace: F, fontSize: 10.5, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
+      const alto = 0.36, gap = 0.1, flecha = 0.22;
+      let x = tx, y = 2.47;
+      s.ruta.forEach((r, k) => {
+        const w = 0.62 + r.length * 0.083;
+        if (k && x + flecha + w > tx + tw) { x = tx; y += alto + gap; }
+        if (k) { sl.addText("›", { x, y: y - 0.02, w: flecha, h: alto, fontFace: F, fontSize: 18, color: K.cian, align: "center", valign: "middle", margin: 0 }); x += flecha; }
+        sl.addShape(pres.ShapeType.roundRect, { x, y, w, h: alto, rectRadius: 0.18, fill: { color: K.cian, transparency: 86 }, line: { color: K.cian, width: 1.25, transparency: 40 } });
+        bola(pres, sl, x + 0.06, y + 0.05, 0.26, k + 1);
+        sl.addText(r, { x: x + 0.36, y, w: w - 0.42, h: alto, fontFace: F, fontSize: 12.5, bold: true, color: "E0F2FE", valign: "middle", margin: 0 });
+        x += w + 0.04;
+      });
+      yMarcas = y + alto + 0.22;
+    }
+    const n = s.marcas.length, limite = H - 0.4 - (s.ojo ? 1.1 : 0);
+    const paso = Math.min(n > 4 ? 0.72 : 0.85, (limite - yMarcas) / n);
     s.marcas.forEach((m, i) => {
-      const y = 2.35 + i * paso;
+      const y = yMarcas + i * paso;
       bola(pres, sl, tx, y + 0.02, 0.38, i + 1);
-      sl.addText(m.t, { x: tx + 0.55, y, w: tw - 0.55, h: paso - 0.06, fontFace: F, fontSize: n > 4 ? 15 : 16.5, color: K.texto, valign: "top", margin: 0 });
+      sl.addText(m.t, { x: tx + 0.55, y, w: tw - 0.55, h: paso - 0.06, fontFace: F, fontSize: paso < 0.62 ? 13.5 : n > 4 ? 15 : 16.5, color: K.texto, valign: "top", margin: 0 });
     });
     if (s.ojo) {
-      const y = 2.35 + n * paso + 0.15;
+      const y = yMarcas + n * paso + 0.12;
       sl.addShape(pres.ShapeType.roundRect, { x: tx, y, w: tw, h: 0.95, rectRadius: 0.1, fill: { color: K.alerta, transparency: 86 }, line: { color: K.alerta, width: 1.5 } });
       sl.addImage({ data: icono("alerta", K.alerta), x: tx + 0.2, y: y + 0.27, w: 0.4, h: 0.4 });
       sl.addText(s.ojo, { x: tx + 0.75, y, w: tw - 0.95, h: 0.95, fontFace: F, fontSize: 14.5, color: "FDE68A", valign: "middle", margin: 0 });
@@ -199,7 +225,7 @@ const TIPOS = {
     const v = C.videos[s.video];
     const vw = 7.6, vh = vw * 720 / 1280, vx = MX, vy = (H - vh) / 2;
     sl.addShape(pres.ShapeType.roundRect, { x: vx - 0.08, y: vy - 0.08, w: vw + 0.16, h: vh + 0.16, rectRadius: 0.08, fill: { color: "020617" }, line: { color: K.amarillo, width: 2 } });
-    const mp4 = path.join(CAP_DIR, "videos", VIDEOS[s.video]);
+    const mp4 = path.join(CAP_DIR, "videos", v.archivo);
     const poster = path.join(CAP_DIR, "powerpoint", `_portada-${s.video}.png`);
     sl.addMedia({ type: "video", path: mp4, x: vx, y: vy, w: vw, h: vh, cover: fs.existsSync(poster) ? "data:image/png;base64," + fs.readFileSync(poster).toString("base64") : undefined });
     const tx = vx + vw + 0.5, tw = W - tx - MX;
@@ -239,4 +265,5 @@ async function armar(tema) {
 (async () => {
   const pedidos = process.argv.slice(2).map(Number).filter(Boolean);
   for (const t of pedidos.length ? pedidos : [1, 2, 3, 4, 5]) await armar(t);
+  if (sinPng.size) console.log("OJO: iconos sin PNG (quedaron en SVG): " + [...sinPng].join(", ") + " — corra docs/capacitacion/hacer-iconos.mjs");
 })();

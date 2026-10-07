@@ -353,3 +353,14 @@ nueva se prueba contra un caso que pase por CADA rama (avisos, razones, acuerdo)
 **Quién lo cazó:** el dueño: *"no me dijiste nada"*.
 **Qué lo evita ahora:** si la pregunta necesita explicación, va en texto y él contesta con el número
 (memoria `feedback-preguntas-sin-ventana`).
+
+### Entregué videos que "se reproducían" sin probarlos donde se iban a ver (7-oct, madrugada)
+**Lo que hice:** grabé los 4 videos con Chrome, comprobé que Chrome los reproducía de corrido y los metí al
+PowerPoint. Chrome entrega el MP4 "en pedazos", con duración 0 en el índice: PowerPoint, Windows y los
+celulares no lo abren. Y cuando quise revisar saltando a la mitad, mi servidor de prueba no sabía entregar
+pedazos del archivo (`Range`), así que la revisión decía "no salta" sobre un archivo que estaba bien.
+**Quién lo cazó:** el dueño: *"los videos no se reproducen"*.
+**Qué lo evita ahora:** `hacer-videos.mjs` rearma cada MP4 y lo comprueba solo (duración, saltar a tres
+puntos, la voz a tiempo), y la prueba de PowerPoint es preguntarle al propio PowerPoint por COM cuánto
+dura el video que tiene adentro. Regla: lo que va a salir del PC se prueba con el programa y el servidor
+que lo van a abrir, no con el que lo hizo.

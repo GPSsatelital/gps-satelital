@@ -224,9 +224,14 @@ Lo que está afectando cifras reales de clientes en este momento.
     BARON (RLI25H) no (su contrato ya pasó su total de semanas; además está quieto).
   · 💻 Sin hacer: la marca en Reportes («rodado por deuda» en la lista de Cartera) y pasar el rodado a
     saldado cuando termine de pagar las semanas del final.
-- [ ] 💻 **CAPACITACIÓN (7-oct) — material en `docs/capacitacion/`.** 5 presentaciones por tema + la completa,
-  el guion (y su PDF) y 4 videos MP4 para WhatsApp. Las fotos, el audio y los videos NO se suben (datos de
-  clientes). Si la app cambia, se regeneran con los pasos del README de esa carpeta.
+- [ ] 💻 **CAPACITACIÓN (7-oct) — material en `docs/capacitacion/`.** Lo que se comparte son los 5
+  PowerPoint de `powerpoint/` (video adentro, letra incrustada, iconos PNG, «Cómo llegar» en cada pantalla)
+  y los 4 MP4 de `videos/` (rearmados: PowerPoint, Windows y celulares los abren). Las fotos, el audio, los
+  videos y los PowerPoint NO se suben (datos de clientes). Si la app cambia, se regeneran con los 8 pasos
+  del README de esa carpeta.
+  · 🧑 **Sin probar en un celular real**: abrir un PPTX y un MP4 en el celular del dueño después de la
+    capacitación (se verificó en PowerPoint de Windows y en Chrome).
+  · 🧑 Preguntarle cómo le fue y qué preguntas del equipo quedaron sin responder.
 
 - [ ] 💻 🔴 **REPORTES › CARTERA DE UN DÍA PASADO — a medio hacer (D-043, 6-oct).** El dueño aprobó
   "Las dos" y "empieza por el paso 1".

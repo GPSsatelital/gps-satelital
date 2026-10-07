@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="es"><body>
+<!-- Barrido de las diapositivas: mide si algo se sale del cuadro de 1600x900 en cada una. Se abre con el servidor
+     andando (node servidor-grabacion.mjs) en http://127.0.0.1:8766/revisar-diapositivas.html y deja videos/barrido.json. --><iframe id="f" src="presentacion.html" style="width:1600px;height:900px;border:0"></iframe>
+<script>
+const f=document.getElementById("f");
+f.onload=async()=>{const w=f.contentWindow,d=f.contentDocument;await new Promise(r=>setTimeout(r,800));
+ const esc=d.getElementById("escenario");const salidos=[];
+ for(let i=0;i<w.eval("slides.length");i++){w.eval("mostrar")(i);await new Promise(r=>setTimeout(r,60));
+  const R=esc.getBoundingClientRect();const act=d.querySelector(".slide.activa");
+  for(const el of act.querySelectorAll("*")){const r=el.getBoundingClientRect();if(r.width===0||r.height===0)continue;
+   if(r.right>R.right+1||r.bottom>R.bottom+1||r.left<R.left-1||r.top<R.top-1){salidos.push({diapositiva:i+1,que:el.className||el.tagName,texto:(el.textContent||"").slice(0,40),abajo:Math.round(r.bottom-R.bottom),derecha:Math.round(r.right-R.right)});break;}}}
+ await fetch("/guardar?nombre=barrido.json",{method:"POST",body:JSON.stringify({total:w.eval("slides.length"),salidos})});document.title="LISTO";};
+</script></body></html>

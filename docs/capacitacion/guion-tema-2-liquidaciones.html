@@ -51,7 +51,7 @@ const grupo = s => temaDe(s) ?? (["portada", "agenda"].includes(s.tipo) || (s.ti
 const tituloDe = s => s.titulo ?? (s.tipo === "portada" ? "Portada" : s.tipo === "cierre" ? "¿Preguntas?" : s.tipo === "frase" ? s.frase : "");
 function queMostrar(s) {
   switch (s.tipo) {
-    case "pantalla": return "Pantalla real con " + s.marcas.length + " números: " + s.marcas.map((m, i) => (i + 1) + ") " + m.t).join(" ") + (s.ojo ? " · OJO: " + s.ojo : "");
+    case "pantalla": return (s.ruta ? "Cómo llegar: " + s.ruta.join(" › ") + " · " : "") + "Pantalla real con " + s.marcas.length + " números: " + s.marcas.map((m, i) => (i + 1) + ") " + m.t).join(" ") + (s.ojo ? " · OJO: " + s.ojo : "");
     case "pasos": return "Pasos: " + s.pasos.map((p, i) => (i + 1) + ". " + p.t).join(" · ");
     case "tabla": return "Tabla: " + s.columnas.join(" / ") + (s.pie ? " · " + s.pie : "");
     case "comparar": return s.izq.titulo + ": " + s.izq.items.join("; ") + " — " + s.der.titulo + ": " + s.der.items.join("; ");
@@ -90,7 +90,7 @@ if (!TEMA) html += `
     <li>El computador con la carpeta <b>docs/capacitacion</b> completa (las fotos y el audio van dentro).</li>
     <li>Parlante o el sonido del computador alto, para los 4 videos.</li>
     <li>La hoja «¿Dónde busco?» impresa, una por persona (está al final de este guion).</li>
-    <li>Para el tema 4, recuerde: a Sergio se le activa el permiso «Rodar por deuda» después de la capacitación (Usuarios).</li>
+    <li>Para el tema 4, recuerde: el permiso «Rodar por deuda» se le activa después de la capacitación a quien usted decida (Usuarios).</li>
   </ul></div>`;
 
 let grupoActual = null;

@@ -42,14 +42,14 @@ window.CAP = {
 
     { tipo: "pasos", tema: 1, titulo: "El orden de la mañana", min: 1.5,
       pasos: [
-        { icono: "lista", t: "Abrir Mi Día", d: "Sus tareas y lo que tiene pendiente." },
+        { icono: "lista", t: "Abrir Mi Día", d: "Más › Mi Día: sus tareas y lo que tiene pendiente." },
         { icono: "telefono", t: "Llamar y escribir", d: "Cartera › Para hacer hoy, en orden." },
         { icono: "check", t: "Las tareas asignadas", d: "Lo que le montaron: buscar una moto, recoger un papel." },
         { icono: "reloj", t: "Lo que llegue en el día", d: "La lista cambia: revísela varias veces." },
       ],
       notas: "Cuatro pasos, siempre en este orden. Primero Mi Día, para ver qué le toca. Segundo, llamar y escribir: eso es lo que más plata trae, por eso va antes que todo. Tercero, las tareas que le asignaron. Y cuarto, lo que vaya llegando: la lista no es fija." },
 
-    { tipo: "pantalla", tema: 1, titulo: "Cartera › Para hacer hoy", img: "t1-05-para-hacer-hoy.png", min: 2,
+    { tipo: "pantalla", tema: 1, titulo: "Cartera › Para hacer hoy", ruta: ["Toque «Cartera» (abajo)","Toque «Para hacer hoy»","Empiece por «Recolec.»"], img: "t1-05-para-hacer-hoy.png", min: 2,
       marcas: [
         { r: [29.5, 20.2, 36.4, 3.8], t: "Toque «Para hacer hoy»: salen solo los clientes que hay que trabajar hoy." },
         { r: [3, 28.6, 71, 7.4], t: "Vaya en orden: Recolección, Mora, Gabela y Pagan hoy." },
@@ -59,7 +59,7 @@ window.CAP = {
       ojo: "«Días en mora» no es lo mismo que «días desde su último pago». Al cliente se le dice desde cuándo está en mora.",
       notas: "Esta es la pantalla principal del administrador. Número 1: el botón Para hacer hoy. Número 2: se trabaja en orden, primero los que hay que recoger, después mora, gabela y los que pagan hoy. Número 3: los días en mora cuentan desde el día que le tocaba pagar; si abonó un poquito, no se reinician. Número 4: cada botón deja anotado que usted lo hizo. Pregunta para ustedes: ¿por qué creen que se empieza por recolección?" },
 
-    { tipo: "pantalla", tema: 1, titulo: "Qué hace cada botón", opcional: true, img: "t1-06-tarea-botones.png", min: 1.5,
+    { tipo: "pantalla", tema: 1, titulo: "Qué hace cada botón", ruta: ["Cartera","Para hacer hoy","Busque al cliente","Mensaje · Llamar · Cobrar"], opcional: true, img: "t1-06-tarea-botones.png", min: 1.5,
       marcas: [
         { r: [7.5, 30.5, 57, 7.2], t: "«Debe pagar»: la cifra que se le dice al cliente, con su detalle." },
         { r: [9.5, 38.6, 61, 4.2], t: "Mensaje abre WhatsApp. Llamar marca. Cobrar registra el cobro en la calle con foto, ubicación y recibo." },
@@ -77,7 +77,7 @@ window.CAP = {
       pie: "En mora, los tres pasos se pueden hacer el mismo día si no contesta. Plazo extra: 1 o 2 días, con el motivo escrito. Sirena máximo 10 segundos y apagado máximo 1 hora, siempre con la moto detenida.",
       notas: "Este es el protocolo. No hay que esperar días entre un paso y otro: si no contesta el mensaje, se llama; si no contesta la llamada, se apaga o se recoge. El plazo extra existe, pero con motivo escrito, y mientras está vigente la moto no se recoge. Y la sirena y el apagado, solo con la moto quieta: con la moto andando es un peligro." },
 
-    { tipo: "pantalla", tema: 1, titulo: "La secretaria: lo primero es confirmar", img: "t1-07-confirmar.png", min: 1.5,
+    { tipo: "pantalla", tema: 1, titulo: "La secretaria: lo primero es confirmar", ruta: ["Cartera","Toque «Confirmar»","Abra el comprobante","«Confirmar recibido» o «Rechazar»"], img: "t1-07-confirmar.png", min: 1.5,
       marcas: [
         { r: [66.5, 20.2, 26.5, 3.8], t: "«Confirmar»: lo que está esperando que ella diga sí o no." },
         { r: [11, 49, 81.5, 23], t: "Revise el comprobante: fecha, valor y referencia del banco." },
@@ -122,16 +122,16 @@ window.CAP = {
     { tipo: "pasos", tema: 2, titulo: "Los 7 pasos", min: 2,
       pasos: [
         { icono: "moto", t: "Recibir la moto", d: "Motos › Registrar novedad. 6 fotos y la fecha real." },
-        { icono: "doc", t: "Iniciar", d: "Desde Contratos o Inmovilizaciones." },
-        { icono: "llave", t: "Revisión del taller", d: "La hace el mecánico." },
-        { icono: "lista", t: "Calcular", d: "Daños uno por uno. Revise las deudas." },
-        { icono: "doc", t: "Documento", d: "Quién firma por la empresa y su cargo." },
-        { icono: "firma", t: "Firma", d: "En pantalla, con huella." },
-        { icono: "check", t: "Cerrar", d: "El punto sin retorno." },
+        { icono: "doc", t: "Iniciar", d: "Contratos › el contrato › «Iniciar liquidación»." },
+        { icono: "llave", t: "Revisión del taller", d: "La hace el mecánico en Más › Taller." },
+        { icono: "lista", t: "Calcular", d: "Más › Liquidaciones › la LIQ › daños › «Calcular»." },
+        { icono: "doc", t: "Documento", d: "«Generar documento de liquidación»." },
+        { icono: "firma", t: "Firma", d: "«Firmar en pantalla (firma + huella)»." },
+        { icono: "check", t: "Cerrar", d: "«Confirmar cierre de liquidación». No tiene vuelta atrás." },
       ],
       notas: "Estos son los siete pasos. La liquidación se puede parar en cualquiera y seguir después: nada se pierde. Arriba siempre hay una barra con bolitas que dice en qué paso va." },
 
-    { tipo: "pantalla", tema: 2, titulo: "La cuenta: revísela antes de seguir", img: "liq-05-cuenta.png", min: 2,
+    { tipo: "pantalla", tema: 2, titulo: "La cuenta: revísela antes de seguir", ruta: ["Más (abajo a la derecha)","Liquidaciones","Toque la LIQ del cliente","Escriba los daños","«Registrar revisión y calcular»"], img: "liq-05-cuenta.png", min: 2,
       marcas: [
         { r: [11, 23.2, 54.5, 4], t: "El motivo. Se puede cambiar mientras no se cierre." },
         { r: [7, 40, 85.5, 16.5], t: "Ahorro menos deudas menos daños = saldo. Verde: a favor del cliente. Rojo: debe." },
@@ -140,7 +140,7 @@ window.CAP = {
       ojo: "El costo del taller (aceite, frenos, mantenimiento) lo paga la empresa. Al cliente solo se le cobran los daños.",
       notas: "Esta es la cuenta. Número 1, el motivo. Número 2, el saldo: verde es plata para el cliente, rojo es lo que debe. Número 3, la fecha: si está mal, el saldo está mal. Y ojo: el mantenimiento no se le cobra al cliente; solo los daños, uno por uno. Si un número le extraña, pare: casi siempre es la fecha o un daño mal escrito." },
 
-    { tipo: "pantalla", tema: 2, titulo: "La firma del cliente", img: "liq-08-firma-opciones.png", min: 2,
+    { tipo: "pantalla", tema: 2, titulo: "La firma del cliente", ruta: ["Más","Liquidaciones","La LIQ del cliente","Baje hasta «Firma del cliente»","«Firmar en pantalla»"], img: "liq-08-firma-opciones.png", min: 2,
       marcas: [
         { r: [7, 20.5, 86, 5.4], t: "Lo normal: el cliente lee la cuenta y firma en pantalla, con su huella." },
         { r: [7, 41.6, 79, 17.4], t: "Si el lector falla o prefiere papel: imprimir, firma a mano, y subir la foto." },
@@ -154,7 +154,7 @@ window.CAP = {
       der: { titulo: "No se vale", tono: "mal", items: ["El cliente está ahí: que firme.", "No ha revisado la fecha ni el saldo.", "Solo por afán.", "El cliente SIGUE con la empresa porque va a cambiar de moto."] },
       notas: "Cerrar sin firma es una salida para cuando el cliente no puede venir. El último punto en rojo es nuevo y muy importante: si el cliente sigue con nosotros porque le vamos a dar otra moto, no se cierra sin firma. Esta semana pasó: se cerró sin firma, el cliente quedó como Retirado y no aparecía para hacerle el contrato nuevo. Hubo que arreglarlo a mano." },
 
-    { tipo: "pantalla", tema: 2, titulo: "Cuando el cliente llega después a firmar", img: "liq-10-cerrada-sin-firma.png", min: 1.5,
+    { tipo: "pantalla", tema: 2, titulo: "Cuando el cliente llega después a firmar", ruta: ["Más","Liquidaciones","La que dice «Falta firma»","«Firmar en pantalla»"], img: "liq-10-cerrada-sin-firma.png", min: 1.5,
       marcas: [
         { r: [3.5, 65.4, 93, 26.5], t: "En la lista sale con el letrero «Falta firma». Adentro, este aviso amarillo." },
         { r: [7, 81.6, 86, 5.4], t: "Toque «Firmar en pantalla»: firma con el dedo y huella con el lector." },
@@ -167,7 +167,7 @@ window.CAP = {
       sub: "Su saldo se reparte: base de la moto nueva, a favor del contrato nuevo, o en efectivo. Esa casilla solo sale al cerrar con la firma.",
       notas: "Cuando liquidamos la moto vieja para darle otra, al confirmar el cierre se marca la casilla Sigue con la empresa. Así su saldo pasa a la base de la moto nueva y el cliente aparece para el contrato nuevo. Sin esa casilla queda Retirado. Por eso, en ese caso, la liquidación se cierra con el cliente presente y firmando." },
 
-    { tipo: "pantalla", tema: 2, titulo: "Así se ve una bien cerrada", opcional: true, img: "liq-12-cerrar.png", min: 1,
+    { tipo: "pantalla", tema: 2, titulo: "Así se ve una bien cerrada", ruta: ["Más","Liquidaciones","«Cerradas y anuladas»","La LIQ del cliente"], opcional: true, img: "liq-12-cerrar.png", min: 1,
       marcas: [
         { r: [7, 35.2, 85.5, 16.8], t: "El saldo final: aquí, $157.000 a favor del cliente." },
         { r: [3.5, 71, 93, 10.4], t: "En verde: «Liquidación cerrada», con el documento firmado para descargar." },
@@ -193,17 +193,17 @@ window.CAP = {
     { tipo: "seccion", n: 3, titulo: "Taller, préstamo y rodar el tiempo", sub: "Cuando la moto de un cliente queda guardada", min: 0.5,
       notas: "Tercer tema: qué hacemos cuando la moto de un cliente queda guardada, por taller, por garantía, o porque él la entrega." },
 
-    { tipo: "pantalla", tema: 3, titulo: "Registrar novedad: elija bien qué pasó", img: "t3-01-motos-novedad.png", min: 2.5,
+    { tipo: "pantalla", tema: 3, titulo: "Registrar novedad: elija bien qué pasó", ruta: ["Motos (abajo)","Busque la placa","Toque la moto","«Registrar novedad»","Elija lo que pasó"], img: "t3-01-motos-novedad.png", min: 2.5,
       marcas: [
         { r: [8, 16.5, 84, 12.6], t: "Ingresar a taller: se dañó y el cliente SIGUE. Su contrato sigue cobrando y se le puede prestar otra." },
         { r: [8, 30.1, 84, 12.6], t: "Inmovilizar: está en mora. Se suspende el contrato y se cobra la multa de $30.000." },
         { r: [8, 43.8, 84, 14.6], t: "El cliente para un tiempo (entrega voluntaria): se suspende y NO se le presta otra." },
         { r: [8, 59.3, 84, 12.8], t: "Retención legal: Fiscalía, Tránsito o garantía. El contrato sigue." },
       ],
-      ojo: "Dónde: Motos › la moto › Registrar novedad. Elegir mal la situación cambia cuánto debe el cliente.",
+      ojo: "Elegir mal la situación cambia cuánto debe el cliente. Si se va DEFINITIVAMENTE, es «Liquidar / cerrar contrato».",
       notas: "Todo empieza aquí: Motos, la moto, Registrar novedad. Hay seis situaciones y cada una hace algo distinto con el contrato. Taller: el cliente sigue, sigue pagando su semana y le podemos prestar otra. Inmovilizar: es por mora. El cliente para un tiempo: esa es la entrega voluntaria; se suspende y no hay préstamo. Y retención legal, donde va la garantía. Pregunta: si un cliente dice «me voy a mi pueblo un mes», ¿cuál escojo?" },
 
-    { tipo: "pantalla", tema: 3, titulo: "Ingresar a taller", img: "t3-03-taller-nueva.png", min: 1.5,
+    { tipo: "pantalla", tema: 3, titulo: "Ingresar a taller", ruta: ["Motos","La moto","«Registrar novedad»","«Ingresar a taller»","Fotos y «Guardar»"], img: "t3-03-taller-nueva.png", min: 1.5,
       marcas: [
         { r: [10, 38.6, 80, 21.8], t: "¿Cómo llegó? La trajo el cliente: sin costo. Se fue a buscar: $30.000." },
         { r: [10, 62, 80, 12], t: "Con qué entró: el problema, en palabras." },
@@ -228,16 +228,16 @@ window.CAP = {
       pie: "Se presta primero una moto Disponible. Una retenida por mora no: su dueño puede pagar y pedirla.",
       notas: "Esto es lo que más preguntan los clientes. Le prestamos otra moto para que no deje de trabajar, pero no es gratis: paga su semana más 27 mil pesos diarios por la prestada. Ese alquiler se cobra todos los días; si se atrasa, queda como deuda con acuerdo. Y las cuentas nunca se mezclan." },
 
-    { tipo: "pantalla", tema: 3, titulo: "Prestar moto de reemplazo", opcional: true, img: "t3-07-prestar-modal.png", min: 1.5,
+    { tipo: "pantalla", tema: 3, titulo: "Prestar moto de reemplazo", ruta: ["Más","Inmovilizaciones","«Varadas»","«Prestar reemplazo»","Elija la moto","«Siguiente — cómo sale»"], opcional: true, img: "t3-07-prestar-modal.png", min: 1.5,
       marcas: [
         { r: [5, 5.4, 90, 8.6], t: "De quién es y cuál moto está en el taller." },
         { r: [5, 21, 90, 16.4], t: "El consejo: presta primero las disponibles." },
         { r: [5, 44.2, 90, 44.4], t: "La lista de motos para prestar. Se escoge una y se sigue al paso 2." },
       ],
-      ojo: "Dónde: Inmovilizaciones › Varadas › Prestar reemplazo.",
+      ojo: "Para devolverla: Más › Inmovilizaciones › «Préstamos activos» › «Devolver».",
       notas: "El préstamo se hace desde Inmovilizaciones, en las motos varadas. Se escoge la moto, se dice cómo sale, y la app cambia las placas sola. Para devolverla, en la misma pantalla está Préstamos activos." },
 
-    { tipo: "pantalla", tema: 3, titulo: "Al salir del taller: resolver el tiempo", img: "t3-09-resolver-tiempo.png", min: 2,
+    { tipo: "pantalla", tema: 3, titulo: "Al salir del taller: resolver el tiempo", ruta: ["Contratos (abajo)","Busque y toque el contrato","«Resolver tiempo guardado»","Las dos fechas","«Continuar»"], img: "t3-09-resolver-tiempo.png", min: 2,
       marcas: [
         { r: [9, 35.2, 82, 11], t: "Solo se ruedan semanas COMPLETAS. Los días sueltos se quedan en su semana." },
         { r: [9, 48.4, 82, 17.6], t: "Se guardó el / Se devolvió el: las fechas reales." },
@@ -271,7 +271,7 @@ window.CAP = {
         "Contrato activo y semanal, con la moto trabajando.",
         "Debe más de $700.000.",
         "Una sola vez por contrato.",
-        "Lo hace solo el dueño. A Sergio se le activa después de esta capacitación.",
+        "Lo hace solo el dueño.",
       ],
       pie: "No es para motos retenidas, ni para clientes en liquidación.",
       notas: "Es para pocos: no se le ofrece a todo el mundo. Una sola vez por contrato, porque si se repite deja de ser una ayuda y se vuelve la costumbre de no pagar. Los administradores no lo hacen; si creen que un cliente lo necesita, lo proponen." },
@@ -288,7 +288,7 @@ window.CAP = {
       pie: "Hasta 4 semanas: una más. Después: una más por cada 2 completas. Solo semanas completas; lo que sobra se paga ese mismo día.",
       notas: "Así se cuenta el recargo. Hasta cuatro semanas, una más. De ahí en adelante, una más por cada dos. Son semanas normales, con su ahorro. Y solo semanas completas: si sobra un pedazo que no alcanza a ser semana, ese se paga ese mismo día." },
 
-    { tipo: "pantalla", tema: 4, titulo: "La cuenta la hace la app", img: "t4-03-rodado-cuenta-2.png", min: 2,
+    { tipo: "pantalla", tema: 4, titulo: "La cuenta la hace la app", ruta: ["Contratos (abajo)","Busque la placa o el nombre","Toque el contrato","Baje: «Rodar por deuda»","1. La cuenta"], img: "t4-03-rodado-cuenta-2.png", min: 2,
       marcas: [
         { r: [6, 15.6, 88, 11], t: "Lo que le queda debiendo después de rodar: se cobra en el momento." },
         { r: [6, 40.6, 88, 12], t: "Semanas rodadas y lo que paga al final, con el recargo." },
@@ -296,10 +296,10 @@ window.CAP = {
         { r: [6, 62.6, 88, 13], t: "Lo que no se rueda: lo sigue debiendo." },
         { r: [6, 76.8, 88, 11.8], t: "La advertencia del SOAT y la tecnomecánica." },
       ],
-      ojo: "Dónde: Contratos › el contrato › «Rodar por deuda».",
+      ojo: "Si no ve el botón: el contrato no es semanal, o usted no tiene el permiso.",
       notas: "Nadie hace cuentas a mano: la app muestra cuánto debe hoy, cuánto le queda, cuántas semanas se ruedan, cuántas paga al final y la nueva fecha de fin. Y le recuerda decirle al cliente lo del SOAT y la tecnomecánica." },
 
-    { tipo: "pantalla", tema: 4, titulo: "Documento, firma y video", img: "t4-05-rodado-documento.png", min: 1.5,
+    { tipo: "pantalla", tema: 4, titulo: "Documento, firma y video", ruta: ["«Siguiente: el documento»","Lea, marque y firme","«Siguiente: el video»","Grabe","«Rodar y guardar»"], img: "t4-05-rodado-documento.png", min: 1.5,
       marcas: [
         { r: [6, 23.4, 88, 43], t: "El cliente lee el documento completo." },
         { r: [6, 68.4, 88, 20], t: "Marca que lo leyó y firma. Si tiene acompañante, firma también." },
@@ -338,7 +338,7 @@ window.CAP = {
       ],
       notas: "Ceder es cuando un cliente le pasa su contrato a otra persona. El que recibe sigue exactamente donde iba el otro: misma semana, mismo ahorro, misma deuda. El que entrega renuncia a su ahorro y queda retirado. Y la moto no sale con la cesión: se entrega aparte." },
 
-    { tipo: "pantalla", tema: 5, titulo: "Quien recibe: lo mismo que un cliente nuevo", img: "t5-05-ceder-requisitos.png", min: 1.5,
+    { tipo: "pantalla", tema: 5, titulo: "Quien recibe: lo mismo que un cliente nuevo", ruta: ["Contratos","Toque el contrato","«Ceder contrato a otro cliente»","«¿Quién recibe el contrato?»"], img: "t5-05-ceder-requisitos.png", min: 1.5,
       marcas: [
         { r: [6, 20.2, 88, 5.4], t: "Se escoge quién recibe." },
         { r: [6, 26.2, 88, 24.6], t: "Aprobado, documentos completos, acompañante, visita aprobada, no estar en lista negra y no tener otro contrato." },
@@ -346,7 +346,7 @@ window.CAP = {
       ojo: "Si algo sale en rojo, no deja ceder. Se arregla primero en la ficha del cliente.",
       notas: "El que recibe pasa por todo lo de un cliente nuevo: registro, documentos, acompañante y visita. La app le dice qué le falta, en rojo, y no deja ceder hasta que esté todo en verde. Para registrarlo, en Clientes se elige que ingresa por cesión: no paga base, la hereda." },
 
-    { tipo: "pantalla", tema: 5, titulo: "Lo que bloquea una cesión", opcional: true, img: "t5-01-ceder.png", min: 1,
+    { tipo: "pantalla", tema: 5, titulo: "Lo que bloquea una cesión", ruta: ["Contratos","Toque el contrato","«Ceder contrato a otro cliente»"], opcional: true, img: "t5-01-ceder.png", min: 1,
       marcas: [
         { r: [6, 44.6, 88, 12.6], t: "Ejemplo real: el empalme abierto. La app dice qué hacer." },
       ],
@@ -355,13 +355,13 @@ window.CAP = {
 
     { tipo: "pasos", tema: 5, titulo: "Paso a paso", min: 2,
       pasos: [
-        { icono: "doc", t: "Abrir", d: "Contratos › el contrato › Ceder contrato." },
+        { icono: "doc", t: "Abrir", d: "Contratos › toque el contrato › «Ceder contrato a otro cliente»." },
         { icono: "lista", t: "Revisar", d: "«Lo que se traspasa», con los dos." },
-        { icono: "impresora", t: "Imprimir el acta", d: "Y que la firmen los tres." },
+        { icono: "impresora", t: "Imprimir el acta", d: "«Imprimir acta para firmar». La firman los tres." },
         { icono: "usuarios", t: "Elegir quién recibe", d: "Todo en verde." },
         { icono: "firma", t: "Firmas en pantalla", d: "Quien entrega y quien recibe." },
-        { icono: "camara", t: "Subir los papeles", d: "Acta, pagaré y certificado." },
-        { icono: "moto", t: "Entregar la moto", d: "Aparte, por Inmovilizaciones." },
+        { icono: "camara", t: "Subir los papeles", d: "Acta, pagaré y certificado, con «Cámara» o «Galería»." },
+        { icono: "moto", t: "Entregar la moto", d: "Más › Inmovilizaciones › la moto › «Entregar moto»." },
       ],
       notas: "Siete pasos. El acta se imprime desde la misma ventana y la firman los tres. Después se firman en la pantalla los dos clientes, y se suben fotos de los tres papeles firmados. Al final, la moto se entrega por Inmovilizaciones, como cualquier moto retenida." },
 
@@ -375,7 +375,7 @@ window.CAP = {
       ],
       notas: "Esta tabla resume quién firma qué. El acta la firman los tres, en tres copias: una para cada uno. El pagaré y el certificado los firma solo el que recibe." },
 
-    { tipo: "pantalla", tema: 5, titulo: "El acta de cesión", opcional: true, img: "t5-06-acta.png", ancho: true, min: 1.5,
+    { tipo: "pantalla", tema: 5, titulo: "El acta de cesión", ruta: ["Contratos","El contrato","«Ceder contrato a otro cliente»","«Imprimir acta para firmar»"], opcional: true, img: "t5-06-acta.png", ancho: true, min: 1.5,
       marcas: [
         { r: [7.5, 11, 85, 10.4], t: "Quién es quién: arrendador, quien entrega, quien recibe y la moto." },
         { r: [7.5, 22.2, 85, 13], t: "El estado de cuenta: semana, cuota, ahorro y la deuda que asume quien recibe." },
@@ -428,7 +428,7 @@ window.CAP = {
   // Cada escena: la foto, dónde se acerca (r, en %), y lo que dice la voz. La voz sale de
   // hacer-audio.mjs con la voz del computador; el subtítulo es el mismo texto.
   videos: {
-    v1: { titulo: "Cerrar sin firma y firmar después", escenas: [
+    v1: { archivo: "Video 1 - Cerrar una liquidacion sin firma y firmar despues.mp4", titulo: "Cerrar sin firma y firmar después", escenas: [
       { img: "liq-08-firma-opciones.png", r: [7, 20.5, 86, 5.4], voz: "Cuando la cuenta está lista, lo normal es que el cliente la lea, y firme aquí, en pantalla, con su firma y su huella." },
       { img: "liq-08-firma-opciones.png", r: [7, 41.6, 79, 17.4], voz: "Si el lector de huella no responde, o el cliente prefiere papel, imprima o descargue el documento. Él firma a mano, y usted sube la foto con Cámara o con Galería." },
       { img: "liq-09-cerrar-sin-firma.png", r: [10.8, 61.2, 79, 5], voz: "Si el cliente no va a venir, y la moto se necesita para otro cliente, use Cerrar sin firma. Solo en ese caso. Nunca por afán." },
@@ -437,7 +437,7 @@ window.CAP = {
       { img: "liq-12-cerrar.png", r: [3.5, 71, 93, 10.4], voz: "Así se ve cuando quedó completa: liquidación cerrada, en verde, con el documento firmado para descargar." },
       { img: "liq-09-cerrar-sin-firma.png", r: [10.8, 61.2, 79, 5], alerta: true, voz: "Ojo. Si el cliente sigue con la empresa, porque va a cambiar de moto, no use cerrar sin firma. Que firme en ese momento, y marque la casilla: sigue con la empresa." },
     ] },
-    v2: { titulo: "Moto al taller con préstamo", escenas: [
+    v2: { archivo: "Video 2 - Moto al taller con prestamo.mp4", titulo: "Moto al taller con préstamo", escenas: [
       { img: "t3-01-motos-novedad.png", r: [8, 16.5, 84, 12.6], voz: "Si la moto de un cliente se daña, y él quiere seguir trabajando, vaya a Motos, busque la moto, y toque Registrar novedad. Elija: Ingresar a taller." },
       { img: "t3-03-taller-nueva.png", r: [10, 38.6, 80, 21.8], voz: "Diga cómo llegó la moto. Si la trajo el cliente, no tiene costo. Si hubo que ir a buscarla, se cobran treinta mil pesos." },
       { img: "t3-03-taller-nueva.png", r: [10, 62, 80, 28.4], voz: "Escriba con qué problema entró, y tome las seis fotos. Son la prueba de cómo llegó." },
@@ -446,7 +446,7 @@ window.CAP = {
       { img: "t3-08-prestamos-activos.png", r: [3, 83, 94, 9.4], voz: "Cuando su moto sale del taller, se recibe la prestada, en Préstamos activos." },
       { img: "t3-09-resolver-tiempo.png", r: [9, 35.2, 82, 30.8], voz: "Y se resuelve el tiempo que su moto estuvo guardada: se cobra, o se rueda al final, solo por semanas completas, y con documento firmado. La prioridad siempre es cobrar." },
     ] },
-    v3: { titulo: "Rodar por deuda", escenas: [
+    v3: { archivo: "Video 3 - Rodar por deuda.mp4", titulo: "Rodar por deuda", escenas: [
       { img: "t4-01-contrato.png", r: [7, 51.2, 86, 5.4], voz: "Rodar por deuda es nuevo. Lo hace solo el dueño, para pocos clientes que deben más de setecientos mil pesos. Se abre en Contratos, en el contrato del cliente." },
       { img: "t4-02-rodado-cuenta.png", r: [6, 30, 88, 15.2], voz: "La app hace la cuenta sola: cuánto debe hoy, y cuánto le queda debiendo después de rodar. Eso que queda, se cobra ese mismo día." },
       { img: "t4-03-rodado-cuenta-2.png", r: [6, 40.6, 88, 12], voz: "Se ruedan solo semanas completas de tiempo. Al final paga un poco más: hasta cuatro semanas, una más. Después, una más por cada dos." },
@@ -455,7 +455,7 @@ window.CAP = {
       { img: "t4-05-rodado-documento.png", r: [6, 68.4, 88, 20], voz: "Después graba un video corto, de máximo un minuto, diciendo la fecha de hoy, que acepta el rodado, cuántas semanas pagará al final, la nueva fecha de fin, y que la empresa no cubre el SOAT ni la tecnomecánica en ese tiempo extra." },
       { img: "t4-03-rodado-cuenta-2.png", r: [6, 76.8, 88, 11.8], voz: "Al guardar, todo queda registrado en el contrato: el documento, el video y las cifras. Y si el cliente se va antes, la liquidación le cobra lo rodado." },
     ] },
-    v4: { titulo: "Ceder un contrato", escenas: [
+    v4: { archivo: "Video 4 - Ceder un contrato.mp4", titulo: "Ceder un contrato", escenas: [
       { img: "t4-01-contrato.png", r: [7, 67.8, 86, 5.4], voz: "Para ceder un contrato, abra el contrato en Contratos, y toque: Ceder contrato a otro cliente." },
       { img: "t5-03-ceder-ok.png", r: [6, 21.5, 88, 27], voz: "Aquí está lo que pasa al nuevo cliente: la semana donde va, la cuota, el ahorro, y la deuda. Revíselo con los dos." },
       { img: "t5-03-ceder-ok.png", r: [10, 42, 80, 5], voz: "Imprima el acta. La firman tres: quien entrega, quien recibe, y el arrendador. En tres copias." },

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Capacitación MotoGestión · 7 de octubre de 2026</title>
+<!-- La presentación de la capacitación del 7-oct. Se abre con doble clic en Chrome y se pone en pantalla
+     completa con F. Flechas o clic para avanzar; N muestra lo que se dice; los videos se reproducen solos
+     con su botón. El contenido vive en contenido.js (el mismo del guion). -->
+<style>
+  :root {
+    --fondo: #08132a; --fondo2: #0d1d3d; --tarjeta: #12264d; --linea: #24406f;
+    --texto: #f1f5f9; --suave: #b6c3d8; --cian: #38bdf8; --cian-fuerte: #0ea5e9;
+    --amarillo: #ffd100; --bien: #4ade80; --mal: #f87171; --alerta: #fbbf24;
+    --fuente: "Inter", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #030914; overflow: hidden; font-family: var(--fuente); color: var(--texto); }
+  #escenario { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform-origin: center center;
+    background: radial-gradient(1200px 700px at 85% -10%, #163469 0%, transparent 60%), linear-gradient(160deg, var(--fondo2), var(--fondo)); overflow: hidden; }
+  .slide { position: absolute; inset: 0; padding: 70px 90px 80px; display: none; }
+  .slide.activa { display: block; animation: entra .45s ease-out; }
+  @keyframes entra { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .slide.activa { animation: none; } }
+  .ico { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  h1 { font-size: 64px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+  h2 { font-size: 46px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 34px; }
+  .chip-tema { display: inline-flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; color: var(--cian); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
+  .placa { display: inline-block; background: var(--amarillo); color: #111; border: 4px solid #111; border-radius: 10px; padding: 4px 18px; font-weight: 800; letter-spacing: 4px; }
+
+  /* Portada y sección */
+  .portada { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 26px; }
+  .portada h1 { font-size: 92px; }
+  .portada .sub { font-size: 34px; color: var(--suave); }
+  .seccion-n { font-size: 260px; font-weight: 800; line-height: .8; color: transparent; -webkit-text-stroke: 3px var(--cian); opacity: .9; }
+  .seccion { display: flex; align-items: center; gap: 70px; height: 100%; }
+  .seccion h1 { font-size: 84px; margin-bottom: 20px; }
+  .seccion .sub { font-size: 34px; color: var(--suave); max-width: 900px; line-height: 1.35; }
+
+  /* Agenda / reglas / lista */
+  .agenda { display: grid; gap: 18px; }
+  .agenda .it { display: grid; grid-template-columns: 76px 64px 1fr; align-items: center; gap: 22px; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 20px; padding: 18px 28px; }
+  .agenda .n { font-size: 46px; font-weight: 800; color: var(--cian); text-align: center; }
+  .agenda .ic { font-size: 50px; color: var(--amarillo); }
+  .agenda .t { font-size: 34px; font-weight: 700; }
+  .agenda .d { font-size: 24px; color: var(--suave); margin-top: 4px; }
+  .reglas { display: grid; gap: 22px; }
+  .reglas .it { display: flex; align-items: center; gap: 30px; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 22px; padding: 24px 34px; }
+  .reglas .ic { font-size: 56px; color: var(--cian); }
+  .reglas .t { font-size: 38px; font-weight: 700; }
+  .reglas .d { font-size: 26px; color: var(--suave); margin-top: 6px; }
+  .reglas.seis { grid-template-columns: 1fr 1fr; }
+  .reglas.seis .t { font-size: 32px; }
+  .lista { display: grid; gap: 18px; }
+  .lista .it { display: flex; align-items: flex-start; gap: 22px; font-size: 34px; line-height: 1.3; background: var(--tarjeta); border-radius: 18px; padding: 18px 28px; border-left: 8px solid var(--cian); }
+  .lista.mal .it { border-left-color: var(--mal); } .lista.bien .it { border-left-color: var(--bien); } .lista.alerta .it { border-left-color: var(--alerta); }
+  .lista .ic { font-size: 40px; margin-top: 2px; }
+  .lista.mal .ic { color: var(--mal); } .lista.bien .ic { color: var(--bien); } .lista.alerta .ic { color: var(--alerta); } .lista.info .ic { color: var(--cian); }
+  .lista.apretada .it { font-size: 28px; padding: 13px 24px; }
+  .lista.dos { grid-template-columns: 1fr 1fr; } .lista.dos .it { font-size: 26px; }
+  .pie { margin-top: 26px; font-size: 26px; color: var(--suave); line-height: 1.45; display: flex; gap: 14px; align-items: flex-start; }
+  .pie .ico { color: var(--alerta); font-size: 32px; margin-top: 2px; }
+
+  /* Frase grande */
+  .frase { display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 34px; max-width: 1320px; }
+  .frase .ic { font-size: 90px; color: var(--amarillo); }
+  .frase .f { font-size: 66px; font-weight: 700; line-height: 1.18; letter-spacing: -0.5px; }
+  .frase.cita .f { font-size: 40px; font-weight: 500; line-height: 1.5; border-left: 10px solid var(--amarillo); padding-left: 34px; }
+  .frase .s { font-size: 32px; color: var(--suave); line-height: 1.4; }
+
+  /* Pasos */
+  .pasos { display: grid; gap: 18px; grid-auto-flow: column; grid-auto-columns: 1fr; margin-top: 30px; }
+  .paso { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 22px; padding: 26px 22px; position: relative; display: flex; flex-direction: column; gap: 14px; min-height: 330px; }
+  .paso .num { width: 58px; height: 58px; border-radius: 50%; background: var(--cian); color: #04111f; font-weight: 800; font-size: 30px; display: flex; align-items: center; justify-content: center; }
+  .paso .ic { font-size: 52px; color: var(--amarillo); }
+  .paso .t { font-size: 30px; font-weight: 700; line-height: 1.2; }
+  .paso .d { font-size: 23px; color: var(--suave); line-height: 1.35; }
+  .pasos.muchos .paso { min-height: 380px; padding: 22px 16px; } .pasos.muchos .t { font-size: 25px; } .pasos.muchos .d { font-size: 20px; }
+
+  /* Tablas */
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 27px; background: var(--tarjeta); border-radius: 20px; overflow: hidden; border: 1px solid var(--linea); }
+  th { text-align: left; background: #1a3566; color: var(--cian); font-weight: 700; padding: 18px 24px; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
+  td { padding: 18px 24px; border-top: 1px solid var(--linea); line-height: 1.35; vertical-align: top; }
+  td:first-child { font-weight: 700; }
+  table.chica { font-size: 23px; } table.chica td { padding: 13px 22px; }
+  table.centro td, table.centro th { text-align: center; font-size: 40px; }
+  table.centro td:first-child, table.centro th:first-child { text-align: left; font-size: 26px; }
+
+  /* Comparar */
+  .comparar { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .col { background: var(--tarjeta); border-radius: 22px; padding: 28px 32px; border-top: 10px solid var(--cian); }
+  .col.bien { border-top-color: var(--bien); } .col.mal { border-top-color: var(--mal); }
+  .col h3 { font-size: 34px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+  .col.bien h3 { color: var(--bien); } .col.mal h3 { color: var(--mal); } .col.info h3 { color: var(--cian); }
+  .col li { list-style: none; font-size: 29px; line-height: 1.35; padding: 10px 0 10px 34px; position: relative; }
+  .col li::before { content: ""; position: absolute; left: 0; top: 22px; width: 14px; height: 14px; border-radius: 50%; background: currentColor; opacity: .55; }
+
+  /* Pantalla con señales */
+  .pantalla { display: grid; grid-template-columns: auto 1fr; gap: 64px; height: 100%; align-items: center; }
+  .telefono { position: relative; height: 760px; aspect-ratio: 780 / 1688; border-radius: 34px; border: 10px solid #020617; box-shadow: 0 30px 80px rgba(0,0,0,.55); overflow: hidden; background: #fff; }
+  .telefono.ancho { aspect-ratio: 1680 / 2200; height: 740px; border-radius: 14px; }
+  .telefono img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .marca { position: absolute; border: 4px solid var(--cian); border-radius: 12px; box-shadow: 0 0 0 4000px rgba(2,6,23,0); transition: box-shadow .3s; }
+  .marca .bola { position: absolute; right: -16px; top: -20px; width: 40px; height: 40px; border-radius: 50%; background: var(--cian); color: #04111f; font-weight: 800; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .explica h2 { margin-bottom: 26px; }
+  .explica ol { list-style: none; display: grid; gap: 16px; }
+  .explica li { display: grid; grid-template-columns: 52px 1fr; gap: 18px; align-items: start; font-size: 29px; line-height: 1.32; }
+  .explica li .bola { width: 46px; height: 46px; border-radius: 50%; background: var(--cian); color: #04111f; font-weight: 800; font-size: 24px; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .ojo { margin-top: 28px; display: flex; gap: 16px; align-items: flex-start; background: rgba(251,191,36,.12); border: 2px solid rgba(251,191,36,.6); border-radius: 18px; padding: 18px 24px; font-size: 26px; line-height: 1.38; color: #fde68a; }
+  .ojo .ico { font-size: 34px; color: var(--alerta); margin-top: 2px; }
+
+  /* Video */
+  .video { display: grid; grid-template-columns: auto 1fr; gap: 64px; height: 100%; align-items: center; }
+  .pantallita { position: relative; height: 760px; aspect-ratio: 780 / 1688; border-radius: 34px; border: 10px solid #020617; overflow: hidden; background: #fff; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+  .pantallita.ancho { aspect-ratio: 1680 / 2200; border-radius: 14px; height: 740px; }
+  .lienzo { position: absolute; inset: 0; transition: transform 1.1s cubic-bezier(.2,.8,.2,1); transform-origin: 0 0; }
+  .lienzo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .foco { position: absolute; border: 5px solid var(--amarillo); border-radius: 12px; box-shadow: 0 0 0 4000px rgba(2,6,23,.45); transition: all 1.1s cubic-bezier(.2,.8,.2,1); }
+  .foco.alerta { border-color: var(--mal); }
+  .foco::after { content: ""; position: absolute; inset: -12px; border: 3px solid var(--amarillo); border-radius: 18px; animation: late 1.6s ease-out infinite; }
+  @keyframes late { from { opacity: .9; transform: scale(.96); } to { opacity: 0; transform: scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { .lienzo, .foco { transition: none; } .foco::after { animation: none; } }
+  .vlado h2 { margin-bottom: 20px; }
+  .subt { font-size: 34px; line-height: 1.4; min-height: 300px; background: var(--tarjeta); border-radius: 22px; padding: 28px 32px; border-left: 10px solid var(--amarillo); }
+  .subt.alerta { border-left-color: var(--mal); }
+  .controles { display: flex; gap: 14px; margin-top: 26px; align-items: center; }
+  .controles button { font: inherit; font-size: 24px; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; background: var(--cian); color: #04111f; border: none; border-radius: 14px; padding: 14px 26px; cursor: pointer; }
+  .controles button.sec { background: #1a3566; color: var(--texto); }
+  .controles button:focus-visible { outline: 4px solid var(--amarillo); outline-offset: 3px; }
+  .puntos { display: flex; gap: 10px; margin-left: 12px; }
+  .puntos span { width: 16px; height: 16px; border-radius: 50%; background: #2a4a80; }
+  .puntos span.ya { background: var(--cian); }
+
+  /* Cierre */
+  .cierre { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 30px; text-align: center; }
+  .cierre .ic { font-size: 120px; color: var(--amarillo); }
+  .cierre h1 { font-size: 110px; }
+
+  /* Barra de abajo y notas */
+  #barra { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: rgba(255,255,255,.06); }
+  #barra div { height: 100%; background: linear-gradient(90deg, var(--cian), var(--amarillo)); transition: width .35s; }
+  #pie { position: absolute; left: 90px; right: 90px; bottom: 22px; display: flex; justify-content: space-between; font-size: 18px; color: #6f86ab; }
+  #notas { position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto; background: rgba(2,6,23,.96); color: #e2e8f0; font-size: 22px; line-height: 1.5; padding: 18px 28px; display: none; border-top: 3px solid var(--amarillo); z-index: 5; }
+  #notas b { color: var(--amarillo); }
+  #ayuda { position: fixed; right: 16px; top: 12px; font-size: 13px; color: #44597d; z-index: 4; }
+</style>
+</head>
+<body>
+<div id="escenario"></div>
+<div id="notas"></div>
+<div id="ayuda">Flechas: avanzar · F: pantalla completa · N: lo que se dice</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-llave" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+  <symbol id="i-calendario" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4M8 2v4M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></symbol>
+  <symbol id="i-ceder" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-telefono" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8M13 12h8M13 18h8"/></symbol>
+  <symbol id="i-moto" viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></symbol>
+  <symbol id="i-firma" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-usuarios" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-video" viewBox="0 0 24 24"><path d="m16 13 5.22 3.48a.5.5 0 0 0 .78-.42V7.94a.5.5 0 0 0-.78-.42L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+  <symbol id="i-plata" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+  <symbol id="i-impresora" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
+  <symbol id="i-camara" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-otra" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-pregunta" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+</svg>
+
+<script>window.TEMA = 2;</script>
+<script src="contenido.js"></script>
+<script>
+const C = window.CAP;
+const ic = (n, extra = "") => `<svg class="ico ${extra}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar", 4: "Rodar por deuda", 5: "Ceder un contrato" };
+const NOMBRES_LARGOS = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
+const temaDe = s => s.tema ?? s.n;
+// Una presentación por tema (pedido del dueño): window.TEMA lo pone el archivo del tema; ?tema=N también sirve.
+const TEMA = Number(window.TEMA || new URLSearchParams(location.search).get("tema")) || null;
+const LISTA = TEMA ? [
+  { tipo: "portada", temaPortada: TEMA, min: 0.5, notas: "Arrancamos con el tema " + TEMA + ": " + NOMBRES_LARGOS[TEMA] + "." },
+  ...C.slides.filter(s => temaDe(s) === TEMA),
+  { tipo: "cierre", min: 2, notas: "¿Preguntas sobre este tema? Es mejor preguntar hoy que equivocarse mañana con la plata de un cliente." },
+] : C.slides;
+const chipTema = s => temaDe(s) ? `<div class="chip-tema">Tema ${temaDe(s)} · ${NOMBRES[temaDe(s)]}</div>` : "";
+const marcasHtml = m => m.map((x, i) => `<div class="marca" style="left:${x.r[0]}%;top:${x.r[1]}%;width:${x.r[2]}%;height:${x.r[3]}%"><span class="bola">${i + 1}</span></div>`).join("");
+
+function html(s, i) {
+  switch (s.tipo) {
+    case "portada": return `<div class="portada">
+        <div><span class="placa">MOTOGESTIÓN</span></div>
+        ${s.temaPortada ? `<div class="chip-tema" style="font-size:28px">Tema ${s.temaPortada} de 5</div>` : ""}
+        <h1>${esc(s.temaPortada ? NOMBRES_LARGOS[s.temaPortada] : C.titulo)}</h1>
+        <div class="sub">Capacitación del equipo · ${esc(C.fecha)}</div>
+        <div class="sub" style="font-size:26px">Club Moteros Cartagena</div></div>`;
+    case "agenda": return `<h2>${esc(s.titulo)}</h2><div class="agenda">${s.items.map(x => `
+        <div class="it"><div class="n">${x.n}</div><div class="ic">${ic(x.icono)}</div><div><div class="t">${esc(x.t)}</div><div class="d">${esc(x.d)}</div></div></div>`).join("")}</div>`;
+    case "reglas": return `<h2>${esc(s.titulo)}</h2><div class="reglas ${s.items.length > 3 ? "seis" : ""}">${s.items.map(x => `
+        <div class="it"><div class="ic">${ic(x.icono)}</div><div><div class="t">${esc(x.t)}</div>${x.d ? `<div class="d">${esc(x.d)}</div>` : ""}</div></div>`).join("")}</div>`;
+    case "seccion": return `<div class="seccion"><div class="seccion-n">${s.n}</div><div><div class="chip-tema">Tema ${s.n} de 5</div><h1>${esc(s.titulo)}</h1><div class="sub">${esc(s.sub)}</div></div></div>`;
+    case "frase": return `<div class="frase ${s.cita ? "cita" : ""}">${chipTema(s)}<div class="ic">${ic(s.icono)}</div><div class="f">${esc(s.frase)}</div>${s.sub ? `<div class="s">${esc(s.sub)}</div>` : ""}</div>`;
+    case "pasos": return `${chipTema(s)}<h2>${esc(s.titulo)}</h2><div class="pasos ${s.pasos.length > 5 ? "muchos" : ""}">${s.pasos.map((p, k) => `
+        <div class="paso"><div class="num">${k + 1}</div><div class="ic">${ic(p.icono)}</div><div class="t">${esc(p.t)}</div><div class="d">${esc(p.d)}</div></div>`).join("")}</div>`;
+    case "tabla": {
+      const centro = s.columnas.length > 4;
+      const chica = s.filas.length > 5 || s.filas.some(f => f.join(" ").length > 140);
+      return `${chipTema(s)}<h2>${esc(s.titulo)}</h2><table class="${centro ? "centro" : ""} ${chica ? "chica" : ""}"><thead><tr>${s.columnas.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+        <tbody>${s.filas.map(f => `<tr>${f.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+        ${s.pie ? `<div class="pie">${ic("alerta")}<span>${esc(s.pie)}</span></div>` : ""}`;
+    }
+    case "comparar": {
+      const col = c => `<div class="col ${c.tono}"><h3>${ic(c.tono === "mal" ? "x" : "check")}${esc(c.titulo)}</h3><ul>${c.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+      return `${chipTema(s)}<h2>${esc(s.titulo)}</h2><div class="comparar">${col(s.izq)}${col(s.der)}</div>${s.pie ? `<div class="pie">${ic("alerta")}<span>${esc(s.pie)}</span></div>` : ""}`;
+    }
+    case "lista": {
+      const icono = { mal: "x", bien: "check", alerta: "alerta", info: "check" }[s.tono] ?? "check";
+      return `${chipTema(s)}<h2>${esc(s.titulo)}</h2><div class="lista ${s.tono} ${s.items.length > 5 ? "apretada" : ""} ${s.items.length > 6 ? "dos" : ""}">${s.items.map(x => `<div class="it"><span class="ic">${ic(icono)}</span><span>${esc(x)}</span></div>`).join("")}</div>
+        ${s.pie ? `<div class="pie">${ic("alerta")}<span>${esc(s.pie)}</span></div>` : ""}`;
+    }
+    case "pantalla": return `<div class="pantalla">
+        <div class="telefono ${s.ancho ? "ancho" : ""}"><img src="img/${s.img}" alt="Pantalla de la app: ${esc(s.titulo)}">${marcasHtml(s.marcas)}</div>
+        <div class="explica">${chipTema(s)}<h2>${esc(s.titulo)}</h2>
+          <ol>${s.marcas.map((m, k) => `<li><span class="bola">${k + 1}</span><span>${esc(m.t)}</span></li>`).join("")}</ol>
+          ${s.ojo ? `<div class="ojo">${ic("alerta")}<span>${esc(s.ojo)}</span></div>` : ""}</div></div>`;
+    case "video": {
+      const v = C.videos[s.video];
+      const ancho = v.escenas[0].img.startsWith("t5-06");
+      return `<div class="video" data-video="${s.video}">
+        <div class="pantallita ${ancho ? "ancho" : ""}"><div class="lienzo"><img alt="Escena del video"></div><div class="foco"></div></div>
+        <div class="vlado">${chipTema(s)}<h2>${ic("video")} ${esc(v.titulo)}</h2>
+          <div class="subt">Toque «Reproducir» para ver el video.</div>
+          <div class="controles">
+            <button class="reproducir">${ic("play")} Reproducir</button>
+            <button class="sec otra">${ic("otra")} Desde el principio</button>
+            <div class="puntos">${v.escenas.map(() => "<span></span>").join("")}</div>
+          </div></div></div>`;
+    }
+    case "cierre": return `<div class="cierre"><div class="ic">${ic("pregunta")}</div><h1>¿Preguntas?</h1><div style="font-size:34px;color:var(--suave)">Gracias. Los videos y esta presentación quedan para repasar.</div></div>`;
+  }
+  return "";
+}
+
+// ── Montaje y navegación ──
+const esc$ = document.getElementById("escenario");
+LISTA.forEach((s, i) => {
+  const d = document.createElement("section");
+  d.className = "slide"; d.innerHTML = html(s, i);
+  d.setAttribute("aria-label", `Diapositiva ${i + 1}`);
+  esc$.appendChild(d);
+});
+esc$.insertAdjacentHTML("beforeend", `<div id="pie"><span id="pie-tema"></span><span id="pie-n"></span></div><div id="barra"><div></div></div>`);
+const slides = [...esc$.querySelectorAll(".slide")];
+let actual = Math.max(0, Math.min(slides.length - 1, Number(location.hash.slice(1)) - 1 || 0));
+const notas = document.getElementById("notas");
+
+function escalar() {
+  const k = Math.min(innerWidth / 1600, innerHeight / 900);
+  esc$.style.transform = `translate(-50%, -50%) scale(${k})`;
+}
+function mostrar(n) {
+  detenerVideo();
+  actual = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle("activa", i === actual));
+  const s = LISTA[actual];
+  document.getElementById("pie-tema").textContent = temaDe(s) ? `Tema ${temaDe(s)} · ${NOMBRES[temaDe(s)]}` : "MotoGestión";
+  document.getElementById("pie-n").textContent = `${actual + 1} / ${slides.length}`;
+  esc$.querySelector("#barra div").style.width = `${((actual + 1) / slides.length) * 100}%`;
+  notas.innerHTML = `<b>Diapositiva ${actual + 1} · unos ${s.min ?? 1} min.</b> ${esc(s.notas)}`;
+  history.replaceState(null, "", "#" + (actual + 1));
+  if (s.tipo === "video") prepararVideo(slides[actual]);
+}
+addEventListener("resize", escalar);
+addEventListener("keydown", e => {
+  if (["ArrowRight", "PageDown", " "].includes(e.key) && !(e.target.closest && e.target.closest("button"))) { e.preventDefault(); mostrar(actual + 1); }
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); mostrar(actual - 1); }
+  else if (e.key === "Home") mostrar(0);
+  else if (e.key === "End") mostrar(slides.length - 1);
+  else if (e.key.toLowerCase() === "n") notas.style.display = notas.style.display === "block" ? "none" : "block";
+  else if (e.key.toLowerCase() === "f") { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+});
+esc$.addEventListener("click", e => {
+  if (e.target.closest("button")) return;
+  const r = esc$.getBoundingClientRect();
+  mostrar(e.clientX > r.left + r.width / 2 ? actual + 1 : actual - 1);
+});
+
+// ── Los videos: cada escena acerca la foto a lo que se explica, con la voz y el subtítulo ──
+let reproduccion = null;
+function prepararVideo(cont) {
+  const v = C.videos[cont.querySelector(".video").dataset.video];
+  const lienzo = cont.querySelector(".lienzo"), img = lienzo.querySelector("img"), foco = cont.querySelector(".foco");
+  const subt = cont.querySelector(".subt"), puntos = [...cont.querySelectorAll(".puntos span")];
+  const btn = cont.querySelector(".reproducir"), otra = cont.querySelector(".otra");
+  const audio = new Audio();
+  let k = 0, sonando = false;
+  function escena(i, enfocar) {
+    k = i;
+    const e = v.escenas[i];
+    img.src = "img/" + e.img;
+    puntos.forEach((p, j) => p.classList.toggle("ya", j <= i));
+    foco.classList.toggle("alerta", !!e.alerta);
+    subt.classList.toggle("alerta", !!e.alerta);
+    if (!enfocar) { lienzo.style.transform = "none"; foco.style.cssText = `left:${e.r[0]}%;top:${e.r[1]}%;width:${e.r[2]}%;height:${e.r[3]}%`; return; }
+    // Acercar: que el recuadro ocupe ~78% del ancho, centrado; sin salirse de la foto.
+    const [x, y, w, h] = e.r;
+    const zoom = Math.max(1, Math.min(2.2, 78 / w, 60 / h));
+    const cx = x + w / 2, cy = y + h / 2;
+    let tx = 50 - cx * zoom, ty = 50 - cy * zoom;
+    tx = Math.min(0, Math.max(100 - 100 * zoom, tx)); ty = Math.min(0, Math.max(100 - 100 * zoom, ty));
+    lienzo.style.transform = `translate(${tx}%, ${ty}%) scale(${zoom})`;
+    foco.style.cssText = `left:${x * zoom + tx}%;top:${y * zoom + ty}%;width:${w * zoom}%;height:${h * zoom}%`;
+    subt.textContent = e.voz;
+    audio.src = `audio/${cont.querySelector(".video").dataset.video}-${String(i + 1).padStart(2, "0")}.wav`;
+    audio.play().catch(() => { /* sin audio: se avanza por tiempo */ setTimeout(siguiente, 7000); });
+  }
+  function siguiente() {
+    if (!sonando) return;
+    if (k + 1 < v.escenas.length) setTimeout(() => sonando && escena(k + 1, true), 500);
+    else { sonando = false; btn.innerHTML = `${ic("play")} Reproducir`; subt.textContent = "Fin del video. «Desde el principio» para verlo otra vez."; }
+  }
+  audio.addEventListener("ended", siguiente);
+  btn.onclick = () => {
+    if (sonando) { sonando = false; audio.pause(); btn.innerHTML = `${ic("play")} Seguir`; return; }
+    sonando = true; btn.innerHTML = `${ic("pausa")} Pausa`;
+    if (audio.src && !audio.ended && audio.currentTime > 0) audio.play(); else escena(k, true);
+  };
+  otra.onclick = () => { audio.pause(); sonando = true; btn.innerHTML = `${ic("pausa")} Pausa`; escena(0, true); };
+  escena(0, false);
+  subt.textContent = "Toque «Reproducir» para ver el video.";
+  reproduccion = { detener: () => { sonando = false; audio.pause(); } };
+}
+function detenerVideo() { if (reproduccion) { reproduccion.detener(); reproduccion = null; } }
+
+escalar();
+mostrar(actual);
+</script>
+</body>
+</html>

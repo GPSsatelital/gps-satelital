@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Grabar video</title>
+<!-- Graba un video de la capacitación como archivo MP4 (para mandarlo por WhatsApp): dibuja cada escena
+     en un lienzo 1280x720 —la foto real, el recuadro que señala, el subtítulo— con la voz de audio/.
+     Lo maneja hacer-videos.mjs (Chrome sin ventana). ?v=v1 dice cuál video. -->
+<style>body { margin: 0; background: #000; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script src="contenido.js"></script>
+<script>
+(async () => {
+  const id = new URLSearchParams(location.search).get("v") || "v1";
+  const V = window.CAP.videos[id];
+  const cv = document.getElementById("c"), g = cv.getContext("2d");
+  const W = 1280, H = 720;
+  const ac = new AudioContext();
+  const destino = ac.createMediaStreamDestination();
+
+  // Cargar fotos y voces
+  const img = src => new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = "img/" + src; });
+  const escenas = [];
+  for (let k = 0; k < V.escenas.length; k++) {
+    const e = V.escenas[k];
+    const buf = await (await fetch(`audio/${id}-${String(k + 1).padStart(2, "0")}.wav`)).arrayBuffer();
+    escenas.push({ ...e, foto: await img(e.img), audio: await ac.decodeAudioData(buf) });
+  }
+  // La línea de tiempo: portada, escenas (su voz + una pausa), cierre.
+  const PORTADA = 3.0, PAUSA = 0.7, CIERRE = 3.0;
+  let t = PORTADA;
+  escenas.forEach(e => { e.ini = t; e.fin = t + e.audio.duration + PAUSA; t = e.fin; });
+  const TOTAL = t + CIERRE;
+
+  // Texto en varias líneas
+  function parrafo(txt, x, y, ancho, alto, tam, color, peso = 500) {
+    g.font = `${peso} ${tam}px "Segoe UI", Arial, sans-serif`; g.fillStyle = color;
+    const palabras = txt.split(" "); let linea = "", yy = y;
+    for (const p of palabras) {
+      const prueba = linea ? linea + " " + p : p;
+      if (g.measureText(prueba).width > ancho && linea) { g.fillText(linea, x, yy); linea = p; yy += alto; } else linea = prueba;
+    }
+    if (linea) g.fillText(linea, x, yy);
+    return yy;
+  }
+  function redondo(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+  function fondo() {
+    const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, "#0d1d3d"); gr.addColorStop(1, "#08132a");
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+  function placa(x, y) {
+    g.font = '800 18px "Segoe UI", Arial'; const t = "MOTOGESTIÓN"; const w = g.measureText(t).width + 30;
+    redondo(x, y, w, 34, 7); g.fillStyle = "#ffd100"; g.fill(); g.lineWidth = 3; g.strokeStyle = "#111"; g.stroke();
+    g.fillStyle = "#111"; g.fillText(t, x + 15, y + 24);
+  }
+  const suave = x => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3);
+  // La cámara sobre la foto: acercarse al recuadro sin salirse de la foto
+  function camara(e) {
+    const [x, y, w, h] = e.r;
+    const z = Math.max(1, Math.min(2.2, 86 / w, 62 / h));
+    let tx = 50 - (x + w / 2) * z, ty = 50 - (y + h / 2) * z;
+    tx = Math.min(0, Math.max(100 - 100 * z, tx)); ty = Math.min(0, Math.max(100 - 100 * z, ty));
+    return { z, tx, ty };
+  }
+
+  function dibujar(ahora) {
+    fondo();
+    placa(40, 28);
+    g.font = '600 18px "Segoe UI", Arial'; g.fillStyle = "#6f86ab"; g.fillText("Capacitación · " + window.CAP.fecha, 210, 52);
+    if (ahora < PORTADA) {
+      const a = suave(ahora / 0.8);
+      g.globalAlpha = a;
+      parrafo("Video tutorial", 90, 280, 1100, 50, 30, "#38bdf8", 700);
+      parrafo(V.titulo, 90, 350, 1100, 70, 64, "#f1f5f9", 700);
+      parrafo("Club Moteros Cartagena", 90, 430, 1100, 40, 28, "#b6c3d8");
+      g.globalAlpha = 1;
+      return;
+    }
+    if (ahora >= TOTAL - CIERRE) {
+      parrafo("Fin del video", 90, 320, 1100, 70, 64, "#f1f5f9", 700);
+      parrafo("Ante la duda, pare y pregunte.", 90, 400, 1100, 40, 30, "#ffd100", 600);
+      return;
+    }
+    const k = Math.max(0, escenas.findIndex(e => ahora >= e.ini && ahora < e.fin));
+    const e = escenas[k], previa = escenas[k - 1];
+    // Teléfono a la izquierda
+    // Debajo del encabezado (que va hasta y=62): el teléfono no lo tapa.
+    const alto = e.img.startsWith("t5-06") ? 560 : 596, ancho = e.img.startsWith("t5-06") ? Math.round(560 * 1680 / 2200) : Math.round(596 * 780 / 1688);
+    const px = 80, py = 96;
+    redondo(px - 10, py - 10, ancho + 20, alto + 20, 30); g.fillStyle = "#020617"; g.fill();
+    g.save(); redondo(px, py, ancho, alto, 22); g.clip();
+    const fin = camara(e), ini = previa && previa.img === e.img ? camara(previa) : { z: 1, tx: 0, ty: 0 };
+    const p = suave((ahora - e.ini) / 1.1);
+    const z = ini.z + (fin.z - ini.z) * p, tx = ini.tx + (fin.tx - ini.tx) * p, ty = ini.ty + (fin.ty - ini.ty) * p;
+    const ox = px + ancho * tx / 100, oy = py + alto * ty / 100;
+    g.drawImage(e.foto, ox, oy, ancho * z, alto * z);
+    // El recuadro: la pantalla se oscurece alrededor y el recuadro late
+    const rx = ox + ancho * z * e.r[0] / 100, ry = oy + alto * z * e.r[1] / 100, rw = ancho * z * e.r[2] / 100, rh = alto * z * e.r[3] / 100;
+    g.fillStyle = "rgba(2,6,23,0.45)"; g.beginPath(); g.rect(px, py, ancho, alto); g.roundRect(rx, ry, rw, rh, 8); g.fill("evenodd");
+    const color = e.alerta ? "#f87171" : "#ffd100";
+    g.lineWidth = 4; g.strokeStyle = color; redondo(rx, ry, rw, rh, 8); g.stroke();
+    const pulso = ((ahora - e.ini) % 1.6) / 1.6;
+    g.globalAlpha = 1 - pulso; g.lineWidth = 2; redondo(rx - 6 - 8 * pulso, ry - 6 - 8 * pulso, rw + 12 + 16 * pulso, rh + 12 + 16 * pulso, 12); g.stroke(); g.globalAlpha = 1;
+    g.restore();
+    // A la derecha: título, número de escena y lo que dice la voz
+    const dx = px + ancho + 80, dw = W - dx - 70;
+    parrafo(V.titulo, dx, 150, dw, 48, 40, "#f1f5f9", 700);
+    g.font = '600 20px "Segoe UI", Arial'; g.fillStyle = "#38bdf8"; g.fillText(`Paso ${k + 1} de ${escenas.length}`, dx, 200);
+    redondo(dx, 230, dw, 330, 18); g.fillStyle = "#12264d"; g.fill();
+    g.fillStyle = color; g.fillRect(dx, 230, 8, 330);
+    parrafo(e.voz, dx + 34, 285, dw - 64, 44, 31, "#f1f5f9", 500);
+    // Puntos de avance
+    escenas.forEach((_, j) => { g.beginPath(); g.arc(dx + 10 + j * 26, 600, 8, 0, 7); g.fillStyle = j <= k ? "#38bdf8" : "#2a4a80"; g.fill(); });
+  }
+
+  // Programar las voces en su sitio de la línea de tiempo
+  const t0 = ac.currentTime + 0.3;
+  escenas.forEach(e => { const s = ac.createBufferSource(); s.buffer = e.audio; s.connect(destino); s.start(t0 + e.ini); });
+  const flujo = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...destino.stream.getAudioTracks()]);
+  const tipo = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1.42E01E,mp4a.40.2") ? "video/mp4;codecs=avc1.42E01E,mp4a.40.2" : "video/webm;codecs=vp9,opus";
+  const rec = new MediaRecorder(flujo, { mimeType: tipo, videoBitsPerSecond: 2_500_000 });
+  const partes = [];
+  rec.ondataavailable = ev => ev.data.size && partes.push(ev.data);
+  rec.onstop = async () => {
+    const blob = new Blob(partes, { type: tipo });
+    const ext = tipo.startsWith("video/mp4") ? "mp4" : "webm";
+    await fetch(`/guardar?nombre=${encodeURIComponent(id + "." + ext)}`, { method: "POST", body: blob });
+    document.title = "LISTO " + id;
+  };
+  dibujar(0);
+  rec.start(1000);
+  const reloj = setInterval(() => {
+    const ahora = ac.currentTime - t0;
+    dibujar(Math.max(0, ahora));
+    if (ahora > TOTAL) { clearInterval(reloj); rec.stop(); }
+  }, 33);
+})().catch(e => { document.title = "ERROR " + e.message; });
+</script>
+</body>
+</html>

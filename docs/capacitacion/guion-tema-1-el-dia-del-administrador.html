@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Guion de la capacitación · 7 de octubre de 2026</title>
+<!-- El guion de quien presenta: sale del mismo contenido.js que las diapositivas. Se imprime con Ctrl+P.
+     Con window.TEMA (o ?tema=N) muestra solo ese tema. -->
+<style>
+  @page { size: letter; margin: 14mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #0f172a; font-size: 14px; line-height: 1.55; padding: 28px; max-width: 900px; margin: 0 auto; }
+  @media print { body { padding: 0; } .no-imprimir { display: none; } }
+  h1 { font-size: 30px; line-height: 1.2; margin-bottom: 4px; }
+  h2 { font-size: 22px; margin: 0 0 12px; padding-top: 6px; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  .sub { color: #475569; font-size: 15px; margin-bottom: 18px; }
+  .placa { display: inline-block; background: #ffd100; border: 3px solid #111; border-radius: 6px; padding: 1px 10px; font-weight: 800; letter-spacing: 3px; font-size: 12px; margin-bottom: 10px; }
+  .caja { border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 18px; margin: 12px 0; break-inside: avoid; }
+  .caja.amarilla { background: #fef9c3; border-color: #facc15; }
+  .caja.azul { background: #eff6ff; border-color: #93c5fd; }
+  ul { padding-left: 20px; } li { margin: 3px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 13.5px; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; }
+  .tema { break-before: page; }
+  .slide { border-left: 5px solid #0ea5e9; padding: 10px 14px; margin: 10px 0; break-inside: avoid; background: #f8fafc; border-radius: 0 8px 8px 0; }
+  .slide.opcional { border-left-color: #94a3b8; background: #fff; }
+  .cab { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; font-size: 14.5px; }
+  .min { color: #0369a1; white-space: nowrap; }
+  .etq { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 8px; margin-left: 6px; vertical-align: 1px; }
+  .etq.op { background: #e2e8f0; color: #334155; } .etq.vid { background: #fef3c7; color: #92400e; }
+  .decir { margin-top: 4px; }
+  .mostrar { margin-top: 4px; color: #475569; font-size: 13px; }
+  .boton { position: fixed; right: 18px; top: 14px; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 700; cursor: pointer; font-size: 14px; }
+</style>
+</head>
+<body>
+<button class="boton no-imprimir" onclick="print()">Imprimir</button>
+<div id="todo"></div>
+<script>window.TEMA = 1;</script>
+<script src="contenido.js"></script>
+<script>
+const C = window.CAP;
+const TEMA = Number(window.TEMA || new URLSearchParams(location.search).get("tema")) || null;
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
+// Tiempo objetivo para que todo quepa en la hora (de 7:00 a 8:00).
+const OBJETIVO = { 0: 3, 1: 10, 2: 13, 3: 11, 4: 11, 5: 9, 9: 3 };
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const temaDe = s => s.tema ?? s.n ?? null;
+const grupo = s => temaDe(s) ?? (["portada", "agenda"].includes(s.tipo) || (s.tipo === "reglas" && s.items.length === 3) ? 0 : 9);
+const tituloDe = s => s.titulo ?? (s.tipo === "portada" ? "Portada" : s.tipo === "cierre" ? "¿Preguntas?" : s.tipo === "frase" ? s.frase : "");
+function queMostrar(s) {
+  switch (s.tipo) {
+    case "pantalla": return "Pantalla real con " + s.marcas.length + " números: " + s.marcas.map((m, i) => (i + 1) + ") " + m.t).join(" ") + (s.ojo ? " · OJO: " + s.ojo : "");
+    case "pasos": return "Pasos: " + s.pasos.map((p, i) => (i + 1) + ". " + p.t).join(" · ");
+    case "tabla": return "Tabla: " + s.columnas.join(" / ") + (s.pie ? " · " + s.pie : "");
+    case "comparar": return s.izq.titulo + ": " + s.izq.items.join("; ") + " — " + s.der.titulo + ": " + s.der.items.join("; ");
+    case "lista": return s.items.join(" · ");
+    case "reglas": return s.items.map(x => x.t).join(" · ");
+    case "agenda": return s.items.map(x => x.n + ". " + x.t).join(" · ");
+    case "video": return "Video de " + C.videos[s.video].escenas.length + " escenas con voz. Toque «Reproducir». Si no se oye, súbale el volumen al computador o lea los subtítulos.";
+    case "frase": return s.sub ?? "";
+    default: return "";
+  }
+}
+
+const lista = C.slides.map((s, i) => ({ s, n: i + 1 })).filter(x => !TEMA || temaDe(x.s) === TEMA);
+let html = `<span class="placa">MOTOGESTIÓN</span>
+  <h1>Guion de la capacitación${TEMA ? " · Tema " + TEMA + ": " + NOMBRES[TEMA] : ""}</h1>
+  <div class="sub">${esc(C.fecha)} · de 7:00 a 8:00 a. m. · Lo que usted dice en cada diapositiva, y cómo presentarlo.</div>`;
+
+if (!TEMA) html += `
+  <div class="caja azul"><h3>Cómo presentar como un profesional</h3><ul>
+    <li><b>Llegue 15 minutos antes.</b> Abra el archivo, pruebe el proyector y el sonido de un video. Ponga pantalla completa con la tecla F.</li>
+    <li><b>Hable a la gente, no a la pantalla.</b> Mire a todos, de pie, voz alta y despacio.</li>
+    <li><b>Una idea por diapositiva.</b> Diga lo principal en una frase y pase. Estas notas son para leerlas ANTES, no para leerlas en voz alta.</li>
+    <li><b>Haga las preguntas que están en las notas.</b> Despiertan a la gente y le dicen a usted si entendieron.</li>
+    <li><b>Use casos reales</b> («esta semana pasó...»), sin decir el nombre del cliente.</li>
+    <li><b>Si no sabe algo, no lo invente:</b> «Lo reviso y le confirmo hoy mismo». Anótelo.</li>
+    <li><b>Los videos:</b> anúncielos («veamos esto en un minuto») y al terminar pregunte «¿quedó claro?».</li>
+    <li><b>Controle el reloj.</b> Si va atrasado, salte las diapositivas marcadas <span class="etq op">se puede saltar</span>.</li>
+  </ul></div>
+  <div class="caja"><h3>El tiempo, tema por tema (60 minutos)</h3>
+  <table><tr><th>Parte</th><th>Minutos</th><th>Termina a las</th></tr>
+  ${(() => { let t = 0; const h = m => { const x = 7 * 60 + m; return Math.floor(x / 60) + ":" + String(x % 60).padStart(2, "0"); };
+    return [["Apertura", OBJETIVO[0]], ...[1, 2, 3, 4, 5].map(n => ["Tema " + n + " · " + NOMBRES[n], OBJETIVO[n]]), ["Cierre y preguntas", OBJETIVO[9]]]
+      .map(([p, m]) => { t += m; return `<tr><td>${esc(p)}</td><td>${m}</td><td>${h(t)}</td></tr>`; }).join(""); })()}
+  </table></div>
+  <div class="caja amarilla"><h3>Lo que debe tener listo</h3><ul>
+    <li>El computador con la carpeta <b>docs/capacitacion</b> completa (las fotos y el audio van dentro).</li>
+    <li>Parlante o el sonido del computador alto, para los 4 videos.</li>
+    <li>La hoja «¿Dónde busco?» impresa, una por persona (está al final de este guion).</li>
+    <li>Para el tema 4, recuerde: a Sergio se le activa el permiso «Rodar por deuda» después de la capacitación (Usuarios).</li>
+  </ul></div>`;
+
+let grupoActual = null;
+for (const { s, n } of lista) {
+  const g = grupo(s);
+  if (g !== grupoActual) {
+    grupoActual = g;
+    const nombre = g === 0 ? "Apertura" : g === 9 ? "Cierre" : "Tema " + g + " · " + NOMBRES[g];
+    html += `<div class="${TEMA || g === 0 ? "" : "tema"}"><h2>${esc(nombre)} <span style="font-weight:400;color:#0369a1;font-size:15px">· ${OBJETIVO[g]} minutos</span></h2></div>`;
+  }
+  const mostrar = queMostrar(s);
+  html += `<div class="slide ${s.opcional ? "opcional" : ""}">
+    <div class="cab"><span>${n}. ${esc(tituloDe(s))}${s.opcional ? '<span class="etq op">se puede saltar</span>' : ""}${s.tipo === "video" ? '<span class="etq vid">video</span>' : ""}</span><span class="min">${s.min ?? 1} min</span></div>
+    <div class="decir"><b>Qué decir:</b> ${esc(s.notas)}</div>
+    ${mostrar ? `<div class="mostrar"><b>En pantalla:</b> ${esc(mostrar)}</div>` : ""}
+  </div>`;
+}
+
+if (!TEMA) {
+  const donde = C.slides.find(s => s.titulo === "¿Dónde busco...?");
+  html += `<div class="tema"><span class="placa">MOTOGESTIÓN</span><h1>¿Dónde busco...?</h1><div class="sub">Hoja para tener al lado del computador.</div>
+    <table><tr><th>Quiero...</th><th>Voy a...</th></tr>${donde.filas.map(f => `<tr><td>${esc(f[0])}</td><td>${esc(f[1])}</td></tr>`).join("")}</table>
+    <h3 style="margin-top:18px">Las reglas de oro</h3><ul>${C.slides.find(s => s.titulo === "Las reglas de oro").items.map(x => `<li><b>${esc(x.t)}</b></li>`).join("")}</ul></div>`;
+}
+document.getElementById("todo").innerHTML = html;
+</script>
+</body>
+</html>

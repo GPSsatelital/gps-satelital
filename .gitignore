@@ -20,3 +20,9 @@ PEGAR-EN-SUPABASE-*.sql
 .claude.json.respaldo-*
 docs/manual-reportes/img/
 docs/manual-reportes/*.pdf
+
+# Capacitación del 7-oct: las fotos, el audio, los videos y los PDF llevan datos de clientes reales (se regeneran)
+docs/capacitacion/img/
+docs/capacitacion/audio/
+docs/capacitacion/videos/
+docs/capacitacion/*.pdf

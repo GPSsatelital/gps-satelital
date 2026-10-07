@@ -212,6 +212,22 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 🧑 **RODAR POR DEUDA (D-044, mig 191) — subido la madrugada del 7-oct, SIN usar todavía con un cliente.**
+  · 🧑 Después de la capacitación: prenderle a SERGIO el permiso «Rodar por deuda» (Usuarios). De entrada
+    solo lo tiene el dueño.
+  · 🧑💻 El primer rodado real hacerlo CON el dueño y revisar: el video grabado DENTRO de la app en su
+    celular (la grabadora no se pudo probar en un celular; si falla, quedan los botones Cámara y Galería),
+    el documento firmado y el historial del contrato.
+  · 🧑 LUIS FERNANDO SOLANO (EXT59H) tiene la cédula «POR DEFINIR»: corregirla antes de rodarle (sale en
+    el documento). Su contrato además tiene el empalme abierto (la app avisa).
+  · Medido el 6-oct con la vista previa: se pueden rodar 9 de los 10 activos con más de $700.000; RAMON
+    BARON (RLI25H) no (su contrato ya pasó su total de semanas; además está quieto).
+  · 💻 Sin hacer: la marca en Reportes («rodado por deuda» en la lista de Cartera) y pasar el rodado a
+    saldado cuando termine de pagar las semanas del final.
+- [ ] 💻 **CAPACITACIÓN (7-oct) — material en `docs/capacitacion/`.** 5 presentaciones por tema + la completa,
+  el guion (y su PDF) y 4 videos MP4 para WhatsApp. Las fotos, el audio y los videos NO se suben (datos de
+  clientes). Si la app cambia, se regeneran con los pasos del README de esa carpeta.
+
 - [ ] 💻 🔴 **REPORTES › CARTERA DE UN DÍA PASADO — a medio hacer (D-043, 6-oct).** El dueño aprobó
   "Las dos" y "empieza por el paso 1".
   · ✅ **Paso 1, la base: HECHO.** Mig 190 corrida y verificada el 6-oct: reloj `cartera-cada-noche`

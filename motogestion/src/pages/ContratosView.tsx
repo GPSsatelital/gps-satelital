@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useContratos, calcularFechaFinContrato, ahorroTotal, type ContratoEstado } from "../hooks/useContratos";
+import { useContratos, calcularFechaFinContrato, ahorroTotal, empalmePendiente, type ContratoEstado } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
 import { useMotos, type GrupoMoto } from "../hooks/useMotos";
 import { usePrestamos } from "../hooks/usePrestamos";
@@ -723,6 +723,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           <ModalRodadoPorDeuda
             contratoId={c.id}
             acompanante={clienteDetalle?.acompanante_nombre ?? null}
+            empalmeAbierto={empalmePendiente(c)}
             onCerrar={() => { setRodadoAbierto(false); recargarRodados(); }}
             onHecho={() => recargarRodados()}
           />

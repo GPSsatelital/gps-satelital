@@ -21,7 +21,7 @@ function Fila({ l, v, fuerte, color }: { l: string; v: string; fuerte?: boolean;
   return (
     <div style={fila}>
       <span style={{ color: "var(--muted2)", minWidth: 0 }}>{l}</span>
-      <span style={{ fontWeight: fuerte ? 700 : 600, color: color ?? "var(--text)", fontVariantNumeric: "tabular-nums", textAlign: "right", minWidth: 0, maxWidth: "62%", overflowWrap: "anywhere" }}>{v}</span>
+      <span style={{ fontWeight: fuerte ? 700 : 600, color: color ?? "var(--text)", fontVariantNumeric: "tabular-nums", textAlign: "right", minWidth: 0, maxWidth: "62%", overflowWrap: "break-word" }}>{v}</span>
     </div>
   );
 }
@@ -38,8 +38,10 @@ function Aviso({ tono, children }: { tono: "warn" | "bad"; children: React.React
 
 const sem = (n: number | undefined) => `${n ?? 0} ${(n ?? 0) === 1 ? "semana" : "semanas"}`;
 
-export default function ModalRodadoPorDeuda({ contratoId, acompanante, onCerrar, onHecho }: {
+export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAbierto = false, onCerrar, onHecho }: {
   contratoId: string;
+  /** El empalme de migración sigue abierto: su deuda todavía se puede corregir (mismo aviso que ceder). */
+  empalmeAbierto?: boolean;
   /** Nombre del acompañante del cliente, si tiene: firma también. */
   acompanante?: string | null;
   onCerrar: () => void;
@@ -184,6 +186,9 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, onCerrar,
             <>
               {calc.razones.map((r, i) => <Aviso key={i} tono="bad">{r}</Aviso>)}
               {calc.avisos.map((r, i) => <Aviso key={i} tono="warn">{r}</Aviso>)}
+              {empalmeAbierto && (
+                <Aviso tono="warn">Este contrato tiene el <strong>empalme abierto</strong>: su deuda de migración todavía se puede corregir. Revise que la deuda esté bien ANTES de rodar, porque el documento la congela.</Aviso>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
                 <div style={caja}>
                   <p style={{ ...titulo, color: "var(--muted2)" }}>Hoy debe</p>

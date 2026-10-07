@@ -338,3 +338,18 @@ ello (`pg_trigger`, `pg_proc`, una fila de prueba), igual que la lección de la 
 **Quién lo cazó:** el dueño: *"siempre haz todo en español"*.
 **Qué lo evita ahora:** revisar el idioma antes de mandar, sobre todo los mensajes largos con tablas
 (quedó también en la memoria de comunicación).
+
+### Le pasé la migración 191 con un error que solo saltaba al escribir un aviso (7-oct)
+**Lo que hice:** en la función de la cuenta del rodado pegué textos sueltos a una lista de avisos
+(`v_avisos || 'texto'`). En Postgres eso no es un texto: lo lee como una lista mal escrita y revienta.
+La migración quedó guardada (el error salió en la consulta de verificación, después del `commit`), y la
+función fallaba en cuanto un cliente tenía un aviso (el primero fue RAMON, que está quieto).
+**Quién lo cazó:** el dueño, al correrla: *"malformed array literal"*. Hubo que pasarle un segundo SQL.
+**Qué lo evita ahora:** en plpgsql, todo texto que se pega a una lista va con `::text`; y una función
+nueva se prueba contra un caso que pase por CADA rama (avisos, razones, acuerdo) antes de pasar el SQL.
+
+### Le hice preguntas con la explicación tapada por la ventana (6-oct, noche)
+**Lo que hice:** escribí la comparación de las opciones y abrí la ventana de preguntas encima.
+**Quién lo cazó:** el dueño: *"no me dijiste nada"*.
+**Qué lo evita ahora:** si la pregunta necesita explicación, va en texto y él contesta con el número
+(memoria `feedback-preguntas-sin-ventana`).

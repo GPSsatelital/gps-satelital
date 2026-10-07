@@ -8,13 +8,19 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (6-oct, tarde-noche)
+## ▶️ DÓNDE RETOMAR (7-oct, madrugada)
 
 🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
 paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
 
-🔨 **LO PRIMERO: la cartera de un día pasado (D-043)** → [[cartera-del-dia-cuaderno]]. La mig 190 (el
+🆕 **7-oct: RODAR POR DEUDA en producción (D-044, mig 191)** → [[rodar-por-deuda-d044]] — sin usar todavía:
+el primer rodado se hace CON el dueño; a Sergio se le prende el permiso después de la capacitación.
+🆕 **Capacitación del 7-oct (7 a 8 a.m.)** → [[capacitacion-7oct]] — 5 presentaciones por tema, guion y 4
+videos MP4 en `docs/capacitacion/`. Preguntar cómo le fue y qué preguntas quedaron sin responder.
+🔴 **Al preguntarle algo con explicación: texto + "responda con el número"**, no la ventana → [[feedback-preguntas-sin-ventana]].
+
+🔨 **Después: la cartera de un día pasado (D-043)** → [[cartera-del-dia-cuaderno]]. La mig 190 (el
 cuaderno de cada noche) YA corre en la base; **la pantalla quedó a medias en la rama local
 `wip/cartera-del-dia`** (el dueño paró la sesión a mitad). Qué falta: `docs/PENDIENTES.md` → P1, primer
 punto. Después: paso 2 (31-ago y 30-sep hacia atrás) y la #7 (proyección).

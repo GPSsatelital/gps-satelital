@@ -12,6 +12,7 @@ Si se cambia un texto, se cambia ahí y sale igual en los tres.
 | `guion.html` · `guion-tema-N-…html` | Lo que se dice en cada diapositiva (se imprime con Ctrl+P) |
 | `GUION-CAPACITACION.pdf` | El guion completo, listo para imprimir (no se sube: se regenera) |
 | `videos/` | Los 4 videos en MP4, para mandar por WhatsApp (no se suben) |
+| `powerpoint/` | Las 5 presentaciones en PowerPoint, con los videos adentro y el guion en las notas (no se suben). Se hacen con `docs/presentaciones/_generadores/gen-capacitacion-7oct.js` |
 
 **Para presentar:** doble clic al archivo (se abre en Chrome) · **F** pantalla completa · flechas para
 avanzar · **N** muestra lo que se dice · los videos tienen su botón «Reproducir».

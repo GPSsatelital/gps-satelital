@@ -15,7 +15,7 @@ export type ConceptoDeuda =
   | "tarifa_atrasada" | "daño_vehiculo" | "prestamo_repuesto" | "prestamo_eventualidad"
   | "fotomulta" | "multa_recoleccion" | "migracion" | "lavada"
   | "alquiler_reemplazo" | "saldo_liquidacion" | "base_inicial" | "multa" | "otro";
-export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada";
+export type EstadoDeuda = "pendiente" | "en_convenio" | "pagada" | "rodada";  // rodada: pasó a las semanas del final (D-044, mig 191)
 
 export type Deuda = {
   id: string;

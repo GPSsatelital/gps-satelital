@@ -25,6 +25,10 @@ import { imprimirLiquidacion } from "../utils/generarDocumentoLiquidacion";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 import { abrirDocumento } from "../lib/storagePrivado";
+import ModalRodadoPorDeuda from "../components/ModalRodadoPorDeuda";
+import { useRodadosPorDeuda } from "../hooks/useRodadosPorDeuda";
+import { pesos as pesosRod, fechaLarga as fechaLargaRod } from "../utils/rodadoPorDeuda";
+import { CalendarClock, FileText as IconoDoc, Video as IconoVideo } from "lucide-react";
 
 const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" };
 const secondaryBtn: React.CSSProperties = { background: "var(--soft)", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", color: "var(--muted2)", fontSize: 13 };
@@ -130,6 +134,10 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   const [histAbierto, setHistAbierto] = useState<string | null>(null);   // historial del contrato cerrado
   const puedeCeder = puede("ceder_contrato");
   const puedeRodarTiempo = puede("rodar_tiempo");
+  // Rodar por deuda (D-044, mig 191): de entrada solo el dueño; la base lo vuelve a exigir.
+  const puedeRodarPorDeuda = puede("rodar_por_deuda");
+  const [rodadoAbierto, setRodadoAbierto] = useState(false);
+  const { rodados: rodadosPorDeuda, recargar: recargarRodados } = useRodadosPorDeuda(null);
   // RESOLVER EL TIEMPO GUARDADO DESPUÉS (24-ago): cuando la entrega la hace un SUBADMIN o
   // SECRETARIA, el modal de cobrar/rodar no les sale (la decisión es del admin) y el caso se
   // evaporaba para siempre — pasó dos veces el mismo fin de semana (WILLINGTON DQW26I y JUAN
@@ -251,6 +259,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     }
 
     const c = contratoSeleccionado;
+    const rodadoC = rodadosPorDeuda.find(r => r.contrato_id === c.id) ?? null;
     // La liquidación abierta de ESTE contrato (si la hay). "Cerrada" no cuenta: esa ya terminó.
     const liqAbierta = liquidaciones.find(l => l.contrato_id === c.id && l.estado !== "cerrada") ?? null;
     const esDiario = c.forma_pago === "Diario";
@@ -589,6 +598,36 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
                 </>
               );
             })()}
+            {/* RODAR POR DEUDA (D-044): lo que se hizo, con su documento y su video; o el botón. */}
+            {rodadoC ? (
+              <div style={{ ...card, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 14 }}>
+                  <CalendarClock size={18} aria-hidden="true" style={{ color: "var(--accent-ink)" }} />
+                  Rodado por deuda · {rodadoC.numero}
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.55 }}>
+                  El {fechaLargaRod(rodadoC.fecha)} debía {pesosRod(rodadoC.debia_total)}. Se rodaron {rodadoC.semanas_rodadas} semanas
+                  ({pesosRod(rodadoC.monto_rodado)}) y al final paga {rodadoC.semanas_a_cobrar} ({pesosRod(rodadoC.monto_a_cobrar)}).
+                  Fin aproximado: {fechaLargaRod(rodadoC.fecha_fin_aprox)}.
+                  {rodadoC.estado === "saldado" ? " Ya lo pagó." : rodadoC.estado === "cobrado_en_liquidacion" ? " Se cobró en la liquidación." : ""}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => abrirDocumento(rodadoC.documento_url)}
+                    style={{ ...secondaryBtn, flex: "1 1 140px", minWidth: 0, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13 }}>
+                    <IconoDoc size={16} aria-hidden="true" /> Documento firmado
+                  </button>
+                  <button onClick={() => abrirDocumento(rodadoC.video_url)}
+                    style={{ ...secondaryBtn, flex: "1 1 140px", minWidth: 0, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13 }}>
+                    <IconoVideo size={16} aria-hidden="true" /> Video del cliente
+                  </button>
+                </div>
+              </div>
+            ) : puedeRodarPorDeuda && c.estado === "Activo" && c.forma_pago === "Semanal" ? (
+              <button onClick={() => setRodadoAbierto(true)}
+                style={{ ...secondaryBtn, width: "100%", padding: "12px 16px", fontSize: 14, textAlign: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <CalendarClock size={18} aria-hidden="true" /> Rodar por deuda (más de $700.000)
+              </button>
+            ) : null}
             {puedeDocumentos && (
               <button
                 onClick={() => setModalDocumentosAbierto(true)}
@@ -677,6 +716,15 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
             fechaEntrada={rtFechas.desde}
             fechaSalida={rtFechas.hasta}
             onClose={() => setRtFechas(null)}
+          />
+        )}
+
+        {rodadoAbierto && (
+          <ModalRodadoPorDeuda
+            contratoId={c.id}
+            acompanante={clienteDetalle?.acompanante_nombre ?? null}
+            onCerrar={() => { setRodadoAbierto(false); recargarRodados(); }}
+            onHecho={() => recargarRodados()}
           />
         )}
 

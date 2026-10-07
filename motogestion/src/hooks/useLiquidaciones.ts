@@ -202,6 +202,13 @@ export function useLiquidaciones() {
     // La MISMA cuenta que la proyección (`deudasYAcuerdos`). D-023: al que se va antes no se le
     // cobra su convenio de base (el ahorro es suyo y la semana ya la cobran los días que usó).
     detalleDeudas.push(...deudasYAcuerdos([], convenios ?? [], { seVaAntes: motivo !== "cumplimiento" }));
+    // RODADO POR DEUDA (D-044, mig 191): si se va antes, se le cobran las semanas rodadas que todavía
+    // no se le exigían, SIN el recargo. Las que ya se le exigían las cobra la cuenta de siempre.
+    // Sin la mig 191 la función no existe y no se agrega nada.
+    const { data: rodPend } = await supabase.rpc("rodado_pendiente_liquidacion", { p_contrato: contratoId, p_fecha: new Date().toISOString().slice(0, 10) });
+    for (const r of (rodPend ?? []) as Array<{ numero: string; semanas: number; monto: number }>) {
+      if (Number(r.monto) > 0) detalleDeudas.push({ concepto: `Rodado por deuda ${r.numero}: ${r.semanas} semanas rodadas sin pagar (sin el recargo)`, monto: Number(r.monto) });
+    }
     const totalDeudas = detalleDeudas.reduce((acc, d) => acc + d.monto, 0);
 
     // La revisión de taller es obligatoria en toda liquidación: se crea una orden

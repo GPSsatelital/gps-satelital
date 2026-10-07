@@ -973,7 +973,7 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
           {deudasCliente.length === 0 ? (
             <Card><div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Sin deudas registradas.</div></Card>
           ) : deudasCliente.map(d => {
-            const ec = d.estado === "pendiente" ? { bg: "var(--bad-soft)", color: "var(--bad-ink)" } : d.estado === "en_convenio" ? { bg: "var(--warn-soft)", color: "var(--warn-ink)" } : { bg: "var(--ok-soft)", color: "var(--ok-ink)" };
+            const ec = d.estado === "pendiente" ? { bg: "var(--bad-soft)", color: "var(--bad-ink)" } : d.estado === "en_convenio" ? { bg: "var(--warn-soft)", color: "var(--warn-ink)" } : d.estado === "rodada" ? { bg: "var(--accent-soft)", color: "var(--accent-ink)" } : { bg: "var(--ok-soft)", color: "var(--ok-ink)" };
             return (
               <Card key={d.id} borderColor={ec.color}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>

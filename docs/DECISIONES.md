@@ -653,3 +653,40 @@ se puede sacar hacia atrás y aproximado. Cada noche sin cuaderno es un día que
 (`useCarteraDelDia.ts`, `utils/carteraDelDia.ts`, `ReportesView.tsx`, `CobranzaReportes.tsx`,
 `BarraFiltros.tsx`). Quién lo lee: los mismos que pueden ver ese contrato (la regla de `contratos`).
 ZALA no lo lee.
+
+### D-044 · 6-oct-2026 · Rodar por deuda: a unos pocos clientes que deben más de $700.000
+**Decidió:** el dueño, pregunta por pregunta, la noche del 6-oct ("solo semanas completas" · "siempre
+una más hasta la 4ta y de ahí en adelante por cada dos más una adicional" · "semanas normales" · "si se va
+antes se le cobra lo rodado sin el recargo" · "las deudas de repuestos no se ruedan en tiempo" · "solo yo o
+Sergio ya después de la capacitación" · "también debe decir en el video la fecha del día").
+**Qué se decidió:**
+1. **Para qué:** que a unos pocos clientes con deudas grandes no les siga saliendo esa deuda en mora; se
+   les cobra al final del contrato, con un poco más por el desgaste extra de la moto.
+2. **A quién:** solo contratos **Activos y semanales**, que deban **más de $700.000** en total. Ni retenidos
+   ni en liquidación. **Una sola vez por contrato.** No a CESAR (ZHO34G) ni a RAMON (RLI25H), que están quietos.
+3. **Qué se rueda: solo lo que es TIEMPO** — semanas atrasadas del contrato, deudas de `tarifa_atrasada` y
+   de `migracion`. **NO se ruedan** (son plata y se siguen cobrando en plata): préstamo de repuesto,
+   préstamo por eventualidad, daño del vehículo, alquiler de la moto prestada (su cuenta nunca se mezcla),
+   multa de recolección y lavada.
+4. **Solo semanas completas:** lo rodable se pasa a semanas enteras del valor semanal; lo que sobra (menos
+   de una semana) lo paga ahora.
+5. **Las cuotas atrasadas del acuerdo de pago** no se pasan a las semanas del final: se **corren al final
+   del mismo acuerdo** (mecanismo `periodos_exonerados`, mig 118), que sigue andando con su cuota.
+6. **La regla de las semanas de más:** hasta 4 semanas rodadas, **una más**; desde la 5ª, **una más por
+   cada 2 semanas completas** (el par incompleto no suma). 3→4 · 4→5 · 5→6 · 6→8 · 7→9 · 8→11 · 10→14.
+7. **Son semanas normales** (con su ahorro, igual que cualquier semana).
+8. **Si se va antes de terminar:** en la liquidación se le cobra lo rodado, **sin el recargo** (esas
+   semanas las usó; el recargo era por usar la moto más tiempo).
+9. **Quién:** permiso nuevo "Rodar por deuda", de entrada **solo ADMIN_PRINCIPAL**; a Sergio se le prende
+   después de la capacitación, desde Usuarios.
+10. **Documento** con las cifras, la fecha aproximada de fin y la advertencia de que **la empresa no cubre
+    SOAT ni tecnomecánica durante el tiempo extra**; lo firma el cliente (y su acompañante si tiene).
+11. **Video obligatorio** (máximo 1 minuto), grabado en la app, donde el cliente dice **la fecha del día**,
+    que acepta el rodado, cuántas semanas debía, cuántas pagará y la fecha aproximada de fin.
+12. **Rastro:** ficha del cliente, historial del contrato (quién, cuándo, cifras, documento, video) y marca
+    en Reportes.
+**Por qué así:** usa los dos mecanismos probados desde agosto (`cajas_exoneradas` y `periodos_exonerados`)
+y no toca la cuenta de los demás clientes; lo único nuevo es pasar deudas de tiempo a semanas del final.
+**Dónde vive:** `supabase/191_rodado_por_deuda.sql` (tabla `rodados_por_deuda`, `calcular_rodado_por_deuda`, `aplicar_rodado_por_deuda`, `rodado_pendiente_liquidacion`, vista `zala.rodado`) · `ModalRodadoPorDeuda.tsx` (Contratos → el contrato → «Rodar por deuda») · `utils/rodadoPorDeuda.ts` (documento, lo que dice el video, la regla 4→5 con pruebas) · la liquidación agrega lo rodado sin pagar (`useLiquidaciones`).
+**Medido el 6-oct con la vista previa:** 9 de los 10 contratos activos que deben más de $700.000 se pueden rodar; RAMON BARON (RLI25H) no (su contrato ya pasó su total de semanas: el candado lo detiene; además está quieto).
+**Subida de madrugada del miércoles 7-oct (día de cobro):** autorizada por el dueño ("hagamos todo hoy, debemos dejar todo listo y bien hecho antes de la presentación"). El módulo no cambia ninguna cuenta hasta que alguien lo usa, y de entrada solo él puede usarlo.

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: ecbda5fc-4619-4e95-b4dc-d59ba138caf2
-  modified: 2026-10-07T06:02:01.201Z
+  modified: 2026-10-08T23:04:33.114Z
 ---
 
 Diseñado con el dueño pregunta por pregunta la noche del 6-oct y subido la madrugada del miércoles 7-oct
@@ -30,5 +30,15 @@ de su total). El rastro en `contratos_auditoria` lleva "exoneradas N" en el form
 que escribir `'literal'::text`; y la variable de un `for i in` vive solo dentro del for.
 
 **Pendiente:** `docs/PENDIENTES.md` → P1 (primer uso con el dueño, video en celular sin probar, cédula
-"POR DEFINIR" de EXT59H, marca en Reportes, pasar a 'saldado'). Ver [[capacitacion-7oct]] ·
+"POR DEFINIR" de EXT59H, marca en Reportes, pasar a 'saldado').
+
+**8-oct noche — plan de 3 piezas presentado, ESPERA «1» (las tres) o «2» (solo 1 y 2).** El dueño pidió
+guardar antes de responder. El plan completo, con dónde va cada cosa y qué es "terminado", está en
+PENDIENTES → P1 → RODAR POR DEUDA. Lo que medí y no hay que volver a buscar:
+- No hay ningún rodado hecho (tabla vacía): nada cambia la cuenta de nadie hoy.
+- "Terminó de pagar" = `cajas_pagadas >= total_cajas` (igual que los dos modales de liquidación).
+- Nada pasa un rodado a `cobrado_en_liquidacion` (hallazgo = pieza 3). Estados de `liquidaciones` en
+  minúscula (`cerrada`, `anulada`, mig 155).
+- Trampa de la prueba: el `numero` por defecto usa `nextval`, que NO se deshace → usar 'ROD-PRUEBA'.
+- `comoVa()` de ReportesView también alimenta el informe de socios: la marca saldría ahí (declararlo). Ver [[capacitacion-7oct]] ·
 [[permiso-rodar-tiempo]] · [[zala-vitrina-lectura]] · [[feedback-preguntas-sin-ventana]].

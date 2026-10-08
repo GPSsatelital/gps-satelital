@@ -364,3 +364,40 @@ pedazos del archivo (`Range`), así que la revisión decía "no salta" sobre un 
 puntos, la voz a tiempo), y la prueba de PowerPoint es preguntarle al propio PowerPoint por COM cuánto
 dura el video que tiene adentro. Regla: lo que va a salir del PC se prueba con el programa y el servidor
 que lo van a abrir, no con el que lo hizo.
+
+### Dije «los tipos pasan» con un comando que no revisaba nada (hasta el 8-oct)
+**Lo que dije:** varias veces, mientras trabajaba, «los tipos pasan» o «los tipos están bien».
+**Lo que era verdad:** usaba `npx tsc --noEmit -p .`, y el `tsconfig.json` de la raíz tiene `files: []`:
+ese comando no revisa ni un archivo. Lo descubrí cuando `CalendarDays` se usaba sin importarlo y el
+comando no dijo nada. A producción no llegó ningún error, porque antes de subir siempre corre
+`npm run build` (= `tsc -b`), que sí revisa.
+**Por qué me equivoqué:** nunca comprobé que el comando fallara con un error a propósito.
+**Quién lo cazó:** yo, el 8-oct.
+**Qué lo evita ahora:** la revisión de tipos es `npx tsc -b --noEmit` o `npm run build` (anotado en la
+memoria `kit-diseno-pruebas-estado`). Regla: un chequeo que nunca vi fallar no prueba nada.
+
+### La portada del portal del socio cortaba las caras (8-oct)
+**Lo que hice:** puse la foto de portada con un alto fijo, «encuadrada arriba», y la di por buena
+mirándola en un solo ancho de pantalla.
+**Lo que era verdad:** con un alto fijo, en una pantalla más ancha el recorte cambia y se comía la
+cabeza de la persona.
+**Quién lo cazó:** el dueño, con una captura: *«mira que se corta la parte superior donde se le ven los
+rostros»*.
+**Qué lo evita ahora:** la portada es cuadrada (1:1, alto máximo 420 px) y encuadrada al 8 % de arriba,
+así que el recorte es el mismo en todos los anchos. Regla: una foto recortada se mira en celular Y en
+computador antes de entregarla.
+
+### Le pasé la migración 193 y falló al correrla (8-oct)
+**Lo que hice:** puse el «a nombre del dueño» (`set_config` de quién corre) DENTRO del bloque de prueba.
+La prueba se deshace al final, y con ella se borró ese dato; después `registrar_migracion` lo leyó vacío
+y reventó con *«invalid input syntax for type json»*.
+**Quién lo cazó:** el dueño, al correrla. No quedó nada guardado (lo comprobé antes del segundo intento) y
+hubo que pasarle el SQL otra vez. Es la segunda migración seguida que le paso con un error (la 191 el 7-oct).
+**Qué lo evita ahora:** el `set_config` va arriba, fuera de la prueba (escrito en el encabezado de la 193).
+Todavía nada automático: yo no puedo correr una migración antes de pasársela.
+
+### Se me volvió a salir el inglés en los avisos de avance (8-oct)
+**Lo que hice:** algunas notas mientras trabajaba salieron en inglés.
+**Quién lo cazó:** el dueño: *«habla siempre en español»*. Es la segunda vez (la primera, el 6-oct).
+**Qué lo evita ahora:** quedó reforzado en la memoria `comunicacion-espanol-ingles`: también los avisos
+cortos de avance van en español, no solo los mensajes largos.

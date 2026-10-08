@@ -35,3 +35,7 @@ sobre un HTML (`node C:/Users/USER/scripts/verify_responsive.mjs archivo.html`).
 scripts originales en `C:\Users\USER\.respaldo-kit-2026-09-25`.
 
 Ver [[herramientas-por-pc-paridad]] · [[regla-usar-design-skills]].
+
+**8-oct — TRAMPA del chequeo de tipos:** `npx tsc --noEmit -p .` NO revisa nada en motogestion (el
+`tsconfig.json` raíz tiene `"files": []` y solo referencias) — dio "OK" con un `CalendarDays` sin importar.
+El que sirve es **`npx tsc -b --noEmit`** (lo mismo que corre `npm run build`).

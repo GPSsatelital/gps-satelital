@@ -8,7 +8,58 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **6-oct-2026**.
+- Última revisión: **8-oct-2026** (noche).
+
+---
+
+## EL PLAN DE TRABAJO POR TANDAS (aprobado el 8-oct: «hagamos todo lo que es de programación que está pendiente»)
+
+El dueño escogió la opción **2: preguntarle antes de subir cada punto.** Antes de cada punto se dice en
+una línea qué significa «terminado»; al cerrarlo, los números reales (pruebas, medición y foto a 375 px).
+Nada que toque cartera o pagos se sube lunes ni miércoles antes de las 6 p.m. El detalle de cada punto
+está en su bloque de abajo.
+
+**Tanda 1: terminar lo que quedó a medias (ya aprobado)**
+1. [x] Cartera de un día pasado (D-043, paso 1) — 6b96f72.
+2. [x] El documento de liquidación cabe en una hoja carta — 4fa35fb.
+3. [ ] **Rodar por deuda: la marca en Reportes y pasar a «saldado».** Plan de 3 piezas presentado; **espera
+   el «1» o «2» del dueño** → P1, «RODAR POR DEUDA». ▶️ **AQUÍ SE RETOMA.**
+
+**Tanda 2: defectos claros que no cambian cuánto debe nadie**
+4. Firmar en pantalla una liquidación ya cerrada (24 sin ninguna firma, $11,3 millones en juego).
+5. «Cerrar sin firma» sin la casilla «Sigue con la empresa» (lo de ANDRÉS).
+6. Reportes › Entregas: fotos de otro cliente, fotos pesadas y scroll lento.
+7. El registro de cambios del contrato que no se guarda en algunas rodadas.
+8. «Este pago cubrió la semana del X al Y» no salta las semanas rodadas.
+9. Borrar o mover un pago pierde la referencia o deja el comprobante en la carpeta equivocada.
+10. Ventanas aparte con botones invisibles (blanco sobre blanco).
+11. El formulario de motos acepta años imposibles (el 0028 de DQL79I).
+12. Un aviso antes de cerrar una semana de nómina que todavía no termina.
+13. Herramientas: la prueba espejo de la plata corre sola antes de subir, revisión automática en GitHub (no
+    existe) y el cierre de sesión con la hora de Colombia.
+
+**Tanda 3: defectos que tocan plata (medición antes y después de cada uno)**
+14. La entrega que pierde su contrato y le corre la fecha de corte a la liquidación (JORDAN, $93.000).
+15. Medir si los demás diarios tienen el problema de ADOLFO.
+16. Medir si la fecha límite del acuerdo de base va antes que las cuotas en todos (KATIA).
+17. Confirmar que «ampliar acuerdo» ya no cobra doble (la memoria dice arreglado; la lista lo tiene abierto).
+18. Usar el saldo a favor en un solo paso dentro de la base (hoy son dos pasos sueltos).
+19. Los documentos firmados (contrato, pagaré) que pueden partir una línea entre dos hojas.
+
+**Tanda 4: necesitan una decisión del dueño** (una por una, con dibujo): cobrar y hacer acuerdo a las
+motos guardadas temporales (12 motos, $14,8 millones; el plan está escrito) · la fecha de fin (JHON NAIDER) ·
+saldos a favor más visibles · que devolver la moto cierre la liquidación abierta · el botón «la empresa
+asume una semana» · acuerdo nuevo encima de uno vencido · pagos con la misma referencia: ¿avisar o
+rechazar? · JESUS QUIÑONEZ rodado dos veces · bloquear en la base los cambios de estado a mano · la regla
+del sobrante · traer por páginas lo que va a crecer · cartera de un día pasado hacia atrás (31-ago y
+30-sep) y la proyección.
+
+**Tanda 5: módulos nuevos, cada uno con su plan:** Egresos, informes gerenciales, recibo con logo, validar
+papeles, visitas por confirmar, recordatorio de gestiones, completar los datos que faltan, aplicación para
+el celular, sirena y apagado reales.
+
+**Ramas locales sobrantes:** `wip/liquidacion-una-pagina` (ya reemplazada por 4fa35fb) y
+`wip/cartera-del-dia` (ya traída a main) — se pueden borrar con el permiso del dueño.
 
 ---
 
@@ -242,7 +293,37 @@ Lo que está afectando cifras reales de clientes en este momento.
   · Medido el 6-oct con la vista previa: se pueden rodar 9 de los 10 activos con más de $700.000; RAMON
     BARON (RLI25H) no (su contrato ya pasó su total de semanas; además está quieto).
   · 💻 Sin hacer: la marca en Reportes («rodado por deuda» en la lista de Cartera) y pasar el rodado a
-    saldado cuando termine de pagar las semanas del final.
+    saldado cuando termine de pagar las semanas del final. **Plan presentado el 8-oct en la noche (tanda 1,
+    punto 3); el dueño pidió guardar antes de responder. ESPERA SU «1» o «2»:**
+    1 = las tres piezas (recomendada) · 2 = solo la 1 y la 2 (la 3 queda aquí anotada).
+    Medido el 8-oct: **no hay ningún rodado hecho** (la tabla `rodados_por_deuda` está vacía).
+    - **Pieza 1 (pantalla):** en todas las listas de Reportes › Cartera, al lado de cómo va el cliente:
+      «· deuda rodada al final (ROD-0001)». En la tarjeta «Cómo van pagando hoy», una línea nueva que solo
+      sale si hay alguno: «Con la deuda rodada al final del contrato · N» → lista con «ROD-0001 · paga N
+      semanas al final · termina aprox. …» y al lado `monto_a_cobrar`. En un día pasado, solo los rodados
+      con `fecha` ≤ ese día. Dónde: `ReportesView.tsx` → `comoVa()` (OJO: también la usa la lista «los que más
+      deben» del informe para los socios, ~línea 2317, y la frase sale en el Excel) y `abrirDetalleCobranza`;
+      la línea nueva en `CobranzaReportes.tsx` (bloque de recolección/taller/retenidas/liquidación). Datos:
+      `useRodadosPorDeuda(null)`.
+    - **Pieza 2 (base, mig 194):** disparador AFTER UPDATE OF `cajas_pagadas`, `total_cajas` en `contratos`
+      (security definer): `cajas_pagadas >= total_cajas` → rodado `vigente`→`saldado`; si vuelve a faltar
+      una semana (pago rechazado o borrado) → `saldado`→`vigente`. Es la misma prueba de «terminó de pagar»
+      que ya usan `ModalIniciarLiquidacion` y `ModalProyeccionLiquidacion`. Rastro en `contratos_auditoria`
+      SIN empezar por «exoneradas N» (la nómina lee ese formato con `rodadasDesdeRegistros`). ZALA ya conoce
+      «saldado» (diccionario de la mig 191): no hay estado nuevo. `ContratosView` ya dice «Ya lo pagó».
+    - **Pieza 3 (hallazgo, base):** NADA pasa hoy un rodado a `cobrado_en_liquidacion`: la liquidación sí
+      cobra lo rodado (`useLiquidaciones` → `rodado_pendiente_liquidacion`), pero el rodado se queda
+      «vigente» para siempre y ZALA lo leería como pendiente. Disparador en `liquidaciones` (estados en
+      minúscula: `cerrada`, `anulada`): al pasar a `cerrada` → `cobrado_en_liquidacion`; si sale de
+      `cerrada` (anulada o devuelta, como la mig 188) → `vigente`. Solo toca rodados `vigente`.
+    - **La prueba de la mig 194:** fila de rodado de mentira con `numero = 'ROD-PRUEBA'` puesto a mano (si
+      se usa el número por defecto, `nextval` NO se deshace y el primer rodado real saldría ROD-0002);
+      completar semanas → saldado; quitar una → vigente; cerrar/reabrir liquidación → cobrado/vigente;
+      `raise 'PRUEBA_OK'` para deshacer. El `set_config` de quién corre va FUERA del bloque de prueba (lo
+      que falló en el 1er intento de la 193).
+    - **Terminado =** `tsc -b` y `npm test` en verde · la mig 194 corrida por el dueño con su PRUEBA OK ·
+      la marca vista en Reportes a 375 px (con un rodado de mentira en el navegador, o diciendo que no se
+      pudo ver porque no hay ninguno) · subido solo con su permiso.
 - [ ] 💻 **CAPACITACIÓN (7-oct) — material en `docs/capacitacion/`.** Lo que se comparte son los 5
   PowerPoint de `powerpoint/` (video adentro, letra incrustada, iconos PNG, «Cómo llegar» en cada pantalla)
   y los 4 MP4 de `videos/` (rearmados: PowerPoint, Windows y celulares los abren). Las fotos, el audio, los
@@ -696,6 +777,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## Cerrados recientemente
 
+- [x] **8-oct · El documento de liquidación cabe en una hoja carta** (4fa35fb) — medido imprimiendo de verdad
+  con Chrome las 85 liquidaciones reales: antes 12 se partían en dos hojas; ahora las 85 caben en una (la
+  más larga ocupa 913 de los 964 px de la hoja). Solo se apretaron los espacios entre bloques; la letra y el
+  recuadro de la firma (104 px) quedaron iguales. No cambia ninguna cifra.
 - [x] **8-oct · La ventana de hacer un convenio cabe en la pantalla** (42608be) — medida: era una columna de 500 px con
   2.040 px de contenido en un portátil (2.371 en celular); el total, la firma y el botón quedaban abajo sin aviso.
   Ahora título y total con botones fijos, solo el medio se desliza; en computador 920 px y dos columnas (1.218 px),

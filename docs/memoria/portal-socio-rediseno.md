@@ -62,3 +62,9 @@ Verificado a 375px en día y noche con Chrome headless, cero desbordes → [[ver
 cambian en todo el portal o se mantienen por familiaridad.
 
 Relacionado: el reporte de Entregas para admins ya existe en Reportes ([[MEMORY]] — pestaña Entregas de ReportesView). El de socios reusa la misma data pero con presentación distinta (sin docs).
+
+**8-oct — Entregas (259b630 + 6f7a5b0):** portada = foto "persona" (`fotosDeLaEntrega`, solo fotos de ESA
+entrega: el camino del archivo trae el contrato), páginas de 6 en `ListBox` (64vh), copia liviana con
+`ImgPrivada ancho` (Supabase `resize: "contain"`; con "cover" y solo ancho RECORTA una tira). Trampa: la
+foto es vertical 3:4 y una portada de ALTO FIJO corta las caras cuando la pantalla es más ancha (el dueño
+la ve a ~610 px, no a 375): la portada va CUADRADA anclada al 8 %. Probar siempre a 375 Y a su ancho.

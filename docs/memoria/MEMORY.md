@@ -8,7 +8,23 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (7-oct, madrugada)
+## ▶️ DÓNDE RETOMAR (8-oct)
+
+🆕 **8-oct: cuadro cobrador × grupo en Reportes (D-045)** → [[reportes-cuadro-cruzado-d045]]. Y el **manual de Reportes v3 por preguntas** (31 págs.,
+PDF fuera del repo) — hecho. 🔴 **RAUL (IEW56I)**: su acuerdo vence el 12-oct, espera que escoja 1 o 2 (P0).
+✅ **8-oct tarde: liquidación justa (D-046) en producción** → [[liquidacion-justa-d046]]. BRADER −$237.500 (PDF de 2 hojas
+listo); recalculadas 0078·0074·0025·0076; LIQ-0050 quieta hasta corregir su lista (P1).
+✅ **8-oct noche: doble toque = semana perdida** → [[doble-toque-semana-perdida]] (97ba56d + mig 192). BRYAN/YERLIS/JONATAN
+corregidos; 🧑 la oficina debe decir si ARNOL (IEW93I) y otros 3 pagaron una o dos veces (P0).
+✅ **8-oct tarde, todo subido:** cartera de un día pasado (6b96f72) · entrega de la moto de un solo golpe
+(a62d414 + mig 193 `activar_entrega`) · ventana del convenio que cabe (42608be) · base de NANO a MICRO (el
+dueño; era falta de memoria → Swap → cupo de disco) · documento de liquidación en una hoja (4fa35fb: 12 de 85
+se partían, ahora 0). 🔲 Mañana: ¿bajó el Swap?
+▶️ **RETOMAR AQUÍ: tanda 1, punto 3 — rodar por deuda.** El plan de 3 piezas está presentado y **espera su
+«1» o «2»** (él pidió guardar antes de responder) → [[rodar-por-deuda-d044]] y PENDIENTES → P1. El plan de las
+5 tandas quedó escrito arriba de todo en `docs/PENDIENTES.md`. Se le pregunta antes de subir cada punto (opción 2).
+
+## ▶️ Antes (7-oct, madrugada)
 
 🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
 herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
@@ -16,8 +32,9 @@ paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no e
 
 🆕 **7-oct: RODAR POR DEUDA en producción (D-044, mig 191)** → [[rodar-por-deuda-d044]] — sin usar todavía:
 el primer rodado se hace CON el dueño; a Sergio se le prende el permiso después de la capacitación.
-🆕 **Capacitación del 7-oct (7 a 8 a.m.)** → [[capacitacion-7oct]] — 5 presentaciones por tema, guion y 4
-videos MP4 en `docs/capacitacion/`. Preguntar cómo le fue y qué preguntas quedaron sin responder.
+🆕 **Capacitación del 7-oct (7 a 8 a.m.)** → [[capacitacion-7oct]] — se comparten los 5 PowerPoint y los 4
+MP4 de `docs/capacitacion/` (ya abren en cualquier aparato; sin probar en un celular real). Preguntar cómo
+le fue y qué preguntas quedaron sin responder.
 🔴 **Al preguntarle algo con explicación: texto + "responda con el número"**, no la ventana → [[feedback-preguntas-sin-ventana]].
 
 🔨 **Después: la cartera de un día pasado (D-043)** → [[cartera-del-dia-cuaderno]]. La mig 190 (el

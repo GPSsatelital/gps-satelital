@@ -89,6 +89,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   // leerlo; marcar una casilla que está AL LADO de los datos obliga a mirarlos.
   const [revisado, setRevisado] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const entregandoRef = useRef(false);   // anti-doble-toque al entregar (ver handleStep6)
   const [error, setError] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
   // Convenio obligatorio cuando la base inicial quedó incompleta al crear el contrato.
@@ -542,43 +543,42 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     const faltantes = ANGULOS_FOTO.filter(a => !fotosEntrega[a.key]);
     if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); return; }
     if (!motoId || !contratoId || !clienteActual) return;
-    if (guardando) return;
+    // Anti-doble-toque inmediato (el estado `guardando` llega un redibujo tarde).
+    if (guardando || entregandoRef.current) return;
+    entregandoRef.current = true;
     setGuardando(true); setError(null);
+    const noQuedoNada = "No quedó nada a medias: revise la conexión y vuelva a tocar Entregar.";
     try {
+      // 1. Las fotos primero. Antes, si una no subía, la entrega seguía sin ella y nadie se enteraba.
       const urls: Record<string, string> = {};
-      for (const { key } of ANGULOS_FOTO) {
+      for (const { key, label } of ANGULOS_FOTO) {
         const file = fotosEntrega[key]!;
         const url = await subirArchivo(file, `entregas/${contratoId}/${key}.${file.name.split(".").pop()}`);
-        if (url) urls[key] = url;
+        if (!url) { setError(`No se pudo subir la foto "${label}". ${noQuedoNada}`); return; }
+        urls[key] = url;
       }
-      await supabase.from("motos").update({ kilometraje_inicial: Number(kmInicial), fotos_entrega: urls }).eq("id", motoId);
-      await supabase.from("contratos").update({ estado: "Activo", firma_responsable: true }).eq("id", contratoId);
-      await supabase.from("motos").update({ estado: "Asignada" }).eq("id", motoId);
-      await supabase.from("clientes").update({ estado: "Activo" }).eq("id", clienteActual.id);
-
-      // LIBRO DE CAJAS: la semana adelantada de la base entra como pago interno visible.
-      // El trigger de la BD la aplica a la Caja 1 y le acredita su ahorro al llenarla.
-      // EXCLUIDO de caja diaria/recaudo (tipo_registro='adelanto_base') — esa plata ya
-      // entró como base inicial, sumarla otra vez inflaría la caja.
-      if (contratoData?.forma_pago !== "Diario" && adelantoValor > 0) {
-        const { error: errAd } = await supabase.from("pagos").insert({
-          contrato_id: contratoId,
-          valor: adelantoValor,
-          metodo: "Efectivo",
-          estado: "Confirmado",
-          tipo_registro: "adelanto_base",
-          fecha: form.fecha_entrega,
-        });
-        if (errAd) {
-          setError("Contrato activado, pero falló el registro de la semana adelantada: " + errAd.message + ". Avísale al administrador.");
-          return;
-        }
-      }
+      // 2. Todo lo demás DE UN SOLO GOLPE en la base (mig 193, 8-oct-2026): la moto (km y fotos), el
+      //    contrato "Activo", la moto "Asignada", el cliente "Activo" y la semana adelantada de la base
+      //    — o nada. Antes eran cinco llamadas sueltas que no miraban si fallaban: un corte en la mitad
+      //    dejaba la entrega a medias sin aviso. Repetirla no duplica (si ya quedó, contesta "ya_estaba").
+      //    La semana adelantada sigue siendo un pago interno (`adelanto_base`), fuera de la caja del día:
+      //    esa plata ya entró como base inicial.
+      const { error: errEntrega } = await supabase.rpc("activar_entrega", {
+        p_contrato_id: contratoId,
+        p_moto_id: motoId,
+        p_cliente_id: clienteActual.id,
+        p_km: Number(kmInicial),
+        p_fotos: urls,
+        p_adelanto: contratoData?.forma_pago !== "Diario" && adelantoValor > 0 ? adelantoValor : 0,
+        p_fecha: form.fecha_entrega,
+      });
+      if (errEntrega) { setError(`No se guardó la entrega: ${errEntrega.message} ${noQuedoNada}`); return; }
       onCompletado();
     } catch (e) {
-      setError("Error al activar el contrato: " + ((e as Error)?.message ?? String(e)));
+      setError(`No se guardó la entrega: ${(e as Error)?.message ?? String(e)}. ${noQuedoNada}`);
     } finally {
       setGuardando(false);
+      entregandoRef.current = false;
     }
   }
 

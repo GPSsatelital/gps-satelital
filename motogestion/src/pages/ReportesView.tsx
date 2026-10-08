@@ -46,6 +46,8 @@ import { EquipoNomina, EquipoVisitas, type CeldaSemana, type DatosNomina, type D
 import DescargarSeccion, { type SepararPor } from "../components/reportes/DescargarSeccion";
 import { informeSociosHTML, type DatosInforme, type SeccionInforme } from "../utils/informeSocios";
 import ResumenReportes, { type FilaEstado, plata as plataT } from "../components/reportes/ResumenReportes";
+import CuadroCruzado from "../components/reportes/CuadroCruzado";
+import { cuadroCruzado, verificarCuadro, explicaVista, VISTAS_CRUZADO, SIN_COBRADOR, ANTES_DE_ASIGNAR, type VistaCruzado, type CuadroCruzado as TipoCuadro, type CeldaCruzado, type FilaCruzado, type MotoCruzado, type PagoCruzado } from "../utils/reportesCruzado";
 import HojaDetalle, { type ContenidoDetalle, type FilaDetalle } from "../components/reportes/HojaDetalle";
 import { sitioFisico, dondeEstaCadaMoto, LUGARES, type LugarMoto } from "../utils/reportesFlota";
 import { desgloseRecaudo, baseDeAcuerdosDeBase, pagosSinRepartir, tramosMora, serieRecaudo, estadoAlCierre, verificarCifras, plataSinProducir } from "../utils/reportesResumen";
@@ -200,7 +202,7 @@ function resultadoDeVisita(v: { estado: string; resultado: string | null }, esta
 
 /** A qué parte del informe para los socios corresponde cada pestaña (llega marcada en el PDF). */
 const SECCION_DE_TAB: Record<Tab, SeccionInforme> = {
-  resumen: "resumen", cartera: "cobranza", convenios: "cobranza", grupos: "portafolios", admins: "portafolios",
+  resumen: "resumen", cartera: "cobranza", convenios: "cobranza", grupos: "portafolios", admins: "portafolios", cruzado: "portafolios",
   nomina: "equipo", visitas: "equipo", flota: "flota", guardadas: "flota", entregas: "flota",
 };
 
@@ -371,6 +373,9 @@ export default function ReportesView({ onNavigate }: Props) {
   const [rango, setRango] = useState<Rango>(vista?.rango ?? "mes");
   const [rangoCustom, setRangoCustom] = useState<{ desde: string; hasta: string }>(() => vista?.rangoCustom ?? getRango("ult7")); // rango personalizado de-fecha-a-fecha
   const [tab, setTab]     = useState<Tab>(vista?.tab ?? "resumen");
+  // El cuadro cruzado (8-oct): qué vista se ve en Portafolios › Cruzado y cuál en Flota › Motos.
+  const [vistaCruzado, setVistaCruzado] = useState<VistaCruzado>("motos");
+  const [vistaFlota, setVistaFlota] = useState<VistaCruzado>("motos");
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
   useBackGuard(fotosVer !== null, () => setFotosVer(null)); // atrás cierra el lightbox
   // Regeneración de documentos en blanco (bug histórico del PDF)
@@ -1576,25 +1581,26 @@ export default function ReportesView({ onNavigate }: Props) {
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [flotaF]);
 
+  // La lista de motos de Flota (dónde está cada una y quién la tiene). La usan Flota y el cuadro cruzado.
+  const listaMotos = (lista: typeof motos, titulo: string, subtitulo: string, archivo: string): ContenidoDetalle => ({
+    titulo, subtitulo,
+    filas: lista.map(m => {
+      const lm = lugarDeMoto.get(m.id);
+      const c = lm?.contratoId ? contratoPorId.get(lm.contratoId) : undefined;
+      const cliente = c ? clientePorId.get(c.cliente_id)?.nombre ?? "—" : "Sin cliente";
+      const lugar = LUGARES.find(l => l.clave === lm?.lugar)?.etiqueta ?? "";
+      const cob = m.subadmin_id ? (subadmins.find(sa => sa.id === m.subadmin_id)?.nombre ?? "Cobrador") : "Sin cobrador";
+      return {
+        id: m.id, placa: m.placa, grupo: m.grupo ?? undefined, titulo: cliente,
+        subtitulo: `${lugar} · moto ${sitioFisico(m.estado)} · ${cob}`, monto: null, filtro: lugar,
+        onClick: () => { setDetalle(null); if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", m.id); },
+        csv: { Placa: m.placa, Grupo: m.grupo ?? "", Cliente: cliente, Donde: lugar, Cobrador: cob },
+      };
+    }),
+    chips: [...new Set(lista.map(m => LUGARES.find(l => l.clave === lugarDeMoto.get(m.id)?.lugar)?.etiqueta ?? ""))].filter(Boolean).map(x => ({ clave: x, etiqueta: x })),
+    archivo,
+  });
   function abrirDetalleFlota(clave: string) {
-    const listaMotos = (lista: typeof motos, titulo: string, subtitulo: string, archivo: string): ContenidoDetalle => ({
-      titulo, subtitulo,
-      filas: lista.map(m => {
-        const lm = lugarDeMoto.get(m.id);
-        const c = lm?.contratoId ? contratoPorId.get(lm.contratoId) : undefined;
-        const cliente = c ? clientePorId.get(c.cliente_id)?.nombre ?? "—" : "Sin cliente";
-        const lugar = LUGARES.find(l => l.clave === lm?.lugar)?.etiqueta ?? "";
-        const cob = m.subadmin_id ? (subadmins.find(sa => sa.id === m.subadmin_id)?.nombre ?? "Cobrador") : "Sin cobrador";
-        return {
-          id: m.id, placa: m.placa, grupo: m.grupo ?? undefined, titulo: cliente,
-          subtitulo: `${lugar} · moto ${sitioFisico(m.estado)} · ${cob}`, monto: null, filtro: lugar,
-          onClick: () => { setDetalle(null); if (c) onNavigate?.("ficha_cliente", c.cliente_id); else onNavigate?.("ficha_moto", m.id); },
-          csv: { Placa: m.placa, Grupo: m.grupo ?? "", Cliente: cliente, Donde: lugar, Cobrador: cob },
-        };
-      }),
-      chips: [...new Set(lista.map(m => LUGARES.find(l => l.clave === lugarDeMoto.get(m.id)?.lugar)?.etiqueta ?? ""))].filter(Boolean).map(x => ({ clave: x, etiqueta: x })),
-      archivo,
-    });
     if (clave.startsWith("lugar:")) {
       const lugar = clave.slice(6) as LugarMoto;
       const info = LUGARES.find(l => l.clave === lugar)!;
@@ -2008,6 +2014,8 @@ export default function ReportesView({ onNavigate }: Props) {
   };
   const nombreArchivo = (x: string) => x.toLowerCase().replace(/\s+/g, "_");
   function abrirDetalleNomina(clave: string) {
+    // "Ver sus motos por grupo" (8-oct): la nómina no repite el cuadro, lleva a Portafolios › Cruzado.
+    if (clave === "ir:cruzado") { setVistaCruzado("motos"); setTab("cruzado"); return; }
     const i = clave.indexOf(":");
     const tipo = clave.slice(0, i);
     const valor = clave.slice(i + 1);
@@ -2385,15 +2393,25 @@ export default function ReportesView({ onNavigate }: Props) {
   function excelFlotaMotos(separar: SepararPor = "grupo") {
     const etiquetaLugar = (id: string) => LUGARES.find(l => l.clave === lugarDeMoto.get(id)?.lugar)?.etiqueta ?? "—";
     const clienteDeMoto = (id: string) => { const c = contratoPorId.get(lugarDeMoto.get(id)?.contratoId ?? ""); return c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : "—"; };
+    // 8-oct: cuánto debe hoy y cuántos días lleva en mora, con la misma cuenta de Cobranza. En blanco si
+    // la moto no tiene contrato.
+    const filaDeContrato = new Map(baseGestion.map(r => [r.contratoId, r]));
+    const deudaDeMoto = (id: string) => { const r = filaDeContrato.get(lugarDeMoto.get(id)?.contratoId ?? ""); return r && r.estado !== "cerrado" ? r : null; };
     descargarExcelR({
       archivo: `flota_${hoyISO()}`, titulo: "La flota hoy: dónde está cada moto", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
-      columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Dónde está", ancho: 200 }, { label: "Cliente", ancho: 220 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Estado de la moto", ancho: 120 }],
+      // 8-oct: el total de esta columna NO es el de Cobranza (medido: le faltan $14.271.500 de 11 clientes
+      // en liquidación cuya moto ya tiene otro cliente). Lo dice el archivo para que no se lean dos totales.
+      leyenda: "Debe hoy: lo que debe hoy el cliente que tiene cada moto (la misma cuenta de Cobranza). No incluye a los clientes en liquidación cuya moto ya tiene otro cliente: el total de todo lo que se debe está en el Excel de Cobranza.",
+      columnas: [{ label: "Placa", align: "center", ancho: 80 }, { label: "Dónde está", ancho: 200 }, { label: "Cliente", ancho: 220 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Estado de la moto", ancho: 120 },
+        { label: "Debe hoy ($)", align: "right", ancho: 110 }, { label: "Días en mora", align: "right", ancho: 90 }],
       secciones: bloquesPor(flotaF, m => m.grupo ?? "SIN GRUPO", m => (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar"), separar).map(b => ({
         titulo: `${b.nombre}   —   ${b.items.length} motos · ${b.items.filter(m => lugarDeMoto.get(m.id)?.lugar === "trabajando").length} trabajando`, color: b.color,
         filas: b.items.slice().sort((a, c) => a.placa.localeCompare(c.placa)).map(m => [{ v: m.placa, align: "center" as const }, etiquetaLugar(m.id), clienteDeMoto(m.id).toUpperCase(),
-          (separar === "grupo" ? (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar") : (m.grupo ?? "—")).toUpperCase(), m.estado]),
+          (separar === "grupo" ? (m.subadmin_id ? nombreCobradorN(m.subadmin_id) : "Sin asignar") : (m.grupo ?? "—")).toUpperCase(), m.estado,
+          ...((r => r ? [{ num: r.debeHoy, align: "right" as const }, { num: r.diasMora, align: "right" as const }] : ["", ""])(deudaDeMoto(m.id)))]),
       })),
-      totalGeneral: [{ v: `TOTAL: ${flotaF.length} motos`, bold: true }, "", "", "", ""],
+      totalGeneral: [{ v: `TOTAL: ${flotaF.length} motos`, bold: true }, "", "", "", "",
+        { num: flotaF.reduce((sm, m) => sm + (deudaDeMoto(m.id)?.debeHoy ?? 0), 0), bold: true }, ""],
       hoja: "Dónde está cada moto",
       hojasExtra: [hojaPapeles()],
     });
@@ -2448,12 +2466,113 @@ export default function ReportesView({ onNavigate }: Props) {
     };
   }
 
+  // ── EL CUADRO CRUZADO (pedido del dueño, 8-oct-2026): cada cobrador en cada grupo ──
+  // No hace cuentas nuevas: reparte las mismas filas de Flota (motos), Cobranza (lo que se debe) y
+  // Portafolios (pagos y cumplimiento, con D-035). El de Portafolios › Cruzado obedece grupo, cobrador y
+  // modalidad, como Por grupo y Por cobrador; el de Flota, solo grupo y cobrador, como el resto de Flota.
+  const pasaModC = (fp: string | null | undefined) => filtros.modalidad.length === 0 || filtros.modalidad.includes(fp ?? "");
+  const conModalidadC = filtros.modalidad.length > 0;
+  const aMotoC = (m: (typeof motos)[number]): MotoCruzado => ({ grupo: m.grupo ?? "SIN GRUPO", cobrador: m.subadmin_id ?? SIN_COBRADOR, trabajando: lugarDeMoto.get(m.id)?.lugar === "trabajando" });
+  const aFilaC = (r: MotoRowG): FilaCruzado => ({ grupo: r.grupo, cobrador: r.adminId, cerrado: r.estado === "cerrado", debeHoy: r.debeHoy, cum: r.cum, cumSuyo: r.cumSuyo,
+    evaluable: r.estado !== "retenida" && r.estado !== "taller" && !fueraDeGestion(r.estado) });
+  const aPagoC = (pg: (typeof pagosRango)[number]): PagoCruzado => { const at = atribucion.get(pg.contrato_id)!; return { grupo: at.grupo, cobrador: at.adminId, valor: pg.valor, antesDeAsignar: pagoAntesDeAsignar(pg) }; };
+  const columnasC = (gs: string[]) => [...(GRUPOS as readonly string[]).filter(g => gs.includes(g)), ...[...new Set(gs)].filter(g => !(GRUPOS as readonly string[]).includes(g)).sort()];
+  const motosC = useMemo(() => flotaF.filter(m => !conModalidadC || pasaModC(contratoPorId.get(lugarDeMoto.get(m.id)?.contratoId ?? "")?.forma_pago)), [flotaF, filtros, contratoPorId, lugarDeMoto]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filasC = useMemo(() => baseGestion.filter(r => pasaFiltroGC(r.grupo, r.adminId) && pasaModC(r.formaPago)), [baseGestion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pagosC = useMemo(() => pagosRango.filter(pg => { const at = atribucion.get(pg.contrato_id); return !!at && pasaFiltroGC(at.grupo, at.adminId) && pasaModC(at.formaPago); }), [pagosRango, atribucion, filtros]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ordenCobradoresC = useMemo(() => subadmins.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)).map(sa => sa.id), [subadmins]);
+  const datosCruzado = useMemo(() => ({ motos: motosC.map(aMotoC), filas: filasC.map(aFilaC), pagos: pagosC.map(aPagoC) }), [motosC, filasC, pagosC]); // eslint-disable-line react-hooks/exhaustive-deps
+  const gruposC = useMemo(() => columnasC([...datosCruzado.motos.map(m => m.grupo), ...datosCruzado.filas.map(f => f.grupo), ...datosCruzado.pagos.map(x => x.grupo)]), [datosCruzado]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cuadroC = useMemo(() => cuadroCruzado(vistaCruzado, datosCruzado, gruposC, ordenCobradoresC), [vistaCruzado, datosCruzado, gruposC, ordenCobradoresC]);
+  const datosFlotaC = useMemo(() => ({ motos: flotaF.map(aMotoC), filas: [] as FilaCruzado[], pagos: [] as PagoCruzado[] }), [flotaF, lugarDeMoto]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cuadroFlota = useMemo(() => cuadroCruzado(vistaFlota, datosFlotaC, columnasC(datosFlotaC.motos.map(m => m.grupo)), ordenCobradoresC), [vistaFlota, datosFlotaC, ordenCobradoresC]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nombreFilaC = (k: string) => k === SIN_COBRADOR ? "Sin cobrador" : k === ANTES_DE_ASIGNAR ? "Antes de asignar" : nombreCobradorN(k);
+  // Que cuadre con las otras pantallas (lo prometido el 8-oct): motos y paradas contra "Por grupo" de
+  // Flota, y lo que se debe contra "Quién tiene la deuda" de Cobranza (otro código, mismas filas). Con
+  // una modalidad marcada no se compara: esas pantallas no tienen ese filtro.
+  function diferenciasC(c: TipoCuadro, deFlota: boolean): string[] {
+    if (c.vista === "motos" || c.vista === "paradas") {
+      if (conModalidadC && !deFlota) return [];
+      return verificarCuadro(c, { porGrupo: Object.fromEntries(gruposFlota.map(g => [g.grupo, c.vista === "paradas" ? g.total - g.trabajando : g.total])) }, nombreFilaC)
+        .map(d => d.replace(`"Por grupo"`, `"Por grupo" de Flota`));
+    }
+    if (c.vista === "debe" && !conModalidadC) {
+      return verificarCuadro(c, {
+        porGrupo: Object.fromEntries(cobranzaC.porGrupo.map(f => [f.clave, f.debe])),
+        porCobrador: Object.fromEntries(cobranzaC.porCobrador.map(f => [f.clave, f.debe])),
+      }, nombreFilaC).map(d => d.replace(/"Por (grupo|cobrador)"/, "Cobranza"));
+    }
+    return [];
+  }
+  // Tocar un número del cuadro: la lista de lo que contó, con los mismos filtros.
+  function abrirCeldaCruzado(c: TipoCuadro, cobrador: string | null, grupo: string | null, deFlota: boolean) {
+    const quien = cobrador === null ? "Todos los cobradores" : nombreFilaC(cobrador);
+    const donde = grupo ? ` en ${grupo}` : "";
+    const enCelda = (g: string, k: string) => (grupo === null || g === grupo) && (cobrador === null || k === cobrador);
+    const arch = `cruzado_${c.vista}_${(grupo ?? "todos").toLowerCase()}_${quien.toLowerCase().replace(/\s+/g, "_")}`;
+    const per = `del ${textoRango(desde, hasta)}`;
+    if (c.vista === "motos" || c.vista === "paradas") {
+      const lista = (deFlota ? flotaF : motosC).filter(m => enCelda(m.grupo ?? "SIN GRUPO", m.subadmin_id ?? SIN_COBRADOR) && (c.vista === "motos" || lugarDeMoto.get(m.id)?.lugar !== "trabajando"));
+      setDetalle(listaMotos(lista, `${quien}${donde} · ${lista.length} ${c.vista === "paradas" ? "paradas" : "motos"}`, explicaVista(c.vista, per), arch));
+      return;
+    }
+    if (c.vista === "debe") {
+      const f = filasC.filter(r => enCelda(r.grupo, r.adminId) && r.estado !== "cerrado" && r.debeHoy > 0).sort((a, b) => b.debeHoy - a.debeHoy);
+      setDetalle({
+        titulo: `${quien}${donde} · ${f.length} ${f.length === 1 ? "debe" : "deben"}`,
+        subtitulo: `${explicaVista("debe", per)} Suman ${plataT(f.reduce((sm, r) => sm + r.debeHoy, 0))}.`,
+        filas: f.map(r => filaDeuda(r, r.debeHoy)), chips: chipsEstadoC(f),
+        accion: aCarteraC("contratos:todos", grupo, cobrador && cobrador !== SIN_COBRADOR && cobrador !== ANTES_DE_ASIGNAR ? cobrador : null),
+        archivo: arch,
+      });
+      return;
+    }
+    if (c.vista === "recaudado") {
+      const lista = pagosC.filter(pg => {
+        const x = aPagoC(pg);
+        return (grupo === null || x.grupo === grupo) && (cobrador === null || (cobrador === ANTES_DE_ASIGNAR ? x.antesDeAsignar : !x.antesDeAsignar && x.cobrador === cobrador));
+      });
+      const det = detallePagos(lista, `${quien}${donde} · ${per}`, arch);
+      setDetalle(cobrador === ANTES_DE_ASIGNAR ? { ...det, subtitulo: "Pagos de motos que cambiaron de cobrador en el período, hechos antes del cambio. No se le cuentan a nadie: el sistema no guarda quién tenía la moto antes." } : det);
+      return;
+    }
+    // Cumplimiento: la casilla de un cobrador se mide desde que la moto es suya; la de un grupo, todo el período.
+    const delCobrador = cobrador !== null;
+    const f = filasC.filter(r => enCelda(r.grupo, r.adminId) && r.estado !== "retenida" && r.estado !== "taller" && !fueraDeGestion(r.estado)
+      && (delCobrador ? r.cumSuyo.medible : r.cum.medible)).map(r => delCobrador ? comoCobrador(r) : r);
+    setDetalle(detalleCumplimiento(f, `${quien}${donde} · ${per}`));
+  }
+  // El Excel del cuadro: una hoja por cada vista, con lo que se ve en pantalla (mismos filtros).
+  function hojaCruzado(c: TipoCuadro): SeccionesOpts & { nombre: string } {
+    const v = VISTAS_CRUZADO.find(x => x.clave === c.vista)!;
+    const esPct = c.vista === "cumplimiento";
+    const unidad = c.vista === "debe" || c.vista === "recaudado" ? " ($)" : esPct ? " (%)" : "";
+    // El cumplimiento lleva el mismo color que en pantalla (la leyenda de la hoja lo explica).
+    const tono = (v: number) => v >= 85 ? { color: "#166534", fill: "#dcfce7" } : v >= 70 ? { color: "#92400e", fill: "#fef3c7" } : { color: "#991b1b", fill: "#fee2e2" };
+    const celda = (x: CeldaCruzado, bold = false): CeldaX => esPct && x.valor === null ? { v: "—", align: "right", bold }
+      : { num: x.valor ?? 0, align: "right", bold, ...(esPct ? tono(x.valor ?? 0) : {}) };
+    return {
+      nombre: v.etiqueta,
+      titulo: `Cada cobrador en cada grupo — ${v.etiqueta}`,
+      periodo: v.delPeriodo ? periodoTxt : `Al ${textoRango(hoyISO(), hoyISO())}`,
+      leyenda: explicaVista(c.vista, textoRango(desde, hasta)),
+      columnas: [{ label: "Cobrador", ancho: 200 }, ...c.grupos.map(g => ({ label: g + unidad, align: "right" as const, ancho: 120 })), { label: "Total" + unidad, align: "right" as const, ancho: 130 }],
+      secciones: [{ titulo: v.etiqueta, color: "#0f2740", filas: c.filas.map(f => [nombreFilaC(f.clave).toUpperCase(), ...c.grupos.map(g => celda(f.celdas[g])), celda(f.total, true)]) }],
+      totalGeneral: [{ v: "TOTAL", bold: true }, ...c.grupos.map(g => celda(c.totalGrupo[g], true)), celda(c.total, true)],
+    };
+  }
+  function excelCruzado() {
+    const [primera, ...resto] = VISTAS_CRUZADO.map(v => hojaCruzado(cuadroCruzado(v.clave, datosCruzado, gruposC, ordenCobradoresC)));
+    descargarExcelR({ archivo: `cobrador_x_grupo_${hoyISO()}`, ...primera, hoja: primera.nombre, hojasExtra: resto });
+  }
+
   const EXCEL_DE_TAB: Partial<Record<Tab, { etiqueta: string; separable: boolean; onDescargar: (s: SepararPor) => void }>> = {
     resumen: { etiqueta: "Los pagos del período, uno por uno", separable: true, onDescargar: excelPagosPeriodo },
     cartera: { etiqueta: "Lo que debe cada cliente: semanas, acuerdo y deudas", separable: true, onDescargar: excelLoQueSeDebe },
     convenios: { etiqueta: "Cada acuerdo con sus pagos", separable: false, onDescargar: () => excelConvenios() },
     grupos: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
     admins: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
+    cruzado: { etiqueta: "El cuadro de cobradores y grupos, una hoja por cada vista", separable: false, onDescargar: () => excelCruzado() },
     nomina: { etiqueta: "Lo que se le paga a cada cobrador, pago por pago", separable: true, onDescargar: excelNomina },
     visitas: { etiqueta: "Las visitas del período, por quién las hizo", separable: false, onDescargar: () => exportarVisitas() },
     flota: { etiqueta: "Cada moto y dónde está, y en otra hoja el SOAT y la tecno", separable: true, onDescargar: excelFlotaMotos },
@@ -2624,7 +2743,7 @@ export default function ReportesView({ onNavigate }: Props) {
           soloHoy={tab === "flota" || tab === "guardadas" || tab === "cartera" || tab === "convenios"}
           textoFijo={tab === "nomina" ? textoSemanaNomina : undefined}
           sinGrupo={tab === "visitas"}
-          {...(tab === "grupos" || tab === "admins" ? {
+          {...(tab === "grupos" || tab === "admins" || tab === "cruzado" ? {
             modalidad: filtros.modalidad.length === 1 ? filtros.modalidad[0] : "",
             opcionesModalidad: [{ valor: "", etiqueta: "Todas las modalidades" }, ...MODALIDADES.map(m => ({ valor: m, etiqueta: m }))],
             onModalidad: (v: string) => setFiltros(f => ({ ...f, modalidad: v ? [v] : [] })),
@@ -2773,6 +2892,22 @@ export default function ReportesView({ onNavigate }: Props) {
         />
       )}
 
+      {/* ── PORTAFOLIOS · CRUZADO (8-oct): cada cobrador en cada grupo, con sus 5 vistas ── */}
+      {tab === "cruzado" && sinDatos && <div role="status" style={{ ...card, textAlign: "left", fontSize: 13, color: "var(--muted2)" }}>{errorDatos ? "No se pudieron traer los datos. Revisa la conexión y vuelve a intentar." : "Cargando las cifras…"}</div>}
+      {tab === "cruzado" && !sinDatos && (
+        <CuadroCruzado
+          cuadro={cuadroC}
+          vistas={VISTAS_CRUZADO.map(v => v.clave)}
+          onVista={setVistaCruzado}
+          nombre={nombreFilaC}
+          colorGrupo={g => GRUPO_COLORS[g] ?? "var(--muted)"}
+          textoPeriodo={textoRango(desde, hasta)}
+          onCelda={(cob, g) => abrirCeldaCruzado(cuadroC, cob, g, false)}
+          diferencias={diferenciasC(cuadroC, false)}
+          compacto={isMobile}
+        />
+      )}
+
       {/* ── EQUIPO · VISITAS (rediseño 2-oct): cuántas, resultado, quién, entregas y evidencia ── */}
       {tab === "visitas" && (
         <EquipoVisitas d={datosVisitas} onAbrir={abrirDetalleVisitas} />
@@ -2794,6 +2929,20 @@ export default function ReportesView({ onNavigate }: Props) {
           activosSinContrato={clientesActivosSinContrato.length}
           estadosSistema={estadosFlota}
           onAbrir={abrirDetalleFlota}
+          cuadro={
+            <CuadroCruzado
+              cuadro={cuadroFlota}
+              vistas={["motos", "paradas"]}
+              onVista={setVistaFlota}
+              nombre={nombreFilaC}
+              colorGrupo={g => GRUPO_COLORS[g] ?? "var(--muted)"}
+              textoPeriodo={textoRango(desde, hasta)}
+              onCelda={(cob, g) => abrirCeldaCruzado(cuadroFlota, cob, g, true)}
+              diferencias={diferenciasC(cuadroFlota, true)}
+              compacto={isMobile}
+              enlace={{ texto: "Ver lo que deben, lo recaudado y el cumplimiento", onClick: () => { setVistaCruzado("debe"); setTab("cruzado"); } }}
+            />
+          }
         />
       )}
 

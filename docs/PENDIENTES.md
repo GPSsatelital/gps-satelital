@@ -20,11 +20,18 @@ Lo que está afectando cifras reales de clientes en este momento.
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
   SIN registrar a propósito (decisión del dueño): cuando aparezca en el Nequi, darle destino.
-- [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN — su acuerdo vence el 12 de octubre y no le alcanza.**
-  Cuota **$48.000**, **0 abonado**, y quedan **18 días** (medido el 24-sep). Con el motor ya
-  arreglado (mig 171) le van a entrar unas 2 cuotas antes del vencimiento: **no alcanza**.
-  **Dos salidas:** cobrarle las cuotas atrasadas **aparte** de la semana, o ampliarle el plazo.
-  Es el único de los 34 casos de acuerdos sin recibir que el arreglo no salva solo (ver **D-024**).
+- [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN (IEW56I · COSTA · cobrador Lumar Avendaño) — su acuerdo vence el
+  lunes 12 de octubre y no le alcanza. ESPERA DECISIÓN DEL DUEÑO (1 o 2).**
+  Medido el **7-oct** con `loQueDebe()`: acuerdo de **$153.500** (semana 14 $116.000 + multa $30.000 +
+  migración $7.500), 4 cuotas de $48.000, **abonado $48.000** (1-oct), **le faltan $105.500**. Hoy debe
+  **$348.000** ($252.000 de semanas + $96.000 del acuerdo), **8 días en mora**. Si no paga antes del
+  12-oct: **$559.500** y 13 días. Paga **$200.000 cada 6-8 días** (menos que su semana de $202.000); Lumar
+  lo gestionó todos los días del 1 al 7-oct sin pago.
+  🔑 Desde la mig 157 un acuerdo vencido **se sigue cobrando** (queda «INCUMPLIDO» en rojo): no se pierde
+  plata; solo se le gasta 1 de sus 3 acuerdos y ya no desbloquea la moto si se la recogen.
+  **Las dos salidas que se le mostraron:** **1 (recomendada)** cobrarle normal y dejar que se venza si no
+  paga — no se toca el sistema; ya cumple la regla de Recolección (>3 días). **2** ampliarle el plazo
+  (p. ej. al 26-oct) con un SQL — NO con el botón de la app, que cobra doble —; no le baja lo que debe.
 
 - [ ] 🧑 🔴 **ROTAR LA LLAVE DE ZALA — pasó por el chat.** Estaba anotada en P2 como una tarea más
   de la puesta en marcha de ZALA. **Una llave de producción que circuló por un chat no es un
@@ -211,6 +218,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 **MANUAL DE REPORTES "POR PREGUNTAS" — pedido del dueño el 8-oct** (después del cuadro cruzado,
+  D-045): "rehacemos el manual o presentación para explicar cómo usar los reportes y, según qué quiero
+  saber, dónde y cómo puedo buscar". Formato: el de `docs/manual-liquidacion/` (capturas reales,
+  lenguaje de niño, PDF fuera del repo). Preguntarle antes si lo quiere en PDF, en PowerPoint o los dos.
 
 - [ ] 🧑 **RODAR POR DEUDA (D-044, mig 191) — subido la madrugada del 7-oct, SIN usar todavía con un cliente.**
   · 🧑 Después de la capacitación: prenderle a SERGIO el permiso «Rodar por deuda» (Usuarios). De entrada

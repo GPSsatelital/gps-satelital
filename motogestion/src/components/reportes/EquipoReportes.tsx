@@ -5,7 +5,7 @@
 // juntas y lo que pone cada portafolio. Visitas: cuántas, con qué resultado, quién las hizo, cuántas
 // terminaron en moto entregada, con GPS y foto, y cuánto tardó la entrega. Solo pinta: las cuentas
 // las arma ReportesView con la función de siempre (`nominaSemanaDetallada`).
-import { ChevronLeft, ChevronRight, AlertTriangle, Info, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Info, Download, ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { Tarjeta, boton, plata, pct } from "./ResumenReportes";
 
@@ -157,6 +157,11 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
             </span>
           </button>
         ))}
+        {/* 8-oct: la nómina no repite el cuadro de motos por grupo; lleva a Portafolios › Cruzado. */}
+        <button onClick={() => onAbrir("ir:cruzado")}
+          style={{ ...boton, marginTop: 6, minHeight: 44, display: "flex", alignItems: "center", gap: 6, padding: "0 4px", fontSize: 13, fontWeight: 500, color: "var(--accent-ink)" }}>
+          Ver sus motos por grupo <ArrowRight size={16} aria-hidden="true" />
+        </button>
       </Tarjeta>
 
       <Tarjeta titulo="Cada cobrador, semana a semana"

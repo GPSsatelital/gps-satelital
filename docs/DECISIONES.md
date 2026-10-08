@@ -690,3 +690,28 @@ y no toca la cuenta de los demás clientes; lo único nuevo es pasar deudas de t
 **Dónde vive:** `supabase/191_rodado_por_deuda.sql` (tabla `rodados_por_deuda`, `calcular_rodado_por_deuda`, `aplicar_rodado_por_deuda`, `rodado_pendiente_liquidacion`, vista `zala.rodado`) · `ModalRodadoPorDeuda.tsx` (Contratos → el contrato → «Rodar por deuda») · `utils/rodadoPorDeuda.ts` (documento, lo que dice el video, la regla 4→5 con pruebas) · la liquidación agrega lo rodado sin pagar (`useLiquidaciones`).
 **Medido el 6-oct con la vista previa:** 9 de los 10 contratos activos que deben más de $700.000 se pueden rodar; RAMON BARON (RLI25H) no (su contrato ya pasó su total de semanas: el candado lo detiene; además está quieto).
 **Subida de madrugada del miércoles 7-oct (día de cobro):** autorizada por el dueño ("hagamos todo hoy, debemos dejar todo listo y bien hecho antes de la presentación"). El módulo no cambia ninguna cuenta hasta que alguien lo usa, y de entrada solo él puede usarlo.
+
+### D-045 · 8-oct-2026 · Cada cobrador en cada grupo: un cuadro, con un lugar dueño
+**Decidió:** el dueño ("hazlo así"), después de pedir que se viera en Equipo las motos de cada uno por
+grupo y en Flota quién tiene las de cada grupo, y de preguntar si era "lo más práctico, óptimo y
+profesional".
+**Qué se decidió:**
+1. **Un solo cuadro** cobradores × grupos, con un selector de vista: Motos, Paradas, Debe hoy (de hoy),
+   Recaudado y Cumplimiento (del período escogido). Cada vista dice de qué fecha es.
+2. **Su lugar dueño es Portafolios › Cruzado** (pestaña nueva), con las 5 vistas y su Excel (una hoja por
+   vista). **Flota › Motos** lo muestra solo con Motos y Paradas. **Equipo › Nómina no lo repite**: en
+   "Por cobrador" lleva un enlace «Ver sus motos por grupo».
+3. **No hay cuentas nuevas:** reparte las mismas filas de Flota, Cobranza y Portafolios. Lo pagado antes
+   de que la moto fuera del cobrador de hoy (D-035) va en su propio renglón, «Antes de asignar».
+4. **Tiene que cuadrar:** cada columna da lo mismo que "Por grupo" y cada fila lo mismo que "Por cobrador".
+   La tarjeta compara Motos/Paradas contra Flota y Debe hoy contra Cobranza, y avisa si no cuadran.
+5. El Excel de Flota trae dos columnas más: **Debe hoy** y **Días en mora**, del cliente que tiene la moto.
+**Por qué así:** cada pregunta con un lugar dueño evita tablas repetidas que empujan lo demás en el
+celular; una sola pieza en dos pantallas no puede dar dos cifras distintas.
+**Medido el 8-oct, al construirlo:** las 5 vistas cuadraron cifra por cifra con Portafolios (por grupo y
+por cobrador), Flota y Cobranza. El total "Debe hoy" del Excel de Flota es menor que el de Cobranza en
+$14.271.500: son 11 clientes cuya moto ya tiene otro cliente (10 en liquidación y 1 retenida); el archivo
+lo explica en su leyenda.
+**Dónde vive:** `utils/reportesCruzado.ts` (+ 13 pruebas) · `components/reportes/CuadroCruzado.tsx` ·
+`ReportesView` (pestaña `cruzado`, `abrirCeldaCruzado`, `excelCruzado`, columnas nuevas de `excelFlotaMotos`).
+**Reemplaza a:** —

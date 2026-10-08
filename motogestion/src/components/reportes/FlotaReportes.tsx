@@ -4,7 +4,7 @@
 // grupo, los clientes, los papeles y lo que hay que corregir en los datos. Guardadas: las que están en
 // la empresa sin trabajar, de la que más días lleva a la que menos. Solo pinta: las cuentas las arma
 // ReportesView. Todo número se toca (`onAbrir`).
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronRight, AlertTriangle } from "lucide-react";
 import type { LugarMoto } from "../../utils/reportesFlota";
 import { Tarjeta, boton, pct } from "./ResumenReportes";
@@ -23,6 +23,8 @@ export function FlotaMotos(p: {
   estadosSistema: Array<[string, number]>;
   /** clave: "lugar:<lugar>" · "grupo:<grupo>" · "clientes:<con|tramite|nuevos>" · "papeles:<vencidos|porvencer|sinsoat>" · "activos-sin-contrato" */
   onAbrir: (clave: string) => void;
+  /** El cuadro de cada cobrador en cada grupo (8-oct): va debajo de "Por grupo". */
+  cuadro?: ReactNode;
 }) {
   const [verEstados, setVerEstados] = useState(false);
   return (
@@ -46,6 +48,8 @@ export function FlotaMotos(p: {
           </button>
         ))}
       </Tarjeta>
+
+      {p.cuadro}
 
       <Tarjeta titulo="Clientes"
         ayuda="Con contrato: tienen un contrato activo o con la moto retenida. En trámite: registrados o aprobados que todavía no tienen moto. Nuevos en el mes: registrados desde el día 1 de este mes.">

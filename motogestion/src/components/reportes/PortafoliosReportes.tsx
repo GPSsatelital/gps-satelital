@@ -39,8 +39,8 @@ export const COLOR_LUGAR: Record<LugarMoto, string> = {
   disponible: "var(--muted)",
 };
 // Las barras van con el color pleno; la LETRA con su tono oscuro (-ink), que sí se lee en modo claro.
-const colorPct = (p: number | null) => p === null ? "var(--muted2)" : p >= 85 ? "var(--ok)" : p >= 70 ? "var(--warn)" : "var(--bad)";
-const tintaPct = (p: number | null) => p === null ? "var(--muted2)" : p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)";
+export const colorPct = (p: number | null) => p === null ? "var(--muted2)" : p >= 85 ? "var(--ok)" : p >= 70 ? "var(--warn)" : "var(--bad)";
+export const tintaPct = (p: number | null) => p === null ? "var(--muted2)" : p >= 85 ? "var(--ok-ink)" : p >= 70 ? "var(--warn-ink)" : "var(--bad-ink)";
 const botonAccion: React.CSSProperties = { ...boton, width: "auto", flex: "1 1 140px", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 44, borderRadius: 10, border: "1px solid var(--line2)", fontSize: 13, fontWeight: 500 };
 
 export default function PortafoliosReportes(p: {

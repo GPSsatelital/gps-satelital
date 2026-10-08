@@ -6,12 +6,12 @@
 import type { ReactNode } from "react";
 import { LayoutDashboard, Banknote, Briefcase, Users, Motorbike } from "lucide-react";
 
-export type TabReportes = "resumen" | "admins" | "nomina" | "grupos" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas";
+export type TabReportes = "resumen" | "admins" | "nomina" | "grupos" | "cruzado" | "visitas" | "cartera" | "convenios" | "flota" | "guardadas" | "entregas";
 
 export const SECCIONES: Array<{ clave: string; etiqueta: string; icono: ReactNode; partes: Array<{ tab: TabReportes; etiqueta: string }> }> = [
   { clave: "resumen", etiqueta: "Resumen", icono: <LayoutDashboard size={18} aria-hidden="true" />, partes: [{ tab: "resumen", etiqueta: "Resumen" }] },
   { clave: "cobranza", etiqueta: "Cobranza", icono: <Banknote size={18} aria-hidden="true" />, partes: [{ tab: "cartera", etiqueta: "Cartera" }, { tab: "convenios", etiqueta: "Acuerdos" }] },
-  { clave: "portafolios", etiqueta: "Portafolios", icono: <Briefcase size={18} aria-hidden="true" />, partes: [{ tab: "grupos", etiqueta: "Por grupo" }, { tab: "admins", etiqueta: "Por cobrador" }] },
+  { clave: "portafolios", etiqueta: "Portafolios", icono: <Briefcase size={18} aria-hidden="true" />, partes: [{ tab: "grupos", etiqueta: "Por grupo" }, { tab: "admins", etiqueta: "Por cobrador" }, { tab: "cruzado", etiqueta: "Cruzado" }] },
   { clave: "equipo", etiqueta: "Equipo", icono: <Users size={18} aria-hidden="true" />, partes: [{ tab: "nomina", etiqueta: "Nómina" }, { tab: "visitas", etiqueta: "Visitas" }] },
   { clave: "flota", etiqueta: "Flota", icono: <Motorbike size={18} aria-hidden="true" />, partes: [{ tab: "flota", etiqueta: "Motos" }, { tab: "guardadas", etiqueta: "Guardadas" }, { tab: "entregas", etiqueta: "Entregas" }] },
 ];

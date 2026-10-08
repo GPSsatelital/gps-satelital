@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Cómo usar Reportes — MotoGestión</title>
+<title>Cómo usar Reportes — MotoGestión (por preguntas)</title>
 <style>
   @page { size: A4; margin: 14mm 14mm 16mm; }
   * { box-sizing: border-box; }
@@ -93,6 +93,22 @@
   ol.marcas ul.simple { margin-top: 4px; }
   .anillo-ej { display: inline-block; width: 16px; height: 12px; border: 2px solid #0284c7; border-radius: 4px;
                box-shadow: 0 0 0 2px rgba(2, 132, 199, .22); vertical-align: -1px; margin: 0 2px; }
+  /* ── Versión 3 (8-oct): el manual por PREGUNTAS. El camino de botones de cada pregunta, igual que en
+     la capacitación: fichas numeradas con una flecha entre una y otra. ── */
+  .ruta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 4px; margin: 10px 0 12px; }
+  .ruta .etq { width: 100%; font-size: 9pt; font-weight: 700; letter-spacing: 1.5px; color: #0284c7; text-transform: uppercase; }
+  .ruta .r { display: inline-flex; align-items: center; gap: 5px; background: #e0f2fe; border: 1.5px solid #7dd3fc;
+             border-radius: 999px; padding: 2px 10px 2px 3px; font-size: 10.5pt; font-weight: 600; color: #0c4a6e; white-space: nowrap; }
+  .ruta .r i { font-style: normal; display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px;
+               border-radius: 50%; background: #0284c7; color: #fff; font-size: 8.5pt; font-weight: 700; }
+  .ruta .f { color: #0284c7; font-size: 13pt; line-height: 1; }
+  .grupo-pregs { margin: 10px 0 2px; font-size: 9.5pt; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #0284c7; }
+  .preg { display: flex; align-items: baseline; gap: 6px; font-size: 10.5pt; line-height: 1.35; padding: 1px 0; }
+  .preg .n { width: 22px; color: #64748b; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .preg .t { flex: 1; }
+  .preg .lin { flex: 1; border-bottom: 1.5px dotted #cbd5e1; margin: 0 4px; transform: translateY(-3px); min-width: 20px; }
+  .preg .p { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .indice-dos { columns: 1; }
 </style>
 </head>
 <body>
@@ -101,15 +117,22 @@
 <section class="pag portada">
   <div><span class="placa">MOTOGESTIÓN</span></div>
   <h1>Cómo usar<br>Reportes</h1>
-  <p class="sub">Ver cómo va la empresa y bajar los informes.</p>
+  <p class="sub">Según lo que quiera saber: dónde buscarlo y qué tocar.</p>
   <p class="sub">Club de Moteros — Cartagena</p>
-  <p class="fecha">6 de octubre de 2026 · Versión 2</p>
+  <p class="fecha">8 de octubre de 2026 · Versión 3 (por preguntas)</p>
 
   <div class="aviso">
     <b>Este manual es interno.</b><br>
     Las fotos son de la aplicación de verdad, con clientes de verdad y plata de verdad.
     No lo comparta con nadie de afuera de la empresa.
   </div>
+</section>
+
+<!-- ═══════════════ ÍNDICE: ¿QUÉ QUIERE SABER? ═══════════════ -->
+<section class="pag">
+  <h2>¿Qué quiere saber?</h2>
+  <div class="paraque">Busque su pregunta y vaya a la página. Cada página dice <b>por dónde llegar</b> y <b>qué mirar</b>.</div>
+  <div id="indice"></div>
 </section>
 
 <!-- ═══════════════ ANTES DE EMPEZAR ═══════════════ -->
@@ -131,37 +154,29 @@
   <p>De los mismos pagos, contratos y acuerdos que usa <b>Cartera</b>.
     Si Reportes dice que un cliente debe $250.000, Cartera le cobra $250.000.</p>
 
-  <h3>Cómo leer este manual</h3>
+  <h3>Cómo leer cada página</h3>
   <ul class="simple">
+    <li>Arriba, <b>la pregunta</b>.</li>
+    <li>Debajo, <b>Cómo llegar</b>: los botones que hay que tocar, en orden.
+      <div class="ruta" style="margin:6px 0"><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Cobranza</span></div></li>
     <li>A la izquierda, <b>la foto de la pantalla</b> tal como se ve en el celular.</li>
     <li>Cada cosa que se explica tiene un <b>número</b> <span class="num">1</span> con una línea
-      que llega hasta ella.</li>
-    <li>A la derecha, el <b>mismo número</b> dice qué es.</li>
+      que llega hasta ella. A la derecha, el <b>mismo número</b> dice qué es.</li>
     <li>Un <b>anillo azul</b> <span class="anillo-ej"></span> marca el botón que hay que tocar.</li>
   </ul>
 
-  <h3>Lo que va a encontrar</h3>
-  <ol class="indice">
-    <li>Cómo se entra y cómo moverse</li>
-    <li>Los filtros: grupo, cobrador y fechas</li>
-    <li>Resumen</li>
-    <li>Cobranza: Cartera y Acuerdos</li>
-    <li>Portafolios: por grupo y por cobrador</li>
-    <li>Equipo: Nómina y Visitas</li>
-    <li>Flota: Motos, Guardadas y Entregas</li>
-    <li>Bajar un Excel</li>
-    <li>Bajar el informe en PDF</li>
-    <li>Cómo se cuentan las cifras</li>
-    <li>Si algo se ve raro</li>
-    <li>Reportes en una hoja</li>
-  </ol>
+  <h3>En el computador</h3>
+  <p>Es igual, pero <b>Reportes</b> está en la barra de la izquierda (no hay que tocar «Más»).</p>
+
+  <div class="bien"><b>Las cifras de las fotos son las del día en que se tomaron.</b> Las suyas serán otras:
+    lo que importa es dónde está cada cosa.</div>
 </section>
 
-<!-- ═══════════════ 1 · ENTRAR Y MOVERSE ═══════════════ -->
+<!-- ═══════════════ CÓMO SE ENTRA ═══════════════ -->
 <section class="pag">
-  <h2><span class="paso">Parte 1</span>Cómo se entra y cómo moverse</h2>
+  <h2>Cómo se entra a Reportes</h2>
 
-  <div class="paraque">Toque <b>Más</b>, abajo a la derecha (con el anillo azul), y luego <b>Reportes</b>.</div>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más (abajo a la derecha)</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span></div>
 
   <div class="fila">
     <div class="foto">
@@ -169,7 +184,6 @@
       <div class="cap">Pantalla real · Más → Reportes</div>
     </div>
     <div class="texto">
-      <h3>Lo que ve de arriba a abajo</h3>
       <ol class="marcas">
         <li><span class="num">1</span><span><b>Recaudado hoy</b>: la plata que ha entrado hoy.</span></li>
         <li><span class="num">2</span><span><b>Las cinco secciones</b>. Toque una para cambiar.</span></li>
@@ -188,87 +202,17 @@
     <tr><th>Sección</th><th>Responde</th></tr>
     <tr><td><b>Resumen</b></td><td>¿Cómo nos fue? Cuánto entró y si se pagó lo que se debía.</td></tr>
     <tr><td><b>Cobranza</b></td><td>¿Cuánto nos deben hoy? Y cómo van los acuerdos de pago.</td></tr>
-    <tr><td><b>Portafolios</b></td><td>¿Cómo va cada grupo y cada cobrador?</td></tr>
+    <tr><td><b>Portafolios</b></td><td>¿Cómo va cada grupo, cada cobrador, y cada cobrador en cada grupo?</td></tr>
     <tr><td><b>Equipo</b></td><td>¿Cuánto se le paga a cada cobrador? ¿Qué visitas se hicieron?</td></tr>
     <tr><td><b>Flota</b></td><td>¿Dónde está cada moto? ¿Cuáles están guardadas o se entregaron?</td></tr>
   </table>
 </section>
 
-<!-- ═══════════════ 2 · FILTROS: VARIOS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 2</span>Los filtros: escoger uno o varios</h2>
+<!-- ════════════════════════ LA PLATA ════════════════════════ -->
 
-  <div class="paraque">Los filtros mandan sobre <b>todo lo que se ve debajo</b>, y sobre lo que se baja.</div>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/02-grupo.png" alt="Escoger grupos"><span class="call der" style="top:27.96%;width:calc(4.10% + 8px)"><b>1</b></span><span class="call" style="top:40.64%;width:calc(6.41% + 8px)"><b>2</b></span><span class="call der" style="top:52.01%;width:calc(6.41% + 8px)"><b>3</b></span><span class="call" style="top:52.01%;width:calc(6.41% + 8px)"><b>4</b></span><span class="call der" style="top:59.00%;width:calc(4.10% + 8px)"><b>5</b></span></div>
-      <div class="cap">Pantalla real · escogiendo el grupo</div>
-    </div>
-    <div class="texto">
-      <h3>Cómo se escoge</h3>
-      <ol class="marcas">
-        <li><span class="num">1</span><span>Toque el cuadro del <b>grupo</b> (o el del <b>cobrador</b>).</span></li>
-        <li><span class="num">2</span><span>Sale la lista. <b>Marque uno o varios.</b></span></li>
-        <li><span class="num">3</span><span><span class="boton">Listo</span> cierra la lista.</span></li>
-      </ol>
-
-      <h3>Para volver a ver todo</h3>
-      <ol class="marcas">
-        <li><span class="num">4</span><span><span class="boton">Todos</span> quita las marcas de esa lista.</span></li>
-        <li><span class="num">5</span><span><span class="boton">Quitar filtros</span> vuelve a toda la empresa.</span></li>
-      </ol>
-
-      <div class="bien">
-        <b>Reportes se acuerda de dónde estaba.</b> Si va a Cartera o a una ficha y vuelve,
-        sigue en la misma sección, con las mismas fechas y filtros.
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ 3 · FILTROS: COMBINADOS Y FECHAS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 2</span>Grupo y cobrador juntos, y las fechas</h2>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/03-combinados.png" alt="Grupo y cobrador combinados"><span class="call der" style="top:27.96%;width:calc(4.10% + 8px)"><b>1</b></span><span class="call" style="top:33.65%;width:calc(4.10% + 8px)"><b>2</b></span><span class="call" style="top:27.96%;width:calc(4.10% + 8px)"><b>3</b></span><span class="call" style="top:39.57%;width:calc(4.10% + 8px)"><b>4</b></span></div>
-      <div class="cap">Pantalla real · COSTA y LUMAR a la vez</div>
-    </div>
-    <div class="texto">
-      <ol class="marcas">
-        <li><span class="num">1</span><span>El <b>grupo</b> escogido: COSTA.</span></li>
-        <li><span class="num">2</span><span>El <b>cobrador</b> escogido: LUMAR.</span></li>
-        <li><span class="num">3</span><span><b>Las fechas.</b></span></li>
-        <li><span class="num">4</span><span><b>«Viendo:»</b> dice todo junto: COSTA · LUMAR AVENDAÑO PINEDA.</span></li>
-      </ol>
-
-      <h3>Los filtros se suman</h3>
-      <table class="reglas">
-        <tr><th>Si escoge</th><th>Ve</th></tr>
-        <tr><td>Un cobrador</td><td>Sus motos, de todos los grupos</td></tr>
-        <tr><td>Un grupo</td><td>Las motos del grupo, de todos sus cobradores</td></tr>
-        <tr><td>Los dos</td><td>Solo las motos de ese cobrador en ese grupo</td></tr>
-        <tr><td>Dos grupos</td><td>Los dos grupos juntos</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <h3>Las fechas</h3>
-  <ul class="simple">
-    <li><b>Hoy, Esta semana, Semana pasada, Últimos 7 días, Este mes, Mes anterior, Últimos 30 días,
-      Este año</b> o <b>Personalizado</b> (usted pone el día de inicio y el de fin).</li>
-    <li>Cambian <b>la plata que entró</b> y <b>el cumplimiento</b>.</li>
-    <li>En <b>Cobranza</b> y <b>Flota</b> no hay fechas: muestran <b>cómo está hoy</b>.</li>
-    <li>En <b>Nómina</b> se escoge <b>la semana</b> con las flechas.</li>
-  </ul>
-</section>
-
-<!-- ═══════════════ 4 · RESUMEN: PLATA ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 3</span>Resumen: la plata que entró</h2>
-
+<section class="pag" data-preg="La plata">
+  <h2><span class="paso">Pregunta 1 · La plata</span>¿Cuánta plata entró hoy, esta semana o este mes?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Resumen</span><span class="f">›</span><span class="r"><i>4</i>Escoja las fechas arriba</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/04-resumen.png" alt="Resumen: recaudado y cumplimiento"><span class="call" style="top:21.45%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:28.67%;width:calc(6.15% + 8px)"><b>2</b></span><span class="call" style="top:38.15%;width:calc(6.15% + 8px)"><b>3</b></span><span class="call" style="top:46.68%;width:calc(6.15% + 8px)"><b>4</b></span><span class="call" style="top:59.36%;width:calc(1.79% + 8px)"><b>5</b></span><span class="call" style="top:14.22%;width:calc(1.79% + 8px)"><b>6</b></span></div>
@@ -286,124 +230,17 @@
         <li><span class="num">6</span><span><b>«Cifras verificadas: todo cuadra»</b>: la app revisó sola
           que las cuentas cuadren. Si dice <b>«Hay cifras que no cuadran»</b>, tóquelo y avise.</span></li>
       </ol>
+      <h3>Las fechas</h3>
+      <p><b>Hoy, Esta semana, Semana pasada, Últimos 7 días, Este mes, Mes anterior, Últimos 30 días,
+        Este año</b> o <b>Personalizado</b> (usted pone el día de inicio y el de fin).</p>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════ 5 · RESUMEN: CLIENTES ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 3</span>Resumen: cómo están los clientes</h2>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/05-resumen-estados.png" alt="Cómo están los clientes"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:72.63%;width:calc(1.79% + 8px)"><b>2</b></span></div>
-      <div class="cap">Pantalla real · Resumen, más abajo</div>
-    </div>
-    <div class="texto">
-      <ol class="marcas">
-        <li><span class="num">1</span><span><b>Cómo están los clientes.</b> Cada uno en una sola fila:
-          <ul class="simple">
-            <li><b>Al día</b>: no le falta nada vencido.</li>
-            <li><b>Gabela</b>: le tocaba ayer; hoy es su día de gracia.</li>
-            <li><b>En mora</b>: tiene una cuota vencida. Un abono a medias no lo saca.</li>
-            <li><b>En recolección</b>: en mora hace más de 3 días, con la moto.</li>
-            <li><b>Moto en el taller</b>: debe su semana pero no puede trabajar.</li>
-            <li><b>Retenidas</b>: la empresa tiene la moto.</li>
-            <li><b>En liquidación</b>: la moto ya la tiene otro cliente.</li>
-          </ul></span></li>
-        <li><span class="num">2</span><span><b>Antigüedad de la mora</b>: cuántos días llevan en mora
-          y cuánto deben.</span></li>
-      </ol>
-      <div class="bien">El círculo con la <b>«i»</b> de cada recuadro explica esa cifra.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ 6 · COBRANZA: CARTERA ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 4</span>Cobranza › Cartera: lo que se debe hoy</h2>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/06-cartera.png" alt="Cobranza, Cartera"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:40.52%;width:calc(7.18% + 8px)"><b>2</b></span><span class="call" style="top:56.04%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:78.79%;width:calc(1.79% + 8px)"><b>4</b></span></div>
-      <div class="cap">Pantalla real · Cobranza → Cartera</div>
-    </div>
-    <div class="texto">
-      <ol class="marcas">
-        <li><span class="num">1</span><span><b>Lo que se debe hoy</b>: lo que deben todos hoy. La misma
-          cuenta de Cartera, cliente por cliente.</span></li>
-        <li><span class="num">2</span><span>Partido en tres:
-          <ul class="simple">
-            <li><b>Cuotas del contrato</b>: semanas sin pagar, contando la de hoy.</li>
-            <li><b>Cuotas de acuerdos</b>: lo que toca del acuerdo y no han pagado.</li>
-            <li><b>Deudas</b>: multas, lavadas, daños y deudas de antes.</li>
-          </ul></span></li>
-        <li><span class="num">3</span><span><b>Qué tan cobrable es</b>: cuánto deben los que siguen con
-          su contrato y cuánto los de motos retenidas o en liquidación.</span></li>
-        <li><span class="num">4</span><span><b>Cómo van pagando hoy</b>: al día, en gabela y en mora.</span></li>
-      </ol>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ 7 · TOCAR UN NÚMERO ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 4</span>Todo número se puede tocar</h2>
-
-  <div class="paraque">Toque un número y sale <b>la lista de quiénes son</b>.</div>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/07-hoja.png" alt="Lista al tocar un número"><span class="call" style="top:15.40%;width:calc(2.82% + 8px)"><b>1</b></span><span class="call" style="top:26.66%;width:calc(27.18% + 8px)"><b>2</b></span><span class="call" style="top:42.30%;width:calc(2.82% + 8px)"><b>3</b></span><span class="call" style="top:95.85%;width:calc(1.79% + 8px)"><b>4</b></span><span class="call der" style="top:95.85%;width:calc(1.79% + 8px)"><b>5</b></span><span class="call der" style="top:15.64%;width:calc(0.77% + 8px)"><b>6</b></span></div>
-      <div class="cap">Pantalla real · tocando «Cuotas del contrato»</div>
-    </div>
-    <div class="texto">
-      <ol class="marcas">
-        <li><span class="num">1</span><span><b>Qué es</b> la cifra y cuánto suma.</span></li>
-        <li><span class="num">2</span><span>Botones para <b>ver solo una parte</b>: retenidas, en mora, al día…</span></li>
-        <li><span class="num">3</span><span>Cada cliente con su <b>placa</b>, <b>cómo va</b> y cuánto debe.
-          Tóquelo para ir a <b>su ficha</b>.</span></li>
-        <li><span class="num">4</span><span><span class="boton">Abrir en Cartera</span> lo lleva a cobrar,
-          con el mismo filtro.</span></li>
-        <li><span class="num">5</span><span><span class="boton">Descargar lista</span> baja esa lista para Excel.</span></li>
-        <li><span class="num">6</span><span>La <b>X</b> cierra la lista.</span></li>
-      </ol>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ 8 · COBRANZA: ACUERDOS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 4</span>Cobranza › Acuerdos</h2>
-
-  <div class="fila">
-    <div class="foto">
-      <div class="lienzo"><img src="img/08-acuerdos.png" alt="Cobranza, Acuerdos"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:53.44%;width:calc(1.79% + 8px)"><b>2</b></span><span class="call" style="top:62.91%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:86.61%;width:calc(1.79% + 8px)"><b>4</b></span></div>
-      <div class="cap">Pantalla real · Cobranza → Acuerdos</div>
-    </div>
-    <div class="texto">
-      <ol class="marcas">
-        <li><span class="num">1</span><span><b>Acuerdos de pago</b>: cuántos se están cobrando, cuánto se pactó,
-          cuánto se ha pagado, cuánto <b>falta</b> y cuánto está <b>atrasado</b> (la misma cifra de
-          «Cuotas de acuerdos» en Cartera).</span></li>
-        <li><span class="num">2</span><span>Los que <b>vencen en los próximos 14 días</b> y cuánto les falta.</span></li>
-        <li><span class="num">3</span><span><b>Cómo van</b>: al día, atrasados y vencidos. Y cuántos no han
-          pagado ni un peso.</span></li>
-        <li><span class="num">4</span><span><b>Quién los lleva</b>: cada cobrador con sus acuerdos y su atraso.
-          Toque uno para ver solo los suyos.</span></li>
-      </ol>
-      <div class="bien">Abajo, <span class="boton">Ver también los ya pagados</span> suma los acuerdos que
-        ya se terminaron de pagar.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════ 9 · PORTAFOLIOS POR GRUPO ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 5</span>Portafolios › Por grupo</h2>
-
+<section class="pag" data-preg="La plata">
+  <h2><span class="paso">Pregunta 2 · La plata</span>¿Cuánto entró de cada grupo?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Portafolios</span><span class="f">›</span><span class="r"><i>4</i>Por grupo</span></div>
   <div class="paraque">Cada grupo es un portafolio aparte: RASTREADOR, COSTA y PRADERA.</div>
-
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/09-por-grupo.png" alt="Portafolios por grupo"><span class="call" style="top:61.37%;width:calc(12.82% + 8px)"><b>1</b></span><span class="call der" style="top:57.58%;width:calc(8.21% + 8px)"><b>2</b></span><span class="call" style="top:81.99%;width:calc(8.21% + 8px)"><b>3</b></span><span class="call der" style="top:38.86%;width:calc(12.05% + 8px)"><b>4</b></span></div>
@@ -425,10 +262,139 @@
   </div>
 </section>
 
-<!-- ═══════════════ 10 · PORTAFOLIOS POR COBRADOR ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 5</span>Portafolios › Por cobrador</h2>
+<section class="pag" data-preg="La plata">
+  <h2><span class="paso">Pregunta 3 · La plata</span>¿Cuánto nos deben hoy, y de qué?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Cobranza</span><span class="f">›</span><span class="r"><i>4</i>Cartera</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/06-cartera.png" alt="Cobranza, Cartera"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:40.52%;width:calc(7.18% + 8px)"><b>2</b></span><span class="call" style="top:56.04%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:78.79%;width:calc(1.79% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · Cobranza → Cartera</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Lo que se debe hoy</b>: lo que deben todos hoy. La misma
+          cuenta de Cartera, cliente por cliente.</span></li>
+        <li><span class="num">2</span><span>Partido en tres:
+          <ul class="simple">
+            <li><b>Cuotas del contrato</b>: semanas sin pagar, contando la de hoy.</li>
+            <li><b>Cuotas de acuerdos</b>: lo que toca del acuerdo y no han pagado.</li>
+            <li><b>Deudas</b>: multas, lavadas, daños y deudas de antes.</li>
+          </ul></span></li>
+        <li><span class="num">3</span><span><b>Qué tan cobrable es</b>: cuánto deben los que siguen con
+          su contrato y cuánto los de motos retenidas o en liquidación.</span></li>
+        <li><span class="num">4</span><span><b>Cómo van pagando hoy</b>: al día, en gabela y en mora.</span></li>
+      </ol>
+      <div class="bien">Aquí no hay fechas: Cobranza muestra <b>cómo está hoy</b>.</div>
+    </div>
+  </div>
+</section>
 
+<section class="pag" data-preg="La plata">
+  <h2><span class="paso">Pregunta 4 · La plata</span>¿Quiénes son los que más deben? ¿Quién tiene plata a su favor?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Cobranza</span><span class="f">›</span><span class="r"><i>4</i>Cartera</span><span class="f">›</span><span class="r"><i>5</i>Baje hasta «Los que más deben»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/24-mas-deben.png" alt="Los que más deben y la plata a su favor"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:79.74%;width:calc(1.79% + 8px)"><b>2</b></span></div>
+      <div class="cap">Pantalla real · Cobranza → Cartera, más abajo</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Los que más deben</b>: los cinco con la deuda más grande,
+          con su placa, su grupo y cómo van. Al final, <b>«Ver los … que deben»</b> abre la lista completa.</span></li>
+        <li><span class="num">2</span><span><b>Plata de los clientes a su favor</b>: cuántos tienen plata a su favor
+          y cuánto suma. Tóquelo para ver quiénes son.</span></li>
+      </ol>
+      <div class="ojo"><b>El saldo a favor no se descuenta solo.</b> Es plata del cliente: se aplica a mano,
+        desde su contrato, cuando él lo pida.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ LOS CLIENTES ════════════════════════ -->
+
+<section class="pag" data-preg="Los clientes">
+  <h2><span class="paso">Pregunta 5 · Los clientes</span>¿Cuántos están al día, en gabela y en mora? ¿Desde hace cuánto?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Resumen</span><span class="f">›</span><span class="r"><i>4</i>Baje hasta «Cómo están los clientes»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/05-resumen-estados.png" alt="Cómo están los clientes"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:72.63%;width:calc(1.79% + 8px)"><b>2</b></span></div>
+      <div class="cap">Pantalla real · Resumen, más abajo</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Cómo están los clientes.</b> Cada uno en una sola fila:
+          <ul class="simple">
+            <li><b>Al día</b>: no le falta nada vencido.</li>
+            <li><b>Gabela</b>: le tocaba ayer; hoy es su día de gracia.</li>
+            <li><b>En mora</b>: tiene una cuota vencida. Un abono a medias no lo saca.</li>
+            <li><b>En recolección</b>: en mora hace más de 3 días, con la moto.</li>
+            <li><b>Moto en el taller</b>: debe su semana pero no puede trabajar.</li>
+            <li><b>Retenidas</b>: la empresa tiene la moto.</li>
+            <li><b>En liquidación</b>: la moto ya la tiene otro cliente.</li>
+          </ul></span></li>
+        <li><span class="num">2</span><span><b>Antigüedad de la mora</b>: cuántos días llevan en mora
+          y cuánto deben.</span></li>
+      </ol>
+      <div class="bien">Toque cualquier fila y sale la lista de esos clientes.</div>
+    </div>
+  </div>
+</section>
+
+<section class="pag" data-preg="Los clientes">
+  <h2><span class="paso">Pregunta 6 · Los clientes</span>¿A quién hay que recogerle la moto?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Resumen</span><span class="f">›</span><span class="r"><i>4</i>Toque el aviso rojo «… en la cola de recolección»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/25-recoleccion.png" alt="La lista de recolección"><span class="call" style="top:15.40%;width:calc(2.82% + 8px)"><b>1</b></span><span class="call" style="top:30.21%;width:calc(2.82% + 8px)"><b>2</b></span><span class="call" style="top:95.85%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call der" style="top:95.85%;width:calc(1.79% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · el aviso de recolección, abierto</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>En recolección</b>: cuántos son. Debajo dice la regla:
+          más de 3 días en mora, sin plazo extra y con la moto en la calle.</span></li>
+        <li><span class="num">2</span><span>Cada cliente con su <b>placa</b>, sus <b>días en mora</b> y cuánto debe.
+          El que más días lleva, primero. Tóquelo para ir a su ficha.</span></li>
+        <li><span class="num">3</span><span><span class="boton">Abrir en Cartera</span> lo lleva a
+          gestionarlos, con el mismo filtro.</span></li>
+        <li><span class="num">4</span><span><span class="boton">Descargar lista</span> baja esa lista.</span></li>
+      </ol>
+      <div class="ojo"><b>Los días en mora no se reinician con un abono.</b> Un cliente que abonó ayer
+        puede seguir en la cola: lo que manda es la cuota vencida, no el último pago.</div>
+    </div>
+  </div>
+</section>
+
+<section class="pag" data-preg="Los clientes">
+  <h2><span class="paso">Pregunta 7 · Los clientes</span>¿Cómo van los acuerdos de pago? ¿Cuáles vencen pronto?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Cobranza</span><span class="f">›</span><span class="r"><i>4</i>Acuerdos</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/08-acuerdos.png" alt="Cobranza, Acuerdos"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:53.44%;width:calc(1.79% + 8px)"><b>2</b></span><span class="call" style="top:62.91%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:86.61%;width:calc(1.79% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · Cobranza → Acuerdos</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Acuerdos de pago</b>: cuántos se están cobrando, cuánto se pactó,
+          cuánto se ha pagado, cuánto <b>falta</b> y cuánto está <b>atrasado</b>.</span></li>
+        <li><span class="num">2</span><span>Los que <b>vencen en los próximos 14 días</b> y cuánto les falta.</span></li>
+        <li><span class="num">3</span><span><b>Cómo van</b>: al día, atrasados y vencidos. Y cuántos no han
+          pagado ni un peso.</span></li>
+        <li><span class="num">4</span><span><b>Quién los lleva</b>: cada cobrador con sus acuerdos y su atraso.
+          Toque uno para ver solo los suyos.</span></li>
+      </ol>
+      <div class="bien">Abajo, <span class="boton">Ver también los ya pagados</span> suma los acuerdos que
+        ya se terminaron de pagar.</div>
+      <div class="ojo"><b>Un acuerdo vencido se sigue cobrando.</b> No se perdona: queda como
+        «incumplido» y la app lo sigue pidiendo.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ LOS COBRADORES ════════════════════════ -->
+
+<section class="pag" data-preg="Los cobradores">
+  <h2><span class="paso">Pregunta 8 · Los cobradores</span>¿Cómo va cada cobrador?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Portafolios</span><span class="f">›</span><span class="r"><i>4</i>Por cobrador</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/10-por-cobrador.png" alt="Portafolios por cobrador"><span class="call" style="top:62.56%;width:calc(8.21% + 8px)"><b>1</b></span><span class="call der" style="top:57.58%;width:calc(8.21% + 8px)"><b>2</b></span><span class="call" style="top:90.76%;width:calc(8.21% + 8px)"><b>3</b></span></div>
@@ -436,7 +402,8 @@
     </div>
     <div class="texto">
       <ol class="marcas">
-        <li><span class="num">1</span><span>Cada <b>cobrador</b>, con cuántas motos tiene y cuántas trabajan.</span></li>
+        <li><span class="num">1</span><span>Cada <b>cobrador</b>, con cuántas motos tiene y cuántas trabajan.
+          Del que más cumplió al que menos.</span></li>
         <li><span class="num">2</span><span><b>Entró</b>: la plata de sus motos. <b>Cumplió</b>: de lo que les
           tocaba pagar a sus clientes, cuánto pagaron.</span></li>
         <li><span class="num">3</span><span><b>Sin cobrador</b>: motos sin cobrador asignado. Se le asigna en
@@ -449,12 +416,63 @@
   </div>
 </section>
 
-<!-- ═══════════════ 11 · EQUIPO: NÓMINA ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 6</span>Equipo › Nómina</h2>
+<section class="pag" data-preg="Los cobradores">
+  <h2><span class="paso">Pregunta 9 · Los cobradores</span>¿Qué motos tiene cada cobrador, y de qué grupo?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Portafolios</span><span class="f">›</span><span class="r"><i>4</i>Cruzado</span></div>
+  <div class="paraque">Un solo cuadro: <b>cada cobrador en cada grupo</b>. Cada fila es un cobrador y cada columna un grupo.</div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/20-cruzado.png" alt="Portafolios, Cruzado"><span class="call der" style="top:41.00%;width:calc(6.15% + 8px)"><b>1</b></span><span class="call" style="top:50.83%;width:calc(30.51% + 8px)"><b>2</b></span><span class="call" style="top:80.69%;width:calc(6.67% + 8px)"><b>3</b></span><span class="call" style="top:86.61%;width:calc(6.67% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · Portafolios → Cruzado</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Qué quiere ver</b>: <span class="boton">Motos</span>,
+          <span class="boton">Paradas</span>, <span class="boton">Debe hoy</span>,
+          <span class="boton">Recaudado</span> o <span class="boton">Cumplimiento</span>.
+          Es el mismo cuadro: cambia lo que se cuenta.</span></li>
+        <li><span class="num">2</span><span><b>Los grupos</b>, con su color. En el celular RASTREADOR sale
+          corto: «RASTR.».</span></li>
+        <li><span class="num">3</span><span><b>Sin cobrador</b>, en naranja: motos que no tienen cobrador.
+          No le cuentan a nadie en la nómina: asígneselas en <b>Motos</b>.</span></li>
+        <li><span class="num">4</span><span><b>Total</b>: abajo, el de cada grupo; a la derecha, el de
+          cada cobrador. Dan lo mismo que «Por grupo» y «Por cobrador».</span></li>
+      </ol>
+      <div class="bien">Toque cualquier número y salen <b>esas motos</b>: la placa, el cliente y dónde está.</div>
+    </div>
+  </div>
+</section>
 
-  <div class="paraque">Cuánto se le paga a cada cobrador <b>en una semana</b>.</div>
+<section class="pag" data-preg="Los cobradores">
+  <h2><span class="paso">Pregunta 10 · Los cobradores</span>¿Quién va bien en qué grupo?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Portafolios</span><span class="f">›</span><span class="r"><i>4</i>Cruzado</span><span class="f">›</span><span class="r"><i>5</i>Cumplimiento</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/21-cruzado-cumplimiento.png" alt="Cruzado, cumplimiento"><span class="anillo" style="left:7.18%;top:38.98%;width:28.46%;height:4.74%"></span><span class="call der" style="top:46.80%;width:calc(6.15% + 8px)"><b>1</b></span><span class="call der" style="top:57.46%;width:calc(6.67% + 8px)"><b>2</b></span><span class="call" style="top:86.61%;width:calc(6.67% + 8px)"><b>3</b></span></div>
+      <div class="cap">Pantalla real · Cruzado → Cumplimiento</div>
+    </div>
+    <div class="texto">
+      <p>Toque <span class="boton">Cumplimiento</span> (con el anillo azul).</p>
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Los colores</b>: verde 85 % o más, amarillo 70 a 84 %,
+          rojo menos de 70 %. Y el período: las fechas de arriba.</span></li>
+        <li><span class="num">2</span><span>A la derecha, <b>el total de cada cobrador</b>: de lo que se les
+          vencía a sus clientes, cuánto se pagó con plata. Cada casilla es lo mismo, pero solo en ese grupo.</span></li>
+        <li><span class="num">3</span><span><b>Total</b> de cada grupo y de toda la empresa.</span></li>
+      </ol>
+      <h3>Las otras vistas</h3>
+      <ul class="simple">
+        <li><span class="boton">Debe hoy</span>: cuánto deben hoy sus clientes en cada grupo.</li>
+        <li><span class="boton">Recaudado</span>: cuánto entró de sus motos en esas fechas.</li>
+      </ul>
+      <div class="bien">Arriba, <span class="boton">Excel</span> baja el cuadro con <b>una hoja por cada vista</b>.</div>
+    </div>
+  </div>
+</section>
 
+<section class="pag" data-preg="Los cobradores">
+  <h2><span class="paso">Pregunta 11 · Los cobradores</span>¿Cuánto se le paga a cada cobrador esta semana?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Equipo</span><span class="f">›</span><span class="r"><i>4</i>Nómina</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/11-nomina.png" alt="Equipo, Nómina"><span class="call" style="top:13.03%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>2</b></span><span class="call" style="top:55.69%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:81.99%;width:calc(1.79% + 8px)"><b>4</b></span></div>
@@ -468,11 +486,10 @@
         <li><span class="num">3</span><span><b>Cuánto vale cada cosa</b>: semana a tiempo, semana atrasada,
           retención, visita y referido.</span></li>
         <li><span class="num">4</span><span><b>Por cobrador</b>: cuánto se le paga a cada uno. Tóquelo para
-          ver pago por pago.</span></li>
+          ver pago por pago. Al final, <span class="boton">Ver sus motos por grupo</span> lleva al cuadro de la pregunta 9.</span></li>
       </ol>
     </div>
   </div>
-
   <div class="ojo">
     <b>Al tocar un cobrador salen dos botones.</b>
     <span class="boton">Desprendible</span> imprime su hoja de pago.
@@ -481,13 +498,12 @@
   </div>
 </section>
 
-<!-- ═══════════════ 12 · EQUIPO: VISITAS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 6</span>Equipo › Visitas</h2>
-
+<section class="pag" data-preg="Los cobradores">
+  <h2><span class="paso">Pregunta 12 · Los cobradores</span>¿Cuántas visitas se hicieron, y quién las hizo?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Equipo</span><span class="f">›</span><span class="r"><i>4</i>Visitas</span></div>
   <div class="fila">
     <div class="foto">
-      <div class="lienzo"><img src="img/12-visitas.png" alt="Equipo, Visitas"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:42.06%;width:calc(1.79% + 8px)"><b>2</b></span><span class="call" style="top:67.54%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:87.68%;width:calc(1.79% + 8px)"><b>4</b></span></div>
+      <div class="lienzo"><img src="img/12-visitas.png" alt="Equipo, Visitas"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:47.51%;width:calc(1.79% + 8px)"><b>2</b></span><span class="call" style="top:72.99%;width:calc(1.79% + 8px)"><b>3</b></span><span class="call" style="top:93.13%;width:calc(1.79% + 8px)"><b>4</b></span></div>
       <div class="cap">Pantalla real · Equipo → Visitas</div>
     </div>
     <div class="texto">
@@ -504,12 +520,11 @@
   </div>
 </section>
 
-<!-- ═══════════════ 13 · FLOTA: MOTOS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 7</span>Flota › Motos</h2>
+<!-- ════════════════════════ LAS MOTOS ════════════════════════ -->
 
-  <div class="paraque">Dónde está <b>cada moto hoy</b>.</div>
-
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 13 · Las motos</span>¿Dónde está cada moto hoy?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Motos</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/13-flota.png" alt="Flota, Motos"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:60.66%;width:calc(1.79% + 8px)"><b>2</b></span></div>
@@ -527,18 +542,36 @@
           </ul></span></li>
         <li><span class="num">2</span><span><b>Por grupo</b>: cuántas tiene cada grupo y cuántas trabajan.</span></li>
       </ol>
-      <p>Más abajo, <b>los papeles</b>: SOAT y tecnomecánica vencidos, por vencer en 30 días y sin fecha.</p>
       <div class="bien"><b>Las motos vendidas no se cuentan.</b> Su historia sigue en su ficha.</div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════ 14 · FLOTA: GUARDADAS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 7</span>Flota › Guardadas</h2>
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 14 · Las motos</span>¿Quién tiene las motos de cada grupo? ¿Cuáles están paradas?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Motos</span><span class="f">›</span><span class="r"><i>5</i>Baje hasta «Cada cobrador en cada grupo»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/22-flota-cuadro.png" alt="Flota, cada cobrador en cada grupo"><span class="call" style="top:21.56%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call der" style="top:26.30%;width:calc(54.62% + 8px)"><b>2</b></span><span class="call" style="top:63.63%;width:calc(6.67% + 8px)"><b>3</b></span><span class="call" style="top:76.18%;width:calc(6.15% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · Flota → Motos, más abajo</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span>El mismo cuadro de la pregunta 9, aquí solo con las motos.
+          Lea <b>cada columna</b>: quién tiene las motos de ese grupo.</span></li>
+        <li><span class="num">2</span><span><span class="boton">Paradas</span>: las que hoy no están
+          trabajando con un cliente.</span></li>
+        <li><span class="num">3</span><span><b>Sin cobrador</b>: hay que asignárselas a alguien en <b>Motos</b>.</span></li>
+        <li><span class="num">4</span><span><b>«Ver lo que deben, lo recaudado y el cumplimiento»</b> lo lleva al
+          cuadro completo, en Portafolios.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
 
-  <div class="paraque">Las motos <b>guardadas en la empresa</b>, que no están trabajando.</div>
-
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 15 · Las motos</span>¿Qué motos están guardadas, y desde cuándo?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Guardadas</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/14-guardadas.png" alt="Flota, Guardadas"><span class="call" style="top:47.99%;width:calc(1.79% + 8px)"><b>1</b></span><span class="call" style="top:58.65%;width:calc(8.97% + 8px)"><b>2</b></span><span class="call" style="top:68.60%;width:calc(6.15% + 8px)"><b>3</b></span><span class="call" style="top:81.75%;width:calc(1.79% + 8px)"><b>4</b></span></div>
@@ -558,12 +591,31 @@
   </div>
 </section>
 
-<!-- ═══════════════ 15 · FLOTA: ENTREGAS ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 7</span>Flota › Entregas</h2>
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 16 · Las motos</span>¿Qué papeles están vencidos o por vencer?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Motos</span><span class="f">›</span><span class="r"><i>5</i>Baje hasta «Papeles de las motos»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/23-papeles.png" alt="Los papeles de las motos"><span class="call" style="top:74.53%;width:calc(7.18% + 8px)"><b>1</b></span><span class="call" style="top:79.74%;width:calc(7.18% + 8px)"><b>2</b></span><span class="call" style="top:84.95%;width:calc(7.18% + 8px)"><b>3</b></span></div>
+      <div class="cap">Pantalla real · Flota → Motos, abajo</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span>Con el <b>SOAT o la tecnomecánica vencidos</b>: esa moto no
+          debería circular.</span></li>
+        <li><span class="num">2</span><span>Los que <b>vencen en los próximos 30 días</b>.</span></li>
+        <li><span class="num">3</span><span>Motos <b>sin fecha de SOAT anotada</b>: no se sabe si está al día.</span></li>
+      </ol>
+      <div class="bien">Toque una fila para ver cuáles motos son. El aviso de arriba de Reportes dice lo mismo.</div>
+      <div class="ojo"><b>Si un papel sale vencido hace años</b>, la fecha quedó mal escrita (por ejemplo,
+        el año 0028). Corríjala en <b>Motos</b>, editando esa moto.</div>
+    </div>
+  </div>
+</section>
 
-  <div class="paraque">Las motos que se le <b>entregaron a un cliente</b> en esas fechas.</div>
-
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 17 · Las motos</span>¿Cuántas motos se entregaron, y con sus papeles completos?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Entregas</span><span class="f">›</span><span class="r"><i>5</i>Escoja las fechas</span></div>
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/17-entregas.png" alt="Flota, Entregas"><span class="call" style="top:52.96%;width:calc(5.90% + 8px)"><b>1</b></span><span class="call der" style="top:54.38%;width:calc(5.90% + 8px)"><b>2</b></span><span class="call" style="top:68.13%;width:calc(5.90% + 8px)"><b>3</b></span><span class="call der" style="top:66.71%;width:calc(5.90% + 8px)"><b>4</b></span><span class="call" style="top:80.33%;width:calc(1.79% + 8px)"><b>5</b></span><span class="call" style="top:87.91%;width:calc(6.15% + 8px)"><b>6</b></span></div>
@@ -580,17 +632,13 @@
         <li><span class="num">6</span><span><b>Regenerar documentos en blanco</b>: solo si un contrato o un
           pagaré salió en blanco. No lo use si no se lo pidieron.</span></li>
       </ol>
-      <p>Más abajo, <b>una tarjeta por cada entrega</b>: está en la hoja que sigue.</p>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════ 15b · FLOTA: CADA ENTREGA ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 7</span>Flota › Entregas: cada entrega</h2>
-
-  <div class="paraque">Cada moto entregada tiene <b>su tarjeta</b>: sus papeles, sus fotos y su reporte.</div>
-
+<section class="pag" data-preg="Las motos">
+  <h2><span class="paso">Pregunta 18 · Las motos</span>¿Cómo veo el reporte de una entrega?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Más</span><span class="f">›</span><span class="r"><i>2</i>Reportes</span><span class="f">›</span><span class="r"><i>3</i>Flota</span><span class="f">›</span><span class="r"><i>4</i>Entregas</span><span class="f">›</span><span class="r"><i>5</i>Baje hasta la tarjeta de esa moto</span><span class="f">›</span><span class="r"><i>6</i>Resumen</span></div>
   <div class="fila">
     <div class="foto chica">
       <div class="lienzo"><img src="img/18-entrega-tarjeta.png" alt="La tarjeta de una entrega"><span class="call" style="top:27.73%;width:calc(5.90% + 8px)"><b>1</b></span><span class="call" style="top:35.78%;width:calc(5.90% + 8px)"><b>2</b></span><span class="call" style="top:52.84%;width:calc(5.90% + 8px)"><b>3</b></span><span class="call" style="top:59.72%;width:calc(5.90% + 8px)"><b>4</b></span></div>
@@ -608,7 +656,6 @@
       </ol>
     </div>
   </div>
-
   <div class="fila" style="margin-top:12px">
     <div class="foto ancha">
       <div class="lienzo"><img src="img/19-entrega-resumen.png" alt="El reporte de una entrega"><span class="call" style="top:18.11%;width:calc(5.48% + 8px)"><b>1</b></span><span class="call" style="top:26.42%;width:calc(4.05% + 8px)"><b>2</b></span><span class="call" style="top:43.39%;width:calc(5.60% + 8px)"><b>3</b></span><span class="call" style="top:55.92%;width:calc(4.05% + 8px)"><b>4</b></span><span class="call der" style="top:3.08%;width:calc(1.19% + 8px)"><b>5</b></span></div>
@@ -628,59 +675,144 @@
   </div>
 </section>
 
-<!-- ═══════════════ 16 · EXCEL ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 8</span>Bajar un Excel</h2>
+<!-- ════════════════════════ SACAR LA INFORMACIÓN ════════════════════════ -->
 
-  <div class="paraque"><b>Lo que baja es lo que está viendo</b>: las mismas fechas, filtros y cifras.</div>
-
+<section class="pag" data-preg="Sacar la información">
+  <h2><span class="paso">Pregunta 19 · Sacar la información</span>¿Cómo veo solo un grupo, o solo un cobrador?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>En cualquier sección</span><span class="f">›</span><span class="r"><i>2</i>Toque el cuadro del grupo (o del cobrador)</span><span class="f">›</span><span class="r"><i>3</i>Marque</span><span class="f">›</span><span class="r"><i>4</i>Listo</span></div>
+  <div class="paraque">Los filtros mandan sobre <b>todo lo que se ve debajo</b>, y sobre lo que se baja.</div>
   <div class="fila">
     <div class="foto">
-      <div class="lienzo"><img src="img/15-excel.png" alt="Bajar un Excel"><span class="call der" style="top:35.78%;width:calc(23.59% + 8px)"><b>1</b></span><span class="call" style="top:44.19%;width:calc(6.92% + 8px)"><b>2</b></span><span class="call" style="top:50.00%;width:calc(6.92% + 8px)"><b>3</b></span><span class="call" style="top:55.69%;width:calc(6.92% + 8px)"><b>4</b></span></div>
-      <div class="cap">Pantalla real · tocando «Excel» en Cartera</div>
+      <div class="lienzo"><img src="img/02-grupo.png" alt="Escoger grupos"><span class="call der" style="top:27.96%;width:calc(4.10% + 8px)"><b>1</b></span><span class="call" style="top:40.64%;width:calc(6.41% + 8px)"><b>2</b></span><span class="call der" style="top:52.01%;width:calc(6.41% + 8px)"><b>3</b></span><span class="call" style="top:52.01%;width:calc(6.41% + 8px)"><b>4</b></span><span class="call der" style="top:59.00%;width:calc(4.10% + 8px)"><b>5</b></span></div>
+      <div class="cap">Pantalla real · escogiendo el grupo</div>
+    </div>
+    <div class="texto">
+      <h3>Cómo se escoge</h3>
+      <ol class="marcas">
+        <li><span class="num">1</span><span>Toque el cuadro del <b>grupo</b> (o el del <b>cobrador</b>).</span></li>
+        <li><span class="num">2</span><span>Sale la lista. <b>Marque uno o varios.</b></span></li>
+        <li><span class="num">3</span><span><span class="boton">Listo</span> cierra la lista.</span></li>
+      </ol>
+      <h3>Para volver a ver todo</h3>
+      <ol class="marcas">
+        <li><span class="num">4</span><span><span class="boton">Todos</span> quita las marcas de esa lista.</span></li>
+        <li><span class="num">5</span><span><span class="boton">Quitar filtros</span> vuelve a toda la empresa.</span></li>
+      </ol>
+      <div class="bien"><b>Reportes se acuerda de dónde estaba.</b> Si va a Cartera o a una ficha y vuelve,
+        sigue en la misma sección, con las mismas fechas y filtros.</div>
+    </div>
+  </div>
+</section>
+
+<section class="pag" data-preg="Sacar la información">
+  <h2><span class="paso">Pregunta 20 · Sacar la información</span>¿Cómo junto grupo, cobrador y fechas?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Escoja el grupo</span><span class="f">›</span><span class="r"><i>2</i>Escoja el cobrador</span><span class="f">›</span><span class="r"><i>3</i>Escoja las fechas</span><span class="f">›</span><span class="r"><i>4</i>Lea «Viendo:»</span></div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/03-combinados.png" alt="Grupo y cobrador combinados"><span class="call der" style="top:27.96%;width:calc(4.10% + 8px)"><b>1</b></span><span class="call" style="top:33.65%;width:calc(4.10% + 8px)"><b>2</b></span><span class="call" style="top:27.96%;width:calc(4.10% + 8px)"><b>3</b></span><span class="call" style="top:39.57%;width:calc(4.10% + 8px)"><b>4</b></span></div>
+      <div class="cap">Pantalla real · COSTA y LUMAR a la vez</div>
     </div>
     <div class="texto">
       <ol class="marcas">
-        <li><span class="num">1</span><span>Toque <span class="boton">Excel</span>.</span></li>
-        <li><span class="num">2</span><span>Dice <b>qué trae</b> ese archivo.</span></li>
-        <li><span class="num">3</span><span><b>Separar por</b> cobrador o por grupo. Si escogió un cobrador,
+        <li><span class="num">1</span><span>El <b>grupo</b> escogido: COSTA.</span></li>
+        <li><span class="num">2</span><span>El <b>cobrador</b> escogido: LUMAR.</span></li>
+        <li><span class="num">3</span><span><b>Las fechas.</b></span></li>
+        <li><span class="num">4</span><span><b>«Viendo:»</b> dice todo junto: COSTA · LUMAR AVENDAÑO PINEDA.</span></li>
+      </ol>
+      <h3>Los filtros se suman</h3>
+      <table class="reglas">
+        <tr><th>Si escoge</th><th>Ve</th></tr>
+        <tr><td>Un cobrador</td><td>Sus motos, de todos los grupos</td></tr>
+        <tr><td>Un grupo</td><td>Las motos del grupo, de todos sus cobradores</td></tr>
+        <tr><td>Los dos</td><td>Solo las motos de ese cobrador en ese grupo</td></tr>
+        <tr><td>Dos grupos</td><td>Los dos grupos juntos</td></tr>
+      </table>
+    </div>
+  </div>
+  <ul class="simple">
+    <li>Las fechas cambian <b>la plata que entró</b> y <b>el cumplimiento</b>.</li>
+    <li>En <b>Cobranza</b> y <b>Flota</b> no hay fechas: muestran <b>cómo está hoy</b>.
+      En <b>Nómina</b> se escoge <b>la semana</b> con las flechas.</li>
+  </ul>
+</section>
+
+<section class="pag" data-preg="Sacar la información">
+  <h2><span class="paso">Pregunta 21 · Sacar la información</span>¿Quiénes están detrás de un número?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>En cualquier sección</span><span class="f">›</span><span class="r"><i>2</i>Toque el número</span></div>
+  <div class="paraque">Toque un número y sale <b>la lista de quiénes son</b>.</div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/07-hoja.png" alt="Lista al tocar un número"><span class="call" style="top:15.40%;width:calc(2.82% + 8px)"><b>1</b></span><span class="call" style="top:26.66%;width:calc(27.18% + 8px)"><b>2</b></span><span class="call" style="top:42.30%;width:calc(2.82% + 8px)"><b>3</b></span><span class="call" style="top:95.85%;width:calc(1.79% + 8px)"><b>4</b></span><span class="call der" style="top:95.85%;width:calc(1.79% + 8px)"><b>5</b></span><span class="call der" style="top:15.64%;width:calc(0.77% + 8px)"><b>6</b></span></div>
+      <div class="cap">Pantalla real · tocando «Cuotas del contrato»</div>
+    </div>
+    <div class="texto">
+      <ol class="marcas">
+        <li><span class="num">1</span><span><b>Qué es</b> la cifra y cuánto suma.</span></li>
+        <li><span class="num">2</span><span>Botones para <b>ver solo una parte</b>: retenidas, en mora, al día…</span></li>
+        <li><span class="num">3</span><span>Cada cliente con su <b>placa</b>, <b>cómo va</b> y cuánto debe.
+          Tóquelo para ir a <b>su ficha</b>.</span></li>
+        <li><span class="num">4</span><span><span class="boton">Abrir en Cartera</span> lo lleva a cobrar,
+          con el mismo filtro.</span></li>
+        <li><span class="num">5</span><span><span class="boton">Descargar lista</span> baja esa lista para Excel.</span></li>
+        <li><span class="num">6</span><span>La <b>X</b> cierra la lista.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="pag" data-preg="Sacar la información">
+  <h2><span class="paso">Pregunta 22 · Sacar la información</span>¿Cómo bajo una lista a Excel?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Vaya a la sección</span><span class="f">›</span><span class="r"><i>2</i>Excel</span><span class="f">›</span><span class="r"><i>3</i>Separar por</span><span class="f">›</span><span class="r"><i>4</i>Descargar Excel</span></div>
+  <div class="paraque"><b>Lo que baja es lo que está viendo</b>: las mismas fechas, filtros y cifras.</div>
+  <div class="fila">
+    <div class="foto">
+      <div class="lienzo"><img src="img/15-excel.png" alt="Bajar un Excel"><span class="anillo" style="left:54.10%;top:33.41%;width:21.28%;height:4.74%"></span><span class="call" style="top:44.19%;width:calc(6.92% + 8px)"><b>1</b></span><span class="call" style="top:50.00%;width:calc(6.92% + 8px)"><b>2</b></span><span class="call" style="top:55.69%;width:calc(6.92% + 8px)"><b>3</b></span></div>
+      <div class="cap">Pantalla real · tocando «Excel» en Cartera</div>
+    </div>
+    <div class="texto">
+      <p>Toque <span class="boton">Excel</span> (con el anillo azul).</p>
+      <ol class="marcas">
+        <li><span class="num">1</span><span>Dice <b>qué trae</b> ese archivo.</span></li>
+        <li><span class="num">2</span><span><b>Separar por</b> cobrador o por grupo. Si escogió un cobrador,
           sale por grupo; si escogió un grupo, sale por cobrador.</span></li>
-        <li><span class="num">4</span><span><span class="boton">Descargar Excel</span>.</span></li>
+        <li><span class="num">3</span><span><span class="boton">Descargar Excel</span>.</span></li>
       </ol>
       <p>Arriba del archivo dice <b>con qué filtro se bajó</b>, para que nadie confunda el de un
         cobrador con el de toda la empresa.</p>
     </div>
   </div>
-
   <div class="bien">
-    En <b>Portafolios</b> sale una ventana más para escoger las columnas: toque otra vez
-    <span class="boton">Descargar Excel</span>.<br>
+    En <b>Cruzado</b> el Excel baja de una vez, sin preguntar: trae una hoja por cada vista.<br>
     Si no le salen Excel y PDF, su usuario no tiene el permiso <b>«Descargar datos (Excel / CSV)»</b>.
     Pídaselo al administrador principal.
   </div>
 </section>
 
-<!-- ═══════════════ 17 · QUÉ TRAE CADA EXCEL ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 8</span>Qué trae cada Excel</h2>
-
-  <table class="reglas">
+<section class="pag" data-preg="Sacar la información" data-sigue="1">
+  <h2><span class="paso">Pregunta 22 · Sacar la información</span>¿Qué trae cada Excel?</h2>
+  <table class="reglas" style="font-size:10pt">
     <tr><th>Sección</th><th>El Excel trae</th></tr>
     <tr><td><b>Resumen</b></td><td>Los pagos de esas fechas, uno por uno.</td></tr>
     <tr><td><b>Cobranza › Cartera</b></td><td>Lo que debe cada cliente: cuotas del contrato, cuotas de acuerdos y deudas.</td></tr>
     <tr><td><b>Cobranza › Acuerdos</b></td><td>Cada acuerdo con sus abonos, en orden.</td></tr>
-    <tr><td><b>Portafolios</b></td><td>Cada moto con su estado, lo que pagó y su cumplimiento.</td></tr>
+    <tr><td><b>Portafolios › Por grupo y Por cobrador</b></td><td>Cada moto con su estado, lo que pagó y su cumplimiento.</td></tr>
+    <tr><td><b>Portafolios › Cruzado</b></td><td>El cuadro de cobradores y grupos, una hoja por cada vista:
+      motos, paradas, debe hoy, recaudado y cumplimiento (con sus colores).</td></tr>
     <tr><td><b>Equipo › Nómina</b></td><td>Lo que se le paga a cada cobrador en la semana, pago por pago.</td></tr>
     <tr><td><b>Equipo › Visitas</b></td><td>Las visitas de esas fechas, por quién las hizo.</td></tr>
-    <tr><td><b>Flota › Motos</b></td><td>Cada moto y dónde está. En otra hoja, el SOAT y la tecnomecánica.</td></tr>
+    <tr><td><b>Flota › Motos</b></td><td>Cada moto, dónde está, <b>cuánto debe hoy su cliente</b> y <b>sus días en mora</b>.
+      En otra hoja, el SOAT y la tecnomecánica.</td></tr>
     <tr><td><b>Flota › Guardadas</b></td><td>Las motos guardadas y desde cuándo.</td></tr>
     <tr><td><b>Flota › Entregas</b></td><td>Las motos entregadas en esas fechas, con sus papeles.</td></tr>
   </table>
 
-  <h3>Ejemplo: las columnas de «Lo que se debe hoy»</h3>
-  <table class="reglas">
+  <div class="ojo"><b>El total de «Debe hoy» del Excel de Flota es menor que el de Cobranza.</b> Flota va moto
+    por moto, con el cliente que tiene la moto hoy: no incluye a los clientes en liquidación cuya moto ya
+    tiene otro cliente. El total de todo lo que se debe está en el Excel de Cobranza.</div>
+
+  <h3>Ejemplo: las columnas de «Lo que se debe hoy» (Cobranza)</h3>
+  <table class="reglas" style="font-size:10pt">
     <tr><th>Columna</th><th>Qué es</th></tr>
-    <tr><td><b>Franja de color</b></td><td>El grupo (o el cobrador), cuántos clientes deben y cuánto suman.</td></tr>
     <tr><td><b>Cómo va</b></td><td>Cómo está hoy: «al día, le toca pagar hoy», «6 días en mora · para recoger la moto»,
       «con plazo extra», «moto retenida» o «en liquidación · la moto ya la tiene otro cliente».</td></tr>
     <tr><td><b>Cuotas del contrato</b></td><td>Las semanas sin pagar, contando la de hoy.</td></tr>
@@ -690,12 +822,10 @@
   </table>
 </section>
 
-<!-- ═══════════════ 18 · PDF ═══════════════ -->
-<section class="pag">
-  <h2><span class="paso">Parte 9</span>Bajar el informe en PDF</h2>
-
+<section class="pag" data-preg="Sacar la información">
+  <h2><span class="paso">Pregunta 23 · Sacar la información</span>¿Cómo le mando el informe a un socio?</h2>
+  <div class="ruta"><span class="etq">Cómo llegar</span><span class="r"><i>1</i>Vaya a la sección</span><span class="f">›</span><span class="r"><i>2</i>PDF</span><span class="f">›</span><span class="r"><i>3</i>Marque qué incluir</span><span class="f">›</span><span class="r"><i>4</i>Descargar PDF</span></div>
   <div class="paraque">El PDF es <b>el informe para los socios</b>, con las mismas cifras de la pantalla.</div>
-
   <div class="fila">
     <div class="foto">
       <div class="lienzo"><img src="img/16-pdf.png" alt="Bajar el PDF"><span class="call der" style="top:39.10%;width:calc(4.10% + 8px)"><b>1</b></span><span class="call" style="top:49.88%;width:calc(6.92% + 8px)"><b>2</b></span><span class="call der" style="top:59.24%;width:calc(7.44% + 8px)"><b>3</b></span><span class="call" style="top:64.69%;width:calc(6.92% + 8px)"><b>4</b></span><span class="call" style="top:70.62%;width:calc(6.92% + 8px)"><b>5</b></span></div>
@@ -715,22 +845,19 @@
       </ol>
     </div>
   </div>
-
   <h3>Lo que hay que saber</h3>
   <ul class="simple">
     <li>Arriba del PDF dice <b>las fechas y los filtros</b> con que se armó.</li>
-    <li>Cada sección empieza en <b>una hoja nueva</b>.</li>
+    <li>Para el socio de un solo grupo, escoja <b>ese grupo</b> antes de tocar PDF.</li>
     <li>La nómina del PDF es la de <b>la semana escogida en Equipo</b>.</li>
     <li>Con las listas completas sale largo: imprímalo solo si hace falta.</li>
   </ul>
 </section>
 
-<!-- ═══════════════ 19 · CÓMO SE CUENTAN ═══════════════ -->
+<!-- ═══════════════ CÓMO SE CUENTAN ═══════════════ -->
 <section class="pag">
-  <h2><span class="paso">Parte 10</span>Cómo se cuentan las cifras</h2>
-
+  <h2>Cómo se cuentan las cifras</h2>
   <div class="paraque">Lo esencial, para entender de dónde sale cada número.</div>
-
   <table class="reglas">
     <tr><th>Cifra</th><th>Cómo se cuenta</th></tr>
     <tr><td><b>Recaudado</b></td>
@@ -740,7 +867,7 @@
       <td>El ahorro y la base con los saldos a favor son <b>plata del cliente</b>, no de la empresa.</td></tr>
     <tr><td><b>Cumplimiento</b></td>
       <td>De lo que les tocaba pagar en esas fechas, cuánto pagaron. Lo que pasó a un acuerdo
-        se muestra aparte: no es plata que entró.</td></tr>
+        se muestra aparte: no es plata que entró. No cuentan las motos retenidas ni las del taller.</td></tr>
     <tr><td><b>Al día, gabela y en mora</b></td>
       <td>Es como están <b>hoy</b>, la misma cuenta de Cartera. Un abono a medias no saca de mora.</td></tr>
     <tr><td><b>Días en mora</b></td>
@@ -750,7 +877,11 @@
       <td>Siempre resta lo que ya pagó. Si ya pagó, dice $0. Las deudas dentro de un acuerdo
         se cobran en la cuota del acuerdo, no dos veces.</td></tr>
     <tr><td><b>Cada cobrador</b></td>
-      <td>Solo lo de sus motos <b>desde el día en que se las asignaron</b>.</td></tr>
+      <td>Solo lo de sus motos <b>desde el día en que se las asignaron</b>. Lo de antes va en
+        «Antes de asignar».</td></tr>
+    <tr><td><b>Cruzado</b></td>
+      <td>No hace cuentas nuevas: reparte las mismas de Flota, Cobranza y Portafolios. Por eso cada
+        columna da lo mismo que «Por grupo» y cada fila lo mismo que «Por cobrador».</td></tr>
     <tr><td><b>Motos vendidas</b></td>
       <td>No cuentan en la flota ni en ningún conteo. Su historia sigue en las fichas.</td></tr>
     <tr><td><b>Visitas</b></td>
@@ -758,10 +889,9 @@
   </table>
 </section>
 
-<!-- ═══════════════ 20 · SI ALGO SE VE RARO ═══════════════ -->
+<!-- ═══════════════ SI ALGO SE VE RARO ═══════════════ -->
 <section class="pag">
-  <h2><span class="paso">Parte 11</span>Si algo se ve raro</h2>
-
+  <h2>Si algo se ve raro</h2>
   <table class="reglas">
     <tr><th>Lo que ve</th><th>Por qué pasa</th></tr>
     <tr><td><b>Los cobradores no suman el total de la empresa</b></td>
@@ -778,6 +908,9 @@
         «con plazo extra».</td></tr>
     <tr><td><b>Una placa sale dos veces</b></td>
       <td>El cliente anterior, en liquidación, y el que tiene la moto ahora.</td></tr>
+    <tr><td><b>El cuadro Cruzado dice «no da lo mismo que las otras pantallas»</b></td>
+      <td>La app comparó el cuadro con Flota y Cobranza y encontró una diferencia. Mientras se revisa,
+        confíe en «Por grupo» y «Por cobrador», y avise.</td></tr>
     <tr><td><b>Dice «Hay cifras que no cuadran»</b></td>
       <td>Tóquelo, mire cuál es y avise. No mande ese informe a los socios hasta que se revise.</td></tr>
     <tr><td><b>No le salen los botones Excel y PDF</b></td>
@@ -786,21 +919,21 @@
       <td>La fecha quedó mal escrita (por ejemplo, el año 0028). Corríjala en <b>Motos</b>,
         editando esa moto.</td></tr>
   </table>
-
   <div class="pie">
     Si nada de esto responde lo que está viendo, <b>pare y pregunte</b>. Un informe con una cifra
     dudosa no se manda a los socios.
   </div>
 </section>
 
-<!-- ═══════════════ 21 · EN UNA HOJA ═══════════════ -->
+<!-- ═══════════════ EN UNA HOJA ═══════════════ -->
 <section class="pag">
   <h2>Reportes en una hoja</h2>
   <div class="paraque">Imprima esta hoja y téngala al lado. Vaya marcando.</div>
 
   <h3>Antes de mirar</h3>
   <table class="reglas">
-    <tr><td class="caja"></td><td>Escogí la <b>sección</b> que responde mi pregunta</td></tr>
+    <tr><td class="caja"></td><td>Busqué <b>mi pregunta</b> en el índice («¿Qué quiere saber?»)</td></tr>
+    <tr><td class="caja"></td><td>Llegué por el camino de botones de esa página</td></tr>
     <tr><td class="caja"></td><td>Puse las <b>fechas</b> que quiero (si la sección las tiene)</td></tr>
     <tr><td class="caja"></td><td>Escogí el <b>grupo</b> y el <b>cobrador</b>, o dejé todos</td></tr>
     <tr><td class="caja"></td><td>Leí el <b>«Viendo:»</b> y dice lo que quiero ver</td></tr>
@@ -827,6 +960,24 @@
 
   <div class="pie">Club de Moteros — Cartagena · MotoGestión · Octubre de 2026</div>
 </section>
+
+<script>
+// El índice se arma solo con las preguntas de este archivo y su número de página (una página por
+// sección). Si una pregunta se agrega o se mueve, el índice queda al día sin tocarlo a mano.
+(() => {
+  const secciones = [...document.querySelectorAll("section.pag")];
+  let html = "", grupo = null;
+  secciones.forEach((s, i) => {
+    if (!s.dataset.preg || s.dataset.sigue) return;
+    if (s.dataset.preg !== grupo) { grupo = s.dataset.preg; html += `<div class="grupo-pregs">${grupo}</div>`; }
+    const h = s.querySelector("h2");
+    const n = h.querySelector(".paso").textContent.match(/\d+/)[0];
+    const t = [...h.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent).join("").trim();
+    html += `<div class="preg"><span class="n">${n}.</span><span class="t">${t}</span><span class="lin"></span><span class="p">${i + 1}</span></div>`;
+  });
+  document.getElementById("indice").innerHTML = html;
+})();
+</script>
 
 </body>
 </html>

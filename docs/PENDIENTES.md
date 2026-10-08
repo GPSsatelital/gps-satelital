@@ -219,11 +219,6 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 **MANUAL DE REPORTES "POR PREGUNTAS" — pedido del dueño el 8-oct** (después del cuadro cruzado,
-  D-045): "rehacemos el manual o presentación para explicar cómo usar los reportes y, según qué quiero
-  saber, dónde y cómo puedo buscar". Formato: el de `docs/manual-liquidacion/` (capturas reales,
-  lenguaje de niño, PDF fuera del repo). Preguntarle antes si lo quiere en PDF, en PowerPoint o los dos.
-
 - [ ] 🧑 **RODAR POR DEUDA (D-044, mig 191) — subido la madrugada del 7-oct, SIN usar todavía con un cliente.**
   · 🧑 Después de la capacitación: prenderle a SERGIO el permiso «Rodar por deuda» (Usuarios). De entrada
     solo lo tiene el dueño.
@@ -675,6 +670,13 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **8-oct · Cuadro cobrador × grupo en Reportes (D-045)** — Portafolios › Cruzado (5 vistas + Excel de 5
+  hojas), Flota › Motos (Motos y Paradas), enlace en Equipo, Excel de Flota con Debe hoy y Días en mora.
+  Cuadró cifra por cifra con Portafolios, Flota y Cobranza. En producción (71d5c75).
+- [x] **8-oct · Manual de Reportes v3, por preguntas** — 31 páginas: índice «¿Qué quiere saber?» con 23
+  preguntas y una página por pregunta con su camino de botones y la foto real del 8-oct. PDF fuera del repo
+  (`docs/manual-reportes/COMO-USAR-REPORTES.pdf`); herramienta nueva `revisar-paginas.mjs`.
 
 | Fecha | Qué |
 |---|---|

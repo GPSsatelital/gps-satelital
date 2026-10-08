@@ -1,6 +1,11 @@
 # Cómo usar Reportes — manual
 
-**24 páginas A4.** A la izquierda la foto real de la pantalla, a la derecha qué es cada cosa.
+**Versión 3 (8-oct-2026): por PREGUNTAS.** Pedido del dueño: *"según qué quiero saber, dónde y cómo puedo
+buscar"*. **31 páginas A4**: el índice «¿Qué quiere saber?» (23 preguntas en 5 grupos, con su página) y una
+página por pregunta con **Cómo llegar** (el camino de botones, en fichas numeradas), la foto real y la
+explicación. El índice se arma solo al imprimir, con las preguntas y su número de página.
+
+A la izquierda la foto real de la pantalla, a la derecha qué es cada cosa.
 Cada cosa que se explica lleva un **número al borde de la foto con una línea fina** hasta ella, y el
 mismo número en el texto; el botón que hay que tocar lleva un **anillo azul** (versión 2, 6-oct: el
 dueño pidió señales "más gráficas" y luego "más profesional y no tan empachado").
@@ -35,7 +40,7 @@ Hay que hacerlo **cuando Reportes cambie de aspecto**, para que las fotos no que
      body: JSON.stringify({ clave: k, valor: localStorage.getItem(k) }) });
    ```
 
-3. Tomar las capturas (19 fotos y sus medidas en `img/`):
+3. Tomar las capturas (25 fotos y sus medidas en `img/`):
 
    ```
    node motogestion/scripts/manual/capturas-reportes.mjs
@@ -49,7 +54,13 @@ Hay que hacerlo **cuando Reportes cambie de aspecto**, para que las fotos no que
    node motogestion/scripts/manual/poner-senales.mjs
    ```
 
-5. Armar el PDF:
+5. Revisar que ninguna página se pase de una hoja, y mirar cada una (deja las fotos en `%TEMP%mg-paginas`):
+
+   ```
+   node motogestion/scripts/manual/revisar-paginas.mjs docs/manual-reportes/manual-reportes.html
+   ```
+
+6. Armar el PDF (y comprobar que tenga tantas páginas como secciones):
 
    ```
    chrome --headless=new --no-pdf-header-footer ^
@@ -57,7 +68,7 @@ Hay que hacerlo **cuando Reportes cambie de aspecto**, para que las fotos no que
      "file:///.../docs/manual-reportes/manual-reportes.html"
    ```
 
-6. Borrar lo que deja la sesión: `%TEMP%\mg-sesion-manual.json` y la carpeta del Chrome de las
+7. Borrar lo que deja la sesión: `%TEMP%\mg-sesion-manual.json` y la carpeta del Chrome de las
    capturas, `%TEMP%\mg-chrome-manual-rep` (guarda la sesión abierta).
 
 ## Lo que hay que revisar cada vez

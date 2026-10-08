@@ -98,6 +98,15 @@ const clicAria = prefijo => `
     return 'ok';
   })()`;
 
+/** Toca el botón que CONTIENE ese texto (los avisos dicen "12 en la cola de recolección"). */
+const clicContiene = texto => `
+  (() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.textContent.includes(${JSON.stringify(texto)}));
+    if (!b) return 'NO:' + ${JSON.stringify(texto)};
+    b.click();
+    return 'ok';
+  })()`;
+
 /** Lleva a la vista el trozo que se quiere retratar (los paneles largos no caben en una pantalla). */
 const verA = (texto, bloque = "start") => `
   (() => {
@@ -213,9 +222,33 @@ const SENALES = {
     { n: 3, texto: "Base pendiente" }, { n: 4, texto: "Fotos de la entrega", ci: true, dy: 70 },
     { n: 5, texto: "Descargar / Imprimir", cerca: "button", lado: "der" },
   ],
+  // ── Las del manual por preguntas (8-oct) ──
+  "20-cruzado": [
+    { n: 1, sel: '[role="group"][aria-label="Qué quiere ver"]', lado: "der" }, { n: 2, texto: "RASTR.", exacto: true, lado: "izq", dy: -8 },
+    { n: 3, texto: "Sin cobrador", exacto: true }, { n: 4, texto: "Total", exacto: true, cual: 1 },
+  ],
+  "21-cruzado-cumplimiento": [
+    { tipo: "anillo", texto: "Cumplimiento", exacto: true, cerca: "button" }, { n: 1, texto: "Verde 85 %", lado: "der" },
+    { n: 2, sel: 'button[aria-label*="cumplió"]', cual: 1, lado: "der" }, { n: 3, texto: "Total", exacto: true, cual: 1 },
+  ],
+  "22-flota-cuadro": [
+    { n: 1, texto: "Cada cobrador en cada grupo", tarjeta: true }, { n: 2, texto: "Paradas", exacto: true, cerca: "button", lado: "der" },
+    { n: 3, texto: "Sin cobrador", exacto: true }, { n: 4, texto: "Ver lo que deben", cerca: "button" },
+  ],
+  "23-papeles": [
+    { n: 1, texto: "Con SOAT o tecnomecánica vencidos" }, { n: 2, texto: "Vencen en los próximos 30 días" },
+    { n: 3, texto: "Sin fecha de SOAT anotada" },
+  ],
+  "24-mas-deben": [
+    { n: 1, texto: "Los que más deben", tarjeta: true }, { n: 2, texto: "Plata de los clientes a su favor", tarjeta: true },
+  ],
+  "25-recoleccion": [
+    { n: 1, texto: "En recolección ·" }, { n: 2, texto: "registros", dy: 52 },
+    { n: 3, texto: "Abrir en Cartera", cerca: "button" }, { n: 4, texto: "Descargar lista", cerca: "button", lado: "der" },
+  ],
   "15-excel": [
-    { n: 1, texto: "Excel", exacto: true, cerca: "button", lado: "der" }, { n: 2, texto: "Lo que debe cada cliente" },
-    { n: 3, texto: "Separar por" }, { n: 4, texto: "Descargar Excel", cerca: "button" },
+    { tipo: "anillo", texto: "Excel", exacto: true, cerca: "button" }, { n: 1, texto: "Lo que debe cada cliente" },
+    { n: 2, texto: "Separar por" }, { n: 3, texto: "Descargar Excel", cerca: "button" },
   ],
   "16-pdf": [
     { n: 1, texto: "PDF", exacto: true, cerca: "button", lado: "der" }, { n: 2, texto: "Qué incluir" },
@@ -268,8 +301,15 @@ const PANTALLAS = [
   { archivo: "05-resumen-estados", titulo: "Resumen: cómo están los clientes",
     abrir: [verA("Cómo están los clientes", "start")], espera: 1500 },
 
+  // Solo ABRE la lista del aviso; nunca toca «Abrir en Cartera» ni «Descargar lista».
+  { archivo: "25-recoleccion", titulo: "Resumen: el aviso de recolección abre la lista",
+    abrir: [cerrarHoja, clic("Más"), clic("Reportes"), "new Promise(r => setTimeout(() => r('ok'), 9000))", clic("Resumen"), arriba, clicContiene("en la cola de recolección")], espera: 2000 },
+
   { archivo: "06-cartera", titulo: "Cobranza › Cartera: lo que se debe hoy",
-    abrir: [...seccion("Cobranza", "Cartera"), verA("Lo que se debe hoy", "start")], espera: 2500 },
+    abrir: [cerrarHoja, ...seccion("Cobranza", "Cartera"), verA("Lo que se debe hoy", "start")], espera: 2500 },
+
+  { archivo: "24-mas-deben", titulo: "Cobranza › Cartera: los que más deben y la plata a su favor",
+    abrir: [verA("Los que más deben", "start")], espera: 1500 },
 
   { archivo: "07-hoja", titulo: "Tocar un número abre la lista",
     abrir: [clicAria("Cuotas del contrato")], espera: 2000 },
@@ -283,6 +323,15 @@ const PANTALLAS = [
   { archivo: "10-por-cobrador", titulo: "Portafolios › Por cobrador",
     abrir: [...seccion("Portafolios", "Por cobrador")], espera: 3000 },
 
+  { archivo: "20-cruzado", titulo: "Portafolios › Cruzado: cada cobrador en cada grupo",
+    // Entra a Reportes por su cuenta, para poder correrla sola (`... 20 21`). Se centra en la tabla:
+    // con "start" la página no alcanzaba a bajar y la tabla quedaba cortada.
+    abrir: [cerrarHoja, clic("Más"), clic("Reportes"), "new Promise(r => setTimeout(() => r('ok'), 9000))",
+      ...seccion("Portafolios", "Cruzado"), verA("Sin cobrador", "center")], espera: 3000 },
+
+  { archivo: "21-cruzado-cumplimiento", titulo: "Portafolios › Cruzado: el cumplimiento",
+    abrir: [clic("Cumplimiento"), verA("Sin cobrador", "center")], espera: 1500 },
+
   { archivo: "11-nomina", titulo: "Equipo › Nómina",
     abrir: [...seccion("Equipo", "Nómina"), verA("Lo que se paga esta semana", "start")], espera: 12000 },
 
@@ -291,6 +340,12 @@ const PANTALLAS = [
 
   { archivo: "13-flota", titulo: "Flota › Motos: dónde está cada moto",
     abrir: [...seccion("Flota", "Motos"), verA("Dónde están las", "start")], espera: 2500 },
+
+  { archivo: "22-flota-cuadro", titulo: "Flota › Motos: quién tiene las motos de cada grupo",
+    abrir: [verA("Cada cobrador en cada grupo", "start")], espera: 1500 },
+
+  { archivo: "23-papeles", titulo: "Flota › Motos: los papeles",
+    abrir: [verA("Papeles de las motos", "start")], espera: 1500 },
 
   { archivo: "14-guardadas", titulo: "Flota › Guardadas",
     abrir: [...seccion("Flota", "Guardadas")], espera: 2500 },
@@ -310,7 +365,7 @@ const PANTALLAS = [
 
   // Las descargas: SOLO se abren los paneles. Nunca se toca "Descargar Excel", "Descargar PDF" ni "Imprimir".
   { archivo: "15-excel", titulo: "Descargar en Excel",
-    abrir: [...seccion("Cobranza", "Cartera"), clic("Excel"), verA("Separar por", "center")], espera: 1500 },
+    abrir: [cerrarHoja, clic("Más"), clic("Reportes"), "new Promise(r => setTimeout(() => r('ok'), 9000))", ...seccion("Cobranza", "Cartera"), clic("Excel"), verA("Separar por", "center")], espera: 1500 },
 
   { archivo: "16-pdf", titulo: "Descargar en PDF",
     abrir: [clic("Excel"), clic("PDF"), verA("Informe para los socios en PDF", "center")], espera: 1500 },

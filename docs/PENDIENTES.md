@@ -15,8 +15,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 ## P0 — Plata mal contada HOY (y lo que está abierto de seguridad)
 
 - [ ] 🧑💻 🔴 **LA LIQUIDACIÓN COBRA DE MÁS EN DOS CASOS — medido el 8-oct con BRADER GUZMAN WATSON (YAL65H, LIQ-0078).**
-  LIQ-0078 está **calculada, sin cerrar ni firmar**: no cerrarla hasta corregir. El sistema dice **−$447.500**; revisada
-  da **−$263.500** (o −$237.500 si se le devuelve el ahorro de la semana 30). Estado de cuenta en PDF para el cliente:
+  LIQ-0078 está **calculada, sin cerrar ni firmar**: no cerrarla hasta corregir. El sistema dice **−$447.500**; lo justo
+  (D-046) es **−$237.500**. Estado de cuenta de una página para mostrarle, con los dos acuerdos explicados:
   `docs/estados-de-cuenta/` (no se sube).
   1. **Abono parcial al acuerdo ignorado** (`useLiquidaciones.iniciarLiquidacion` → `deudasYAcuerdos` sin `abonado`):
      cuenta solo cuotas completas (cuotas_pagadas × cuota). BRADER abonó $8.000 y le cobró el acuerdo entero.
@@ -24,8 +24,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   2. **Semana rodada cobrada como "días que rodó y no pagó"** (`ajusteSalidaLedger` recorre el calendario y no mira
      `cajas_exoneradas`). BRADER: moto guardada 1-8 sep (mismos 19.661 km), el dueño decidió rodarla, y la liquidación
      le cobró $202.000 (−$26.000 de ahorro). El dueño confirmó el 8-oct: **no se cobra**.
-  3. **Pregunta abierta al dueño:** ¿se devuelve el ahorro ($26.000) de la semana financiada dentro del acuerdo cuando
-     la liquidación cobra el acuerdo entero? (Regla del 13-ago: el ahorro se gana a medida que se paga el acuerdo.)
+  3. **Ahorro de la semana financiada dentro del acuerdo** no se devuelve al cobrar el acuerdo entero (la fórmula lo
+     supone acreditado). El dueño decidió (D-046): **se devuelve**. BRADER: $26.000. JHEINER LIQ-0076 tiene el mismo caso.
   Antes de tocar: medir cuántas liquidaciones abiertas (y cerradas) tienen abonos parciales o semanas rodadas.
 
 Lo que está afectando cifras reales de clientes en este momento.
@@ -324,7 +324,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   permiso de SUBADMIN. La rodada sí quedó (y `acuerdos_tiempo_rodado` también). Medir y arreglar.
 
 - [ ] 🧑 **Decisiones pendientes de liquidaciones** (`docs/REVISION-29SEP.md`): (a) las semanas
-  rodadas al liquidar ¿se cobran o no? — hoy solo BRADER GUZMAN LIQ-0078, **no cerrarla**; (b) las 28
+  rodadas al liquidar ¿se cobran o no? — ✅ DECIDIDO 8-oct (D-046): **no se cobran**; falta el arreglo (P0); (b) las 28
   liquidaciones cerradas con el error de la fórmula del ahorro ($1.613.200 de más) + ROGER (cerrada el
   30-sep con $120.000 por encima); (c) JHEINER PALOMINO LIQ-0076: revisar a mano (acuerdo activo con
   semanas financiadas) antes de cerrar; (d) MELISSA: el taller confirma daños de RMZ65H y se corrige.

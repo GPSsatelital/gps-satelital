@@ -715,3 +715,23 @@ lo explica en su leyenda.
 **Dónde vive:** `utils/reportesCruzado.ts` (+ 13 pruebas) · `components/reportes/CuadroCruzado.tsx` ·
 `ReportesView` (pestaña `cruzado`, `abrirCeldaCruzado`, `excelCruzado`, columnas nuevas de `excelFlotaMotos`).
 **Reemplaza a:** —
+
+### D-046 · 8-oct-2026 · Al liquidar, al cliente se le da todo lo que es justo, y explicado
+**Decidió:** el dueño, revisando la liquidación de BRADER GUZMAN WATSON (YAL65H, LIQ-0078): *"todo lo que en
+realidad sea justo de él hay que dárselo, pero todo debe quedar bien explicado"*.
+**Qué se decidió:**
+1. **Lo abonado de verdad a un acuerdo se descuenta**, aunque no complete una cuota. (La liquidación contaba
+   solo cuotas completas: a BRADER le ignoraba $8.000.)
+2. **Una semana rodada no se cobra como "días que usó la moto"**: estaba guardada en la empresa. (La cuenta de
+   salida recorre el calendario y no miraba las rodadas. Cierra la pregunta abierta desde el 29-sep,
+   `docs/REVISION-29SEP.md`.)
+3. **El ahorro de las semanas metidas en un acuerdo se le devuelve** cuando la liquidación le cobra ese acuerdo
+   entero: con su ahorro está pagando esas semanas. (Regla del 13-ago: el ahorro se gana al pagar el acuerdo.)
+4. **El cliente recibe la explicación por escrito**: sus pagos uno por uno, qué pasó con cada acuerdo, lo que
+   ahorró y cómo queda (estado de cuenta de una página, `docs/estados-de-cuenta/`, fuera de git).
+**El caso que lo destapó:** BRADER, sistema −$447.500 → justo −$237.500 ($8.000 + $176.000 neto de la semana
+rodada + $26.000). Sus dos acuerdos cuadran al peso: el primero ($943.500, 8-ago) se rehízo el 8-sep y el
+nuevo ($1.008.500) reunió lo que ya debía por fuera (semana 30 y lavada): antes debía $1.012.500, después
+$1.008.500.
+**Falta:** que el sistema lo haga solo (PENDIENTES P0) — medir antes cuántas liquidaciones lo tienen.
+**Reemplaza a:** —

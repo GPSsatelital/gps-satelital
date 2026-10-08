@@ -257,16 +257,12 @@ Lo que está afectando cifras reales de clientes en este momento.
   · ✅ **Paso 1, la base: HECHO.** Mig 190 corrida y verificada el 6-oct: reloj `cartera-cada-noche`
     prendido (55 4 * * * UTC = 11:55 p.m.), 338 contratos anotados el 6-oct que deben $135.322.100
     (= cuenta en vivo). Desde el 7-oct ya se puede escoger el 6-oct.
-  · 🔨 **Paso 1, la pantalla: A MEDIAS en la rama `wip/cartera-del-dia`** (NO está en main, a
-    propósito: así como está, el PDF diría "Lo que se debe hoy" con cifras de otro día). Falta:
-    1. `CobranzaReportes.tsx`: importar `CalendarDays` de lucide (es el ÚNICO error de `tsc`);
-       "Los que más debían", "Ver los N que debían", "tenían plata a su favor" y esconder
-       «Abrir Cartera» en un día pasado (las 5 ediciones que se detuvieron).
-    2. `informeSocios.ts` (PDF): `cobranza.dia` → títulos "Lo que se debía el …", "Cómo iban pagando
-       ese día", y sin el bloque de acuerdos ese día (son de hoy). Pasarlo desde `armarInforme`.
-    3. Probar en el navegador a 375 px: escoger el 6-oct (desde el 7-oct), que el total dé $135.322.100
-       sin filtros, que los filtros de grupo y cobrador funcionen, abrir cada lista, bajar Excel y PDF
-       ABRIÉNDOLOS. Después `npm run build` + `npm test`, y su sí para subir.
+  · ✅ **Paso 1, la pantalla: TERMINADA el 8-oct** (traída de la rama `wip/cartera-del-dia` a main). Probada a
+    375 px con el 6-oct: total $135.322.100 y 270 clientes (= lo anotado esa noche), filtro COSTA $76.074.500 / 167,
+    filtro BRANDON $40.310.000 / 72 (= la base), las 7 listas abren con las filas de ese día y sin "Abrir en
+    Cartera", Excel "Lo que se debía el 6 de octubre" con total 270 / $135.322.100, y el PDF dice el día, todo en
+    pasado y sin el bloque de acuerdos (riesgo que se corrigió: salía con cifras de ese día y título "hoy").
+    10 pruebas nuevas (`carteraDelDia.test.ts`).
   · ⏳ **Paso 2, la cuenta hacia atrás** para el 31-ago y el 30-sep (marca "calculado después").
     Medido el 6-oct: reconstruyendo las semanas pagadas hacia atrás con `cajas_llenadas`, 354 de 365
     contratos dieron igual que la foto de la plata del 25-sep; revisar los 11 que no (casi todos

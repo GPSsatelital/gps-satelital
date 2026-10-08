@@ -4,7 +4,7 @@
 // Acuerdos: si los acuerdos de pago se están pagando, cuáles vencen pronto sin alcanzar y quién los
 // lleva. Solo pinta: las cuentas las arma ReportesView con las mismas filas del resto de Reportes.
 import { useState } from "react";
-import { ChevronRight, Download, AlertTriangle, X } from "lucide-react";
+import { ChevronRight, Download, AlertTriangle, X, CalendarDays } from "lucide-react";
 import { Tarjeta, boton, plata, pct } from "./ResumenReportes";
 import { ListBox, ItemLista } from "../ListaEstandar";
 import type { ConvenioReporte } from "../../utils/reporteConvenios";
@@ -27,6 +27,11 @@ export function CobranzaCartera(p: {
   /** clave: "debe:<parte>" · "cobrable:<conmoto|retenidas>" · "hoy:<estado>" · "grupo:<g>" · "cobrador:<id>" · "mayores" · "favor" · "contrato:<id>" */
   onAbrir: (clave: string) => void;
   onCartera: () => void;
+  /** Un día pasado del cuaderno (mig 190): "30 de septiembre". Sin él, es hoy. */
+  dia?: string | null;
+  /** Qué es lo que se está viendo ese día y qué no sabe. */
+  aviso?: string | null;
+  onVolverAHoy?: () => void;
 }) {
   const [verPor, setVerPor] = useState<"grupo" | "cobrador">("grupo");
   const d = p.debe;
@@ -34,12 +39,29 @@ export function CobranzaCartera(p: {
   const maxReparto = Math.max(...reparto.map(r => r.debe), 1);
   const totalCobrable = p.cobrable.conMoto + p.cobrable.retenidas;
   const conMoto = p.estados.aldia + p.estados.gabela + p.estados.mora;
+  const pasado = !!p.dia;
   return (
     <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)", textAlign: "left" }}>
-      <Tarjeta titulo="Lo que se debe hoy"
-        ayuda="Todo lo que los clientes deben hoy: las cuotas de su contrato que ya les tocaba pagar (contando la que vence hoy), las cuotas de sus acuerdos de pago y las deudas registradas (multas, lavadas, daños y otras). Es la misma cuenta de Cartera, cliente por cliente. Toca una parte para ver quiénes la deben.">
+      {pasado && (
+        <div role="note" style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: 10, alignItems: "start", padding: 12, borderRadius: 12, border: "1px solid var(--accent-line)", background: "var(--accent-soft)" }}>
+          <CalendarDays size={18} color="var(--accent-ink)" aria-hidden="true" style={{ marginTop: 1 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Así estaba la cartera el {p.dia}</div>
+            {p.aviso && <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5, marginTop: 2 }}>{p.aviso}</div>}
+            {p.onVolverAHoy && (
+              <button onClick={p.onVolverAHoy} style={{ ...boton, boxSizing: "border-box", marginTop: 6, minHeight: 36, padding: "0 10px", borderRadius: 10, border: "1px solid var(--line2)", fontSize: 12, fontWeight: 500, width: "auto" }}>
+                Volver a hoy
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      <Tarjeta titulo={pasado ? `Lo que se debía el ${p.dia}` : "Lo que se debe hoy"}
+        ayuda={pasado
+          ? "Lo que los clientes debían al final de ese día: las cuotas de su contrato que ya les tocaba pagar, las cuotas de sus acuerdos de pago y las deudas registradas. Es la misma cuenta de Cartera, anotada esa noche. Toca una parte para ver quiénes la debían."
+          : "Todo lo que los clientes deben hoy: las cuotas de su contrato que ya les tocaba pagar (contando la que vence hoy), las cuotas de sus acuerdos de pago y las deudas registradas (multas, lavadas, daños y otras). Es la misma cuenta de Cartera, cliente por cliente. Toca una parte para ver quiénes la deben."}>
         <div style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plata(d.total)}</div>
-        <div style={{ fontSize: 12, color: "var(--muted2)" }}>{d.clientes} {d.clientes === 1 ? "cliente debe" : "clientes deben"} algo</div>
+        <div style={{ fontSize: 12, color: "var(--muted2)" }}>{d.clientes} {pasado ? (d.clientes === 1 ? "cliente debía" : "clientes debían") : (d.clientes === 1 ? "cliente debe" : "clientes deben")} algo</div>
         {d.total > 0 && (
           <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", marginTop: 10, background: "var(--soft)" }} aria-hidden="true">
             {(["semanas", "acuerdo", "deudas"] as const).map(k => <div key={k} style={{ width: `${pct(d[k], d.total)}%`, background: COLOR_PARTE[k] }} />)}
@@ -77,9 +99,9 @@ export function CobranzaCartera(p: {
         </div>
       </Tarjeta>
 
-      <Tarjeta titulo="Cómo van pagando hoy"
+      <Tarjeta titulo={pasado ? "Cómo iban pagando ese día" : "Cómo van pagando hoy"}
         ayuda="La misma cuenta del Resumen y de los portafolios. Al día, gabela (les venció ayer) o en mora; aparte, los que tienen la moto en el taller, las retenidas por no pagar y los que están en liquidación.">
-        <div style={{ fontSize: 12, color: "var(--muted2)", marginBottom: 8 }}>{conMoto} clientes tienen su moto trabajando</div>
+        <div style={{ fontSize: 12, color: "var(--muted2)", marginBottom: 8 }}>{conMoto} clientes {pasado ? "tenían" : "tienen"} su moto trabajando</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
           {([["aldia", "Al día", p.estados.aldia, "var(--ok-ink)", "var(--ok-line)"], ["gabela", "Gabela", p.estados.gabela, "var(--warn-ink)", "var(--warn-line)"], ["mora", "En mora", p.estados.mora, "var(--bad-ink)", "var(--bad-line)"]] as const).map(([k, t, n, ink, borde]) => (
             <button key={k} onClick={() => p.onAbrir("hoy:" + k)} aria-label={`${t}: ${n}. Ver la lista`}
@@ -90,7 +112,7 @@ export function CobranzaCartera(p: {
           ))}
         </div>
         <div style={{ display: "grid", gap: 2, marginTop: 8 }}>
-          {([["hoy:recoleccion", "De los que están en mora, para recoger la moto", p.estados.recoleccion], ["hoy:taller", "Con la moto en el taller", p.estados.taller], ["hoy:retenidas", "Retenidas por no pagar", p.estados.retenidas], ["hoy:liquidacion", "En liquidación", p.estados.liquidacion]] as const)
+          {([["hoy:recoleccion", pasado ? "De los que estaban en mora, para recoger la moto" : "De los que están en mora, para recoger la moto", p.estados.recoleccion], ["hoy:taller", "Con la moto en el taller", p.estados.taller], ["hoy:retenidas", "Retenidas por no pagar", p.estados.retenidas], ["hoy:liquidacion", "En liquidación", p.estados.liquidacion]] as const)
             .filter(([, , n]) => n > 0).map(([k, t, n]) => (
               <button key={k} onClick={() => p.onAbrir(k)} aria-label={`${t}: ${n}. Ver la lista`} style={fila}>
                 <span style={{ fontSize: 13, color: "var(--muted2)" }}>{t}</span>
@@ -101,8 +123,8 @@ export function CobranzaCartera(p: {
         </div>
       </Tarjeta>
 
-      <Tarjeta titulo="Quién tiene la deuda"
-        ayuda="Lo que se debe hoy, partido por grupo o por el cobrador que tiene la moto. Toca uno para ver sus clientes.">
+      <Tarjeta titulo={pasado ? "Quién tenía la deuda" : "Quién tiene la deuda"}
+        ayuda={pasado ? "Lo que se debía ese día, partido por grupo o por el cobrador que tenía la moto. Toca uno para ver sus clientes." : "Lo que se debe hoy, partido por grupo o por el cobrador que tiene la moto. Toca uno para ver sus clientes."}>
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }} role="tablist">
           {(["grupo", "cobrador"] as const).map(k => (
             <button key={k} role="tab" aria-selected={verPor === k} onClick={() => setVerPor(k)}
@@ -128,10 +150,10 @@ export function CobranzaCartera(p: {
         ))}
       </Tarjeta>
 
-      <Tarjeta titulo="Los que más deben"
-        ayuda="Los clientes con la cuenta más grande hoy, de mayor a menor. Toca uno para ver su ficha.">
+      <Tarjeta titulo={pasado ? "Los que más debían" : "Los que más deben"}
+        ayuda={pasado ? "Los clientes con la cuenta más grande ese día, de mayor a menor. Toca uno para ver su ficha como está hoy." : "Los clientes con la cuenta más grande hoy, de mayor a menor. Toca uno para ver su ficha."}>
         {p.mayores.map(m => (
-          <button key={m.contratoId} onClick={() => p.onAbrir("contrato:" + m.contratoId)} aria-label={`${m.cliente}: debe ${plata(m.debe)}. Ver su ficha`}
+          <button key={m.contratoId} onClick={() => p.onAbrir("contrato:" + m.contratoId)} aria-label={`${m.cliente}: ${pasado ? "debía" : "debe"} ${plata(m.debe)}. Ver su ficha`}
             style={{ ...boton, boxSizing: "border-box", display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 8, alignItems: "center", minHeight: 48, padding: "4px 4px", borderRadius: 10 }}>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 13, fontWeight: 500, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.cliente}</span>
@@ -141,20 +163,20 @@ export function CobranzaCartera(p: {
           </button>
         ))}
         <button onClick={() => p.onAbrir("mayores")} style={{ ...fila, color: "var(--accent-ink)", gridTemplateColumns: "minmax(0, 1fr) 16px" }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Ver los {d.clientes} que deben</span>{flecha}
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Ver los {d.clientes} que {pasado ? "debían" : "deben"}</span>{flecha}
         </button>
       </Tarjeta>
 
       <Tarjeta titulo="Plata de los clientes a su favor"
-        ayuda="Lo que algunos clientes pagaron de más y quedó guardado a su nombre. Se les muestra, nunca se les resta solo: se aplica a mano cuando el cliente lo decide.">
+        ayuda={pasado ? "Lo que algunos clientes tenían guardado a su nombre ese día, por haber pagado de más. Se aplica a mano cuando el cliente lo decide." : "Lo que algunos clientes pagaron de más y quedó guardado a su nombre. Se les muestra, nunca se les resta solo: se aplica a mano cuando el cliente lo decide."}>
         <button onClick={() => p.onAbrir("favor")} aria-label={`${plata(p.saldoFavor.total)} a favor de ${p.saldoFavor.clientes} clientes. Ver quiénes`} style={fila}>
-          <span style={{ fontSize: 13 }}>{p.saldoFavor.clientes} {p.saldoFavor.clientes === 1 ? "cliente tiene" : "clientes tienen"} plata a su favor</span>
+          <span style={{ fontSize: 13 }}>{p.saldoFavor.clientes} {pasado ? (p.saldoFavor.clientes === 1 ? "cliente tenía" : "clientes tenían") : (p.saldoFavor.clientes === 1 ? "cliente tiene" : "clientes tienen")} plata a su favor</span>
           <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>{plata(p.saldoFavor.total)}</span>
           {flecha}
         </button>
       </Tarjeta>
 
-      <Tarjeta titulo="Contratos por forma de pago" ayuda="Cuántos contratos andando hay de cada forma de pago (sin contar las motos retenidas ni las que están en liquidación). Toca una para ver los clientes.">
+      <Tarjeta titulo="Contratos por forma de pago" ayuda={pasado ? "Cuántos contratos andando había ese día de cada forma de pago (sin contar las motos retenidas ni las que estaban en liquidación). Toca una para ver los clientes." : "Cuántos contratos andando hay de cada forma de pago (sin contar las motos retenidas ni las que están en liquidación). Toca una para ver los clientes."}>
         {p.modalidades.map(([forma, n]) => (
           <button key={forma} onClick={() => p.onAbrir("modalidad:" + forma)} aria-label={`${forma}: ${n} contratos. Ver la lista`} style={fila}>
             <span style={{ fontSize: 13 }}>{forma}</span>
@@ -164,9 +186,12 @@ export function CobranzaCartera(p: {
         ))}
       </Tarjeta>
 
-      <button onClick={p.onCartera} style={{ ...boton, boxSizing: "border-box", minHeight: 44, borderRadius: 10, border: "1px solid var(--line2)", fontSize: 13, fontWeight: 500, textAlign: "center" }}>
-        Abrir Cartera
-      </button>
+      {/* Cartera muestra HOY: desde un día pasado abriría otra cosa, así que no se ofrece. */}
+      {!pasado && (
+        <button onClick={p.onCartera} style={{ ...boton, boxSizing: "border-box", minHeight: 44, borderRadius: 10, border: "1px solid var(--line2)", fontSize: 13, fontWeight: 500, textAlign: "center" }}>
+          Abrir Cartera
+        </button>
+      )}
     </div>
   );
 }

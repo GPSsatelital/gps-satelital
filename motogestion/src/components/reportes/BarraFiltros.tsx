@@ -5,7 +5,7 @@
 import { CalendarDays, Users, User, ChevronDown, X, Repeat, Check } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-export type OpcionFiltro = { valor: string; etiqueta: string };
+export type OpcionFiltro = { valor: string; etiqueta: string; deshabilitada?: boolean };
 
 const cajaSelector = (activo: boolean): React.CSSProperties => ({
   position: "relative", display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 30px 0 10px",
@@ -22,7 +22,7 @@ function Selector({ icono, etiqueta, valor, opciones, onCambio, activo }: {
       <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{etiqueta}</span>
       <select value={valor} onChange={e => onCambio(e.target.value)}
         style={{ appearance: "none", WebkitAppearance: "none", border: "none", background: "transparent", color: "var(--text)", fontSize: 13, fontWeight: 500, width: "100%", minWidth: 0, height: "100%", cursor: "pointer", outline: "none", fontFamily: "inherit", textOverflow: "ellipsis" }}>
-        {opciones.map(o => <option key={o.valor} value={o.valor} style={{ background: "var(--card)", color: "var(--text)" }}>{o.etiqueta}</option>)}
+        {opciones.map(o => <option key={o.valor} value={o.valor} disabled={o.deshabilitada} style={{ background: "var(--card)", color: "var(--text)" }}>{o.etiqueta}</option>)}
       </select>
       <ChevronDown size={16} aria-hidden="true" style={{ position: "absolute", right: 10, color: "var(--muted2)", pointerEvents: "none" }} />
     </label>
@@ -91,7 +91,7 @@ export default function BarraFiltros({
   grupos, opcionesGrupo, onGrupos,
   cobradores, opcionesCobrador, onCobradores,
   mostrarGrupoCobrador, personalizado, isMobile,
-  modalidad = "", opcionesModalidad, onModalidad, soloHoy = false, textoFijo, sinGrupo = false, accion,
+  modalidad = "", opcionesModalidad, onModalidad, soloHoy = false, textoFijo, sinGrupo = false, accion, dia,
 }: {
   periodo: string; opcionesPeriodo: OpcionFiltro[]; onPeriodo: (v: string) => void;
   /** "1 al 30 de septiembre de 2026" */
@@ -117,6 +117,8 @@ export default function BarraFiltros({
   sinGrupo?: boolean;
   /** Lo que va al lado del "Viendo:" (el botón Descargar de la sección). */
   accion?: ReactNode;
+  /** Cartera (mig 190): escoger un día pasado del cuaderno. "" = hoy. */
+  dia?: { valor: string; opciones: OpcionFiltro[]; onCambio: (v: string) => void };
 }) {
   const sinPeriodo = soloHoy || !!textoFijo;
   const conGrupo = mostrarGrupoCobrador && !sinGrupo;
@@ -172,6 +174,7 @@ export default function BarraFiltros({
     }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {!sinPeriodo && <Selector icono={<CalendarDays size={16} />} etiqueta="Período" valor={periodo} opciones={opcionesPeriodo} onCambio={onPeriodo} activo={false} />}
+        {dia && <Selector icono={<CalendarDays size={16} />} etiqueta="Día" valor={dia.valor} opciones={dia.opciones} onCambio={dia.onCambio} activo={dia.valor !== ""} />}
         {mostrarGrupoCobrador && (
           <>
             {conGrupo && <SelectorVarios icono={<Users size={16} />} etiqueta="Grupo" texto={textoGrupo} activo={grupos.length > 0} abierto={abierto === "grupo"} onAbrir={() => setAbierto(a => a === "grupo" ? null : "grupo")} />}

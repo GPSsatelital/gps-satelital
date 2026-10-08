@@ -33,6 +33,8 @@ import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
+import { useCarteraDelDia } from "../hooks/useCarteraDelDia";
+import { opcionesDia, textoDia, avisoDelDia, type FilaCarteraDia } from "../utils/carteraDelDia";
 import { useRodadas } from "../hooks/useRodadas";
 import { motosGuardadas } from "../utils/motosGuardadas";
 import { reporteConvenios, totalesConvenios, type ConvenioReporte } from "../utils/reporteConvenios";
@@ -298,6 +300,8 @@ type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoP
   cumSuyo: Cumplimiento;
   /** Día (Colombia) desde el que su cobrador tiene la moto; null si no hay registro (es de antes de la mig 058). */
   asignadaEl: string | null;
+  /** Solo en las filas de un día pasado (mig 190): dónde estaba la moto ESE día, no hoy. */
+  motoEstado?: string | null;
 };
 /** La fila vista desde su cobrador (D-035): su plata y su cumplimiento empiezan el día que le asignaron la moto. */
 const comoCobrador = (r: MotoRowG): MotoRowG => r.montoAntes === 0 && r.cumSuyo === r.cum ? r : { ...r, monto: r.montoSuyo, cum: r.cumSuyo };
@@ -376,6 +380,10 @@ export default function ReportesView({ onNavigate }: Props) {
   // El cuadro cruzado (8-oct): qué vista se ve en Portafolios › Cruzado y cuál en Flota › Motos.
   const [vistaCruzado, setVistaCruzado] = useState<VistaCruzado>("motos");
   const [vistaFlota, setVistaFlota] = useState<VistaCruzado>("motos");
+  // Cartera de un día pasado (mig 190): "" = hoy, en vivo. Solo manda en la pestaña Cartera.
+  const [diaCartera, setDiaCartera] = useState("");
+  const diaActivo = tab === "cartera" ? diaCartera : "";
+  const cuaderno = useCarteraDelDia(tab === "cartera", diaActivo);
   const [fotosVer, setFotosVer] = useState<{ placa: string; cliente: string; fotos: [string, string][] } | null>(null); // lightbox de fotos de entrega
   useBackGuard(fotosVer !== null, () => setFotosVer(null)); // atrás cierra el lightbox
   // Regeneración de documentos en blanco (bug histórico del PDF)
@@ -1284,7 +1292,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const retenidasF = baseResumen.filter(r => r.estado === "retenida");
   const liquidacionF = baseResumen.filter(r => r.estado === "reasignada");
   const motoPorId = useMemo(() => new Map(motos.map(m => [m.id, m])), [motos]);
-  const sitioDe = (r: MotoRowG) => sitioFisico(motoPorId.get(contratoPorId.get(r.contratoId)?.moto_id ?? "")?.estado);
+  const sitioDe = (r: MotoRowG) => sitioFisico(r.motoEstado !== undefined ? r.motoEstado : motoPorId.get(contratoPorId.get(r.contratoId)?.moto_id ?? "")?.estado);
   const tramosR = tramosMora(enMoraF);
   // Cómo estaban AL CIERRE del período (si ya terminó): reconstruido con la fecha de cada pago.
   const cierreR = useMemo(() => {
@@ -1743,15 +1751,45 @@ export default function ReportesView({ onNavigate }: Props) {
   // moto en el taller y la liquidación van aparte). Lo que se debe sale de `estadoHoy` → `loQueDebe`,
   // la misma cuenta de Cartera, partida en semanas · acuerdo · deudas (las deudas que están dentro
   // de un acuerdo no se cuentan dos veces: van en la cuota del acuerdo).
-  const vigentesC = baseResumen.filter(r => r.estado !== "cerrado");
+  // Un día pasado (mig 190): las filas salen del cuaderno de esa noche, con los mismos filtros, y todo
+  // lo de abajo (tarjetas, listas, Excel, PDF) las usa igual que usa las de hoy. Los Diario no traen
+  // cifra en el cuaderno: no se cuentan, y el aviso lo dice.
+  const filasDelDia = useMemo(() => {
+    if (!diaActivo || !cuaderno.filas) return null;
+    const conCuenta: MotoRowG[] = [];
+    let sinCuenta = 0;
+    cuaderno.filas.forEach((f: FilaCarteraDia) => {
+      const adminId = f.cobrador_id ?? "__none__";
+      if (!pasaFiltroGC(f.grupo ?? "SIN GRUPO", adminId)) return;
+      if (f.estado === "sin-cuenta") { sinCuenta++; return; }
+      const c = contratoPorId.get(f.contrato_id);
+      conCuenta.push({
+        placa: f.placa ?? "—", cliente: f.cliente ?? "Sin cliente", monto: 0, estado: f.estado,
+        deudaPend: f.debe_deudas ?? 0, tieneConvenio: (f.debe_acuerdo ?? 0) > 0, debeSinConvenio: false,
+        grupo: f.grupo ?? "SIN GRUPO", adminId, adminNombre: f.cobrador ?? (f.cobrador_id ? "—" : "Sin asignar"),
+        formaPago: f.forma_pago ?? "—", diaPago: c ? formatDiaPago(c as never) : "", ultimaFechaPago: null, telefono: "",
+        asignadoDesde: null, contratoId: f.contrato_id, diasMora: f.dias_mora, debeHoy: f.debe_total ?? 0,
+        debe: { semanas: f.debe_cuotas ?? 0, acuerdo: f.debe_acuerdo ?? 0, deudas: f.debe_deudas ?? 0 },
+        saldoAFavor: Math.max(f.saldo_a_favor ?? 0, 0),
+        estadoCartera: f.estado === "mora" ? "mora" : f.estado === "gabela" ? "gabela" : "al-dia",
+        recoleccion: f.para_recoger, pagaHoy: f.paga_ese_dia, conPlazo: f.con_plazo, contratoActivo: f.contrato_estado === "Activo",
+        cum: CUM_VACIO, montoSuyo: 0, montoAntes: 0, cumSuyo: CUM_VACIO, asignadaEl: null, motoEstado: f.moto_estado,
+      });
+    });
+    return { filas: conCuenta, sinCuenta, como: cuaderno.filas[0]?.como ?? "anotada" };
+  }, [diaActivo, cuaderno.filas, filtros, contratoPorId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const textoDiaC = diaActivo ? textoDia(diaActivo, hoyStr) : null;
+  const diaC = textoDiaC ? ` el ${textoDiaC}` : "";
+  const archivoC = diaActivo ? `_${diaActivo}` : "";
+  const vigentesC = (filasDelDia ? filasDelDia.filas : baseResumen).filter(r => r.estado !== "cerrado");
   const debenC = vigentesC.filter(r => r.debeHoy > 0).sort((a, b) => b.debeHoy - a.debeHoy);
   const sumaDebe = (f: MotoRowG[], k?: "semanas" | "acuerdo" | "deudas") => f.reduce((s, r) => s + (k ? r.debe[k] : r.debeHoy), 0);
   const siguenConContrato = (r: MotoRowG) => r.estado === "aldia" || r.estado === "gabela" || r.estado === "mora" || r.estado === "taller";
   // 5-oct: "al día" al lado de $202.000 confundía — es que hoy le toca pagar (las mismas palabras de ZALA).
   const comoVa = (r: MotoRowG) => r.estado === "mora" ? `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · para recoger la moto" : r.conPlazo ? " · con plazo extra" : ""}`
     : r.estado === "gabela" ? "en gabela" : r.estado === "taller" ? "moto en el taller" : r.estado === "retenida" ? `moto retenida, ${sitioDe(r)}`
-    : r.estado === "reasignada" ? "en liquidación · la moto ya la tiene otro cliente"
-    : r.pagaHoy && r.debe.semanas + r.debe.acuerdo > 0 ? "al día, le toca pagar hoy" : "al día";
+    : r.estado === "reasignada" ? `en liquidación · la moto ya la ${textoDiaC ? "tenía" : "tiene"} otro cliente`
+    : r.pagaHoy && r.debe.semanas + r.debe.acuerdo > 0 ? (textoDiaC ? "al día, le tocaba pagar ese día" : "al día, le toca pagar hoy") : "al día";
   const ETIQUETA_ESTADO_C: Record<string, string> = { aldia: "Al día", gabela: "Gabela", mora: "En mora", taller: "Moto en el taller", retenida: "Retenida", reasignada: "En liquidación" };
   const chipsEstadoC = (f: MotoRowG[]) => {
     const presentes = [...new Set(f.map(r => r.estado))];
@@ -1760,10 +1798,12 @@ export default function ReportesView({ onNavigate }: Props) {
   const cobradorUnico = filtros.cobrador.length === 1 && filtros.cobrador[0] !== "__none__" ? filtros.cobrador[0] : null;
   const filtroCarteraC = (base: string, grupo = grupoUnico, cobrador = cobradorUnico) =>
     `${base}${grupo ? `;grupo:${grupo}` : ""}${cobrador ? `;cobrador:${cobrador}` : ""}`;
-  const aCarteraC = (base: string, grupo = grupoUnico, cobrador = cobradorUnico) => ({
+  // Cartera muestra hoy: desde un día pasado no se ofrece, porque abriría otra cosa.
+  const aCarteraC = (base: string, grupo = grupoUnico, cobrador = cobradorUnico) => textoDiaC ? undefined : ({
     texto: "Abrir en Cartera",
     onClick: () => { setDetalle(null); onNavigate?.("cobros", filtroCarteraC(base, grupo, cobrador)); },
   });
+  const cuantosC = (e: EstadoPagoG) => vigentesC.filter(r => r.estado === e).length;
   const repartoC = (clave: (r: MotoRowG) => string, nombre: (r: MotoRowG) => string, color?: (k: string) => string): FilaReparto[] => {
     const m = new Map<string, FilaReparto>();
     vigentesC.forEach(r => {
@@ -1783,7 +1823,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const cobranzaC = {
     debe: { total: sumaDebe(debenC), semanas: sumaDebe(vigentesC, "semanas"), acuerdo: sumaDebe(vigentesC, "acuerdo"), deudas: sumaDebe(vigentesC, "deudas"), clientes: debenC.length },
     cobrable: { conMoto: sumaDebe(vigentesC.filter(siguenConContrato)), retenidas: sumaDebe(vigentesC.filter(r => !siguenConContrato(r))) },
-    estados: { aldia: alDiaF.length, gabela: gabelaF.length, mora: enMoraF.length, recoleccion: enMoraF.filter(r => r.recoleccion).length, taller: tallerF.length, retenidas: retenidasF.length, liquidacion: liquidacionF.length },
+    estados: { aldia: cuantosC("aldia"), gabela: cuantosC("gabela"), mora: cuantosC("mora"), recoleccion: vigentesC.filter(r => r.estado === "mora" && r.recoleccion).length, taller: cuantosC("taller"), retenidas: cuantosC("retenida"), liquidacion: cuantosC("reasignada") },
     porGrupo: repartoC(r => r.grupo, r => r.grupo, k => GRUPO_COLORS[k] ?? "var(--muted)"),
     porCobrador: repartoC(r => r.adminId, r => r.adminNombre),
     mayores: debenC.slice(0, 5).map(r => ({ contratoId: r.contratoId, placa: r.placa, grupo: r.grupo, cliente: r.cliente, detalle: comoVa(r), debe: r.debeHoy })),
@@ -1795,21 +1835,39 @@ export default function ReportesView({ onNavigate }: Props) {
     const i = clave.indexOf(":");
     const tipo = i < 0 ? clave : clave.slice(0, i);
     const valor = i < 0 ? "" : clave.slice(i + 1);
-    if (tipo === "hoy") { abrirDetalle(clave); return; }
+    if (tipo === "hoy" && !textoDiaC) { abrirDetalle(clave); return; }
+    if (tipo === "hoy") {
+      // Un día pasado: las listas por estado salen del cuaderno de ese día, no de las de hoy.
+      const est: EstadoPagoG = valor === "retenidas" ? "retenida" : valor === "liquidacion" ? "reasignada" : valor === "recoleccion" ? "mora" : valor as EstadoPagoG;
+      const f = vigentesC.filter(r => r.estado === est && (valor !== "recoleccion" || r.recoleccion))
+        .sort((a, b) => b.diasMora - a.diasMora || b.debeHoy - a.debeHoy);
+      const nombre = ({ aldia: "Al día", gabela: "Gabela", mora: "En mora", recoleccion: "Para recoger la moto", taller: "Con la moto en el taller", retenidas: "Retenidas por no pagar", liquidacion: "En liquidación" } as Record<string, string>)[valor] ?? valor;
+      setDetalle({
+        titulo: `${nombre} el ${textoDiaC} · ${f.length}`,
+        subtitulo: `Cómo estaban el ${textoDiaC}. Debían ${plataT(sumaDebe(f))} entre todos. Toca uno para ver su ficha como está hoy.`,
+        filas: f.map(r => filaMoto(r, comoVa(r), r.debeHoy > 0 ? r.debeHoy : null, r.debeHoy > 0 ? "var(--bad-ink)" : undefined)),
+        archivo: `${valor}_${diaActivo}`,
+      });
+      return;
+    }
     if (tipo === "contrato") { irFicha(valor); return; }
     if (tipo === "debe") {
       const k = valor as "semanas" | "acuerdo" | "deudas";
       const f = vigentesC.filter(r => r.debe[k] > 0).sort((a, b) => b.debe[k] - a.debe[k]);
       const titulo = { semanas: "Cuotas del contrato", acuerdo: "Cuotas de acuerdos", deudas: "Deudas" }[k];
-      const explica = {
+      const explica = (textoDiaC ? {
+        semanas: "Las semanas (o quincenas) de su contrato que ya les tocaba pagar y no habían pagado, contando la que vencía ese día.",
+        acuerdo: "Lo que ya les tocaba pagar de sus acuerdos, con lo que traían atrasado.",
+        deudas: "Multas, lavadas, daños y otras deudas registradas sin pagar. Las que estaban dentro de un acuerdo no salen aquí: se cobraban en la cuota del acuerdo.",
+      } : {
         semanas: "Las semanas (o quincenas) de su contrato que ya les tocaba pagar y no han pagado, contando la que vence hoy.",
         acuerdo: "Lo que ya les toca pagar de sus acuerdos, con lo que traen atrasado.",
         deudas: "Multas, lavadas, daños y otras deudas registradas sin pagar. Las que están dentro de un acuerdo no salen aquí: se cobran en la cuota del acuerdo.",
-      }[k];
+      })[k];
       setDetalle({
-        titulo: `${titulo} · ${f.length}`, subtitulo: `${explica} Suman ${plataT(sumaDebe(f, k))}.`,
+        titulo: `${titulo}${diaC} · ${f.length}`, subtitulo: `${textoDiaC ? `Como estaban el ${textoDiaC}. ` : ""}${explica} Suman ${plataT(sumaDebe(f, k))}.`,
         filas: f.map(r => filaDeuda(r, r.debe[k])), chips: chipsEstadoC(f),
-        accion: aCarteraC(k === "acuerdo" ? "contratos:convenio" : "contratos:todos"), archivo: `deben_${k}`,
+        accion: aCarteraC(k === "acuerdo" ? "contratos:convenio" : "contratos:todos"), archivo: `deben_${k}${archivoC}`,
       });
       return;
     }
@@ -1817,10 +1875,12 @@ export default function ReportesView({ onNavigate }: Props) {
       const conContrato = valor === "conmoto";
       const f = debenC.filter(r => siguenConContrato(r) === conContrato);
       setDetalle({
-        titulo: `${conContrato ? "Siguen con su contrato" : "Retenidas o en liquidación"} · ${f.length}`,
-        subtitulo: `${conContrato ? "Lo que deben hoy los clientes que siguen trabajando con su contrato." : "Contratos detenidos: la moto está retenida o ya la tiene otro cliente."} Suman ${plataT(sumaDebe(f))}.`,
+        titulo: `${conContrato ? "Siguen con su contrato" : "Retenidas o en liquidación"}${diaC} · ${f.length}`,
+        subtitulo: textoDiaC
+          ? `${conContrato ? `Lo que debían el ${textoDiaC} los clientes que seguían trabajando con su contrato.` : `Contratos detenidos el ${textoDiaC}: la moto estaba retenida o ya la tenía otro cliente.`} Suman ${plataT(sumaDebe(f))}.`
+          : `${conContrato ? "Lo que deben hoy los clientes que siguen trabajando con su contrato." : "Contratos detenidos: la moto está retenida o ya la tiene otro cliente."} Suman ${plataT(sumaDebe(f))}.`,
         filas: f.map(r => filaDeuda(r, r.debeHoy)), chips: chipsEstadoC(f),
-        accion: aCarteraC(conContrato ? "contratos:todos" : "contratos:retenidos"), archivo: conContrato ? "deuda_con_contrato" : "deuda_retenidas",
+        accion: aCarteraC(conContrato ? "contratos:todos" : "contratos:retenidos"), archivo: (conContrato ? "deuda_con_contrato" : "deuda_retenidas") + archivoC,
       });
       return;
     }
@@ -1828,34 +1888,36 @@ export default function ReportesView({ onNavigate }: Props) {
       const f = debenC.filter(r => tipo === "grupo" ? r.grupo === valor : r.adminId === valor);
       const nombre = tipo === "grupo" ? valor : (cobranzaC.porCobrador.find(x => x.clave === valor)?.nombre ?? "");
       setDetalle({
-        titulo: `Lo que deben · ${nombre} · ${f.length}`, subtitulo: `Suman ${plataT(sumaDebe(f))}. Primero los que más deben.`,
+        titulo: `${textoDiaC ? "Lo que debían" : "Lo que deben"} · ${nombre}${diaC} · ${f.length}`, subtitulo: `Suman ${plataT(sumaDebe(f))}. Primero los que más ${textoDiaC ? "debían" : "deben"}.`,
         filas: f.map(r => filaDeuda(r, r.debeHoy)), chips: chipsEstadoC(f),
         accion: tipo === "grupo" ? aCarteraC("contratos:todos", valor, cobradorUnico) : valor === "__none__" ? undefined : aCarteraC("contratos:todos", grupoUnico, valor),
-        archivo: `deuda_${nombre.replace(/\s+/g, "_").toLowerCase()}`,
+        archivo: `deuda_${nombre.replace(/\s+/g, "_").toLowerCase()}${archivoC}`,
       });
       return;
     }
     if (tipo === "mayores") {
       setDetalle({
-        titulo: `Los que deben · ${debenC.length}`, subtitulo: `Deben ${plataT(sumaDebe(debenC))} entre todos. Primero los que más deben.`,
-        filas: debenC.map(r => filaDeuda(r, r.debeHoy)), chips: chipsEstadoC(debenC), accion: aCarteraC("contratos:todos"), archivo: "los_que_deben",
+        titulo: textoDiaC ? `Los que debían el ${textoDiaC} · ${debenC.length}` : `Los que deben · ${debenC.length}`,
+        subtitulo: textoDiaC ? `Debían ${plataT(sumaDebe(debenC))} entre todos. Primero los que más debían.` : `Deben ${plataT(sumaDebe(debenC))} entre todos. Primero los que más deben.`,
+        filas: debenC.map(r => filaDeuda(r, r.debeHoy)), chips: chipsEstadoC(debenC), accion: aCarteraC("contratos:todos"), archivo: `los_que_deben${archivoC}`,
       });
       return;
     }
     if (tipo === "favor") {
       const f = vigentesC.filter(r => r.saldoAFavor > 0).sort((a, b) => b.saldoAFavor - a.saldoAFavor);
       setDetalle({
-        titulo: `Plata a favor de los clientes · ${f.length}`,
+        titulo: `Plata a favor de los clientes${diaC} · ${f.length}`,
         subtitulo: `Suman ${plataT(f.reduce((s, r) => s + r.saldoAFavor, 0))}. Es lo que pagaron de más y quedó guardado a su nombre; se aplica a mano, cuando el cliente lo decide.`,
-        filas: f.map(r => filaMoto(r, comoVa(r), r.saldoAFavor, "var(--ok-ink)", r.estado)), chips: chipsEstadoC(f), archivo: "saldos_a_favor",
+        filas: f.map(r => filaMoto(r, comoVa(r), r.saldoAFavor, "var(--ok-ink)", r.estado)), chips: chipsEstadoC(f), archivo: `saldos_a_favor${archivoC}`,
       });
       return;
     }
     if (tipo === "modalidad") {
       const f = vigentesC.filter(r => r.contratoActivo && (r.formaPago || "Sin definir") === valor).sort((a, b) => b.debeHoy - a.debeHoy);
       setDetalle({
-        titulo: `${valor} · ${f.length}`, subtitulo: "Los contratos andando con esta forma de pago. Al lado, lo que debe hoy cada uno.",
-        filas: f.map(r => filaMoto(r, comoVa(r), r.debeHoy > 0 ? r.debeHoy : null, "var(--bad-ink)", r.estado)), chips: chipsEstadoC(f), archivo: `contratos_${valor.toLowerCase()}`,
+        titulo: `${valor}${diaC} · ${f.length}`,
+        subtitulo: textoDiaC ? `Los contratos andando con esta forma de pago el ${textoDiaC}. Al lado, lo que debía ese día cada uno.` : "Los contratos andando con esta forma de pago. Al lado, lo que debe hoy cada uno.",
+        filas: f.map(r => filaMoto(r, comoVa(r), r.debeHoy > 0 ? r.debeHoy : null, "var(--bad-ink)", r.estado)), chips: chipsEstadoC(f), archivo: `contratos_${valor.toLowerCase()}${archivoC}`,
       });
     }
   }
@@ -2241,11 +2303,12 @@ export default function ReportesView({ onNavigate }: Props) {
         sinProducir: { motos: sinProducirR.motos, dias: sinProducirR.dias, estimado: sinProducirR.estimado },
       },
       cobranza: {
+        dia: textoDiaC,
         debe: cobranzaC.debe,
         cobrable: cobranzaC.cobrable,
         estados: [
           { etiqueta: "Al día", n: cobranzaC.estados.aldia }, { etiqueta: "Gabela (día de gracia)", n: cobranzaC.estados.gabela },
-          { etiqueta: "En mora", n: cobranzaC.estados.mora }, { etiqueta: "De los que están en mora, para recoger la moto", n: cobranzaC.estados.recoleccion },
+          { etiqueta: "En mora", n: cobranzaC.estados.mora }, { etiqueta: textoDiaC ? "De los que estaban en mora, para recoger la moto" : "De los que están en mora, para recoger la moto", n: cobranzaC.estados.recoleccion },
           { etiqueta: "Con la moto en el taller", n: cobranzaC.estados.taller }, { etiqueta: "Retenidas por no pagar", n: cobranzaC.estados.retenidas },
           { etiqueta: "En liquidación", n: cobranzaC.estados.liquidacion },
         ],
@@ -2360,8 +2423,12 @@ export default function ReportesView({ onNavigate }: Props) {
   }
   function excelLoQueSeDebe(separar: SepararPor = "grupo") {
     descargarExcelR({
-      archivo: `lo_que_se_debe_${hoyISO()}`, titulo: "Lo que se debe hoy", periodo: `Al ${textoRango(hoyISO(), hoyISO())}`,
-      leyenda: "La misma cuenta de Cartera, cliente por cliente. Las deudas que están dentro de un acuerdo van en la cuota del acuerdo.",
+      archivo: diaActivo ? `lo_que_se_debia_${diaActivo}` : `lo_que_se_debe_${hoyISO()}`,
+      titulo: textoDiaC ? `Lo que se debía el ${textoDiaC}` : "Lo que se debe hoy",
+      periodo: `Al ${textoRango(diaActivo || hoyISO(), diaActivo || hoyISO())}${diaActivo ? (filasDelDia?.como === "calculada_despues" ? " (calculado después, aproximado)" : " (anotado esa noche)") : ""}`,
+      leyenda: diaActivo && filasDelDia
+        ? avisoDelDia(filasDelDia.como, diaActivo, hoyStr, filasDelDia.sinCuenta) + " Las deudas que estaban dentro de un acuerdo van en la cuota del acuerdo."
+        : "La misma cuenta de Cartera, cliente por cliente. Las deudas que están dentro de un acuerdo van en la cuota del acuerdo.",
       columnas: [{ label: "Cliente", ancho: 220 }, { label: "Placa", align: "center", ancho: 80 }, { label: separar === "grupo" ? "Cobrador" : "Grupo", ancho: 160 }, { label: "Cómo va", ancho: 200 },
         { label: "Cuotas del contrato", align: "right", ancho: 110 }, { label: "Cuotas de acuerdos", align: "right", ancho: 110 }, { label: "Deudas", align: "right", ancho: 100 }, { label: "Total", align: "right", ancho: 110 }],
       secciones: bloquesPor(debenC, r => r.grupo, r => r.adminNombre || "Sin asignar", separar).map(b => ({
@@ -2568,7 +2635,7 @@ export default function ReportesView({ onNavigate }: Props) {
 
   const EXCEL_DE_TAB: Partial<Record<Tab, { etiqueta: string; separable: boolean; onDescargar: (s: SepararPor) => void }>> = {
     resumen: { etiqueta: "Los pagos del período, uno por uno", separable: true, onDescargar: excelPagosPeriodo },
-    cartera: { etiqueta: "Lo que debe cada cliente: semanas, acuerdo y deudas", separable: true, onDescargar: excelLoQueSeDebe },
+    cartera: { etiqueta: textoDiaC ? `Lo que debía cada cliente el ${textoDiaC}: semanas, acuerdo y deudas` : "Lo que debe cada cliente: semanas, acuerdo y deudas", separable: true, onDescargar: excelLoQueSeDebe },
     convenios: { etiqueta: "Cada acuerdo con sus pagos", separable: false, onDescargar: () => excelConvenios() },
     grupos: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
     admins: { etiqueta: "Cada moto con su estado, lo que pagó y su cumplimiento", separable: true, onDescargar: sp => setDescarga(sp === "grupo" ? "grupo" : "admin") },
@@ -2741,7 +2808,9 @@ export default function ReportesView({ onNavigate }: Props) {
             />
           ) : undefined}
           soloHoy={tab === "flota" || tab === "guardadas" || tab === "cartera" || tab === "convenios"}
-          textoFijo={tab === "nomina" ? textoSemanaNomina : undefined}
+          textoFijo={tab === "nomina" ? textoSemanaNomina
+            : textoDiaC ? `cómo estaba el ${textoDiaC} (${filasDelDia?.como === "calculada_despues" ? "calculado después" : "anotado esa noche"})` : undefined}
+          dia={tab === "cartera" ? { valor: diaCartera, opciones: opcionesDia(cuaderno.fechas, hoyStr), onCambio: v => { if (v !== "__nada__") setDiaCartera(v); } } : undefined}
           sinGrupo={tab === "visitas"}
           {...(tab === "grupos" || tab === "admins" || tab === "cruzado" ? {
             modalidad: filtros.modalidad.length === 1 ? filtros.modalidad[0] : "",
@@ -2914,8 +2983,25 @@ export default function ReportesView({ onNavigate }: Props) {
       )}
 
       {/* ── COBRANZA · CARTERA (rediseño 2-oct): cuánto se debe hoy, qué tan cobrable es y quién lo tiene ── */}
-      {tab === "cartera" && (
-        <CobranzaCartera {...cobranzaC} onAbrir={abrirDetalleCobranza} onCartera={() => onNavigate?.("cobros", filtroCarteraC("contratos:todos"))} />
+      {tab === "cartera" && diaActivo && !filasDelDia && (
+        <div role="status" style={{ ...card, display: "grid", gap: 8, justifyItems: "start", textAlign: "left" }}>
+          {cuaderno.error ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: "var(--bad-ink)" }}>
+                <AlertTriangle size={18} aria-hidden="true" /> No se pudo traer el {textoDiaC}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted2)", lineHeight: 1.5 }}>Revisa la conexión a internet y vuelve a escoger el día.</div>
+              <button onClick={() => setDiaCartera("")} style={{ ...primaryBtn, minHeight: 44 }}>Volver a hoy</button>
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: "var(--muted2)" }}>Trayendo cómo estaba el {textoDiaC}…</div>
+          )}
+        </div>
+      )}
+      {tab === "cartera" && (!diaActivo || filasDelDia) && (
+        <CobranzaCartera {...cobranzaC} onAbrir={abrirDetalleCobranza} onCartera={() => onNavigate?.("cobros", filtroCarteraC("contratos:todos"))}
+          dia={textoDiaC} aviso={diaActivo && filasDelDia ? avisoDelDia(filasDelDia.como, diaActivo, hoyStr, filasDelDia.sinCuenta) : null}
+          onVolverAHoy={() => setDiaCartera("")} />
       )}
 
       {/* ── TAB FLOTA ── */}

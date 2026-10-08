@@ -27,6 +27,8 @@ export type DatosInforme = {
     sinProducir: { motos: number; dias: number; estimado: number };
   };
   cobranza: {
+    /** Un día pasado del cuaderno (mig 190), p. ej. "30 de septiembre". Sin él, la cobranza es de hoy. */
+    dia?: string | null;
     debe: { total: number; semanas: number; acuerdo: number; deudas: number; clientes: number };
     cobrable: { conMoto: number; retenidas: number };
     estados: Array<{ etiqueta: string; n: number }>;
@@ -127,25 +129,34 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
 
   if (incluye.has("cobranza")) {
     const c = d.cobranza;
-    abrir("Cobranza");
+    // Un día pasado: todo en pasado, y sin los acuerdos (esos son de hoy, no de ese día).
+    const pasado = !!c.dia;
+    abrir(pasado ? `Cobranza — cómo estaba el ${c.dia}` : "Cobranza");
     partes.push(kpis([
-      { l: "Lo que se debe hoy", v: plata(c.debe.total), s: `${c.debe.clientes} clientes deben algo`, color: C.mal },
+      { l: pasado ? `Lo que se debía el ${c.dia}` : "Lo que se debe hoy", v: plata(c.debe.total), s: `${c.debe.clientes} clientes ${pasado ? "debían" : "deben"} algo`, color: C.mal },
       { l: "Cuotas del contrato", v: plata(c.debe.semanas) },
       { l: "Cuotas de acuerdos", v: plata(c.debe.acuerdo) },
       { l: "Deudas (multas, daños y otras)", v: plata(c.debe.deudas) },
     ]));
     const tc = c.cobrable.conMoto + c.cobrable.retenidas;
-    partes.push(nota(`Qué tan cobrable es: ${plata(c.cobrable.conMoto)} (${pct(c.cobrable.conMoto, tc)}%) lo deben clientes que siguen con su contrato; ${plata(c.cobrable.retenidas)} (${pct(c.cobrable.retenidas, tc)}%) lo deben motos retenidas o en liquidación, que casi siempre se termina cobrando en la liquidación.`));
-    partes.push(sub("Cómo van pagando hoy"));
+    partes.push(nota(pasado
+      ? `Qué tan cobrable era: ${plata(c.cobrable.conMoto)} (${pct(c.cobrable.conMoto, tc)}%) lo debían clientes que seguían con su contrato; ${plata(c.cobrable.retenidas)} (${pct(c.cobrable.retenidas, tc)}%) lo debían motos retenidas o en liquidación.`
+      : `Qué tan cobrable es: ${plata(c.cobrable.conMoto)} (${pct(c.cobrable.conMoto, tc)}%) lo deben clientes que siguen con su contrato; ${plata(c.cobrable.retenidas)} (${pct(c.cobrable.retenidas, tc)}%) lo deben motos retenidas o en liquidación, que casi siempre se termina cobrando en la liquidación.`));
+    partes.push(sub(pasado ? "Cómo iban pagando ese día" : "Cómo van pagando hoy"));
     partes.push(tabla([{ t: "Estado" }, { t: "Clientes", al: "center" }], c.estados.map(e => [esc(e.etiqueta), String(e.n)])));
     partes.push(sub("Quién tiene la deuda, por grupo"));
     partes.push(tabla([{ t: "Grupo" }, { t: "Debe", al: "right" }, { t: "Clientes", al: "center" }], c.porGrupo.map(g => [esc(g.nombre), plata(g.debe), String(g.clientes)])));
     partes.push(sub("Quién tiene la deuda, por cobrador"));
     partes.push(tabla([{ t: "Cobrador" }, { t: "Debe", al: "right" }, { t: "Clientes", al: "center" }], c.porCobrador.map(g => [esc(g.nombre.toUpperCase()), plata(g.debe), String(g.clientes)])));
-    partes.push(sub(`Los ${c.mayores.length} que más deben`));
+    partes.push(sub(`Los ${c.mayores.length} que más ${pasado ? "debían" : "deben"}`));
     partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Grupo", al: "center" }, { t: "Cómo va" }, { t: "Debe", al: "right" }],
       c.mayores.map(m => [esc(m.cliente.toUpperCase()), esc(m.placa), esc(m.grupo), esc(m.detalle), plata(m.debe)])));
-    partes.push(nota(`Plata a favor de los clientes: ${c.saldoFavor.clientes} clientes tienen ${plata(c.saldoFavor.total)} a su favor. Se les aplica a mano, cuando el cliente lo decide.`));
+    partes.push(nota(pasado
+      ? `Plata a favor de los clientes: ${c.saldoFavor.clientes} clientes tenían ${plata(c.saldoFavor.total)} a su favor ese día.`
+      : `Plata a favor de los clientes: ${c.saldoFavor.clientes} clientes tienen ${plata(c.saldoFavor.total)} a su favor. Se les aplica a mano, cuando el cliente lo decide.`));
+  }
+  if (incluye.has("cobranza") && !d.cobranza.dia) {
+    const c = d.cobranza;
     const a = c.acuerdos;
     partes.push(sub("Acuerdos de pago"));
     partes.push(kpis([

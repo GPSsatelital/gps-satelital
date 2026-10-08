@@ -696,6 +696,20 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## Cerrados recientemente
 
+- [x] **8-oct · La ventana de hacer un convenio cabe en la pantalla** (42608be) — medida: era una columna de 500 px con
+  2.040 px de contenido en un portátil (2.371 en celular); el total, la firma y el botón quedaban abajo sin aviso.
+  Ahora título y total con botones fijos, solo el medio se desliza; en computador 920 px y dos columnas (1.218 px),
+  en celular "Desliza para ver más". Mismo componente en las 4 puertas. No cambia ninguna cuenta.
+- [x] **8-oct · La entrega de la moto se guarda de un solo golpe** (a62d414 + mig 193 `activar_entrega`) — antes
+  eran 5 guardados sueltos que no miraban si fallaban (un corte en la mitad dejaba la entrega a medias sin aviso,
+  y una foto que no subía se perdía). Medido antes: 130 entregas de la app, ninguna a medias. La prueba de la
+  migración entregó y deshizo la de JOSE SANMARTIN (RMY55H). Primer intento de la mig falló al registrarse
+  (el "a nombre del dueño" dentro de la prueba quedaba vacío al deshacerla) y no dejó nada: corregido.
+- [x] **8-oct · Base de datos de NANO a MICRO** (lo hizo el dueño, +$0/mes) — el aviso "Disk IO Budget" era la
+  memoria: 0,5 GB no alcanzaban y la máquina usaba el disco como memoria (Swap). La base pesa 62 MB y el 100 % de
+  las lecturas salía de memoria: no eran las consultas. Reinicio de 4:41 a 4:44 p.m.; ningún pago quedó a medias
+  ni repetido (el último guardado fue 4:34). 🔲 **Mañana:** mirar si el Swap bajó en las gráficas.
+
 - [x] **8-oct · Un doble toque ya no registra el mismo cobro dos veces** (97ba56d + mig 192, corrida por el dueño a
   las 4:08 p.m.) — candado inmediato en Registrar pago, cobro en la calle y Cobro diario (probado: dos toques en el
   mismo instante = 1 intento) + en la base los pagos de un mismo contrato se procesan en fila. Corregidos: **BRYAN

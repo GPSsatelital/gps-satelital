@@ -5,7 +5,7 @@ import { useConvenios } from "../hooks/useConvenios";
 import { usePagos, saldoAFavorDe } from "../hooks/usePagos";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { useContratos, type Contrato } from "../hooks/useContratos";
-import { cuentaLiquidacion } from "../utils/cuentaLiquidacion";
+import { cuentaLiquidacion, diasGuardadosRodados } from "../utils/cuentaLiquidacion";
 import { recepcionDelContrato } from "../utils/recepcionDelContrato";
 import { hoyISO } from "../utils/fecha";
 import { inputStyle, labelStyle, secondaryBtn } from "../styles/shared";
@@ -32,7 +32,7 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
   const { deudas } = useDeudas();
   const { convenios } = useConvenios();
   const { pagos } = usePagos();
-  const { recepciones } = useUbicaciones();
+  const { recepciones, acuerdos } = useUbicaciones();
   const { contratos } = useContratos();
 
   // Arranca en el día que se guardó la moto si está registrado; si no, en hoy. Editable: el punto
@@ -59,14 +59,19 @@ export default function ModalProyeccionLiquidacion({ contrato, clienteNombre, pl
   // "Cumplimiento" en ModalIniciarLiquidacion.
   const terminoDePagar = contrato.total_cajas != null && (contrato.cajas_pagadas ?? 0) >= contrato.total_cajas;
 
-  const cuenta = useMemo(() => cuentaLiquidacion({
-    contrato,
-    fechaCorte: fecha || hoyISO(),
-    saldoFavor: saldoAFavorDe(contrato, pagos.filter(p => p.contrato_id === contrato.id && p.estado === "Confirmado")),
-    deudas: deudas.filter(d => d.contrato_id === contrato.id),
-    convenios: convenios.filter(cv => cv.contrato_id === contrato.id),
-    motivo: terminoDePagar ? "cumplimiento" : null,
-  }), [contrato, fecha, pagos, deudas, convenios, terminoDePagar]);
+  const cuenta = useMemo(() => {
+    const pagosConfirmados = pagos.filter(p => p.contrato_id === contrato.id && p.estado === "Confirmado");
+    return cuentaLiquidacion({
+      contrato,
+      fechaCorte: fecha || hoyISO(),
+      saldoFavor: saldoAFavorDe(contrato, pagosConfirmados),
+      deudas: deudas.filter(d => d.contrato_id === contrato.id),
+      convenios: convenios.filter(cv => cv.contrato_id === contrato.id),
+      motivo: terminoDePagar ? "cumplimiento" : null,
+      pagos: pagosConfirmados,
+      diasNoUsados: diasGuardadosRodados(acuerdos.filter(a => a.contrato_id === contrato.id)),
+    });
+  }, [contrato, fecha, pagos, deudas, convenios, acuerdos, terminoDePagar]);
 
   const leDevuelven = cuenta.saldoFinal >= 0;
 

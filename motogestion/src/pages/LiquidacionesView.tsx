@@ -14,7 +14,7 @@ import { generarReciboEgresoLiquidacion } from "../utils/generarReciboEgresoLiqu
 import ModalFirmaLiquidacion from "../components/ModalFirmaLiquidacion";
 import { ajusteSalidaLedger } from "../utils/cicloPago";
 import { desgloseDeudas } from "../utils/desgloseLiquidacion";
-import { plataQueEsDelCliente, faltaParaCumplimiento } from "../utils/cuentaLiquidacion";
+import { plataQueEsDelCliente, faltaParaCumplimiento, acuerdosEnLaLiquidacion, ahorroDeLosAcuerdos, conAbonado, diasGuardadosRodados } from "../utils/cuentaLiquidacion";
 import { useDeudas } from "../hooks/useDeudas";
 import { useConvenios } from "../hooks/useConvenios";
 import { hoyISO } from "../utils/fecha";
@@ -103,7 +103,7 @@ export default function LiquidacionesView() {
   const { motos: todasMotos } = useMotos();
   const { contratos } = useContratos();
   const { taller } = useTaller();
-  const { recepciones } = useUbicaciones();
+  const { recepciones, acuerdos: acuerdosTiempo } = useUbicaciones();
   const { pagos } = usePagos();
   // Con otro nombre: `deudas` es el formulario de la revisión de taller.
   const { deudas: deudasBD } = useDeudas();
@@ -306,12 +306,24 @@ export default function LiquidacionesView() {
     if (!confirm(`¿Registrar la revisión de taller y calcular el saldo?\n\nSe le va a cobrar hasta el ${new Date(fechaEntregaMoto + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}, que es el día en que se guardó la moto.`)) return;
     setGuardando(true);
     const danosValidos = danos.filter((d) => d.concepto.trim());
-    const deudasValidas = deudas.filter((d) => d.concepto.trim());
     const totalDanos = danosValidos.reduce((s, d) => s + Number(d.monto), 0);
+    // D-046: el renglón del acuerdo se pone al día con lo abonado de verdad desde su firma (no solo
+    // cuotas completas). Si el funcionario lo cambió a mano, se respeta.
+    const seVaAntes = sel.motivo !== "cumplimiento";
+    const acuerdosLiq = acuerdosEnLaLiquidacion(
+      deudas.filter((d) => d.concepto.trim()),
+      conAbonado(conveniosBD.filter(cv => cv.contrato_id === sel.contrato_id), pagosDelContrato(sel.contrato_id)),
+      { seVaAntes },
+    );
+    const deudasValidas = acuerdosLiq.renglones;
+    // El formulario muestra la misma cifra que se guarda, no la vieja.
+    setDeudas(deudasValidas.length > 0 ? deudasValidas : [{ concepto: "", monto: 0 }]);
     // AJUSTE DE SALIDA (libro de cajas, regla 9): se cobra hasta el día en que ENTREGÓ la moto
     // —no hasta hoy— y lo prepagado no consumido se devuelve (porCobrar suma, aFavor resta).
+    // D-046: los días en que la moto estuvo guardada y se rodó no se cobran como usados.
     const contratoLiq = contratos.find(ct => ct.id === sel.contrato_id);
-    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00")) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0 };
+    const diasNoUsados = diasGuardadosRodados(acuerdosTiempo.filter(a => a.contrato_id === sel.contrato_id));
+    const ajuste = contratoLiq ? ajusteSalidaLedger(contratoLiq, new Date(fechaEntregaMoto + "T12:00:00"), diasNoUsados) : { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0 };
     // El saldo a favor es plata que el cliente YA entregó: se le devuelve igual que el ahorro
     // (regla del dueño). Va en su propio renglón, no sumado al ahorro, para que la pantalla no
     // diga "ahorro" de un dinero que no es ahorro.
@@ -337,7 +349,10 @@ export default function LiquidacionesView() {
     // campo revuelto que la migración de COSTA dejó en CERO en 64 contratos (a esos no se les
     // contaba NADA de base) y que en otros no coincide con el arqueo. El bueno es `base_inicial`.
     // El motivo decide si el ahorro se le entrega o ya pagó la moto (D-023).
-    const renglonesFavor = contratoLiq ? plataQueEsDelCliente(contratoLiq, sel.motivo) : [];
+    // D-046: si se le cobra un acuerdo entero, el ahorro de las semanas que entraron en él es suyo.
+    const renglonesFavor = contratoLiq
+      ? [...plataQueEsDelCliente(contratoLiq, sel.motivo), ...ahorroDeLosAcuerdos(acuerdosLiq.cobrados, { seVaAntes })]
+      : [];
     const ahorroDelCliente = renglonesFavor.reduce((s, r) => s + r.monto, 0);
     await calcularSaldo(sel.id, ahorroDelCliente, deudasAjustadas, totalDanos, saldoFavor, renglonesFavor);
     setGuardando(false);

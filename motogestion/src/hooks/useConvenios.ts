@@ -32,6 +32,10 @@ export type Convenio = {
   /** RODAR EL PAQUETE (mig 118): cuotas del convenio corridas al final porque la moto estuvo
    *  guardada esas semanas. No se perdonan — se exigen más tarde (espejo de cajas_exoneradas). */
   periodos_exonerados: number | null;
+  /** El desglose congelado al firmar (mig 096): deudas viejas, semanas financiadas y su ahorro. */
+  monto_deudas?: number | null;
+  monto_semanas?: number | null;
+  ahorro_semanas?: number | null;
   created_at: string;
 };
 

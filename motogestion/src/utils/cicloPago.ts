@@ -477,6 +477,28 @@ export function loQueDebe(
   };
 }
 
+/**
+ * Lo abonado a UN acuerdo: solo los abonos hechos DESDE su firma — el mismo corte que usa el motor
+ * (mig 119: `created_at >= convenio.created_at`) y la nómina. Antes se sumaban todos los del
+ * contrato: el primer cliente con dos acuerdos (BRADER, YAL65H, 8-sep-2026) habría visto los
+ * $148.000 de su acuerdo borrado acreditados al nuevo. Con `created_at` el corte es exacto; si solo
+ * hay `fecha` (pruebas), se compara por día e incluye el mismo día de la firma.
+ * La usan Cartera (`faltaDelAcuerdo`) y la liquidación, para que las dos cuenten igual.
+ */
+export function abonadoDesdeLaFirma(
+  convenio: { created_at?: string | null },
+  pagosConfirmados: Array<{ aplicado_convenio?: number | null; created_at?: string | null; fecha?: string | null }>,
+): number {
+  const firma = convenio.created_at ?? null;
+  const desdeLaFirma = (p: { created_at?: string | null; fecha?: string | null }) => {
+    if (!firma) return true;
+    if (p.created_at) return p.created_at >= firma;
+    if (p.fecha) return p.fecha >= firma.slice(0, 10);
+    return true;
+  };
+  return pagosConfirmados.filter(desdeLaFirma).reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+}
+
 // cuotaConvenio: la cuota del convenio activo es OBLIGATORIA junto con el pago normal —
 // si el cliente paga su cuota pero no la del convenio, entra en mora igual (antes el
 // convenio sin pagar quedaba invisible y el cliente aparecía "al día").
@@ -514,14 +536,7 @@ export function faltaDelAcuerdo(
   // del contrato: el primer cliente con dos convenios (BRADER, YAL65H, 8-sep-2026) habría visto
   // los $148.000 de su convenio borrado acreditados al nuevo. Con `created_at` el corte es exacto;
   // si solo hay `fecha` (pruebas), se compara por día e incluye el mismo día de la firma.
-  const firma = convenio.created_at ?? null;
-  const desdeLaFirma = (p: { created_at?: string | null; fecha?: string | null }) => {
-    if (!firma) return true;
-    if (p.created_at) return p.created_at >= firma;
-    if (p.fecha) return p.fecha >= firma.slice(0, 10);
-    return true;
-  };
-  const abonado = pagosConfirmados.filter(desdeLaFirma).reduce((s, p) => s + (p.aplicado_convenio ?? 0), 0);
+  const abonado = abonadoDesdeLaFirma(convenio, pagosConfirmados);
   return {
     toca: exigido,
     pagado: Math.min(abonado, exigido),
@@ -1293,9 +1308,15 @@ export function diasEnMoraV2(contrato: ContratoCiclo, hoy: Date): number {
 // prepagado NO consumido se le devuelve (entra al saldo final de la liquidación).
 // pagado = dinero real que entró al ledger desde el corte/inicio (las cajas previas del
 // arqueo NO cuentan: su plata vive en apertura/deudas).
+//
+// `diasNoUsados` (D-046, 8-oct-2026): los días en que la moto estuvo guardada en la empresa y se
+// decidió RODAR. No los usó, así que no se le cobran como usados — semanas completas o días sueltos.
+// Antes se recorría el calendario sin mirarlos: a BRADER GUZMAN (YAL65H) se le cobraba como usada la
+// semana del 1 al 8 de septiembre, con la moto en la bodega (mismos 19.661 km al entrar y al salir).
 export function ajusteSalidaLedger(
   contrato: ContratoCiclo,
   fechaRetorno: Date,
+  diasNoUsados: Iterable<string> = [],
 ): { pagado: number; consumido: number; aFavor: number; porCobrar: number; ahorroPorCobrar: number } {
   const cero = { pagado: 0, consumido: 0, aFavor: 0, porCobrar: 0, ahorroPorCobrar: 0 };
   if (!contrato.motor_v2 || contrato.forma_pago === "Diario" || !contrato.fecha_inicio_cajas) return cero;
@@ -1351,6 +1372,22 @@ export function ajusteSalidaLedger(
         break;
       }
     }
+  }
+  // Los días guardados que se rodaron salen de lo usado (con su parte de ahorro), día por día: lunes a
+  // sábado a su valor, domingo al suyo. Solo los que caen dentro de lo que se recorrió, y nunca el día
+  // del corte: ese se cobra siempre («se cobra hasta el día en que se guardó», regla 9).
+  if (ret >= inicio) {
+    const pagoLS = (contrato.tarifa_diaria ?? 27000) + (contrato.ahorro_diario ?? 4000);
+    const pagoDom = (contrato.tarifa_domingo ?? 14000) + (contrato.ahorro_domingo ?? 2000);
+    const desde = fechaAISO(inicio), hasta = fechaAISO(ret);
+    for (const dia of new Set(diasNoUsados)) {
+      if (dia < desde || dia >= hasta) continue;
+      const esDom = new Date(dia + "T12:00:00").getDay() === 0;
+      consumido -= esDom ? pagoDom : pagoLS;
+      ahorroConsumido -= esDom ? (contrato.ahorro_domingo ?? 2000) : (contrato.ahorro_diario ?? 4000);
+    }
+    consumido = Math.max(consumido, 0);
+    ahorroConsumido = Math.max(ahorroConsumido, 0);
   }
   const porCobrar = Math.max(consumido - pagado, 0);
   // AHORRO QUE LE CORRESPONDE DE LO QUE SE LE COBRA (regla del dueño, 21-ago).

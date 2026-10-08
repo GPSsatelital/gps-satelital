@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
 import { estadoMotoTrasLiberar } from "./useMotos";
-import { deudasYAcuerdos } from "../utils/cuentaLiquidacion";
+import { deudasYAcuerdos, conAbonado } from "../utils/cuentaLiquidacion";
 
 export type MotivoLiquidacion = "cumplimiento" | "retiro_voluntario" | "incumplimiento";
 export type EstadoLiquidacion = "iniciada" | "en_taller" | "calculada" | "documento_generado" | "firmada" | "cerrada" | "anulada";
@@ -196,12 +196,19 @@ export function useLiquidaciones() {
     // 'cumplido' y 'renovado' NO entran: el primero ya se pagó, el segundo vive en su reemplazo.
     const { data: convenios } = await supabase
       .from("convenios")
-      .select("deuda_total, cuota_por_periodo, cuotas_pagadas, estado, concepto")
+      .select("deuda_total, cuota_por_periodo, cuotas_pagadas, estado, concepto, created_at, monto_deudas, monto_semanas, ahorro_semanas")
       .eq("contrato_id", contratoId)
       .in("estado", ["activo", "incumplido"]);
+    // D-046: lo abonado de verdad a cada acuerdo, desde su firma. Antes contaba solo cuotas
+    // completas: a BRADER GUZMAN (LIQ-0078) le ignoró los $8.000 que abonó y le cobró el acuerdo entero.
+    const { data: pagosConv } = await supabase
+      .from("pagos")
+      .select("aplicado_convenio, created_at, fecha")
+      .eq("contrato_id", contratoId)
+      .eq("estado", "Confirmado");
     // La MISMA cuenta que la proyección (`deudasYAcuerdos`). D-023: al que se va antes no se le
     // cobra su convenio de base (el ahorro es suyo y la semana ya la cobran los días que usó).
-    detalleDeudas.push(...deudasYAcuerdos([], convenios ?? [], { seVaAntes: motivo !== "cumplimiento" }));
+    detalleDeudas.push(...deudasYAcuerdos([], conAbonado(convenios ?? [], pagosConv ?? []), { seVaAntes: motivo !== "cumplimiento" }));
     // RODADO POR DEUDA (D-044, mig 191): si se va antes, se le cobran las semanas rodadas que todavía
     // no se le exigían, SIN el recargo. Las que ya se le exigían las cobra la cuenta de siempre.
     // Sin la mig 191 la función no existe y no se agrega nada.

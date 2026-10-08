@@ -26,7 +26,14 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
      le cobró $202.000 (−$26.000 de ahorro). El dueño confirmó el 8-oct: **no se cobra**.
   3. **Ahorro de la semana financiada dentro del acuerdo** no se devuelve al cobrar el acuerdo entero (la fórmula lo
      supone acreditado). El dueño decidió (D-046): **se devuelve**. BRADER: $26.000. JHEINER LIQ-0076 tiene el mismo caso.
-  Antes de tocar: medir cuántas liquidaciones abiertas (y cerradas) tienen abonos parciales o semanas rodadas.
+  **8-oct: los tres arreglados en el código, SIN SUBIR** (pruebas `liquidacionJusta.test.ts`, 22, dan −$237.500 exacto).
+  Los días guardados que se rodaron se descuentan día por día aunque no completen la semana (pedido del dueño), nunca
+  el día del corte. Medido antes de subir: **11 de las 34 liquidaciones abiertas cambian al recalcularlas, todas a
+  favor del cliente, $978.000 en total** (LIQ-0025 $50.000 · 0039 $78.000 · 0050 $10.000 · 0065 $52.000 · 0066
+  $279.000 · 0072 $50.000 · 0074 $37.000 · 0076 $56.000 · 0077 $104.000 · 0078 $210.000 · 0086 $52.000). LIQ-0031
+  (moto guardada y rodada del 28-jul al 1-oct) cambia solo si se le pone un corte posterior al 28-jul. Las cerradas no
+  cambian (nadie las recalcula). Falta: el sí del dueño para subir → recalcular LIQ-0078 desde producción con corte 26-sep →
+  revisar que su documento diga −$237.500. El estado de cuenta ya está en dos hojas, explicado "para un niño".
 
 Lo que está afectando cifras reales de clientes en este momento.
 

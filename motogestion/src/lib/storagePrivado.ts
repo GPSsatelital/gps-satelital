@@ -44,14 +44,21 @@ export function partesDeUrlStorage(url: string): { bucket: string; camino: strin
  *
  * Si la firma falla, devuelve la URL original: mientras los buckets sigan públicos eso funciona,
  * y el día que se cierren es preferible una imagen rota a una pantalla en blanco.
+ *
+ * `ancho` pide una COPIA LIVIANA de la foto, achicada por Supabase (8-oct-2026). Una foto de la
+ * cámara del celular (3060 × 4080) pesa ~3.510 KB; achicada a 640 de ancho y calidad 60 pesa ~49 KB
+ * (medido con la de la persona de RMZ62H). Sirve solo para MOSTRAR: el archivo guardado no cambia.
+ * OJO: `resize: "contain"`, no "cover": con "cover" y solo el ancho, Supabase NO achica — RECORTA una
+ * tira de 640 × 4080 del centro de la foto (se veían barrigas y manos en vez de la persona).
  */
-export async function urlFirmada(url: string | null | undefined): Promise<string | null> {
+export async function urlFirmada(url: string | null | undefined, opciones: { ancho?: number } = {}): Promise<string | null> {
   if (!url) return null;
   const p = partesDeUrlStorage(url);
   if (!p) return url;
   const { data, error } = await supabase.storage
     .from(p.bucket)
-    .createSignedUrl(p.camino, MINUTOS_VALIDEZ * 60);
+    .createSignedUrl(p.camino, MINUTOS_VALIDEZ * 60,
+      opciones.ancho ? { transform: { width: opciones.ancho, quality: 60, resize: "contain" } } : undefined);
   if (error || !data?.signedUrl) return url;
   return data.signedUrl;
 }

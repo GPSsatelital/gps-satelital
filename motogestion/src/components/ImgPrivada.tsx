@@ -18,25 +18,32 @@ export default function ImgPrivada({
   style,
   onClick,
   title,
+  ancho,
 }: {
   src: string | null | undefined;
   alt?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
   title?: string;
+  /** Pide una copia liviana de este ancho (ver `urlFirmada`). Sin él, la foto completa, como siempre. */
+  ancho?: number;
 }) {
   const [resuelta, setResuelta] = useState<string | null>(null);
+  // Si la copia liviana no carga (por ejemplo, si un día el plan de Supabase deja de achicar
+  // fotos), se vuelve a la foto completa: más lenta, pero se ve.
+  const [fallo, setFallo] = useState<string | null>(null);
+  const achicar = !!ancho && fallo !== src;
 
   useEffect(() => {
     let vivo = true;
     // Un dataURL no necesita firma y pedirla sería un viaje al servidor por nada.
     if (!src || src.startsWith("data:")) { setResuelta(src ?? null); return; }
     setResuelta(null);
-    urlFirmada(src).then(u => { if (vivo) setResuelta(u); });
+    urlFirmada(src, achicar ? { ancho } : {}).then(u => { if (vivo) setResuelta(u); });
     // `vivo` evita pintar la imagen de un cliente sobre la de otro si el usuario cambia de
     // ficha antes de que llegue la firma.
     return () => { vivo = false; };
-  }, [src]);
+  }, [src, achicar, ancho]);
 
   if (!src) return null;
   if (!resuelta) {
@@ -56,6 +63,7 @@ export default function ImgPrivada({
       title={title}
       style={style}
       onClick={onClick}
+      onError={achicar ? () => setFallo(src) : undefined}
       loading="lazy"
       decoding="async"
     />

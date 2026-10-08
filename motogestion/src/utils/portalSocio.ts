@@ -71,6 +71,69 @@ export function entregasRecientes<T extends ContratoEntrega>(contratos: T[], lim
     .slice(0, limite);
 }
 
+/** Cuántas entregas se muestran por página en el portal del socio. Con 6 se bajan 6 portadas a la vez. */
+export const ENTREGAS_POR_PAGINA = 6;
+
+/**
+ * Parte una lista en páginas (8-oct-2026, pedido del dueño: «un límite por páginas para que no cargue
+ * tantas fotos al mismo tiempo»). Una página fuera de rango se lleva a la más cercana, para que una
+ * lista que se encoge no deje al socio en una página vacía.
+ */
+export function paginar<T>(lista: T[], pagina: number, porPagina: number) {
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / porPagina));
+  const actual = Math.min(Math.max(1, Math.floor(pagina) || 1), totalPaginas);
+  const inicio = (actual - 1) * porPagina;
+  return {
+    items: lista.slice(inicio, inicio + porPagina),
+    pagina: actual,
+    totalPaginas,
+    desde: lista.length ? inicio + 1 : 0,
+    hasta: Math.min(inicio + porPagina, lista.length),
+    total: lista.length,
+  };
+}
+
+/**
+ * La entrega más nueva de cada moto. `entregas` viene de la más nueva a la más vieja
+ * (`entregasRecientes`), así que la primera que aparece de cada moto es la última que se hizo.
+ */
+export function ultimaEntregaDeCadaMoto(entregas: ContratoEntrega[]): Map<string, string> {
+  const ultima = new Map<string, string>();
+  for (const c of entregas) if (c.moto_id && !ultima.has(c.moto_id)) ultima.set(c.moto_id, c.id);
+  return ultima;
+}
+
+// El orden en que se toman las 6 fotos de la entrega, con la de la persona primero: es la portada.
+const ORDEN_PORTADA = ["persona", "delantera", "lateral_izquierdo", "arriba", "lateral_derecho", "trasera"];
+
+/**
+ * Las fotos de ESTA entrega, con la de la persona y la moto primero (8-oct-2026, pedido del dueño:
+ * «que salga de portada la foto donde esté la moto más la persona que se entregó»).
+ *
+ * Las fotos se guardan en la MOTO, no en el contrato: si la moto se volvió a entregar, sus fotos ya
+ * son de la entrega nueva. Medido el 8-oct en PRADERA: 6 de 22 tarjetas mostraban las fotos de otro
+ * cliente (la de junio de IEW47I salía con las fotos de la entrega del 26-sep). Con la cara de la
+ * persona de portada, eso pondría a un cliente con el nombre de otro. El archivo lleva el contrato en
+ * su camino (`entregas/{contrato}/{foto}.jpg`, ver `WizardContrato`): si dice otro contrato, no es de
+ * esta entrega. Si el camino no lo dice, se aceptan solo si es la última entrega de la moto.
+ */
+export function fotosDeLaEntrega(
+  contratoId: string,
+  fotos: Record<string, string> | null | undefined,
+  esLaUltimaDeLaMoto: boolean,
+): string[] {
+  const propias = Object.entries(fotos ?? {}).filter(([, url]) => {
+    if (!url) return false;
+    const enCamino = url.match(/\/entregas\/([0-9a-f-]{36})\//i);
+    return enCamino ? enCamino[1].toLowerCase() === contratoId.toLowerCase() : esLaUltimaDeLaMoto;
+  });
+  const lugar = (clave: string) => {
+    const i = ORDEN_PORTADA.indexOf(clave);
+    return i < 0 ? ORDEN_PORTADA.length : i;
+  };
+  return propias.sort((a, b) => lugar(a[0]) - lugar(b[0])).map(([, url]) => url);
+}
+
 export type VencimientoProximo = { placa: string; que: string; fecha: string; dias: number };
 
 /**

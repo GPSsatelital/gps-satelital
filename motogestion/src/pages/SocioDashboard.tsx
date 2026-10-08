@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ImgPrivada from "../components/ImgPrivada";
 import { useContratos } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -9,7 +10,8 @@ import { usePagos, fechaDeCaja, esPagoDeCaja } from "../hooks/usePagos";
 import { useAuth } from "../contexts/AuthContext";
 import { calcularEstadoCartera, diasEnMora, cuotaConvenioDelPeriodo } from "../utils/cicloPago";
 import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
-import { resumenFlota, entregasRecientes, vencimientosProximos, recaudoPorMes } from "../utils/portalSocio";
+import { resumenFlota, entregasRecientes, vencimientosProximos, recaudoPorMes, paginar, ENTREGAS_POR_PAGINA, ultimaEntregaDeCadaMoto, fotosDeLaEntrega } from "../utils/portalSocio";
+import { ListBox } from "../components/ListaEstandar";
 import { hoyISO, hoyDate, fmtFechaLarga } from "../utils/fecha";
 import Placa from "../components/Placa";
 
@@ -70,6 +72,16 @@ function Nota({ children }: { children: React.ReactNode }) {
 
 function Vacio({ children }: { children: React.ReactNode }) {
   return <div style={{ ...card, textAlign: "center", color: "var(--muted)", fontSize: 13, padding: 24, lineHeight: 1.6 }}>{children}</div>;
+}
+
+function BotonPagina({ disabled, onClick, children }: { disabled: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} style={{
+      display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, minHeight: 44, padding: "0 12px",
+      borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", color: "var(--text)",
+      fontSize: 13, fontWeight: 600, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
+    }}>{children}</button>
+  );
 }
 
 export default function SocioDashboard() {
@@ -142,7 +154,17 @@ export default function SocioDashboard() {
   const alDia = cuentas.filter(x => x.estado !== "mora" && x.estado !== "gabela");
 
   const flota = useMemo(() => resumenFlota(misMotosHoy), [misMotosHoy]);
-  const entregas = useMemo(() => entregasRecientes(misContratos, 15), [misContratos]);
+  // TODAS las entregas, por páginas (8-oct-2026). Antes se cortaba en las 15 últimas y se bajaban
+  // las 15 portadas a la vez: con fotos de ~3,6 MB eso era lo que hacía lenta esta sección.
+  const entregas = useMemo(() => entregasRecientes(misContratos, Infinity), [misContratos]);
+  const ultimaDeCadaMoto = useMemo(() => ultimaEntregaDeCadaMoto(entregas), [entregas]);
+  const [paginaEntregas, setPaginaEntregas] = useState(1);
+  const pagEntregas = paginar(entregas, paginaEntregas, ENTREGAS_POR_PAGINA);
+  const cajaEntregas = useRef<HTMLDivElement | null>(null);
+  const irAPagina = (n: number) => {
+    setPaginaEntregas(n);
+    cajaEntregas.current?.scrollTo({ top: 0 });
+  };
   const vencimientos = useMemo(() => vencimientosProximos(misMotosHoy, hoy), [misMotosHoy, hoy]);
   const porMes = useMemo(() => recaudoPorMes(misPagos.map(p => ({ fecha: fechaDeCaja(p), valor: p.valor })), hoy, 6), [misPagos, hoy]);
 
@@ -244,7 +266,7 @@ export default function SocioDashboard() {
               <div>
                 <Rotulo>Última entrega</Rotulo>
                 <div style={{ marginTop: 8 }}>
-                  <TarjetaEntrega c={entregas[0]} clientes={clientes} motos={motos} />
+                  <TarjetaEntrega c={entregas[0]} clientes={clientes} motos={motos} esLaUltimaDeLaMoto />
                 </div>
               </div>
             )}
@@ -256,7 +278,31 @@ export default function SocioDashboard() {
             ? <Vacio>Todavía no hay entregas registradas en este grupo.<br />Cuando se entregue una moto, aparecerá aquí con sus fotos.</Vacio>
             : <>
                 <Nota>Las motos de tu grupo que se han entregado, de la más reciente a la más antigua.</Nota>
-                {entregas.map(c => <TarjetaEntrega key={c.id} c={c} clientes={clientes} motos={motos} />)}
+                <ListBox isMobile={isMobile} scrollRef={el => { cajaEntregas.current = el; }}>
+                  {/* En computador, dos columnas: una tarjeta de 712 px de ancho volvería a cortar la foto vertical. */}
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: 10, flexShrink: 0 }}>
+                    {pagEntregas.items.map(c => (
+                      <TarjetaEntrega key={c.id} c={c} clientes={clientes} motos={motos}
+                        esLaUltimaDeLaMoto={!!c.moto_id && ultimaDeCadaMoto.get(c.moto_id) === c.id} />
+                    ))}
+                  </div>
+                </ListBox>
+                {pagEntregas.totalPaginas > 1 && (
+                  <nav aria-label="Páginas de entregas" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <BotonPagina disabled={pagEntregas.pagina <= 1} onClick={() => irAPagina(pagEntregas.pagina - 1)}>
+                      <ChevronLeft size={16} aria-hidden="true" /> Anteriores
+                    </BotonPagina>
+                    <div aria-live="polite" style={{ textAlign: "center", minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Página {pagEntregas.pagina} de {pagEntregas.totalPaginas}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+                        {pagEntregas.desde} a {pagEntregas.hasta} de {pagEntregas.total}
+                      </div>
+                    </div>
+                    <BotonPagina disabled={pagEntregas.pagina >= pagEntregas.totalPaginas} onClick={() => irAPagina(pagEntregas.pagina + 1)}>
+                      Siguientes <ChevronRight size={16} aria-hidden="true" />
+                    </BotonPagina>
+                  </nav>
+                )}
               </>
         )}
 
@@ -384,20 +430,25 @@ export function Meses({ datos }: { datos: Array<{ mes: string; total: number }> 
 // ── La tarjeta de una entrega: la carta de presentación del socio ───────────────────────────
 // Fotos grandes, placa amarilla, nombre y lo pactado en tres datos. NADA técnico ni legal:
 // sin enlaces a documentos, sin marcas de si falta un papel. Eso es del administrador.
-export function TarjetaEntrega({ c, clientes, motos }: {
+// La portada es la foto de la persona con la moto, y solo fotos de ESTA entrega (`fotosDeLaEntrega`).
+export function TarjetaEntrega({ c, clientes, motos, esLaUltimaDeLaMoto }: {
   c: { id: string; cliente_id: string; moto_id: string | null; fecha_entrega: string | null; forma_pago?: string | null; valor_semanal?: number | null; meses?: number | null };
   clientes: Array<{ id: string; nombre: string }>;
   motos: Array<{ id: string; placa: string; marca?: string | null; modelo?: string | null; fotos_entrega?: Record<string, string> | null }>;
+  /** ¿Es la entrega más nueva de su moto? Decide si se aceptan fotos que no dicen de qué contrato son. */
+  esLaUltimaDeLaMoto: boolean;
 }) {
   const cliente = clientes.find(x => x.id === c.cliente_id);
   const moto = motos.find(m => m.id === c.moto_id);
-  const fotos = Object.values(moto?.fotos_entrega ?? {}).filter(Boolean) as string[];
+  const fotos = fotosDeLaEntrega(c.id, moto?.fotos_entrega, esLaUltimaDeLaMoto);
 
   return (
-    <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-      <div style={{ position: "relative", height: 168, background: "var(--soft2)" }}>
+    <div style={{ ...card, padding: 0, overflow: "hidden", flexShrink: 0 }}>
+      {/* La foto de la persona es VERTICAL (3060 × 4080), con las caras arriba y la moto abajo. Con
+          168 px de alto solo se veía el pecho: a 280 px y encuadrada hacia arriba salen las dos. */}
+      <div style={{ position: "relative", height: 280, background: "var(--soft2)" }}>
         {fotos[0]
-          ? <ImgPrivada src={fotos[0]} alt={`Entrega de la moto ${moto?.placa ?? ""}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ? <ImgPrivada src={fotos[0]} ancho={640} alt={`Entrega de la moto ${moto?.placa ?? ""} a ${cliente?.nombre ?? "su cliente"}`} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} />
           : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)", fontSize: 12.5 }}>Sin fotos de la entrega</div>}
         <div style={{ position: "absolute", left: 12, bottom: 12 }}>
           <Placa placa={moto?.placa ?? "—"} size="md" />

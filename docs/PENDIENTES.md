@@ -14,27 +14,6 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 ## P0 — Plata mal contada HOY (y lo que está abierto de seguridad)
 
-- [ ] 🧑💻 🔴 **LA LIQUIDACIÓN COBRA DE MÁS EN DOS CASOS — medido el 8-oct con BRADER GUZMAN WATSON (YAL65H, LIQ-0078).**
-  LIQ-0078 está **calculada, sin cerrar ni firmar**: no cerrarla hasta corregir. El sistema dice **−$447.500**; lo justo
-  (D-046) es **−$237.500**. Estado de cuenta de una página para mostrarle, con los dos acuerdos explicados:
-  `docs/estados-de-cuenta/` (no se sube).
-  1. **Abono parcial al acuerdo ignorado** (`useLiquidaciones.iniciarLiquidacion` → `deudasYAcuerdos` sin `abonado`):
-     cuenta solo cuotas completas (cuotas_pagadas × cuota). BRADER abonó $8.000 y le cobró el acuerdo entero.
-     Le pasa a cualquiera que se liquide con una cuota a medias.
-  2. **Semana rodada cobrada como "días que rodó y no pagó"** (`ajusteSalidaLedger` recorre el calendario y no mira
-     `cajas_exoneradas`). BRADER: moto guardada 1-8 sep (mismos 19.661 km), el dueño decidió rodarla, y la liquidación
-     le cobró $202.000 (−$26.000 de ahorro). El dueño confirmó el 8-oct: **no se cobra**.
-  3. **Ahorro de la semana financiada dentro del acuerdo** no se devuelve al cobrar el acuerdo entero (la fórmula lo
-     supone acreditado). El dueño decidió (D-046): **se devuelve**. BRADER: $26.000. JHEINER LIQ-0076 tiene el mismo caso.
-  **8-oct: los tres arreglados en el código, SIN SUBIR** (pruebas `liquidacionJusta.test.ts`, 22, dan −$237.500 exacto).
-  Los días guardados que se rodaron se descuentan día por día aunque no completen la semana (pedido del dueño), nunca
-  el día del corte. Medido antes de subir: **11 de las 34 liquidaciones abiertas cambian al recalcularlas, todas a
-  favor del cliente, $978.000 en total** (LIQ-0025 $50.000 · 0039 $78.000 · 0050 $10.000 · 0065 $52.000 · 0066
-  $279.000 · 0072 $50.000 · 0074 $37.000 · 0076 $56.000 · 0077 $104.000 · 0078 $210.000 · 0086 $52.000). LIQ-0031
-  (moto guardada y rodada del 28-jul al 1-oct) cambia solo si se le pone un corte posterior al 28-jul. Las cerradas no
-  cambian (nadie las recalcula). Falta: el sí del dueño para subir → recalcular LIQ-0078 desde producción con corte 26-sep →
-  revisar que su documento diga −$237.500. El estado de cuenta ya está en dos hojas, explicado "para un niño".
-
 Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
@@ -290,7 +269,9 @@ Lo que está afectando cifras reales de clientes en este momento.
   la del sistema: hay que corregirla a mano en Liquidaciones (sigue "calculada", no firmada). Decidido
   con el dueño el 2-oct:
   · Quitar "Deuda de apertura — migración RMZ58H" $870.000 (está dentro del acuerdo).
-  · "Saldo de convenio incumplido": $840.000 → **$830.000** (el 26-jul se le acreditaron $10.000).
+  · "Saldo de convenio incumplido": $840.000 → **$830.000** (el 26-jul se le acreditaron $10.000). Desde el 8-oct
+    (D-046) esto lo hace solo el botón de calcular. NO se recalculó el 8-oct a propósito: con la lista mal sale
+    −$1.582.000, otro número equivocado.
   · Agregar "Multa por inmovilización (4 y 7 de julio)" $30.000 (mig 184).
   · Daños que se le cobran: **$387.400 completos** (la orden del taller; el dueño: "todo").
   · ⏸️ **Falta que la oficina confirme:** ¿el motocarro de $50.000 (deuda del 11-sep) es el mismo
@@ -331,10 +312,10 @@ Lo que está afectando cifras reales de clientes en este momento.
   permiso de SUBADMIN. La rodada sí quedó (y `acuerdos_tiempo_rodado` también). Medir y arreglar.
 
 - [ ] 🧑 **Decisiones pendientes de liquidaciones** (`docs/REVISION-29SEP.md`): (a) las semanas
-  rodadas al liquidar ¿se cobran o no? — ✅ DECIDIDO 8-oct (D-046): **no se cobran**; falta el arreglo (P0); (b) las 28
+  rodadas al liquidar ¿se cobran o no? — ✅ 8-oct (D-046): no se cobran, en producción; (b) las 28
   liquidaciones cerradas con el error de la fórmula del ahorro ($1.613.200 de más) + ROGER (cerrada el
-  30-sep con $120.000 por encima); (c) JHEINER PALOMINO LIQ-0076: revisar a mano (acuerdo activo con
-  semanas financiadas) antes de cerrar; (d) MELISSA: el taller confirma daños de RMZ65H y se corrige.
+  30-sep con $120.000 por encima); (c) ✅ JHEINER PALOMINO LIQ-0076: el ahorro de sus semanas
+  financiadas ya se le devuelve solo (D-046), recalculada el 8-oct en −$623.000; (d) MELISSA: el taller confirma daños de RMZ65H y se corrige.
 
 - [ ] 🧑💻 **JESUS RAFAEL QUIÑONEZ (RMU62H): tiempo rodado DOS veces** (6 semanas en vez de 3) + falta un
   candado para que rodar no se registre dos veces. Medir su cuenta con 3 y decidir.
@@ -545,6 +526,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P2 — Necesita gente, no código
 
+- [ ] 🧑 **(Oficina) BRADER GUZMAN WATSON (YAL65H, LIQ-0078): mostrarle su estado de cuenta y que firme.**
+  Su liquidación ya dice **−$237.500** (recalculada el 8-oct con D-046). El PDF de dos hojas que lo explica
+  está en `docs/estados-de-cuenta/` (no se sube). Si la policía le quitó la moto ANTES del 26-sep, con esa
+  fecha se recalcula y le baja (hoy se le cobran 6 días, del 21 al 26 de sep, $186.000).
+
 - [ ] 🧑 **El 28-sep ZALA mandó el mensaje de mora a 4 clientes que estaban al día**: JORGE LUIS
   TOVAR (dos veces), ORLANDO BARRERA, WALTER BAHOQUE y WILLINGTON GARCIA. Era el defecto de las
   semanas rodadas (D-028, ya arreglado). El dueño decide si se les aclara.
@@ -695,6 +681,15 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **8-oct · Al liquidar se le da al cliente lo justo (D-046)** (237eed8) — el acuerdo resta lo abonado de
+  verdad desde su firma; los días guardados que se rodaron no se cobran (día por día, nunca el del corte); si se
+  cobra un acuerdo entero se devuelve el ahorro de sus semanas. 22 pruebas con BRADER. Recalculadas desde la app,
+  cada una con la fecha que ya tenía y comprobada contra la medición: **LIQ-0078 BRADER −$447.500 → −$237.500 ·
+  LIQ-0074 +$371.000 → +$408.000 · LIQ-0025 −$317.900 → −$345.900 · LIQ-0076 JHEINER −$419.000 → −$623.000**
+  (en 0025 y 0076 sube lo que deben por el arreglo del 30-sep, "ahorro caja por caja", que ya decía que
+  cambiarían al recalcular; el de hoy les baja $50.000 y $56.000). Las 6 "en taller" (0039, 0065, 0066, 0072,
+  0077, 0086) salen bien solas cuando la oficina registre la revisión. LIQ-0050 quieta (su lista, en P1).
 
 - [x] **8-oct · Cuadro cobrador × grupo en Reportes (D-045)** — Portafolios › Cruzado (5 vistas + Excel de 5
   hojas), Flota › Motos (Motos y Paradas), enlace en Equipo, Excel de Flota con Debe hoy y Días en mora.

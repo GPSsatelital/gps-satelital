@@ -630,6 +630,12 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P4 — Limpieza y optimización
 
+- [ ] 💻 **Reportes › Entregas muestra fotos de otro cliente y baja las fotos completas** (visto el 8-oct al arreglar
+  el portal del socio). Las fotos de la entrega viven en la MOTO: si se volvió a entregar, la entrega vieja sale con
+  las fotos (y la cara) del cliente nuevo. En PRADERA eran 6 de 22. El portal del socio ya lo resuelve con
+  `fotosDeLaEntrega` (`utils/portalSocio.ts`) y la copia liviana (`ImgPrivada ancho`); falta usarlos en
+  `ReportesView` (miniaturas de 48 × 48 que hoy bajan la foto de ~3.500 KB). Solo con el sí del dueño.
+
 - [ ] 💻 **Rehacer un acuerdo borra el anterior sin dejar cuánto valía** (8-oct, BRADER). El primer acuerdo (8-ago) se
   borró el 8-sep al rehacerlo y no quedó su total en ninguna tabla: hubo que reconstruirlo con la auditoría (cuadró al
   peso). Debería quedar el rastro (regla LA ESENCIA Y EL RASTRO): total, partitura y abonos del acuerdo reemplazado.
@@ -681,6 +687,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **8-oct · Portal del socio › Entregas** (259b630) — de portada la foto "Persona + moto" (280 px, encuadrada
+  arriba), todas las entregas por páginas de 6 dentro de un recuadro con scroll, dos columnas en computador, solo
+  fotos de ESA entrega (6 de 22 en PRADERA mostraban a otro cliente) y copia liviana de la portada: de 3.510 KB a
+  33-50 KB. Al entrar se bajan 4 fotos, 165 KB.
 
 - [x] **8-oct · Al liquidar se le da al cliente lo justo (D-046)** (237eed8) — el acuerdo resta lo abonado de
   verdad desde su firma; los días guardados que se rodaron no se cobran (día por día, nunca el del corte); si se

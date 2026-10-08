@@ -14,6 +14,20 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 ## P0 — Plata mal contada HOY (y lo que está abierto de seguridad)
 
+- [ ] 🧑💻 🔴 **LA LIQUIDACIÓN COBRA DE MÁS EN DOS CASOS — medido el 8-oct con BRADER GUZMAN WATSON (YAL65H, LIQ-0078).**
+  LIQ-0078 está **calculada, sin cerrar ni firmar**: no cerrarla hasta corregir. El sistema dice **−$447.500**; revisada
+  da **−$263.500** (o −$237.500 si se le devuelve el ahorro de la semana 30). Estado de cuenta en PDF para el cliente:
+  `docs/estados-de-cuenta/` (no se sube).
+  1. **Abono parcial al acuerdo ignorado** (`useLiquidaciones.iniciarLiquidacion` → `deudasYAcuerdos` sin `abonado`):
+     cuenta solo cuotas completas (cuotas_pagadas × cuota). BRADER abonó $8.000 y le cobró el acuerdo entero.
+     Le pasa a cualquiera que se liquide con una cuota a medias.
+  2. **Semana rodada cobrada como "días que rodó y no pagó"** (`ajusteSalidaLedger` recorre el calendario y no mira
+     `cajas_exoneradas`). BRADER: moto guardada 1-8 sep (mismos 19.661 km), el dueño decidió rodarla, y la liquidación
+     le cobró $202.000 (−$26.000 de ahorro). El dueño confirmó el 8-oct: **no se cobra**.
+  3. **Pregunta abierta al dueño:** ¿se devuelve el ahorro ($26.000) de la semana financiada dentro del acuerdo cuando
+     la liquidación cobra el acuerdo entero? (Regla del 13-ago: el ahorro se gana a medida que se paga el acuerdo.)
+  Antes de tocar: medir cuántas liquidaciones abiertas (y cerradas) tienen abonos parciales o semanas rodadas.
+
 Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
@@ -622,6 +636,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P4 — Limpieza y optimización
+
+- [ ] 💻 **Rehacer un acuerdo borra el anterior sin dejar cuánto valía** (8-oct, BRADER). El primer acuerdo (8-ago) se
+  borró el 8-sep al rehacerlo y no quedó su total en ninguna tabla: hubo que reconstruirlo con la auditoría (cuadró al
+  peso). Debería quedar el rastro (regla LA ESENCIA Y EL RASTRO): total, partitura y abonos del acuerdo reemplazado.
 
 - [ ] **(Código) «Cerrar sin firma» no trae la casilla "Sigue con la empresa"** (6-oct). La casilla solo
   sale en el paso de después de firmar; si se cierra sin firma, el cliente queda Retirado y el contrato

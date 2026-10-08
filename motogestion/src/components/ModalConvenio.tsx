@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import MoneyInput from "./MoneyInput";
 import CanvasFirma from "./CanvasFirma";
@@ -173,6 +173,23 @@ function cuotaRedonda(meta: number, cuotas: number): number {
 
 export default function ModalConvenio({ contratoId, clienteNombre, onClose, metaFija, metaTraeSemanas, sinFinanciarSemanas, motivoInicial, metaNota, metaBloqueada, obligatorio, cuotaPeriodo, finPeriodoISO }: Props) {
   useBloquearScrollFondo();
+  // LA VENTANA CABE EN LA PANTALLA (8-oct-2026, dueño: "está muy grande y no se ve"). Medido: en un
+  // portátil era una columna de 500 px con 2.040 px de contenido (más de 3 pantallas) y el total, la
+  // firma y el botón quedaban abajo sin que nada avisara. Ahora: título y total con botones FIJOS, el
+  // medio se desliza; en computador, más ancha y en dos columnas.
+  const [esCelular, setEsCelular] = useState(() => window.innerWidth < 900);
+  useEffect(() => {
+    const fn = () => setEsCelular(window.innerWidth < 900);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  const cuerpoRef = useRef<HTMLDivElement | null>(null);
+  const [hayMasAbajo, setHayMasAbajo] = useState(false);
+  const medirScroll = () => {
+    const el = cuerpoRef.current;
+    if (el) setHayMasAbajo(el.scrollTop + el.clientHeight < el.scrollHeight - 12);
+  };
+  useEffect(() => { medirScroll(); });
   const [motivo, setMotivo] = useState(motivoInicial ?? "");
   // Cuántas cuotas del arriendo se le financian DENTRO del convenio (0, 1 o 2). Antes acá era un
   // sí/no y en Cartera un selector de 0/1/2: el mismo convenio se comportaba distinto según la
@@ -550,6 +567,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     setTimeout(() => onClose(), 1500);
   }
 
+  const mostrarFormulario = !(verificando || (!queEntra && !errorQueEntra)) && !errorQueEntra && !(totalConvenios !== null && totalConvenios >= 3);
+
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 300 }}
@@ -557,11 +576,13 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 500, background: "var(--card)", borderRadius: 20, padding: 24, display: "grid", gap: 16,
-          // La ventana debe scrollear POR DENTRO. Sin esto se salía de la pantalla y el gesto se
-          // lo llevaba la página de atrás: la ventana quedaba quieta y el fondo corría por debajo.
-          maxHeight: "calc(100dvh - 32px)", overflowY: "auto", boxSizing: "border-box" }}
+        style={{ width: "100%", maxWidth: esCelular ? 500 : 920, background: "var(--card)", borderRadius: 20,
+          display: "flex", flexDirection: "column", overflow: "hidden",
+          // La ventana debe scrollear POR DENTRO (solo el medio). Sin esto se salía de la pantalla y
+          // el gesto se lo llevaba la página de atrás: la ventana quedaba quieta y el fondo corría.
+          maxHeight: "calc(100dvh - 32px)", boxSizing: "border-box" }}
       >
+        <div style={{ padding: esCelular ? "16px 16px 12px" : "18px 24px 12px", borderBottom: "1px solid var(--line)", display: "grid", gap: 8, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>🤝 {obligatorio ? "Convenio obligatorio" : "Nuevo convenio"}</div>
@@ -572,11 +593,16 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
           )}
         </div>
 
-        <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 13, color: "var(--warn-ink)", fontWeight: 600 }}>
+        <div style={{ padding: "6px 10px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600, lineHeight: 1.4 }}>
           {obligatorio
-            ? "⚠️ Falta base inicial. Debes registrar el convenio para poder continuar."
-            : "⚠️ El convenio se paga ENCIMA del pago normal. No reemplaza la cuota."}
+            ? "Falta base inicial. Debes registrar el convenio para poder continuar."
+            : "El convenio se paga ENCIMA del pago normal. No reemplaza la cuota."}
+          {totalConvenios !== null && <span style={{ fontWeight: 400 }}> · Convenios usados: <strong>{totalConvenios} / 3</strong></span>}
         </div>
+        </div>
+
+        <div ref={cuerpoRef} onScroll={medirScroll}
+          style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: esCelular ? "14px 16px" : "16px 24px", display: "grid", gap: 16, alignContent: "start" }}>
 
         {verificando || (!queEntra && !errorQueEntra) ? (
           <div style={{ color: "var(--muted)", fontSize: 14 }}>Cargando datos del contrato...</div>
@@ -590,10 +616,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>
-              Convenios usados: <strong>{totalConvenios} / 3</strong>
-            </div>
-
+            <div style={{ display: "grid", gridTemplateColumns: esCelular ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: esCelular ? 16 : 24, alignItems: "start" }}>
+            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
             <div>
               <div style={labelStyle}>Motivo del convenio</div>
               <textarea
@@ -737,23 +761,6 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
-            {/* EL TOTAL, con la cuenta a la vista. Antes solo aparecía después de escribir el
-                número de cuotas — o sea, después de decidir. Y el campo de arriba decía "total"
-                sin serlo, así que el funcionario sumaba de cabeza deuda + semanas. */}
-            {meta > 0 && (
-              <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--accent-soft4)", border: "1px solid var(--accent-line)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Total del convenio</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: "var(--accent-ink)", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>$ {fmt(meta)}</div>
-                <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>
-                  {[
-                    suma.semanas > 0 ? `${nFinanciadas} semana${nFinanciadas > 1 ? "s" : ""} $ ${fmt(suma.semanas)}` : null,
-                    suma.deudas > 0 ? `${deudasQueEntran.length} deuda${deudasQueEntran.length > 1 ? "s" : ""} $ ${fmt(suma.deudas)}` : null,
-                    suma.base > 0 ? `${metaNota ?? "monto del sistema"} $ ${fmt(suma.base)}` : null,
-                  ].filter(Boolean).join(" + ")}
-                </div>
-              </div>
-            )}
-
             {/* 🔴 EL AVISO QUE FALTABA. Esta confusión se repitió TRES veces en un solo día
                 (ALBERT, y NESTOR dos veces): el funcionario firma el convenio creyendo que le
                 tapó la semana en curso, y a los tres días al cliente le llega un cobro. El
@@ -780,6 +787,8 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
+            </div>
+            <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
             <div>
               <div style={labelStyle}>Fijar por</div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -916,6 +925,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
+            </div>
+            </div>
+
             {/* El cliente tiene que poder LEER lo que está firmando. Esto solo existía en Cartera;
                 al unificar habría desaparecido de las otras tres puertas. */}
             <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "grid", gap: 10 }}>
@@ -993,34 +1005,64 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
+            {esCelular && hayMasAbajo && (
+              <div aria-hidden="true" style={{ position: "sticky", bottom: -14, marginBottom: -14, textAlign: "center", fontSize: 12, fontWeight: 600, color: "var(--accent-ink)", background: "var(--card)", padding: "6px 0", borderTop: "1px solid var(--line)" }}>
+                Desliza para ver más
+              </div>
+            )}
+          </>
+        )}
+        </div>
+
+        {mostrarFormulario && (
+          <div style={{ flexShrink: 0, borderTop: "1px solid var(--line)", background: "var(--soft2)", padding: esCelular ? "10px 16px 12px" : "12px 24px", display: "grid", gap: 8 }}>
             {error && (
               <div style={{ color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>{error}</div>
             )}
-
             {exito && (
-              <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "10px 14px", borderRadius: 12, fontWeight: 700, fontSize: 13 }}>
+              <div style={{ color: "var(--ok-ink)", background: "var(--ok-soft)", padding: "8px 12px", borderRadius: 10, fontWeight: 700, fontSize: 13 }}>
                 Convenio creado correctamente.
               </div>
             )}
-
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              {!obligatorio && (
-                <button onClick={onClose} style={{ background: "var(--soft)", color: "var(--muted2)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
-                  Cancelar
+            <div style={{ display: "flex", gap: 12, alignItems: esCelular ? "stretch" : "center", justifyContent: "space-between", flexDirection: esCelular ? "column" : "row" }}>
+              {/* EL TOTAL, con la cuenta a la vista — ahora en el pie, que no se mueve. */}
+              {meta > 0 ? (
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", textTransform: "uppercase" }}>Total del convenio</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent-ink)", marginTop: 1, fontVariantNumeric: "tabular-nums" }}>
+                    $ {fmt(meta)}
+                    {cuotasCalc > 0 && cuotaCalc > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}> · {cuotasCalc} cuota{cuotasCalc > 1 ? "s" : ""} de $ {fmt(cuotaCalc)}</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted2)", marginTop: 2 }}>
+                    {[
+                      suma.semanas > 0 ? `${nFinanciadas} semana${nFinanciadas > 1 ? "s" : ""} $ ${fmt(suma.semanas)}` : null,
+                      suma.deudas > 0 ? `${deudasQueEntran.length} deuda${deudasQueEntran.length > 1 ? "s" : ""} $ ${fmt(suma.deudas)}` : null,
+                      suma.base > 0 ? `${metaNota ?? "monto del sistema"} $ ${fmt(suma.base)}` : null,
+                    ].filter(Boolean).join(" + ")}
+                  </div>
+                </div>
+              ) : <div />}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
+                {!obligatorio && (
+                  <button onClick={onClose} style={{ background: "var(--soft)", color: "var(--muted2)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  onClick={handleGuardar}
+                  // Basta con la firma de UNO de los dos (12-sep): el botón se habilita con la del
+                  // titular o con la de la acompañante. Antes exigía la del titular y por eso, si él
+                  // no estaba, no había forma de cerrar el acuerdo.
+                  disabled={guardando || exito || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)}
+                  style={{ flex: esCelular ? 1 : undefined, background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)) ? 0.6 : 1 }}
+                >
+                  {guardando ? "Guardando..." : meta > 0 ? `Firmar acuerdo por $ ${fmt(meta)}` : "Firmar acuerdo"}
                 </button>
-              )}
-              <button
-                onClick={handleGuardar}
-                // Basta con la firma de UNO de los dos (12-sep): el botón se habilita con la del
-                // titular o con la de la acompañante. Antes exigía la del titular y por eso, si él
-                // no estaba, no había forma de cerrar el acuerdo.
-                disabled={guardando || exito || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)}
-                style={{ background: "var(--accent-soft3)", color: "var(--accent-ink)", border: "none", borderRadius: 14, padding: "10px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14, opacity: (guardando || !(firma || firmaAcomp) || !queEntra || (huellaResuelta && !hayAlgunaHuella)) ? 0.6 : 1 }}
-              >
-                {guardando ? "Guardando..." : meta > 0 ? `Firmar acuerdo por $ ${fmt(meta)}` : "Firmar acuerdo"}
-              </button>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

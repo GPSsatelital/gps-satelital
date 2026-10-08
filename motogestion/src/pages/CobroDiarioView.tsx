@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { ViewKey } from "../App";
 import { useContratos, diasDesdeUltimoPago, corteMigracionContrato } from "../hooks/useContratos";
 import { useClientes } from "../hooks/useClientes";
@@ -173,6 +173,7 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
   const [cobrarSubiendo, setCobrarSubiendo] = useState(false);
   const [cobrarNota, setCobrarNota] = useState("");
   const [cobrandoLoading, setCobrandoLoading] = useState(false);
+  const cobrandoRef = useRef(false);   // anti-doble-clic al cobrar (ver handleCobrar)
   const [confirmarCobroOpen, setConfirmarCobroOpen] = useState(false);
   const [cobrarError, setCobrarError] = useState<string | null>(null);
   const [cerrandoCaja, setCerrandoCaja] = useState<GrupoMoto | null>(null);
@@ -363,7 +364,16 @@ export default function CobroDiarioView({ onNavigate }: { onNavigate?: (view: Vi
     setConfirmarCobroOpen(true);
   }
 
+  // Anti-doble-clic (8-oct-2026): este registro no tenía ningún candado al empezar, y un doble toque
+  // guardaba el mismo cobro dos veces. Al borrar la copia, el cliente perdía una semana que sí pagó
+  // (ver CobrosView › handleRegistrarPagoModal). El `ref` frena el segundo toque en el acto.
   async function handleCobrar(f: Fila) {
+    if (cobrandoRef.current || cobrandoLoading) return;
+    cobrandoRef.current = true;
+    try { await cobrar(f); } finally { cobrandoRef.current = false; }
+  }
+
+  async function cobrar(f: Fila) {
     const valor = parseInt(cobrarValor.replace(/\D/g, ""), 10);
     if (!valor || valor <= 0) { setCobrarError("Ingresa un valor válido"); return; }
     if (cobrarMetodo === "Efectivo" && !esSecretaria) { setCobrarError("Solo la secretaria puede registrar efectivo"); return; }

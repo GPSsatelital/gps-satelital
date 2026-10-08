@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import ImgPrivada from "../components/ImgPrivada";
 import type { ViewKey } from "../App";
 import {
@@ -699,6 +699,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [modalExito, setModalExito] = useState(false);
   const [modalComprobante, setModalComprobante] = useState<File | null>(null);
   const [modalSubiendo, setModalSubiendo] = useState(false);
+  const registrandoPagoRef = useRef(false);   // anti-doble-clic al registrar (ver handleRegistrarPagoModal)
+  const registrandoCampoRef = useRef(false);  // lo mismo para el cobro en la calle
 
   // Recibo panel
   const [reciboData, setReciboData] = useState<DatosRecibo | null>(null);
@@ -1490,20 +1492,35 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   }
 
   async function handleRegistrarPagoModal() {
-    if (modalSubiendo) return;
+    // ANTI-DOBLE-CLIC (8-oct-2026). El candado solo se ponía mientras se subía la foto de una
+    // transferencia: el EFECTIVO no tenía ninguno, y un doble toque registraba el mismo cobro dos
+    // veces en el mismo segundo (BRYAN IGJ80I, YERLIS XZN23H, JONATAN IGA80I). Al borrar la copia, el
+    // cliente perdía una semana que sí pagó. El `ref` frena el segundo toque en el acto (el estado
+    // tarda un redibujo en llegar); el estado apaga el botón y dice "Guardando…".
+    if (registrandoPagoRef.current || modalSubiendo) return;
     if (!modalContratoId) { setModalError("Selecciona un contrato."); return; }
     if (!modalValor || modalMonto <= 0) { setModalError("Ingresa un valor válido."); return; }
     // Se revalida todo aquí a propósito: este handler también se dispara desde la ventana
     // de confirmación, sin volver a pasar por pedirConfirmacionModal.
     const errT = errorTransferencia();
     if (errT) { setModalError(errT); setConfirmarModalOpen(false); return; }
+    registrandoPagoRef.current = true;
+    setModalSubiendo(true);
+    try {
+      await registrarPagoModal();
+    } finally {
+      registrandoPagoRef.current = false;
+      setModalSubiendo(false);
+    }
+  }
+
+  async function registrarPagoModal() {
+    if (!modalContratoId) return;
     setModalError(null); setModalExito(false);
 
     let comprobanteUrl: string | undefined;
     if (modalMetodo === "Transferencia" && modalComprobante) {
-      setModalSubiendo(true);
       const { url, error: upErr } = await subirComprobante(modalComprobante, modalContratoId);
-      setModalSubiendo(false);
       if (upErr) { setModalError("Error subiendo comprobante: " + upErr); return; }
       comprobanteUrl = url ?? undefined;
     }
@@ -1738,8 +1755,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     setConfirmarCampoOpen(true);
   }
 
+  // Anti-doble-clic inmediato (8-oct-2026): `procesando` llega un redibujo tarde, y dos toques en el
+  // mismo instante pasaban los dos (ver handleRegistrarPagoModal).
   async function handleCampoSubmit() {
-    if (procesando) return;
+    if (procesando || registrandoCampoRef.current) return;
+    registrandoCampoRef.current = true;
+    try { await enviarCobroCampo(); } finally { registrandoCampoRef.current = false; }
+  }
+
+  async function enviarCobroCampo() {
     if (!campoContratoId || !campoMonto) { setCampoError("Completa el contrato y el monto"); return; }
     if (!profile) { setCampoError("Sesión no válida"); return; }
     const monto = Number(campoMonto);
@@ -2583,10 +2607,15 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           {/* El día de corte de la cartera (pedido del dueño, 22-ago): saber qué día se hizo el
               corte. Un solo renglón a propósito — así lo pidió.
               29-ago: muestra el corte DE ESTE CONTRATO, no el del grupo. RASTREADOR tiene dos
-              tandas (28 el 6-jul, 7 el 29-ago) y a los nuevos les salía la fecha de julio. */}
+              tandas (28 el 6-jul, 7 el 29-ago) y a los nuevos les salía la fecha de julio.
+              8-oct: un contrato HECHO EN LA APP no tiene corte — mostraba el del grupo y se leía como
+              si lo hubieran migrado (BRYAN, IGJ80I: "6 jul" con la moto entregada el 11-sep). Ese
+              dice cuándo se entregó la moto. */}
           {motoDetalle?.grupo && contratoDetalle && (
             <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed var(--line)", fontSize: 11.5, color: "var(--muted)", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              📅 Corte de la cartera <strong>{motoDetalle.grupo}</strong>: <strong>{fmtFecha(corteMigracionContrato(contratoDetalle, motoDetalle.grupo))}</strong>
+              {contratoDetalle.es_migrado || !contratoDetalle.fecha_entrega
+                ? <>Corte de la cartera <strong>{motoDetalle.grupo}</strong>: <strong>{fmtFecha(corteMigracionContrato(contratoDetalle, motoDetalle.grupo))}</strong></>
+                : <>Contrato hecho en la app · entregada el <strong>{fmtFecha(contratoDetalle.fecha_entrega)}</strong></>}
             </div>
           )}
         </div>
@@ -4514,7 +4543,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={pedirConfirmacionModal} disabled={modalSubiendo} style={{ ...primaryBtn, flex: 1, opacity: modalSubiendo ? 0.6 : 1 }}>
-                {modalSubiendo ? "Subiendo..." : "Registrar pago"}
+                {modalSubiendo ? "Guardando…" : "Registrar pago"}
               </button>
               <button onClick={cerrarModalPago} style={secondaryBtn}>Cerrar</button>
             </div>

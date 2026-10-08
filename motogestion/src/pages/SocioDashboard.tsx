@@ -278,7 +278,7 @@ export default function SocioDashboard() {
             ? <Vacio>Todavía no hay entregas registradas en este grupo.<br />Cuando se entregue una moto, aparecerá aquí con sus fotos.</Vacio>
             : <>
                 <Nota>Las motos de tu grupo que se han entregado, de la más reciente a la más antigua.</Nota>
-                <ListBox isMobile={isMobile} scrollRef={el => { cajaEntregas.current = el; }}>
+                <ListBox isMobile={isMobile} maxHeightVh={64} scrollRef={el => { cajaEntregas.current = el; }}>
                   {/* En computador, dos columnas: una tarjeta de 712 px de ancho volvería a cortar la foto vertical. */}
                   <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: 10, flexShrink: 0 }}>
                     {pagEntregas.items.map(c => (
@@ -444,11 +444,14 @@ export function TarjetaEntrega({ c, clientes, motos, esLaUltimaDeLaMoto }: {
 
   return (
     <div style={{ ...card, padding: 0, overflow: "hidden", flexShrink: 0 }}>
-      {/* La foto de la persona es VERTICAL (3060 × 4080), con las caras arriba y la moto abajo. Con
-          168 px de alto solo se veía el pecho: a 280 px y encuadrada hacia arriba salen las dos. */}
-      <div style={{ position: "relative", height: 280, background: "var(--soft2)" }}>
+      {/* La foto de la persona es VERTICAL (3060 × 4080), con las caras arriba y la moto abajo. Un alto
+          FIJO no sirve: en una pantalla más ancha la foto crece y se ve un pedazo menor (con 280 px se
+          cortaban las frentes en un celular grande, 8-oct). CUADRADA, el pedazo visible es siempre el
+          mismo (3/4 de la foto), y anclada casi arriba (8 %) las caras nunca se cortan. Tope de 420 px
+          para la tarjeta ancha de Inicio en computador. */}
+      <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", maxHeight: 420, background: "var(--soft2)" }}>
         {fotos[0]
-          ? <ImgPrivada src={fotos[0]} ancho={640} alt={`Entrega de la moto ${moto?.placa ?? ""} a ${cliente?.nombre ?? "su cliente"}`} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} />
+          ? <ImgPrivada src={fotos[0]} ancho={640} alt={`Entrega de la moto ${moto?.placa ?? ""} a ${cliente?.nombre ?? "su cliente"}`} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 8%", display: "block" }} />
           : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--faint)", fontSize: 12.5 }}>Sin fotos de la entrega</div>}
         <div style={{ position: "absolute", left: 12, bottom: 12 }}>
           <Placa placa={moto?.placa ?? "—"} size="md" />

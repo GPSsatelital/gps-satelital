@@ -16,6 +16,18 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 
 Lo que está afectando cifras reales de clientes en este momento.
 
+- [ ] 🧑 🔴 **(Oficina) PAGOS REPETIDOS — confirmar si son copias** (medido el 8-oct, al arreglar el doble toque).
+  Un doble toque registraba el mismo cobro dos veces (arreglado: commit 97ba56d + mig 192). Quedan por decidir:
+  · **ARNOL ESPRIELLA (IEW93I), 7-oct:** una transferencia de $248.000 (3:58 p.m.) y un efectivo de $248.000
+    (3:59 p.m.); hubo un tercero, la copia del efectivo, que ya se borró el 8-oct y le restó $201.000 de semana
+    (y $45.000 del acuerdo). Si pagó UNA vez, sobra la transferencia y hay que rehacer su cuenta; si pagó dos,
+    hay que devolverle lo que el borrado le quitó. **No tocar hasta que la oficina diga.**
+  · **ANDRES PEREZ RUIZ (RNN72H), 9-sep:** $200.000 transferencia y 38 segundos después $200.000 efectivo.
+  · **SAMIR LLAMAS (IGJ83I), 1-oct:** dos de $40.000 con 6 segundos de diferencia.
+  · **LUIS ANGEL BERMUDEZ (XZI13H):** dos transferencias de $30.000 seguidas, el 25-ago y el 9-sep (pueden ser reales).
+  ⚠️ **Al borrar una copia, borrar la que NO llenó semana** (la que dice "saldo a favor"): si se borra la otra,
+  el motor resta la semana. Y nunca dos copias con el mismo "llenó la semana N": ahí hay que medir antes.
+
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
@@ -687,6 +699,14 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **8-oct · Un doble toque ya no registra el mismo cobro dos veces** (97ba56d + mig 192, corrida por el dueño a
+  las 4:08 p.m.) — candado inmediato en Registrar pago, cobro en la calle y Cobro diario (probado: dos toques en el
+  mismo instante = 1 intento) + en la base los pagos de un mismo contrato se procesan en fila. Corregidos: **BRYAN
+  BARBOZA (IGJ80I)** semana 4 → "Al día" (la pantalla le cobraba $202.000 que ya pagó) · **YERLIS QUINTERO
+  (XZN23H)** 3 semanas del 5-oct → debe $592.000 (antes $1.042.000), 14 días en mora (antes 35) · **JONATAN
+  PINEDA (IGA80I)** copia borrada → sin el saldo a favor falso de $202.000. Y el detalle de Cartera ya no dice
+  "Corte de la cartera" en los contratos hechos en la app (decía "6 jul" a uno entregado el 11-sep).
 
 - [x] **8-oct · Portal del socio › Entregas** (259b630) — de portada la foto "Persona + moto" (280 px, encuadrada
   arriba), todas las entregas por páginas de 6 dentro de un recuadro con scroll, dos columnas en computador, solo

@@ -15,6 +15,7 @@ import { useTaller } from "../hooks/useTaller";
 import { usePrestamosDoc } from "../hooks/usePrestamosDoc";
 import { useCesiones, contratosDeCliente, esDeSuTramo, cesionPendienteDeCliente } from "../hooks/useCesiones";
 import LineaTiempo from "../components/LineaTiempo";
+import LibroSemanas from "../components/LibroSemanas";
 import { formatDiaPago } from "../utils/cicloPago";
 import { fmtFechaLarga } from "../utils/fecha";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
@@ -82,6 +83,7 @@ const GESTION_COLORS: Record<string, { bg: string; color: string }> = {
 };
 
 type Tab = "resumen" | "historial" | "contrato" | "pagos" | "visitas" | "documentos" | "deudas" | "convenios" | "gestiones";
+const TABS_VALIDAS: Tab[] = ["resumen", "historial", "contrato", "pagos", "visitas", "documentos", "deudas", "convenios", "gestiones"];
 
 const DOC_LABELS_ACOMPANANTE: Array<[keyof DocumentoFlags, string]> = [
   ["cedula",  "Cédula"],
@@ -164,11 +166,13 @@ function imprimirAcuerdoPago(
   imprimirDocumento(generarHTMLAcuerdoPago(cli, moto, deudas, cv, finContrato), "Acuerdo de pago");
 }
 
-export default function FichaClienteView({ clienteId, onNavigate }: {
+export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: {
   clienteId: string;
   onNavigate: (view: ViewKey, filter?: string) => void;
+  /** Para abrir la ficha directo en una pestaña (Cartera → "Ver semana por semana" abre "pagos"). */
+  tabInicial?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("resumen");
+  const [tab, setTab] = useState<Tab>(TABS_VALIDAS.includes(tabInicial as Tab) ? (tabInicial as Tab) : "resumen");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
   const [reciboBase, setReciboBase] = useState<TicketData | null>(null);
@@ -260,6 +264,11 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
   );
   const contratoIds = useMemo(() => new Set(contratosCliente.map(c => c.id)), [contratosCliente]);
   const contratoActivo = useMemo(() => contratosCliente.find(c => c.estado === "Activo"), [contratosCliente]);
+  // El libro de semanas (pestaña Pagos): el contrato activo, o el más reciente que lleve semanas.
+  const contratosConLibro = useMemo(() => contratosCliente.filter(c => c.motor_v2 && c.forma_pago !== "Diario"), [contratosCliente]);
+  const [contratoLibroId, setContratoLibroId] = useState<string | null>(null);
+  const contratoLibro = contratosConLibro.find(c => c.id === contratoLibroId)
+    ?? contratosConLibro.find(c => c.estado === "Activo") ?? contratosConLibro[0] ?? null;
 
   // `esDeSuTramo` evita que, tras una cesión, al que recibe le aparezcan los pagos que hizo el
   // anterior (y que al anterior se le pierdan). Sin cesiones devuelve siempre true: cero cambio.
@@ -723,6 +732,27 @@ export default function FichaClienteView({ clienteId, onNavigate }: {
       {/* ── Tab: Pagos ── */}
       {tab === "pagos" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* SEMANA POR SEMANA (9-oct): cada semana con su estado y los pagos que la llenaron. */}
+          {contratoLibro && (
+            <div style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(0, 1fr)" }}>
+              {contratosConLibro.length > 1 && (
+                <div role="tablist" aria-label="Contrato" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {contratosConLibro.map(c => {
+                    const sel = c.id === contratoLibro.id;
+                    const placa = c.moto_id ? motos.find(m => m.id === c.moto_id)?.placa : null;
+                    return (
+                      <button key={c.id} role="tab" aria-selected={sel} onClick={() => setContratoLibroId(c.id)}
+                        style={{ minHeight: 36, padding: "0 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: sel ? 600 : 500,
+                          border: "1px solid " + (sel ? "var(--accent-line)" : "var(--line2)"), background: sel ? "var(--accent-soft)" : "transparent", color: sel ? "var(--accent-ink)" : "var(--text)" }}>
+                        {placa ?? "Sin moto"} · {c.estado}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <LibroSemanas contrato={contratoLibro} pagos={pagos} isMobile={isMobile} />
+            </div>
+          )}
           {/* KPIs */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
             {[

@@ -34,6 +34,9 @@ import ModalEnvioMasivo, { type DestinatarioMasivo } from "../components/ModalEn
 import { claveParaBalde, diasTexto, type BaldeHoy, type ResultadoEnvio } from "../utils/mensajeria";
 import { rastroSaldoFavor } from "../utils/saldoFavor";
 import { rastroDeCubrimiento, fraseDeFechas } from "../utils/cubrimientoPago";
+import { calendarioDelLibro } from "../utils/libroSemanas";
+import { useDatosLibro } from "../hooks/useDatosLibro";
+import { CalendarDays } from "lucide-react";
 
 // Las DOS cifras de días que llevan los mensajes de mora y recolección, cada una con su palabra
 // adentro (Meta no deja poner "días" fuera de la variable sin que quede "1 días"):
@@ -1237,6 +1240,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const pagosContrato = contratoSeleccionadoId
     ? pagosDelContrato(contratoSeleccionadoId).slice(0, 10)
     : [];
+  // Las fechas del libro de semanas (9-oct): saltan las semanas en que la moto estuvo guardada y se
+  // rodaron, y usan el mismo calendario de la mora. Mientras llegan, las pagadas no dicen fecha.
+  const datosLibro = useDatosLibro(contratoSeleccionadoId);
 
   // 🔴 El rastro se arma con TODOS los pagos, no con los 10 que la lista muestra: el FIFO tiene
   // que arrancar desde el primero o le atribuiría el crédito al pago equivocado.
@@ -1249,7 +1255,11 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   // no cierra contra el contrato, `confiable` viene en false y no se muestra fecha alguna —
   // decir "cubrió del 8 al 14" cuando no es cierto sería peor que no decir nada.
   const cubrimiento = contratoSeleccionadoId && contratoDetalle
-    ? rastroDeCubrimiento(contratoDetalle, pagosDelContrato(contratoSeleccionadoId).filter(p => p.estado === "Confirmado"))
+    ? (() => {
+        const cal = calendarioDelLibro(contratoDetalle, hoyDate(), datosLibro ?? {});
+        return rastroDeCubrimiento(contratoDetalle, pagosDelContrato(contratoSeleccionadoId).filter(p => p.estado === "Confirmado"),
+          { fechaDe: cal.fechaDe, valorCaja: cal.valorCaja });
+      })()
     : { porPago: {}, confiable: false, descuadre: 0 };
 
   // Solo deuda EXIGIBLE (pendiente): lo 'en_convenio' se muestra en la pestaña Convenio
@@ -2975,6 +2985,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           {/* Tab Historial */}
           {detailTab === "historial" && (
             <div style={{ display: "grid", gap: 8 }}>
+              {/* El libro completo vive en la ficha del cliente (9-oct): aquí solo los últimos 10 pagos. */}
+              {clienteDetalle && onNavigate && (
+                <button onClick={() => onNavigate("ficha_cliente", `${clienteDetalle.id}|pagos`)}
+                  style={{ ...secondaryBtn, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 44, fontSize: 13 }}>
+                  <CalendarDays size={16} aria-hidden="true" /> Ver semana por semana
+                </button>
+              )}
               {pagosContrato.length === 0 ? (
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>Sin pagos registrados.</div>
               ) : pagosContrato.map(p => {

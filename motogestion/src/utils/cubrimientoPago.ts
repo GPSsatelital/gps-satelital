@@ -95,8 +95,12 @@ export function rastroDeCubrimiento(
     valor_semanal?: number | null;
   },
   pagos: PagoCubrimiento[],
+  // El libro de semanas (9-oct) pasa sus propias fechas, que saltan las semanas en que la moto estuvo
+  // guardada y se rodaron, y el valor real de la caja (quincena/mes). Sin esto, igual que antes.
+  opciones: { fechaDe?: (n: number) => { desde: string; hasta: string } | null; valorCaja?: number } = {},
 ): Rastro {
-  const valor = contrato.valor_semanal ?? 0;
+  const valor = opciones.valorCaja ?? contrato.valor_semanal ?? 0;
+  const fechaDe = opciones.fechaDe ?? ((n: number) => fechasDeLaSemana(contrato, n));
   const previas = contrato.cajas_previas ?? 0;
   if (valor <= 0) return { porPago: {}, confiable: false, descuadre: 0 };
 
@@ -113,7 +117,7 @@ export function rastroDeCubrimiento(
       const falta = valor - enCurso;
       const pone = Math.min(resto, falta);
       const numero = llenas + 1;
-      const f = fechasDeLaSemana(contrato, numero);
+      const f = fechaDe(numero);
       cub.semanas.push({
         numero,
         desde: f?.desde ?? "",

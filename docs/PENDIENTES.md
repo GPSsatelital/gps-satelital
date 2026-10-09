@@ -79,6 +79,17 @@ Lo que está afectando cifras reales de clientes en este momento.
   ⚠️ **Al borrar una copia, borrar la que NO llenó semana** (la que dice "saldo a favor"): si se borra la otra,
   el motor resta la semana. Y nunca dos copias con el mismo "llenó la semana N": ahí hay que medir antes.
 
+- [ ] 💻 🔴 **TIEMPO GUARDADO RODADO DOS VECES (medido el 9-oct, al armar el libro de semanas).** En
+  `acuerdos_tiempo_rodado` hay 8 decisiones registradas 2 o 3 veces con segundos/minutos de diferencia
+  (doble toque o dos personas a la vez; el mismo mal de los pagos repetidos). Las 6 de «cobrar ahora» no
+  hacen daño (solo anotan; no crearon deudas: medido). **Las 2 de «rodar al final» SÍ:**
+  · **JORGE BELLO (RLT88H)**, 2-oct 22:33 y 22:34 (SERGIO): guardada 18-sep → 2-oct = 2 semanas; quedaron
+    **4 rodadas** (y su acuerdo #1 se corrió dos veces: fecha límite 13-nov → 27-nov → 11-dic).
+  · **JESUS RAFAEL QUIÑONEZ (RMU62H)**, 18-sep 16:01 y 16:04 (Brandon): guardada 23-ago → 18-sep = 3
+    semanas; quedaron **6 rodadas** (ya estaba en la tanda 4 como «rodado dos veces»).
+  Efecto: hoy se les exige 2 y 3 semanas MENOS de lo que deben (Cartera y ZALA les muestran menos deuda y
+  menos días de mora; el contrato terminaría más tarde). Falta: decisión del dueño para corregirlos (con
+  antes/después y rastro) + el candado anti-doble en la ventana de resolver tiempo guardado y en la base.
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
@@ -282,6 +293,23 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
+- [ ] 💻 🔴 **EL LIBRO DE SEMANAS + EL MANUAL PARA LOS SUPERVISORES (aprobado el 9-oct: «1»).** Pedido del dueño:
+  «no saben identificar las cuentas»; quiere ver cada pago y a qué semana fue, desde cuándo está el cliente
+  en el sistema, y un manual o capacitación **bien explicada para los supervisores**.
+  · **Dónde:** ficha del cliente → pestaña Pagos: arriba el libro con botón **Lista | Calendario** (escogió
+    «las dos»), abajo la lista de pagos de siempre. Desde Cartera, botón «Ver semana por semana».
+  · **Primero que las fechas sean ciertas:** las semanas rodadas en su fecha (23 de 24 contratos tienen el
+    acuerdo de tiempo con entrada/salida; ZIB64G trae 28 de antes de la app) — esto arregla también la
+    frase «Cubre la semana del X al Y» de Cartera (tanda 2, punto 8). Donde el rebobinado no cierra (109 de
+    345, casi todos migrados) se muestra el estado de cada semana con los contadores del contrato y se dice
+    «no hay detalle de con qué pago»; nunca se inventa.
+  · **Terminado =** las dos vistas + el botón · medido en los 345: semanas pagadas del libro = `cajas_pagadas`
+    y la de a medias = `caja_actual_pagado` (0 diferencias) · pruebas con un contrato de la app, un migrado,
+    uno con rodadas y ZIB64G · 375 px y computador, día y noche · estados de semana en el diccionario de
+    ZALA · DESPUÉS el manual (formato `docs/manual-liquidacion/`, capturas reales, para supervisores).
+  · Medido el 9-oct: el rebobinado (`rastroDeCubrimiento`) cierra en 236 de 345 (app 132/144, migrados
+    104/201); `cajas_llenadas` anota el día en que se llenó cada semana desde el 22-ago.
+
 - [ ] 🧑 **RODAR POR DEUDA (D-044, mig 191) — subido la madrugada del 7-oct, SIN usar todavía con un cliente.**
   · 🧑 Después de la capacitación: prenderle a SERGIO el permiso «Rodar por deuda» (Usuarios). De entrada
     solo lo tiene el dueño.
@@ -292,6 +320,31 @@ Lo que está afectando cifras reales de clientes en este momento.
     el documento). Su contrato además tiene el empalme abierto (la app avisa).
   · Medido el 6-oct con la vista previa: se pueden rodar 9 de los 10 activos con más de $700.000; RAMON
     BARON (RLI25H) no (su contrato ya pasó su total de semanas; además está quieto).
+  · ✅ **VALIDADO DE PRINCIPIO A FIN el 9-oct** (antes del primer uso): 7 deben más de $700.000, se pueden
+    rodar 6 (EXT59H, YAL57H, YAL58H, IEW64I, XYZ47H, RLZ94H; RAMON no). Espejo de hoy 345/0 diferencias; el
+    "después" simulado en la pantalla = el de la base en los 6, peso a peso. Prueba SQL del dueño (aplicar
+    de verdad y deshacer): los 6 BIEN (debe, estado, días, semanas, deudas, acuerdo, liquidación, una sola
+    vez, rastro, ZALA); quedaron 0 rodados guardados. Video/firmas/PDF suben a `documentos` (probado con
+    archivos de 2 KB a 10 MB, borrados). Ventana recorrida en 375 px sin guardar. Firmas partidas entre dos
+    hojas (YAL57H, IEW64I) → arreglado y subido (4974cf4).
+  · 🧑 **Datos a corregir ANTES de rodarles:** EXT59H cédula «POR DEFINIR» y sin huella registrada · IEW64I
+    sin huella registrada · RLZ94H la cédula de su acompañante dice «NO SABE». En EXT59H ($1.365.000 de
+    tarifa atrasada) y RLZ94H ($585.000 de migración) confirmar que esa deuda está bien: el documento la congela.
+  · 🧑 **Para el abogado (el dueño decidió el 9-oct NO cambiar el documento por ahora: «solo arréglalo que
+    las firmas queden en la misma página y ya»).** Comparado con el contrato, el pagaré y el acuerdo de pago,
+    al documento del rodado le falta: nombrar al arrendador (FREDY MORA AVENDAÑO, C.C. 1.047.393.901) y su
+    firma (el recuadro queda en blanco) · la huella del cliente (el acuerdo de pago la exige desde el 28-jul) ·
+    la cédula de la acompañante y su calidad (codeudora solidaria) · decir qué contrato modifica · una
+    autorización para grabar y guardar el video (la de datos del registro, Ley 1581, no cubre video ni voz) ·
+    «Hoja 1 de 2 · ROD-xxxx» en cada hoja · guardar el código único (hash) del PDF. Preguntas para el abogado:
+    que las semanas de recargo no se lean como intereses sobre la usura; si bastan firma en pantalla + huella
+    + video (Ley 527/1999, Dec. 2364/2012) o también papel; el nombre de la empresa (el acuerdo de pago dice
+    «Club Moteros de la Costa», los demás «Club Moteros Cartagena»).
+  · 💻 Menores, sin arreglar: el video dice «se me ruedan 1 semana» y el documento «1 semana completas»; la
+    fecha límite del acuerdo de YAL57H/YAL58H queda más tarde de lo necesario (el acuerdo ya se exigía
+    completo, hay que correr más cuotas que las atrasadas; no cambia lo que pagan); la ventana acepta un video
+    que no se puede reproducir (si el celular no lee la duración, lo deja pasar); el editor de la partitura
+    del acuerdo muestra las deudas «rodada» (no las cobra, pero se podrían enganchar).
   · 💻 Sin hacer: la marca en Reportes («rodado por deuda» en la lista de Cartera) y pasar el rodado a
     saldado cuando termine de pagar las semanas del final. **Plan presentado el 8-oct en la noche (tanda 1,
     punto 3); el dueño pidió guardar antes de responder. ESPERA SU «1» o «2»:**

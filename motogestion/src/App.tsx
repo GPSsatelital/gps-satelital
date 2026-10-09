@@ -608,7 +608,9 @@ function Shell() {
       const cobrador = partes.cobrador ? (partes.cobrador === "__none__" ? "Sin cobrador" : nombreSubadminCacheado(partes.cobrador)?.toUpperCase() ?? "Un cobrador") : null;
       return base ? [base, partes.grupo, cobrador].filter(Boolean).join(" · ") : null;
     };
-    filterLabel = (ctx.view === "cobros" ? etiquetaCartera(ctx.filter) : null) ?? FILTER_LABELS[ctx.filter] ?? ctx.filter;
+    // La ficha puede llegar como "id|pagos" (abre en esa pestaña): se muestra igual que antes, sin la pestaña.
+    const filtroVisible = ctx.view === "ficha_cliente" ? ctx.filter.split("|")[0] : ctx.filter;
+    filterLabel = (ctx.view === "cobros" ? etiquetaCartera(ctx.filter) : null) ?? FILTER_LABELS[filtroVisible] ?? filtroVisible;
   }
 
   const contentView = (
@@ -638,7 +640,8 @@ function Shell() {
       {ctx.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
       {ctx.view === "configuracion"  && <ConfiguracionView />}
       {ctx.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
-      {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter} onNavigate={navigate} />}
+      {/* "id|pagos" abre la ficha directo en esa pestaña (Cartera → "Ver semana por semana"). */}
+      {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter.split("|")[0]} tabInicial={ctx.filter.split("|")[1]} onNavigate={navigate} />}
       {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
       {ctx.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
       {ctx.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}

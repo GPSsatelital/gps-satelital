@@ -41,9 +41,9 @@
 <script>
 const C = window.CAP;
 const TEMA = Number(window.TEMA || new URLSearchParams(location.search).get("tema")) || null;
-const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato", 6: "Cómo leer la cuenta de un cliente" };
 // Tiempo objetivo para que todo quepa en la hora (de 7:00 a 8:00).
-const OBJETIVO = { 0: 3, 1: 10, 2: 13, 3: 11, 4: 11, 5: 9, 9: 3 };
+const OBJETIVO = { 0: 3, 1: 10, 2: 13, 3: 11, 4: 11, 5: 9, 6: 25, 9: 3 };
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const temaDe = s => s.tema ?? s.n ?? null;
 const grupo = s => temaDe(s) ?? (["portada", "agenda"].includes(s.tipo) || (s.tipo === "reglas" && s.items.length === 3) ? 0 : 9);
@@ -82,7 +82,7 @@ if (!TEMA) html += `
   <div class="caja"><h3>El tiempo, tema por tema (60 minutos)</h3>
   <table><tr><th>Parte</th><th>Minutos</th><th>Termina a las</th></tr>
   ${(() => { let t = 0; const h = m => { const x = 7 * 60 + m; return Math.floor(x / 60) + ":" + String(x % 60).padStart(2, "0"); };
-    return [["Apertura", OBJETIVO[0]], ...[1, 2, 3, 4, 5].map(n => ["Tema " + n + " · " + NOMBRES[n], OBJETIVO[n]]), ["Cierre y preguntas", OBJETIVO[9]]]
+    return [["Apertura", OBJETIVO[0]], ...[1, 2, 3, 4, 5, 6].map(n => ["Tema " + n + " · " + NOMBRES[n], OBJETIVO[n]]), ["Cierre y preguntas", OBJETIVO[9]]]
       .map(([p, m]) => { t += m; return `<tr><td>${esc(p)}</td><td>${m}</td><td>${h(t)}</td></tr>`; }).join(""); })()}
   </table></div>
   <div class="caja amarilla"><h3>Lo que debe tener listo</h3><ul>

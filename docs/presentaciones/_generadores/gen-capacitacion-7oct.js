@@ -37,8 +37,12 @@ const icono = (nombre, color) => {
 const K = { fondo: "0B1A36", tarjeta: "12264D", linea: "24406F", texto: "F1F5F9", suave: "B6C3D8", cian: "38BDF8",
   amarillo: "FFD100", bien: "4ADE80", mal: "F87171", alerta: "FBBF24", oscuro: "04111F", tenue: "6F86AB" };
 const F = "Segoe UI";
-const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
-const ARCHIVOS = { 1: "Tema 1 - El dia del administrador", 2: "Tema 2 - Liquidaciones", 3: "Tema 3 - Taller, prestamo y rodar el tiempo", 4: "Tema 4 - Rodar por deuda", 5: "Tema 5 - Ceder un contrato" };
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato", 6: "Cómo leer la cuenta de un cliente" };
+const ARCHIVOS = { 1: "Tema 1 - El dia del administrador", 2: "Tema 2 - Liquidaciones", 3: "Tema 3 - Taller, prestamo y rodar el tiempo", 4: "Tema 4 - Rodar por deuda", 5: "Tema 5 - Ceder un contrato", 6: "Tema 6 - Como leer la cuenta de un cliente" };
+// El tema 6 se hizo después (9-oct): su portada lleva su propia fecha y su archivo, su día.
+const FECHA_TEMA = { 6: "9 de octubre de 2026" };
+const DIA_TEMA = { 6: "9-oct" };
+const TOTAL_TEMAS = Object.keys(NOMBRES).length;
 const temaDe = s => s.tema ?? s.n ?? null;
 const W = 13.333, H = 7.5, MX = 0.75;
 
@@ -72,9 +76,9 @@ const TIPOS = {
     const tp = s.temaPortada;
     sl.addShape(pres.ShapeType.roundRect, { x: MX, y: 2.05, w: 2.0, h: 0.42, rectRadius: 0.06, fill: { color: K.amarillo }, line: { color: "111111", width: 2 } });
     sl.addText("MOTOGESTIÓN", { x: MX, y: 2.05, w: 2.0, h: 0.42, fontFace: F, fontSize: 13, bold: true, color: "111111", align: "center", valign: "middle", charSpacing: 3, margin: 0 });
-    if (tp) sl.addText(`TEMA ${tp} DE 5`, { x: MX, y: 2.7, w: 8, h: 0.45, fontFace: F, fontSize: 18, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
+    if (tp) sl.addText(`TEMA ${tp} DE ${TOTAL_TEMAS}`, { x: MX, y: 2.7, w: 8, h: 0.45, fontFace: F, fontSize: 18, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
     sl.addText(tp ? NOMBRES[tp] : C.titulo, { x: MX, y: tp ? 3.2 : 2.8, w: 11.5, h: 1.2, fontFace: F, fontSize: 50, bold: true, color: K.texto, margin: 0 });
-    sl.addText(`Capacitación del equipo · ${C.fecha}`, { x: MX, y: 4.55, w: 11, h: 0.5, fontFace: F, fontSize: 20, color: K.suave, margin: 0 });
+    sl.addText(`Capacitación del equipo · ${(tp && FECHA_TEMA[tp]) || C.fecha}`, { x: MX, y: 4.55, w: 11, h: 0.5, fontFace: F, fontSize: 20, color: K.suave, margin: 0 });
     sl.addText("Club Moteros Cartagena", { x: MX, y: 5.1, w: 11, h: 0.4, fontFace: F, fontSize: 16, color: K.suave, margin: 0 });
   },
   agenda(pres, sl, s) {
@@ -102,7 +106,7 @@ const TIPOS = {
   },
   seccion(pres, sl, s) {
     sl.addText(String(s.n), { x: MX, y: 1.6, w: 3.2, h: 4, fontFace: F, fontSize: 200, bold: true, color: K.cian, transparency: 20, align: "center", valign: "middle", margin: 0 });
-    sl.addText(`TEMA ${s.n} DE 5`, { x: 4.3, y: 2.5, w: 8, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
+    sl.addText(`TEMA ${s.n} DE ${TOTAL_TEMAS}`, { x: 4.3, y: 2.5, w: 8, h: 0.4, fontFace: F, fontSize: 15, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
     sl.addText(s.titulo, { x: 4.3, y: 2.95, w: 8.3, h: 1.4, fontFace: F, fontSize: 44, bold: true, color: K.texto, margin: 0, valign: "top" });
     sl.addText(s.sub, { x: 4.3, y: 4.45, w: 8.3, h: 1.2, fontFace: F, fontSize: 20, color: K.suave, margin: 0, valign: "top" });
   },
@@ -197,7 +201,9 @@ const TIPOS = {
       const alto = 0.36, gap = 0.1, flecha = 0.22;
       let x = tx, y = 2.47;
       s.ruta.forEach((r, k) => {
-        const w = 0.62 + r.length * 0.083;
+        // Las fichas largas llevan más letras anchas (m, a, «»): con 0,083 por letra «Ver semana por semana»
+        // se partía en dos renglones dentro de su ficha (9-oct).
+        const w = 0.62 + r.length * (r.length >= 20 ? 0.095 : 0.083);
         if (k && x + flecha + w > tx + tw) { x = tx; y += alto + gap; }
         if (k) { sl.addText("›", { x, y: y - 0.02, w: flecha, h: alto, fontFace: F, fontSize: 18, color: K.cian, align: "center", valign: "middle", margin: 0 }); x += flecha; }
         sl.addShape(pres.ShapeType.roundRect, { x, y, w, h: alto, rectRadius: 0.18, fill: { color: K.cian, transparency: 86 }, line: { color: K.cian, width: 1.25, transparency: 40 } });
@@ -233,7 +239,7 @@ const TIPOS = {
     if (t) sl.addText(`TEMA ${t} · ${NOMBRES[t].toUpperCase()}`, { x: tx, y: 1.6, w: tw, h: 0.35, fontFace: F, fontSize: 12, bold: true, color: K.cian, charSpacing: 2, margin: 0 });
     sl.addImage({ data: icono("video", K.amarillo), x: tx, y: 2.05, w: 0.55, h: 0.55 });
     sl.addText(v.titulo, { x: tx, y: 2.75, w: tw, h: 1.3, fontFace: F, fontSize: 24, bold: true, color: K.texto, margin: 0, valign: "top" });
-    sl.addText(`Video corto con voz, de ${v.escenas.length} pasos. Haga clic sobre el video para reproducirlo.`, { x: tx, y: 4.15, w: tw, h: 1.1, fontFace: F, fontSize: 15, color: K.suave, margin: 0, valign: "top" });
+    sl.addText(`Video corto con voz y letras, de ${v.escenas.length} pasos. Haga clic sobre el video para reproducirlo.`, { x: tx, y: 4.15, w: tw, h: 1.1, fontFace: F, fontSize: 15, color: K.suave, margin: 0, valign: "top" });
   },
   cierre(pres, sl, s) {
     sl.addImage({ data: icono("pregunta", K.amarillo), x: W / 2 - 0.75, y: 1.5, w: 1.5, h: 1.5 });
@@ -257,13 +263,13 @@ async function armar(tema) {
     const sl = base(pres, s, i + 1, lista.length);
     TIPOS[s.tipo](pres, sl, s);
   });
-  const nombre = path.join(SALIDA, `Capacitacion 7-oct - ${tema ? ARCHIVOS[tema] : "Completa"}.pptx`);
+  const nombre = path.join(SALIDA, `Capacitacion ${(tema && DIA_TEMA[tema]) || "7-oct"} - ${tema ? ARCHIVOS[tema] : "Completa"}.pptx`);
   await pres.writeFile({ fileName: nombre });
   console.log(`${path.basename(nombre)}: ${lista.length} diapositivas, ${(fs.statSync(nombre).size / 1048576).toFixed(1)} MB`);
 }
 
 (async () => {
   const pedidos = process.argv.slice(2).map(Number).filter(Boolean);
-  for (const t of pedidos.length ? pedidos : [1, 2, 3, 4, 5]) await armar(t);
+  for (const t of pedidos.length ? pedidos : Object.keys(NOMBRES).map(Number)) await armar(t);
   if (sinPng.size) console.log("OJO: iconos sin PNG (quedaron en SVG): " + [...sinPng].join(", ") + " — corra docs/capacitacion/hacer-iconos.mjs");
 })();

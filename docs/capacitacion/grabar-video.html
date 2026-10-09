@@ -28,7 +28,9 @@
   for (let k = 0; k < V.escenas.length; k++) {
     const e = V.escenas[k];
     const buf = await (await fetch(`audio/${id}-${String(k + 1).padStart(2, "0")}.wav`)).arrayBuffer();
-    escenas.push({ ...e, foto: await img(e.img), audio: await ac.decodeAudioData(buf) });
+    // `texto` aparte (9-oct): la línea de tiempo trae un `voz` que es el SEGUNDO en que arranca la voz, y al
+    // juntarlas pisaba el texto con ese número: el párrafo reventaba y los videos salían sin letras ni puntos.
+    escenas.push({ ...e, texto: e.voz, foto: await img(e.img), audio: await ac.decodeAudioData(buf) });
   }
   // La línea de tiempo (la misma que usa comprobar-video.html): portada, escenas (timbre, voz, pausa), cierre
   const linea = window.SONIDOS.linea(escenas.map(e => e.audio.duration));
@@ -69,7 +71,7 @@
   function dibujar(ahora) {
     fondo();
     placa(40, 28);
-    g.font = '600 18px "Segoe UI", Arial'; g.fillStyle = "#6f86ab"; g.fillText("Capacitación · " + window.CAP.fecha, 210, 52);
+    g.font = '600 18px "Segoe UI", Arial'; g.fillStyle = "#6f86ab"; g.fillText("Capacitación · " + (V.fecha || window.CAP.fecha), 210, 52);
     if (ahora < PORTADA) {
       const a = suave(ahora / 0.8);
       g.globalAlpha = a;
@@ -111,7 +113,7 @@
     redondo(dx, 230, dw, 330, 18); g.fillStyle = "#12264d"; g.fill();
     g.fillStyle = color; g.fillRect(dx, 230, 8, 330);
     g.globalAlpha = suave((ahora - e.ini) / window.SONIDOS.ANTES_DE_LA_VOZ);
-    parrafo(e.voz, dx + 34, 285, dw - 64, 44, 31, "#f1f5f9", 500);
+    parrafo(e.texto, dx + 34, 285, dw - 64, 44, 31, "#f1f5f9", 500);
     g.globalAlpha = 1;
     // Puntos de avance
     escenas.forEach((_, j) => { g.beginPath(); g.arc(dx + 10 + j * 26, 600, 8, 0, 7); g.fillStyle = j <= k ? "#38bdf8" : "#2a4a80"; g.fill(); });

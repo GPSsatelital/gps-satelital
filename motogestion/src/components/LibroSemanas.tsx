@@ -53,7 +53,7 @@ function subtituloSemana(s: SemanaDelLibro, hoyISO: string, unidad: string): str
   if (s.estado === "pagada") {
     if (s.adelantada) return "Pagada por adelantado";
     if (s.pagos && s.pagos.length > 0) {
-      return s.pagos.map(p => `${corta(p.fecha)} · ${plata(p.monto)} ${p.origen.toLowerCase()}`).join(" + ");
+      return [...s.pagos].sort((a, b) => a.fecha.localeCompare(b.fecha)).map(p => `${corta(p.fecha)} · ${plata(p.monto)} ${p.origen.toLowerCase()}`).join(" + ");
     }
     return s.completadaEl ? `Pagada el ${corta(s.completadaEl)}` : "";
   }
@@ -216,7 +216,7 @@ function FilaDelLibro({ f, hoyISO, unidad, plural, foco, abierta, onAbrir }: {
         rielColor={tono.riel} seleccionado={f.actual} onClick={onAbrir}
         extra={abierta && f.pagos ? (
           <div style={{ display: "grid", gap: 4, marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--line2)" }}>
-            {f.pagos.map((p, i) => (
+            {[...f.pagos].sort((a, b) => a.fecha.localeCompare(b.fecha)).map((p, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}>
                 <span style={{ color: "var(--muted2)", minWidth: 0 }}>{larga(p.fecha)} · {p.origen}</span>
                 <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{plata(p.monto)}</span>
@@ -322,7 +322,7 @@ function Calendario({ periodos, pagosPorDia, pagos, semanas, hoyISO, unidad, ent
 
       {dia && (
         <div style={{ borderRadius: 12, padding: 12, background: "var(--soft2)", border: "1px solid var(--line)", display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", textTransform: "capitalize" }}>{larga(dia)}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{larga(dia).charAt(0).toUpperCase() + larga(dia).slice(1)}</div>
           <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
             {pDia
               ? pDia.estado === "rodada" ? `Moto guardada: esta ${unidad.toLowerCase()} se rodó al final del contrato.`

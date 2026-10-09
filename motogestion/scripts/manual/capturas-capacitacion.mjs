@@ -230,7 +230,38 @@ const PANTALLAS = [
     abrir: [`(() => { const s = [...document.querySelectorAll("select")].find(x => [...x.options].some(o => o.text.includes("Elegir cliente"))); if (!s) return "NO:select"; const o = [...s.options].find(o => o.value); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, o.value); s.dispatchEvent(new Event("change", { bubbles: true })); return "ok"; })()`,
       esperar(1200), verA("Está Aprobado", "center")], espera: 1500 },
   { archivo: "t5-06-acta", titulo: "El acta de cesión (ventana aparte)", abrir: [clicHas("Imprimir acta")], espera: 1500, ventanaNueva: true },
+// ── TEMA 6 (9-oct): CÓMO LEER LA CUENTA DE UN CLIENTE — el libro de semanas. Solo se abren pantallas y se
+// tocan pestañas, semanas y días para VER su detalle: nada guarda. Cliente de la app: IGC59I; migrado: YAV67H.
+  { archivo: "t6-01-cartera-historial", titulo: "Cartera › el cliente › Historial",
+    abrir: ["location.reload(); \"ok\"", esperar(9000), clic("Cartera"), esperar(3000), escribir("Buscar cliente o placa", "IGC59I"), esperar(1500),
+      clic("JADER ANTONIO PEÑA ORTIZ"), esperar(2500), clic("Historial"), esperar(1500), verA("Ver semana por semana", "start")], espera: 2000 },
+  { archivo: "t6-02-libro-resumen", titulo: "Ficha › Pagos: el resumen", abrir: [clicHas("Ver semana por semana"), esperar(3500), verA("Va en la semana", "start")], espera: 2500 },
+  { archivo: "t6-03-libro-lista", titulo: "Ficha › Pagos: la lista de semanas",
+    abrir: [`(() => { const c = [...document.querySelectorAll("div")].filter(d => getComputedStyle(d).overflowY === "auto" && d.textContent.includes("Semana 1")).pop(); if (!c) return "NO:lista"; c.scrollTop = 0; c.closest("div[style*='box-shadow']")?.scrollIntoView({ block: "start" }); window.scrollBy(0, -110); return "ok"; })()`], espera: 1500 },
+  { archivo: "t6-04-libro-semana-abierta", titulo: "Ficha › Pagos: los pagos de una semana",
+    abrir: [`(() => { const c = [...document.querySelectorAll("div")].filter(d => getComputedStyle(d).overflowY === "auto" && d.textContent.includes("Semana 1")).pop(); if (!c) return "NO:lista"; const filas = [...c.children].filter(f => f.textContent.includes("Pagada") && f.textContent.includes(" + ")); const f = filas[0]; if (!f) return "NO:semana pagada"; (f.querySelector("[style*='cursor: pointer']") || f.firstElementChild).click(); f.scrollIntoView({ block: "start" }); c.scrollTop -= 8; return "ok"; })()`, esperar(800),
+      `(() => { const c = [...document.querySelectorAll("div")].filter(d => getComputedStyle(d).overflowY === "auto" && d.textContent.includes("Semana 1")).pop(); c?.closest("div[style*='box-shadow']")?.scrollIntoView({ block: "start" }); window.scrollBy(0, -110); return "ok"; })()`], espera: 1500 },
+  { archivo: "t6-05-libro-calendario", titulo: "Ficha › Pagos: el calendario",
+    abrir: [clic("Calendario"), esperar(1200), `(() => { const g = document.querySelector("[role=grid]"); if (!g) return "NO:calendario"; g.parentElement.scrollIntoView({ block: "start" }); window.scrollBy(0, -110); return "ok"; })()`], espera: 1500 },
+  { archivo: "t6-06-libro-dia", titulo: "Ficha › Pagos: el detalle de un día con pago",
+    abrir: [`(() => { const b = [...document.querySelectorAll("[role=grid] button")].filter(x => (x.getAttribute("aria-label") || "").includes("hubo pago")).pop(); if (!b) return "NO:día con pago"; b.click(); return "ok"; })()`, esperar(900),
+      `(() => { const g = document.querySelector("[role=grid]"); g.scrollIntoView({ block: "start" }); window.scrollBy(0, 150); return "ok"; })()`], espera: 1500 },
+  { archivo: "t6-07-libro-migrado", titulo: "Ficha › Pagos: un cliente migrado",
+    abrir: ["location.reload(); \"ok\"", esperar(9000), clic("Cartera"), esperar(3000), escribir("Buscar cliente o placa", "YAV67H"), esperar(1500),
+      clic("JESUS DAVID LEON CASTELLANO"), esperar(2500), clic("Historial"), esperar(1500), clicHas("Ver semana por semana"), esperar(3500),
+      `(() => { const c = [...document.querySelectorAll("div")].filter(d => getComputedStyle(d).overflowY === "auto" && d.textContent.includes("Antes de la app")).pop(); if (c) c.scrollTop = 0; return "ok"; })()`, verA("Va en la semana", "start")], espera: 2500 },
 ];
+
+// Las señales del tema 6: se miden en la pantalla real al tomar cada foto (img/<foto>.marcas.json).
+Object.assign(SENALES, {
+  "t6-01-cartera-historial": [{ n: 1, texto: "Ver semana por semana", tarjeta: false, cerca: "button" }, { n: 2, texto: "Cubre la semana", cual: 0 }],
+  "t6-02-libro-resumen": [{ n: 1, texto: "Va en la semana" }, { n: 2, texto: "Paga " }, { n: 3, texto: "entregada el" }, { n: 4, texto: "pagadas", cerca: "div" }, { n: 5, texto: "Calendario", cerca: "button" }],
+  "t6-03-libro-lista": [{ n: 1, texto: "Días iniciales" }, { n: 2, texto: "Pagada", exacto: true, cual: 0 }, { n: 3, texto: "A medias", exacto: true, yMin: 300 }, { n: 4, texto: "Sin pagar", exacto: true, yMin: 300 }, { n: 5, texto: "Próxima", exacto: true, yMin: 300 }],
+  "t6-04-libro-semana-abierta": [{ n: 1, texto: "Con eso completó" }],
+  "t6-05-libro-calendario": [{ n: 1, sel: "[role=grid]" }, { n: 2, texto: "hubo pago ese día" }, { n: 3, sel: "[aria-label='Mes anterior']" }],
+  "t6-06-libro-dia": [{ n: 1, texto: "Pagó $" }, { n: 2, texto: "Fue a la semana", cual: 0 }],
+  "t6-07-libro-migrado": [{ n: 1, texto: "en la app desde" }, { n: 2, texto: "Antes de la app" }, { n: 3, texto: "No se sabe con", ci: true }],
+});
 
 
 const wsUrl = await esperarChrome();

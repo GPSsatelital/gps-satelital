@@ -70,7 +70,23 @@
     const orden = [...dif].sort((a, b) => a - b);
     r.desfase_mediana = orden[Math.floor(orden.length / 2)];
     r.desfase_rango = +(orden[orden.length - 1] - orden[0]).toFixed(2);
-    r.ok = r.duracion > 10 && r.puntos.every(p => p.variedad > 40) && Math.abs(r.desfase_mediana - 0.3) < 0.35 && r.desfase_rango < 0.3;
+    // 4 (9-oct): que cada paso tenga LETRAS en su caja. Los videos del 7-oct salieron sin ellas y esta
+    // revisión no lo veía. A la mitad de cada escena se cuentan los puntos claros (letra blanca sobre el
+    // azul de la caja: x 470-1190, y 250-550 en el lienzo de 1280x720).
+    const cl = document.createElement("canvas"); cl.width = 1280; cl.height = 720;
+    const gl = cl.getContext("2d");
+    r.letras = [];
+    for (const [k, e] of linea.escenas.entries()) {
+      vid.currentTime = (e.voz + e.fin) / 2;
+      await new Promise(ok => { vid.onseeked = ok; });
+      gl.drawImage(vid, 0, 0, 1280, 720);
+      const px = gl.getImageData(470, 250, 720, 300).data;
+      let claros = 0;
+      for (let i = 0; i < px.length; i += 4) if ((px[i] + px[i + 1] + px[i + 2]) / 3 > 200) claros++;
+      r.letras.push({ paso: k + 1, segundo: +vid.currentTime.toFixed(1), claros });
+    }
+    r.ok = r.duracion > 10 && r.puntos.every(p => p.variedad > 40) && Math.abs(r.desfase_mediana - 0.3) < 0.35 && r.desfase_rango < 0.3
+      && r.letras.every(l => l.claros > 800);
   } catch (e) { r.error = e.message; r.ok = false; }
   await fetch(`/guardar?nombre=${encodeURIComponent("comprobado-" + id + ".json")}`, { method: "POST", body: JSON.stringify(r, null, 1) });
   document.title = "LISTO";

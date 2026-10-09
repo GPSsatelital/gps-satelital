@@ -189,8 +189,8 @@
 const C = window.CAP;
 const ic = (n, extra = "") => `<svg class="ico ${extra}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar", 4: "Rodar por deuda", 5: "Ceder un contrato" };
-const NOMBRES_LARGOS = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato" };
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar", 4: "Rodar por deuda", 5: "Ceder un contrato", 6: "Leer la cuenta de un cliente" };
+const NOMBRES_LARGOS = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato", 6: "Cómo leer la cuenta de un cliente" };
 const temaDe = s => s.tema ?? s.n;
 // Una presentación por tema (pedido del dueño): window.TEMA lo pone el archivo del tema; ?tema=N también sirve.
 const TEMA = Number(window.TEMA || new URLSearchParams(location.search).get("tema")) || null;
@@ -206,7 +206,7 @@ function html(s, i) {
   switch (s.tipo) {
     case "portada": return `<div class="portada">
         <div><span class="placa">MOTOGESTIÓN</span></div>
-        ${s.temaPortada ? `<div class="chip-tema" style="font-size:28px">Tema ${s.temaPortada} de 5</div>` : ""}
+        ${s.temaPortada ? `<div class="chip-tema" style="font-size:28px">Tema ${s.temaPortada} de 6</div>` : ""}
         <h1>${esc(s.temaPortada ? NOMBRES_LARGOS[s.temaPortada] : C.titulo)}</h1>
         <div class="sub">Capacitación del equipo · ${esc(C.fecha)}</div>
         <div class="sub" style="font-size:26px">Club Moteros Cartagena</div></div>`;
@@ -214,7 +214,7 @@ function html(s, i) {
         <div class="it"><div class="n">${x.n}</div><div class="ic">${ic(x.icono)}</div><div><div class="t">${esc(x.t)}</div><div class="d">${esc(x.d)}</div></div></div>`).join("")}</div>`;
     case "reglas": return `<h2>${esc(s.titulo)}</h2><div class="reglas ${s.items.length > 3 ? "seis" : ""}">${s.items.map(x => `
         <div class="it"><div class="ic">${ic(x.icono)}</div><div><div class="t">${esc(x.t)}</div>${x.d ? `<div class="d">${esc(x.d)}</div>` : ""}</div></div>`).join("")}</div>`;
-    case "seccion": return `<div class="seccion"><div class="seccion-n">${s.n}</div><div><div class="chip-tema">Tema ${s.n} de 5</div><h1>${esc(s.titulo)}</h1><div class="sub">${esc(s.sub)}</div></div></div>`;
+    case "seccion": return `<div class="seccion"><div class="seccion-n">${s.n}</div><div><div class="chip-tema">Tema ${s.n} de 6</div><h1>${esc(s.titulo)}</h1><div class="sub">${esc(s.sub)}</div></div></div>`;
     case "frase": return `<div class="frase ${s.cita ? "cita" : ""}">${chipTema(s)}<div class="ic">${ic(s.icono)}</div><div class="f">${esc(s.frase)}</div>${s.sub ? `<div class="s">${esc(s.sub)}</div>` : ""}</div>`;
     case "pasos": return `${chipTema(s)}<h2>${esc(s.titulo)}</h2><div class="pasos ${s.pasos.length > 5 ? "muchos" : ""}">${s.pasos.map((p, k) => `
         <div class="paso"><div class="num">${k + 1}</div><div class="ic">${ic(p.icono)}</div><div class="t">${esc(p.t)}</div><div class="d">${esc(p.d)}</div></div>`).join("")}</div>`;

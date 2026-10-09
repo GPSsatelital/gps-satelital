@@ -394,6 +394,152 @@ window.CAP = {
     { tipo: "video", tema: 5, video: "v4", titulo: "Video: ceder un contrato", min: 1.5,
       notas: "Y el último video." },
 
+    // ─────────────────────────────── TEMA 6 (9-oct) ───────────────────────────────
+    // Pedido del dueño: "no saben identificar las cuentas"; para los supervisores. Fotos: t6-*.png
+    // (cliente hecho en la app y cliente migrado; se toman con capturas-capacitacion.mjs t6).
+    { tipo: "seccion", n: 6, titulo: "Cómo leer la cuenta de un cliente", sub: "Semana por semana: qué pagó, qué debe y a dónde fue cada peso", min: 0.5,
+      notas: "Tema seis: cómo leer y revisar la cuenta de un cliente. Es lo que más nos preguntan los clientes, y es donde más nos equivocamos cuando respondemos de memoria." },
+
+    { tipo: "frase", tema: 6, icono: "calendario", min: 1,
+      frase: "Cada peso dice a qué semana fue.",
+      sub: "Si un cliente dice «yo ya pagué», la respuesta está en su libro de semanas, no en la memoria de nadie.",
+      notas: "Esta es la idea del tema. La app ya no solo dice cuánto debe: dice semana por semana qué está pagado, qué está a medias y qué no, y con qué pago se llenó cada una. Así nadie tiene que hacer cuentas de cabeza." },
+
+    { tipo: "pasos", tema: 6, titulo: "Cómo llegar al libro de semanas", min: 1,
+      pasos: [
+        { icono: "usuarios", t: "Abra la ficha del cliente", d: "Clientes › búsquelo › «Ver ficha completa»." },
+        { icono: "plata", t: "Pestaña «Pagos»", d: "Arriba está el libro de semanas. Abajo, los pagos de siempre." },
+        { icono: "lista", t: "Lista o Calendario", d: "Los dos dicen lo mismo: use el que entienda mejor." },
+        { icono: "check", t: "Toque para ver el detalle", d: "Una semana: los pagos que la llenaron. Un día: a dónde fue lo que pagó." },
+      ],
+      notas: "Cuatro pasos. La ficha del cliente, la pestaña Pagos, y ahí está el libro. Lista y Calendario muestran lo mismo de dos formas: hay gente que entiende mejor la lista y gente que entiende mejor el calendario. Y todo se toca para ver el detalle." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Desde Cartera, en un toque", ruta: ["Cartera", "Toque al cliente", "«Historial»", "«Ver semana por semana»"], img: "t6-01-cartera-historial.png", min: 1.5,
+      marcas: [
+        { r: [7.4, 20.1, 85.1, 5.2], t: "«Ver semana por semana» abre la ficha del cliente directo en sus semanas." },
+        { r: [10.5, 39.4, 48, 3.4], t: "«Se aplicó a»: a qué fue el pago: cuota, deuda o acuerdo." },
+        { r: [10.5, 46.5, 80, 4.3], t: "Y a qué semana, con sus fechas. «Abonó a la semana»: no la completó. «Cubre la semana»: la dejó completa." },
+      ],
+      ojo: "En Cartera solo salen los últimos 10 pagos. La cuenta completa está en «Ver semana por semana».",
+      notas: "Si ya está en Cartera con el cliente abierto, no tiene que salir: en Historial está el botón Ver semana por semana. Fíjense en el número 3: cada pago dice a qué semana fue. Si dice abonó, no la completó; si dice cubre, la dejó completa." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Arriba: cómo va el cliente", ruta: ["Clientes", "«Ver ficha completa»", "«Pagos»"], img: "t6-02-libro-resumen.png", min: 1.5,
+      marcas: [
+        { r: [5, 19.6, 92, 9.4], t: "En qué semana va hoy, de cuántas tiene el contrato. Debajo, Lista o Calendario: dos formas de ver lo mismo." },
+        { r: [5, 29.6, 92, 4.9], t: "Qué día paga y cuánto. Y desde cuándo está: el día que se le entregó la moto." },
+        { r: [5, 35.2, 92, 4.0], t: "Cuántas semanas tiene pagadas, a medias y sin pagar." },
+      ],
+      ojo: "Si sale un aviso amarillo, léalo antes de decirle algo al cliente: explica por qué algo se ve distinto.",
+      notas: "Arriba está el resumen. Número 1: en qué semana va. Número 3: qué día paga, cuánto, y desde cuándo está con nosotros; esa es la respuesta a «¿desde cuándo tengo la moto?». Número 4: el conteo de semanas. Y si sale un aviso amarillo, se lee primero: está ahí para explicar algo." },
+
+    { tipo: "pantalla", tema: 6, titulo: "La lista: el color de cada semana", ruta: ["Ficha", "«Pagos»", "«Lista»"], img: "t6-02-libro-resumen.png", min: 2,
+      marcas: [
+        { r: [6, 48.3, 87.8, 12.6], t: "Verde: pagada. Abajo dice el día y con qué pagó." },
+        { r: [6, 61.8, 87.8, 9.9], t: "Amarillo: a medias. Cuánto lleva, cuánto le falta y desde cuándo se le cobra." },
+        { r: [6, 72.6, 87.8, 7.4], t: "Rojo: sin pagar. La que va con borde es la semana de hoy." },
+        { r: [6, 80.7, 87.8, 9.9], t: "Azul: la próxima, con el día que le toca." },
+      ],
+      ojo: "Los días que dice «venció el… (11 días)» son los mismos días en mora de Cartera.",
+      notas: "Cada semana es una fila con su color. Verde, pagada. Amarillo, pagó una parte y debe el resto. Rojo, ya se le cobraba y no ha pagado nada. Azul, la que viene. La semana de hoy va con borde, para encontrarla rápido. Y los días que dice ahí son exactamente los días en mora que salen en Cartera: no hay dos cuentas distintas." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Desde el comienzo del contrato", ruta: ["Ficha", "«Pagos»", "Suba al comienzo de la lista"], img: "t6-03-libro-lista.png", min: 1.5,
+      marcas: [
+        { r: [6, 14.2, 87.8, 9.9], t: "Días iniciales: de la entrega al primer día de pago. Se pagan aparte." },
+        { r: [6, 24.9, 87.8, 9.9], t: "La semana 1 se paga con la base: «semana adelantada de la base»." },
+        { r: [6, 35.7, 87.8, 9.9], t: "Si una semana se pagó en partes, salen todos los pagos, por fecha. La flecha la abre para verlos uno por uno." },
+      ],
+      notas: "Si sube al comienzo de la lista ve la historia completa. Primero los días iniciales, que van de la entrega al primer día de pago. Después la semana 1, que se paga con la base que puso al entrar. Y cuando una semana se pagó en varias partes, salen todos los pagos, en orden de fecha." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Abrir una semana", ruta: ["«Lista»", "Toque la semana"], img: "t6-04-libro-semana-abierta.png", min: 1.5,
+      marcas: [
+        { r: [5, 15.1, 92, 8.6], t: "Arriba, en una línea: los pagos que la llenaron." },
+        { r: [5, 25.2, 92, 6.6], t: "Abierta: cada pago con su día, si fue efectivo o transferencia, y cuánto puso en esta semana." },
+        { r: [5, 32.1, 92, 2.9], t: "Y si con eso la completó, o cuánto le falta." },
+      ],
+      ojo: "Un pago se puede repartir: termina una semana y abona a la siguiente. Por eso un mismo pago puede salir en dos semanas.",
+      notas: "Al tocar una semana se abre. Ahí sale cada pago: el día, si fue efectivo o transferencia, y cuánto de ese pago fue a esa semana. Ojo con esto: un pago de cien mil puede terminar una semana y empezar la siguiente; entonces aparece en las dos, cada vez con la parte que le tocó." },
+
+    { tipo: "tabla", tema: 6, titulo: "Los colores y qué hacer con cada uno", min: 1.5,
+      columnas: ["Color", "Qué quiere decir", "Qué hago"],
+      filas: [
+        ["Verde · Pagada", "Completa: no debe nada de esa semana", "Nada"],
+        ["Amarillo · A medias", "Pagó una parte", "Cobrar lo que le falta"],
+        ["Rojo · Sin pagar", "Ya se le cobraba y no ha pagado nada", "El protocolo de mora"],
+        ["Azul · Próxima", "La que le toca después", "Recordarle el día"],
+        ["Gris · Falta", "Las que vienen", "Nada"],
+        ["Morado · Rodada", "Moto guardada o rodado por deuda: se paga al final", "No cobrarla ahora"],
+      ],
+      pie: "Las semanas del cuaderno (antes de la app) salen juntas en una sola fila: vienen pagadas.",
+      notas: "Esta tabla es para tener a mano. Cada color quiere decir una cosa y pide una acción. El morado es el que más confunde: es tiempo que se rodó al final, por moto guardada o por un rodado por deuda. No se perdona, pero tampoco se cobra ahora." },
+
+    { tipo: "pantalla", tema: 6, titulo: "El calendario", ruta: ["Ficha", "«Pagos»", "«Calendario»"], img: "t6-05-libro-calendario.png", min: 1.5,
+      marcas: [
+        { r: [7.4, 14.9, 85.1, 4.8], t: "Cambie de mes con las flechas." },
+        { r: [44.4, 24.3, 11.2, 5.2], t: "El punto: ese día pagó. Toque el día para ver qué pasó." },
+        { r: [56.7, 30.0, 11.2, 5.2], t: "Hoy va con borde. El color de cada día es el de su semana." },
+        { r: [7.4, 62.2, 85.1, 14.2], t: "Abajo, el detalle del día que tocó." },
+      ],
+      notas: "El calendario muestra lo mismo que la lista, pero por días. Cada día tiene el color de la semana a la que pertenece. Los días con un punto son los días en que el cliente pagó. Es muy útil para mostrárselo al cliente en la pantalla: él reconoce los días." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Tocar un día con pago", ruta: ["«Calendario»", "Toque un día con punto"], img: "t6-06-libro-dia.png", min: 1.5,
+      marcas: [
+        { r: [8, 25, 84.5, 7.8], t: "A qué semana pertenece ese día y cómo está." },
+        { r: [8, 34.4, 84.5, 6.0], t: "Cuánto pagó, cómo, y a dónde fue cada peso: a qué semana, a la deuda o al acuerdo." },
+        { r: [3.3, 66.4, 93.4, 13.6], t: "Más abajo sigue la lista de pagos de siempre." },
+      ],
+      ojo: "Si el cliente dice que pagó un día y ese día no tiene punto, mire Cartera › Confirmar: puede estar sin confirmar.",
+      notas: "Al tocar un día con punto sale el pago de ese día y a dónde fue cada peso. Si el cliente jura que pagó el lunes y el lunes no tiene punto, no discuta: primero mire en Cartera, en Confirmar, si quedó un pago sin confirmar." },
+
+    { tipo: "pantalla", tema: 6, titulo: "Un cliente que viene del cuaderno", ruta: ["Ficha", "«Pagos»"], img: "t6-07-libro-migrado.png", min: 1.5,
+      marcas: [
+        { r: [5, 32.4, 92, 4.6], t: "Cuándo se le entregó la moto, desde cuándo está en la app y cuántas semanas traía del cuaderno." },
+        { r: [6, 45.7, 87.8, 10.0], t: "Las semanas del cuaderno van juntas en una fila: vienen pagadas, sin detalle." },
+        { r: [6, 56.6, 87.8, 7.2], t: "Desde el corte, cada semana con sus pagos, igual que un contrato nuevo." },
+      ],
+      ojo: "En algunos migrados la app no sabe con qué pago se llenó cada semana. Lo dice con un aviso; el color de cada semana sí es el correcto.",
+      notas: "Los clientes que vienen del cuaderno tienen dos partes: las semanas de antes, que van juntas en una fila porque vienen pagadas, y las de la app, cada una con su detalle. Ese número de semanas del cuaderno es el que traía al pasarse a la app." },
+
+    { tipo: "pasos", tema: 6, titulo: "El cliente dice «yo ya pagué»", min: 2,
+      pasos: [
+        { icono: "calendario", t: "Busque el día", d: "En el calendario, el día que dice que pagó. ¿Tiene punto?" },
+        { icono: "lista", t: "Mire a dónde fue", d: "Toque el día: a qué semana, deuda o acuerdo fue." },
+        { icono: "plata", t: "Compare", d: "La semana más vieja en rojo o amarillo es la que se le cobra." },
+        { icono: "check", t: "Si no aparece", d: "Cartera › Confirmar: puede estar sin confirmar. O no se registró." },
+        { icono: "alerta", t: "Si no cuadra", d: "No lo arregle usted ni borre pagos: avise con la placa y la fecha." },
+      ],
+      notas: "Este es el procedimiento cuando un cliente dice que ya pagó. Uno: busque el día en el calendario. Dos: toque el día y mire a dónde fue la plata. Tres: compare con lo que se le está cobrando. Cuatro: si el pago no aparece, revise Confirmar. Y cinco: si algo no cuadra, no lo arregle por su cuenta y nunca borre un pago; avise con la placa y la fecha." },
+
+    { tipo: "lista", tema: 6, tono: "alerta", titulo: "Lo que hay que tener en cuenta", min: 2,
+      items: [
+        "Cada pago llena primero la semana más vieja que debe; después las deudas; después el acuerdo.",
+        "Lo que sobra queda a su favor. No se descuenta solo: se aplica cuando el cliente lo decide.",
+        "Un abono no completa la semana: queda a medias y se sigue cobrando lo que falta.",
+        "«Días en mora» no es lo mismo que «días desde su último pago». Al cliente se le dice la mora.",
+        "Las semanas rodadas no se perdonan: se pagan al final del contrato.",
+        "Si sale «el mismo tiempo guardado está anotado más de una vez», avísele al administrador.",
+      ],
+      notas: "Seis cosas para no equivocarse. La primera es la más importante: la plata siempre va primero a la semana más vieja. Por eso un cliente que paga la semana de hoy pero debe una vieja, sigue en mora: su pago tapó la vieja. Y si ven el aviso de tiempo guardado anotado dos veces, avisen: es un error que hay que corregir." },
+
+    { tipo: "tabla", tema: 6, titulo: "Lo que pregunta el cliente", min: 1.5,
+      columnas: ["El cliente pregunta", "Dónde está la respuesta"],
+      filas: [
+        ["«¿Qué semana estoy pagando?»", "Lista: la semana con borde es la de hoy"],
+        ["«¿Desde cuándo debo?»", "La más vieja en rojo o amarillo: «venció el…»"],
+        ["«¿A dónde fue mi pago del lunes?»", "Calendario: toque ese día"],
+        ["«¿Cuántas semanas llevo?»", "Arriba: «Va en la semana… de…» y las pagadas"],
+        ["«¿Cuándo termino?»", "La última fila de la lista: «termina aprox. el…»"],
+        ["«¿Desde cuándo estoy con ustedes?»", "Arriba: «entregada el…»"],
+      ],
+      notas: "Estas son las preguntas de todos los días, y dónde está cada respuesta. Ninguna se responde de memoria: todas están en la pantalla." },
+
+    { tipo: "comparar", tema: 6, titulo: "Así sí, así no", min: 1,
+      izq: { titulo: "Así sí", tono: "bien", items: ["Abrir el libro antes de responder.", "Decirle la semana con sus fechas.", "Mostrarle el calendario en la pantalla.", "Si no cuadra, avisar con placa y fecha."] },
+      der: { titulo: "Así no", tono: "mal", items: ["Calcular de memoria o con la calculadora.", "Decir «debe dos semanas» sin mirar.", "Borrar o corregir pagos para que cuadre.", "Decir una cifra que no sale en la pantalla."] },
+      notas: "Para cerrar el tema: siempre se mira el libro antes de responder, y se le habla al cliente con fechas. Lo que nunca se hace es calcular de memoria ni tocar pagos para que la cuenta cuadre." },
+
+    { tipo: "video", tema: 6, video: "v5", titulo: "Video: leer la cuenta semana por semana", min: 1.5,
+      notas: "Este video repasa todo el tema en un minuto. Se lo pueden mandar al equipo por WhatsApp." },
+
     // ─────────────────────────────── CIERRE ───────────────────────────────
     { tipo: "tabla", titulo: "¿Dónde busco...?", min: 2,
       columnas: ["Quiero...", "Voy a..."],
@@ -463,6 +609,16 @@ window.CAP = {
       { img: "t5-05-ceder-requisitos.png", r: [6, 20.2, 88, 30.6], voz: "Elija quién recibe. Debe cumplir todo lo de un cliente nuevo: aprobado, documentos, acompañante y visita. Si algo sale en rojo, no deja ceder." },
       { img: "t5-03-ceder-ok.png", r: [6, 60.4, 88, 19.6], voz: "Faltan las firmas en pantalla de los dos, y subir el acta firmada, el pagaré con carta de instrucciones, y el certificado." },
       { img: "t5-03-ceder-ok.png", r: [6, 21.5, 88, 27], voz: "Al confirmar, el contrato queda a nombre del nuevo cliente. La moto se le entrega aparte, por Inmovilizaciones." },
+    ] },
+    v5: { archivo: "Video 5 - Leer la cuenta semana por semana.mp4", titulo: "Leer la cuenta semana por semana", fecha: "9 de octubre de 2026", escenas: [
+      { img: "t6-01-cartera-historial.png", r: [7.4, 20.1, 85.1, 5.2], voz: "En Cartera, abra al cliente, toque Historial, y luego Ver semana por semana. También está en su ficha, en Pagos." },
+      { img: "t6-02-libro-resumen.png", r: [7.4, 20.1, 85.1, 18.9], voz: "Arriba dice en qué semana va, qué día paga, desde cuándo tiene la moto, y cómo va: pagadas, a medias y sin pagar." },
+      { img: "t6-02-libro-resumen.png", r: [6, 48.3, 87.8, 42.3], voz: "Verde, pagada. Amarillo, a medias. Rojo, sin pagar. Azul, la próxima. La de hoy va con borde." },
+      { img: "t6-04-libro-semana-abierta.png", r: [9.5, 18.5, 81.5, 16.3], voz: "Toque una semana para ver los pagos que la llenaron: el día, cómo pagó, y cuánto." },
+      { img: "t6-05-libro-calendario.png", r: [7.4, 20.9, 85.1, 31.4], voz: "En el calendario, cada día lleva el color de su semana, y un punto el día que pagó." },
+      { img: "t6-06-libro-dia.png", r: [10.8, 25.2, 79, 15.1], voz: "Toque un día con punto: verá cuánto pagó, y a dónde fue cada peso." },
+      { img: "t6-07-libro-migrado.png", r: [6, 32.3, 87.8, 24], voz: "Si viene del cuaderno, esas semanas salen juntas, ya pagadas. Desde el corte, cada una con su detalle." },
+      { img: "t6-02-libro-resumen.png", r: [6, 61.8, 87.8, 18.2], alerta: true, voz: "Ojo. Si una cuenta no cuadra, no la arregle ni borre pagos. Avísele al administrador, con la placa y la fecha." },
     ] },
   },
 };

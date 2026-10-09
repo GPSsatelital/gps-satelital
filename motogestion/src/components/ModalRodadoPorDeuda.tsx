@@ -101,7 +101,8 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
       setProcesando("Armando el documento firmado…");
       const html = htmlRodadoPorDeuda(calc, { firmaCliente, firmaAcompanante: firmaAcomp, acompanante, fechaFirma: hoy });
       const { htmlAPdfBlob } = await import("../utils/pdf");
-      const pdf = await htmlAPdfBlob(html);
+      // Cortes seguros: el bloque de las firmas (`data-no-cortar`) nunca queda partido entre dos hojas.
+      const pdf = await htmlAPdfBlob(html, { cortesSeguros: true });
       const doc = await subirArchivoRodado(contratoId, "acuerdo-rodado.pdf", pdf, "application/pdf");
       if (doc.error || !doc.url) throw new Error(`No se pudo guardar el documento: ${doc.error ?? ""}`);
 

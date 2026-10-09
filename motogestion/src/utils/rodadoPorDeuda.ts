@@ -136,14 +136,21 @@ export function htmlRodadoPorDeuda(c: CalculoRodado, o: OpcionesDocRodado = {}):
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
   .aviso-borrador { border: 2px dashed #b45309; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; font-weight: 700; text-align: center; }
   .contenido { position: relative; z-index: 1; }
-  /* En el celular (la vista previa que lee el cliente): una columna y las cifras sin cortarse. */
+  ${o.borrador ? `/* En el celular (la vista previa que lee el cliente): una columna y las cifras sin cortarse.
+     Solo en el borrador: en el PDF firmado, la medida de dónde cortar las hojas se toma en la pantalla
+     (que en el celular es angosta) y la hoja se dibuja a 794 px; con esto adentro las dos no coincidían
+     y el corte partía las firmas. */
   @media (max-width: 640px) {
     body { padding: 12px; font-size: 12.5px; }
     .fila { flex-basis: 100%; }
     td { padding: 6px 4px; }
     td:last-child { white-space: normal; min-width: 96px; }
     .marca-borrador { font-size: 48px; }
-  }
+  }` : `/* El PDF se mide en la pantalla y se dibuja a 794 px. La letra base de la app (index.css) cambia
+     con el ancho de la pantalla y se colaba aquí (alto del renglón y margen del título): en un
+     computador el corte de hoja caía en otro lado. Fijados con los valores que ya tenía el PDF. */
+  .contenido { line-height: 23.2px; }
+  h1 { margin-top: 20px; }`}
 </style></head>
 <body>
 ${o.borrador ? `<div class="marca-borrador">BORRADOR</div>` : ""}
@@ -194,7 +201,7 @@ ${o.borrador ? `<div class="aviso-borrador">Esta es una copia de revisión. Toda
 <div class="destacado">En resumen: hoy queda debiendo <strong>${pesos(c.despues?.total)}</strong>, y al final de su contrato
   paga <strong>${sem(cobrar)}</strong> más, que terminan aproximadamente el <strong>${fechaLarga(c.fecha_fin_aprox)}</strong>.</div>
 
-<div class="cierre">
+<div class="cierre" data-no-cortar>
 <div class="firmas">
   ${firma(null, "Club Moteros Cartagena", "Por la empresa")}
   ${firma(o.firmaCliente, c.cliente ?? "", "El cliente", c.cedula)}

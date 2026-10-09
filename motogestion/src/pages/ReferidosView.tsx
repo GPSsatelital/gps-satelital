@@ -7,6 +7,8 @@ import ModalEntregarPremio from "../components/ModalEntregarPremio";
 import { generarReciboPremio } from "../utils/generarReciboPremio";
 import { useAuth } from "../contexts/AuthContext";
 import { abrirDocumento } from "../lib/storagePrivado";
+import ReferidosPorFecha from "../components/ReferidosPorFecha";
+import { esDelEquipo } from "../utils/referidosPorFecha";
 
 const PREMIOS = [
   { hito: 2,  premio: "Par de guantes de manejo", icon: "🧤" },
@@ -83,6 +85,10 @@ export default function ReferidosView() {
     // DAVID MUÑOZ y no aparecía en ninguna parte aunque el dato estaba bien guardado.
     const grupos = new Map<string, { cedula: string; nombre: string; referidos: Cliente[] }>();
     clientes.forEach(c => {
+      // Lo que trae el equipo se paga en la nómina, como las visitas, y no suma premios (decisión
+      // del dueño, 9-oct-2026). Venía anotado también con la cédula del supervisor, y así cinco
+      // supervisores salían con guantes, intercomunicador y casco pendientes de entrega.
+      if (esDelEquipo(c)) return;
       const ced = (c.referido_por_cedula ?? "").trim();
       if (!ced) return;
       const g = grupos.get(ced) ?? { cedula: ced, nombre: "", referidos: [] };
@@ -152,7 +158,7 @@ export default function ReferidosView() {
     //     NO cuenta (la cédula es la constancia y va en la carta de recomendación). Se listan
     //     igual para poder ir a completarlas, en vez de que se pierdan en silencio.
     const sinCedula = clientes
-      .filter(c => (c.referido_por_nombre ?? "").trim() && !(c.referido_por_cedula ?? "").trim())
+      .filter(c => !esDelEquipo(c) && (c.referido_por_nombre ?? "").trim() && !(c.referido_por_cedula ?? "").trim())
       .map(c => ({ cliente: c, refirio: (c.referido_por_nombre ?? "").trim() }));
 
     return { partidos, sinCedula };
@@ -166,7 +172,7 @@ export default function ReferidosView() {
 
   const kpis = useMemo(() => ({
     totalReferidores: referidores.length,
-    referidosActivos: clientes.filter(c => c.referido_por_cedula && c.estado === "Activo").length,
+    referidosActivos: clientes.filter(c => c.referido_por_cedula && !esDelEquipo(c) && c.estado === "Activo").length,
     premiosPendientes: pendientesEntrega.length,
     hitosAlcanzados: referidores.reduce((a, r) => a + PREMIOS.filter(p => r.confirmados >= p.hito).length, 0),
   }), [referidores, clientes, pendientesEntrega]);
@@ -386,6 +392,8 @@ export default function ReferidosView() {
           </div>
         </div>
       )}
+
+      <ReferidosPorFecha clientes={clientes} contratos={contratos} isMobile={isMobile} />
 
       {/* Lista de referidores */}
       <div style={{ background: "var(--card)", borderRadius: 16, padding: "20px 24px", border: "1px solid var(--line)" }}>

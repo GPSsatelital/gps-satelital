@@ -735,3 +735,21 @@ nuevo ($1.008.500) reunió lo que ya debía por fuera (semana 30 y lavada): ante
 $1.008.500.
 **Falta:** que el sistema lo haga solo (PENDIENTES P0) — medir antes cuántas liquidaciones lo tienen.
 **Reemplaza a:** —
+
+### D-047 · 9-oct-2026 · Lo que trae el equipo se paga en la nómina y no suma premios de referidos
+**Decidió:** el dueño, al ver que cinco supervisores salían con premios pendientes en Referidos: *"para ellos
+los referidos se manejan de otra manera y se les pagan aparte como en las visitas en la nómina"*.
+**Qué se decidió:**
+1. **Si a un cliente lo trajo alguien del equipo** (`clientes.referido_por_funcionario`, mig 153), ese referido
+   **no cuenta para el programa de premios** (guantes, intercomunicador, casco, combo). Se paga en la nómina
+   ($30.000 cuando el cliente recibe la moto), como hasta hoy.
+2. **Referidos tiene una lista por fecha**, contando por el día en que el referido **recibió la moto** (por
+   defecto: es cuando cuenta y cuando paga la nómina) o por el día en que **se registró** — el dueño pidió las
+   dos. Se filtra por quién lo trajo: clientes, equipo o cada supervisor.
+**El caso que lo destapó:** los 48 clientes que trajeron los supervisores también estaban anotados con la
+cédula del supervisor como "referido por". Así Lumar y Johan llegaban al casco, Carlos Alvarez al
+intercomunicador, Brandon y Carlos Ariza a los guantes. No se había entregado ninguno. Con la regla: 40
+personas que refieren (antes 48), 49 referidos (antes 97), 8 premios alcanzados (antes 18), todos guantes.
+**Dónde vive:** `utils/referidosPorFecha.ts` (+ 9 pruebas) · `components/ReferidosPorFecha.tsx` ·
+`ReferidosView` (`esDelEquipo` en el conteo de premios, en "sin cédula" y en "referidos activos").
+**Reemplaza a:** —

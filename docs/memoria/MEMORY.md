@@ -8,11 +8,13 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (9-oct, noche)
+## ▶️ DÓNDE RETOMAR (10-oct)
 
-▶️ **Dos preguntas esperan al dueño** (arriba de `docs/PENDIENTES.md`): **1) arreglar el libro de semanas** («esta» en
-semana vieja si hoy cae en tiempo rodado, fechas reales del guardado, días en mora = Cartera, y corregir tema 6 +
-video 5 + mig 194 SIN correr) → [[libro-semanas-arreglo-pendiente]] · **2) rodar por deuda** (tanda 1, punto 3).
+▶️ Arriba de `docs/PENDIENTES.md`: **1) rodar por deuda** (tanda 1, punto 3) espera su «1» o «2» · **2) rehacer la
+capacitación del tema 6** con el libro arreglado (él: «la diapositiva la arreglas después») → [[libro-semanas-arreglo-pendiente]].
+✅ **10-oct, todo subido:** el acuerdo atrasado antes que las deudas sueltas, solo pagos nuevos (a1f1bdc, D-049, mig 197:
+0 pesos movidos, espejo 349/0) · libro de semanas arreglado (e160c9c, mig 194). 🔑 El dueño creía que el reparto por
+conjunto ya era así: lo era desde D-022 (24-sep); sus clientes viejos (JUAN CARLOS LEAL) se repartieron antes.
 ✅ **9-oct, todo subido:** firmas del rodado en una hoja (4974cf4) · libro de semanas (1c670d6) · tema 6 + videos con
 letras (f345165) · Referidos por fecha y equipo fuera de premios (3740dbd, D-047, mig 195) · Reportes: mora partida en
 Parcial / No pagó (7ce31c0, D-048, mig 196). Rodar validado de punta a punta (6 BIEN). Detalle: PENDIENTES → Cerrados.

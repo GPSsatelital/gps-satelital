@@ -1,28 +1,25 @@
 ---
 name: libro-semanas-arreglo-pendiente
-description: "Tres defectos de pantalla del libro de semanas (9-oct) que esperan el «1» del dueño, con los casos reales y lo que hay que corregir en la capacitación"
+description: El libro de semanas se arregló el 10-oct (e160c9c); queda pendiente rehacer la capacitación del tema 6 con la pantalla nueva
 metadata:
   node_type: memory
   type: project
   originSessionId: ecbda5fc-4619-4e95-b4dc-d59ba138caf2
-  modified: 2026-10-10T00:27:05.109Z
+  modified: 2026-10-10T19:00:42.617Z
 ---
 
-El libro de semanas (ficha → Pagos, `utils/libroSemanas.ts`, en producción desde 1c670d6) tiene tres defectos
-de pantalla, no de plata. El arreglo se le propuso al dueño con dibujo el 9-oct noche y **espera su «1»**.
+**Arreglado el 10-oct-2026 (e160c9c + mig 194 corrida).** El libro de semanas (ficha → Pagos) tenía tres
+defectos de pantalla que el dueño cazó con JOSE LUIS LOPEZ PONCE (RMZ68H): «esta» en una semana vieja cuando hoy
+cae en tiempo rodado, la fila de moto guardada con las fechas del calendario en vez de las reales, y días que no
+eran los de Cartera. Ahora: un solo número de días, arriba, calculado con `moraDelLibro` → `diasEnMora` (168/168
+iguales a Cartera), dicho de dónde sale (con acuerdo, semana + cuota juntas, D-030).
 
-1. **«esta» en la semana equivocada** cuando hoy cae dentro del tiempo rodado: `vaEn = indiceHoy + previas − exo`
-   supone que todas las rodadas quedaron atrás. Casos: JOSE LUIS LOPEZ PONCE (RMZ68H, guardada 13-ago → 9-oct,
-   8 rodadas, «esta» en la semana 43 de agosto) y ERICK RODRIGUEZ (DQG87I).
-2. **La fila rodada dice «Moto guardada · 19 ago al 13 oct»**: son las semanas del calendario de pagos que no se
-   cobran, no las fechas reales (13-ago → 9-oct). 22 filas así.
-3. **Días:** el libro dice «venció el 5 oct (4 días)» (desde que venció); Cartera «3d en mora» (quita la gabela).
+**Por qué el dueño lo quiso así:** *«porque enredarse con algo que se puede decir explícitamente»* — prefirió
+un número explicado con palabras a dos números distintos. Y preguntó «¿por qué estamos haciendo esto?»: hubo que
+recordarle que el libro nació de su pedido «no saben identificar las cuentas».
 
-**Por qué importa:** el dueño lo cazó solo («¿por qué las rodadas están después de la actual?») y la diapositiva
-de los colores del tema 6 afirma que los días son los mismos de Cartera — falso. La mig 194 repite esa frase y
-**no se ha corrido**.
-
-**How to apply:** al arreglar, cambiar el texto de la diapositiva, recapturar los pantallazos t6 y el video 5
-(`docs/capacitacion/`: `capturas-capacitacion.mjs` con sesión vía `recibe-sesion.mjs`, `hacer-videos.mjs v5`,
-generador `gen-capacitacion-7oct.js 6` + `pptx-com.ps1` para incrustar letra), corregir la mig 194 y agregar
-pruebas con RMZ68H y DQG87I. Ver [[feedback-preguntar-hasta-que-quede-claro]] y `docs/DERRAPES.md` (9-oct).
+**How to apply:** queda pendiente (P1) rehacer la capacitación del tema 6: diapositiva 7, pantallazos `t6-*`
+(`capturas-capacitacion.mjs` con sesión vía `recibe-sesion.mjs`), video 5 (`hacer-videos.mjs v5`) y el PowerPoint
+(`gen-capacitacion-7oct.js 6` + `pptx-com.ps1`); volver a medir los círculos de las diapositivas 6, 9 y 13 porque
+el resumen ahora tiene el bloque rojo de días. El dueño dijo «la diapositiva la arreglas después». Ver
+[[feedback-explicaciones-simples]] y [[feedback-decir-de-donde-sale]].

@@ -8,13 +8,13 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **9-oct-2026** (noche).
+- Última revisión: **10-oct-2026**.
 
-> ▶️ **AL ARRANCAR (9-oct noche): dos preguntas esperan al dueño, en este orden.**
-> 1. **¿Arreglo el libro de semanas?** (P1, primer punto: «esta» en una semana vieja, fechas reales del tiempo
->    guardado, los días en mora de Cartera, y corregir la diapositiva y el video del tema 6). Se le preguntó
->    con dibujo; respuesta pendiente («1 sí / 2 todavía no»). **No presentar el tema 6 hasta arreglarlo.**
-> 2. **Rodar por deuda, tanda 1 punto 3** — sigue esperando su «1» o «2».
+> ▶️ **AL ARRANCAR (10-oct):**
+> 1. **Rodar por deuda, tanda 1 punto 3** — sigue esperando su «1» o «2».
+> 2. **Capacitación del tema 6** (el dueño: «la diapositiva la arreglas después»): diapositiva 7 («los mismos
+>    días que Cartera»: ahora sí es cierto), recapturar los pantallazos t6 y el video 5 con el libro nuevo.
+>    Hasta entonces, no presentar el tema 6 (sus pantallazos muestran «(4 días)» y la fila rodada vieja).
 
 ---
 
@@ -305,26 +305,15 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **ARREGLAR EL LIBRO DE SEMANAS (encontrado el 9-oct noche) — ESPERA EL «1» DEL DUEÑO.** El libro
-  ya está en producción (1c670d6) y la capacitación del tema 6 hecha, pero tiene tres defectos de pantalla (no
-  de plata):
-  · **«esta» en la semana equivocada:** si hoy cae dentro del tiempo rodado (la moto acaba de volver), marca la
-    última pagada, de antes de guardarla. JOSE LUIS LOPEZ PONCE (RMZ68H): «esta» en la semana 43 (12-18 ago);
-    guardada 13-ago → 9-oct, 8 semanas rodadas, próximo cobro miércoles 14-oct. También ERICK RODRIGUEZ
-    (DQG87I). 2 de 25 contratos con rodadas. Causa: `vaEn = indiceHoy + previas − exo` en `construirLibro`.
-  · **La fila rodada dice fechas que no son:** título «Moto guardada · 19 ago al 13 oct» = las semanas del
-    calendario de pagos que no se cobran; las reales son 13-ago → 9-oct (57 días). 22 filas. Propuesta:
-    «Moto guardada del 13 ago al 9 oct (57 días)» + «no se le cobran del 19 ago al 13 oct».
-  · **Los días no son los de Cartera:** el libro dice «venció el 5 oct (4 días)» = días desde que venció;
-    Cartera dice «3d en mora» (le quita la gabela). Uno de diferencia siempre (medido en 21). Propuesta:
-    «venció el 5 oct · 3 días en mora».
-  · Con eso: corregir la diapositiva de los colores del tema 6 («son los mismos días» es falso), recapturar
-    sus pantallazos y el video 5, y el texto de la **mig 194 (NO corrida todavía)**. Pruebas con RMZ68H y DQG87I.
-  · Para pensar con el dueño: el libro solo muestra semanas, no el acuerdo. JUAN CARLOS LEAL (YAL68H): el libro
-    dice 4 días por la semana; Cartera 17 por el conjunto semana + cuota (D-030). Se le explicó; no pidió cambio.
+- [ ] 💻 **CAPACITACIÓN DEL TEMA 6 CON EL LIBRO ARREGLADO** (el arreglo del libro se subió el 10-oct, e160c9c;
+  el dueño pidió dejar la diapositiva «para después»). Falta: el texto del «Ojo» de la diapositiva 7 (ya es
+  cierto, pero conviene decir «el número de arriba»), recapturar `t6-*` con `capturas-capacitacion.mjs` (sesión vía
+  `recibe-sesion.mjs`), regrabar el video 5 (`hacer-videos.mjs v5`) y regenerar el PowerPoint (`gen-capacitacion-7oct.js
+  6` + `pptx-com.ps1`). Las marcas (círculos) de las diapositivas 6, 9 y 13 hay que volver a medirlas: el
+  resumen ahora tiene el bloque rojo de días en mora.
 
-- [ ] 💻 **El libro de semanas + el manual para los supervisores (aprobado el 9-oct: «1») — HECHO salvo el arreglo
-  de arriba.** Libro 1c670d6 · tema 6 en PowerPoint (19 diapositivas) + video 5 de 87 s, fuera de git en
+- [ ] 💻 **El libro de semanas + el manual para los supervisores (aprobado el 9-oct: «1») — HECHO salvo la
+  capacitación de arriba.** Libro 1c670d6 · tema 6 en PowerPoint (19 diapositivas) + video 5 de 87 s, fuera de git en
   `docs/capacitacion/powerpoint/` y `videos/`. Lo que sigue es la descripción original. Pedido del dueño:
   «no saben identificar las cuentas»; quiere ver cada pago y a qué semana fue, desde cuándo está el cliente
   en el sistema, y un manual o capacitación **bien explicada para los supervisores**.
@@ -861,6 +850,16 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **10-oct · El libro de semanas arreglado** (e160c9c + mig 194 corrida) — «esta» ya no queda en una semana
+  vieja cuando hoy cae en tiempo rodado (RMZ68H, DQG87I: la fila rodada dice «hoy»); la fila de moto guardada dice
+  las fechas reales (22 de 22: JOSE LUIS «del 13 ago al 9 oct · 57 días»); y un solo número de días en mora, el de
+  Cartera, dicho de dónde sale (168 de 168 iguales; JUAN CARLOS LEAL 18 días, desde el lunes 21-sep, semana +
+  cuota). Espejo del libro 349/0. Falta la capacitación (P1).
+- [x] **10-oct · El acuerdo atrasado se cobra antes que las deudas sueltas** (a1f1bdc + mig 197 corrida, D-049) —
+  solo pagos nuevos (el dueño escogió no rehacer cuentas). Prueba adentro con JONATHAN KENDRI (DPU30I): $100.000 →
+  $96.000 al acuerdo y $4.000 al repuesto, deshecha; 0 pesos movidos; espejo de la vitrina 349/0. Hoy le cambia a
+  4 clientes (JONATHAN, LIBINTO, JARLIN, OSVALDO). JUAN CARLOS LEAL se deja como está (se le va a rodar o resolver).
 
 - [x] **9-oct · Reportes: vuelven a salir los que pagaron una parte** (7ce31c0 + mig 196 corrida, D-048) — «En
   mora» partido en Parcial (entró plata en el período) y No pagó, en el Resumen (hoy y al cierre), el Excel por

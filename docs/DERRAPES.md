@@ -418,9 +418,11 @@ puntos claros a la mitad de cada escena) y falla si no; se probó que falla con 
 uno de diferencia (medido en 21 clientes: libro 4, Cartera 3).
 **Por qué me equivoqué:** el espejo comparó FECHAS (0 diferencias) y yo lo extendí a los días sin medirlos.
 **Quién lo cazó:** yo, al revisar el Excel de Reportes que trajo el dueño.
-**Qué lo evita ahora:** todavía nada: el arreglo (que el libro diga «N días en mora» con la cuenta de
-Cartera, y corregir la diapositiva, los pantallazos, el video 5 y la mig 194) espera el «1» del dueño. La mig
-194 NO se ha corrido. Regla: lo que dice «es lo mismo que X» se mide contra X en la cifra exacta.
+**Qué lo evita ahora:** arreglado el 10-oct (e160c9c): el libro muestra un solo número de días, calculado con
+la MISMA función de Cartera (`moraDelLibro` → `diasEnMora`), medido 168 de 168 iguales; las semanas solo dicen
+la fecha. Al medir apareció además que con acuerdo la diferencia era grande (3 contra 17, D-030). Falta corregir
+la capacitación (P1). Regla: lo que dice «es lo mismo que X» se mide contra X en la cifra exacta, y mejor aún,
+se calcula CON la función de X.
 
 ### El libro de semanas marca «esta» en una semana de agosto (9-oct)
 **Lo que hice:** la semana de hoy se calcula como «período de hoy − semanas rodadas». Si hoy cae DENTRO del
@@ -428,8 +430,9 @@ tiempo rodado (la moto acaba de volver), el «esta» queda en la última pagada,
 Y la fila rodada muestra las semanas del calendario de pagos, no las fechas en que de verdad estuvo guardada.
 **Quién lo cazó:** el dueño, con JOSE LUIS LOPEZ PONCE (RMZ68H): *«¿por qué las rodadas están después de la
 actual?»*. Medido: «esta» mal puesta en 2 de 25 contratos con rodadas; fechas del calendario en 22 filas.
-**Qué lo evita ahora:** todavía nada (espera el «1»). La prueba del libro no tenía un caso con hoy dentro
-del tiempo rodado: hay que agregarlo con RMZ68H y DQG87I.
+**Qué lo evita ahora:** arreglado el 10-oct (e160c9c) con 4 pruebas del caso RMZ68H (hoy dentro del tiempo
+rodado: ninguna semana «esta», la fila rodada «hoy» con sus fechas reales; y pasado el tiempo, la 44 vuelve a ser
+la de hoy). Regla: las pruebas de un calendario incluyen el caso «hoy cae en el hueco».
 
 ### El aviso de recolección leía una lista por su posición (9-oct)
 **Lo que hice:** al agregar «Pagaron una parte» a los estados del Resumen, el aviso «N en la cola de
@@ -437,3 +440,23 @@ recolección» (que leía `estadosR[3]`) pasó a decir 83 en vez de 37.
 **Quién lo cazó:** yo, revisando la pantalla antes de entregar. No llegó a producción.
 **Qué lo evita ahora:** el aviso busca la fila por su clave. Regla: nunca leer una lista por su número de
 posición; se busca por el nombre.
+
+### Propuse el arreglo de los días antes de medir a los clientes con acuerdo (10-oct)
+**Lo que dije:** que el libro quedaría «con la misma cifra de Cartera» quitándole a cada semana el día de gracia
+(«venció el 5 oct · 3 días en mora»).
+**Lo que era verdad:** eso solo cuadraba en los 107 sin acuerdo; en los 66 con acuerdo Cartera cuenta semana +
+cuota juntas (D-030) y daba otra cosa (JUAN CARLOS LEAL: 3 contra 17).
+**Por qué me equivoqué:** medí el caso que vi (21 clientes) y no la flota antes de proponer.
+**Quién lo cazó:** yo, al medir antes de escribir el código. Costó dos vueltas de preguntas al dueño.
+**Qué lo evita ahora:** el libro ya no hace su propia cuenta: llama la función de Cartera. Regla: antes de
+proponer «queda igual a X», medir la flota entera contra X, no el caso que se tiene a mano.
+
+### Busqué las marcas del motor con el texto de migraciones viejas (10-oct)
+**Lo que hice:** para la mig 197 le pedí al dueño una consulta que buscaba «-- 3) Deudas» y «-- 4) Convenio»,
+sacados de la mig 119. En la función viva esos títulos ya no existen. Salió vacía y hubo que pedirle dos consultas
+más (las marcas y luego el tramo de líneas).
+**Por qué me equivoqué:** la regla ya decía «leer la función VIVA, nunca un archivo viejo» (lección de la mig 124)
+y la apliqué al parche pero no a la búsqueda de las marcas.
+**Quién lo cazó:** la propia consulta (0 resultados). No se tocó nada.
+**Qué lo evita ahora:** primero se pide la lista de comentarios de la función viva (una consulta, solo lee) y de
+ahí salen las anclas; recién después se escribe el parche.

@@ -10,11 +10,16 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **10-oct-2026**.
 
-> ▶️ **AL ARRANCAR (10-oct):**
-> 1. **Tanda 1 terminada** (10-oct). Sigue la **tanda 2** (defectos que no cambian cuánto debe nadie).
-> 2. **Capacitación del tema 6** (el dueño: «la diapositiva la arreglas después»): diapositiva 7 («los mismos
->    días que Cartera»: ahora sí es cierto), recapturar los pantallazos t6 y el video 5 con el libro nuevo.
->    Hasta entonces, no presentar el tema 6 (sus pantallazos muestran «(4 días)» y la fila rodada vieja).
+> ▶️ **AL ARRANCAR (10-oct, tarde): dos preguntas esperan al dueño, en este orden.**
+> 1. **Candados contra repetir acciones (pedido del dueño: «todo botón debe tener bloqueado el doble clic»).**
+>    Plan presentado, espera «1» (mida primero y traiga la lista) o «2»: (a) en la BASE, para todo lo que mueve
+>    plata o semanas, que no deje registrar dos veces lo mismo aunque pasen minutos (los pagos ya lo tienen,
+>    mig 192); empezar por «resolver tiempo guardado»; medir antes cuáles acciones de plata no lo tienen;
+>    (b) en la PANTALLA, un solo «botón que guarda» que se bloquea solo + una revisión automática que avise si
+>    un botón nuevo no lo usa. Ver P1, «CANDADOS CONTRA REPETIR».
+> 2. **JORGE BELLO (RLT88H) y JESUS QUIÑONEZ (RMU62H): corregir el tiempo rodado dos veces** — espera «1»
+>    (corregir + 2 días de plazo extra), «2» (corregir sin plazo) o «3» (no corregir). Números en P0.
+> 3. La capacitación del tema 6 sigue para después (el dueño). Tanda 1 terminada; luego sigue la tanda 2.
 
 ---
 
@@ -96,6 +101,15 @@ Lo que está afectando cifras reales de clientes en este momento.
   Efecto: hoy se les exige 2 y 3 semanas MENOS de lo que deben (Cartera y ZALA les muestran menos deuda y
   menos días de mora; el contrato terminaría más tarde). Falta: decisión del dueño para corregirlos (con
   antes/después y rastro) + el candado anti-doble en la ventana de resolver tiempo guardado y en la base.
+  **Medido el 10-oct (antes → corregido):** JORGE debe $155.000, 4 días en mora → **$745.000** ($390.000 de 2
+  semanas + $355.000 del acuerdo), 18 días; fin 6-sep-2027 → 23-ago-2027; acuerdo #1 vence 11-dic → 27-nov
+  (periodos_exonerados 4 → 2). JESUS al día, $0 → **$606.000** (3 semanas), 18 días; fin 18-jul-2027 →
+  27-jun-2027. Ninguna semana de nómina cerrada en la app. 🔑 **No fue doble clic:** 82 s y 150 s entre los dos
+  registros, y el botón (`ModalResolverTiempoFueraServicio`) YA tenía el bloqueo `guardando`: alguien lo hizo
+  dos veces. El candado tiene que ir en la BASE (una misma moto guardada se resuelve una sola vez); para crearlo
+  como índice único hay que borrar antes los 6 duplicados de «cobrar ahora» (inofensivos, medido el 9-oct).
+  Corregir = invertir lo que hizo la 2ª vez (exoneradas, fecha de fin, acuerdo de JORGE) + borrar el acuerdo
+  repetido, con rastro. Espera la decisión (arriba).
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
@@ -291,6 +305,16 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 🔴 **CANDADOS CONTRA REPETIR ACCIONES (pedido del dueño, 10-oct).** «A todos los botones actuales y los que
+  vamos creando, una regla: bloqueado el doble clic y que las peticiones no se envíen dos veces.» La regla de
+  pantalla ya existía (CLAUDE.md, anti-doble-clic) pero se aplica botón por botón. Plan presentado (espera su
+  «1»): **base** — candado de «una sola vez» en lo que mueve plata o semanas (medir primero cuáles acciones no
+  lo tienen: resolver tiempo guardado, acuerdos, deudas, liquidaciones, devoluciones de base…; los pagos ya, mig
+  192); **pantalla** — un único componente de botón que guarda (se bloquea y dice «Guardando…») usado en todas
+  las pantallas + una revisión automática. Medición gruesa del 10-oct: 22 archivos .tsx escriben en la base;
+  5 sin ninguna variable de bloqueo (ModalDescargar, ImportacionView, InmovilizacionesView, MisVisitasView,
+  FichaClienteView) — hay que mirar botón por botón, la mayoría escribe por los hooks.
 
 - [ ] 💻 **CAPACITACIÓN DEL TEMA 6 CON EL LIBRO ARREGLADO** (el arreglo del libro se subió el 10-oct, e160c9c;
   el dueño pidió dejar la diapositiva «para después»). Falta: el texto del «Ojo» de la diapositiva 7 (ya es
@@ -837,6 +861,12 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **10-oct · El nombre largo ya no se monta sobre las etiquetas ni las tarjetas** (973aac2) — AILTON
+  MIGUELUCHIRODRIGUEZ REYES: en Clientes (celular) pisaba «Activo»/«Tiempo definido»; en la ficha (computador)
+  se montaba 50 px sobre las tarjetas; en celular se salía. 6 nombres grandes con `overflowWrap: anywhere`; el de
+  Clientes con ancho mínimo 200 px. Fotos de perfil revisadas: 248 de 248 cargan (≈18 KB, <1 s); 127 activos no
+  tienen foto (nunca se tomó).
 
 - [x] **10-oct · Rodar por deuda: la marca en Reportes y el rodado se cierra solo** (mig 198 corrida + app) —
   Reportes › Cartera dice «· deuda rodada al final (ROD-xxxx)» al lado de cómo va cada cliente, y «Cómo van pagando

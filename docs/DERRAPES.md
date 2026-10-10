@@ -460,3 +460,11 @@ y la apliqué al parche pero no a la búsqueda de las marcas.
 **Quién lo cazó:** la propia consulta (0 resultados). No se tocó nada.
 **Qué lo evita ahora:** primero se pide la lista de comentarios de la función viva (una consulta, solo lee) y de
 ahí salen las anclas; recién después se escribe el parche.
+
+### Le di permiso de partir la palabra al nombre y quedó una letra por renglón (10-oct)
+**Lo que hice:** para que «MIGUELUCHIRODRIGUEZ» no se saliera, le puse `overflowWrap: anywhere` a los nombres
+grandes. En el resumen de Clientes (celular) el nombre compartía renglón con las etiquetas y tenía `flex: 1`: al
+poder partirse, las etiquetas le quitaron todo el espacio y quedó una letra por renglón.
+**Quién lo cazó:** yo, mirando la pantalla antes de subir. No llegó a producción.
+**Qué lo evita ahora:** el nombre tiene ancho mínimo (`flex: 1 1 200px`) y las etiquetas bajan. Regla: cuando un
+texto puede partirse, revisar qué más comparte su renglón; un `flex: 1` con ancho base 0 se encoge hasta nada.

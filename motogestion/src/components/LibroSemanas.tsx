@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, List, ChevronLeft, ChevronRight, AlertTriangle, ChevronDown } from "lucide-react";
 import { ListBox, ItemLista } from "./ListaEstandar";
 import { card } from "../styles/shared";
-import { construirLibro, type ContratoLibro, type FilaLibro, type PeriodoCalendario, type SemanaDelLibro } from "../utils/libroSemanas";
+import { construirLibro, moraDelLibro, type ContratoLibro, type FilaLibro, type PeriodoCalendario, type SemanaDelLibro } from "../utils/libroSemanas";
 import { diaPagoFrase } from "../utils/cicloPago";
 import { desglosarPago } from "../utils/lineaTiempo";
 import { hoyDate } from "../utils/fecha";
@@ -57,8 +57,9 @@ function subtituloSemana(s: SemanaDelLibro, hoyISO: string, unidad: string): str
     }
     return s.completadaEl ? `Pagada el ${corta(s.completadaEl)}` : "";
   }
+  // Sin días: el único número de días en mora es el de arriba, el de Cartera (pedido del dueño, 10-oct).
   const vence = s.seExige
-    ? (s.seExige === hoyISO ? "le toca hoy" : s.seExige < hoyISO ? `venció el ${corta(s.seExige)} (${s.diasVencida} ${s.diasVencida === 1 ? "día" : "días"})` : `le toca el ${larga(s.seExige)}`)
+    ? (s.seExige === hoyISO ? "le toca hoy" : s.seExige < hoyISO ? `venció el ${corta(s.seExige)}` : `le toca el ${larga(s.seExige)}`)
     : "";
   if (s.estado === "a_medias") return `Lleva ${plata(s.pagado)}, le faltan ${plata(s.valor - s.pagado)}${vence ? ` · ${vence}` : ""}`;
   if (s.estado === "debe") return `Nada pagado${vence ? ` · ${vence}` : ""}`;
@@ -66,10 +67,14 @@ function subtituloSemana(s: SemanaDelLibro, hoyISO: string, unidad: string): str
   return "";
 }
 
-export default function LibroSemanas({ contrato, pagos, isMobile }: {
+export default function LibroSemanas({ contrato, pagos, isMobile, convenioACobrar = null, deudasPendientes = [] }: {
   contrato: ContratoLibro & { id: string };
   pagos: Pago[];
   isMobile: boolean;
+  /** El acuerdo QUE SE COBRA (`elegirConvenioPorCobrar`) y las deudas 'pendiente': lo mismo que usa
+   *  Cartera para los días en mora. */
+  convenioACobrar?: Parameters<typeof moraDelLibro>[2];
+  deudasPendientes?: Parameters<typeof moraDelLibro>[3];
 }) {
   const extra = useDatosLibro(contrato.id);
   const hoy = hoyDate();
@@ -79,6 +84,11 @@ export default function LibroSemanas({ contrato, pagos, isMobile }: {
     () => (extra ? construirLibro(contrato, pagosDelContrato, hoy, extra) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [contrato, pagosDelContrato, extra, hoyISO],
+  );
+  const mora = useMemo(
+    () => (libro ? moraDelLibro(contrato, pagosDelContrato.filter(p => p.estado === "Confirmado"), convenioACobrar, deudasPendientes, hoy, libro) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [libro, contrato, pagosDelContrato, convenioACobrar, deudasPendientes, hoyISO],
   );
   const [vista, setVista] = useState<"lista" | "calendario">("lista");
   const [abierta, setAbierta] = useState<number | null>(null);
@@ -110,7 +120,18 @@ export default function LibroSemanas({ contrato, pagos, isMobile }: {
   const nPagadas = libro.pagadas;
   const nMedias = semanas.filter(s => s.estado === "a_medias").length;
   const nDebe = semanas.filter(s => s.estado === "debe").length + semanas.filter(s => s.estado === "a_medias" && s.seExige && s.seExige <= hoyISO).length;
-  const foco = semanas.find(s => s.actual) ?? semanas.find(s => s.estado === "debe" || s.estado === "a_medias") ?? semanas[semanas.length - 1];
+  // Si hoy cae en tiempo rodado, la lista se para en esa fila (ver FilaDelLibro), no en una semana.
+  const foco = libro.hoyEnRodada ? null : semanas.find(s => s.actual) ?? semanas.find(s => s.estado === "debe" || s.estado === "a_medias") ?? semanas[semanas.length - 1];
+  const rodadaHoy = libro.filas.find(f => f.tipo === "rodada" && f.hoy);
+  const cuando = u === "Semana" ? (contrato.dia_pago ?? "").toLowerCase() : uMin;
+  const explicacionMora = !mora || mora.estado !== "mora" ? "" :
+    mora.semanasDeMas
+      ? `Ya completó todas sus ${plural(2)} y todavía debe: sigue pagando su ${uMin} normal hasta quedar al día.${mora.desde ? ` Lo más viejo que le falta es del ${larga(mora.desde)}.` : ""}`
+      : mora.conjunto
+        ? `Cada ${cuando} le toca ${plata(mora.conjunto.semana + mora.conjunto.cuota)} (${uMin} ${plata(mora.conjunto.semana)} + cuota del acuerdo ${plata(mora.conjunto.cuota)}). `
+          + (mora.soloAcuerdo ? `Sus ${plural(2)} están pagadas: lo que debe es del acuerdo. ` : "")
+          + (mora.desde ? `El pago más viejo que dejó incompleto es el del ${larga(mora.desde)}.` : "")
+        : mora.semanaMasVieja && mora.desde ? `Lo más viejo que le falta es la ${uMin} ${mora.semanaMasVieja}, del ${larga(mora.desde)}.` : "";
 
   return (
     <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)", textAlign: "left" }}>
@@ -118,7 +139,9 @@ export default function LibroSemanas({ contrato, pagos, isMobile }: {
       <div style={{ ...card, display: "grid", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
-            {libro.vaEn && libro.totalCajas ? `Va en la ${uMin} ${Math.min(libro.vaEn, libro.totalCajas)} de ${libro.totalCajas}` : `${u} por ${uMin}`}
+            {libro.hoyEnRodada
+              ? (rodadaHoy && rodadaHoy.tipo === "rodada" && rodadaHoy.motivo === "deuda" ? "Hoy: tiempo rodado por deuda" : "Hoy: tiempo rodado de la moto guardada")
+              : libro.vaEn && libro.totalCajas ? `Va en la ${uMin} ${Math.min(libro.vaEn, libro.totalCajas)} de ${libro.totalCajas}` : `${u} por ${uMin}`}
           </div>
           <div role="tablist" aria-label="Cómo ver el libro" style={{ display: "flex", gap: 4, background: "var(--soft)", borderRadius: 10, padding: 3 }}>
             {([["lista", "Lista", List], ["calendario", "Calendario", CalendarDays]] as const).map(([k, t, Icono]) => (
@@ -137,6 +160,20 @@ export default function LibroSemanas({ contrato, pagos, isMobile }: {
             ? <>Entregada el {libro.entregada ? conAnio(libro.entregada) : "—"} · en la app desde el {libro.enAppDesde ? conAnio(libro.enAppDesde) : "—"}{libro.previas > 0 ? ` (traía ${libro.previas} ${plural(libro.previas)} del cuaderno)` : ""}</>
             : <>Contrato hecho en la app · entregada el {libro.entregada ? conAnio(libro.entregada) : "—"}</>}
         </div>
+        {/* Los días en mora: UN número, el de Cartera, dicho de dónde sale (pedido del dueño, 10-oct). */}
+        {mora?.estado === "mora" && (
+          <div role="note" style={{ display: "grid", gap: 4, padding: "10px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", color: "var(--bad-ink)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>
+              {mora.dias} {mora.dias === 1 ? "día" : "días"} en mora <span style={{ fontSize: 13, fontWeight: 500 }}>— igual que en Cartera</span>
+            </div>
+            {explicacionMora && <div style={{ fontSize: 13, lineHeight: 1.5 }}>{explicacionMora}</div>}
+          </div>
+        )}
+        {mora?.estado === "gabela" && (
+          <div role="note" style={{ padding: "10px 12px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", color: "var(--warn-ink)", fontSize: 13, lineHeight: 1.5 }}>
+            Le venció ayer: hoy es su día de gracia. Si no paga, mañana entra en mora.
+          </div>
+        )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Etiqueta tono={TONO.pagada} texto={`${nPagadas} ${nPagadas === 1 ? "pagada" : "pagadas"}`} />
           {nMedias > 0 && <Etiqueta tono={TONO.a_medias} texto={`${nMedias} a medias`} />}
@@ -188,10 +225,20 @@ function FilaDelLibro({ f, hoyISO, unidad, plural, foco, abierta, onAbrir }: {
     );
   }
   if (f.tipo === "rodada") {
+    // El título dice cuándo estuvo guardada DE VERDAD; el calendario de pagos que se corrió va abajo.
+    // Antes el título decía el calendario («19 ago al 13 oct») como si fueran las fechas de guardada.
+    const titulo = f.motivo === "deuda" ? f.texto
+      : f.real ? `Moto guardada del ${corta(f.real.desde)} ${f.real.hasta ? `al ${corta(f.real.hasta)}` : "(sigue guardada)"}${f.real.dias != null ? ` · ${f.real.dias} días` : ""}`
+      : `Moto guardada · ${rango(f.desde, f.hasta)}`;
+    const una = f.semanas === 1;
+    const subtitulo = `${f.semanas} ${plural(f.semanas)} ${una ? "rodada" : "rodadas"}: no se le ${una ? "cobra" : "cobran"} del ${rango(f.desde, f.hasta)}; se ${una ? "paga" : "pagan"} al final del contrato`;
     return (
-      <ItemLista titulo={f.motivo === "deuda" ? f.texto : `Moto guardada · ${rango(f.desde, f.hasta)}`} tituloCompleto
-        subtitulo={`${f.semanas} ${plural(f.semanas)} ${f.semanas === 1 ? "rodada" : "rodadas"} al final: no se cobran ahora, se pagan al final del contrato`}
-        right={<Etiqueta tono={TONO.rodada} />} rielColor={TONO.rodada.riel} />
+      <div data-foco={f.hoy ? "1" : undefined}>
+        <ItemLista titulo={titulo} tituloCompleto
+          subtitulo={f.hoy ? <span style={{ color: "var(--text)" }}>{subtitulo}</span> : subtitulo}
+          right={<Etiqueta tono={TONO.rodada} texto={f.hoy ? "Rodada · hoy" : undefined} />}
+          rielColor={TONO.rodada.riel} seleccionado={f.hoy} />
+      </div>
     );
   }
   if (f.tipo === "resto") {
@@ -325,7 +372,9 @@ function Calendario({ periodos, pagosPorDia, pagos, semanas, hoyISO, unidad, ent
           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{larga(dia).charAt(0).toUpperCase() + larga(dia).slice(1)}</div>
           <div style={{ fontSize: 12, color: "var(--muted2)", lineHeight: 1.5 }}>
             {pDia
-              ? pDia.estado === "rodada" ? `Moto guardada: esta ${unidad.toLowerCase()} se rodó al final del contrato.`
+              // Sin "moto guardada": la semana rodada es del calendario de pagos, no las fechas en que estuvo
+              // guardada (y también puede ser un rodado por deuda). Las fechas reales están en la Lista.
+              ? pDia.estado === "rodada" ? `Esta ${unidad.toLowerCase()} no se cobra ahora: se rodó al final del contrato. Las fechas en que estuvo guardada están en la Lista.`
               : pDia.estado === "dias_iniciales" ? "Días iniciales: desde la entrega hasta el primer día de pago."
               : pDia.estado === "sin_dato" ? "No se sabe con certeza a qué semana corresponde este día."
               : `Este día es de la ${unidad.toLowerCase()} ${pDia.numero} (${rango(pDia.desde, pDia.hasta)}) · ${TONO[pDia.estado].etiqueta.toLowerCase()}.`

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { construirLibro, calendarioDelLibro, origenDelPago, type ContratoLibro, type PagoLibro, type SemanaDelLibro } from "./libroSemanas";
+import { construirLibro, calendarioDelLibro, origenDelPago, moraDelLibro, type ContratoLibro, type PagoLibro, type SemanaDelLibro } from "./libroSemanas";
 
 const HOY = new Date("2026-10-09T00:00:00"); // viernes
 
@@ -134,5 +134,70 @@ describe("libro de semanas — el aviso de la moto guardada cuando ya debía", (
     const c: ContratoLibro = { ...base, cajas_pagadas: 1, caja_actual_pagado: 0, cajas_exoneradas: 2 };
     const l = construirLibro(c, [pago("p1", "2026-09-09", 202000)], HOY, { acuerdos });
     expect(l.avisos.join(" ")).toMatch(/ya debía/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// 10-oct-2026 — lo que el dueño cazó en el libro (JOSE LUIS LOPEZ PONCE, RMZ68H): «¿por qué las
+// rodadas están después de la actual?». Hoy caía DENTRO del tiempo rodado y el «esta» quedaba en la
+// semana 43, de agosto; y la fila rodada decía las fechas del calendario de pagos como si fueran las
+// de la moto guardada.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe("libro de semanas — hoy cae en el tiempo rodado (RMZ68H)", () => {
+  const rmz: ContratoLibro = {
+    forma_pago: "Semanal", dia_pago: "Miércoles", valor_semanal: 195000, motor_v2: true,
+    fecha_entrega: "2025-08-01", fecha_inicio_cajas: "2026-07-01", total_cajas: 104,
+    cajas_previas: 36, cajas_pagadas: 43, caja_actual_pagado: 30000, cajas_exoneradas: 8,
+    prorrateo_total: 0, prorrateo_pagado: 0, es_migrado: true,
+  };
+  const extra = { acuerdos: [{ fecha_entrada: "2026-08-13", fecha_salida: "2026-10-09", dias_en_empresa: 57 }] };
+
+  it("ninguna semana es «la de hoy»: hoy está en la fila rodada", () => {
+    const l = construirLibro(rmz, [], HOY, extra);
+    expect(l.hoyEnRodada).toBe(true);
+    expect(l.vaEn).toBeNull();
+    expect(semanas(l).filter(s => s.actual)).toEqual([]);
+    expect(l.filas.find(f => f.tipo === "rodada")).toMatchObject({ hoy: true, semanas: 8 });
+  });
+
+  it("la fila rodada trae las fechas REALES de la moto guardada, y aparte las del calendario de pagos", () => {
+    const r = construirLibro(rmz, [], HOY, extra).filas.find(f => f.tipo === "rodada");
+    expect(r).toMatchObject({
+      desde: "2026-08-19", hasta: "2026-10-13",
+      real: { desde: "2026-08-13", hasta: "2026-10-09", dias: 57 },
+    });
+  });
+
+  it("la semana 44 se cobra el miércoles 14-oct, la misma fecha de Cartera", () => {
+    const s44 = semanas(construirLibro(rmz, [], HOY, extra)).find(s => s.numero === 44);
+    expect(s44).toMatchObject({ estado: "a_medias", seExige: "2026-10-14" });
+  });
+
+  it("pasado el tiempo rodado, la de hoy vuelve a ser una semana (la 44)", () => {
+    const l = construirLibro(rmz, [], new Date("2026-10-15T00:00:00"), extra);
+    expect(l.hoyEnRodada).toBe(false);
+    expect(l.vaEn).toBe(44);
+    expect(semanas(l).find(s => s.actual)?.numero).toBe(44);
+  });
+});
+
+// Un solo número de días en mora, el de Cartera, dicho de dónde sale (pedido del dueño, 10-oct).
+describe("libro de semanas — los días en mora son los de Cartera", () => {
+  const pagos = [
+    pago("p1", "2026-09-02", 202000, { tipo_registro: "adelanto_base" }),
+    pago("p2", "2026-09-16", 202000),
+    pago("p3", "2026-09-23", 302000),
+  ];
+  it("sin acuerdo: la semana más vieja que debe y los días de Cartera (sin contar la gabela)", () => {
+    const l = construirLibro(base, pagos, HOY);
+    const m = moraDelLibro(base, pagos, null, [], HOY, l);
+    // La 4 se exige el miércoles 30-sep: 9 días hasta el viernes 9-oct, menos el de gracia = 8.
+    expect(m).toMatchObject({ estado: "mora", dias: 8, desde: "2026-09-30", semanaMasVieja: 4, conjunto: null });
+  });
+
+  it("al día: no hay número de días", () => {
+    const alDia = { ...base, cajas_pagadas: 5, caja_actual_pagado: 0 };
+    const l = construirLibro(alDia, pagos, HOY);
+    expect(moraDelLibro(alDia, pagos, null, [], HOY, l).estado).toBe("al-dia");
   });
 });

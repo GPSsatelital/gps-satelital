@@ -23,7 +23,9 @@ insert into zala.diccionario (vista, columna, significado, valores, zala_lo_dice
  'El estado de cada semana del contrato en la ficha del cliente (pantalla de la oficina, no es una vista de ZALA). '
  || 'pagada = completa · a medias = lleva una parte (dice cuánto le falta) · sin pagar = ya se le exigía y no ha pagado nada · '
  || 'próxima = la que le toca después · falta = las que vienen. Aparte: rodada = semana de moto guardada o de un rodado por deuda, '
- || 'que se paga al final del contrato. Las fechas de las que debe son las mismas de Cartera (sus días son los días en mora). '
+ || 'que se paga al final del contrato; dice las fechas REALES en que la moto estuvo guardada. Las fechas de las que debe son las mismas de Cartera. '
+ || 'Días en mora: el libro muestra UN solo número, arriba, el mismo de Cartera (con acuerdo cuenta la semana y la cuota juntas, D-030) y dice de dónde sale; '
+ || 'cada semana dice solo la fecha en que venció (corregido el 10-oct: antes cada semana decía sus propios días y no coincidían). '
  || 'Si el cliente pregunta qué semana debe, ZALA lo responde con zala.cliente (cuota_falta, dias_mora, proximo_pago_fecha), con estas mismas palabras.',
  'pagada · a medias · sin pagar · próxima · falta · rodada', 'no', true)
 on conflict (vista, columna) do update set significado = excluded.significado, valores = excluded.valores,

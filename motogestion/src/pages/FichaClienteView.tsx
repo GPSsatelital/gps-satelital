@@ -17,6 +17,7 @@ import { useCesiones, contratosDeCliente, esDeSuTramo, cesionPendienteDeCliente 
 import LineaTiempo from "../components/LineaTiempo";
 import LibroSemanas from "../components/LibroSemanas";
 import { formatDiaPago } from "../utils/cicloPago";
+import { elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 import { fmtFechaLarga } from "../utils/fecha";
 import { generarHTMLAutorizacionDatos, generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import { marcaDeFirma } from "../utils/convenioFirmas";
@@ -750,7 +751,10 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
                   })}
                 </div>
               )}
-              <LibroSemanas contrato={contratoLibro} pagos={pagos} isMobile={isMobile} />
+              {/* Con su acuerdo y sus deudas: los días en mora del libro son los de Cartera (10-oct). */}
+              <LibroSemanas contrato={contratoLibro} pagos={pagos} isMobile={isMobile}
+                convenioACobrar={elegirConvenioPorCobrar(convenios, contratoLibro.id)}
+                deudasPendientes={deudas.filter(d => d.contrato_id === contratoLibro.id && d.estado === "pendiente")} />
             </div>
           )}
           {/* KPIs */}

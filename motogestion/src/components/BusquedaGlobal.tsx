@@ -91,7 +91,7 @@ export default function BusquedaGlobal({ onClose, onNavegar, clientes, motos, co
       <div style={{ padding: "18px 18px 8px" }}>
         {previewCliente && (
           <>
-            <div style={{ fontWeight: 700, fontSize: 19, color: "var(--text)", textTransform: "uppercase", marginBottom: 8 }}>{previewCliente.nombre}</div>
+            <div style={{ fontWeight: 700, fontSize: 19, color: "var(--text)", textTransform: "uppercase", marginBottom: 8, overflowWrap: "anywhere" }}>{previewCliente.nombre}</div>
             <div style={{ marginBottom: 14 }}><Badge label={previewCliente.estado} /></div>
             <InfoRow label="Cédula"      value={previewCliente.cedula} />
             <InfoRow label="Teléfono"    value={previewCliente.telefono ?? "—"} />

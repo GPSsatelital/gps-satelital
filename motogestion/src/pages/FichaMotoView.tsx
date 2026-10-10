@@ -401,7 +401,7 @@ export default function FichaMotoView({ motoId, onNavigate }: {
                         onClick={() => onNavigate("ficha_cliente", clienteActivo.id)}
                         style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
                       >
-                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5, overflowWrap: "anywhere" }}>
                           {clienteActivo.nombre}
                         </div>
                       </button>

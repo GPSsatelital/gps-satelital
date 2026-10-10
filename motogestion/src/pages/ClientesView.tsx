@@ -1448,7 +1448,9 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </button>
               <div style={{ ...card }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: 1, minWidth: 0 }}>{selectedCliente.nombre}</span>
+                  {/* Ancho mínimo de 200px: si el nombre no cabe al lado de las etiquetas, las etiquetas bajan.
+                      Con `flex: 1` y una palabra larga (MIGUELUCHIRODRIGUEZ) quedaba una letra por renglón. */}
+                  <span style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: "1 1 200px", minWidth: 0, overflowWrap: "anywhere" }}>{selectedCliente.nombre}</span>
                   <ClienteBadge estado={estadoVisual(selectedCliente)} />
                   <span style={{
                     display: "inline-block", padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
@@ -1619,7 +1621,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                 <>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)" }}>{selectedCliente.nombre}</div>
+                      <div style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", overflowWrap: "anywhere" }}>{selectedCliente.nombre}</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                         <ClienteBadge estado={estadoVisual(selectedCliente)} />
                         <span style={{

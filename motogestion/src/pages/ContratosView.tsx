@@ -278,7 +278,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 20, textTransform: "uppercase", color: "var(--text)" }}>{clienteDetalle.nombre}</div>
+              <div style={{ fontWeight: 700, fontSize: 20, textTransform: "uppercase", color: "var(--text)", overflowWrap: "anywhere" }}>{clienteDetalle.nombre}</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>CC {clienteDetalle.cedula}{clienteDetalle.telefono && ` · 📞 ${clienteDetalle.telefono}`}</div>
               {motoDetalle && (
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

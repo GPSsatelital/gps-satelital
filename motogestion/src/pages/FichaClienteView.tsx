@@ -381,7 +381,7 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6 }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6, overflowWrap: "anywhere" }}>
                 {cliente.nombre}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>

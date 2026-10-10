@@ -753,3 +753,20 @@ personas que refieren (antes 48), 49 referidos (antes 97), 8 premios alcanzados 
 **Dónde vive:** `utils/referidosPorFecha.ts` (+ 9 pruebas) · `components/ReferidosPorFecha.tsx` ·
 `ReferidosView` (`esDelEquipo` en el conteo de premios, en "sin cédula" y en "referidos activos").
 **Reemplaza a:** —
+
+### D-048 · 9-oct-2026 · En Reportes vuelven a salir los que pagaron una parte
+**Decidió:** el dueño: *"vamos a colocar como antes que salgan los que pagaron parcial"* (escogió la regla "1" y el
+lugar "1").
+**Qué se decidió:**
+1. Los que están **en mora hoy** (la misma cuenta de Cartera) se parten según el período escogido:
+   **Parcial** = entró plata suya en el período · **No pagó** = no entró nada. El saldo a favor aplicado no cuenta
+   como plata que entra. No cambia quién está en mora ni sus días.
+2. Sale en **la pantalla** (Resumen → «Cómo están los clientes»: «Pagaron una parte» y «No pagaron nada», debajo de
+   «En mora», hoy y al cierre del período), en **el Excel** por cobrador y por grupo (columna «Estado hoy» y hoja
+   Resumen) y en **el PDF** del informe (tabla de estados y la lista completa de mora, con lo que pagó).
+**El caso que lo destapó:** su Excel de Carlos Alvarez del 9-oct decía «En mora» igual para RAFAEL VEGA, que pagó
+$244.000 y le faltan $3.000, que para JOSE JOSE LARA, que no pagó nada. Medido el 9-oct: 132 en mora → esta semana
+83 Parcial y 49 No pagó; este mes 114 y 18.
+**De paso:** el aviso «N en la cola de recolección» leía la fila de estados por su lugar (`estadosR[3]`); con la
+fila nueva habría dicho 83 en vez de 37. Ahora la busca por su nombre.
+**Reemplaza a:** la mora sin partir del 29-sep (`b1c2e53`), solo en cuanto a mostrar si pagó algo.

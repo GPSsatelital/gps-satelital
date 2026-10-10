@@ -54,4 +54,14 @@ describe("el informe para los socios (Descargar, 2-oct)", () => {
     expect(html).toContain("Listas completas");
     expect(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(html)).toBe(false);
   });
+
+  it("la lista de mora dice si pagó algo en el período (pedido del dueño, 9-oct)", () => {
+    const html = informeSociosHTML({ ...base, detalle: { ...base.detalle, enMora: [
+      { cliente: "Rafael Vega", placa: "YAL67H", grupo: "RASTREADOR", dias: 3, debe: 3000, pagoPeriodo: 244000 },
+      { cliente: "Jose Lara", placa: "IGJ78I", grupo: "RASTREADOR", dias: 3, debe: 202000, pagoPeriodo: 0 },
+    ] } }, { secciones: [], detalle: true });
+    expect(html).toContain("En el período");
+    expect(html).toContain("Pagó $244.000");
+    expect(html).toContain("No pagó");
+  });
 });

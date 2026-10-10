@@ -11,7 +11,9 @@ export const plata = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
 export const corto = (n: number) => n >= 1_000_000 ? `${(Math.round(n / 100_000) / 10).toLocaleString("es-CO")}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(Math.round(n));
 export const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
-export type FilaEstado = { clave: "aldia" | "gabela" | "mora" | "recoleccion" | "taller" | "retenidas" | "liquidacion"; etiqueta: string; hoy: number; cierre: number | null };
+/** `parcial`, `nopago` y `recoleccion` son partes de `mora`: van con sangría, debajo de ella. */
+export type FilaEstado = { clave: "aldia" | "gabela" | "mora" | "parcial" | "nopago" | "recoleccion" | "taller" | "retenidas" | "liquidacion"; etiqueta: string; hoy: number; cierre: number | null };
+const PARTE_DE_MORA: ReadonlySet<FilaEstado["clave"]> = new Set(["parcial", "nopago", "recoleccion"]);
 export type GrupoResumen = { grupo: string; color: string; recaudo: number; pctCum: number | null; enMora: number; motosAsignadas: number; contratosActivos: number; activo: boolean };
 
 export const card: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, boxSizing: "border-box", minWidth: 0 };
@@ -50,6 +52,8 @@ const MARCA_ESTADO: Record<FilaEstado["clave"], ReactNode> = {
   aldia: <Circle size={10} fill="var(--ok)" color="var(--ok)" aria-hidden="true" />,
   gabela: <Triangle size={10} fill="var(--warn)" color="var(--warn)" aria-hidden="true" />,
   mora: <X size={12} color="var(--bad)" strokeWidth={3} aria-hidden="true" />,
+  parcial: null,
+  nopago: null,
   recoleccion: null,
   taller: <Wrench size={12} color="var(--warn)" aria-hidden="true" />,
   retenidas: <Lock size={12} color="var(--muted2)" aria-hidden="true" />,
@@ -193,8 +197,8 @@ export default function ResumenReportes(p: {
           {p.estados.map(e => (
             <div key={e.clave} style={{ display: "grid", gridTemplateColumns: p.cierreTexto ? "minmax(0, 1fr) 64px 72px" : "minmax(0, 1fr) 64px", gap: 8, alignItems: "center" }}>
               <button onClick={() => p.onAbrir("hoy:" + e.clave)} style={{ ...boton, gridColumn: "1 / 3", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 64px", gap: 8, alignItems: "center", minHeight: 44, padding: "0 8px", borderRadius: 10 }}
-                aria-label={`${e.etiqueta}: ${e.hoy} hoy. Ver la lista`}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, paddingLeft: e.clave === "recoleccion" ? 18 : 0, color: e.clave === "recoleccion" || e.clave === "liquidacion" ? "var(--muted2)" : "var(--text)" }}>
+                aria-label={`${PARTE_DE_MORA.has(e.clave) ? `En mora, ${e.etiqueta.toLowerCase()}` : e.etiqueta}: ${e.hoy} hoy. Ver la lista`}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, paddingLeft: PARTE_DE_MORA.has(e.clave) ? 18 : 0, color: PARTE_DE_MORA.has(e.clave) || e.clave === "liquidacion" ? "var(--muted2)" : "var(--text)" }}>
                   {MARCA_ESTADO[e.clave]}{e.etiqueta}
                 </span>
                 <span style={{ textAlign: "right", fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: e.clave === "mora" ? "var(--bad-ink)" : "var(--text)" }}>{e.hoy}</span>

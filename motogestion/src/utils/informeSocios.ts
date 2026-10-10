@@ -63,7 +63,8 @@ export type DatosInforme = {
     sinAcuerdo: Array<{ cobrador: string; clientes: Array<{ cliente: string; placa: string; telefono: string; debe: number }> }>;
   };
   detalle: {
-    enMora: Array<{ cliente: string; placa: string; grupo: string; dias: number; debe: number }>;
+    /** `pagoPeriodo`: plata suya que entró en el período (0 = no pagó nada). */
+    enMora: Array<{ cliente: string; placa: string; grupo: string; dias: number; debe: number; pagoPeriodo: number }>;
     retenidas: Array<{ cliente: string; placa: string; grupo: string; donde: string; debe: number }>;
     acuerdos: Array<{ cliente: string; placa: string; total: number; pagado: number; atrasado: number; vence: string; estado: string }>;
     guardadas: Array<{ placa: string; cliente: string; motivo: string; dias: number | null }>;
@@ -239,8 +240,8 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
     const t = d.detalle;
     abrir("Listas completas");
     partes.push(sub(`En mora (${t.enMora.length})`));
-    partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Grupo", al: "center" }, { t: "Días en mora", al: "center" }, { t: "Debe", al: "right" }],
-      t.enMora.map(x => [esc(x.cliente.toUpperCase()), esc(x.placa), esc(x.grupo), String(x.dias), plata(x.debe)])));
+    partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Grupo", al: "center" }, { t: "Días en mora", al: "center" }, { t: "En el período", al: "center" }, { t: "Debe", al: "right" }],
+      t.enMora.map(x => [esc(x.cliente.toUpperCase()), esc(x.placa), esc(x.grupo), String(x.dias), x.pagoPeriodo > 0 ? `Pagó ${plata(x.pagoPeriodo)}` : "No pagó", plata(x.debe)])));
     partes.push(sub(`Retenidas y en liquidación (${t.retenidas.length})`));
     partes.push(tabla([{ t: "Cliente" }, { t: "Placa", al: "center" }, { t: "Grupo", al: "center" }, { t: "Dónde" }, { t: "Debe", al: "right" }],
       t.retenidas.map(x => [esc(x.cliente.toUpperCase()), esc(x.placa), esc(x.grupo), esc(x.donde), plata(x.debe)])));

@@ -278,6 +278,9 @@ const fueraDeGestion = (e: EstadoPagoG) => e === "cerrado" || e === "reasignada"
 type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoPagoG; deudaPend: number; tieneConvenio: boolean; debeSinConvenio: boolean; grupo: string; adminId: string; adminNombre: string; formaPago: string; diaPago: string; ultimaFechaPago: string | null; telefono: string; asignadoDesde: string | null; contratoId: string;
   /** Días que lleva VENCIDA la cuota HOY — la cuenta de Cartera. 0 si no está en mora. */
   diasMora: number;
+  /** Plata suya que ENTRÓ en el período (de caja: el saldo a favor aplicado no cuenta), aunque la moto
+   *  haya cambiado de cobrador. Con ella se parte "en mora" en Parcial y No pagó (ver `pagoParte`). */
+  pagoPeriodo: number;
   /** Todo lo que debe HOY (cuota + acuerdo + deudas), igual que Cartera. */
   debeHoy: number;
   /** Lo mismo partido (semanas · acuerdo · deudas) y su saldo a favor (estadoHoy). */
@@ -305,8 +308,12 @@ type MotoRowG = { placa: string; cliente: string; monto: number; estado: EstadoP
 };
 /** La fila vista desde su cobrador (D-035): su plata y su cumplimiento empiezan el día que le asignaron la moto. */
 const comoCobrador = (r: MotoRowG): MotoRowG => r.montoAntes === 0 && r.cumSuyo === r.cum ? r : { ...r, monto: r.montoSuyo, cum: r.cumSuyo };
+/** "En mora" partido en dos (pedido del dueño, 9-oct-2026, como estaba antes del 29-sep): Parcial = en
+ *  mora hoy, pero en el período entró plata suya · No pagó = en mora y no entró nada. Depende del período. */
+const pagoParte = (r: MotoRowG) => r.estado === "mora" && r.pagoPeriodo > 0;
+const noPagoNada = (r: MotoRowG) => r.estado === "mora" && r.pagoPeriodo <= 0;
 const CUM_VACIO: Cumplimiento = { debia: 0, cubrio: 0, aAcuerdo: 0, falto: 0, recupero: 0, atrasoAAcuerdo: 0, medible: false };
-type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; taller: number; retenidas: number; cerrados: number; reasignadas: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; aAcuerdo: number; recupero: number; pctCum: number | null };
+type BloqueG = { key: string; nombre: string; color?: string; motos: MotoRowG[]; total: number; alDia: number; gabela: number; mora: number; parcial: number; noPago: number; taller: number; retenidas: number; cerrados: number; reasignadas: number; debenSinConvenio: number; recaudado: number; pctv: number; debia: number; cubrio: number; aAcuerdo: number; recupero: number; pctCum: number | null };
 /** Las filas que cuentan para el cumplimiento de un cobrador: ni retenidas, ni con la moto en el taller, ni cerradas, y medibles. */
 const cuentaParaCumplimiento = (m: MotoRowG) => m.estado !== "retenida" && m.estado !== "taller" && !fueraDeGestion(m.estado) && m.cum.medible;
 /** La cola de trabajo: los que DEBEN primero (los ordenan los días de mora), después la gabela,
@@ -323,6 +330,8 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
     const alDia = motos.filter(m => m.estado === "aldia").length;
     const gabela = motos.filter(m => m.estado === "gabela").length;
     const mora = motos.filter(m => m.estado === "mora").length;
+    const parcial = motos.filter(pagoParte).length;
+    const noPago = motos.filter(noPagoNada).length;
     const taller = motos.filter(m => m.estado === "taller").length;
     const retenidas = motos.filter(m => m.estado === "retenida").length;
     const cerrados = motos.filter(m => m.estado === "cerrado").length;
@@ -341,7 +350,7 @@ function agruparBloques(rows: MotoRowG[], modo: "admin" | "grupo"): BloqueG[] {
         (RANK_COLA[x.estado] - RANK_COLA[y.estado])
         || (y.diasMora - x.diasMora)
         || x.cliente.localeCompare(y.cliente)),
-      total: motos.length - cerrados - reasignadas, alDia, gabela, mora, taller, retenidas, cerrados, reasignadas,
+      total: motos.length - cerrados - reasignadas, alDia, gabela, mora, parcial, noPago, taller, retenidas, cerrados, reasignadas,
       debenSinConvenio: motos.filter(m => m.debeSinConvenio).length,
       recaudado: motos.reduce((s, m) => s + m.monto, 0),
       pctv: evaluables > 0 ? Math.round((alDia / evaluables) * 100) : 0,
@@ -712,6 +721,7 @@ export default function ReportesView({ onNavigate }: Props) {
         asignadoDesde: at.asignadoDesde,
         contratoId: c.id,
         diasMora: e.estado === "mora" ? e.diasMora : 0,
+        pagoPeriodo: monto,
         debeHoy: cerrado ? 0 : e.debeHoy,
         debe: cerrado ? { semanas: 0, acuerdo: 0, deudas: 0 } : e.debe,
         saldoAFavor: cerrado ? 0 : e.saldoAFavor,
@@ -804,6 +814,8 @@ export default function ReportesView({ onNavigate }: Props) {
   const gAlDia    = motosFiltradas.filter(r => r.estado === "aldia").length;
   const gGabela   = motosFiltradas.filter(r => r.estado === "gabela").length;
   const gMora     = motosFiltradas.filter(r => r.estado === "mora").length;
+  const gParcial  = motosFiltradas.filter(pagoParte).length;
+  const gNoPago   = motosFiltradas.filter(noPagoNada).length;
   const gRetenidas = motosFiltradas.filter(r => r.estado === "retenida").length;
   const gTaller = motosFiltradas.filter(r => r.estado === "taller").length;
   const gDebenSinConv = baseFiltrada.filter(r => r.debeSinConvenio).length;
@@ -893,7 +905,9 @@ export default function ReportesView({ onNavigate }: Props) {
           ? { v: "Contrato cerrado", color: "#475569", fill: "#f1f5f9", align: "center" }
           : m.estado === "reasignada"
             ? { v: "En liquidación (moto reasignada)", color: "#475569", fill: "#f1f5f9", align: "center" }
-          : { v: "En mora", color: "#991b1b", fill: "#fee2e2", align: "center" };
+          : pagoParte(m)
+            ? { v: "Parcial", color: "#92400e", fill: "#fef3c7", align: "center" }
+            : { v: "No pagó", color: "#991b1b", fill: "#fee2e2", align: "center" };
   const xPagado = (m: MotoRowG): CeldaX => m.monto > 0 ? { num: m.monto } : { v: "—", align: "center" };
   // Lo del PERÍODO: lo que vencía, lo que quedó cubierto y lo que faltó (decisión del dueño, 29-sep).
   const xDebia = (m: MotoRowG): CeldaX => m.cum.debia > 0 ? { num: m.cum.debia } : { v: "—", align: "center" };
@@ -909,7 +923,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const xUltPago = (m: MotoRowG): CeldaX => ({ v: m.ultimaFechaPago ? fmtFechaCorta(m.ultimaFechaPago) : "sin pagos", align: "center", color: m.ultimaFechaPago ? undefined : "#94a3b8" });
   const xTelefono = (m: MotoRowG): CeldaX => ({ v: m.telefono || "—", align: "center" });
   const xDiasMora = (m: MotoRowG): CeldaX => m.diasMora > 0 ? { v: String(m.diasMora), align: "center", color: m.diasMora > 15 ? "#991b1b" : m.diasMora > 7 ? "#b45309" : "#92400e" } : { v: "—", align: "center" };
-  const xLeyenda = "Estado HOY (la misma cuenta de Cartera, no depende del período): Al día · Gabela = venció ayer · En mora = días con la cuota vencida · Retenida = la moto está guardada en la empresa (no cuenta en el % al día ni en el cumplimiento). Del PERÍODO: Vencía = semanas y cuotas de acuerdo que vencían en el período · Cubrió = de eso, lo que quedó pagado al cierre · Recuperó = lo que pagó de atrasos viejos y deudas. Los montos están en pesos.";
+  const xLeyenda = "Estado HOY (la misma cuenta de Cartera): Al día · Gabela = venció ayer · En mora, partido en dos según el período: Parcial = está en mora pero pagó algo en el período · No pagó = está en mora y no pagó nada en el período (el saldo a favor aplicado no cuenta como pago) · Retenida = la moto está guardada en la empresa (no cuenta en el % al día ni en el cumplimiento). Del PERÍODO: Vencía = semanas y cuotas de acuerdo que vencían en el período · Cubrió = de eso, lo que quedó pagado al cierre · Recuperó = lo que pagó de atrasos viejos y deudas. Los montos están en pesos.";
 
   // 12 columnas (col 0 = etiqueta cruzada). Mismas para Por admin (Grupo) y Por grupo (Administrador).
   const colsGestion = (cross: string): ColX[] => [
@@ -933,6 +947,7 @@ export default function ReportesView({ onNavigate }: Props) {
       { label: "Cubrió ($)", align: "right", ancho: 110 }, { label: "Recaudado ($)", align: "right", ancho: 110 },
       { label: "Motos", align: "center", ancho: 60 }, { label: "Al día hoy", align: "center", ancho: 70 },
       { label: "Gabela hoy", align: "center", ancho: 70 }, { label: "En mora hoy", align: "center", ancho: 75 },
+      { label: "Mora: pagó parte", align: "center", ancho: 80 }, { label: "Mora: no pagó", align: "center", ancho: 80 },
       { label: "% al día hoy", align: "center", ancho: 80 },
     ];
     const filaBloque = (pos: string, b: BloqueG): CeldaX[] => [
@@ -940,17 +955,18 @@ export default function ReportesView({ onNavigate }: Props) {
       { v: b.pctCum === null ? "—" : `${b.pctCum}%`, align: "center", bold: true }, { num: b.debia }, { num: b.cubrio }, { num: b.recaudado },
       { num: b.total, align: "center" }, { v: String(b.alDia), align: "center", color: "#166534" },
       { v: String(b.gabela), align: "center", color: "#92400e" }, { v: String(b.mora), align: "center", color: "#991b1b" },
+      { v: String(b.parcial), align: "center", color: "#92400e" }, { v: String(b.noPago), align: "center", color: "#991b1b" },
       { v: `${b.pctv}%`, align: "center" },
     ];
     return {
       titulo: `Resumen gerencial${filtrosActivos ? " — " + filtrosResumen : ""}`, periodo: periodoTxt,
-      leyenda: `Recaudo $ ${fmt(gTotRec)} · anterior $ ${fmt(recaudoAnterior)} (${deltaRec.txt}) · cumplimiento del período ${gPctCum === null ? "—" : gPctCum + "%"} (cubrió $ ${fmt(gCubrio)} de $ ${fmt(gDebia)} que vencía) · ${gDebenSinConv} deben sin convenio. Al día / gabela / mora son de HOY.`,
+      leyenda: `Recaudo $ ${fmt(gTotRec)} · anterior $ ${fmt(recaudoAnterior)} (${deltaRec.txt}) · cumplimiento del período ${gPctCum === null ? "—" : gPctCum + "%"} (cubrió $ ${fmt(gCubrio)} de $ ${fmt(gDebia)} que vencía) · ${gDebenSinConv} deben sin convenio. Al día / gabela / mora son de HOY; la mora se parte en "pagó parte" y "no pagó" según lo que entró en el período.`,
       columnas: cols,
       secciones: [
         { titulo: "Ranking de cobradores (por cumplimiento del período)", color: "#0f2740", filas: rankingCobradores.map((b, i) => filaBloque(String(i + 1), b)) },
         { titulo: "Por grupo", color: "#334155", filas: porGrupoData.map(b => filaBloque("", b)) },
       ],
-      totalGeneral: ["", { v: "TOTAL", bold: true }, { v: gPctCum === null ? "—" : `${gPctCum}%`, align: "center", bold: true }, { num: gDebia, bold: true }, { num: gCubrio, bold: true }, { num: gTotRec, bold: true }, { num: gTotMotos, align: "center", bold: true }, { v: String(gAlDia), align: "center", bold: true }, { v: String(gGabela), align: "center", bold: true }, { v: String(gMora), align: "center", bold: true }, { v: `${gPctAlDia}%`, align: "center", bold: true }],
+      totalGeneral: ["", { v: "TOTAL", bold: true }, { v: gPctCum === null ? "—" : `${gPctCum}%`, align: "center", bold: true }, { num: gDebia, bold: true }, { num: gCubrio, bold: true }, { num: gTotRec, bold: true }, { num: gTotMotos, align: "center", bold: true }, { v: String(gAlDia), align: "center", bold: true }, { v: String(gGabela), align: "center", bold: true }, { v: String(gMora), align: "center", bold: true }, { v: String(gParcial), align: "center", bold: true }, { v: String(gNoPago), align: "center", bold: true }, { v: `${gPctAlDia}%`, align: "center", bold: true }],
     };
   }
   // Hoja "Por convenir": deudores sin convenio por cobrador (tarea de la semana).
@@ -1336,6 +1352,9 @@ export default function ReportesView({ onNavigate }: Props) {
     { clave: "aldia", etiqueta: "Al día", hoy: alDiaF.length, cierre: cuentaCierre(x => x.estado === "aldia") },
     { clave: "gabela", etiqueta: "Gabela (día de gracia)", hoy: gabelaF.length, cierre: cuentaCierre(x => x.estado === "gabela") },
     { clave: "mora", etiqueta: "En mora", hoy: enMoraF.length, cierre: cuentaCierre(x => x.estado === "mora") },
+    // Al cierre también vale: la plata del período entró toda antes de que el período terminara.
+    { clave: "parcial", etiqueta: "Pagaron una parte", hoy: enMoraF.filter(pagoParte).length, cierre: cuentaCierre(x => x.estado === "mora" && x.r.pagoPeriodo > 0) },
+    { clave: "nopago", etiqueta: "No pagaron nada", hoy: enMoraF.filter(noPagoNada).length, cierre: cuentaCierre(x => x.estado === "mora" && x.r.pagoPeriodo <= 0) },
     { clave: "recoleccion", etiqueta: "En recolección", hoy: enMoraF.filter(r => r.recoleccion).length, cierre: cuentaCierre(x => x.recoleccion) },
     { clave: "taller", etiqueta: "Con la moto en el taller", hoy: tallerF.length, cierre: null },
     { clave: "retenidas", etiqueta: "Retenidas por no pagar", hoy: retenidasF.length, cierre: cuentaCierre(x => x.estado === "retenida") },
@@ -1768,7 +1787,8 @@ export default function ReportesView({ onNavigate }: Props) {
         deudaPend: f.debe_deudas ?? 0, tieneConvenio: (f.debe_acuerdo ?? 0) > 0, debeSinConvenio: false,
         grupo: f.grupo ?? "SIN GRUPO", adminId, adminNombre: f.cobrador ?? (f.cobrador_id ? "—" : "Sin asignar"),
         formaPago: f.forma_pago ?? "—", diaPago: c ? formatDiaPago(c as never) : "", ultimaFechaPago: null, telefono: "",
-        asignadoDesde: null, contratoId: f.contrato_id, diasMora: f.dias_mora, debeHoy: f.debe_total ?? 0,
+        // pagoPeriodo 0: el cuaderno no trae la plata del período; Cobranza no parte la mora en Parcial / No pagó.
+        asignadoDesde: null, contratoId: f.contrato_id, diasMora: f.dias_mora, pagoPeriodo: 0, debeHoy: f.debe_total ?? 0,
         debe: { semanas: f.debe_cuotas ?? 0, acuerdo: f.debe_acuerdo ?? 0, deudas: f.debe_deudas ?? 0 },
         saldoAFavor: Math.max(f.saldo_a_favor ?? 0, 0),
         estadoCartera: f.estado === "mora" ? "mora" : f.estado === "gabela" ? "gabela" : "al-dia",
@@ -2297,7 +2317,8 @@ export default function ReportesView({ onNavigate }: Props) {
       resumen: {
         recaudo: { total: recaudoR.total, empresa: recaudoR.empresa, ahorro: recaudoR.ahorro, baseYSaldo: recaudoR.baseYSaldo, anterior: cobradorFiltrado ? null : anteriorR, textoAnterior: textoRango(desdeAnt, hastaAnt), antes: antesR },
         cumplimiento: cumplimientoR,
-        estados: estadosR.map(e => ({ etiqueta: e.etiqueta, hoy: e.hoy, cierre: e.cierre })),
+        // En el papel no hay sangría: las dos partes de la mora dicen de qué son parte.
+        estados: estadosR.map(e => ({ etiqueta: e.clave === "parcial" ? "En mora: pagaron una parte" : e.clave === "nopago" ? "En mora: no pagaron nada" : e.etiqueta, hoy: e.hoy, cierre: e.cierre })),
         cierreTexto,
         tramos: tramosR.map(t => ({ etiqueta: t.etiqueta, n: t.filas.length, debe: t.debe })),
         sinProducir: { motos: sinProducirR.motos, dias: sinProducirR.dias, estimado: sinProducirR.estimado },
@@ -2369,7 +2390,7 @@ export default function ReportesView({ onNavigate }: Props) {
           .sort((a, b) => b.clientes.length - a.clientes.length),
       },
       detalle: {
-        enMora: enMoraF.map(r => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, dias: r.diasMora, debe: r.debeHoy })),
+        enMora: enMoraF.map(r => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, dias: r.diasMora, debe: r.debeHoy, pagoPeriodo: r.pagoPeriodo })),
         retenidas: [...retenidasF.map(r => ({ r, donde: `Moto ${sitioDe(r)}` })), ...liquidacionF.map(r => ({ r, donde: "En liquidación: la moto ya la tiene otro cliente" }))]
           .map(({ r, donde }) => ({ cliente: r.cliente, placa: r.placa, grupo: r.grupo, donde, debe: r.debeHoy })),
         acuerdos: porCobrarA.filter(c => c.estado === "incumplido" || c.atrasado > 0)
@@ -2687,6 +2708,15 @@ export default function ReportesView({ onNavigate }: Props) {
           filas: f.map(r => filaMoto(r, `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · en recolección" : ""}`, r.debeHoy, "var(--bad-ink)", tramoDe(r.diasMora))),
           chips: tramo ? undefined : chipsTramos, accion: aCartera("contratos:mora"), archivo: "en_mora",
         });
+      } else if (k === "parcial" || k === "nopago") {
+        const parte = k === "parcial";
+        const f = enMoraF.filter(parte ? pagoParte : noPagoNada);
+        setDetalle({
+          titulo: `${parte ? "En mora · pagaron una parte" : "En mora · no pagaron nada"} · ${f.length}`,
+          subtitulo: `${parte ? `Dieron algo en el período (${per}) pero no completaron.` : `No entró plata suya en el período (${per}).`} Deben ${plata(f.reduce((s, r) => s + r.debeHoy, 0))} entre todos. Primero los de más días.`,
+          filas: f.map(r => filaMoto(r, `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora · ${parte ? `pagó ${plata(r.pagoPeriodo)} en el período` : "no pagó nada en el período"}`, r.debeHoy, "var(--bad-ink)", tramoDe(r.diasMora))),
+          chips: chipsTramos, accion: aCartera("contratos:mora"), archivo: parte ? "mora_pagaron_parte" : "mora_no_pagaron",
+        });
       } else if (k === "recoleccion") {
         const f = enMoraF.filter(r => r.recoleccion);
         setDetalle({ titulo: `En recolección · ${f.length}`, subtitulo: "Más de 3 días en mora, sin plazo extra y con la moto en la calle.", filas: f.map(r => filaMoto(r, `${r.diasMora} días en mora`, r.debeHoy, "var(--bad-ink)")), accion: aCartera("hoy:recoleccion"), archivo: "recoleccion" });
@@ -2704,8 +2734,10 @@ export default function ReportesView({ onNavigate }: Props) {
     }
     if (clave.startsWith("cierre:") && cierreR) {
       const k = clave.slice(7);
-      const f = cierreR.filter(x => k === "recoleccion" ? x.recoleccion : k === "retenidas" ? x.estado === "retenida" : x.estado === k).sort((a, b) => b.diasMora - a.diasMora);
-      const nombre = ({ aldia: "Al día", gabela: "Gabela", mora: "En mora", recoleccion: "En recolección", retenidas: "Retenidas por no pagar" } as Record<string, string>)[k] ?? k;
+      const f = cierreR.filter(x => k === "recoleccion" ? x.recoleccion : k === "retenidas" ? x.estado === "retenida"
+        : k === "parcial" ? x.estado === "mora" && x.r.pagoPeriodo > 0 : k === "nopago" ? x.estado === "mora" && x.r.pagoPeriodo <= 0
+        : x.estado === k).sort((a, b) => b.diasMora - a.diasMora);
+      const nombre = ({ aldia: "Al día", gabela: "Gabela", mora: "En mora", parcial: "En mora · pagaron una parte", nopago: "En mora · no pagaron nada", recoleccion: "En recolección", retenidas: "Retenidas por no pagar" } as Record<string, string>)[k] ?? k;
       setDetalle({
         titulo: `${nombre} al ${cierreTexto} · ${f.length}`,
         subtitulo: "Reconstruido con la fecha de cada pago. Toca uno para ver cómo está hoy.",
@@ -2860,8 +2892,10 @@ export default function ReportesView({ onNavigate }: Props) {
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(0, 1fr)" }}>
           {/* Avisos: tocar uno muestra a quiénes se refiere. */}
           {(() => {
+            // Por su clave, no por su lugar: con la mora partida (9-oct) "estadosR[3]" pasó a ser Parcial.
+            const enRecoleccion = estadosR.find(e => e.clave === "recoleccion")?.hoy ?? 0;
             const avisos = [
-              estadosR[3].hoy > 0 && { clave: "aviso:recoleccion", tono: "bad", icono: <AlertTriangle size={18} aria-hidden="true" />, texto: `${estadosR[3].hoy} en la cola de recolección`, sub: "Más de 3 días en mora, con la moto en la calle" },
+              enRecoleccion > 0 && { clave: "aviso:recoleccion", tono: "bad", icono: <AlertTriangle size={18} aria-hidden="true" />, texto: `${enRecoleccion} en la cola de recolección`, sub: "Más de 3 días en mora, con la moto en la calle" },
               diasBaseF.length > 0 && { clave: "aviso:base", tono: "warn", icono: <PiggyBank size={18} aria-hidden="true" />, texto: `${diasBaseF.length} ${diasBaseF.length === 1 ? "cliente cerca" : "clientes cerca"} de completar la base`, sub: "Preparar el cambio de contrato al llegar a $510.000" },
               (docsF.length > 0 || sinSoatF.length > 0) && { clave: "aviso:documentos", tono: "warn", icono: <FileWarning size={18} aria-hidden="true" />, texto: `Documentos: ${docsF.filter(a => a.vencida).length} vencidos · ${docsF.filter(a => !a.vencida).length} por vencer`, sub: sinSoatF.length > 0 ? `${sinSoatF.length} motos sin fecha de SOAT` : "SOAT y tecnomecánica en los próximos 30 días" },
             ].filter(Boolean) as { clave: string; tono: "bad" | "warn"; icono: React.ReactNode; texto: string; sub: string }[];
@@ -3217,7 +3251,7 @@ export default function ReportesView({ onNavigate }: Props) {
             filtros={[
               { titulo: "Grupos", de: m => m.grupo },
               { titulo: "Cobrador", de: m => m.adminNombre.toUpperCase() },
-              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? "En mora" : m.estado === "taller" ? "Moto en el taller" : m.estado === "retenida" ? "Retenida" : m.estado === "reasignada" ? "En liquidación (moto reasignada)" : "Contrato cerrado" },
+              { titulo: "Estado hoy", de: m => m.estado === "aldia" ? "Al día" : m.estado === "gabela" ? "Gabela" : m.estado === "mora" ? (pagoParte(m) ? "Parcial" : "No pagó") : m.estado === "taller" ? "Moto en el taller" : m.estado === "retenida" ? "Retenida" : m.estado === "reasignada" ? "En liquidación (moto reasignada)" : "Contrato cerrado" },
               { titulo: "Modalidad", de: m => m.formaPago },
             ]}
             agrupar={m => porAdmin ? m.adminNombre.toUpperCase() : m.grupo}

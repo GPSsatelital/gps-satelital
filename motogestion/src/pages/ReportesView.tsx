@@ -44,6 +44,7 @@ import PortafoliosReportes, { type DatosPortafolio } from "../components/reporte
 import MenuReportes, { type TabReportes } from "../components/reportes/MenuReportes";
 import { FlotaMotos, FlotaGuardadas } from "../components/reportes/FlotaReportes";
 import { CobranzaCartera, CobranzaAcuerdos, type FilaReparto } from "../components/reportes/CobranzaReportes";
+import { useRodadosPorDeuda } from "../hooks/useRodadosPorDeuda";
 import { EquipoNomina, EquipoVisitas, type CeldaSemana, type DatosNomina, type DatosVisitas } from "../components/reportes/EquipoReportes";
 import DescargarSeccion, { type SepararPor } from "../components/reportes/DescargarSeccion";
 import { informeSociosHTML, type DatosInforme, type SeccionInforme } from "../utils/informeSocios";
@@ -443,6 +444,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
   const { convenios, convenioPorCobrarDelContrato, loading: cargandoConvenios, error: errorConvenios } = useConvenios();
+  const { rodados: rodadosDeuda } = useRodadosPorDeuda(null);
   // Mientras llegan los datos de la primera carga las cuentas dan cero, y un $0 con el sello verde
   // se lee como "no entró nada y todo cuadra". Se dice "cargando" (o "no se pudo") en vez de eso.
   const cargandoDatos = cargandoPagos || cargandoContratos || cargandoClientes || cargandoMotos || cargandoConvenios;
@@ -1805,8 +1807,14 @@ export default function ReportesView({ onNavigate }: Props) {
   const debenC = vigentesC.filter(r => r.debeHoy > 0).sort((a, b) => b.debeHoy - a.debeHoy);
   const sumaDebe = (f: MotoRowG[], k?: "semanas" | "acuerdo" | "deudas") => f.reduce((s, r) => s + (k ? r.debe[k] : r.debeHoy), 0);
   const siguenConContrato = (r: MotoRowG) => r.estado === "aldia" || r.estado === "gabela" || r.estado === "mora" || r.estado === "taller";
+  // Rodado por deuda (D-044, tanda 1 punto 3): a quién se le rodó la deuda al final del contrato. Hoy, los
+  // que siguen pendientes de pagar esas semanas; en un día pasado, los que ya tenían el rodado ese día.
+  const rodadoDe = (contratoId: string) => rodadosDeuda.find(x => x.contrato_id === contratoId && x.estado !== "anulado"
+    && (diaActivo ? x.fecha <= diaActivo : x.estado === "vigente"));
+  const marcaRodado = (r: MotoRowG) => { const x = rodadoDe(r.contratoId); return x ? ` · deuda rodada al final (${x.numero})` : ""; };
   // 5-oct: "al día" al lado de $202.000 confundía — es que hoy le toca pagar (las mismas palabras de ZALA).
-  const comoVa = (r: MotoRowG) => r.estado === "mora" ? `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · para recoger la moto" : r.conPlazo ? " · con plazo extra" : ""}`
+  const comoVa = (r: MotoRowG) => comoVaSinRodado(r) + marcaRodado(r);
+  const comoVaSinRodado = (r: MotoRowG) => r.estado === "mora" ? `${r.diasMora} ${r.diasMora === 1 ? "día" : "días"} en mora${r.recoleccion ? " · para recoger la moto" : r.conPlazo ? " · con plazo extra" : ""}`
     : r.estado === "gabela" ? "en gabela" : r.estado === "taller" ? "moto en el taller" : r.estado === "retenida" ? `moto retenida, ${sitioDe(r)}`
     : r.estado === "reasignada" ? `en liquidación · la moto ya la ${textoDiaC ? "tenía" : "tiene"} otro cliente`
     : r.pagaHoy && r.debe.semanas + r.debe.acuerdo > 0 ? (textoDiaC ? "al día, le tocaba pagar ese día" : "al día, le toca pagar hoy") : "al día";
@@ -1843,7 +1851,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const cobranzaC = {
     debe: { total: sumaDebe(debenC), semanas: sumaDebe(vigentesC, "semanas"), acuerdo: sumaDebe(vigentesC, "acuerdo"), deudas: sumaDebe(vigentesC, "deudas"), clientes: debenC.length },
     cobrable: { conMoto: sumaDebe(vigentesC.filter(siguenConContrato)), retenidas: sumaDebe(vigentesC.filter(r => !siguenConContrato(r))) },
-    estados: { aldia: cuantosC("aldia"), gabela: cuantosC("gabela"), mora: cuantosC("mora"), recoleccion: vigentesC.filter(r => r.estado === "mora" && r.recoleccion).length, taller: cuantosC("taller"), retenidas: cuantosC("retenida"), liquidacion: cuantosC("reasignada") },
+    estados: { aldia: cuantosC("aldia"), gabela: cuantosC("gabela"), mora: cuantosC("mora"), recoleccion: vigentesC.filter(r => r.estado === "mora" && r.recoleccion).length, taller: cuantosC("taller"), retenidas: cuantosC("retenida"), liquidacion: cuantosC("reasignada"), rodados: vigentesC.filter(r => rodadoDe(r.contratoId)).length },
     porGrupo: repartoC(r => r.grupo, r => r.grupo, k => GRUPO_COLORS[k] ?? "var(--muted)"),
     porCobrador: repartoC(r => r.adminId, r => r.adminNombre),
     mayores: debenC.slice(0, 5).map(r => ({ contratoId: r.contratoId, placa: r.placa, grupo: r.grupo, cliente: r.cliente, detalle: comoVa(r), debe: r.debeHoy })),
@@ -1871,6 +1879,18 @@ export default function ReportesView({ onNavigate }: Props) {
       return;
     }
     if (tipo === "contrato") { irFicha(valor); return; }
+    if (tipo === "rodados") {
+      const f = vigentesC.filter(r => rodadoDe(r.contratoId))
+        .sort((a, b) => (rodadoDe(b.contratoId)?.monto_a_cobrar ?? 0) - (rodadoDe(a.contratoId)?.monto_a_cobrar ?? 0));
+      const fin = (x: string | null) => x ? ` · termina aprox. el ${fmtFechaCorta(x)}` : "";
+      setDetalle({
+        titulo: `Con la deuda rodada al final${diaC} · ${f.length}`,
+        subtitulo: `Se les pasó lo que debían al final del contrato (rodado por deuda): esas semanas las pagan después de las normales. Al lado, lo que pagan al final. Suman ${plataT(f.reduce((s, r) => s + (rodadoDe(r.contratoId)?.monto_a_cobrar ?? 0), 0))}.`,
+        filas: f.map(r => { const x = rodadoDe(r.contratoId)!; return filaMoto(r, `${x.numero} · paga ${x.semanas_a_cobrar} ${x.semanas_a_cobrar === 1 ? "semana" : "semanas"} al final${fin(x.fecha_fin_aprox)} · ${comoVaSinRodado(r)}`, x.monto_a_cobrar, "var(--text)"); }),
+        archivo: `deuda_rodada${archivoC}`,
+      });
+      return;
+    }
     if (tipo === "debe") {
       const k = valor as "semanas" | "acuerdo" | "deudas";
       const f = vigentesC.filter(r => r.debe[k] > 0).sort((a, b) => b.debe[k] - a.debe[k]);

@@ -18,7 +18,8 @@ export type FilaReparto = { clave: string; nombre: string; color?: string; debe:
 export function CobranzaCartera(p: {
   debe: { total: number; semanas: number; acuerdo: number; deudas: number; clientes: number };
   cobrable: { conMoto: number; retenidas: number };
-  estados: { aldia: number; gabela: number; mora: number; recoleccion: number; taller: number; retenidas: number; liquidacion: number };
+  /** `rodados`: con la deuda rodada al final del contrato (D-044). */
+  estados: { aldia: number; gabela: number; mora: number; recoleccion: number; taller: number; retenidas: number; liquidacion: number; rodados: number };
   porGrupo: FilaReparto[];
   porCobrador: FilaReparto[];
   mayores: Array<{ contratoId: string; placa: string; grupo: string; cliente: string; detalle: string; debe: number }>;
@@ -112,7 +113,7 @@ export function CobranzaCartera(p: {
           ))}
         </div>
         <div style={{ display: "grid", gap: 2, marginTop: 8 }}>
-          {([["hoy:recoleccion", pasado ? "De los que estaban en mora, para recoger la moto" : "De los que están en mora, para recoger la moto", p.estados.recoleccion], ["hoy:taller", "Con la moto en el taller", p.estados.taller], ["hoy:retenidas", "Retenidas por no pagar", p.estados.retenidas], ["hoy:liquidacion", "En liquidación", p.estados.liquidacion]] as const)
+          {([["hoy:recoleccion", pasado ? "De los que estaban en mora, para recoger la moto" : "De los que están en mora, para recoger la moto", p.estados.recoleccion], ["hoy:taller", "Con la moto en el taller", p.estados.taller], ["hoy:retenidas", "Retenidas por no pagar", p.estados.retenidas], ["hoy:liquidacion", "En liquidación", p.estados.liquidacion], ["rodados", "Con la deuda rodada al final del contrato", p.estados.rodados]] as const)
             .filter(([, , n]) => n > 0).map(([k, t, n]) => (
               <button key={k} onClick={() => p.onAbrir(k)} aria-label={`${t}: ${n}. Ver la lista`} style={fila}>
                 <span style={{ fontSize: 13, color: "var(--muted2)" }}>{t}</span>

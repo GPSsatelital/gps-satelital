@@ -11,7 +11,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - Última revisión: **10-oct-2026**.
 
 > ▶️ **AL ARRANCAR (10-oct):**
-> 1. **Rodar por deuda, tanda 1 punto 3** — sigue esperando su «1» o «2».
+> 1. **Tanda 1 terminada** (10-oct). Sigue la **tanda 2** (defectos que no cambian cuánto debe nadie).
 > 2. **Capacitación del tema 6** (el dueño: «la diapositiva la arreglas después»): diapositiva 7 («los mismos
 >    días que Cartera»: ahora sí es cierto), recapturar los pantallazos t6 y el video 5 con el libro nuevo.
 >    Hasta entonces, no presentar el tema 6 (sus pantallazos muestran «(4 días)» y la fila rodada vieja).
@@ -28,8 +28,8 @@ está en su bloque de abajo.
 **Tanda 1: terminar lo que quedó a medias (ya aprobado)**
 1. [x] Cartera de un día pasado (D-043, paso 1) — 6b96f72.
 2. [x] El documento de liquidación cabe en una hoja carta — 4fa35fb.
-3. [ ] **Rodar por deuda: la marca en Reportes y pasar a «saldado».** Plan de 3 piezas presentado; **espera
-   el «1» o «2» del dueño** → P1, «RODAR POR DEUDA». ▶️ **AQUÍ SE RETOMA.**
+3. [x] **Rodar por deuda: la marca en Reportes y pasar a «saldado».** El dueño escogió «1» (las tres piezas) el
+   10-oct; mig 198 corrida con PRUEBA OK. ▶️ **Sigue la tanda 2.**
 
 **Tanda 2: defectos claros que no cambian cuánto debe nadie**
 4. Firmar en pantalla una liquidación ya cerrada (24 sin ninguna firma, $11,3 millones en juego).
@@ -100,19 +100,6 @@ Lo que está afectando cifras reales de clientes en este momento.
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
   SIN registrar a propósito (decisión del dueño): cuando aparezca en el Nequi, darle destino.
-- [ ] 🧑 🔴 **RAUL GOMEZ SAN MARTIN (IEW56I · COSTA · cobrador Lumar Avendaño) — su acuerdo vence el
-  lunes 12 de octubre y no le alcanza. ESPERA DECISIÓN DEL DUEÑO (1 o 2).**
-  Medido el **7-oct** con `loQueDebe()`: acuerdo de **$153.500** (semana 14 $116.000 + multa $30.000 +
-  migración $7.500), 4 cuotas de $48.000, **abonado $48.000** (1-oct), **le faltan $105.500**. Hoy debe
-  **$348.000** ($252.000 de semanas + $96.000 del acuerdo), **8 días en mora**. Si no paga antes del
-  12-oct: **$559.500** y 13 días. Paga **$200.000 cada 6-8 días** (menos que su semana de $202.000); Lumar
-  lo gestionó todos los días del 1 al 7-oct sin pago.
-  🔑 Desde la mig 157 un acuerdo vencido **se sigue cobrando** (queda «INCUMPLIDO» en rojo): no se pierde
-  plata; solo se le gasta 1 de sus 3 acuerdos y ya no desbloquea la moto si se la recogen.
-  **Las dos salidas que se le mostraron:** **1 (recomendada)** cobrarle normal y dejar que se venza si no
-  paga — no se toca el sistema; ya cumple la regla de Recolección (>3 días). **2** ampliarle el plazo
-  (p. ej. al 26-oct) con un SQL — NO con el botón de la app, que cobra doble —; no le baja lo que debe.
-
 - [ ] 🧑 **JUAN CARLOS LEAL (YAL68H · RASTREADOR · Carlos Alvarez) — su acuerdo también vence el lunes 12-oct.**
   Medido el 9-oct: acuerdo de $616.500 desde el 14-jul, cuota $58.000; le pidió 10 cuotas ($580.000) y pagó 2
   ($116.000, el 30-sep y el 6-oct). Debe $594.000 ($130.000 de semana + $464.000 del acuerdo), 17 días en mora
@@ -850,6 +837,19 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **10-oct · Rodar por deuda: la marca en Reportes y el rodado se cierra solo** (mig 198 corrida + app) —
+  Reportes › Cartera dice «· deuda rodada al final (ROD-xxxx)» al lado de cómo va cada cliente, y «Cómo van pagando
+  hoy» trae «Con la deuda rodada al final del contrato · N» con su lista (visto a 375 px con un rodado de mentira
+  solo en el navegador: todavía no hay ninguno). En la base: pasa solo a «saldado» al pagar todas sus semanas (y
+  vuelve a «vigente» si le falta una) y a «cobrado_en_liquidacion» al cerrar la liquidación; cada cambio con rastro.
+  Prueba de la mig: vigente → saldado → vigente → cobrado → vigente, 4 rastros, todo deshecho; próximo número sigue
+  ROD-0001.
+
+- [x] **10-oct · RAUL GOMEZ SAN MARTIN (IEW56I): el dueño escogió «1», no tocar nada.** Medido el 10-oct: acuerdo
+  $153.500 (4 cuotas de $48.000), abonado $96.000, le faltan $57.500; vence el lunes 12-oct. Para cumplirlo ese día
+  tendría que pagar $339.500 ($282.000 de semanas + $57.500); paga $200.000–250.000 por semana. Si no completa,
+  queda INCUMPLIDO y se le sigue cobrando (mig 157); gasta 1 de sus 3 acuerdos.
 
 - [x] **10-oct · El libro de semanas arreglado** (e160c9c + mig 194 corrida) — «esta» ya no queda en una semana
   vieja cuando hoy cae en tiempo rodado (RMZ68H, DQG87I: la fila rodada dice «hoy»); la fila de moto guardada dice

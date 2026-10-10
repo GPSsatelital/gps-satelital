@@ -1,6 +1,6 @@
 {
   "fecha": "2026-10-10",
-  "cerroBien": true,
+  "cerroBien": false,
   "pruebas": 929,
-  "commit": "56067aa"
+  "commit": "ea9aa20"
 }

@@ -8,13 +8,15 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (10-oct)
+## ▶️ DÓNDE RETOMAR (10-oct, tarde)
 
-▶️ Arriba de `docs/PENDIENTES.md`: **1) rodar por deuda** (tanda 1, punto 3) espera su «1» o «2» · **2) rehacer la
-capacitación del tema 6** con el libro arreglado (él: «la diapositiva la arreglas después») → [[libro-semanas-arreglo-pendiente]].
-✅ **10-oct, todo subido:** el acuerdo atrasado antes que las deudas sueltas, solo pagos nuevos (a1f1bdc, D-049, mig 197:
-0 pesos movidos, espejo 349/0) · libro de semanas arreglado (e160c9c, mig 194). 🔑 El dueño creía que el reparto por
-conjunto ya era así: lo era desde D-022 (24-sep); sus clientes viejos (JUAN CARLOS LEAL) se repartieron antes.
+▶️ Arriba de `docs/PENDIENTES.md`, **dos preguntas esperan al dueño**: **1) candados contra repetir acciones** (su
+pedido: «todo botón bloqueado contra doble clic»; plan: candado en la BASE para lo que mueve plata + un solo botón
+que guarda; espera «1» = medir primero) · **2) JORGE BELLO / JESUS QUIÑONEZ, tiempo rodado dos veces** (corregir +
+2 días / sin plazo / no corregir). 🔑 No fue doble clic (82 s y 150 s; el botón YA tenía bloqueo): el candado va en la base.
+✅ **10-oct, todo subido:** reparto D-049 (a1f1bdc, mig 197) · libro arreglado (e160c9c, mig 194) · nombre largo que
+se montaba (973aac2) · rodar por deuda: marca en Reportes + se cierra solo (2800fdd, mig 198) → tanda 1 terminada ·
+RAUL: «1», no tocar. 🔲 Capacitación tema 6 para después → [[libro-semanas-arreglo-pendiente]].
 ✅ **9-oct, todo subido:** firmas del rodado en una hoja (4974cf4) · libro de semanas (1c670d6) · tema 6 + videos con
 letras (f345165) · Referidos por fecha y equipo fuera de premios (3740dbd, D-047, mig 195) · Reportes: mora partida en
 Parcial / No pagó (7ce31c0, D-048, mig 196). Rodar validado de punta a punta (6 BIEN). Detalle: PENDIENTES → Cerrados.

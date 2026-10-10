@@ -401,3 +401,39 @@ Todavía nada automático: yo no puedo correr una migración antes de pasársela
 **Quién lo cazó:** el dueño: *«habla siempre en español»*. Es la segunda vez (la primera, el 6-oct).
 **Qué lo evita ahora:** quedó reforzado en la memoria `comunicacion-espanol-ingles`: también los avisos
 cortos de avance van en español, no solo los mensajes largos.
+
+### Dije que los videos ya tenían letras sin mirarlos (9-oct)
+**Lo que dije:** que los videos de la capacitación ya traían letras.
+**Lo que era verdad:** desde el 7-oct salían sin ellas: en `grabar-video.html` un `Object.assign` pisaba el
+texto de cada escena con un número. Los 4 videos que se compartieron el 7-oct no tenían letras.
+**Por qué me equivoqué:** lo afirmé por cómo estaba escrito el código, sin abrir un video.
+**Quién lo cazó:** el dueño: *«los videos que tengan letras o subtítulos»*.
+**Qué lo evita ahora:** `comprobar-video.html` revisa que cada paso tenga letras en su caja (más de 800
+puntos claros a la mitad de cada escena) y falla si no; se probó que falla con el video malo.
+
+### Puse en la capacitación que el libro de semanas dice los mismos días que Cartera (9-oct)
+**Lo que dije:** en la diapositiva de los colores del tema 6 y en el texto de la mig 194: «los días que dice
+"venció el… (11 días)" son los mismos días en mora de Cartera».
+**Lo que era verdad:** el libro cuenta desde el día que venció; Cartera le quita el día de gracia. Siempre
+uno de diferencia (medido en 21 clientes: libro 4, Cartera 3).
+**Por qué me equivoqué:** el espejo comparó FECHAS (0 diferencias) y yo lo extendí a los días sin medirlos.
+**Quién lo cazó:** yo, al revisar el Excel de Reportes que trajo el dueño.
+**Qué lo evita ahora:** todavía nada: el arreglo (que el libro diga «N días en mora» con la cuenta de
+Cartera, y corregir la diapositiva, los pantallazos, el video 5 y la mig 194) espera el «1» del dueño. La mig
+194 NO se ha corrido. Regla: lo que dice «es lo mismo que X» se mide contra X en la cifra exacta.
+
+### El libro de semanas marca «esta» en una semana de agosto (9-oct)
+**Lo que hice:** la semana de hoy se calcula como «período de hoy − semanas rodadas». Si hoy cae DENTRO del
+tiempo rodado (la moto acaba de volver), el «esta» queda en la última pagada, que es de antes de guardarla.
+Y la fila rodada muestra las semanas del calendario de pagos, no las fechas en que de verdad estuvo guardada.
+**Quién lo cazó:** el dueño, con JOSE LUIS LOPEZ PONCE (RMZ68H): *«¿por qué las rodadas están después de la
+actual?»*. Medido: «esta» mal puesta en 2 de 25 contratos con rodadas; fechas del calendario en 22 filas.
+**Qué lo evita ahora:** todavía nada (espera el «1»). La prueba del libro no tenía un caso con hoy dentro
+del tiempo rodado: hay que agregarlo con RMZ68H y DQG87I.
+
+### El aviso de recolección leía una lista por su posición (9-oct)
+**Lo que hice:** al agregar «Pagaron una parte» a los estados del Resumen, el aviso «N en la cola de
+recolección» (que leía `estadosR[3]`) pasó a decir 83 en vez de 37.
+**Quién lo cazó:** yo, revisando la pantalla antes de entregar. No llegó a producción.
+**Qué lo evita ahora:** el aviso busca la fila por su clave. Regla: nunca leer una lista por su número de
+posición; se busca por el nombre.

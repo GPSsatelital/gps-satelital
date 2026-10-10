@@ -8,7 +8,13 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **8-oct-2026** (noche).
+- Última revisión: **9-oct-2026** (noche).
+
+> ▶️ **AL ARRANCAR (9-oct noche): dos preguntas esperan al dueño, en este orden.**
+> 1. **¿Arreglo el libro de semanas?** (P1, primer punto: «esta» en una semana vieja, fechas reales del tiempo
+>    guardado, los días en mora de Cartera, y corregir la diapositiva y el video del tema 6). Se le preguntó
+>    con dibujo; respuesta pendiente («1 sí / 2 todavía no»). **No presentar el tema 6 hasta arreglarlo.**
+> 2. **Rodar por deuda, tanda 1 punto 3** — sigue esperando su «1» o «2».
 
 ---
 
@@ -106,6 +112,12 @@ Lo que está afectando cifras reales de clientes en este momento.
   **Las dos salidas que se le mostraron:** **1 (recomendada)** cobrarle normal y dejar que se venza si no
   paga — no se toca el sistema; ya cumple la regla de Recolección (>3 días). **2** ampliarle el plazo
   (p. ej. al 26-oct) con un SQL — NO con el botón de la app, que cobra doble —; no le baja lo que debe.
+
+- [ ] 🧑 **JUAN CARLOS LEAL (YAL68H · RASTREADOR · Carlos Alvarez) — su acuerdo también vence el lunes 12-oct.**
+  Medido el 9-oct: acuerdo de $616.500 desde el 14-jul, cuota $58.000; le pidió 10 cuotas ($580.000) y pagó 2
+  ($116.000, el 30-sep y el 6-oct). Debe $594.000 ($130.000 de semana + $464.000 del acuerdo), 17 días en mora
+  (D-030: semana y cuota juntas, desde el lunes 21-sep). De agosto al 25-sep pagaba solo la semana. Se le explicó
+  al dueño; no pidió nada. Al vencer queda INCUMPLIDO y se le sigue cobrando (mig 157).
 
 - [ ] 🧑 🔴 **ROTAR LA LLAVE DE ZALA — pasó por el chat.** Estaba anotada en P2 como una tarea más
   de la puesta en marcha de ZALA. **Una llave de producción que circuló por un chat no es un
@@ -293,7 +305,27 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **EL LIBRO DE SEMANAS + EL MANUAL PARA LOS SUPERVISORES (aprobado el 9-oct: «1»).** Pedido del dueño:
+- [ ] 💻 🔴 **ARREGLAR EL LIBRO DE SEMANAS (encontrado el 9-oct noche) — ESPERA EL «1» DEL DUEÑO.** El libro
+  ya está en producción (1c670d6) y la capacitación del tema 6 hecha, pero tiene tres defectos de pantalla (no
+  de plata):
+  · **«esta» en la semana equivocada:** si hoy cae dentro del tiempo rodado (la moto acaba de volver), marca la
+    última pagada, de antes de guardarla. JOSE LUIS LOPEZ PONCE (RMZ68H): «esta» en la semana 43 (12-18 ago);
+    guardada 13-ago → 9-oct, 8 semanas rodadas, próximo cobro miércoles 14-oct. También ERICK RODRIGUEZ
+    (DQG87I). 2 de 25 contratos con rodadas. Causa: `vaEn = indiceHoy + previas − exo` en `construirLibro`.
+  · **La fila rodada dice fechas que no son:** título «Moto guardada · 19 ago al 13 oct» = las semanas del
+    calendario de pagos que no se cobran; las reales son 13-ago → 9-oct (57 días). 22 filas. Propuesta:
+    «Moto guardada del 13 ago al 9 oct (57 días)» + «no se le cobran del 19 ago al 13 oct».
+  · **Los días no son los de Cartera:** el libro dice «venció el 5 oct (4 días)» = días desde que venció;
+    Cartera dice «3d en mora» (le quita la gabela). Uno de diferencia siempre (medido en 21). Propuesta:
+    «venció el 5 oct · 3 días en mora».
+  · Con eso: corregir la diapositiva de los colores del tema 6 («son los mismos días» es falso), recapturar
+    sus pantallazos y el video 5, y el texto de la **mig 194 (NO corrida todavía)**. Pruebas con RMZ68H y DQG87I.
+  · Para pensar con el dueño: el libro solo muestra semanas, no el acuerdo. JUAN CARLOS LEAL (YAL68H): el libro
+    dice 4 días por la semana; Cartera 17 por el conjunto semana + cuota (D-030). Se le explicó; no pidió cambio.
+
+- [ ] 💻 **El libro de semanas + el manual para los supervisores (aprobado el 9-oct: «1») — HECHO salvo el arreglo
+  de arriba.** Libro 1c670d6 · tema 6 en PowerPoint (19 diapositivas) + video 5 de 87 s, fuera de git en
+  `docs/capacitacion/powerpoint/` y `videos/`. Lo que sigue es la descripción original. Pedido del dueño:
   «no saben identificar las cuentas»; quiere ver cada pago y a qué semana fue, desde cuándo está el cliente
   en el sistema, y un manual o capacitación **bien explicada para los supervisores**.
   · **Dónde:** ficha del cliente → pestaña Pagos: arriba el libro con botón **Lista | Calendario** (escogió
@@ -829,6 +861,21 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **9-oct · Reportes: vuelven a salir los que pagaron una parte** (7ce31c0 + mig 196 corrida, D-048) — «En
+  mora» partido en Parcial (entró plata en el período) y No pagó, en el Resumen (hoy y al cierre), el Excel por
+  cobrador y por grupo y el PDF. Medido: 132 en mora → esta semana 83/49, este mes 114/18, igual por la cuenta
+  aparte. 🔲 Opcional: partirlo también en Cobranza y Portafolios (hoy dicen «En mora» entero) — preguntar.
+  Verificado antes: las filas del Excel de Carlos Alvarez = Cartera (93 de 93 en plata; días iguales en los 82
+  no retenidos). Hallazgo sin arreglar: «Últ. pago» cuenta como pago la aplicación de saldo a favor o el registro
+  interno de la base (14 de 93); Cartera usa la misma regla — preguntar si se cambia.
+- [x] **9-oct · Referidos: lista por fecha y filtro de quién lo trajo; lo del equipo ya no suma premios** (3740dbd
+  + mig 195 corrida, D-047) — por «recibió la moto» (por defecto) o «se registró»; filtro clientes / equipo / cada
+  supervisor; bloque «Los trajo el equipo» (Johan 18, Lumar 12, Carlos Alvarez 11, Carlos Ariza 4, Brandon 3).
+  Premios: 18 → 8 alcanzados, 48 → 40 personas que refieren; ninguno de los supervisores había recibido premio.
+- [x] **9-oct · Capacitación tema 6 y videos con letras** (f345165) — PowerPoint del tema 6 (19 diapositivas) y
+  video 5 (87 s); los 5 videos regrabados con letras (desde el 7-oct salían sin ellas). Revisión de videos: los 5
+  BIEN, voz a tiempo ±0,02 s. ⚠️ La diapositiva de los colores tiene un error (ver P1, arreglar el libro).
 
 - [x] **8-oct · El documento de liquidación cabe en una hoja carta** (4fa35fb) — medido imprimiendo de verdad
   con Chrome las 85 liquidaciones reales: antes 12 se partían en dos hojas; ahora las 85 caben en una (la

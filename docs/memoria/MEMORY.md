@@ -8,70 +8,32 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (8-oct)
+## ▶️ DÓNDE RETOMAR (9-oct, noche)
 
-🆕 **8-oct: cuadro cobrador × grupo en Reportes (D-045)** → [[reportes-cuadro-cruzado-d045]]. Y el **manual de Reportes v3 por preguntas** (31 págs.,
-PDF fuera del repo) — hecho. 🔴 **RAUL (IEW56I)**: su acuerdo vence el 12-oct, espera que escoja 1 o 2 (P0).
-✅ **8-oct tarde: liquidación justa (D-046) en producción** → [[liquidacion-justa-d046]]. BRADER −$237.500 (PDF de 2 hojas
-listo); recalculadas 0078·0074·0025·0076; LIQ-0050 quieta hasta corregir su lista (P1).
-✅ **8-oct noche: doble toque = semana perdida** → [[doble-toque-semana-perdida]] (97ba56d + mig 192). BRYAN/YERLIS/JONATAN
-corregidos; 🧑 la oficina debe decir si ARNOL (IEW93I) y otros 3 pagaron una o dos veces (P0).
-✅ **8-oct tarde, todo subido:** cartera de un día pasado (6b96f72) · entrega de la moto de un solo golpe
-(a62d414 + mig 193 `activar_entrega`) · ventana del convenio que cabe (42608be) · base de NANO a MICRO (el
-dueño; era falta de memoria → Swap → cupo de disco) · documento de liquidación en una hoja (4fa35fb: 12 de 85
-se partían, ahora 0). 🔲 Mañana: ¿bajó el Swap?
-▶️ **RETOMAR AQUÍ: tanda 1, punto 3 — rodar por deuda.** El plan de 3 piezas está presentado y **espera su
-«1» o «2»** (él pidió guardar antes de responder) → [[rodar-por-deuda-d044]] y PENDIENTES → P1. El plan de las
-5 tandas quedó escrito arriba de todo en `docs/PENDIENTES.md`. Se le pregunta antes de subir cada punto (opción 2).
+▶️ **Dos preguntas esperan al dueño** (arriba de `docs/PENDIENTES.md`): **1) arreglar el libro de semanas** («esta» en
+semana vieja si hoy cae en tiempo rodado, fechas reales del guardado, días en mora = Cartera, y corregir tema 6 +
+video 5 + mig 194 SIN correr) → [[libro-semanas-arreglo-pendiente]] · **2) rodar por deuda** (tanda 1, punto 3).
+✅ **9-oct, todo subido:** firmas del rodado en una hoja (4974cf4) · libro de semanas (1c670d6) · tema 6 + videos con
+letras (f345165) · Referidos por fecha y equipo fuera de premios (3740dbd, D-047, mig 195) · Reportes: mora partida en
+Parcial / No pagó (7ce31c0, D-048, mig 196). Rodar validado de punta a punta (6 BIEN). Detalle: PENDIENTES → Cerrados.
+🔲 Preguntar: «Últ. pago» cuenta el saldo a favor aplicado como pago (14 de 93 en el Excel de Carlos Alvarez).
 
-## ▶️ Antes (7-oct, madrugada)
+## ▶️ Antes (6 al 8-oct) — lo que sigue vivo; el resto está en PENDIENTES → Cerrados
 
-🔑 **El estado se MIDE al arrancar**, no se lee: rama, commit, migraciones, pruebas y **qué
-herramientas no conectaron** (D-017). EL ESTÁNDAR va 2 de 7 pasos → `docs/ESTANDAR.md` (sigue el
-paso 3: arranque/cierre con hooks · foto de la plata · RUNBOOK · CI, que no existe).
-
-🆕 **7-oct: RODAR POR DEUDA en producción (D-044, mig 191)** → [[rodar-por-deuda-d044]] — sin usar todavía:
-el primer rodado se hace CON el dueño; a Sergio se le prende el permiso después de la capacitación.
-🆕 **Capacitación del 7-oct (7 a 8 a.m.)** → [[capacitacion-7oct]] — se comparten los 5 PowerPoint y los 4
-MP4 de `docs/capacitacion/` (ya abren en cualquier aparato; sin probar en un celular real). Preguntar cómo
-le fue y qué preguntas quedaron sin responder.
-🔴 **Al preguntarle algo con explicación: texto + "responda con el número"**, no la ventana → [[feedback-preguntas-sin-ventana]].
-
-🔨 **Después: la cartera de un día pasado (D-043)** → [[cartera-del-dia-cuaderno]]. La mig 190 (el
-cuaderno de cada noche) YA corre en la base; **la pantalla quedó a medias en la rama local
-`wip/cartera-del-dia`** (el dueño paró la sesión a mitad). Qué falta: `docs/PENDIENTES.md` → P1, primer
-punto. Después: paso 2 (31-ago y 30-sep hacia atrás) y la #7 (proyección).
-
-✅ **6-oct, todo subido** (dd13576 · f072d63 · e20ff8d): Reportes revisado ABRIENDO los archivos (columnas,
-filtro escrito, total de Acuerdos, PDF sin filas partidas) · botón «Descargar / Imprimir» de Entregas visible ·
-**manual de Reportes v2** con señales medidas en la pantalla (`poner-senales.mjs`) · migs **188** (LIQ-0032
-devuelta) y **189** (rastro al borrar una deuda: la 101 nunca estuvo viva) corridas y verificadas.
-✅ **ANDRÉS BALLESTAS**: LIQ-0032 cerrada en $0 (deuda vieja perdonada, decisión del dueño), Aprobado, $150.000
-de base para la moto nueva; **falta su firma** y **sus $35.000 por transferencia del 6-oct quedaron SIN
-registrar a propósito** → [[andres-ballestas-liq0032-devuelta]].
-🔴 **Mig 187 SIN CORRER** (taller de XYZ51H a 'Finalizado'): el aviso "Lleva días en el taller —
-XYZ51H" sigue saliendo. El SQL está en `motogestion/supabase/187_*.sql`; pegárselo otra vez.
-▶️ Después: **la misma mejora de Reportes en toda la app**, pantalla por pantalla →
-[[rediseno-toda-la-app-metodo-reportes]] (orden propuesto, sin confirmar: Cartera y Cobros primero).
-
-0. Pendientes viejos (antes del rediseño): **saldos a favor (pedido del 28-sep) o MELISSA** (pendiente
-   del 26-sep). El 28-sep le propuse MELISSA sin decir de dónde salía y no la ubicó →
-   [[feedback-decir-de-donde-sale]].
-1. 🔴 **MELISSA BELLO (LIQ-0056)** — lo último de D-023. Quincenal: base $743.000, puso $404.000 →
-   acuerdo $339.000. Cerrada el 14-sep con −$174.000 y en lista negra por cobrarle el acuerdo de base
-   entero. Podría quedar a su favor (~+$165.000), pero ANTES revisar si su ahorro de $25.000 y los
-   $140.000 de "pagó adelantado y no alcanzó a usar" se cuentan dos veces. Método JORDAN/RICARDO.
-2. **Saldos a favor más visibles para el funcionario** (pedido del 28-sep) — analizar dónde se ven
-   hoy y proponer el lugar con dibujo, antes de tocar. Está en P1.
-4. **La fecha de fin** → [[fecha-fin-y-semanas-una-sola-verdad]]: 4 reglas confirmadas, los 7
-   puntos de implementación SIN aprobar (JHON NAIDER, $9.696.000). Repetírselos y esperar el sí.
-5. Después: medir los demás diarios (lo de ADOLFO) · `ampliarConvenio` cobra doble ·
-   `docs/PLAN-COMPLETAR-DATOS.md` (4 preguntas abiertas) · EGRESOS.
-
-🧑 Oficina: reimprimir JESUS MARIA (LIQ-0011) y los acuerdos de JORDAN y JORGE DAVID · mirar a
-YESID el 2-nov (primera semana de más, [[d026-semanas-de-cierre]]).
-🚫 **CESAR (ZHO34G) y RAMON (RLI25H): quietos** hasta que el dueño los saque (21-sep).
-🆕 Medir desde el navegador con la sesión del dueño → [[consultar-base-desde-el-navegador]].
+- 🔑 **El estado se MIDE al arrancar** (rama, commit, migraciones, pruebas, herramientas caídas — D-017) ·
+  `docs/ESTANDAR.md` va 2 de 7 pasos · medir con la sesión del dueño → [[consultar-base-desde-el-navegador]].
+- 8-oct: cuadro cobrador × grupo [[reportes-cuadro-cruzado-d045]] · liquidación justa [[liquidacion-justa-d046]]
+  (LIQ-0050 quieta) · doble toque [[doble-toque-semana-perdida]] (🧑 ARNOL y otros 3: ¿pagaron dos veces?, P0).
+- Rodar por deuda [[rodar-por-deuda-d044]] (primer uso CON el dueño) · capacitación [[capacitacion-7oct]] ·
+  cartera de un día pasado [[cartera-del-dia-cuaderno]] (paso 2 y proyección pendientes).
+- 🔴 **Mig 187 SIN CORRER** (taller de XYZ51H a 'Finalizado'): pegársela otra vez · ANDRÉS BALLESTAS falta su
+  firma y $35.000 sin registrar a propósito → [[andres-ballestas-liq0032-devuelta]].
+- Después: la mejora de Reportes en toda la app [[rediseno-toda-la-app-metodo-reportes]] · MELISSA BELLO
+  (LIQ-0056, ¿ahorro contado dos veces?) · saldos a favor más visibles · la fecha de fin
+  [[fecha-fin-y-semanas-una-sola-verdad]] (7 puntos SIN aprobar).
+- Preguntar con texto + «responda con el número» [[feedback-preguntas-sin-ventana]] · decir primero de dónde sale
+  un tema [[feedback-decir-de-donde-sale]] · 🚫 CESAR (ZHO34G) y RAMON (RLI25H) quietos · YESID el 2-nov
+  [[d026-semanas-de-cierre]].
 
 ### Bitácora corta — el detalle está en `docs/PENDIENTES.md` (cerrados) y en cada tema
 

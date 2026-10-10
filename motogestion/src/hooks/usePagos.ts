@@ -521,7 +521,8 @@ export function usePagos() {
   // Así el saldo baja de verdad y la caja del día no se infla con plata que no entró.
   //
   // DEUDA PRIMERO (30-jul-2026, decisión del dueño). El motor reparte en su orden fijo
-  // (prorrateo → cajas → deuda → convenio), así que el crédito guardado tapaba la SEMANA en
+  // (prorrateo → cajas → convenio → deudas desde D-049; antes, deudas → convenio), así que el
+  // crédito guardado tapaba la SEMANA en
   // curso y la deuda vieja quedaba intacta. Caso real: los pagos que la secretaria digitó con
   // fecha anterior al corte de migración del 27-jul quedaron 100% en saldo a favor, y al
   // aplicarlos cubrían una semana que el cliente todavía no había pagado.

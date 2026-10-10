@@ -299,18 +299,13 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     }
   }
 
-  // 3) Deudas — multa de recolección primero, la lavada segunda, después las más antiguas
-  //    (`deudas` ya viene en ese orden, ver ordenarDeudasReparto).
-  for (const d of deudas) {
-    if (monto <= 0) break;
-    if (d.montoPendiente <= 0) continue;
-    const delta = Math.min(monto, d.montoPendiente);
-    d.montoPendiente -= delta;
-    r.deuda += delta;
-    monto -= delta;
-  }
-
-  // 4) Convenio activo — TOPADO A LO EXIGIDO (el freno que faltaba).
+  // 3) Convenio activo — TOPADO A LO EXIGIDO (el freno que faltaba). Va ANTES de las deudas
+  //    sueltas desde D-049 (10-oct-2026, regla del dueño: "primero a la semana, después a lo que
+  //    pactó de convenio para que queden juntos, y de último las deudas"). Hasta ese día las cuotas
+  //    del acuerdo que quedaban atrás sin su semana (las de antes de D-022, o la de quien pagó solo
+  //    su semana) esperaban detrás de cualquier repuesto o multa — JONATHAN KENDRI (DPU30I): $38.000
+  //    del acuerdo atrasados detrás de un repuesto de $110.000. Solo cambia los pagos de ahí en
+  //    adelante. Con la moto retenida, la multa y la lavada siguen primero (paso 0).
   //
   // Antes recibía hasta TODO su saldo pendiente. Las cajas tenían freno y el convenio no, así
   // que a quien pagaba su paquete ANTES de su día de pago se le iba todo al convenio y la
@@ -334,6 +329,17 @@ export function repartirPagoV2(e: EntradaReparto): ResultadoReparto {
     const delta = Math.min(monto, convPorRecibir);
     r.convenio += delta;
     convPorRecibir -= delta;
+    monto -= delta;
+  }
+
+  // 4) Deudas sueltas — multa de recolección primero, la lavada segunda, después las más antiguas
+  //    (`deudas` ya viene en ese orden, ver ordenarDeudasReparto). Desde D-049, después del acuerdo.
+  for (const d of deudas) {
+    if (monto <= 0) break;
+    if (d.montoPendiente <= 0) continue;
+    const delta = Math.min(monto, d.montoPendiente);
+    d.montoPendiente -= delta;
+    r.deuda += delta;
     monto -= delta;
   }
 

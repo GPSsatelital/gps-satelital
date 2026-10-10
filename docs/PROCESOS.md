@@ -67,7 +67,7 @@ Todos los procesos del negocio con su **flujo normal**, **variaciones**, **casos
 ## 4. Motor de dinero (cajas FIFO — el corazón)
 **Rol:** automático (BD). **Fuente:** cicloPago.ts + mig 045 (RPC + trigger v2).
 
-**Flujo normal:** cada contrato de tiempo definido = fila de cajas (períodos). Todo peso de cuota llena la caja MÁS VIEJA incompleta (FIFO). Orden de aplicación: cajas → deuda → convenio → saldo a favor. Cada caja entrega su ahorro AL LLENARSE (tarifa-primero: los últimos pesos son ahorro). El contrato termina al llenar la caja N (por pagos, no por tiempo).
+**Flujo normal:** cada contrato de tiempo definido = fila de cajas (períodos). Todo peso de cuota llena la caja MÁS VIEJA incompleta (FIFO). Orden de aplicación: cajas (cada una con su cuota del acuerdo, D-022) → acuerdo atrasado → deudas sueltas (D-049) → saldo a favor. Cada caja entrega su ahorro AL LLENARSE (tarifa-primero: los últimos pesos son ahorro). El contrato termina al llenar la caja N (por pagos, no por tiempo).
 
 **Variaciones:**
 - Diario queda FUERA del motor de cajas (lógica propia de ahorro hasta $510.000).

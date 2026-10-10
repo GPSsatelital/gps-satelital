@@ -729,11 +729,13 @@ De 11 pestañas en scroll horizontal → **4 secciones** por propósito (no por 
 - **Devolver la moto** → el cliente la recupera solo cuando salda **toda deuda pendiente del contrato** (multa + cuota atrasada que se registre como deuda `tarifa_atrasada`). Se gestiona desde Inmovilizaciones → sección "Motos retenidas".
 - **Si el cliente se demora mucho en resolver** → el ADMIN/ADMIN_PRINCIPAL puede reasignar la moto a otro cliente (la moto nunca debe dejar de producir) — finaliza el contrato anterior a la fecha de retención y libera la moto para un nuevo contrato.
 
-### Orden de aplicación de cada pago
-1. Cuota pactada del período (tarifa + ahorro)
-2. Deuda pendiente
-3. Cuota de convenio activo
+### Orden de aplicación de cada pago (D-022 + D-049, regla del dueño)
+1. Cuota pactada del período (tarifa + ahorro) — y, si hay acuerdo, **su cuota del acuerdo justo detrás** (semana + cuota = un conjunto)
+2. Las cuotas del acuerdo que quedaron atrasadas (las que ya no tienen semana con quién ir)
+3. Deudas sueltas (multa → lavada → las más antiguas)
 4. Saldo a favor (queda reservado, no se aplica automáticamente)
+- Excepción: con la moto **retenida** (contrato suspendido), la multa de recolección y la lavada se cobran **antes que todo**.
+- D-049 (10-oct-2026) puso el acuerdo atrasado antes de las deudas sueltas **solo para los pagos de ahí en adelante**; lo ya repartido no se tocó.
 
 ### Quién registra qué
 | Acción | Quién |
@@ -954,7 +956,7 @@ Ahora:
 1. **Modelo:** cada contrato de tiempo definido = fila de CAJAS (períodos). Caja semanal $202.000 = $176.000 empresa + $26.000 ahorro. **Diario queda FUERA** (lógica actual). Deudas registradas y convenios siguen aparte.
 2. **N total de cajas:** se captura `meses`; N = **calendario real** (12m=52 sem, 21m=91, 24m=104; quincenas/meses por fechas reales). **El contrato termina al llenar la caja N (por pagos realizados, NO por tiempo transcurrido)**; `fecha_fin_contrato` queda informativa. Contador "va X de N" visible en detalle/estado de cuenta/documentos.
 3. **Nacimiento (nuevos):** Caja 0 = prorrateo (día a día, domingos aparte, se paga el primer día de pago). Caja 1 = semana adelantada: **nace PAGADA con la base**, registrada como **pago interno visible** en el historial (tipo especial, $176.000 cuota + $26.000 ahorro) **EXCLUIDO de caja diaria y recaudo**. De $510.000: $308.000 → ahorro_apertura + $202.000 → Caja 1. Base incompleta: tarifa-primero (primero los $176.000, luego ahorro). **Migrados:** cajas desde su fecha de corte, sin caja 0 ni adelantada.
-4. **FIFO:** todo peso de cuota llena la caja MÁS VIEJA incompleta. Orden: cajas → deuda → convenio. Cada caja entrega su ahorro AL LLENARSE, sin importar cuándo (dentro de la caja rige tarifa-primero: los últimos $26.000 son ahorro). **NADIE pierde ahorro como castigo** — el que no paga enfrenta mora→retención→liquidación. Reversas (rechazar/eliminar) des-llenan cajas en orden inverso.
+4. **FIFO:** todo peso de cuota llena la caja MÁS VIEJA incompleta. Orden: cajas (cada una con su cuota del acuerdo, D-022) → acuerdo atrasado → deudas (D-049). Cada caja entrega su ahorro AL LLENARSE, sin importar cuándo (dentro de la caja rige tarifa-primero: los últimos $26.000 son ahorro). **NADIE pierde ahorro como castigo** — el que no paga enfrenta mora→retención→liquidación. Reversas (rechazar/eliminar) des-llenan cajas en orden inverso.
 5. **Excedente:** saldo a favor por defecto; se aplica a cajas futuras SOLO por decisión manual (secretaria/cliente).
 6. **Mora:** cada caja se exige el día de pago que la INICIA ("paga hoy lo que consumes desde hoy") + 1 día de gabela. En mora = existe caja exigida sin llenar; pagar la actual con una vieja abierta NO saca de mora. Días de mora = desde la más vieja.
 7. **Rodar** (taller/fiscalía/decisión admin con doc firmado): el rango queda exonerado de EXIGENCIA pero las cajas NO se perdonan — se corren y se pagan al final (contrato por pagos, no por tiempo). Prioridad: cobrar; rodar es excepción.

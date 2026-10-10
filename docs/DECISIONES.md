@@ -770,3 +770,20 @@ $244.000 y le faltan $3.000, que para JOSE JOSE LARA, que no pagó nada. Medido 
 **De paso:** el aviso «N en la cola de recolección» leía la fila de estados por su lugar (`estadosR[3]`); con la
 fila nueva habría dicho 83 en vez de 37. Ahora la busca por su nombre.
 **Reemplaza a:** la mora sin partir del 29-sep (`b1c2e53`), solo en cuanto a mostrar si pagó algo.
+
+### D-049 · 10-oct-2026 · El acuerdo se cobra antes que las deudas sueltas (solo pagos nuevos)
+**Decidió:** el dueño: *"ya para todos el reparto de un pago debe ser primero a la semana, después a lo que pactó
+de convenio para que queden juntos y ya de último las deudas y demás que ya definimos"*. Escogió **dejar lo ya
+repartido como está** y cambiar solo los pagos de ahora en adelante (se le mostró qué pasaría rehaciendo todo:
+semanas, ahorro, recibos, nómina y liquidaciones cerradas dejarían de cuadrar; lo que debe cada uno no cambia).
+**Qué se decidió:** orden de cada pago = semana → su cuota del acuerdo (D-022, ya así desde el 24-sep) → **las
+cuotas del acuerdo que quedaron atrasadas** → deudas sueltas (multa → lavada → antiguas) → saldo a favor. Con la
+moto retenida, la multa y la lavada siguen primero. También en las semanas de más (D-026 no había fijado el orden).
+**El caso que lo destapó:** JUAN CARLOS LEAL (YAL68H): 8 cuotas del acuerdo atrás porque de agosto al 25-sep su
+plata se repartió con la regla vieja (todas las semanas primero); desde el 30-sep ya va semana + cuota. El dueño:
+lo de él se deja así (se le va a rodar o resolver aparte). Medido el 10-oct: 136 con acuerdo, 43 con cuotas atrás
+sin su semana, 4 de ellos con deudas sueltas (JONATHAN KENDRI, LIBINTO PATERNINA, JARLIN ORTIZ, OSVALDO MONCARIS).
+**Dónde vive:** mig 197 (parche de la función viva `aplicar_pago_confirmado`, con prueba de JONATHAN adentro) ·
+espejo `repartirPagoV2` en `src/utils/repartoPago.ts` (+3 pruebas, 3 actualizadas).
+**Reemplaza a:** el orden «cajas → deuda → convenio» de la especificación del 11-jul y el de D-022 (deudas antes
+del acuerdo atrasado).

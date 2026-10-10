@@ -41,7 +41,7 @@ function daniel(over: Partial<Parameters<typeof repartirPagoV2>[0]> = {}) {
 }
 
 describe("orden del reparto — la columna vertebral, esto NO puede cambiar", () => {
-  it("prorrateo → cajas → deudas → convenio → saldo", () => {
+  it("prorrateo → cajas → acuerdo → deudas → saldo (D-049: el acuerdo antes que las deudas)", () => {
     const r = repartirPagoV2(daniel({
       monto: 1_000_000,
       prorrateoTotal: 50_000, prorrateoPagado: 0, prorrateoAhorro: 6_000,
@@ -50,6 +50,7 @@ describe("orden del reparto — la columna vertebral, esto NO puede cambiar", ()
     }));
     expect(r.prorrateo).toBe(50_000);
     expect(r.tarifa).toBe(390_000);              // 2 cajas
+    expect(r.convenio).toBe(35_000);             // la cuota exigida que le faltaba
     expect(r.deuda).toBe(100_000);
     expect(r.prorrateo + r.tarifa + r.deuda + r.convenio + r.saldo).toBe(1_000_000);
   });
@@ -60,11 +61,37 @@ describe("orden del reparto — la columna vertebral, esto NO puede cambiar", ()
     expect(r.convenio).toBe(0);
   });
 
-  it("la deuda se cobra ANTES que el convenio", () => {
+  // D-049 (10-oct-2026): hasta ese día la deuda suelta iba ANTES que el acuerdo (deuda 80.000 ·
+  // acuerdo 25.000). Regla del dueño: "primero a la semana, después a lo que pactó de convenio
+  // para que queden juntos, y de último las deudas".
+  it("el acuerdo exigido se cobra ANTES que la deuda suelta (D-049)", () => {
     const r = repartirPagoV2(daniel({ monto: 300_000, deudas: [{ montoPendiente: 80_000 }] }));
     expect(r.tarifa).toBe(195_000);
-    expect(r.deuda).toBe(80_000);
-    expect(r.convenio).toBe(25_000);
+    expect(r.convenio).toBe(35_000);
+    expect(r.deuda).toBe(70_000);
+  });
+
+  it("JONATHAN KENDRI (DPU30I): semanas al día, $38.000 del acuerdo atrasados y un repuesto de $110.000 — paga $100.000", () => {
+    const r = repartirPagoV2({
+      monto: 100_000, cajaValor: 202_000, cajaAhorro: 26_000, cajasPagadas: 28, cajaActualPagado: 0,
+      totalCajas: 104, cajasExigidas: 28, convenioPendiente: 300_000, convenioExigido: 270_000,
+      convenioAbonado: 232_000, convenioCuotaPeriodo: 58_000,
+      deudas: [{ montoPendiente: 110_000 }],
+    });
+    expect(r.convenio).toBe(38_000);   // el acuerdo queda al día
+    expect(r.deuda).toBe(62_000);      // y el resto al repuesto
+    expect(r.tarifa).toBe(0);
+    expect(r.saldo).toBe(0);
+  });
+
+  it("con la moto retenida, la multa sigue de PRIMERAS; después el acuerdo (D-049 no cambia el paso 0)", () => {
+    const r = repartirPagoV2(daniel({
+      monto: 50_000, contratoSuspendido: true, cajasExigidas: 56,
+      deudas: [{ montoPendiente: 30_000, esMulta: true }, { montoPendiente: 110_000 }],
+    }));
+    expect(r.deuda).toBe(30_000);      // solo la multa
+    expect(r.convenio).toBe(20_000);   // de los $35.000 exigidos del acuerdo
+    expect(r.deudasRestantes.map(d => d.montoPendiente)).toEqual([0, 110_000]);
   });
 
   it("con el contrato suspendido, la multa de recolección va de PRIMERAS", () => {
@@ -279,9 +306,9 @@ describe("la lavada (mig 123) — detrás de la multa, antes de las deudas vieja
     expect(separarMultaYLavada(0, 20_000, 15_000)).toEqual({ multa: 0, lavada: 0 });
   });
 
-  it("sin lavada de por medio, el reparto es exactamente el de antes", () => {
+  it("sin lavada de por medio, el reparto es el de siempre (desde D-049, el acuerdo antes que la deuda)", () => {
     const r = repartirPagoV2(daniel({ monto: 300_000, deudas: [{ montoPendiente: 80_000 }] }));
-    expect(r).toMatchObject({ tarifa: 195_000, deuda: 80_000, convenio: 25_000 });
+    expect(r).toMatchObject({ tarifa: 195_000, convenio: 35_000, deuda: 70_000 });
   });
 });
 
@@ -538,7 +565,7 @@ describe("✅ D-022: el conjunto semana + cuota del acuerdo", () => {
 // D-026 (25-sep-2026) — NADIE TERMINA DEBIENDO
 //
 // Regla del dueño: quien llena su última semana y todavía debe, sigue pagando su semana normal y
-// TODO va a lo que debe (primero deudas, después acuerdo) hasta quedar en $0. El freno de la
+// TODO va a lo que debe (acuerdo + deudas; desde D-049 primero el acuerdo) hasta quedar en $0. El freno de la
 // mig 119 (el acuerdo solo recibe lo exigido a la fecha) tiene sentido mientras hay semanas que
 // pagar; cuando ya no hay, frenar al acuerdo manda la plata a saldo a favor y el cliente nunca
 // termina.
@@ -579,11 +606,20 @@ describe("D-026: con TODAS las semanas llenas, el acuerdo recibe todo lo que le 
     expect(r.saldo).toBe(214_000);
   });
 
-  it("primero las deudas, después el acuerdo — el orden de siempre", () => {
+  // Hasta D-049 aquí iban primero las deudas (deuda 30.000 · acuerdo 205.000). D-026 no fijó el
+  // orden ("todo va a lo que debe: acuerdo + deudas"); D-049 sí: el acuerdo primero, para todos.
+  it("también en las semanas de más: primero el acuerdo, después la deuda suelta (D-049)", () => {
     const r = repartirPagoV2(yesid({ deudas: [{ montoPendiente: 30_000, esMulta: true }] }));
-    expect(r.deuda).toBe(30_000);
-    expect(r.convenio).toBe(205_000);
+    expect(r.convenio).toBe(235_000);
+    expect(r.deuda).toBe(0);
     expect(r.saldo).toBe(0);
+  });
+
+  it("y cuando el acuerdo se termina, lo que sigue va a la deuda suelta", () => {
+    const r = repartirPagoV2(yesid({ convenioPendiente: 21_000, convenioAbonado: 535_000, convenioExigido: 420_000, deudas: [{ montoPendiente: 30_000, esMulta: true }] }));
+    expect(r.convenio).toBe(21_000);
+    expect(r.deuda).toBe(30_000);
+    expect(r.saldo).toBe(184_000);
   });
 
   it("el pago que llena la ÚLTIMA semana ya manda lo que sobre al acuerdo, sin freno", () => {

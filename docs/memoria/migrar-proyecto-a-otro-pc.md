@@ -1,14 +1,27 @@
 ---
 name: migrar-proyecto-a-otro-pc
-description: "Trabajar en dos PC con el disco PY_ofc (D:). Un solo script multi-proyecto (sincronizar.ps1 traer/llevar) y dos .bat de doble clic en el disco. Syncthing se probó y FALLÓ. Reglas: Claude cerrado, usuario Windows USER, nunca Claude en dos PC a la vez."
+description: "Desde el 22-oct-2026 MotoGestión se trabaja DIRECTO en el disco PY_ofc = P: (P:\\Proyectos\\gps-satelital), con su memoria, claude-mem y mempalace adentro. El sistema viejo TRAER/LLEVAR (15-sep) quedó archivado. Syncthing FALLÓ. Nunca Claude en dos PC a la vez."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 4d849eb2-8be4-4b25-abd8-2432e669ac90
-  modified: 2026-09-15T17:38:14.484Z
+  modified: 2026-10-22T22:55:53.310Z
 ---
 
-# Trabajar en dos PC con un disco (15-sep-2026)
+## 22-oct-2026 — CAMBIÓ TODO: ahora se trabaja DIRECTO en el disco (P:)
+
+El sistema TRAER/LLEVAR de abajo quedó archivado (`P:\_archivo\TRABAJO-EN-DOS-PC`). Desde el 21-oct el
+disco `PY_ofc` es **P:** en todos los PC y los proyectos viven en `P:\Proyectos\<proyecto>`, cada uno con
+su memoria (`memoria-claude\`, vía `autoMemoryDirectory`), su claude-mem y su mempalace adentro.
+Manual: `P:\LEEME-PRIMERO.md` · bitácora: `P:\NOTAS-DEL-DISCO.md` (LEERLA al empezar) · reglas de Fredy
+para todos los proyectos: `P:\CLAUDE.md`. ZALA ya vivía allí. **MotoGestión se copió a
+`P:\Proyectos\gps-satelital` el 22-oct** desde este PC (DESKTOP-TVN22VH). La carpeta
+`C:\Users\USER\Documents\GitHub\gps-satelital` queda como copia vieja: renombrarla «NO USAR - copia
+vieja» con Claude cerrado y con el sí del dueño, cuando el disco esté comprobado.
+Lección de ese día: los heredoc de Git Bash se comen las barras invertidas — rutas de Windows con `\`
+se escriben con Edit/Write, nunca con heredoc ni sed.
+
+# (Historia) Trabajar en dos PC con un disco (15-sep-2026)
 
 **El disco:** `PY_ofc` = **D:**, 930 GB libres. Este PC se llama `DESKTOP-TVN22VH`.
 

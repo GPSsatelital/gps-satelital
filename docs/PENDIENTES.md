@@ -10,6 +10,46 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **10-oct-2026**.
 
+> 🔴 **HOY 22-oct — OMAR AGUSTIN RODRIGUEZ BUSTO (RMM66H · COSTA): construir «rodar TODO» y que firme el 23-oct.**
+> Decidido con el dueño el 22-oct: «vamos a rodar todo hasta lo que no se ha vencido del convenio, todas las
+> deudas son todas» · recargo «1» = sobre todo, con la regla de siempre · «la huella siempre debe ir» · «se le va
+> a entregar la moto, dejamos todo listo hoy y que mañana firme todo». La moto se le entrega el 22-oct (multa y
+> lavada pagas ese día); **que nadie le registre pagos hasta el rodado**.
+> - **Cifras del 22-oct (después de sus pagos de $88.000 y $200.000):** semanas $537.000 (5-oct: falta $147.000 ·
+>   12 y 19-oct: $390.000) + acuerdo #1 le falta $2.527.000 (Excel viejo $2.507.000 + semana 51 $185.000 − 3 cuotas
+>   pagas $165.000) = **$3.064.000** → 15 semanas de $195.000 ($2.925.000), sobran $139.000 que paga ese día →
+>   al final paga **21** ($4.095.000) → el acuerdo se cierra → desde el lunes paga solo $195.000.
+> - **Construir (💻):** (1) el rodado suma lo que le falta al acuerdo entero (solo si lo que financia es tiempo:
+>   semanas y deudas de migración/tarifa) y lo combina con las semanas en un solo conjunto; (2) el acuerdo se
+>   cierra sin que se vuelva a prender (el `cumplido` vuelve a `activo` con cada pago: NO usarlo); revisar su
+>   ahorro de semanas financiadas, la nómina (cuotas), la liquidación y ZALA/diccionario (estado nuevo);
+>   (3) el mínimo de $700.000 se mide con TODO lo que debe; (4) **la huella del registro en el documento del
+>   rodado** (hoy solo lleva la firma dibujada; los acuerdos sí la llevan) y sin huella no deja firmar; la
+>   acompañante es opcional; (5) probarlo con el caso de Omar antes de usarlo.
+> - Funciones vivas a leer con `pg_get_functiondef` antes de tocar: `_calcular_rodado_por_deuda`,
+>   `aplicar_rodado_por_deuda`, `amortizar_convenio`, el disparador que pasa `cumplido`→`activo`,
+>   `convenio_acredita_ahorro`, `rodado_pendiente_liquidacion`.
+> - **YA MEDIDO en la base viva (22-oct, el dueño corrió las consultas; se paró para migrar el proyecto al disco):**
+>   · `convenios.estado` NO tiene regla de valores → `rodado` entra sin tocar ninguna regla. En uso: activo 158 ·
+>     cumplido 40 · incumplido 22. · `convenio_acredita_ahorro` YA NO EXISTE en la base (ni su disparador).
+>   · **Un acuerdo `rodado` no lo cobra ninguna pieza:** el motor elige el acuerdo con `estado in ('activo','incumplido')`
+>     y el que pasa `cumplido`→`activo` mira solo `('activo','cumplido','incumplido')`; `amortizar_convenio` y
+>     `convenio_amortiza_deudas` solo `activo`; `marcar_convenios_vencidos` solo `activo`; `cerrar_liquidacion`
+>     `('activo','incumplido')`; `zala.cliente`, `zala.convenios` y `public.pendientes` `('activo','incumplido')`;
+>     `useLiquidaciones` y `elegirConvenioPorCobrar` igual. `trg_convenio_incumplido_devuelve` solo actúa de
+>     incumplido→activo. Las funciones vivas del rodado son IGUALES a la mig 191 (no hay otra que las redefina).
+>   · **Diseño acordado para el cálculo «todo»** (`p_todo boolean default false`; con false debe dar EXACTO lo de hoy,
+>     probarlo comparando contrato por contrato): semanas del contrato = `ceil(cuota_falta/valor)` — se corren
+>     completas, la parcial también, y lo ya abonado de ella pasa a la semana siguiente; deudas = lo que le falta al
+>     acuerdo (`deuda_total − abonado desde la firma`) + deudas de tiempo sueltas → `floor(/valor)` semanas al final;
+>     lo que sobra queda como deuda `pendiente` (la última deuda del acuerdo, o una nueva) que se paga ya; recargo
+>     sobre el total; solo si la partitura es tiempo (semanas + deudas `migracion`/`tarifa_atrasada`; un `ajuste` como
+>     la base incompleta NO). Cifras de Omar con este diseño: 3 semanas + 12 del acuerdo = 15 → paga 21 al final;
+>     hoy paga $187.000 (lo del acuerdo que no completa semana); el lunes 26-oct $147.000 (su semana menos los
+>     $48.000 que ya tenía abonados); después $195.000. Mismo total hasta el lunes que lo dicho al dueño ($334.000):
+>     **decírselo así antes de firmar.** Firmas y renombres: drop+create de `calcular_`/`aplicar_rodado_por_deuda` con
+>     el parámetro nuevo al final (PostgREST resuelve por nombre: la app vieja sigue andando).
+>
 > ▶️ **AL ARRANCAR (10-oct, tarde): dos preguntas esperan al dueño, en este orden.**
 > 1. **Candados contra repetir acciones (pedido del dueño: «todo botón debe tener bloqueado el doble clic»).**
 >    Plan presentado, espera «1» (mida primero y traiga la lista) o «2»: (a) en la BASE, para todo lo que mueve
@@ -110,6 +150,12 @@ Lo que está afectando cifras reales de clientes en este momento.
   como índice único hay que borrar antes los 6 duplicados de «cobrar ahora» (inofensivos, medido el 9-oct).
   Corregir = invertir lo que hizo la 2ª vez (exoneradas, fecha de fin, acuerdo de JORGE) + borrar el acuerdo
   repetido, con rastro. Espera la decisión (arriba).
+- [ ] 🧑 **(Oficina) ALVARO VARGAS PINTO (RMM70H · COSTA): ¿la deuda del Excel viejo era $240.000 o $285.000?**
+  (revisado el 21-oct; el dueño: «déjalo para confirmarlo con el Excel»). Sus 16 pagos cuadran ($2.555.000 =
+  $2.330.000 a semanas + $225.000 a deudas; saldo a favor $0; ahorro $302.000). Lo único sin confirmar: tiene
+  DOS deudas de migración — $45.000 «MIGRACIÓN EXCEL VIEJO» (30-jul, pagada) y «EXCEL VIEJO» (31-jul, nació en
+  $60.000 y el dueño la subió a $240.000 a los 5 min; le quedan $60.000). Si en el Excel eran $240.000 que ya
+  incluían los $45.000, se le cobraron $45.000 dos veces → bajar la segunda a $195.000 (con rastro).
 - [ ] **(Oficina) ANDRÉS BALLESTAS: que firme la LIQ-0032** (cerrada SIN firma el 6-oct, en $0). Cuando
   venga: Liquidaciones → LIQ-0032 → «Firmar en pantalla». Su moto nueva lleva de base los $150.000 que
   dio el 6-oct (están en su perfil como ingreso inicial). Su transferencia de $35.000 del 6-oct quedó
@@ -137,6 +183,16 @@ Lo que está afectando cifras reales de clientes en este momento.
   Y su ahorro no acumula desde el 19-ago. Decisión del dueño: **se arregla a mano cuando se
   migre a semanal**. ⚠️ Si se migra con el ahorro que muestra la pantalla, el error viaja al
   contrato nuevo.
+  **22-oct, la cuenta completa (día por día, del 28-jul al 22-oct, el día de entrega no se cobra):** 87 días ·
+  tarifa $2.193.000 · entregó $1.685.000 ($100.000 al registrarse + $1.585.000 en 26 pagos, el último el
+  17-sep) → $1.184.000 a tarifa (cubre hasta el 11-sep) y ahorro $501.000 de $510.000 (faltan $9.000) ·
+  **debe $1.009.000** (12-sep al 22-oct; $1.036.000 si se cobra el día de entrega). Los $297.000 del «saldo
+  a favor» = $289.000 de tarifa + $8.000 de ahorro; el registro del 26-sep los «aplicó» sin ponerlos en
+  ningún lado. Plan presentado: (1) SQL que los pone en su lugar y borra el del 26-sep (ahorro 493→501);
+  (2) decidir cómo paga los $1.009.000 — OJO: cerrar el diario con esa deuda adentro da −$508.000 y lo manda
+  a lista negra; opciones: los paga · acuerdo en el contrato nuevo (cerrar el diario sin cargarla) ·
+  descontarla del ahorro (no recomendado); (3) cambio a semanal con «Sigue con la empresa» (semana
+  $202.000, puede seguir con la RLT70H). **El dueño: «ya después miramos ese tema» (22-oct).**
 
 - [ ] 💻 **¿Le pasa a los demás diarios?** No se midió. Consulta lista en la sesión del 19-sep:
   comparar `valor` contra `aplicado_tarifa + aplicado_ahorro` en todos los contratos diarios.

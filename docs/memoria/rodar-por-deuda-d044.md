@@ -42,3 +42,10 @@ PENDIENTES → P1 → RODAR POR DEUDA. Lo que medí y no hay que volver a buscar
 - Trampa de la prueba: el `numero` por defecto usa `nextval`, que NO se deshace → usar 'ROD-PRUEBA'.
 - `comoVa()` de ReportesView también alimenta el informe de socios: la marca saldría ahí (declararlo). Ver [[capacitacion-7oct]] ·
 [[permiso-rodar-tiempo]] · [[zala-vitrina-lectura]] · [[feedback-preguntas-sin-ventana]].
+
+**22-oct — primer caso real: OMAR AGUSTIN (RMM66H). El dueño cambió la regla: rodar TODO, incluido el acuerdo
+entero (lo no vencido también), recargo sobre todo (15→21), huella obligatoria en el documento.** Hay que
+CONSTRUIRLO (el botón de hoy solo rueda semanas y corre las cuotas atrasadas del acuerdo). Firma el 23-oct.
+Plan y cifras en PENDIENTES (arriba, bloque rojo del 22-oct). Trampas vistas: el rodado exige debe_hoy > $700.000
+y Omar quedó en $702.000 (un pago chico lo bloqueaba: con la regla nueva se mide con todo); `cumplido` vuelve a
+`activo` con cada pago (no usarlo para cerrar el acuerdo); el documento del rodado no imprimía la huella.

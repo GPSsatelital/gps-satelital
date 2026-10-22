@@ -787,3 +787,28 @@ sin su semana, 4 de ellos con deudas sueltas (JONATHAN KENDRI, LIBINTO PATERNINA
 espejo `repartirPagoV2` en `src/utils/repartoPago.ts` (+3 pruebas, 3 actualizadas).
 **Reemplaza a:** el orden «cajas → deuda → convenio» de la especificación del 11-jul y el de D-022 (deudas antes
 del acuerdo atrasado).
+
+### D-050 · 22-oct-2026 · Rodar por deuda: se puede rodar TODO, también el acuerdo entero (sin construir)
+**Decidió:** el dueño, con el caso de OMAR AGUSTIN RODRIGUEZ BUSTO (RMM66H): *"vamos a rodar todo hasta lo que no
+se ha vencido del convenio, todas las deudas son todas"* · recargo: «1» = sobre todo, con la regla de siempre ·
+*"la huella siempre debe ir"*.
+**Qué se decidió:** además del rodado de D-044 (semanas atrasadas + cuotas atrasadas del acuerdo corridas al final
+del mismo acuerdo), se puede rodar en un solo conjunto **lo que le falta al acuerdo completo** (también las cuotas
+que no han vencido): el acuerdo se cierra y todo pasa a semanas al final del contrato, con el recargo de siempre
+sobre el total. El documento del rodado lleva **la huella** del registro del cliente (sin huella no se firma); la
+firma del acompañante es opcional. Con Omar (cifras del 22-oct): $3.064.000 → 15 semanas, al final paga 21.
+**Por qué:** que al cliente le quede solo su semana desde el lunes siguiente, sin la cuota del acuerdo encima.
+**Estado:** NO construido (se paró para migrar el proyecto al disco). Diseño y lo medido en `docs/PENDIENTES.md`
+(bloque rojo de arriba). Omar firma cuando esté listo.
+**Reemplaza a:** D-044 punto 5 (las cuotas del acuerdo se corrían al final del mismo acuerdo), solo cuando se
+escoge rodar todo.
+
+### D-051 · 21/22-oct-2026 · Las cuentas para pagar salen de MotoGestión; COSTA solo el Nequi
+**Decidió:** el dueño: *"coloca que solo mande el nequi de costa, que la cuenta bancolombia no la mande"*,
+*"solo muéstrale lo que te digo"* y *"terminemos lo de las cuentas para que ZALA quede bien"*.
+**Qué se decidió:** ZALA lee las cuentas de `zala.cuentas_pago` (solo las encendidas en Configuración → Cuentas
+bancarias; apagar una la saca al instante) y no de una lista propia. COSTA: solo Nequi 3128317132 (Yeiner Acosta);
+la Bancolombia 78400006116 queda apagada.
+**Dónde vive:** mig 200 · `docs/ZALA-CUENTAS-PARA-PAGAR.md` (los dos cambios que faltan del lado de ZALA: que su
+protección deje pasar los `numeros` de la vista y que conteste con ella). Escribir el Nequi con un espacio no
+sirvió (probado con JOHAN ANDRES PEREZ el 21-oct).

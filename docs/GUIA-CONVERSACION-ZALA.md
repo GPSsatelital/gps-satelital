@@ -97,6 +97,10 @@ El caso más frecuente. Los que trabajan con aplicaciones cobran los martes.
 
 ### 3.2 "Mándeme el Nequi / las cuentas"
 > Plantilla `cuentas_pago` con las cuentas **del portafolio de su moto** (`grupo`), nunca las de otro.
+> Las cuentas salen de `zala.cuentas_pago` (mig 200): `{cuentas}` = `cuentas_texto` de la fila de
+> su `grupo`. **Nunca de una lista propia de ZALA**: si en MotoGestión apagan una cuenta, deja de
+> existir para el cliente en ese instante. Si su grupo no tiene fila, no tiene cuenta: que llame a
+> la oficina.
 - Cierra con: "Cuando transfiera, envíenos la foto del comprobante con la placa y su nombre."
 
 ### 3.3 "¿Puedo pagar mitad Nequi y mitad efectivo?"
@@ -212,7 +216,7 @@ momento exacto), y lo motiva a ponerse al día *para seguir rodando tranquilo*.
 | Si le puede escribir y si va en la tanda | `zala_puede_escribir`, `no_escribir_porque`, `cobro_automatico` |
 | Qué mensaje le toca hoy | `plantilla_hoy` → `zala.plantillas` |
 | A quién escalar / reenviar | `encargado`, `encargado_id`, `encargado_whatsapp` |
-| Las cuentas de pago | por `grupo` (portafolio de SU moto) |
+| Las cuentas de pago | `zala.cuentas_pago` por `grupo` (portafolio de SU moto): `cuentas_texto` |
 | Próximo pago | `proximo_pago_fecha`, `proximo_pago_monto` |
 | Último pago registrado | `ultimo_pago_fecha`, `ultimo_pago_valor`, `ultimo_pago_metodo` |
 | Si ya tiene plazo o promesa | `plazo_extra_vigente`, `plazo_extra_hasta`, `promesa_pago_fecha` |

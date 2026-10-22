@@ -468,3 +468,25 @@ poder partirse, las etiquetas le quitaron todo el espacio y quedó una letra por
 **Quién lo cazó:** yo, mirando la pantalla antes de subir. No llegó a producción.
 **Qué lo evita ahora:** el nombre tiene ancho mínimo (`flex: 1 1 200px`) y las etiquetas bajan. Regla: cuando un
 texto puede partirse, revisar qué más comparte su renglón; un `flex: 1` con ancho base 0 se encoge hasta nada.
+
+### Le dije al dueño que pagar antes del rodado «dejaba todo igual» (22-oct)
+**Lo que dije:** que si OMAR AGUSTIN pagaba los $147.000 antes de rodar, el rodado quedaba igual.
+**Lo que era verdad:** el rodado exige deber más de $700.000 y él debía $702.000: cualquier pago antes lo bloqueaba.
+**Por qué me equivoqué:** miré la cuenta de semanas y no las condiciones de entrada del rodado.
+**Quién lo cazó:** yo, al revisar el flujo completo antes de que fuera al patio. Se lo corregí antes de que pasara.
+**Qué lo evita ahora:** antes de dar instrucciones de un proceso, revisar sus condiciones de entrada con las cifras
+del día (en el rodado «todo», D-050, el mínimo se mide con todo lo que debe).
+
+### Afirmé dos cosas de ZALA sin medirlas (16-oct)
+**Lo que dije:** que el usuario de análisis podía leer la tabla de cuentas (lo saqué del archivo de la mig 100) y
+que la vitrina era lo único que ZALA podía ver (revisé tablas y vistas, no funciones).
+**Quién lo cazó:** el dueño: «¿estás seguro de eso?». Se lo separé en medido / deducido / sin medir y le pasé la
+consulta para cerrarlo.
+**Qué lo evita ahora:** la regla de siempre, también para permisos: la base VIVA, no el archivo.
+
+### Los heredoc de Git Bash se comieron las barras invertidas otra vez (22-oct)
+**Lo que pasó:** al escribir rutas de Windows (`P:\Proyectos\...`) con heredoc y sed, quedaron sin barras; y dos
+scripts de Python dentro de un heredoc no corrieron por lo mismo.
+**Quién lo cazó:** yo, al ver la salida. Se rehizo con Edit.
+**Qué lo evita ahora:** ya estaba escrito en `P:\NOTAS-DEL-DISCO.md`: rutas de Windows solo con Edit/Write, nunca
+con heredoc ni sed.

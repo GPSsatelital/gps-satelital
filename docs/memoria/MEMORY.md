@@ -8,7 +8,11 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (10-oct, tarde)
+## ▶️ DÓNDE RETOMAR (22-oct)
+
+🔴 **22-oct: construir «rodar TODO» (acuerdo entero + huella) para OMAR AGUSTIN RMM66H, que firma el 23-oct** → PENDIENTES arriba y [[rodar-por-deuda-d044]]. Hechos 21-22 oct: DQG94I corregida (mig 199) · zala.cuentas_pago (mig 200; falta el cambio del lado de ZALA, docs/ZALA-CUENTAS-PARA-PAGAR.md) · RMM70H por confirmar con el Excel.
+
+## ▶️ Antes (10-oct, tarde)
 
 ▶️ Arriba de `docs/PENDIENTES.md`, **dos preguntas esperan al dueño**: **1) candados contra repetir acciones** (su
 pedido: «todo botón bloqueado contra doble clic»; plan: candado en la BASE para lo que mueve plata + un solo botón
@@ -110,7 +114,7 @@ Parcial / No pagó (7ce31c0, D-048, mig 196). Rodar validado de punta a punta (6
 
 - **[Manual de operación en PDF](manual-operacion-pdf.md)** (el PDF NO se versiona: lleva datos de clientes) · **[Flujo diario de cada persona](flujo-diario-de-cada-persona.md)** · **[Capacitación v2](capacitacion-material-v2.md)**.
 - **[PLAN sistema de diseño](plan-sistema-diseno.md)** · **[Rediseño visual — retomar F3 Cartera](rediseno-visual-f1.md)** · **[Compactar densidad móvil](compactar-densidad-movil.md)** · **[Brief de marca/logo](../../../../Documents/GitHub/gps-satelital/docs/BRIEF-DISENO.md)** (falta logo).
-- 🔴 **[Trabajar en dos PC con un disco](migrar-proyecto-a-otro-pc.md)** — disco `PY_ofc` (D:) con `1-TRAER.bat` / `2-LLEVAR.bat`. **Syncthing se probó y FALLÓ.** Nunca Claude en los dos PC a la vez.
+- 🔴 **[El disco P: — se trabaja DIRECTO en él](migrar-proyecto-a-otro-pc.md)** — desde el 22-oct MotoGestión vive en `P:\Proyectos\gps-satelital` (TRAER/LLEVAR archivado). Leer `P:\NOTAS-DEL-DISCO.md` al empezar. Syncthing FALLÓ. Nunca Claude en dos PC a la vez.
 - 🆕 **[Consultar la base desde el navegador](consultar-base-desde-el-navegador.md)** — medir y probar funciones reales con la sesión del dueño, sin pasarle consultas. Con sus 3 trampas.
 - **[Pruebas del kit de diseño: qué corre y qué no](kit-diseno-pruebas-estado.md)** (25-sep) — kit 2.4.0, 25/25 real; Playwright en ~/scripts · **[Formatos .docx](plantillas-docx-generador.md)** · ✅ **[Correo Zoho](zoho-correo-corporativo.md)** (`mx.zoho.com`, no `mx1`) · 🔴 **[Browser pane bloqueado por z.ai](verificar-ui-sin-browser-pane.md)** · **[Huellero DigitalPersona](estado-huellero-digitalpersona.md)** · **[Hardware de oficina](decisiones-hardware-oficina.md)** · **[Herramientas por PC](herramientas-por-pc-paridad.md)**.
 

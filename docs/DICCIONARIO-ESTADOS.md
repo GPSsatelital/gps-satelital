@@ -347,6 +347,7 @@ ya cocinado y en palabras del negocio. El catálogo columna por columna vive en 
 | `zala.plantillas` (mig 134) | mensaje | `clave` → `plantilla_meta` vigente en Meta, `variables` en orden para `{{1}}…{{n}}`, `texto` con comodines (para la ventana de 24 h), `activa`. El código nunca nombra una plantilla: la base traduce |
 | `zala.convenios` | acuerdo vigente o incumplido | cuota, total pactado, abonado (solo pagos desde la firma de ESE acuerdo — mig 132), `exigido_a_hoy`, `falta_a_hoy`, próxima cuota, semanas cubiertas, deudas que entraron |
 | `zala.deudas` | deuda pendiente o en convenio | `que_es` en palabras, `falta`, `estado_texto` |
+| `zala.cuentas_pago` (mig 200) | grupo con cuentas encendidas | `cuentas_texto` (el mismo {cuentas} que arma la app con `textoCuentas()`: un renglón, «A y B»), `cuentas` (banco, tipo, número, titular) y `numeros` (solo dígitos). **Solo las cuentas encendidas** en Configuración → Cuentas bancarias: apagar una la saca al instante. Los `numeros` son de la empresa: la protección de ZALA contra celulares en las variables debe dejarlos pasar (un Nequi es un celular; desde el 15-sep fallaba todo mensaje de cuentas con un solo Nequi). Grupo sin cuentas = no sale (hoy USADAS) |
 | `zala.diccionario` | columna | `significado`, `valores`, **`zala_lo_dice`** (sí / no / solo si pregunta / por confirmar), `confirmado_por_dueno` |
 
 **Cómo se calcula:** las funciones `zala.*` son el espejo SQL de `cicloPago.ts` (`loQueDebe`,

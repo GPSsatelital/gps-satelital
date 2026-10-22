@@ -40,3 +40,5 @@ mempalace/
 .claude/skills/
 # Ayudante de una sola vez para copiar el mempalace del PC de la oficina (22-oct)
 COPIAR-MEMPALACE-UNA-VEZ.bat
+# Las conversaciones con Claude del PC de la oficina (22-oct): llevan datos de clientes y pesan 200 MB
+conversaciones-pc-oficina/

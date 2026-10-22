@@ -15,9 +15,14 @@
 import { readdirSync, mkdirSync, copyFileSync, statSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+// Desde el 22-oct-2026 el proyecto vive en el disco P: y Claude guarda la memoria DENTRO del
+// proyecto, en `memoria-claude/` (autoMemoryDirectory de .claude/settings.local.json). Si esa
+// carpeta existe, es la de verdad; la de `~/.claude/projects/...` es la del PC viejo.
+const EN_EL_PROYECTO = resolve(import.meta.dirname, "..", "..", "memoria-claude");
 const ORIGEN = process.env.CLAUDE_MEMORIA_DIR
-  ?? join(process.env.USERPROFILE ?? process.env.HOME ?? "",
-          ".claude", "projects", "C--Users-USER-Documents-GitHub-gps-satelital", "memory");
+  ?? (existsSync(EN_EL_PROYECTO) ? EN_EL_PROYECTO
+    : join(process.env.USERPROFILE ?? process.env.HOME ?? "",
+           ".claude", "projects", "C--Users-USER-Documents-GitHub-gps-satelital", "memory"));
 const DESTINO = resolve(import.meta.dirname, "..", "..", "docs", "memoria");
 
 if (!existsSync(ORIGEN)) {

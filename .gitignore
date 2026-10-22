@@ -30,3 +30,13 @@ docs/capacitacion/powerpoint/
 
 # Estados de cuenta para mostrarle a un cliente: llevan su cédula y sus pagos (8-oct-2026)
 docs/estados-de-cuenta/
+
+# En el disco P: (22-oct-2026): los programas propios del proyecto y la memoria de
+# claude-mem y MemPalace guardan lo hablado y pesan: no se versionan (igual que en ZALA).
+herramientas/
+claude-mem/
+mempalace/
+# Las 20 herramientas de diseño viven en el proyecto, pero son programas (como en ZALA)
+.claude/skills/
+# Ayudante de una sola vez para copiar el mempalace del PC de la oficina (22-oct)
+COPIAR-MEMPALACE-UNA-VEZ.bat

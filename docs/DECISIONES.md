@@ -859,4 +859,5 @@ administrador; (2) una referencia de transferencia, un solo pago (se RECHAZA, co
 referencias nunca hubo un uso legítimo doble); (3) después: recepción, abonos a la base, liquidación y deudas a
 mano; (4) un solo botón de guardar para toda la app que dice «Guardando…» y se bloquea. Las copias que ya existen
 no se tocan solas: las decide la oficina.
-**Dónde vive:** mig 203 (`tiempo_guardado_una_vez`, `referencia_una_vez`, con la prueba adentro).
+**Dónde vive:** mig 203 (`tiempo_guardado_una_vez`, `referencia_una_vez`) y mig 204 (`recepcion_una_vez` 30 min,
+`abono_base_una_vez` 10 min, `liquidacion_una_abierta`, `deuda_una_vez` 10 min), cada una con su prueba adentro.

@@ -379,8 +379,8 @@ Lo que está afectando cifras reales de clientes en este momento.
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
 - [ ] 💻 🔴 **CANDADOS CONTRA REPETIR ACCIONES (pedido del dueño, 10-oct) — EN CURSO (D-054).** ✅ 23-oct mig 203:
-  tiempo guardado y referencia de transferencia. 🔲 Falta: recepción, abonos a la base, liquidación, deudas a mano
-  y el botón único «Guardando…». «A todos los botones actuales y los que
+  tiempo guardado y referencia de transferencia. ✅ mig 204: recepción (30 min), abono a la base (10 min), una
+  liquidación abierta por contrato, deuda (10 min). 🔲 Falta: el molde del botón «Guardando…» en toda la app. «A todos los botones actuales y los que
   vamos creando, una regla: bloqueado el doble clic y que las peticiones no se envíen dos veces.» La regla de
   pantalla ya existía (CLAUDE.md, anti-doble-clic) pero se aplica botón por botón. Plan presentado (espera su
   «1»): **base** — candado de «una sola vez» en lo que mueve plata o semanas (medir primero cuáles acciones no

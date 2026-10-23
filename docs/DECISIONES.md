@@ -846,3 +846,17 @@ activar el contrato; sin acta guardada el contrato no se activa. Solo entregas n
 **Dónde vive:** mig 202 (`contratos.acta_entrega_pdf_url`) · `generarHTMLActaEntrega` y `condicionesActaEntrega`
 en `useDocumentos.ts` · `WizardContrato` paso 7 · Documentos del contrato, ficha del cliente y Reportes → Entregas
 (chip que no cuenta para «documentos completos») · pruebas en `actaEntrega.test.ts`.
+
+### D-054 · 23-oct-2026 · Candados contra repetir: en la base Y en el botón
+**Decidió:** el dueño (pedido del 10-oct: *"todo botón bloqueado contra doble clic y que las peticiones no se envíen
+dos veces"*); el 23-oct propuso *"que los botones digan cargando mientras hace el proceso"* y escogió «1»: las dos cosas.
+**Por qué las dos:** medido el 23-oct, las copias NO fueron doble toque: el botón de tiempo guardado ya se bloqueaba
+y aun así hubo 9 decisiones repetidas (de 1 s a 4 min; dos personas a la vez en 2 casos), y una transferencia de
+$195.000 registrada dos veces con la misma referencia 70 s después (BRAZON, 13-oct). El botón frena el toque rápido;
+solo la base frena la segunda vez, la otra persona y la misma consignación.
+**Qué se decidió:** (1) el tiempo guardado se resuelve UNA vez por contrato y fechas; cambiar la decisión, un
+administrador; (2) una referencia de transferencia, un solo pago (se RECHAZA, como el saldo a favor; de 3.158
+referencias nunca hubo un uso legítimo doble); (3) después: recepción, abonos a la base, liquidación y deudas a
+mano; (4) un solo botón de guardar para toda la app que dice «Guardando…» y se bloquea. Las copias que ya existen
+no se tocan solas: las decide la oficina.
+**Dónde vive:** mig 203 (`tiempo_guardado_una_vez`, `referencia_una_vez`, con la prueba adentro).

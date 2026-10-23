@@ -138,6 +138,11 @@ Lo que está afectando cifras reales de clientes en este momento.
   · **ANDRES PEREZ RUIZ (RNN72H), 9-sep:** $200.000 transferencia y 38 segundos después $200.000 efectivo.
   · **SAMIR LLAMAS (IGJ83I), 1-oct:** dos de $40.000 con 6 segundos de diferencia.
   · **LUIS ANGEL BERMUDEZ (XZI13H):** dos transferencias de $30.000 seguidas, el 25-ago y el 9-sep (pueden ser reales).
+  · 🆕 (medido 23-oct) **DAVID JOSUE BRAZON (RMU58H), 13-oct:** dos transferencias de $195.000 con la MISMA referencia
+    M13671846, 70 s de diferencia, las dos de ANGELA y confirmadas → casi seguro copia. Desde la mig 203 ya no puede pasar.
+  · 🆕 **JOSUE GRAU (RML59H), 18-ago:** dos efectivos de $202.000 con 67 s (ANGELA).
+  · 🆕 **DAVIAN PLAZA:** $350.000 de base por transferencia y $350.000 en efectivo, en DOS fichas de cliente
+    («ENRIQUE» y «EMRIQUE»): parece un cliente registrado dos veces.
   ⚠️ **Al borrar una copia, borrar la que NO llenó semana** (la que dice "saldo a favor"): si se borra la otra,
   el motor resta la semana. Y nunca dos copias con el mismo "llenó la semana N": ahí hay que medir antes.
 
@@ -373,7 +378,9 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
 
-- [ ] 💻 🔴 **CANDADOS CONTRA REPETIR ACCIONES (pedido del dueño, 10-oct).** «A todos los botones actuales y los que
+- [ ] 💻 🔴 **CANDADOS CONTRA REPETIR ACCIONES (pedido del dueño, 10-oct) — EN CURSO (D-054).** ✅ 23-oct mig 203:
+  tiempo guardado y referencia de transferencia. 🔲 Falta: recepción, abonos a la base, liquidación, deudas a mano
+  y el botón único «Guardando…». «A todos los botones actuales y los que
   vamos creando, una regla: bloqueado el doble clic y que las peticiones no se envíen dos veces.» La regla de
   pantalla ya existía (CLAUDE.md, anti-doble-clic) pero se aplica botón por botón. Plan presentado (espera su
   «1»): **base** — candado de «una sola vez» en lo que mueve plata o semanas (medir primero cuáles acciones no

@@ -59,6 +59,8 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaCli
   const [huellaCliente, setHuellaCliente] = useState<string | null>(null);
   const [huellaAcomp, setHuellaAcomp] = useState<string | null>(null);
   const [huellaLista, setHuellaLista] = useState(false);
+  // Tiene huella registrada pero no se pudo traer (mala señal): no es lo mismo que no tenerla.
+  const [huellaNoCargo, setHuellaNoCargo] = useState(false);
   const [leido, setLeido] = useState(false);
   const [firmaCliente, setFirmaCliente] = useState<string | null>(null);
   const [firmaAcomp, setFirmaAcomp] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaCli
     Promise.all([aData(huellaClienteUrl), aData(huellaAcompananteUrl)]).then(([c, a]) => {
       if (!vivo) return;
       setHuellaCliente(c); setHuellaAcomp(a); setHuellaLista(true);
+      setHuellaNoCargo(!!huellaClienteUrl && !c);
     });
     return () => { vivo = false; };
   }, [huellaClienteUrl, huellaAcompananteUrl]);
@@ -341,7 +344,13 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaCli
                 <input type="checkbox" checked={leido} onChange={e => setLeido(e.target.checked)} style={{ width: 20, height: 20 }} />
                 El cliente leyó el documento y está de acuerdo
               </label>
-              {huellaLista && !huellaCliente && (
+              {huellaLista && huellaNoCargo && (
+                <Aviso tono="bad">
+                  <strong>No se pudo cargar la huella</strong> de {(calc.cliente ?? "el cliente").toUpperCase()} (sí la tiene registrada).
+                  Revise la conexión, cierre esta ventana y vuelva a abrir el rodado.
+                </Aviso>
+              )}
+              {huellaLista && !huellaCliente && !huellaNoCargo && (
                 <Aviso tono="bad">
                   <strong>{(calc.cliente ?? "El cliente").toUpperCase()} no tiene la huella registrada.</strong> Sin huella no se puede firmar el rodado.
                   Regístrasela en Clientes → el cliente → Editar, y vuelve a abrir el rodado.

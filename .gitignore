@@ -42,3 +42,5 @@ mempalace/
 COPIAR-MEMPALACE-UNA-VEZ.bat
 # Las conversaciones con Claude del PC de la oficina (22-oct): llevan datos de clientes y pesan 200 MB
 conversaciones-pc-oficina/
+docs/manual-rodado/img/
+docs/manual-rodado/*.pdf

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cómo rodar todo — MotoGestión</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #0f172a; margin: 0; font-size: 12.5pt; line-height: 1.55;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .pag { page-break-after: always; }
+  .pag:last-child { page-break-after: auto; }
+
+  .portada { height: 258mm; display: flex; flex-direction: column; justify-content: center; }
+  .placa {
+    display: inline-block; background: #FFD100; color: #0f172a;
+    border: 3px solid #0f172a; border-radius: 8px;
+    padding: 8px 22px; font-size: 26pt; font-weight: 800; letter-spacing: 3px;
+  }
+  .portada h1 { font-size: 40pt; margin: 26px 0 6px; line-height: 1.05; }
+  .portada .sub { font-size: 16pt; color: #334155; margin: 0 0 4px; }
+  .portada .fecha { font-size: 12pt; color: #64748b; margin-top: 22px; }
+  .aviso {
+    margin-top: 34px; background: #fef3c7; border-left: 6px solid #f59e0b;
+    padding: 14px 18px; font-size: 11.5pt; color: #78350f;
+  }
+
+  h2 {
+    font-size: 20pt; margin: 0 0 2px; color: #0f172a;
+    border-bottom: 3px solid #FFD100; padding-bottom: 6px;
+  }
+  h2 .paso { font-size: 11pt; color: #0284c7; display: block; font-weight: 700;
+             letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
+  h3 { font-size: 14pt; margin: 18px 0 6px; color: #0f172a; }
+  .paraque {
+    background: #e0f2fe; border-left: 6px solid #0284c7;
+    padding: 9px 14px; margin: 12px 0 14px; font-size: 12pt; color: #075985;
+  }
+  .fila { display: flex; gap: 14px; align-items: flex-start; }
+  .fila img {
+    width: 64mm; border: 1.5px solid #cbd5e1; border-radius: 10px; flex-shrink: 0;
+  }
+  .fila.angosta img { width: 54mm; }
+  .fila .texto { flex: 1; min-width: 0; }
+  ol.notas { margin: 0; padding-left: 20px; }
+  ol.notas li { margin-bottom: 9px; }
+  ul.simple { margin: 6px 0; padding-left: 20px; }
+  ul.simple li { margin-bottom: 6px; }
+  b.res { background: #fef3c7; padding: 0 3px; }
+  .boton { background:#0f172a; color:#fff; border-radius:5px; padding:1px 7px;
+           font-size:11pt; font-weight:600; white-space:nowrap; }
+  .ojo {
+    background: #fee2e2; border-left: 6px solid #dc2626;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #7f1d1d;
+  }
+  .bien {
+    background: #dcfce7; border-left: 6px solid #16a34a;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #14532d;
+  }
+  table.reglas { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11.5pt; }
+  table.reglas td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+  table.reglas td.n {
+    width: 28px; text-align: center; font-weight: 800; background: #0f172a; color: #fff;
+  }
+  table.reglas th { border:1px solid #cbd5e1; padding:8px 10px; background:#f1f5f9;
+                    text-align:left; font-size:11pt; }
+  .indice li { margin-bottom: 7px; font-size: 13pt; }
+  .pie { margin-top: 20px; font-size: 10.5pt; color: #64748b; }
+  .granfrase { font-size: 26pt; line-height:1.2; font-weight: 800; margin: 26px 0 18px; }
+  .granfrase span { color:#0284c7; }
+  .cap { font-size: 9.5pt; color:#64748b; margin-top:5px; text-align:center; width:64mm; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ PORTADA ═══════════════ -->
+<section class="pag portada">
+  <div><span class="placa">MOTOGESTIÓN</span></div>
+  <h1>Cómo<br>rodar todo</h1>
+  <p class="sub">Pasar toda la deuda de un cliente al final de su contrato,<br>también su acuerdo de pago.</p>
+  <p class="sub">Club de Moteros — Cartagena</p>
+  <p class="fecha">23 de octubre de 2026 · Versión 1</p>
+
+  <div class="aviso">
+    <b>Este manual es interno.</b><br>
+    Las fotos son de la aplicación de verdad, con un cliente de verdad (OMAR AGUSTIN, placa RMM66H)
+    y plata de verdad. No lo comparta con nadie de afuera de la empresa.
+  </div>
+</section>
+
+<!-- ═══════════════ QUÉ ES ═══════════════ -->
+<section class="pag">
+  <h2>Antes de empezar</h2>
+
+  <div class="paraque">
+    <b>Rodar todo</b> es tomar <b>todo lo que el cliente debe</b> —sus semanas atrasadas y lo que le falta
+    a su acuerdo de pago, también lo que no se ha vencido— y pasarlo a <b>semanas al final del contrato</b>.
+    Desde ese día el cliente <b>solo paga su semana normal</b>. No se le perdona nada: lo paga al final.
+  </div>
+
+  <h3>Quién lo hace</h3>
+  <p>Solo quien tiene el permiso <b>«rodar por deuda»</b>. Hoy lo tiene el dueño.
+    A otra persona se lo da el dueño desde <b>Usuarios</b>.</p>
+
+  <h3>A quién se le puede hacer</h3>
+  <ul class="simple">
+    <li>Contratos <b>semanales</b> y <b>activos</b> (con la moto trabajando).</li>
+    <li>Que deba <b>más de $700.000</b> en total, contando todo el acuerdo.</li>
+    <li>Una sola vez por contrato.</li>
+    <li>Solo se rueda <b>tiempo</b>: semanas y deudas de semanas. Repuestos, daños, multas y lavadas <b>no</b>.</li>
+  </ul>
+
+  <h3>El orden de los pasos</h3>
+  <ol class="indice">
+    <li>Inmovilizaciones: tocar <span class="boton">✓ Entregar moto</span></li>
+    <li>El tiempo que estuvo guardada: <span class="boton">No rodar: se le cobran esas semanas (definitivo)</span></li>
+    <li>El formulario de entrega: kilómetros y 6 fotos</li>
+    <li>Contratos: <span class="boton">Rodar por deuda (más de $700.000)</span></li>
+    <li>La cuenta: escoger <span class="boton">Rodar todo</span></li>
+    <li>El documento: leer y firmar (la huella sale sola)</li>
+    <li>El video</li>
+    <li>Guardar y entregar las llaves</li>
+  </ol>
+
+  <div class="ojo">
+    <b>La regla de oro: las llaves se entregan al FINAL.</b><br>
+    En la app la moto se «entrega» primero (pasos 1 a 3), porque el rodado solo funciona con el contrato activo.
+    Pero las llaves se quedan en la oficina hasta que el rodado quede <b>guardado</b> (paso 8).
+  </div>
+</section>
+
+<!-- ═══════════════ LA CUENTA ═══════════════ -->
+<section class="pag">
+  <h2>Cómo se hace la cuenta</h2>
+
+  <div class="paraque">
+    No hay que hacerla a mano: <b>la app la hace sola</b>. Pero hay que entenderla para explicársela al cliente.
+  </div>
+
+  <table class="reglas">
+    <tr><td class="n">1</td><td>Se suma <b>todo lo que debe</b>, como un solo total.</td></tr>
+    <tr><td class="n">2</td><td>Se cuentan las <b>semanas completas</b> que caben en ese total.</td></tr>
+    <tr><td class="n">3</td><td>El <b>recargo</b> sale de esas semanas completas: hasta 4, una más; desde la 5ª, una más por cada 2.</td></tr>
+    <tr><td class="n">4</td><td>El <b>pedazo que sobra</b>: si es de <b>$100.000 o más</b>, se rueda como <b>una semana más, sin recargo</b>.
+      Si es menos, lo paga ese día o le queda como deuda.</td></tr>
+    <tr><td class="n">5</td><td>Desde ese día solo paga su semana normal.</td></tr>
+  </table>
+
+  <h3>El ejemplo de OMAR</h3>
+  <table class="reglas">
+    <tr><th>Qué</th><th>Cuánto</th></tr>
+    <tr><td>Semanas atrasadas</td><td>$537.000</td></tr>
+    <tr><td>Lo que le faltaba al acuerdo (entero)</td><td>$2.527.000</td></tr>
+    <tr><td><b>Total</b></td><td><b>$3.064.000</b></td></tr>
+    <tr><td>Semanas completas de $195.000</td><td>15 · sobran $139.000</td></tr>
+    <tr><td>Los $139.000 son más de $100.000</td><td>se ruedan como 1 semana más → <b>16</b></td></tr>
+    <tr><td>Recargo (de las 15 completas)</td><td>6 semanas</td></tr>
+    <tr><td><b>Al final paga</b></td><td><b>22 semanas</b></td></tr>
+    <tr><td>Hoy paga</td><td><b>$0</b></td></tr>
+    <tr><td>Su próxima semana</td><td><b>$147.000</b> (ya tenía $48.000 abonados)</td></tr>
+  </table>
+
+  <div class="bien">
+    <b>¿Por qué su próxima semana es de $147.000 y no de $195.000?</b><br>
+    Porque una de las semanas que se rodaron ya la tenía medio pagada ($48.000). Esa plata no se pierde:
+    pasa a su próxima semana.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 1 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 1</span>Inmovilizaciones: entregar la moto en la app</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/01-retenida.png" alt="La tarjeta de la moto retenida">
+      <div class="cap">Pantalla real · Más → Inmovilizaciones</div>
+    </div>
+    <div class="texto">
+      <h3>Dónde</h3>
+      <p>En <b>Más → Inmovilizaciones</b>, pestaña <b>«Retenidas»</b>. Busque la placa.</p>
+
+      <h3>Qué mirar en la tarjeta</h3>
+      <ol class="notas">
+        <li>Que diga <b>«Sin deudas pendientes»</b>: la multa y la lavada ya están pagas.</li>
+        <li>Las cuotas atrasadas dicen <b>«en convenio»</b>: por eso deja entregarla.</li>
+        <li>Que diga <b>«Listo para entregar»</b>.</li>
+      </ol>
+
+      <h3>Qué tocar</h3>
+      <p><span class="boton">✓ Entregar moto</span></p>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>Todavía no le dé las llaves.</b> Esto es solo para que en la app el contrato quede activo.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 2 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 2</span>El tiempo que estuvo guardada</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/02-tiempo-guardado.png" alt="Tiempo fuera de servicio">
+      <div class="cap">Pantalla real · sale sola al tocar «Entregar moto»</div>
+    </div>
+    <div class="texto">
+      <h3>Por qué sale esta ventana</h3>
+      <p>Antes de entregar una moto, la app pregunta qué hacer con los días que estuvo guardada.</p>
+
+      <h3>Qué dice</h3>
+      <ol class="notas">
+        <li>Cuántos días estuvo guardada (OMAR: <b>3 días</b>).</li>
+        <li><b>«Estos días ya están cobrados»</b>: el contrato nunca se detuvo; ya están en su cuenta.</li>
+        <li><b>«Rodar al final — no se puede»</b>: 3 días no alcanzan a una semana.</li>
+      </ol>
+
+      <h3>Qué tocar</h3>
+      <p><span class="boton">No rodar: se le cobran esas semanas (definitivo)</span></p>
+      <p>Sale una ventanita que pregunta si está seguro: <b>Aceptar</b>.</p>
+    </div>
+  </div>
+
+  <div class="bien">
+    <b>Tranquilo: «No rodar» no le cobra nada más.</b> Solo deja anotada la decisión.
+    Esos días ya estaban en su cuenta, y en el paso 5 todo eso se va a rodar junto.
+  </div>
+  <div class="ojo">
+    <b>No toque «Resolver después».</b> Ese botón cancela la entrega y no deja seguir.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 3 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 3</span>El formulario de entrega</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/03-entregar.png" alt="Entregar moto al cliente">
+      <div class="cap">Pantalla real · se abre después del paso 2</div>
+    </div>
+    <div class="texto">
+      <h3>Qué llenar</h3>
+      <ol class="notas">
+        <li><b>Condición general</b> de la moto.</li>
+        <li><b>Kilometraje actual</b>. Ojo: la casilla muestra «$ 0», pero no es plata. Escriba solo el número de kilómetros.</li>
+        <li><b>Las 6 fotos</b>: delantera, lateral izquierda, arriba, lateral derecha, trasera (con la placa)
+          y la última <b>con la persona que recibe</b>. Cada una tiene su botón de cámara 📷 y de galería 🖼.</li>
+        <li><b>Observaciones</b>, si hay algo que decir.</li>
+      </ol>
+      <p>Las fotos se toman ahí mismo, con la moto en la oficina.</p>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 3</span>Confirmar la entrega</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/05-entregar-confirmar.png" alt="Confirmar entrega">
+      <div class="cap">Pantalla real · el final del formulario</div>
+    </div>
+    <div class="texto">
+      <h3>Qué tocar</h3>
+      <p><span class="boton">✓ Confirmar entrega</span></p>
+
+      <h3>Qué hace la app</h3>
+      <ol class="notas">
+        <li>Guarda las fotos y el kilometraje como prueba de cómo se entregó.</li>
+        <li>El contrato vuelve a <b>Activo</b>. Ahora sí se puede rodar.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>Las llaves todavía NO.</b> El cliente se queda esperando unos minutos más.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 4 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 4</span>Contratos: el botón del rodado</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/06-boton-rodar.png" alt="El botón Rodar por deuda">
+      <div class="cap">Pantalla real · Contratos → el contrato → Acciones</div>
+    </div>
+    <div class="texto">
+      <h3>Dónde</h3>
+      <p>En <b>Contratos</b>, busque la placa y abra el contrato. Baje hasta <b>«Acciones»</b>.</p>
+
+      <h3>Qué tocar</h3>
+      <p><span class="boton">Rodar por deuda (más de $700.000)</span></p>
+
+      <h3>Si no aparece el botón</h3>
+      <ul class="simple">
+        <li>El contrato no está activo: falta el paso 3.</li>
+        <li>Usted no tiene el permiso: lo da el dueño.</li>
+        <li>Ya se le hizo un rodado a ese contrato.</li>
+      </ul>
+      <p style="font-size:10.5pt;color:#64748b">(La foto es de otro contrato, porque el de OMAR todavía no estaba activo cuando se tomó.)</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 5 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 5</span>La cuenta: escoger «Rodar todo»</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/08-rodar-todo.png" alt="Rodar todo">
+      <div class="cap">Pantalla real · la ventana del rodado</div>
+    </div>
+    <div class="texto">
+      <h3>Arriba hay dos botones</h3>
+      <ul class="simple">
+        <li><span class="boton">Solo lo atrasado</span>: el rodado de siempre. El acuerdo sigue.</li>
+        <li><span class="boton">Rodar todo</span>: también el acuerdo entero. <b>Este es el nuevo.</b></li>
+      </ul>
+
+      <h3>Qué revisar</h3>
+      <ol class="notas">
+        <li><b>Debe en total</b>: todo, también lo no vencido del acuerdo.</li>
+        <li><b>Después de rodar debe</b>: lo que paga hoy. OMAR: <b>$0</b>.</li>
+        <li><b>Lo que debe, como un solo conjunto</b>: de dónde sale el total.</li>
+        <li><b>Sobra</b>: si es de $100.000 o más, dice que se corre una semana más.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 5</span>Lo que se rueda y lo que queda</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/09-semanas.png" alt="Se rueda al final del contrato">
+      <div class="cap">Pantalla real · bajando en la misma ventana</div>
+    </div>
+    <div class="texto">
+      <h3>Se rueda al final del contrato</h3>
+      <ol class="notas">
+        <li><b>Semanas que se ruedan</b>: OMAR, 16.</li>
+        <li><b>Al final paga</b>, con el recargo: OMAR, <b>22 semanas</b>.</li>
+        <li><b>Fin del contrato</b>: cuándo terminaba y cuándo termina ahora.</li>
+      </ol>
+
+      <h3>Desde hoy</h3>
+      <ol class="notas">
+        <li>El acuerdo <b>queda cerrado</b>.</li>
+        <li><b>Su próxima semana</b>: OMAR, <b>$147.000</b>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="ojo">
+    <b>Si una cifra no es la que se le explicó al cliente, NO siga.</b> Cierre la ventana y avise.
+    Si arriba sale un recuadro rojo, la app dice por qué no se puede: léalo.
+  </div>
+  <p>Cuando todo esté bien: <span class="boton">Siguiente: el documento</span></p>
+</section>
+
+<!-- ═══════════════ PASO 6 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 6</span>El documento y la firma</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/12-firma.png" alt="Documento y firma">
+      <div class="cap">Pantalla real · paso 2 de la ventana (ya firmado)</div>
+    </div>
+    <div class="texto">
+      <h3>En orden</h3>
+      <ol class="notas">
+        <li>El cliente <b>lee el documento</b> completo (arriba, con la marca «borrador»).</li>
+        <li>Se marca la casilla <b>«El cliente leyó el documento y está de acuerdo»</b>.</li>
+        <li>El cliente firma en <b>«Toque aquí para firmar»</b> y toca <span class="boton">✓ Aceptar</span>.</li>
+        <li>La acompañante puede firmar también. Es opcional.</li>
+      </ol>
+
+      <h3>La huella</h3>
+      <p>No hay que ponerla: <b>sale sola</b>, de la que dio al registrarse, y queda junto a la firma.</p>
+      <ul class="simple">
+        <li>Si dice <b>«no tiene la huella registrada»</b>: regístresela en Clientes → el cliente → Editar.</li>
+        <li>Si dice <b>«no se pudo cargar la huella»</b>: es la señal. Cierre y vuelva a abrir.</li>
+      </ul>
+    </div>
+  </div>
+  <p>Después: <span class="boton">Siguiente: el video</span></p>
+</section>
+
+<!-- ═══════════════ PASO 7 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 7</span>El video</h2>
+
+  <div class="fila">
+    <div>
+      <img src="img/13-video.png" alt="El video">
+      <div class="cap">Pantalla real · paso 3 de la ventana</div>
+    </div>
+    <div class="texto">
+      <h3>Qué es</h3>
+      <p>El cliente, mirando a la cámara, <b>lee en voz alta</b> el texto que sale en pantalla.
+        Máximo un minuto.</p>
+
+      <h3>Lo que dice</h3>
+      <p>La fecha, su nombre y cédula, que todo se le rueda, que al final paga <b>22 semanas</b>,
+        que su acuerdo queda cerrado, que su próxima semana es de <b>$147.000</b>, cuándo termina
+        su contrato y que la empresa no cubre el SOAT ni la tecnomecánica en ese tiempo extra.</p>
+
+      <h3>Cómo grabarlo</h3>
+      <ul class="simple">
+        <li><span class="boton">Grabar aquí (con el texto en pantalla)</span>: lo más fácil.</li>
+        <li>O con <span class="boton">Cámara</span> o <span class="boton">Galería</span>, si lo grabó con el celular.</li>
+      </ul>
+      <p>Mírelo antes de seguir: que se oiga la fecha y las cifras.</p>
+    </div>
+  </div>
+  <p>Después: <span class="boton">Siguiente: guardar</span></p>
+</section>
+
+<!-- ═══════════════ PASO 8 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 8</span>Guardar y entregar las llaves</h2>
+
+  <div class="paraque">
+    En el último paso la ventana muestra un resumen: semanas que se ruedan, cuántas paga al final,
+    lo que queda debiendo hoy, y si el documento y el video están listos.
+  </div>
+
+  <h3>Qué tocar</h3>
+  <p><span class="boton">Rodar y guardar</span></p>
+
+  <h3>Qué hace la app</h3>
+  <ol class="notas">
+    <li>Vuelve a hacer la cuenta. <b>Si algo cambió</b> (por ejemplo, entró un pago), <b>no guarda nada</b> y avisa.</li>
+    <li>Guarda el documento firmado y el video.</li>
+    <li>Corre las semanas al final del contrato y <b>cierra el acuerdo</b>.</li>
+    <li>Le pone un número al rodado: <b>ROD-…</b></li>
+  </ol>
+
+  <div class="bien">
+    <b>Cuando diga «Rodado guardado: ROD-…», ahí sí: entregue las llaves.</b><br>
+    Con <span class="boton">Ver / imprimir el documento firmado</span> puede imprimirle su copia.
+  </div>
+
+  <h3>Lo que el cliente se lleva claro</h3>
+  <table class="reglas">
+    <tr><th>Cuándo</th><th>Cuánto (OMAR)</th></tr>
+    <tr><td>Hoy</td><td>$0</td></tr>
+    <tr><td>Lunes 26 de octubre</td><td><b>$147.000</b></td></tr>
+    <tr><td>Desde el lunes siguiente</td><td>$195.000 cada semana</td></tr>
+    <tr><td>Al final del contrato</td><td>22 semanas más</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════════ EL DOCUMENTO ═══════════════ -->
+<section class="pag">
+  <h2>El documento que firma el cliente</h2>
+  <p>Así se ve, con las cifras de OMAR y su huella junto a la firma.
+    (Esta es la copia de revisión: la firmada no lleva la marca «borrador».)</p>
+  <img src="img/14-documento-completo.png" alt="Documento del rodado" style="width:100%;max-height:228mm;object-fit:contain;border:1.5px solid #cbd5e1;border-radius:8px">
+</section>
+
+<!-- ═══════════════ LO QUE NUNCA ═══════════════ -->
+<section class="pag">
+  <h2>Lo que nunca se hace</h2>
+  <table class="reglas">
+    <tr><td class="n">✗</td><td><b>Entregar las llaves antes de guardar el rodado.</b> Si no firma, se iría debiendo y en mora.</td></tr>
+    <tr><td class="n">✗</td><td><b>Registrarle un pago</b> al cliente mientras se hace el rodado. La cuenta cambia y el rodado no se guarda.</td></tr>
+    <tr><td class="n">✗</td><td><b>Tocar «Resolver después»</b> en el paso 2: cancela la entrega.</td></tr>
+    <tr><td class="n">✗</td><td><b>Seguir si una cifra no cuadra</b> con lo que se le explicó al cliente.</td></tr>
+    <tr><td class="n">✗</td><td><b>Rodar repuestos, daños, multas o lavadas.</b> La app no los rueda: se cobran aparte.</td></tr>
+  </table>
+
+  <h2 style="margin-top:28px">Si algo se ve raro</h2>
+  <ul class="simple">
+    <li>Recuadro rojo en la ventana del rodado: <b>léalo</b>, dice por qué no se puede.</li>
+    <li>«La cuenta no cuadra con la de Cartera»: no siga, avise a sistemas.</li>
+    <li>«La cuenta cambió mientras se hacía el documento»: cierre la ventana y vuelva a empezar el paso 4.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════ RESUMEN ═══════════════ -->
+<section class="pag">
+  <h2>Rodar todo en una hoja</h2>
+  <table class="reglas">
+    <tr><td class="n">1</td><td><b>Más → Inmovilizaciones</b> → la placa → <span class="boton">✓ Entregar moto</span></td></tr>
+    <tr><td class="n">2</td><td><span class="boton">No rodar: se le cobran esas semanas (definitivo)</span> → Aceptar</td></tr>
+    <tr><td class="n">3</td><td>Condición, kilómetros, <b>6 fotos</b> → <span class="boton">✓ Confirmar entrega</span>. <b>Sin llaves.</b></td></tr>
+    <tr><td class="n">4</td><td><b>Contratos</b> → el contrato → <span class="boton">Rodar por deuda (más de $700.000)</span></td></tr>
+    <tr><td class="n">5</td><td><span class="boton">Rodar todo</span> → revisar las cifras → <span class="boton">Siguiente: el documento</span></td></tr>
+    <tr><td class="n">6</td><td>Que lea → casilla → firma → <span class="boton">Siguiente: el video</span></td></tr>
+    <tr><td class="n">7</td><td>Video leyendo el texto → <span class="boton">Siguiente: guardar</span></td></tr>
+    <tr><td class="n">8</td><td><span class="boton">Rodar y guardar</span> → «Rodado guardado» → <b>ahora sí, las llaves</b></td></tr>
+  </table>
+
+  <p class="granfrase">Primero <span>se firma</span>,<br>después <span>las llaves</span>.</p>
+  <p class="pie">MotoGestión · Manual interno · 23-oct-2026</p>
+</section>
+
+</body>
+</html>

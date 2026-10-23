@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { supabase } from "../lib/supabase";
 import { hoyISO } from "../utils/fecha";
 
@@ -72,34 +72,70 @@ export function bloqueDe(tipo: string): Bloque {
   return BLOQUE_DE[tipo] ?? "contratos";
 }
 
-export function usePendientes() {
-  const [pendientes, setPendientes] = useState<Pendiente[]>([]);
-  const [atendidos, setAtendidos] = useState<Atendido[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// UNA SOLA CONSULTA PARA TODA LA APP (23-oct-2026). Antes cada pantalla que mostraba avisos
+// (la campana del encabezado, el panel, Mi Día, Alertas) los pedía por su lado. Medido al abrir
+// la app: la vista se calculaba DOS veces, y cada cálculo tarda 1 a 2 s en el servidor. Ahora
+// todas comparten la misma lista, y al volver a la app solo se recalcula si ya pasó un minuto
+// (igual que las tablas de `createTableStore`).
+const CACHE_VIEJA_MS = 60_000;
 
-  const cargar = useCallback(async () => {
-    const [p, a] = await Promise.all([
-      // `pendientes_activos` = lo mismo que `pendientes` pero SIN lo pospuesto a una fecha
-      // futura (mig 165). La vista cruda se deja quieta: se le agregan avisos leyéndola con
-      // pg_get_viewdef, y envolverla rompería el próximo parche en silencio.
-      supabase.from("pendientes_activos").select("*").order("orden").order("dias", { ascending: false }),
-      supabase.from("pendientes_atendidos").select("clave, fecha, atendido_por, nota").eq("fecha", hoyISO()),
-    ]);
-    if (p.error) setError(p.error.message);
-    else { setError(null); setPendientes((p.data ?? []) as Pendiente[]); }
-    setAtendidos((a.data ?? []) as Atendido[]);
-    setLoading(false);
-  }, []);
+type EstadoPendientes = { pendientes: Pendiente[]; atendidos: Atendido[]; loading: boolean; error: string | null };
+let estado: EstadoPendientes = { pendientes: [], atendidos: [], loading: true, error: null };
+let enCurso: Promise<void> | null = null;
+let ultimaCarga = 0;
+let escuchandoVuelta = false;
+const suscriptores = new Set<() => void>();
 
-  useEffect(() => {
-    void cargar();
+async function pedirPendientes() {
+  const [p, a] = await Promise.all([
+    // `pendientes_activos` = lo mismo que `pendientes` pero SIN lo pospuesto a una fecha
+    // futura (mig 165). La vista cruda se deja quieta: se le agregan avisos leyéndola con
+    // pg_get_viewdef, y envolverla rompería el próximo parche en silencio.
+    supabase.from("pendientes_activos").select("*").order("orden").order("dias", { ascending: false }),
+    supabase.from("pendientes_atendidos").select("clave, fecha, atendido_por, nota").eq("fecha", hoyISO()),
+  ]);
+  estado = {
+    pendientes: p.error ? estado.pendientes : (p.data ?? []) as Pendiente[],
+    atendidos: (a.data ?? []) as Atendido[],
+    loading: false,
+    error: p.error ? p.error.message : null,
+  };
+  ultimaCarga = Date.now();
+  for (const s of suscriptores) s();
+}
+
+/**
+ * `forzar`: después de marcar o posponer, la lista TIENE que salir con el cambio. Si había una
+ * consulta en vuelo, empezó antes del cambio: se espera y se pide otra.
+ */
+async function cargarPendientes(forzar = false): Promise<void> {
+  if (enCurso) {
+    if (!forzar) return enCurso;
+    await enCurso.catch(() => {});
+  }
+  const esta = pedirPendientes().finally(() => { if (enCurso === esta) enCurso = null; });
+  enCurso = esta;
+  return esta;
+}
+
+function suscribir(s: () => void) {
+  suscriptores.add(s);
+  if (ultimaCarga === 0 || Date.now() - ultimaCarga >= CACHE_VIEJA_MS) void cargarPendientes();
+  if (!escuchandoVuelta && typeof document !== "undefined") {
+    escuchandoVuelta = true;
     // Al volver a la app (el celular estuvo bloqueado, el PC suspendido) la lista puede estar
-    // vieja. Misma red de seguridad que el store compartido.
-    const alVolver = () => { if (document.visibilityState === "visible") void cargar(); };
-    document.addEventListener("visibilitychange", alVolver);
-    return () => document.removeEventListener("visibilitychange", alVolver);
-  }, [cargar]);
+    // vieja. Misma red de seguridad que el store compartido, con el mismo tope de un minuto.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible" || suscriptores.size === 0) return;
+      if (Date.now() - ultimaCarga >= CACHE_VIEJA_MS) void cargarPendientes();
+    });
+  }
+  return () => { suscriptores.delete(s); };
+}
+
+export function usePendientes() {
+  const { pendientes, atendidos, loading, error } = useSyncExternalStore(suscribir, () => estado);
+  const cargar = useCallback(() => cargarPendientes(true), []);
 
   /** Marcar que ya lo gestioné hoy. Mañana vuelve a aparecer si sigue vigente. */
   async function marcarAtendido(clave: string, quien: string, nota?: string) {

@@ -608,6 +608,7 @@ export function usePagos() {
     pagos,
     loading,
     error,
+    recargar: () => { void pagosStore.refetch(); },
     registrarPago,
     leerReparto,
     aplicarSaldoFavor,

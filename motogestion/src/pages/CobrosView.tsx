@@ -627,7 +627,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const { filtrarContratos } = useScope();
   const { nombreSubadmin } = useSubadmins();
 
-  const { pagos, loading: loadingPagos, error: errorPagos, registrarPago, leerReparto, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
+  const { pagos, loading: loadingPagos, error: errorPagos, recargar: recargarPagos, registrarPago, leerReparto, aplicarSaldoFavor, subirComprobante, registrarCobroCampo, marcarEntregadoCaja, confirmarPago, rechazarPago, eliminarPago, pagosDelContrato } =
     usePagos();
   const { contratos: todosContratos, loading: loadingContratos, cerrarEmpalme } = useContratos();
   const contratos = filtrarContratos(todosContratos);
@@ -1860,9 +1860,20 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
     });
   }, [pagos, filtroPagos, busquedaHistorial, contratos, clientes, motos]);
 
+  const avisoCargaPagos = errorPagos && (
+    <div role="alert" style={{ marginTop: 12, marginBottom: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "12px 16px", borderRadius: 12, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+        <div style={{ fontWeight: 600 }}>No se pudieron cargar los pagos.</div>
+        <div>{errorPagos} Se vuelve a intentar solo; las cifras de esta pantalla no son confiables hasta que carguen.</div>
+      </div>
+      <button onClick={recargarPagos} style={{ ...secondaryBtn, padding: "8px 16px" }}>Reintentar</button>
+    </div>
+  );
+
   if (loadingPagos || loadingContratos) {
     return (
       <div style={{ padding: "16px 12px", maxWidth: 1040, margin: "0 auto" }}>
+        {avisoCargaPagos}
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           {[68, 92, 80, 76].map((w, i) => <div key={i} style={{ width: w, height: 30, borderRadius: 999, background: "var(--line)", animation: "mgPulsa 1.5s ease-in-out infinite" }} />)}
         </div>
@@ -3327,11 +3338,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
         </>
       )}
 
-      {errorPagos && (
-        <div style={{ marginTop: 12, color: "var(--bad-ink)", background: "var(--bad-soft)", padding: "10px 14px", borderRadius: 12 }}>
-          Error: {errorPagos}
-        </div>
-      )}
+      {avisoCargaPagos}
 
       {/* KPI cards — 2x2 grid compacto: etiqueta + número en la misma línea, riel de color */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: isMobile ? 2 : 16 }}>

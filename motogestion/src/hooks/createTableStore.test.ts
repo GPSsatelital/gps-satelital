@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aplicarCambioALista, type FilaConId } from "./createTableStore";
+import { aplicarCambioALista, mensajeDeCarga, type FilaConId } from "./createTableStore";
 
 // Esta es la parte del refresco que puede MOSTRAR UN DATO EQUIVOCADO en pantalla: aplica el
 // cambio que avisa el servidor sobre la lista que ya está en memoria, sin volver a pedir la
@@ -63,5 +63,18 @@ describe("aplicarCambioALista — lo que no entiende, no lo inventa", () => {
     const r = aplicarCambioALista(LISTA, "INSERT", nueva, null, ordenar);
     expect(LISTA).toHaveLength(2);
     expect(r).not.toBe(LISTA);
+  });
+});
+
+describe("mensajeDeCarga — lo que se muestra cuando una tabla no bajó", () => {
+  it("una respuesta cortada a mitad (texto crudo de pagos) se dice en palabras", () => {
+    const cortada = '[{"id":"7ae6a3a3","contrato_id":"791d3f20","valor":171000,"metodo":"Transf';
+    expect(mensajeDeCarga(cortada)).toBe("Se cortó la conexión mientras llegaban los datos.");
+  });
+  it("sin internet", () => {
+    expect(mensajeDeCarga("TypeError: Failed to fetch")).toBe("No hay conexión a internet.");
+  });
+  it("un error corto y legible del servidor se deja tal cual", () => {
+    expect(mensajeDeCarga("permission denied for table pagos")).toBe("permission denied for table pagos");
   });
 });

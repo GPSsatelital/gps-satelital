@@ -73,6 +73,32 @@ export function aplicarCambioALista<T extends FilaConId>(
 // las 10 tablas (1,7 MB) — carísimo con datos móviles, que es como trabajan los cobradores.
 const CACHE_VIEJA_MS = 60_000;
 const AGRUPAR_REFETCH_MS = 300;
+const TANDA = 1000;
+// Una conexión que se corta un segundo (típico con datos móviles en la calle) no debe dejar al
+// cobrador mirando un error: se reintenta sola dos veces. Si igual falla, vuelve a probar cada
+// tanto mientras la app siga abierta.
+const REINTENTOS_MS = [1500, 4000];
+const REINTENTO_LARGO_MS = 20_000;
+
+/**
+ * El mensaje que se muestra cuando una tabla no se pudo bajar.
+ *
+ * 23-oct-2026: Cartera mostró un recuadro rojo con cientos de pagos en texto crudo. Era la
+ * respuesta del servidor CORTADA a mitad de camino: llega con estado "bien", no se puede leer,
+ * y supabase-js pone el texto recibido como mensaje de error. Eso no le dice nada a nadie.
+ */
+export function mensajeDeCarga(crudo: string): string {
+  const m = crudo.trim();
+  if (m.startsWith("[") || m.startsWith("{") || m.length > 300) {
+    return "Se cortó la conexión mientras llegaban los datos.";
+  }
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) {
+    return "No hay conexión a internet.";
+  }
+  return m;
+}
+
+const dormir = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 export function createTableStore<T>(
   table: string,
@@ -104,6 +130,8 @@ export function createTableStore<T>(
   let started = false;
   let ultimoFetch = 0;
   let timerRefetch: ReturnType<typeof setTimeout> | null = null;
+  let timerReintento: ReturnType<typeof setTimeout> | null = null;
+  let cargoAlgunaVez = false;
   let estuvoCaido = false;
   const listeners = new Set<() => void>();
 
@@ -135,34 +163,30 @@ export function createTableStore<T>(
     if (fetchEnCurso && !forzar) return;
     const miTurno = ++secuencia;
     fetchEnCurso = true;
-    // EN TANDAS DE 1.000 (24-ago-2026): Supabase entrega MÁXIMO 1.000 filas por consulta y no
-    // avisa. `pagos` fue la primera tabla en cruzarlas: el historial del mes salía cortado en
-    // pantalla, a XYZ54H le "faltaban" 4 pagos viejos, y los cálculos que suman pagos quedaban
-    // cortos EN SILENCIO — exactamente el riesgo que advierte el comentario de la ventana.
-    // Se pagina hasta traerlo todo, tanda a tanda.
-    const TANDA = 1000;
-    const filas: T[] = [];
-    let errorMsg: string | null = null;
-    for (let desde = 0; ; desde += TANDA) {
-      // Desempate por `id` (2-oct): con dos filas de la misma hora, Postgres no garantiza el mismo
-      // orden entre una tanda y la siguiente, y en el borde una podía salir dos veces y otra ninguna.
-      let q = supabase.from(table).select("*").order(orderBy, { ascending }).order("id", { ascending }).range(desde, desde + TANDA - 1);
-      // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
-      // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
-      if (!completo && opts?.ventanaDias) {
-        q = q.gte(campoFecha, hoyMasDias(-opts.ventanaDias));
-      }
-      const { data, error } = await q;
-      // Si mientras esperábamos salió otra consulta (típico: la ventana de 120 días seguía en
-      // vuelo y la ficha pidió la historia completa), esta respuesta ya está vieja. Descartarla,
-      // o pisaría los datos buenos con los recortados.
+    if (timerReintento) { clearTimeout(timerReintento); timerReintento = null; }
+    let res = await bajarTodo();
+    for (const espera of REINTENTOS_MS) {
+      if (!("error" in res)) break;
+      await dormir(espera);
       if (miTurno !== secuencia) return;
-      if (error) { errorMsg = error.message; break; }
-      filas.push(...((data ?? []) as T[]));
-      if (!data || data.length < TANDA) break;   // última tanda: ya está todo
+      res = await bajarTodo();
     }
+    // Si mientras esperábamos salió otra consulta (típico: la ventana de 120 días seguía en
+    // vuelo y la ficha pidió la historia completa), esta respuesta ya está vieja. Descartarla,
+    // o pisaría los datos buenos con los recortados.
+    if (miTurno !== secuencia) return;
     fetchEnCurso = false;
     ultimoFetch = Date.now();
+    if ("error" in res) {
+      // Si la tabla NUNCA se bajó, se sigue diciendo "cargando": con la lista vacía y
+      // `loading: false`, cada pantalla calculaba cifras de plata sin un solo pago (todos en mora,
+      // recaudo en cero) debajo del aviso rojo.
+      snapshot = { data: snapshot.data, loading: !cargoAlgunaVez, error: mensajeDeCarga(res.error) };
+      timerReintento = setTimeout(() => { timerReintento = null; fetchAll(); }, REINTENTO_LARGO_MS);
+      emit();
+      return;
+    }
+    const filas = res.filas;
     // Si entra una fila nueva mientras se bajan las tandas, las de abajo se corren un puesto y la
     // última de una tanda vuelve a llegar en la siguiente: se queda una sola copia de cada fila.
     const vistos = new Set<unknown>();
@@ -173,10 +197,61 @@ export function createTableStore<T>(
       vistos.add(id);
       return true;
     });
-    snapshot = errorMsg
-      ? { data: snapshot.data, loading: false, error: errorMsg }
-      : { data: unicas, loading: false, error: null };
+    cargoAlgunaVez = true;
+    snapshot = { data: unicas, loading: false, error: null };
     emit();
+  }
+
+  // Desempate por `id` (2-oct): con dos filas de la misma hora, Postgres no garantiza el mismo
+  // orden entre una tanda y la siguiente, y en el borde una podía salir dos veces y otra ninguna.
+  function bajarTanda(desde: number, conConteo: boolean) {
+    let q = supabase.from(table)
+      .select("*", conConteo ? { count: "exact" } : undefined)
+      .order(orderBy, { ascending }).order("id", { ascending })
+      .range(desde, desde + TANDA - 1);
+    // Una vez que alguien pidió la historia completa, TODOS los refetches siguen trayéndola:
+    // si no, el siguiente refresco le borraría de la pantalla lo que la ficha acaba de mostrar.
+    if (!completo && opts?.ventanaDias) {
+      q = q.gte(campoFecha, hoyMasDias(-opts.ventanaDias));
+    }
+    return q;
+  }
+
+  // EN TANDAS DE 1.000 (24-ago-2026): Supabase entrega MÁXIMO 1.000 filas por consulta y no
+  // avisa. `pagos` fue la primera tabla en cruzarlas: el historial del mes salía cortado en
+  // pantalla, a XYZ54H le "faltaban" 4 pagos viejos, y los cálculos que suman pagos quedaban
+  // cortos EN SILENCIO — exactamente el riesgo que advierte el comentario de la ventana.
+  //
+  // AL MISMO TIEMPO (23-oct-2026): antes cada tanda esperaba a la anterior. Medido: los 4.720
+  // pagos llegaban en 5 viajes seguidos de ~0,5 s = 2,5 s en un PC con buen internet, y uno más
+  // cada ~1.000 pagos nuevos. La primera tanda trae el conteo total; con eso las demás se piden
+  // juntas. Si entraron filas mientras tanto (o el conteo no vino), se sigue tanda a tanda hasta
+  // una que llegue incompleta, como antes.
+  async function bajarTodo(): Promise<{ filas: T[] } | { error: string }> {
+    const primera = await bajarTanda(0, true);
+    if (primera.error) return { error: primera.error.message };
+    const filas = [...((primera.data ?? []) as T[])];
+    let ultima = primera.data ?? [];
+    let desde = TANDA;
+    if (ultima.length === TANDA && primera.count) {
+      const desdes: number[] = [];
+      for (let d = TANDA; d < primera.count; d += TANDA) desdes.push(d);
+      const resps = await Promise.all(desdes.map(d => bajarTanda(d, false)));
+      for (const r of resps) {
+        if (r.error) return { error: r.error.message };
+        filas.push(...((r.data ?? []) as T[]));
+      }
+      if (resps.length) ultima = resps[resps.length - 1].data ?? [];
+      desde += desdes.length * TANDA;
+    }
+    while (ultima.length === TANDA) {
+      const r = await bajarTanda(desde, false);
+      if (r.error) return { error: r.error.message };
+      ultima = r.data ?? [];
+      filas.push(...(ultima as T[]));
+      desde += TANDA;
+    }
+    return { filas };
   }
 
   /** Traer la historia completa (para fichas e informes). Idempotente. */

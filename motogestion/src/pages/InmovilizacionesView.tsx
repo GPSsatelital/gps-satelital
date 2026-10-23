@@ -505,15 +505,16 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
+  const [cobrandoAlquilerId, setCobrandoAlquilerId] = useState<string | null>(null);
 
   async function cobrarAlquiler(prestamoId: string, contratoId: string, monto: number) {
     if (prestamoProc || !profile) return;
     if (!confirm(`¿Cobrar el alquiler de reemplazo de $${fmt(monto)} (efectivo)?`)) return;
-    setPrestamoProc(prestamoId);
+    setPrestamoProc(prestamoId); setCobrandoAlquilerId(prestamoId);
     try {
       // El trigger IGNORA alquiler_reemplazo (mig 053): no toca el ledger, solo entra a caja.
       await registrarPago(contratoId, monto, "Efectivo", APLICADO_LO_REPARTE_LA_BD, { tipoRegistro: "alquiler_reemplazo", registradoPor: profile.id });
-    } finally { setPrestamoProc(null); }
+    } finally { setPrestamoProc(null); setCobrandoAlquilerId(null); }
   }
 
   // Cuenta del alquiler de una prestada: lo generado hasta hoy menos lo que ya pagó.
@@ -1347,7 +1348,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
                     <button onClick={() => cobrarAlquiler(p.id, p.contrato_id, p.tarifa_dia)} disabled={proc}
                       style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)", opacity: proc ? 0.6 : 1 }}>
-                      💵 Cobrar alquiler
+                      {cobrandoAlquilerId === p.id ? "Cobrando..." : "💵 Cobrar alquiler"}
                     </button>
                     {/* 22-sep-2026: antes esto devolvía de una, con un confirm() y nada más: la
                         moto del socio volvía sin una foto ni un kilometraje. Ahora abre el

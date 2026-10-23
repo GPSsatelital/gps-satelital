@@ -746,6 +746,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
   const [editMontoPendiente, setEditMontoPendiente] = useState("");
   const [editDeudaError, setEditDeudaError] = useState<string | null>(null);
   const [guardandoEditDeuda, setGuardandoEditDeuda] = useState(false);
+  const [eliminandoDeuda, setEliminandoDeuda] = useState(false);
 
   function abrirEdicionDeuda(d: Deuda) {
     setDeudaEditandoId(d.id);
@@ -793,12 +794,12 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
       + "La deuda desaparece de la cartera del cliente y no se puede deshacer.\n\n"
       + "Queda registrado en el historial del contrato: qué deuda era, de cuánto, quién la borró y cuándo."
     )) return;
-    setGuardandoEditDeuda(true);
+    setGuardandoEditDeuda(true); setEliminandoDeuda(true);
     try {
       await eliminarDeuda(id);
       setDeudaEditandoId(null);
     } finally {
-      setGuardandoEditDeuda(false);
+      setGuardandoEditDeuda(false); setEliminandoDeuda(false);
     }
   }
 
@@ -2739,9 +2740,9 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     {editDeudaError && <div style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600 }}>{editDeudaError}</div>}
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => setDeudaEditandoId(null)} style={{ ...miniBtn("var(--soft)", "var(--muted2)"), flex: 1 }}>Cancelar</button>
-                      <button onClick={() => handleEliminarDeuda(d.id, d)} disabled={guardandoEditDeuda} style={{ ...miniBtn("var(--bad-soft)", "var(--bad-ink)"), flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>🗑️ Eliminar</button>
+                      <button onClick={() => handleEliminarDeuda(d.id, d)} disabled={guardandoEditDeuda} style={{ ...miniBtn("var(--bad-soft)", "var(--bad-ink)"), flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>{eliminandoDeuda ? "Eliminando..." : "🗑️ Eliminar"}</button>
                       <button onClick={() => guardarEdicionDeuda(d)} disabled={guardandoEditDeuda} style={{ ...primaryBtn, flex: 1, opacity: guardandoEditDeuda ? 0.6 : 1 }}>
-                        {guardandoEditDeuda ? "Guardando..." : "Guardar"}
+                        {guardandoEditDeuda && !eliminandoDeuda ? "Guardando..." : "Guardar"}
                       </button>
                     </div>
                   </div>

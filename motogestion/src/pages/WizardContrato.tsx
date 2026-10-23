@@ -105,6 +105,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   // leerlo; marcar una casilla que está AL LADO de los datos obliga a mirarlos.
   const [revisado, setRevisado] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [motoEligiendo, setMotoEligiendo] = useState<string | null>(null);
   const entregandoRef = useRef(false);   // anti-doble-toque al entregar (ver handleStep6)
   const [error, setError] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
@@ -971,6 +972,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 {motosDisponibles.slice(0, 30).map(m => (
                   <button key={m.id} onClick={() => {
                     if (!confirm(`¿Confirmas la moto ${m.placa} (${m.marca} ${m.modelo}) para ${(clienteActual?.nombre ?? "").toUpperCase()}?`)) return;
+                    setMotoEligiendo(m.id);
                     handleStep2(m.id);
                   }} disabled={guardando} style={{
                     width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--line)",
@@ -982,7 +984,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                         <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
                         <div style={{ fontSize: 11, color: "var(--faint)" }}>{m.grupo} · {m.cilindraje}</div>
                       </div>
-                      <div style={{ fontSize: 22, color: "var(--accent)" }}>→</div>
+                      {guardando && motoEligiendo === m.id
+                        ? <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Asignando...</div>
+                        : <div style={{ fontSize: 22, color: "var(--accent)" }}>→</div>}
                     </div>
                   </button>
                 ))}

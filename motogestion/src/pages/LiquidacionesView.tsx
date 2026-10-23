@@ -910,8 +910,8 @@ export default function LiquidacionesView() {
                 <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)", fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5 }}>
                   ¿Al revisarlo con el cliente encontraste un error en la cuenta?{" "}
                   <button onClick={handleVolverACalcular} disabled={guardando}
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", fontWeight: 700, color: "var(--accent)", textDecoration: "underline" }}>
-                    Corregir la cuenta
+                    style={{ background: "none", border: "none", padding: 0, cursor: guardando ? "wait" : "pointer", font: "inherit", fontWeight: 700, color: "var(--accent)", textDecoration: "underline", opacity: guardando ? 0.6 : 1 }}>
+                    {guardando ? "Un momento..." : "Corregir la cuenta"}
                   </button>
                   {" "}— vuelve al paso del cálculo. Todavía puedes, porque aún no ha firmado.
                 </div>

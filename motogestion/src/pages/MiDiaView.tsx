@@ -55,6 +55,7 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
 
   const [asignando, setAsignando] = useState(false);
   const [resolviendo, setResolviendo] = useState<Tarea | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [verMandadas, setVerMandadas] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -155,9 +156,10 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
   }
 
   async function handleCancelar(t: Tarea) {
-    if (!profile) return;
+    if (!profile || cancelandoId) return;
     if (!confirm(`¿Cancelar la tarea "${t.titulo}"? Queda el rastro de que se pidió.`)) return;
-    const { error } = await cancelarTarea(t.id, profile.id);
+    setCancelandoId(t.id);
+    const { error } = await cancelarTarea(t.id, profile.id).finally(() => setCancelandoId(null));
     setMsg(error ? "No se pudo cancelar: " + error : "Tarea cancelada.");
     setTimeout(() => setMsg(null), 4000);
   }
@@ -246,8 +248,8 @@ export default function MiDiaView({ onNavigate }: { onNavigate?: (v: ViewKey) =>
               </button>
             )}
             {t.asignada_por === uid && (
-              <button onClick={() => handleCancelar(t)} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 14px" }}>
-                Cancelar
+              <button onClick={() => handleCancelar(t)} disabled={cancelandoId === t.id} style={{ ...secondaryBtn, fontSize: 12, padding: "7px 14px", opacity: cancelandoId === t.id ? 0.6 : 1 }}>
+                {cancelandoId === t.id ? "Cancelando..." : "Cancelar"}
               </button>
             )}
           </div>

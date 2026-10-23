@@ -71,6 +71,8 @@ export type Contrato = {
   contrato_pdf_url?: string | null;
   pagare_pdf_url?: string | null;
   certificado_pdf_url?: string | null;
+  /** Acta de entrega firmada (mig 202). Null en los contratos entregados antes del 23-oct-2026. */
+  acta_entrega_pdf_url?: string | null;
   fecha_fin_contrato?: string | null;
   /** Último día por el que se le exigen cuotas: la moto se le entregó a otro (mig 129). */
   fecha_fin_cobro?: string | null;
@@ -101,7 +103,7 @@ export function calcularFechaFinContrato(fechaEntrega: string, meses: number): s
   return d.toISOString().slice(0, 10);
 }
 
-export type TipoDocumentoContrato = "contrato_pdf_url" | "pagare_pdf_url" | "certificado_pdf_url";
+export type TipoDocumentoContrato = "contrato_pdf_url" | "pagare_pdf_url" | "certificado_pdf_url" | "acta_entrega_pdf_url";
 
 // Fecha de terminación para documentos (ej. acuerdo de pago): la fecha real guardada y
 // si fue MODIFICADA respecto a la original (entrega + meses×30). No consulta la auditoría:
@@ -427,6 +429,7 @@ export function useContratos() {
     contrato_pdf_url: "Documento: contrato firmado",
     pagare_pdf_url: "Documento: pagaré firmado",
     certificado_pdf_url: "Documento: certificado",
+    acta_entrega_pdf_url: "Documento: acta de entrega",
   };
 
   // Adjunta o reemplaza el escaneo/foto de un documento firmado en un contrato ya creado

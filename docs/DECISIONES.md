@@ -833,3 +833,16 @@ $48.000. Lo correcto es lo de esta línea.
 `aplicar_rodado_por_deuda(…, p_todo)`; el acuerdo queda en estado `rodado`) · `ModalRodadoPorDeuda` (botón «Rodar
 todo», huella del registro obligatoria) · `htmlRodadoPorDeuda` · pruebas en `rodadoPorDeuda.test.ts`.
 **Reemplaza a:** D-044 «solo semanas completas; lo que sobra se paga ahora», solo cuando se escoge rodar todo.
+
+### D-053 · 23-oct-2026 · Acta de entrega: paso final del wizard, con las firmas del contrato
+**Decidió:** el dueño: *"cuando se entrega un vehículo por primera vez se genere un documento como un acta de
+entrega y un breve resumen del contrato y sus políticas más importantes, que lo firmen como paso final del
+wizard, y que quede en los documentos para descargarlo"* · *"que el acta quede con las firmas iniciales para que
+no sean tantas firmas"* → escogió «1»: las del contrato (paso 3) · *"y que salga también la información del
+acompañante"* · aprobó la lista de 10 condiciones con el punto del ahorro según D-023.
+**Qué se decidió:** paso 7 del wizard. El acta (lo que recibe, cliente y acompañante con sus datos, lo pactado,
+las 10 condiciones, checklist, 6 fotos, firmas del contrato + huellas del registro) se guarda en PDF ANTES de
+activar el contrato; sin acta guardada el contrato no se activa. Solo entregas nuevas: las viejas quedan sin acta.
+**Dónde vive:** mig 202 (`contratos.acta_entrega_pdf_url`) · `generarHTMLActaEntrega` y `condicionesActaEntrega`
+en `useDocumentos.ts` · `WizardContrato` paso 7 · Documentos del contrato, ficha del cliente y Reportes → Entregas
+(chip que no cuenta para «documentos completos») · pruebas en `actaEntrega.test.ts`.

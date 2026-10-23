@@ -5,7 +5,7 @@ import type { Moto } from "../hooks/useMotos";
 import type { Contrato, FormaPago } from "../hooks/useContratos";
 import { calcularFechaFinContrato, useContratos } from "../hooks/useContratos";
 import { useLiquidaciones } from "../hooks/useLiquidaciones";
-import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado, type FirmasDoc } from "../hooks/useDocumentos";
+import { generarHTMLContrato, generarHTMLPagare, generarHTMLCertificado, generarHTMLActaEntrega, type FirmasDoc } from "../hooks/useDocumentos";
 import Placa from "../components/Placa";
 import { htmlAPdfBlob, urlADataUrl } from "../utils/pdf";
 import MoneyInput from "../components/MoneyInput";
@@ -75,7 +75,23 @@ function calcPrimerPago(
   return { dias, fecha: objetivo.toISOString().slice(0, 10), valor };
 }
 
-const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega"];
+/** Una foto de la entrega, achicada a lo ancho del acta y como dataURL (html2canvas no ve imágenes por enlace). */
+async function fotoAchicada(file: File, max = 900): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise<void>((ok, mal) => { img.onload = () => ok(); img.onerror = () => mal(new Error("no se pudo leer la foto")); img.src = url; });
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.8);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const PASOS_LABELS = ["Datos", "Moto", "Contrato", "Pagaré", "Certificado", "Entrega", "Acta"];
 
 export default function WizardContrato({ clientes, motos, contratos, contratoInicial, stepInicial, onClose, onCompletado }: Props) {
   const { eliminarContratoEnProceso } = useContratos();
@@ -154,8 +170,20 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
 
   // Step 6 entrega
   const [kmInicial, setKmInicial] = useState("");
+  // Paso 7 — acta de entrega (mig 202): se firma ANTES de activar el contrato.
+  // Las firmas del acta son las del CONTRATO (paso 3, mismo día) — pedido del dueño: «para que no sean
+  // tantas firmas». Se traen de donde quedaron guardadas, no de la pantalla: el wizard se puede retomar
+  // en el paso 6 otro día y ahí la memoria de la pantalla ya no las tiene.
+  const [firmasActa, setFirmasActa] = useState<{ cliente: string | null; acomp: string | null; listo: boolean }>({ cliente: null, acomp: null, listo: false });
+  const [leido7, setLeido7] = useState(false);
   const [fotosEntrega, setFotosEntrega] = useState<Partial<Record<AnguloFoto, File>>>({});
   const [checklist, setChecklist] = useState<boolean[]>(CHECKLIST.map(() => false));
+  // Las fotos de la entrega para que el cliente las vea en el acta antes de firmar.
+  const fotosVista = useMemo(
+    () => ANGULOS_FOTO.filter(a => fotosEntrega[a.key]).map(a => ({ label: a.label, url: URL.createObjectURL(fotosEntrega[a.key]!) })),
+    [fotosEntrega],
+  );
+  useEffect(() => () => fotosVista.forEach(f => URL.revokeObjectURL(f.url)), [fotosVista]);
 
   const clienteActual = clientes.find(c => c.id === (contratoData?.cliente_id ?? form.cliente_id));
   const motoActual = motos.find(m => m.id === motoId);
@@ -261,6 +289,19 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     }
     return total;
   })();
+
+  // Paso 7: trae las firmas que el cliente y la acompañante dejaron en el contrato (paso 3).
+  useEffect(() => {
+    if (step !== 7 || !contratoId) return;
+    let vivo = true;
+    setFirmasActa({ cliente: null, acomp: null, listo: false });
+    const traer = (archivo: string) =>
+      urlADataUrl(supabase.storage.from("documentos").getPublicUrl(`firmas/${contratoId}/${archivo}`).data.publicUrl).catch(() => null);
+    Promise.all([traer("contrato.png"), traer("contrato_acompanante.png")]).then(([cliente, acomp]) => {
+      if (vivo) setFirmasActa({ cliente, acomp, listo: true });
+    });
+    return () => { vivo = false; };
+  }, [step, contratoId]);
 
   async function subirArchivo(file: File, path: string): Promise<string | null> {
     const { error } = await supabase.storage.from("documentos").upload(path, file, { upsert: true });
@@ -537,17 +578,31 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     }
   }
 
-  // ── STEP 6: Entregar moto y activar ─────────────────────────────────────
-  async function handleStep6() {
+  // ── STEP 6: Revisar la entrega y pasar al acta ──────────────────────────
+  function handleStep6() {
     if (!kmInicial) { setError("Ingresa el kilometraje inicial."); return; }
     const faltantes = ANGULOS_FOTO.filter(a => !fotosEntrega[a.key]);
     if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); return; }
+    setError(null);
+    setStep(7);
+  }
+
+  // ── STEP 7: Firmar el acta de entrega, entregar y activar ───────────────
+  // El acta se guarda ANTES de activar: si no queda firmada y guardada, el contrato no se activa
+  // (y repetir es seguro: el acta se reescribe y `activar_entrega` no duplica).
+  async function handleStep7() {
+    if (!kmInicial) { setError("Ingresa el kilometraje inicial."); setStep(6); return; }
+    const faltantes = ANGULOS_FOTO.filter(a => !fotosEntrega[a.key]);
+    if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); setStep(6); return; }
+    if (!leido7) { setError("Confirma que el cliente leyó el acta."); return; }
+    if (!firmasActa.cliente) { setError("No se encontró la firma del contrato (paso 3). Revise la conexión y vuelva a entrar al paso 7."); return; }
+    { const fh = faltaHuella(); if (fh) { setError(fh); return; } }
     if (!motoId || !contratoId || !clienteActual) return;
     // Anti-doble-toque inmediato (el estado `guardando` llega un redibujo tarde).
     if (guardando || entregandoRef.current) return;
     entregandoRef.current = true;
     setGuardando(true); setError(null);
-    const noQuedoNada = "No quedó nada a medias: revise la conexión y vuelva a tocar Entregar.";
+    const noQuedoNada = "No quedó nada a medias: revise la conexión y vuelva a tocar Confirmar acta y activar contrato.";
     try {
       // 1. Las fotos primero. Antes, si una no subía, la entrega seguía sin ella y nadie se enteraba.
       const urls: Record<string, string> = {};
@@ -557,7 +612,26 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
         if (!url) { setError(`No se pudo subir la foto "${label}". ${noQuedoNada}`); return; }
         urls[key] = url;
       }
-      // 2. Todo lo demás DE UN SOLO GOLPE en la base (mig 193, 8-oct-2026): la moto (km y fotos), el
+      // 2. El acta firmada (mig 202). Las fotos van achicadas y como dataURL: html2canvas pierde las
+      //    imágenes por enlace, y seis fotos de celular a tamaño completo harían un PDF enorme.
+      try {
+        const fotosActa = [];
+        for (const { key, label } of ANGULOS_FOTO) fotosActa.push({ label, url: await fotoAchicada(fotosEntrega[key]!) });
+        const firmas = await construirFirmas(firmasActa.cliente, firmasActa.acomp ?? "");
+        firmas.selloFecha = `Firmas tomadas del contrato de arrendamiento firmado por el cliente${firmasActa.acomp ? " y su acompañante" : ""} · ${firmas.selloFecha ?? ""}`;
+        const html = generarHTMLActaEntrega(contratoData ?? ({ id: contratoId } as Contrato), clienteActual, motoActual ?? null, {
+          km: Number(kmInicial), fotos: fotosActa, checklist: CHECKLIST.map((item, i) => ({ item, ok: checklist[i] })),
+        }, firmas);
+        const pdf = await htmlAPdfBlob(html, { cortesSeguros: true });
+        const urlActa = await subirBlob(pdf, `contratos/${contratoId}/acta_entrega.pdf`, "application/pdf");
+        if (!urlActa) { setError(`No se pudo guardar el acta de entrega. ${noQuedoNada}`); return; }
+        const { error: errActa } = await supabase.from("contratos").update({ acta_entrega_pdf_url: urlActa }).eq("id", contratoId);
+        if (errActa) { setError(`No se guardó el acta de entrega: ${errActa.message} ${noQuedoNada}`); return; }
+      } catch (e) {
+        setError(`No se pudo armar el acta de entrega: ${(e as Error)?.message ?? String(e)}. ${noQuedoNada}`);
+        return;
+      }
+      // 3. Todo lo demás DE UN SOLO GOLPE en la base (mig 193, 8-oct-2026): la moto (km y fotos), el
       //    contrato "Activo", la moto "Asignada", el cliente "Activo" y la semana adelantada de la base
       //    — o nada. Antes eran cinco llamadas sueltas que no miraban si fallaban: un corte en la mitad
       //    dejaba la entrega a medias sin aviso. Repetirla no duplica (si ya quedó, contesta "ya_estaba").
@@ -582,7 +656,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     }
   }
 
-  const pasoTitulos = ["Datos del contrato", "Asignar moto", "Firma — Contrato de arrendamiento", "Firma — Pagaré y carta", "Certificado de conocimiento", "Entrega de la moto"];
+  const pasoTitulos = ["Datos del contrato", "Asignar moto", "Firma — Contrato de arrendamiento", "Firma — Pagaré y carta", "Certificado de conocimiento", "Entrega de la moto", "Acta de entrega — firma"];
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 0 : 16, zIndex: 100, backdropFilter: "blur(4px)" }}
@@ -599,7 +673,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-hi)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>
-                Paso {step} de 6
+                Paso {step} de {PASOS_LABELS.length}
               </div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--card)" }}>{pasoTitulos[step - 1]}</div>
               {clienteActual && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{clienteActual.nombre}</div>}
@@ -1127,6 +1201,66 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
             </div>
           )}
 
+          {/* ── PASO 7: Acta de entrega (mig 202) ── */}
+          {step === 7 && clienteActual && contratoData && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 13, color: "var(--muted2)" }}>
+                Que el cliente lea el acta: lo que recibe, lo pactado y las condiciones más importantes. Al firmar se activa el contrato.
+              </div>
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", maxHeight: 320, overflowY: "auto", background: "#ffffff" }}>
+                <div style={{ fontSize: 11, lineHeight: 1.6 }}
+                  dangerouslySetInnerHTML={{ __html: generarHTMLActaEntrega(contratoData, clienteActual, motoActual ?? null, {
+                    km: kmInicial ? Number(kmInicial) : null, fotos: fotosVista,
+                    checklist: CHECKLIST.map((item, i) => ({ item, ok: checklist[i] })),
+                  }) }} />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={leido7} onChange={e => setLeido7(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)" }}>El cliente leyó el acta y recibe la moto en este estado</span>
+              </label>
+              <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>Firmas (las del contrato)</div>
+                {!firmasActa.listo ? (
+                  <div role="status" style={{ fontSize: 13, color: "var(--muted2)" }}>Trayendo las firmas del contrato…</div>
+                ) : firmasActa.cliente ? (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {[{ img: firmasActa.cliente, quien: "Cliente" }, ...(firmasActa.acomp ? [{ img: firmasActa.acomp, quien: "Acompañante" }] : [])].map(f => (
+                      <div key={f.quien} style={{ flex: "1 1 140px", minWidth: 0, border: "1px solid var(--ok-line)", background: "var(--ok-soft)", borderRadius: 10, padding: 8, textAlign: "center" }}>
+                        <img src={f.img} alt={`Firma del ${f.quien.toLowerCase()}`} style={{ maxWidth: "100%", maxHeight: 70, objectFit: "contain", background: "#ffffff", borderRadius: 6 }} />
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", marginTop: 4 }}>✔ {f.quien}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
+                    ⚠ No se pudo traer la firma del contrato. Revise la conexión, vuelva al paso 6 y entre otra vez.
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: "var(--muted2)" }}>No hay que firmar otra vez: el acta usa las firmas que hicieron en el contrato.</div>
+              </div>
+              <div style={{ borderTop: "1px dashed var(--line2)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>Huellas</div>
+                {(clienteActual.autorizacion_datos_huella_url || huellaClienteFresh) ? (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
+                    ✔ Va la huella del cliente
+                  </div>
+                ) : (
+                  <LectorHuella label="Huella del cliente (no está registrada)" onChange={setHuellaClienteFresh} />
+                )}
+                {clienteActual.acompanante_nombre && ((clienteActual.acompanante_huella_url || huellaAcompanante) ? (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--ok-soft)", border: "1px solid var(--ok-line)", fontSize: 13, fontWeight: 600, color: "var(--ok-ink)" }}>
+                    ✔ Va la huella del acompañante
+                  </div>
+                ) : (
+                  <div style={{ padding: "8px 12px", borderRadius: 10, background: "var(--bad-soft)", border: "1px solid var(--bad-line)", fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>
+                    ⚠ Falta la huella del acompañante — captúrala en la oficina (ficha del cliente → Editar) antes de firmar.
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
             <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "var(--bad-soft)", color: "var(--bad-ink)", fontWeight: 600, fontSize: 13 }}>
               ⚠️ {error}
@@ -1164,7 +1298,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
               <button onClick={handleStep6} disabled={guardando || !revisado}
                 title={!revisado ? "Primero confirma el nombre y la placa" : undefined}
                 style={{ ...btnPrimary, background: (guardando || !revisado) ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok))", opacity: (guardando || !revisado) ? 0.6 : 1, cursor: (guardando || !revisado) ? "not-allowed" : "pointer" }}>
-                {guardando ? "Activando contrato..." : !revisado ? "Confirma arriba para activar" : "✅ Activar contrato"}
+                {!revisado ? "Confirma arriba para seguir" : "Siguiente: acta de entrega →"}
+              </button>
+            )}
+            {step === 7 && (
+              <button onClick={handleStep7} disabled={guardando || !firmasActa.cliente}
+                style={{ ...btnPrimary, background: (guardando || !firmasActa.cliente) ? "var(--faint)" : "linear-gradient(90deg,var(--ok-ink),var(--ok))", opacity: (guardando || !firmasActa.cliente) ? 0.6 : 1, cursor: (guardando || !firmasActa.cliente) ? "not-allowed" : "pointer" }}>
+                {guardando ? "Guardando el acta y activando..." : !firmasActa.listo ? "Trayendo las firmas..." : "✅ Confirmar acta y activar contrato"}
               </button>
             )}
           </div>

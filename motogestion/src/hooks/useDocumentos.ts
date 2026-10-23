@@ -4,6 +4,7 @@ import type { Moto } from "./useMotos";
 import { formatDiaPago, valorPeriodoReal } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
 import { pesosALetras } from "../utils/numeroLetras";
+import { MULTA_RECOLECCION, VALOR_LAVADA } from "../utils/inmovilizacion";
 
 export type TipoDocumento = "contrato" | "certificado" | "pagare";
 
@@ -1116,6 +1117,148 @@ export function generarHTMLResumenEntrega(
       <div style="margin-top:18px;font-size:9px;color:#94a3b8;text-align:center">
         Club Moteros Cartagena · Fredy Mora Avendaño C.C. 1.047.393.901 · Documento informativo de entrega
       </div>
+    </div>
+  `;
+}
+
+/**
+ * Las condiciones más importantes del contrato, en palabras del cliente, para el ACTA DE ENTREGA
+ * (23-oct-2026). Lista revisada y aprobada por el dueño; el punto del ahorro sigue D-023 (el ahorro
+ * compra la moto: si termina, la moto pasa a su nombre; si se va antes, se le devuelve en la
+ * liquidación descontando lo que deba). Exportada para que la prueba la cuide.
+ */
+export function condicionesActaEntrega(contrato: Contrato): string[] {
+  const diario = contrato.forma_pago === "Diario";
+  const unidad = contrato.forma_pago === "Quincenal" ? "quincenas" : contrato.forma_pago === "Mensual" ? "meses" : "semanas";
+  return [
+    diario
+      ? `Paga <b>todos los días</b> lo que va a usar: «paga, usa, vuelve y paga».`
+      : `Paga <b>${formatDiaPago(contrato as never)}</b> el período que va a usar: «paga, usa, vuelve y paga».`,
+    `Si no paga ese día tiene <b>1 día de gabela</b>. Después entra en <b>mora</b>: se le envía un mensaje, se le llama y, si no responde, se hace el <b>apagado remoto o la recolección</b> de la moto.`,
+    `Si se recoge la moto: <b>multa de $ ${fmt(MULTA_RECOLECCION)} + lavada de $ ${fmt(VALOR_LAVADA)}</b>, y para recuperarla debe ponerse al día.`,
+    `<b>Prohibido salir de Cartagena</b> y sus corregimientos.`,
+    `<b>No manipular, tapar ni desconectar el GPS.</b> La moto no se presta, no se empeña y no se alquila a otros.`,
+    diario
+      ? `El contrato diario no tiene fecha de terminación: al completar la base se cambia a un contrato por semanas.`
+      : `El contrato <b>termina cuando completa todos sus pagos</b>${contrato.total_cajas ? ` (${contrato.total_cajas} ${unidad})` : ""}, no por una fecha.`,
+    `Lo que paga de ahorro es para <b>comprar la moto</b>. Al completar todos los pagos, la moto pasa a su nombre. Si entrega la moto antes de terminar, en la liquidación se le devuelve su ahorro, descontando lo que deba.`,
+    `Si la moto entra a taller, fiscalía o tránsito, <b>la cuota sigue corriendo</b>. Si se le presta otra moto, esa se paga aparte ($ 27.000 al día).`,
+    `<b>SOAT y tecnomecánica</b> los cubre la empresa durante el contrato.`,
+    `Daños por mal uso, comparendos y multas de tránsito <b>los paga el cliente</b>.`,
+  ];
+}
+
+/**
+ * ACTA DE ENTREGA (23-oct-2026, mig 202): lo que se le entrega, lo pactado, las condiciones más
+ * importantes, el checklist, las fotos y las firmas con huella. La firman el cliente y la acompañante
+ * como paso final del wizard, ANTES de activar el contrato, y queda en «Documentos del contrato».
+ * Parte del «Resumen de entrega» (mismos datos de lo pactado) para no tener dos versiones de lo mismo.
+ * Las fotos llegan como dataURL: el PDF se arma con html2canvas, que pierde las imágenes por enlace.
+ */
+export function generarHTMLActaEntrega(
+  contrato: Contrato,
+  cliente: Cliente,
+  moto: Moto | null,
+  entrega: { km: number | null; fotos: { label: string; url: string }[]; checklist: { item: string; ok: boolean }[] },
+  firmas: FirmasDoc = {},
+): string {
+  const fecha = contrato.fecha_entrega ? fmtFecha(contrato.fecha_entrega) : fmtFecha(hoyISO());
+  const cuota = valorPeriodoReal(contrato as never);
+  const acomp = (cliente.acompanante_nombre ?? "").toUpperCase();
+  const acompCC = cliente.acompanante_cedula ?? "";
+  const okCheck = entrega.checklist.filter(c => c.ok).length;
+  const dato = (l: string, v: string) =>
+    `<div style="border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px">
+       <div style="font-size:8.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${l}</div>
+       <div style="font-size:12px;font-weight:800;color:#0f172a;margin-top:1px">${v}</div>
+     </div>`;
+  const titulo = (t: string) => `<div style="font-size:10.5px;font-weight:800;color:#334155;text-transform:uppercase;margin:12px 0 5px">${t}</div>`;
+  const celdaFoto = (f: { label: string; url: string }) =>
+    `<div style="page-break-inside:avoid;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden">
+       <div style="background:#f1f5f9;height:92px;display:flex;align-items:center;justify-content:center">
+         <img src="${f.url}" style="max-width:100%;max-height:92px;object-fit:contain;display:block" />
+       </div>
+       <div style="font-size:9px;color:#334155;text-align:center;padding:2px;font-weight:700;border-top:1px solid #e2e8f0">${f.label}</div>
+     </div>`;
+  return `
+    <div style="font-family:Arial,sans-serif;color:#0f172a;max-width:760px;margin:0 auto;padding:18px;font-size:11.5px;line-height:1.45">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:8px;margin-bottom:10px">
+        <div>
+          <div style="font-size:17px;font-weight:900;letter-spacing:.5px">CLUB MOTEROS CARTAGENA</div>
+          <div style="font-size:13px;font-weight:800;color:#334155;margin-top:2px">ACTA DE ENTREGA DE MOTOCICLETA</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#334155">
+          ${moto?.grupo ? `<div style="font-weight:800;color:#0284c7">${moto.grupo}</div>` : ""}
+          <div>${fecha}</div>
+          ${firmas.folio ? `<div style="color:#64748b">Contrato ${firmas.folio}</div>` : ""}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:${acomp ? "1fr 1fr" : "1fr"};gap:8px;margin-bottom:8px">
+        <div style="background:#f8fafc;border-radius:8px;padding:8px 10px">
+          <div style="font-size:8.5px;color:#64748b;font-weight:700;text-transform:uppercase">Recibe (cliente)</div>
+          <div style="font-size:14px;font-weight:800;text-transform:uppercase">${cliente.nombre}</div>
+          <div style="font-size:11px;color:#334155">C.C. ${cliente.cedula}${cliente.telefono ? ` · Tel. ${cliente.telefono}` : ""}</div>
+          ${cliente.direccion ? `<div style="font-size:11px;color:#334155">${cliente.direccion}</div>` : ""}
+        </div>
+        ${acomp ? `
+        <div style="background:#f8fafc;border-radius:8px;padding:8px 10px">
+          <div style="font-size:8.5px;color:#64748b;font-weight:700;text-transform:uppercase">Acompañante (codeudor)</div>
+          <div style="font-size:14px;font-weight:800;text-transform:uppercase">${acomp}</div>
+          <div style="font-size:11px;color:#334155">${acompCC ? `C.C. ${acompCC}` : "C.C. —"}${cliente.acompanante_telefono ? ` · Tel. ${cliente.acompanante_telefono}` : ""}</div>
+          ${cliente.mismo_domicilio_acompanante ? `<div style="font-size:11px;color:#334155">Vive en el mismo domicilio del cliente</div>` : ""}
+        </div>` : ""}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px">
+        <div style="background:#f8fafc;border-radius:8px;padding:8px 10px">
+          <div style="font-size:8.5px;color:#64748b;font-weight:700;text-transform:uppercase">Motocicleta</div>
+          <div style="font-size:14px;font-weight:800">${moto?.placa ?? "—"}</div>
+          <div style="font-size:11px;color:#334155">${[moto?.marca, moto?.modelo, moto?.color].filter(Boolean).join(" · ") || "—"}
+            · ${entrega.km != null ? `${fmt(entrega.km)} km` : "km —"} · Checklist ${okCheck} de ${entrega.checklist.length}</div>
+        </div>
+      </div>
+
+      ${titulo("Lo que se pactó")}
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${dato("Modalidad", contrato.forma_pago ?? "—")}
+        ${dato("Día(s) de pago", formatDiaPago(contrato as never))}
+        ${dato("Cuota del período", `$ ${fmt(cuota)}`)}
+        ${dato("Plazo", contrato.meses ? `${contrato.meses} meses` : "—")}
+      </div>
+
+      ${titulo("Las condiciones más importantes")}
+      <ol style="margin:0;padding-left:18px">
+        ${condicionesActaEntrega(contrato).map(c => `<li style="margin-bottom:3px">${c}</li>`).join("")}
+      </ol>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">Este es un resumen. Lo que manda es el contrato de arrendamiento y el pagaré que el cliente firmó.</div>
+
+      ${entrega.checklist.length ? `
+      ${titulo("Estado de la moto al entregarla")}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px 10px;font-size:10.5px">
+        ${entrega.checklist.map(c => `<div>${c.ok ? "☑" : "☐"} ${c.item}</div>`).join("")}
+      </div>` : ""}
+
+      ${entrega.fotos.length ? `
+      ${titulo("Fotos de la entrega")}
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:5px">${entrega.fotos.map(celdaFoto).join("")}</div>` : ""}
+
+      <div style="margin-top:12px;font-size:10.5px">
+        Con su firma, el cliente y su acompañante declaran que recibieron la motocicleta en el estado descrito,
+        que leyeron estas condiciones y que las entienden.
+      </div>
+
+      <div style="margin-top:14px;page-break-inside:avoid" data-no-cortar>
+        <div style="display:flex;gap:14px;align-items:flex-end">
+          <div style="flex:0.8;text-align:center">
+            ${cajaFirma(null)}
+            <div style="border-top:1px solid #0f172a;padding-top:4px;font-size:10px">CLUB MOTEROS CARTAGENA<br/>Entrega</div>
+          </div>
+          ${bloqueFirmaHuella(cliente.nombre, cliente.cedula, firmas.firmaCliente, firmas.huellaCliente)}
+          ${acomp ? bloqueFirmaHuella(acomp, acompCC, firmas.firmaAcompanante, firmas.huellaAcompanante) : ""}
+        </div>
+      </div>
+
+      ${firmas.selloFecha ? `<div style="margin-top:12px;font-size:9px;color:#64748b;text-align:center;border-top:1px dashed #cbd5e1;padding-top:5px">${firmas.selloFecha}</div>` : ""}
     </div>
   `;
 }

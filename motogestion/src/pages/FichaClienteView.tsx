@@ -701,6 +701,7 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
                       { url: c.contrato_pdf_url, label: "Contrato firmado" },
                       { url: c.pagare_pdf_url, label: "Pagaré firmado" },
                       { url: c.certificado_pdf_url, label: "Certificado de conocimiento" },
+                      { url: c.acta_entrega_pdf_url, label: "Acta de entrega" },
                     ].map((d, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "var(--soft2)", border: "1px solid var(--line)" }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted2)", minWidth: 0 }}>{d.label}</span>

@@ -15,6 +15,7 @@ const DOCUMENTOS: { tipo: TipoDocumentoContrato; label: string }[] = [
   { tipo: "contrato_pdf_url", label: "Contrato firmado" },
   { tipo: "pagare_pdf_url", label: "Pagaré firmado" },
   { tipo: "certificado_pdf_url", label: "Certificado de conocimiento" },
+  { tipo: "acta_entrega_pdf_url", label: "Acta de entrega" },
 ];
 
 export default function ModalDocumentosContrato({ contrato: contratoInicial, clienteNombre, onClose }: Props) {

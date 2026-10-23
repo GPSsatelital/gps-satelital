@@ -1149,7 +1149,7 @@ export default function ReportesView({ onNavigate }: Props) {
           km: moto?.kilometraje_inicial ?? null,
           fotos, nFotos: fotos.length,
           docs, docsOk,
-          urls: { contrato: c.contrato_pdf_url ?? null, pagare: c.pagare_pdf_url ?? null, certificado: c.certificado_pdf_url ?? null },
+          urls: { contrato: c.contrato_pdf_url ?? null, pagare: c.pagare_pdf_url ?? null, certificado: c.certificado_pdf_url ?? null, acta: c.acta_entrega_pdf_url ?? null },
           estado: c.estado,
           // Resumen de lo pactado (para el reporte general y el resumen por contrato)
           formaPago: c.forma_pago ?? "—",
@@ -3179,6 +3179,9 @@ export default function ReportesView({ onNavigate }: Props) {
                       { key: "pagare", label: "Pagaré", ok: e.docs.pagare, url: e.urls.pagare },
                       { key: "certificado", label: "Certificado", ok: e.docs.certificado, url: e.urls.certificado },
                       { key: "firma", label: "Firma", ok: e.docs.firma, url: null },
+                      // El acta (mig 202) existe solo desde el 23-oct-2026: se muestra cuando la hay y NO cuenta
+                      // para «documentos completos», o todas las entregas viejas saldrían incompletas.
+                      ...(e.urls.acta ? [{ key: "acta", label: "Acta de entrega", ok: true, url: e.urls.acta }] : []),
                     ].map(d => (
                       <button
                         key={d.key}

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { createTableStore } from "./createTableStore";
 
 export type UbicacionFisica = "con_cliente" | "bodega" | "oficina" | "taller" | "patios_transito" | "fiscalia" | "otro";
 // `prestamo_entrega` / `prestamo_devolucion` (mig 164, 22-sep-2026): prestar un reemplazo era el
@@ -85,31 +85,21 @@ export type AcuerdoTiempoRodado = {
   created_at: string;
 };
 
+// UNA SOLA LISTA PARA TODA LA APP (23-oct-2026, D-055). Antes cada una de las 14 pantallas y
+// ventanas que usan este hook tenía SU PROPIA copia, y la que guardaba solo refrescaba la suya. La
+// lista de Inmovilizaciones nunca se enteraba: además, la base no avisaba de cambios en estas tres
+// tablas (no estaban en `supabase_realtime`, medido el 23-oct; la mig 205 las agrega). Resultado:
+// resuelto el tiempo y entregada la moto, seguía saliendo «retenida · tiempo por resolver», y se
+// hacía todo otra vez — 9 decisiones repetidas, 2 con las semanas rodadas dos veces (JORGE BELLO,
+// JESUS QUIÑONEZ). Ahora las tres viven en el store compartido y cada escritura lo refresca enseguida.
+const historialStore = createTableStore<HistorialUbicacion>("historial_ubicaciones");
+const recepcionesStore = createTableStore<RecepcionVehiculo>("recepciones_vehiculo");
+const acuerdosStore = createTableStore<AcuerdoTiempoRodado>("acuerdos_tiempo_rodado");
+
 export function useUbicaciones() {
-  const [historial, setHistorial] = useState<HistorialUbicacion[]>([]);
-  const [recepciones, setRecepciones] = useState<RecepcionVehiculo[]>([]);
-  const [acuerdos, setAcuerdos] = useState<AcuerdoTiempoRodado[]>([]);
-
-  const fetchAll = useCallback(async () => {
-    const [h, r, a] = await Promise.all([
-      supabase.from("historial_ubicaciones").select("*").order("created_at", { ascending: false }),
-      supabase.from("recepciones_vehiculo").select("*").order("created_at", { ascending: false }),
-      supabase.from("acuerdos_tiempo_rodado").select("*").order("created_at", { ascending: false }),
-    ]);
-    setHistorial((h.data ?? []) as HistorialUbicacion[]);
-    setRecepciones((r.data ?? []) as RecepcionVehiculo[]);
-    setAcuerdos((a.data ?? []) as AcuerdoTiempoRodado[]);
-  }, []);
-
-  useEffect(() => {
-    fetchAll();
-    const ch = supabase.channel(`ubicaciones-realtime-${Math.random()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "historial_ubicaciones" }, fetchAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "recepciones_vehiculo" }, fetchAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "acuerdos_tiempo_rodado" }, fetchAll)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [fetchAll]);
+  const { data: historial } = historialStore.useStore();
+  const { data: recepciones } = recepcionesStore.useStore();
+  const { data: acuerdos } = acuerdosStore.useStore();
 
   async function cambiarUbicacion(
     motoId: string,
@@ -133,6 +123,7 @@ export function useUbicaciones() {
       motivo,
       registrado_por: registradoPor,
     });
+    if (!error) void historialStore.refetch(true);
     return { error: error?.message ?? null };
   }
 
@@ -187,6 +178,9 @@ export function useUbicaciones() {
       registrado_por: data.quien_recibe,
     });
 
+    // Antes de devolver: quien llamó cierra su ventana y la lista ya tiene que mostrar la moto en su sitio.
+    await Promise.all([recepcionesStore.refetch(true), historialStore.refetch(true)]);
+
     const avisos = [
       errMoto ? `no se pudo cambiar la ubicación de la moto (${errMoto.message})` : null,
       errHist ? `no quedó el registro en el historial de ubicaciones (${errHist.message})` : null,
@@ -218,6 +212,7 @@ export function useUbicaciones() {
       nueva_fecha_fin_contrato: data.nueva_fecha_fin_contrato ?? null,
       observaciones: data.observaciones ?? null,
     }).select("id").single();
+    if (!error) await acuerdosStore.refetch(true);
     return { error: error?.message ?? null, id: inserted?.id ?? null };
   }
 
@@ -230,6 +225,7 @@ export function useUbicaciones() {
     if (up) return { error: up.message };
     const { data } = supabase.storage.from("documentos").getPublicUrl(path);
     const { error } = await supabase.from("acuerdos_tiempo_rodado").update({ documento_firmado_url: data.publicUrl }).eq("id", acuerdoId);
+    if (!error) void acuerdosStore.refetch(true);
     return { error: error?.message ?? null };
   }
 

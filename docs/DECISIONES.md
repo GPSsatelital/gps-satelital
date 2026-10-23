@@ -861,3 +861,15 @@ mano; (4) un solo botón de guardar para toda la app que dice «Guardando…» y
 no se tocan solas: las decide la oficina.
 **Dónde vive:** mig 203 (`tiempo_guardado_una_vez`, `referencia_una_vez`) y mig 204 (`recepcion_una_vez` 30 min,
 `abono_base_una_vez` 10 min, `liquidacion_una_abierta`, `deuda_una_vez` 10 min), cada una con su prueba adentro.
+
+### D-055 · 23-oct-2026 · Recepciones y tiempo guardado: una sola lista que se entera al momento
+**Decidió:** el dueño: *"haz el arreglo así: la lista compartida que se refresca al guardar y la migración que prende el
+aviso en las 3 tablas"*.
+**Por qué:** 8 de las 9 decisiones de tiempo guardado repetidas salieron de Inmovilizaciones › Devolver moto. JORGE BELLO
+(RLT88H, 2-oct, Sergio): resolvió 10:33:24 p.m., entregó 10:34:29, y repitió las dos cosas 10:34:46 y 10:35:54. La moto
+seguía saliendo «retenida · tiempo por resolver» porque (1) cada una de las 14 pantallas que leen estas tablas tenía su
+propia copia y la que guardaba solo refrescaba la suya, y (2) la base no avisaba: `recepciones_vehiculo`,
+`acuerdos_tiempo_rodado` e `historial_ubicaciones` no estaban en `supabase_realtime` (medido el 23-oct).
+**Qué se decidió:** las tres tablas pasan al store compartido (`createTableStore`, el mismo de pagos y contratos) y cada
+escritura lo refresca antes de devolver; la mig 205 prende el aviso para los demás celulares.
+**Dónde vive:** `useUbicaciones.ts` · mig 205. Los candados de la mig 203/204 siguen frenando la repetición en la base.

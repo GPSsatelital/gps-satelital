@@ -383,7 +383,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   liquidación abierta por contrato, deuda (10 min). ✅ Botones: medidos uno por uno, de 64 que guardan 63 ya
   se bloqueaban y 59 decían «Guardando…»; se arreglaron los 5 que faltaban y `src/botonesQueGuardan.test.ts` hace
   fallar `npm test` si un botón nuevo no cumple (el dueño escogió eso en vez de pasar todos a un molde: «sin cambiar
-  los que ya funcionan»). 🔲 Queda: por qué la moto seguía saliendo «por resolver» y se resolvía otra vez. «A todos los botones actuales y los que
+  los que ya funcionan»). ✅ La moto seguía saliendo «por resolver»: encontrado y arreglado (D-055, mig 205). «A todos los botones actuales y los que
   vamos creando, una regla: bloqueado el doble clic y que las peticiones no se envíen dos veces.» La regla de
   pantalla ya existía (CLAUDE.md, anti-doble-clic) pero se aplica botón por botón. Plan presentado (espera su
   «1»): **base** — candado de «una sola vez» en lo que mueve plata o semanas (medir primero cuáles acciones no

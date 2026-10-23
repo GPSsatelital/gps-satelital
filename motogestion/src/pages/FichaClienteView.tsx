@@ -169,9 +169,11 @@ function imprimirAcuerdoPago(
   imprimirDocumento(generarHTMLAcuerdoPago(cli, moto, deudas, cv, finContrato), "Acuerdo de pago");
 }
 
-export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: {
+export default function FichaClienteView({ clienteId, onNavigate, volver, tabInicial }: {
   clienteId: string;
   onNavigate: (view: ViewKey, filter?: string) => void;
+  /** A dónde vuelve el botón de arriba (la pantalla de donde se vino). Sin él, a la lista de clientes. */
+  volver?: { a: string; ir: () => void };
   /** Para abrir la ficha directo en una pestaña (Cartera → "Ver semana por semana" abre "pagos"). */
   tabInicial?: string;
 }) {
@@ -349,10 +351,10 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
     <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 40 }}>
       {/* Back */}
       <button
-        onClick={() => onNavigate("clientes", "")}
+        onClick={() => volver ? volver.ir() : onNavigate("clientes", "")}
         style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
       >
-        ← Volver a clientes
+        ← Volver a {volver?.a ?? "clientes"}
       </button>
 
       {/* Hero card */}
@@ -411,21 +413,22 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
             {/* KPI mini cards — `minWidth: 0` en vez de `flexShrink: 0`: con flexShrink el
                 bloque conservaba el ancho de los 4 KPIs en fila (476px) y se salía de la
                 pantalla a 375px en vez de dejar que envolvieran. */}
-            {/* En el celular, una sola fila de recuadros iguales (antes quedaban 2 arriba y 1 suelto abajo). */}
+            {/* En el celular, una sola fila (antes quedaban 2 arriba y 1 suelto abajo). Con deuda son 4: las dos
+                de plata van más anchas y un punto más chicas, o «$1.374.000» se cortaba. */}
             <div style={isMobile
-              ? { flexBasis: "100%", display: "grid", gridTemplateColumns: `repeat(${deudaActiva > 0 ? 4 : 3}, minmax(0, 1fr))`, gap: 6, minWidth: 0 }
+              ? { flexBasis: "100%", display: "grid", gridTemplateColumns: deudaActiva > 0 ? "minmax(0, 0.75fr) minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 0.75fr)" : "repeat(3, minmax(0, 1fr))", gap: 6, minWidth: 0 }
               : { display: "flex", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
               <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: isMobile ? 0 : 72 }}>
                 <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)" }}>{diasActivo}</div>
                 <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
               </div>
               <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--ok-soft)", minWidth: isMobile ? 0 : 72 }}>
-                <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
+                <div style={{ fontSize: isMobile ? (deudaActiva > 0 ? 13 : 15) : 18, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
                 <div style={{ fontSize: 10, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
               </div>
               {deudaActiva > 0 && (
                 <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--bad-soft)", minWidth: isMobile ? 0 : 72 }}>
-                  <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
+                  <div style={{ fontSize: isMobile ? (deudaActiva > 0 ? 13 : 15) : 18, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
                   <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
                 </div>
               )}

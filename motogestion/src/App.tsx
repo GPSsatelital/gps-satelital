@@ -48,6 +48,8 @@ export type ViewKey =
   | "mis_visitas" | "mi_dia";
 
 export type NavContext = { view: ViewKey; filter: string };
+type EnPila = NavContext & { id: number; scroll: number; ultimaGuardia: number };
+const MANTENER_VIVAS = 3;
 
 function useIsMobile() {
   const [v, setV] = useState(window.innerWidth < 900);
@@ -440,7 +442,12 @@ function Shell() {
   });
   // Historial de módulos + pila de capas cerrables (detalle/modal). La app es la fuente
   // de verdad; el historial del navegador es una sola "trampa" que se re-arma en cada atrás.
-  const navStackRef = useRef<NavContext[]>([]);
+  // Cada módulo de la pila guarda dónde iba el scroll y hasta qué capa cerrable era suyo:
+  // las últimas MANTENER_VIVAS pantallas siguen montadas (ocultas) para que al volver estén
+  // tal cual se dejaron — el cliente abierto, la pestaña, el filtro (pedido del dueño 23-oct).
+  const navStackRef = useRef<EnPila[]>([]);
+  const idVistaRef = useRef(0);
+  const idContador = useRef(0);
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
   const guardsRef = useRef<Array<{ id: number; onBack: () => void }>>([]);
@@ -533,8 +540,10 @@ function Shell() {
 
   function navigate(v: ViewKey, f = "") {
     if (v === ctx.view && f === ctx.filter) { setMasOpen(false); setUserMenuOpen(false); return; }
+    // Apilar el módulo actual (con su scroll) para poder volver a él tal cual estaba.
+    navStackRef.current.push({ ...ctx, id: idVistaRef.current, scroll: contentScrollPos.current, ultimaGuardia: guardCounter.current });
+    idVistaRef.current = ++idContador.current;
     contentScrollPos.current = 0; // nuevo módulo → empezar arriba
-    navStackRef.current.push(ctx); // apilar el módulo actual para poder volver
     setCtx({ view: v, filter: f });
     setMasOpen(false);
     setUserMenuOpen(false);
@@ -547,17 +556,24 @@ function Shell() {
       // Re-armar la trampa SIEMPRE (mantiene el historial del navegador a profundidad fija
       // y garantiza que el próximo atrás también se intercepte).
       window.history.pushState({ inApp: true }, "");
-      // 1) ¿hay una capa abierta (detalle/modal/hoja)? cerrar la más reciente.
-      const g = guardsRef.current[guardsRef.current.length - 1];
-      if (g) { guardsRef.current.pop(); g.onBack(); return; }
-      contentScrollPos.current = 0; // volver atrás → empezar arriba
-      // 2) volver al módulo anterior.
-      if (navStackRef.current.length > 0) {
-        setCtx(navStackRef.current.pop()!);
+      // 1) ¿hay una capa abierta (detalle/modal/hoja) en la pantalla que se VE? cerrar la más
+      // reciente. Las capas de las pantallas guardadas detrás no cuentan: si no, el atrás desde
+      // la ficha cerraría el detalle oculto de Cartera en vez de salir de la ficha.
+      const pila = navStackRef.current;
+      const desde = pila.length > 0 ? pila[pila.length - 1].ultimaGuardia : 0;
+      const i = guardsRef.current.findLastIndex(x => x.id > desde);
+      if (i !== -1) { const g = guardsRef.current[i]; guardsRef.current.splice(i, 1); g.onBack(); return; }
+      // 2) volver al módulo anterior, a la misma altura donde se dejó.
+      if (pila.length > 0) {
+        const anterior = pila.pop()!;
+        idVistaRef.current = anterior.id;
+        contentScrollPos.current = anterior.scroll;
+        setCtx({ view: anterior.view, filter: anterior.filter });
         return;
       }
+      contentScrollPos.current = 0;
       // 3) en la raíz: ir al panel si no estamos ahí (si ya, no hay a dónde volver).
-      if (ctxRef.current.view !== "dashboard") setCtx({ view: "dashboard", filter: "" });
+      if (ctxRef.current.view !== "dashboard") { idVistaRef.current = ++idContador.current; setCtx({ view: "dashboard", filter: "" }); }
     }
     // Armar la trampa una vez al montar.
     window.history.replaceState({ inApp: true }, "");
@@ -615,40 +631,67 @@ function Shell() {
     if (ctx.view === "ficha_cliente" || ctx.view === "ficha_moto") filterLabel = "";
   }
 
+  // El botón de arriba de las fichas dice a dónde vuelve y hace lo mismo que el «atrás» del celular.
+  // Sin nada detrás (se entró directo), no se pasa y la ficha vuelve a su lista como siempre.
+  function volverDe(c: EnPila): { a: string; ir: () => void } | undefined {
+    const pila = navStackRef.current;
+    if (c.id !== idVistaRef.current || pila.length === 0) return undefined;
+    const v = pila[pila.length - 1].view;
+    return { a: v === "cobros" ? "Cartera" : VIEW_TITLE[v], ir: () => window.history.back() };
+  }
+
+  function vista(c: EnPila) {
+    return (
+      <>
+        <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
+        {c.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
+        {c.view === "mi_dia"        && <MiDiaView onNavigate={navigate} />}
+        {c.view === "mis_visitas"   && puedeVer("mis_visitas") && <MisVisitasView />}
+        {c.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} onNavigate={navigate} />}
+        {c.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} onNavigate={navigate} />}
+        {c.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={c.filter !== "new" ? c.filter : ""} initialOpenForm={c.filter === "new"} />}
+        {c.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={c.filter === "new"} initialFilter={c.filter !== "new" ? c.filter : ""} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
+        {c.view === "caja"          && puedeVer("caja") && <CajaView />}
+        {c.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
+        {c.view === "cobro_diario"  && puedeVer("cobro_diario") && <CobroDiarioView onNavigate={navigate} />}
+        {c.view === "referidos"     && puedeVer("referidos") && <ReferidosView />}
+        {c.view === "alertas"       && puedeVer("alertas") && <AlertasView onNavegar={navigate} />}
+        {c.view === "inmovilizaciones" && puedeVer("inmovilizaciones") && <InmovilizacionesView onNavigate={navigate} />}
+        {c.view === "taller"        && puedeVer("taller") && <TallerView onNavigate={navigate} />}
+        {c.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
+        {c.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
+        {c.view === "configuracion"  && <ConfiguracionView />}
+        {c.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
+        {/* "id|pagos" abre la ficha directo en esa pestaña (Cartera → "Ver semana por semana"). */}
+        {c.view === "ficha_cliente"  && c.filter && <FichaClienteView clienteId={c.filter.split("|")[0]} tabInicial={c.filter.split("|")[1]} onNavigate={navigate} volver={volverDe(c)} />}
+        {c.view === "ficha_moto"     && c.filter && <FichaMotoView motoId={c.filter} onNavigate={navigate} volver={volverDe(c)} />}
+        {c.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
+        {c.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}
+        </Suspense>
+      </>
+    );
+  }
+
+  // La pantalla actual y las últimas que se dejaron atrás (ocultas, sin desmontar). Todas en la
+  // misma lista y con su id de llave: al volver, la oculta se muestra en vez de nacer de nuevo.
+  const vivas: EnPila[] = [
+    ...navStackRef.current.slice(-MANTENER_VIVAS),
+    { ...ctx, id: idVistaRef.current, scroll: 0, ultimaGuardia: 0 },
+  ];
   const contentView = (
-    <motion.div
-      key={ctx.view}
-      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-      style={{ flex: 1, background: "var(--bg)", minHeight: 0 }}
-    >
-      <Suspense fallback={<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, color: "var(--muted)", fontSize: 14 }}>Cargando…</div>}>
-      {ctx.view === "dashboard"     && <DashboardView onNavigate={navigate} />}
-      {ctx.view === "mi_dia"        && <MiDiaView onNavigate={navigate} />}
-      {ctx.view === "mis_visitas"   && puedeVer("mis_visitas") && <MisVisitasView />}
-      {ctx.view === "clientes"      && puedeVer("clientes") && <ClientesView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
-      {ctx.view === "motos"         && puedeVer("motos") && <MotosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} onNavigate={navigate} />}
-      {ctx.view === "contratos"     && puedeVer("contratos") && <ContratosView initialFilter={ctx.filter !== "new" ? ctx.filter : ""} initialOpenForm={ctx.filter === "new"} />}
-      {ctx.view === "cobros"        && puedeVer("cobros") && <CobrosView initialOpenForm={ctx.filter === "new"} initialFilter={ctx.filter !== "new" ? ctx.filter : ""} onNavigate={navigate} puedeHistorial={puedeVer("historial_pagos")} />}
-      {ctx.view === "caja"          && puedeVer("caja") && <CajaView />}
-      {ctx.view === "reportes"      && puedeVer("reportes") && <ReportesView onNavigate={navigate} />}
-      {ctx.view === "cobro_diario"  && puedeVer("cobro_diario") && <CobroDiarioView onNavigate={navigate} />}
-      {ctx.view === "referidos"     && puedeVer("referidos") && <ReferidosView />}
-      {ctx.view === "alertas"       && puedeVer("alertas") && <AlertasView onNavegar={navigate} />}
-      {ctx.view === "inmovilizaciones" && puedeVer("inmovilizaciones") && <InmovilizacionesView onNavigate={navigate} />}
-      {ctx.view === "taller"        && puedeVer("taller") && <TallerView onNavigate={navigate} />}
-      {ctx.view === "liquidaciones"  && puedeVer("liquidaciones") && <LiquidacionesView />}
-      {ctx.view === "usuarios"       && puedeVer("usuarios") && <UsuariosView />}
-      {ctx.view === "configuracion"  && <ConfiguracionView />}
-      {ctx.view === "importacion"    && puedeVer("importacion") && <ImportacionView />}
-      {/* "id|pagos" abre la ficha directo en esa pestaña (Cartera → "Ver semana por semana"). */}
-      {ctx.view === "ficha_cliente"  && ctx.filter && <FichaClienteView clienteId={ctx.filter.split("|")[0]} tabInicial={ctx.filter.split("|")[1]} onNavigate={navigate} />}
-      {ctx.view === "ficha_moto"     && ctx.filter && <FichaMotoView motoId={ctx.filter} onNavigate={navigate} />}
-      {ctx.view === "historial_pagos" && puedeVer("historial_pagos") && <HistorialPagosView onNavigate={navigate} />}
-      {ctx.view === "tarjetas_llaves" && puedeVer("tarjetas_llaves") && <TarjetasLlavesView />}
-      </Suspense>
-    </motion.div>
+    <>
+      {vivas.map(c => (
+        <motion.div
+          key={c.id}
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+          style={{ flex: 1, background: "var(--bg)", minHeight: 0, display: c.id === idVistaRef.current ? undefined : "none" }}
+        >
+          {vista(c)}
+        </motion.div>
+      ))}
+    </>
   );
 
   // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────

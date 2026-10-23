@@ -134,9 +134,11 @@ function docColorFn(dias: number | null): { bg: string; color: string } {
   return { bg: "var(--ok-soft)", color: "var(--ok-ink)" };
 }
 
-export default function FichaMotoView({ motoId, onNavigate }: {
+export default function FichaMotoView({ motoId, onNavigate, volver }: {
   motoId: string;
   onNavigate: (view: ViewKey, filter?: string) => void;
+  /** A dónde vuelve el botón de arriba (la pantalla de donde se vino). Sin él, a la lista de motos. */
+  volver?: { a: string; ir: () => void };
 }) {
   const [tab, setTab] = useState<Tab>("info");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
@@ -222,10 +224,10 @@ export default function FichaMotoView({ motoId, onNavigate }: {
     <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 40 }}>
       {/* Back */}
       <button
-        onClick={() => onNavigate("motos", "")}
+        onClick={() => volver ? volver.ir() : onNavigate("motos", "")}
         style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6, marginBottom: 20, padding: "6px 0" }}
       >
-        ← Volver a motos
+        ← Volver a {volver?.a ?? "motos"}
       </button>
 
       {/* Hero card */}

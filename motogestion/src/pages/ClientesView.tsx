@@ -29,6 +29,7 @@ import CanvasFirma from "../components/CanvasFirma";
 import LectorHuella from "../components/LectorHuella";
 import FotoPerfil from "../components/FotoPerfil";
 import { ListBox, ItemLista } from "../components/ListaEstandar";
+import FotoCliente from "../components/FotoCliente";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 import { abrirDocumento } from "../lib/storagePrivado";
 
@@ -1502,6 +1503,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   {filtered.map((cliente) => (
                     <ItemLista
                       key={cliente.id}
+                      foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} />}
                       titulo={cliente.nombre}
                       subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
                       tituloCompleto={filtroEstado === "Aprobado"}
@@ -1572,6 +1574,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     return (
                       <ItemLista
                         key={cliente.id}
+                        foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} />}
                         titulo={cliente.nombre}
                         subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
                         tituloCompleto={filtroEstado === "Aprobado"}

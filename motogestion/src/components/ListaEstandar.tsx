@@ -42,8 +42,10 @@ export function ListBox({ isMobile, children, maxHeightVh, scrollRef }: {
 //  · extra    → contenido debajo, a todo el ancho (barra de progreso, botones…)
 //  · rielColor→ color del riel izquierdo (estado); si no, transparente
 export function ItemLista({
-  placa, grupo, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick, tituloCompleto,
+  placa, grupo, titulo, subtitulo, right, extra, rielColor, seleccionado, onClick, tituloCompleto, foto,
 }: {
+  /** Algo a la izquierda de todo — la cara del cliente (`FotoCliente`) en la lista de Clientes. */
+  foto?: ReactNode;
   placa?: string;
   // Portafolio de la moto: se pinta debajo de la placa (ver Placa.tsx).
   grupo?: string | null;
@@ -76,6 +78,7 @@ export function ItemLista({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {foto}
         {placa && <Placa placa={placa} size="sm" grupo={grupo} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={tituloCompleto

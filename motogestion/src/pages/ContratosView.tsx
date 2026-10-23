@@ -249,6 +249,10 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
     </div>
   );
 
+  // Se llama como `{PanelDetalle()}`, NUNCA como `<PanelDetalle />`: como tag, cada render de esta
+  // pantalla (un pago que entra por tiempo real, volver de la cámara) lo trataba como un componente
+  // nuevo y lo desmontaba entero, con las ventanas que tiene adentro. El 23-oct-2026 eso borraba el
+  // video y la firma del rodado de OMAR (RMM66H) y lo devolvía al paso 1. No usa hooks: llamarla es seguro.
   function PanelDetalle() {
     if (!contratoSeleccionado || !clienteDetalle) {
       return (
@@ -779,7 +783,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
   if (isMobile && selectedId) {
     return (
       <div style={{ paddingBottom: 80 }}>
-        <PanelDetalle />
+        {PanelDetalle()}
         {wizardOpen && (
           <WizardContrato
             clientes={clientes} motos={motos} contratos={contratos}
@@ -903,7 +907,7 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
         {/* Panel detalle — desktop */}
         {!isMobile && (
           <div style={{ flex: "0 0 360px", maxWidth: 360 }}>
-            <PanelDetalle />
+            {PanelDetalle()}
           </div>
         )}
       </div>

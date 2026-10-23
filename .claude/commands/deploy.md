@@ -14,8 +14,8 @@ Pasos (parar y reportar si algo falla, NO commitear roto):
 
 2. **Commit** en la raíz del repo:
    - `git add -A`
-   - `git commit -q -m "$ARGUMENTS"` con el trailer:
-     `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
+   - `git commit -q -m "$ARGUMENTS"` con el trailer `Co-Authored-By:` del modelo que REALMENTE
+     hizo el trabajo en esta sesión (el que indique el sistema), nunca un nombre fijo copiado de acá.
 
 3. **Push + merge a main** (regla obligatoria — Vercel solo despliega desde main):
    - `git push -q origin <rama-actual>`

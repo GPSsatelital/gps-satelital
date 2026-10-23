@@ -723,6 +723,8 @@ export default function ContratosView({ initialFilter = "", initialOpenForm = fa
           <ModalRodadoPorDeuda
             contratoId={c.id}
             acompanante={clienteDetalle?.acompanante_nombre ?? null}
+            huellaClienteUrl={clienteDetalle?.autorizacion_datos_huella_url ?? null}
+            huellaAcompananteUrl={clienteDetalle?.acompanante_huella_url ?? null}
             empalmeAbierto={empalmePendiente(c)}
             onCerrar={() => { setRodadoAbierto(false); recargarRodados(); }}
             onHecho={() => recargarRodados()}

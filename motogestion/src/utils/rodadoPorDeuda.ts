@@ -10,6 +10,8 @@ export type DeudaRodada = { deuda_id: string; concepto: string; descripcion: str
 
 export type CalculoRodado = {
   puede: boolean;
+  /** Rodar TODO (D-050/D-052, mig 201): semanas atrasadas + el acuerdo entero, que queda cerrado. */
+  todo?: boolean;
   razones: string[];
   avisos: string[];
   contrato_id: string;
@@ -35,9 +37,19 @@ export type CalculoRodado = {
   monto_rodado?: number;
   monto_a_cobrar?: number;
   sobrante?: number;
+  // Solo en rodar todo:
+  debe_todo?: number;
+  semanas_completas?: number;
+  /** Lo que sobra después de las semanas completas. Si es de $100.000 o más se rueda como una semana más, sin recargo. */
+  pedazo?: number;
+  pedazo_se_rueda?: boolean;
+  /** Lo que ya tenía abonado de la semana a medio pagar que se corrió: pasa a su próxima semana. */
+  adelanto_proxima_semana?: number;
+  proxima_semana?: number;
   acuerdo?: {
     convenio_id: string; numero: number | null; cuota: number; falta_antes: number; periodos_corridos: number;
     monto_corrido: number; fecha_limite_antes: string | null; fecha_limite_despues: string | null;
+    deuda_total?: number; abonado?: number; queda?: number;
   } | null;
   despues?: { cuotas: number; acuerdo: number; deudas: number; total: number; estado: string | null; dias_mora: number | null };
   total_cajas_antes?: number;
@@ -56,6 +68,7 @@ export type RodadoPorDeuda = {
   fecha_fin_antes: string | null; fecha_fin_aprox: string | null;
   documento_url: string; firma_cliente_url: string; firma_acompanante_url: string | null; video_url: string;
   estado: "vigente" | "saldado" | "cobrado_en_liquidacion" | "anulado";
+  todo?: boolean;
   deudas_rodadas: DeudaRodada[];
   created_at: string;
 };
@@ -82,6 +95,15 @@ const sem = (n: number) => `${n} ${n === 1 ? "semana" : "semanas"}`;
 
 /** Lo que el cliente dice en el video, con sus cifras. La fecha del día va de primero (pedido del dueño). */
 export function textoDeclaracion(c: CalculoRodado, hoyISO: string): string {
+  if (c.todo) {
+    return `Hoy, ${fechaLarga(hoyISO)}, yo, ${(c.cliente ?? "").toUpperCase()}, con cédula ${c.cedula ?? "—"}, `
+      + `acepto que todo lo que debo, también mi acuerdo de pago completo, se me rueda al final de mi contrato, `
+      + `que al final pagaré ${sem(c.semanas_a_cobrar ?? 0)}, `
+      + `que mi acuerdo de pago queda cerrado y desde ahora pago solo mi semana, `
+      + `que mi próxima semana es de ${pesos(c.proxima_semana)}, `
+      + `que mi contrato termina aproximadamente el ${fechaLarga(c.fecha_fin_aprox)}, `
+      + `y que la empresa no cubre el SOAT ni la tecnomecánica durante ese tiempo extra.`;
+  }
   return `Hoy, ${fechaLarga(hoyISO)}, yo, ${(c.cliente ?? "").toUpperCase()}, con cédula ${c.cedula ?? "—"}, `
     + `acepto que se me ruedan ${sem(c.semanas_rodadas ?? 0)} que debo al final de mi contrato, `
     + `que al final pagaré ${sem(c.semanas_a_cobrar ?? 0)}, `
@@ -89,16 +111,30 @@ export function textoDeclaracion(c: CalculoRodado, hoyISO: string): string {
     + `y que la empresa no cubre el SOAT ni la tecnomecánica durante ese tiempo extra.`;
 }
 
-export type OpcionesDocRodado = { borrador?: boolean; firmaCliente?: string | null; firmaAcompanante?: string | null; acompanante?: string | null; fechaFirma?: string | null; numero?: string | null };
+export type OpcionesDocRodado = {
+  borrador?: boolean; firmaCliente?: string | null; firmaAcompanante?: string | null; acompanante?: string | null;
+  fechaFirma?: string | null; numero?: string | null;
+  /** La huella que el cliente dio al registrarse (dataURL). Desde el 23-oct va en el documento, como en los acuerdos. */
+  huellaCliente?: string | null;
+  huellaAcompanante?: string | null;
+};
+
+/** Rodar todo: cuánto paga al final de más por correr completa la semana del pedazo (D-052). */
+export function pagaDeMasPorElPedazo(c: CalculoRodado): number {
+  if (!c.todo || !c.pedazo_se_rueda) return 0;
+  return Math.max((c.monto_rodado ?? 0) - (c.tiempo_total ?? 0) - (c.adelanto_proxima_semana ?? 0), 0);
+}
 
 /** El documento del rodado: lo lee el cliente (borrador) y lo firma (firmado → PDF). */
 export function htmlRodadoPorDeuda(c: CalculoRodado, o: OpcionesDocRodado = {}): string {
   const n = c.semanas_rodadas ?? 0, cobrar = c.semanas_a_cobrar ?? 0, extra = c.semanas_extra ?? 0;
   const noRodadas = (c.deudas_no_rodables ?? []).filter(d => d.pendiente > 0);
-  const ac = c.acuerdo && c.acuerdo.periodos_corridos > 0 ? c.acuerdo : null;
-  const firma = (img: string | null | undefined, nombre: string, rol: string, cedula?: string | null) => `
+  const ac = !c.todo && c.acuerdo && c.acuerdo.periodos_corridos > 0 ? c.acuerdo : null;
+  const acTodo = c.todo && c.acuerdo ? c.acuerdo : null;
+  const deMas = pagaDeMasPorElPedazo(c);
+  const firma = (img: string | null | undefined, nombre: string, rol: string, cedula?: string | null, huella?: string | null) => `
     <div class="firma-box">
-      <div class="firma-trazo">${img ? `<img src="${img}" alt="Firma"/>` : ""}</div>
+      <div class="firma-trazo">${img ? `<img src="${img}" alt="Firma"/>` : ""}${huella ? `<img class="huella" src="${huella}" alt="Huella"/>` : ""}</div>
       <div class="firma-linea">
         <p style="font-weight:700;text-transform:uppercase">${nombre}</p>
         ${cedula ? `<p style="color:#64748b">C.C. ${cedula}</p>` : ""}
@@ -131,6 +167,8 @@ export function htmlRodadoPorDeuda(c: CalculoRodado, o: OpcionesDocRodado = {}):
   .firma-box { flex: 1 1 180px; text-align: center; font-size: 12px; }
   .firma-trazo { height: 96px; display: flex; align-items: flex-end; justify-content: center; }
   .firma-trazo img { max-height: 92px; max-width: 100%; }
+  .firma-trazo { gap: 8px; }
+  .firma-trazo img.huella { max-height: 78px; max-width: 64px; border: 1px solid #cbd5e1; border-radius: 6px; }
   .firma-linea { border-top: 1px solid #334155; padding-top: 8px; }
   .constancia { margin-top: 14px; font-size: 11px; color: #475569; line-height: 1.55; text-align: justify; }
   .marca-borrador { position: absolute; top: 42%; left: 0; width: 100%; text-align: center; font-size: 90px; font-weight: 800; color: #e2e8f0; letter-spacing: 14px; transform: rotate(-22deg); z-index: 0; }
@@ -167,7 +205,46 @@ ${o.borrador ? `<div class="aviso-borrador">Esta es una copia de revisión. Toda
   <div class="fila"><span>Valor de la semana</span><span>${pesos(c.valor_semana)}</span></div>
 </div>
 
-<table>
+${c.todo ? `<table>
+  <tr><td>Lo que el cliente debía en total (también lo que no se había vencido del acuerdo)</td><td>${pesos(c.debe_todo)}</td></tr>
+  <tr><td>Semanas completas que caben en esa deuda</td><td>${sem(c.semanas_completas ?? 0)}</td></tr>
+  <tr><td>Lo que sobra después de las semanas completas</td><td>${pesos(c.pedazo)}${c.pedazo_se_rueda ? " (se rueda como una semana más)" : ""}</td></tr>
+  <tr><td>Semanas que se ruedan al final del contrato</td><td>${sem(n)} (${pesos(c.monto_rodado)})</td></tr>
+  <tr><td>Semanas que pagará al final (incluye ${sem(extra)} de recargo)</td><td>${sem(cobrar)} (${pesos(c.monto_a_cobrar)})</td></tr>
+  <tr><td>Lo que queda debiendo hoy y debe pagar ya</td><td>${pesos(c.despues?.total)}</td></tr>
+  <tr><td>Su próxima semana</td><td>${pesos(c.proxima_semana)}</td></tr>
+  <tr><td>Fecha aproximada de fin del contrato</td><td>${fechaLarga(c.fecha_fin_antes)} pasa al ${fechaLarga(c.fecha_fin_aprox)}</td></tr>
+</table>
+
+<div class="clausulas"><ol>
+  <li>El cliente debía en total <strong>${pesos(c.debe_todo)}</strong>: semanas atrasadas del contrato por ${pesos(c.cuotas_rodables)}${acTodo ? `
+    y lo que le faltaba a su <strong>acuerdo de pago #${acTodo.numero ?? ""}</strong>, ${pesos(acTodo.falta_antes)}
+    (de ${pesos(acTodo.deuda_total)} pactados, ya había abonado ${pesos(acTodo.abonado)}; cuenta también lo que no se había vencido)` : ""}.
+    Todo es <strong>tiempo de uso de la moto</strong>.</li>
+  <li>De común acuerdo, <strong>toda esa deuda se rueda al final del contrato</strong>: en esa deuda caben
+    <strong>${sem(c.semanas_completas ?? 0)} completas</strong>.
+    ${c.pedazo_se_rueda
+      ? `Sobraban <strong>${pesos(c.pedazo)}</strong>, que es $100.000 o más: se ruedan como <strong>una semana completa más</strong>, sin recargo.
+         Como esa semana vale ${pesos(c.valor_semana)} completa, al final el cliente paga ${pesos(deMas)} más de lo que debía.`
+      : (c.pedazo ?? 0) > 0
+        ? `Sobran <strong>${pesos(c.pedazo)}</strong>, que es menos de $100.000: no se ruedan; el cliente los paga hoy o le quedan como deuda pendiente.`
+        : ""}
+    En total se ruedan <strong>${sem(n)}</strong>. Desde hoy no se le cobran ni le aparecen en mora. <strong>No se perdonan: se pagan al final.</strong></li>
+  <li>Por el desgaste extra de la moto durante ese tiempo adicional, al final el cliente pagará
+    <strong>${sem(cobrar)}</strong>: ${sem(extra)} de recargo, que salen de las ${sem(c.semanas_completas ?? 0)} completas.
+    Son semanas normales, de ${pesos(c.valor_semana)} cada una.</li>
+  ${acTodo ? `<li>Su <strong>acuerdo de pago #${acTodo.numero ?? ""} queda cerrado</strong>: no se le cobran más cuotas del acuerdo.
+    Desde hoy el cliente paga solo su semana normal.</li>` : ""}
+  ${(c.adelanto_proxima_semana ?? 0) > 0 ? `<li>Los ${pesos(c.adelanto_proxima_semana)} que ya tenía abonados de una semana que se rodó pasan a su próxima semana:
+    su próxima semana es de <strong>${pesos(c.proxima_semana)}</strong>.</li>` : ""}
+  ${noRodadas.length ? `<li>Las deudas que no son tiempo <strong>no se ruedan</strong> y las sigue debiendo:
+    ${noRodadas.map(d => `${d.que_es ?? d.concepto}${d.descripcion ? ` (${d.descripcion})` : ""}: ${pesos(d.pendiente)}`).join("; ")}.</li>` : ""}
+  <li>El contrato termina aproximadamente el <strong>${fechaLarga(c.fecha_fin_aprox)}</strong>. Es una fecha aproximada:
+    el contrato termina cuando se completan todos los pagos; si el cliente se atrasa, la fecha se corre.</li>
+  <li>Si el cliente entrega la moto antes de terminar, en la liquidación se le cobran las semanas rodadas que no haya pagado
+    (sin el recargo).</li>
+  <li>Este rodado se hace una sola vez por contrato.</li>
+</ol></div>` : `<table>
   <tr><td>Lo que el cliente debía hoy</td><td>${pesos(c.antes?.total)}</td></tr>
   <tr><td>Semanas completas que se ruedan al final del contrato</td><td>${sem(n)} (${pesos(c.monto_rodado)})</td></tr>
   <tr><td>Semanas que pagará al final (incluye ${sem(extra)} de recargo)</td><td>${sem(cobrar)} (${pesos(c.monto_a_cobrar)})</td></tr>
@@ -192,20 +269,21 @@ ${o.borrador ? `<div class="aviso-borrador">Esta es una copia de revisión. Toda
   <li>Si el cliente entrega la moto antes de terminar, en la liquidación se le cobran las semanas rodadas que no haya pagado
     (sin el recargo).</li>
   <li>Este rodado se hace una sola vez por contrato.</li>
-</ol></div>
+</ol></div>`}
 
 <div class="advertencia"><strong>Importante:</strong> durante el tiempo extra que se alarga el contrato por este rodado,
   <strong>la empresa no cubre el SOAT ni la revisión tecnomecánica</strong> de la moto. Si alguno vence en ese tiempo,
   su pago corre por cuenta del cliente.</div>
 
 <div class="destacado">En resumen: hoy queda debiendo <strong>${pesos(c.despues?.total)}</strong>, y al final de su contrato
-  paga <strong>${sem(cobrar)}</strong> más, que terminan aproximadamente el <strong>${fechaLarga(c.fecha_fin_aprox)}</strong>.</div>
+  paga <strong>${sem(cobrar)}</strong> más, que terminan aproximadamente el <strong>${fechaLarga(c.fecha_fin_aprox)}</strong>.${c.todo
+    ? ` Su acuerdo de pago queda cerrado y su próxima semana es de <strong>${pesos(c.proxima_semana)}</strong>.` : ""}</div>
 
 <div class="cierre" data-no-cortar>
 <div class="firmas">
   ${firma(null, "Club Moteros Cartagena", "Por la empresa")}
-  ${firma(o.firmaCliente, c.cliente ?? "", "El cliente", c.cedula)}
-  ${o.acompanante ? firma(o.firmaAcompanante, o.acompanante, "Acompañante") : ""}
+  ${firma(o.firmaCliente, c.cliente ?? "", "El cliente", c.cedula, o.huellaCliente)}
+  ${o.acompanante ? firma(o.firmaAcompanante, o.acompanante, "Acompañante", null, o.firmaAcompanante ? o.huellaAcompanante : null) : ""}
 </div>
 <p class="constancia">Con su firma el cliente declara que leyó este acuerdo, que lo entiende y que está de acuerdo.
   Además dejó grabada su aceptación en video, diciendo la fecha del día.

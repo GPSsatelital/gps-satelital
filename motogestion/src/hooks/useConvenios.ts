@@ -3,7 +3,7 @@ import { createTableStore } from "./createTableStore";
 import type { RenglonPartitura } from "../utils/partituraConvenio";
 import { elegirConvenioVigente, elegirConvenioPorCobrar } from "../utils/convenioPorCobrar";
 
-export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado";
+export type EstadoConvenio = "activo" | "cumplido" | "incumplido" | "renovado" | "rodado";
 
 export type Convenio = {
   id: string;

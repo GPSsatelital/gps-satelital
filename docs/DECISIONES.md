@@ -812,3 +812,24 @@ la Bancolombia 78400006116 queda apagada.
 **Dónde vive:** mig 200 · `docs/ZALA-CUENTAS-PARA-PAGAR.md` (los dos cambios que faltan del lado de ZALA: que su
 protección deje pasar los `numeros` de la vista y que conteste con ella). Escribir el Nequi con un espacio no
 sirvió (probado con JOHAN ANDRES PEREZ el 21-oct).
+
+### D-052 · 23-oct-2026 · Rodar todo: el pedazo que sobra se rueda si es de $100.000 o más
+**Decidió:** el dueño, con el caso de OMAR AGUSTIN (RMM66H), al construir D-050: *"lo ideal es que cuando el cliente
+llegue a hacer esa gestión lo que le sobre debe cancelarlo entonces dejémoslo más equitativo y que se le ruede la
+semana cuando sea 100 o más y cuando sea menor a 100 que los pague el mismo día de la gestión o que le quede como
+saldo negativo"* · y antes: *"agreguémosle solo la adicional o la que quedó mocha"* (la semana del pedazo no suma
+recargo) · *"Confirmo la regla así"*.
+**Qué se decidió (rodar todo):** (1) se suma todo lo que debe en tiempo, como un solo conjunto: semanas atrasadas +
+lo que le falta al acuerdo entero + deudas de tiempo sueltas; (2) se cuentan las semanas completas; (3) el recargo sale
+de esas semanas completas, con la tabla de D-044; (4) el pedazo que sobra: **$100.000 o más → una semana completa
+más, sin recargo**; menos de $100.000 → lo paga el día de la gestión o le queda como deuda pendiente; (5) el mínimo de
+$700.000 se mide con todo lo que debe. Si se corre una semana que estaba a medio pagar, lo ya abonado pasa a su
+próxima semana (no se cobra dos veces).
+**Con Omar:** debe $3.064.000 → 15 completas, sobran $139.000 → 16 rodadas + 6 de recargo = **22 al final**; hoy $0;
+su próxima semana $147.000 (los $48.000 que ya tenía abonados pasan ahí); al final paga $8.000 más de lo que debía.
+⚠️ En el chat del 23-oct le dije primero «el lunes $195.000 y $56.000 de más»: estaba mal, contaba dos veces sus
+$48.000. Lo correcto es lo de esta línea.
+**Dónde vive:** mig 201 (`_calcular_rodado_todo`, `calcular_rodado_por_deuda(…, p_todo)`,
+`aplicar_rodado_por_deuda(…, p_todo)`; el acuerdo queda en estado `rodado`) · `ModalRodadoPorDeuda` (botón «Rodar
+todo», huella del registro obligatoria) · `htmlRodadoPorDeuda` · pruebas en `rodadoPorDeuda.test.ts`.
+**Reemplaza a:** D-044 «solo semanas completas; lo que sobra se paga ahora», solo cuando se escoge rodar todo.

@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Check, Circle, FileText, Video, Upload, Camera, 
 import CanvasFirma from "./CanvasFirma";
 import { primaryBtn, secondaryBtn } from "../styles/shared";
 import { calcularRodado, aplicarRodado, subirArchivoRodado } from "../hooks/useRodadosPorDeuda";
-import { htmlRodadoPorDeuda, textoDeclaracion, pesos, fechaLarga, type CalculoRodado, type RodadoPorDeuda } from "../utils/rodadoPorDeuda";
+import { htmlRodadoPorDeuda, textoDeclaracion, pagaDeMasPorElPedazo, pesos, fechaLarga, type CalculoRodado, type RodadoPorDeuda } from "../utils/rodadoPorDeuda";
 import { hoyISO } from "../utils/fecha";
 
 type Paso = 1 | 2 | 3 | 4;
@@ -40,18 +40,25 @@ function Aviso({ tono, children }: { tono: "warn" | "bad"; children: React.React
 
 const sem = (n: number | undefined) => `${n ?? 0} ${(n ?? 0) === 1 ? "semana" : "semanas"}`;
 
-export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAbierto = false, onCerrar, onHecho }: {
+export default function ModalRodadoPorDeuda({ contratoId, acompanante, huellaClienteUrl, huellaAcompananteUrl, empalmeAbierto = false, onCerrar, onHecho }: {
   contratoId: string;
   /** El empalme de migración sigue abierto: su deuda todavía se puede corregir (mismo aviso que ceder). */
   empalmeAbierto?: boolean;
   /** Nombre del acompañante del cliente, si tiene: firma también. */
   acompanante?: string | null;
+  /** La huella que dio al registrarse. Va en el documento; sin la del cliente no deja firmar (23-oct, «la huella siempre debe ir»). */
+  huellaClienteUrl?: string | null;
+  huellaAcompananteUrl?: string | null;
   onCerrar: () => void;
   onHecho?: (r: RodadoPorDeuda) => void;
 }) {
   const [paso, setPaso] = useState<Paso>(1);
+  const [todo, setTodo] = useState(false);
   const [calc, setCalc] = useState<CalculoRodado | null>(null);
   const [errorCalc, setErrorCalc] = useState<string | null>(null);
+  const [huellaCliente, setHuellaCliente] = useState<string | null>(null);
+  const [huellaAcomp, setHuellaAcomp] = useState<string | null>(null);
+  const [huellaLista, setHuellaLista] = useState(false);
   const [leido, setLeido] = useState(false);
   const [firmaCliente, setFirmaCliente] = useState<string | null>(null);
   const [firmaAcomp, setFirmaAcomp] = useState<string | null>(null);
@@ -64,13 +71,34 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
 
   useEffect(() => {
     let vivo = true;
-    calcularRodado(contratoId).then(r => { if (!vivo) return; setCalc(r.calculo); setErrorCalc(r.error); });
+    setCalc(null); setErrorCalc(null);
+    // Cambiar de modo cambia el documento: lo firmado antes ya no vale.
+    setLeido(false); setFirmaCliente(null); setFirmaAcomp(null);
+    calcularRodado(contratoId, todo).then(r => { if (!vivo) return; setCalc(r.calculo); setErrorCalc(r.error); });
     return () => { vivo = false; };
-  }, [contratoId]);
+  }, [contratoId, todo]);
+
+  // A dataURL porque el PDF se arma con html2canvas, y una imagen por URL le "ensucia" el canvas
+  // (CORS) y sale en blanco. Mismo tratamiento que el acuerdo de tiempo y la liquidación.
+  useEffect(() => {
+    let vivo = true;
+    const aData = async (u: string | null | undefined) => {
+      if (!u) return null;
+      if (u.startsWith("data:")) return u;
+      const { urlADataUrl } = await import("../utils/pdf");
+      return urlADataUrl(u).catch(() => null);
+    };
+    Promise.all([aData(huellaClienteUrl), aData(huellaAcompananteUrl)]).then(([c, a]) => {
+      if (!vivo) return;
+      setHuellaCliente(c); setHuellaAcomp(a); setHuellaLista(true);
+    });
+    return () => { vivo = false; };
+  }, [huellaClienteUrl, huellaAcompananteUrl]);
 
   useEffect(() => () => { if (videoUrl) URL.revokeObjectURL(videoUrl); }, [videoUrl]);
 
-  const borrador = useMemo(() => calc ? htmlRodadoPorDeuda(calc, { borrador: true, acompanante }) : "", [calc, acompanante]);
+  const borrador = useMemo(() => calc ? htmlRodadoPorDeuda(calc, { borrador: true, acompanante, huellaCliente }) : "", [calc, acompanante, huellaCliente]);
+  const deMas = calc ? pagaDeMasPorElPedazo(calc) : 0;
 
   function ponerVideo(b: Blob) {
     if (videoUrl) URL.revokeObjectURL(videoUrl);
@@ -79,7 +107,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
   }
 
   async function guardar() {
-    if (procesando || !calc || !firmaCliente || !video) return;
+    if (procesando || !calc || !firmaCliente || !video || !huellaCliente) return;
     setError(null);
     try {
       setProcesando("Subiendo el video…");
@@ -99,7 +127,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
       }
 
       setProcesando("Armando el documento firmado…");
-      const html = htmlRodadoPorDeuda(calc, { firmaCliente, firmaAcompanante: firmaAcomp, acompanante, fechaFirma: hoy });
+      const html = htmlRodadoPorDeuda(calc, { firmaCliente, firmaAcompanante: firmaAcomp, acompanante, fechaFirma: hoy, huellaCliente, huellaAcompanante: huellaAcomp });
       const { htmlAPdfBlob } = await import("../utils/pdf");
       // Cortes seguros: el bloque de las firmas (`data-no-cortar`) nunca queda partido entre dos hojas.
       const pdf = await htmlAPdfBlob(html, { cortesSeguros: true });
@@ -109,7 +137,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
       setProcesando("Rodando…");
       const r = await aplicarRodado({
         contratoId, videoUrl: v.url, documentoUrl: doc.url, firmaClienteUrl: fc.url, firmaAcompananteUrl: faUrl,
-        semanasEsperadas: calc.semanas_rodadas ?? 0,
+        semanasEsperadas: calc.semanas_rodadas ?? 0, todo: !!calc.todo,
       });
       if (r.error || !r.rodado) throw new Error(r.error ?? "No se pudo guardar el rodado.");
       setHecho(r.rodado);
@@ -127,7 +155,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
     abrirDocumento(hecho.documento_url);
   }
 
-  const puedeSeguir = paso === 1 ? !!calc?.puede : paso === 2 ? leido && !!firmaCliente : paso === 3 ? !!video : false;
+  const puedeSeguir = paso === 1 ? !!calc?.puede : paso === 2 ? leido && !!firmaCliente && !!huellaCliente : paso === 3 ? !!video : false;
   const pasos = [
     { n: 1, t: "La cuenta" }, { n: 2, t: "Documento" }, { n: 3, t: "Video" }, { n: 4, t: "Guardar" },
   ] as const;
@@ -172,6 +200,7 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
                 <Fila l="Se rodaron" v={`${sem(hecho.semanas_rodadas)} (${pesos(hecho.monto_rodado)})`} />
                 <Fila l="Al final paga" v={`${sem(hecho.semanas_a_cobrar)} (${pesos(hecho.monto_a_cobrar)})`} />
                 <Fila l="Hoy queda debiendo" v={pesos(hecho.queda_debiendo)} fuerte />
+                {calc?.todo && <Fila l="Su próxima semana" v={pesos(calc.proxima_semana)} />}
                 <Fila l="Fin aproximado" v={fechaLarga(hecho.fecha_fin_aprox)} />
               </div>
               {hecho.queda_debiendo > 0 && (
@@ -182,11 +211,82 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
               </button>
             </div>
           ) : errorCalc ? (
-            <Aviso tono="bad">{errorCalc.includes("permiso") ? "No tiene permiso para rodar por deuda. Lo da el dueño desde Usuarios." : errorCalc.includes("calcular_rodado") ? "Falta correr la migración 191 en Supabase." : errorCalc}</Aviso>
+            <>
+              {paso === 1 && <SelectorModo todo={todo} onCambio={setTodo} />}
+              <Aviso tono="bad">{errorCalc.includes("permiso") ? "No tiene permiso para rodar por deuda. Lo da el dueño desde Usuarios."
+                : errorCalc.includes("calcular_rodado") ? (todo ? "Falta correr la migración 201 en Supabase para rodar todo." : "Falta correr la migración 191 en Supabase.")
+                : errorCalc}</Aviso>
+            </>
           ) : !calc ? (
-            <div role="status" style={{ fontSize: 13, color: "var(--muted2)" }}>Haciendo la cuenta…</div>
+            <>
+              {paso === 1 && <SelectorModo todo={todo} onCambio={setTodo} />}
+              <div role="status" style={{ fontSize: 13, color: "var(--muted2)" }}>Haciendo la cuenta…</div>
+            </>
+          ) : paso === 1 && calc.todo ? (
+            <>
+              <SelectorModo todo={todo} onCambio={setTodo} />
+              {calc.razones.map((r, i) => <Aviso key={i} tono="bad">{r}</Aviso>)}
+              {calc.avisos.map((r, i) => <Aviso key={i} tono="warn">{r}</Aviso>)}
+              {empalmeAbierto && (
+                <Aviso tono="warn">Este contrato tiene el <strong>empalme abierto</strong>: su deuda de migración todavía se puede corregir. Revise que la deuda esté bien ANTES de rodar, porque el documento la congela.</Aviso>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                <div style={caja}>
+                  <p style={{ ...titulo, color: "var(--muted2)" }}>Debe en total</p>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--bad-ink)", fontVariantNumeric: "tabular-nums" }}>{pesos(calc.debe_todo)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted2)" }}>con lo no vencido del acuerdo</div>
+                </div>
+                <div style={{ ...caja, borderColor: "var(--ok-line)" }}>
+                  <p style={{ ...titulo, color: "var(--muted2)" }}>Después de rodar debe</p>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--ok-ink)", fontVariantNumeric: "tabular-nums" }}>{pesos(calc.despues?.total)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted2)" }}>lo paga hoy o le queda como deuda</div>
+                </div>
+              </div>
+              <div style={caja}>
+                <p style={titulo}>Lo que debe, como un solo conjunto</p>
+                <Fila l="Semanas atrasadas" v={pesos(calc.cuotas_rodables)} />
+                {calc.acuerdo && <Fila l={`Le falta al acuerdo #${calc.acuerdo.numero ?? ""} (entero)`} v={pesos(calc.acuerdo.falta_antes)} />}
+                {(calc.deudas_tiempo ?? []).map(d => (
+                  <Fila key={d.deuda_id} l={d.concepto === "migracion" ? "Deuda de migración" : "Tarifa atrasada"} v={pesos(d.pendiente)} />
+                ))}
+                <Fila l="Total en tiempo" v={pesos(calc.tiempo_total)} fuerte />
+              </div>
+              <div style={caja}>
+                <p style={titulo}>Se rueda al final del contrato</p>
+                <Fila l="Semanas completas" v={sem(calc.semanas_completas)} />
+                <Fila l="Sobra" v={pesos(calc.pedazo)} />
+                {calc.pedazo_se_rueda ? (
+                  <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
+                    Como sobran $100.000 o más, se corre <strong>una semana completa más, sin recargo</strong>.
+                    {deMas > 0 && <> Al final paga {pesos(deMas)} más de lo que debía.</>}
+                  </div>
+                ) : (calc.pedazo ?? 0) > 0 ? (
+                  <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5, padding: "2px 0 6px" }}>
+                    Como sobran menos de $100.000, no se ruedan: los paga hoy o le quedan como deuda.
+                  </div>
+                ) : null}
+                <Fila l="Semanas que se ruedan" v={`${sem(calc.semanas_rodadas)} · ${pesos(calc.monto_rodado)}`} fuerte />
+                <Fila l={`Al final paga (con ${sem(calc.semanas_extra)} de recargo)`} v={`${sem(calc.semanas_a_cobrar)} · ${pesos(calc.monto_a_cobrar)}`} fuerte color="var(--accent-ink)" />
+                <Fila l="Fin del contrato" v={`${fechaLarga(calc.fecha_fin_antes)} pasa al ${fechaLarga(calc.fecha_fin_aprox)}`} />
+              </div>
+              <div style={caja}>
+                <p style={titulo}>Desde hoy</p>
+                {calc.acuerdo && <Fila l={`Acuerdo #${calc.acuerdo.numero ?? ""}`} v="queda cerrado" />}
+                <Fila l="Su próxima semana" v={pesos(calc.proxima_semana)} fuerte />
+                {(calc.adelanto_proxima_semana ?? 0) > 0 && (
+                  <div style={{ fontSize: 12.5, color: "var(--muted2)", lineHeight: 1.5 }}>
+                    Ya tenía abonados {pesos(calc.adelanto_proxima_semana)} de una semana que se rodó: pasan a su próxima semana.
+                  </div>
+                )}
+                {(calc.deudas_no_rodables ?? []).map(d => (
+                  <Fila key={d.deuda_id} l={`No se rueda: ${d.que_es ?? d.concepto}`} v={pesos(d.pendiente)} />
+                ))}
+              </div>
+              <Aviso tono="warn">La empresa no cubre el SOAT ni la tecnomecánica durante el tiempo extra. Dígaselo al cliente: va en el documento y en el video.</Aviso>
+            </>
           ) : paso === 1 ? (
             <>
+              <SelectorModo todo={todo} onCambio={setTodo} />
               {calc.razones.map((r, i) => <Aviso key={i} tono="bad">{r}</Aviso>)}
               {calc.avisos.map((r, i) => <Aviso key={i} tono="warn">{r}</Aviso>)}
               {empalmeAbierto && (
@@ -241,6 +341,12 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
                 <input type="checkbox" checked={leido} onChange={e => setLeido(e.target.checked)} style={{ width: 20, height: 20 }} />
                 El cliente leyó el documento y está de acuerdo
               </label>
+              {huellaLista && !huellaCliente && (
+                <Aviso tono="bad">
+                  <strong>{(calc.cliente ?? "El cliente").toUpperCase()} no tiene la huella registrada.</strong> Sin huella no se puede firmar el rodado.
+                  Regístrasela en Clientes → el cliente → Editar, y vuelve a abrir el rodado.
+                </Aviso>
+              )}
               <CanvasFirma label="Firma del cliente" onChange={setFirmaCliente} modal opcional={false} valorInicial={firmaCliente} />
               {acompanante && <CanvasFirma label={`Firma del acompañante (${acompanante})`} onChange={setFirmaAcomp} modal valorInicial={firmaAcomp} />}
             </>
@@ -286,6 +392,27 @@ export default function ModalRodadoPorDeuda({ contratoId, acompanante, empalmeAb
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Los dos modos: el rodado de siempre (D-044) o rodar todo (D-050/D-052). */
+function SelectorModo({ todo, onCambio }: { todo: boolean; onCambio: (t: boolean) => void }) {
+  const opcion = (activo: boolean): React.CSSProperties => ({
+    flex: 1, minWidth: 0, minHeight: 44, padding: "8px 12px", borderRadius: 10, fontSize: 13, cursor: "pointer", textAlign: "left",
+    border: `1px solid ${activo ? "var(--accent)" : "var(--line)"}`, background: activo ? "var(--accent-soft)" : "var(--card)",
+    color: activo ? "var(--accent-ink)" : "var(--text)", fontWeight: activo ? 600 : 400,
+  });
+  return (
+    <div role="radiogroup" aria-label="Qué se rueda" style={{ display: "flex", gap: 8 }}>
+      <button role="radio" aria-checked={!todo} onClick={() => onCambio(false)} style={opcion(!todo)}>
+        Solo lo atrasado
+        <div style={{ fontSize: 11.5, fontWeight: 400, color: "var(--muted2)" }}>el acuerdo sigue</div>
+      </button>
+      <button role="radio" aria-checked={todo} onClick={() => onCambio(true)} style={opcion(todo)}>
+        Rodar todo
+        <div style={{ fontSize: 11.5, fontWeight: 400, color: "var(--muted2)" }}>también el acuerdo entero</div>
+      </button>
     </div>
   );
 }

@@ -10,6 +10,17 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **10-oct-2026**.
 
+> 🆕 **23-oct — 💻 ⚠️ Por definir: las deudas sueltas en Cartera, aparte (pedido del dueño).** «Dejar en
+> cartera aparte todas las deudas que se cobran y se pagan por diferentes conceptos, más que todo lavada e
+> inmovilización, que a veces se les cobra sin hacer el registro o el proceso de inmovilización.» Va DESPUÉS
+> de OMAR. Antes de construir, preguntarle: ¿una sección/lista propia en Cartera por concepto, un aviso cuando
+> se cobra multa o lavada sin recepción registrada, o las dos? Medir primero cuántos casos hay así.
+>
+> ✅ **23-oct: «rodar todo» CONSTRUIDO Y SUBIDO** (mig 201 corrida, D-052: el pedazo de $100.000 o más se rueda
+> como una semana sin recargo). OMAR dio exacto: 16 rodadas · 22 al final · hoy $0 · lunes 26-oct $147.000 ·
+> fin 21-feb-2028. 🧑 **Falta hacerle el proceso:** Inmovilizaciones → Devolver moto (sin darle las llaves) →
+> Contratos → Rodar por deuda → «Rodar todo» → firma + video → ahí se le entrega la moto.
+>
 > 🔴 **HOY 22-oct — OMAR AGUSTIN RODRIGUEZ BUSTO (RMM66H · COSTA): construir «rodar TODO» y que firme el 23-oct.**
 > Decidido con el dueño el 22-oct: «vamos a rodar todo hasta lo que no se ha vencido del convenio, todas las
 > deudas son todas» · recargo «1» = sobre todo, con la regla de siempre · «la huella siempre debe ir» · «se le va

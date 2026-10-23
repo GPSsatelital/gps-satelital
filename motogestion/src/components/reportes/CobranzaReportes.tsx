@@ -332,7 +332,7 @@ export function CobranzaAcuerdos(p: {
             <ItemLista key={c.convenioId} placa={c.placa} grupo={c.grupo} titulo={c.cliente}
               subtitulo={`${plata(c.total)} en ${c.numeroCuotas} ${c.numeroCuotas === 1 ? "cuota" : "cuotas"} · lleva ${plata(c.abonado)}${c.abonos.length === 0 ? ` · sin un peso en ${c.diasDesdeFirma} días` : ""} · ${c.estado === "incumplido" ? "venció" : "vence"} ${fechaCorta(c.fechaLimite)} · ${c.encargado}`}
               right={<span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", color: c.estado === "cumplido" ? "var(--ok-ink)" : c.estado === "incumplido" || c.atrasado > 0 ? "var(--bad-ink)" : c.estado === "activo" ? "var(--ok-ink)" : "var(--muted2)" }}>
-                {c.estado === "cumplido" ? "Pagado" : c.estado === "incumplido" ? `falta ${plata(c.saldo)}` : c.estado !== "activo" ? c.estado : c.atrasado > 0 ? `debe ${plata(c.atrasado)}` : "al día"}
+                {c.estado === "cumplido" ? "Pagado" : c.estado === "rodado" ? "Rodado al final" : c.estado === "incumplido" ? `falta ${plata(c.saldo)}` : c.estado !== "activo" ? c.estado : c.atrasado > 0 ? `debe ${plata(c.atrasado)}` : "al día"}
               </span>}
               rielColor={c.estado === "cumplido" ? "var(--ok)" : c.estado === "incumplido" || (c.estado === "activo" && c.abonos.length === 0) ? "var(--bad)" : c.atrasado > 0 ? "var(--warn)" : c.estado === "activo" ? "var(--ok)" : undefined}
               onClick={() => p.onAbonos(c)} />

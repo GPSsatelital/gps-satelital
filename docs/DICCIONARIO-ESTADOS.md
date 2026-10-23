@@ -157,6 +157,7 @@ sabe de quién) / `asignado` (ya se casó con un pago). `[verificar nombre exact
 | | `cumplido` | **No es confiable como "terminado": vuelve a `activo` con cada pago** `[verificado en el trigger]` | interno |
 | | `incumplido` | Se le vencieron cuotas sin pagar. El tercero obliga a liquidar | sí |
 | | `renovado` | Se reemplazó por otro | no |
+| | `rodado` | **Rodar todo** (D-050/D-052, mig 201): lo que le faltaba al acuerdo entero se pasó a semanas al final del contrato. Ya no se cobra; nadie lo vuelve a prender (el disparador de `cumplido`→`activo` no lo mira). Sus deudas quedan `rodada` | solo si pregunta (`zala.rodado.todo`) |
 | `cuota_por_periodo` | Lo que paga de convenio cada período. **Se arrastra**: si abonó $40.000 de $100.000, la semana siguiente debe $160.000 | sí |
 | `deuda_total` | El total pactado. Nunca se le exige más que esto | sí |
 | `cubre_periodo_hasta` | Hasta esa fecha las semanas están **financiadas dentro del convenio**: no se cobra cuota normal aparte | sí |

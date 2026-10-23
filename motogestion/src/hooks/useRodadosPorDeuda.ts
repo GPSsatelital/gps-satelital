@@ -29,20 +29,22 @@ export function useRodadosPorDeuda(contratoIds: string[] | null) {
   return { rodados, recargar: cargar };
 }
 
-export async function calcularRodado(contratoId: string): Promise<{ calculo: CalculoRodado | null; error: string | null }> {
-  const { data, error } = await supabase.rpc("calcular_rodado_por_deuda", { p_contrato: contratoId });
+// `todo` (rodar todo, mig 201) solo se manda cuando es true: así el rodado de siempre sigue andando
+// aunque la base todavía no tenga la 201.
+export async function calcularRodado(contratoId: string, todo = false): Promise<{ calculo: CalculoRodado | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("calcular_rodado_por_deuda", { p_contrato: contratoId, ...(todo ? { p_todo: true } : {}) });
   if (error) return { calculo: null, error: error.message };
   return { calculo: data as CalculoRodado, error: null };
 }
 
 export async function aplicarRodado(p: {
   contratoId: string; videoUrl: string; documentoUrl: string; firmaClienteUrl: string;
-  firmaAcompananteUrl: string | null; semanasEsperadas: number;
+  firmaAcompananteUrl: string | null; semanasEsperadas: number; todo?: boolean;
 }): Promise<{ rodado: RodadoPorDeuda | null; error: string | null }> {
   const { data, error } = await supabase.rpc("aplicar_rodado_por_deuda", {
     p_contrato: p.contratoId, p_video_url: p.videoUrl, p_documento_url: p.documentoUrl,
     p_firma_cliente_url: p.firmaClienteUrl, p_firma_acompanante_url: p.firmaAcompananteUrl,
-    p_semanas_esperadas: p.semanasEsperadas,
+    p_semanas_esperadas: p.semanasEsperadas, ...(p.todo ? { p_todo: true } : {}),
   });
   if (error) return { rodado: null, error: error.message };
   return { rodado: data as RodadoPorDeuda, error: null };

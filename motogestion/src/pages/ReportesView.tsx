@@ -1993,7 +1993,7 @@ export default function ReportesView({ onNavigate }: Props) {
       titulo: `${c.placa}  ·  ${c.cliente.toUpperCase()}  —  Acuerdo #${c.numero} del ${fmtFechaCorta(c.firmado)} · `
         + `$${fmt(c.total)} en ${c.numeroCuotas} cuotas de $${fmt(c.cuota)} · `
         + `abonado $${fmt(c.abonado)} · saldo $${fmt(c.saldo)} · `
-        + (c.estado === "cumplido" ? "PAGADO" : c.estado === "incumplido" ? `VENCIDO el ${fmtFechaCorta(c.fechaLimite)}` : c.atrasado > 0 ? `ATRASADO $${fmt(c.atrasado)}` : "al día")
+        + (c.estado === "cumplido" ? "PAGADO" : c.estado === "rodado" ? "RODADO AL FINAL DEL CONTRATO" : c.estado === "incumplido" ? `VENCIDO el ${fmtFechaCorta(c.fechaLimite)}` : c.atrasado > 0 ? `ATRASADO $${fmt(c.atrasado)}` : "al día")
         + ` · ${c.grupo} · ${c.encargado.toUpperCase()}`,
       color: GRUPO_HEX[c.grupo] ?? "#334155",
       filas: c.abonos.length === 0

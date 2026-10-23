@@ -1449,6 +1449,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               </button>
               <div style={{ ...card }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                  <FotoCliente url={selectedCliente.foto_perfil_url} nombre={selectedCliente.nombre} tamano={64}
+                    borde={rielCliente(estadoVisual(selectedCliente))} ampliable />
                   {/* Ancho mínimo de 200px: si el nombre no cabe al lado de las etiquetas, las etiquetas bajan.
                       Con `flex: 1` y una palabra larga (MIGUELUCHIRODRIGUEZ) quedaba una letra por renglón. */}
                   <span style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", flex: "1 1 200px", minWidth: 0, overflowWrap: "anywhere" }}>{selectedCliente.nombre}</span>
@@ -1503,7 +1505,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                   {filtered.map((cliente) => (
                     <ItemLista
                       key={cliente.id}
-                      foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} />}
+                      foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} ampliable />}
                       titulo={cliente.nombre}
                       subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
                       tituloCompleto={filtroEstado === "Aprobado"}
@@ -1574,7 +1576,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
                     return (
                       <ItemLista
                         key={cliente.id}
-                        foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} />}
+                        foto={<FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} borde={rielCliente(estadoVisual(cliente))} ampliable />}
                         titulo={cliente.nombre}
                         subtitulo={`${cliente.cedula} · ${cliente.telefono}`}
                         tituloCompleto={filtroEstado === "Aprobado"}
@@ -1623,6 +1625,8 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               {selectedCliente ? (
                 <>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                    <FotoCliente url={selectedCliente.foto_perfil_url} nombre={selectedCliente.nombre} tamano={64}
+                      borde={rielCliente(estadoVisual(selectedCliente))} ampliable />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "var(--text)", overflowWrap: "anywhere" }}>{selectedCliente.nombre}</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>

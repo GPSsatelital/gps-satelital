@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { urlFirmada } from "../lib/storagePrivado";
+import { useBackGuard } from "../contexts/BackNav";
 
 // LA CARA DEL CLIENTE en un círculo (23-oct-2026, pedido del dueño: «que aparte del nombre siempre
 // veamos la cara»). Va en la lista de Clientes y en la primera tarjeta del detalle de Cartera.
@@ -26,19 +28,28 @@ export function iniciales(nombre: string | null | undefined): string {
   return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-export default function FotoCliente({ url, nombre, tamano = 40, borde, onClick }: {
+export default function FotoCliente({ url, nombre, tamano = 40, borde, ampliable = false }: {
   url: string | null | undefined;
   nombre: string | null | undefined;
   tamano?: number;
   /** Color del aro: el mismo del riel de estado de la tarjeta. */
   borde?: string;
-  /** Si se pasa, la foto se puede tocar (por ejemplo, para verla en grande). */
-  onClick?: () => void;
+  /** Al tocarla se ve en grande en una ventana flotante, sin salir de la pantalla (pedido del dueño). */
+  ampliable?: boolean;
 }) {
   const caja = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
+  const [grande, setGrande] = useState(false);
+  // En el celular, el botón «atrás» cierra la foto en vez de salirse de la pantalla (como en la ficha).
+  useBackGuard(grande, () => setGrande(false));
+  useEffect(() => {
+    if (!grande) return;
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") setGrande(false); };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [grande]);
 
   useEffect(() => {
     if (!url || visible || !caja.current) return;
@@ -59,18 +70,20 @@ export default function FotoCliente({ url, nombre, tamano = 40, borde, onClick }
   }, [url, visible]);
 
   const conFoto = !!src && !fallo;
+  const tocable = ampliable && conFoto;
   return (
+    <>
     <div
       ref={caja}
-      onClick={onClick ? e => { e.stopPropagation(); onClick(); } : undefined}
-      role={onClick ? "button" : undefined}
-      aria-label={onClick ? `Ver la foto de ${nombre ?? "el cliente"}` : undefined}
+      onClick={tocable ? e => { e.stopPropagation(); setGrande(true); } : undefined}
+      role={tocable ? "button" : undefined}
+      aria-label={tocable ? `Ver la foto de ${nombre ?? "el cliente"}` : undefined}
       style={{
         width: tamano, height: tamano, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
         border: `2px solid ${borde ?? "var(--line)"}`, background: "var(--soft)", boxSizing: "border-box",
         display: "flex", alignItems: "center", justifyContent: "center",
         color: "var(--muted)", fontWeight: 700, fontSize: Math.round(tamano * 0.36), letterSpacing: 0.5,
-        cursor: onClick && conFoto ? "zoom-in" : onClick ? "pointer" : "default",
+        cursor: tocable ? "zoom-in" : "default",
       }}
     >
       {conFoto
@@ -78,5 +91,22 @@ export default function FotoCliente({ url, nombre, tamano = 40, borde, onClick }
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         : <span aria-hidden="true">{iniciales(nombre)}</span>}
     </div>
+    {/* La ventana flotante va al <body>: si quedara adentro de una tarjeta, un transform o un overflow
+        de la tarjeta la encerraría en su caja. Se cierra tocando cualquier parte, con Escape o con «atrás». */}
+    {grande && src && createPortal(
+      <div onClick={() => setGrande(false)} role="dialog" aria-modal="true" aria-label={`Foto de ${nombre ?? "el cliente"}`}
+        style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.85)", zIndex: 1300,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24 }}>
+        <img src={src} alt={`Foto de ${nombre ?? "el cliente"}`}
+          style={{ maxWidth: "90vw", maxHeight: "78vh", borderRadius: 14, background: "var(--card)", objectFit: "contain" }} />
+        <div style={{ color: "#ffffff", fontWeight: 700, fontSize: 15, textTransform: "uppercase", textAlign: "center" }}>{nombre}</div>
+        <button onClick={() => setGrande(false)}
+          style={{ minHeight: 44, padding: "8px 22px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.4)", background: "transparent", color: "#ffffff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+          Cerrar
+        </button>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }

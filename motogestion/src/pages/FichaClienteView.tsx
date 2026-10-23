@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ImgPrivada from "../components/ImgPrivada";
+import FotoCliente from "../components/FotoCliente";
+import { IdCard, Phone, MessageCircle, MapPin } from "lucide-react";
 import { abrirDocumento, descargarDocumento } from "../lib/storagePrivado";
 import { supabase } from "../lib/supabase";
 import type { ViewKey } from "../App";
@@ -361,63 +363,73 @@ export default function FichaClienteView({ clienteId, onNavigate, tabInicial }: 
       }}>
         {/* Color accent bar */}
         <div style={{ height: 5, background: `linear-gradient(90deg, ${estadoC.border}, ${estadoC.border}88)` }} />
-        <div style={{ padding: isMobile ? "18px 16px 20px" : "24px 28px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-              <div
-                onClick={() => cliente.foto_perfil_url && setImagenAmpliada(cliente.foto_perfil_url)}
-                style={{
-                  width: isMobile ? 56 : 68, height: isMobile ? 56 : 68, borderRadius: "50%",
-                  background: "var(--accent-soft)", flexShrink: 0, overflow: "hidden",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: isMobile ? 22 : 26, fontWeight: 700, color: "var(--accent)",
-                  cursor: cliente.foto_perfil_url ? "pointer" : "default",
-                }}
-              >
-                {cliente.foto_perfil_url ? (
-                  <ImgPrivada src={cliente.foto_perfil_url} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  cliente.nombre.trim()[0]?.toUpperCase() ?? "?"
-                )}
-              </div>
+        {/* `textAlign: left` explícito: en el celular la pantalla heredaba el texto centrado y el nombre
+            quedaba en el medio mientras todo lo demás iba a la izquierda (23-oct-2026). */}
+        <div style={{ padding: isMobile ? "16px 14px 16px" : "24px 28px 24px", textAlign: "left" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: isMobile ? 12 : 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: isMobile ? 12 : 14, alignItems: isMobile ? "center" : "flex-start", flex: "1 1 260px", minWidth: 0 }}>
+              <FotoCliente url={cliente.foto_perfil_url} nombre={cliente.nombre} tamano={isMobile ? 72 : 68}
+                borde={estadoC.border} ampliable />
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.5, lineHeight: 1.1, marginBottom: 6, overflowWrap: "anywhere" }}>
+              <div style={{ fontSize: isMobile ? 18 : 28, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: isMobile ? 0.2 : 0.5, lineHeight: 1.15, marginBottom: 6, overflowWrap: "anywhere" }}>
                 {cliente.nombre}
               </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: isMobile ? 0 : 12 }}>
                 <Badge bg={estadoC.bg} color={estadoC.color}>{cliente.estado}</Badge>
                 <Badge bg={cliente.ruta_contrato === "diario" ? "var(--accent-soft3)" : "var(--ok-soft)"} color={cliente.ruta_contrato === "diario" ? "var(--accent-ink)" : "var(--ok-ink)"}>
                   {cliente.ruta_contrato === "diario" ? "Ruta diaria" : "Tiempo definido"}
                 </Badge>
                 {cliente.lista_negra && <Badge bg="var(--text)" color="var(--soft2)">Lista negra</Badge>}
               </div>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
-                <span>CC {cliente.cedula}</span>
-                {cliente.telefono && <span>{cliente.telefono}</span>}
-                {cliente.whatsapp && !cliente.mismo_whatsapp && <span>WA: {cliente.whatsapp}</span>}
-                {cliente.direccion && <span>{cliente.direccion}</span>}
-              </div>
+              {!isMobile && (
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
+                  <span>CC {cliente.cedula}</span>
+                  {cliente.telefono && <span>{cliente.telefono}</span>}
+                  {cliente.whatsapp && !cliente.mismo_whatsapp && <span>WA: {cliente.whatsapp}</span>}
+                  {cliente.direccion && <span>{cliente.direccion}</span>}
+                </div>
+              )}
               </div>
             </div>
+            {/* En el celular los datos van debajo de la foto y el nombre, a todo el ancho y uno por línea. */}
+            {isMobile && (
+              <div style={{ flexBasis: "100%", display: "grid", gap: 5, fontSize: 13, color: "var(--muted)", minWidth: 0 }}>
+                <span style={{ display: "flex", gap: 7, alignItems: "center" }}><IdCard size={15} aria-hidden="true" style={{ flexShrink: 0 }} />CC {cliente.cedula}</span>
+                {cliente.telefono && (
+                  <a href={`tel:${cliente.telefono}`} style={{ display: "flex", gap: 7, alignItems: "center", color: "var(--muted)", textDecoration: "none" }}>
+                    <Phone size={15} aria-hidden="true" style={{ flexShrink: 0 }} />{cliente.telefono}
+                  </a>
+                )}
+                {cliente.whatsapp && !cliente.mismo_whatsapp && (
+                  <span style={{ display: "flex", gap: 7, alignItems: "center" }}><MessageCircle size={15} aria-hidden="true" style={{ flexShrink: 0 }} />WA: {cliente.whatsapp}</span>
+                )}
+                {cliente.direccion && (
+                  <span style={{ display: "flex", gap: 7, alignItems: "flex-start", minWidth: 0 }}><MapPin size={15} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }} /><span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{cliente.direccion}</span></span>
+                )}
+              </div>
+            )}
             {/* KPI mini cards — `minWidth: 0` en vez de `flexShrink: 0`: con flexShrink el
                 bloque conservaba el ancho de los 4 KPIs en fila (476px) y se salía de la
                 pantalla a 375px en vez de dejar que envolvieran. */}
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: 72 }}>
+            {/* En el celular, una sola fila de recuadros iguales (antes quedaban 2 arriba y 1 suelto abajo). */}
+            <div style={isMobile
+              ? { flexBasis: "100%", display: "grid", gridTemplateColumns: `repeat(${deudaActiva > 0 ? 4 : 3}, minmax(0, 1fr))`, gap: 6, minWidth: 0 }
+              : { display: "flex", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+              <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--accent-soft4)", minWidth: isMobile ? 0 : 72 }}>
                 <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--accent)" }}>{diasActivo}</div>
                 <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Días activo</div>
               </div>
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--ok-soft)", minWidth: 72 }}>
+              <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--ok-soft)", minWidth: isMobile ? 0 : 72 }}>
                 <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--ok-ink)" }}>${fmt(totalPagado)}</div>
                 <div style={{ fontSize: 10, color: "var(--ok-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Total pagado</div>
               </div>
               {deudaActiva > 0 && (
-                <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--bad-soft)", minWidth: 72 }}>
+                <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--bad-soft)", minWidth: isMobile ? 0 : 72 }}>
                   <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: "var(--bad-ink)" }}>${fmt(deudaActiva)}</div>
                   <div style={{ fontSize: 10, color: "var(--bad-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Deuda activa</div>
                 </div>
               )}
-              <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 14, background: "var(--warn-soft)", minWidth: 72 }}>
+              <div style={{ textAlign: "center", padding: isMobile ? "9px 4px" : "12px 16px", borderRadius: 14, background: "var(--warn-soft)", minWidth: isMobile ? 0 : 72 }}>
                 <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "var(--warn-ink)" }}>{refConfirmados}</div>
                 <div style={{ fontSize: 10, color: "var(--warn-ink)", fontWeight: 700, marginTop: 2, textTransform: "uppercase" }}>Referidos</div>
               </div>

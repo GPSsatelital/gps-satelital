@@ -67,7 +67,6 @@ import { tiempoGuardadoPendiente, tramosDePrestamos, tramoDeRetencion } from "..
 import { amortizarPartitura, plataAlConvenio } from "../utils/partituraConvenio";
 import Placa from "../components/Placa";
 import FotoCliente from "../components/FotoCliente";
-import { abrirDocumento } from "../lib/storagePrivado";
 import TicketTermico, { type TicketData } from "../components/TicketTermico";
 import { useMensajesWhatsapp } from "../hooks/useMensajesWhatsapp";
 import {
@@ -2139,7 +2138,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: isMobile ? 10 : 12 }}>
             {/* La cara del cliente (23-oct-2026): «que aparte del nombre siempre veamos la cara». */}
             <FotoCliente url={clienteDetalle?.foto_perfil_url} nombre={clienteDetalle?.nombre} tamano={isMobile ? 56 : 64}
-              borde="var(--accent)" onClick={clienteDetalle?.foto_perfil_url ? () => abrirDocumento(clienteDetalle.foto_perfil_url) : undefined} />
+              borde="var(--accent)" ampliable />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: isMobile ? 17 : 20, textTransform: "uppercase", color: "var(--text)", lineHeight: 1.15 }}>
                 {clienteDetalle?.nombre || "Sin cliente"}

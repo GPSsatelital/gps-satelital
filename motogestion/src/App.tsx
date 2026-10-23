@@ -611,6 +611,8 @@ function Shell() {
     // La ficha puede llegar como "id|pagos" (abre en esa pestaña): se muestra igual que antes, sin la pestaña.
     const filtroVisible = ctx.view === "ficha_cliente" ? ctx.filter.split("|")[0] : ctx.filter;
     filterLabel = (ctx.view === "cobros" ? etiquetaCartera(ctx.filter) : null) ?? FILTER_LABELS[filtroVisible] ?? filtroVisible;
+    // En las fichas el «filtro» es el id interno (un UUID): debajo del título no le dice nada a nadie.
+    if (ctx.view === "ficha_cliente" || ctx.view === "ficha_moto") filterLabel = "";
   }
 
   const contentView = (

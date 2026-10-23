@@ -44,3 +44,5 @@ COPIAR-MEMPALACE-UNA-VEZ.bat
 conversaciones-pc-oficina/
 docs/manual-rodado/img/
 docs/manual-rodado/*.pdf
+# Tarjetas promocionales: llevan los teléfonos del equipo
+docs/tarjetas/

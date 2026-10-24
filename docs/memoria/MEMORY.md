@@ -8,9 +8,10 @@ una línea por entrada.
 🔴 **`docs/PENDIENTES.md`** — por prioridad (P0 plata mal contada hoy · P1 a medio hacer · P2 gente ·
 P3 módulos · P4 limpieza). **Leerla al arrancar.** Acá NO se duplican pendientes.
 
-## ▶️ DÓNDE RETOMAR (22-oct)
+## ▶️ DÓNDE RETOMAR (23-oct, noche)
 
-🔴 **22-oct: construir «rodar TODO» (acuerdo entero + huella) para OMAR AGUSTIN RMM66H, que firma el 23-oct** → PENDIENTES arriba y [[rodar-por-deuda-d044]]. Hechos 21-22 oct: DQG94I corregida (mig 199) · zala.cuentas_pago (mig 200; falta el cambio del lado de ZALA, docs/ZALA-CUENTAS-PARA-PAGAR.md) · RMM70H por confirmar con el Excel.
+🔴 **Una pregunta espera al dueño: JORGE BELLO / JESUS QUIÑONEZ rodados dos veces** → arriba de `docs/PENDIENTES.md` (ofrecido «1» = traer cifras antes/después, recomendado). Luego tanda 2. Lunes 26-oct = cobro (nada de plata antes de 6 p.m.).
+✅ 23-oct todo subido: rodar todo (OMAR, ROD-0001) · acta de entrega (202) · fotos de perfil · «Volver» a donde estabas · candados contra repetir (203, 204, botones + prueba) y la moto «por resolver» (205) → [[candados-contra-repetir-d054]]. claude-mem no guarda en este PC (`claude auth login`).
 
 ## ▶️ Antes (10-oct, tarde)
 

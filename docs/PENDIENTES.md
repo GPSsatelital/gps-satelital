@@ -8,7 +8,25 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **10-oct-2026**.
+- Última revisión: **23-oct-2026**.
+
+> ▶️ **AL ARRANCAR (23-oct, noche) — una pregunta espera al dueño:**
+> **JORGE BELLO (RLT88H) y JESUS QUIÑONEZ (RMU62H), tiempo rodado dos veces** (detalle en P0 abajo). Ya se le explicó
+> por qué importa (tienen 2 y 3 semanas exoneradas DE MÁS: hoy se les exige menos, Cartera/ZALA los muestran más al
+> día, el acuerdo de JORGE quedó al 11-dic en vez del 27-nov; la plata no se pierde pero se cobra meses después).
+> Opciones ofrecidas: **1 = traerle las cifras de antes y después de cada uno antes de decidir (recomendado)** ·
+> 2 = corregir + 2 días de plazo · 3 = corregir sin plazo · 4 = no corregir. La CAUSA ya está cerrada (D-054, D-055):
+> no se puede volver a repetir. ⚠️ Lunes 26-oct es día de cobro: nada de plata antes de las 6 p.m.
+> Después: la tanda 2 (punto 4: firmar en pantalla las 24 liquidaciones cerradas sin firma).
+>
+> ✅ **23-oct, todo subido y corrido:** Cartera sin el error · carga más rápida · rodar todo (OMAR, ROD-0001, ya hecho)
+> · acta de entrega (mig 202) · fotos de perfil + ventana flotante · ficha reacomodada · «Volver» a donde estabas
+> (15d320d) · **candados contra repetir** (D-054): migs 203 y 204 (tiempo guardado, referencia, recepción, abono,
+> liquidación, deuda), los 5 botones que faltaban + `botonesQueGuardan.test.ts` (50f63ef) · **la moto que seguía
+> «por resolver»** (D-055): lista compartida en `useUbicaciones` + mig 205 (8262ce1).
+> 🔲 Chicos anotados: deudas sueltas aparte en Cartera (⚠️ por definir, abajo) · el «$ 0» en kilómetros de
+> ModalEntregaDevolucion · WhatsApp de Johan, Angela y Julio para las tarjetas (y confirmar el de Emiro) ·
+> claude-mem no guarda en este PC (correr `claude auth login`).
 
 > 🆕 **23-oct — 💻 ⚠️ Por definir: las deudas sueltas en Cartera, aparte (pedido del dueño).** «Dejar en
 > cartera aparte todas las deudas que se cobran y se pagan por diferentes conceptos, más que todo lavada e
@@ -18,8 +36,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >
 > ✅ **23-oct: «rodar todo» CONSTRUIDO Y SUBIDO** (mig 201 corrida, D-052: el pedazo de $100.000 o más se rueda
 > como una semana sin recargo). OMAR dio exacto: 16 rodadas · 22 al final · hoy $0 · lunes 26-oct $147.000 ·
-> fin 21-feb-2028. 🧑 **Falta hacerle el proceso:** Inmovilizaciones → Devolver moto (sin darle las llaves) →
-> Contratos → Rodar por deuda → «Rodar todo» → firma + video → ahí se le entrega la moto.
+> fin 21-feb-2028. ✅ **Proceso hecho el 23-oct (ROD-0001, verificado).** 🧑 El lunes 26-oct paga $147.000.
 >
 > 🔴 **HOY 22-oct — OMAR AGUSTIN RODRIGUEZ BUSTO (RMM66H · COSTA): construir «rodar TODO» y que firme el 23-oct.**
 > Decidido con el dueño el 22-oct: «vamos a rodar todo hasta lo que no se ha vencido del convenio, todas las

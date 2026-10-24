@@ -490,3 +490,19 @@ scripts de Python dentro de un heredoc no corrieron por lo mismo.
 **Quién lo cazó:** yo, al ver la salida. Se rehizo con Edit.
 **Qué lo evita ahora:** ya estaba escrito en `P:\NOTAS-DEL-DISCO.md`: rutas de Windows solo con Edit/Write, nunca
 con heredoc ni sed.
+
+### Le dije «40-50 botones sin bloqueo» con una búsqueda gruesa (23-oct)
+**Lo que dije:** que unas 40-50 acciones que guardan no se bloqueaban, y armé un plan de «molde para todos los botones».
+**Lo que era verdad:** de 64 botones que guardan, 63 ya se bloqueaban y 59 decían «Guardando…»; faltaban 5. La
+búsqueda contaba funciones internas (subir fotos, pasos de un asistente) que se llaman desde un botón ya bloqueado.
+**Quién lo cazó:** yo, al revisar botón por botón antes de tocar el código. Se lo corregí al dueño en la cara y
+escogió arreglar solo los 5 + una prueba automática, sin rehacer los 59 que andaban.
+**Qué lo evita ahora:** una búsqueda gruesa sirve para buscar, no para anunciar una cifra: medir el caso real
+(botón por botón) antes de decir el número.
+
+### La migración 204 falló la primera vez: traté un uuid como texto (23-oct)
+**Lo que pasó:** `nullif(r.quien_recibe, '')` — `quien_recibe` es uuid, y la prueba de adentro falló con «invalid
+input syntax for type uuid». La migración se deshizo sola (para eso está la prueba adentro); no quedó nada a medias.
+**Quién lo cazó:** la prueba de la migración, al correrla el dueño.
+**Qué lo evita ahora:** antes de escribir un trigger, mirar el TIPO de cada columna que se compara o se muestra
+(en la migración que creó la tabla, o mejor en la base viva), no suponerlo por el nombre.

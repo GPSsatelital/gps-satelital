@@ -873,3 +873,22 @@ propia copia y la que guardaba solo refrescaba la suya, y (2) la base no avisaba
 **Qué se decidió:** las tres tablas pasan al store compartido (`createTableStore`, el mismo de pagos y contratos) y cada
 escritura lo refresca antes de devolver; la mig 205 prende el aviso para los demás celulares.
 **Dónde vive:** `useUbicaciones.ts` · mig 205. Los candados de la mig 203/204 siguen frenando la repetición en la base.
+
+### D-056 · 27-oct-2026 · La primera cuota del acuerdo se guarda al firmar; la nómina cuenta cuotas igual que Cartera
+**Decidió:** el dueño: *"cuando se firma el acuerdo, ¿no se dice ahí mismo cuándo le toca cancelar la siguiente tarifa?
+Debe ser igual a eso"* y *"Sí, apruebo los 4 puntos"*.
+**Por qué:** DQL76I (EVER LUIS DE LA ROSA, cobrador Carlos Ariza) pagó completo cada lunes y la nómina le pagaba las
+semanas como atrasadas o "no pagó". La nómina contaba las cuotas del acuerdo por su cuenta (semanas desde la firma) y no
+sabía del prorrateo ni de las semanas cubiertas: a 91 de 201 contratos con acuerdo les pedía una cuota de más. En 10
+semanas, $956.250 menos a los cuatro cobradores. La fecha límite tenía el mismo defecto: a 72 de 171 acuerdos les quedó
+una semana corta y 11 se marcaron INCUMPLIDOS el 27-oct con su última cuota el 2-nov.
+**Qué se decidió:** (1) `convenios.fecha_primera_cuota`: la ventana del acuerdo la propone con la cuenta de Cartera y se
+puede cambiar; Cartera, nómina y ZALA cobran desde la guardada. (2) La fecha límite se cuenta desde la primera cuota.
+(3) Los acuerdos existentes se rellenan con la fecha que Cartera ya cobraba (1.338 cuentas comparadas: lo que debe cada
+cliente no cambia) y a los 72 se les alarga la fecha límite; los 30 que la tenían más tarde no se tocan. (4) Los 11
+vuelven a activo. Sin fecha guardada, un acuerdo firmado en día de pago empieza el día de pago siguiente (antes Cartera
+lo cobraba ese mismo día; 0 casos al decidirlo).
+**Dónde vive:** `cicloPago.ts` (`cuotaConvenioDelPeriodo`, `primeraCuotaConvenio`, `ultimaCuotaConvenio`,
+`periodosConvenioCorridos`) · `nominaCobradores.ts` · `ModalConvenio.tsx` · mig 206 (columna, ZALA, relleno, límites, los 11).
+**Queda aparte:** el papel firmado del acuerdo todavía no imprime la primera cuota; `ModalAmpliarConvenio` y el motor al
+recuperar un incumplido (mig 093) siguen calculando su fecha límite desde hoy.

@@ -220,7 +220,7 @@ export function totalPagadoPeriodoActual(
 //    Antes se le cobraba el convenio de una: MARTHA (RLT68H) tenía sus semanas cubiertas hasta el
 //    17-ago y aun así le pedía $50.000 el 6-ago.
 export function cuotaConvenioDelPeriodo(
-  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; fecha_primera_cuota?: string | null } | null | undefined,
   contrato: ContratoCiclo,
   hoy: Date,
 ): number {
@@ -228,8 +228,19 @@ export function cuotaConvenioDelPeriodo(
   if (!convenio || cuota <= 0) return 0;
   const inicio = inicioPeriodoActual(contrato, hoy);
   const inicioISO = inicio.toISOString().slice(0, 10);
+
+  // LA PRIMERA CUOTA GUARDADA MANDA (decisión del dueño, 27-oct-2026): "cuando se firma el
+  // acuerdo, ¿no se dice ahí mismo cuándo le toca cancelar? Debe ser igual a eso". La ventana del
+  // acuerdo la propone con las reglas de abajo y el funcionario la puede cambiar si acordaron
+  // otra; lo que quedó guardado es lo que se cobra. Las reglas de abajo quedan para los acuerdos
+  // que no la tengan.
+  const primera = (convenio.fecha_primera_cuota || "").slice(0, 10);
+  if (primera) return inicioISO >= primera ? cuota : 0;
+
+  // Firmado el MISMO día de pago, tampoco cobra ese día: la pantalla del acuerdo le dice al cliente
+  // que la primera cuota es el día de pago siguiente (27-oct-2026; antes era `>` y se cobraba ya).
   const creadoISO = (convenio.created_at || "").slice(0, 10);
-  if (!creadoISO || creadoISO > inicioISO) return 0;
+  if (!creadoISO || creadoISO >= inicioISO) return 0;
   // El período que ARRANCA justo el día en que se vence la cobertura ya sí paga: `cubre_periodo_hasta`
   // marca el primer día NO cubierto (Martha: cubre hasta 17-ago = paga desde el período del 17).
   const cubreHasta = (convenio.cubre_periodo_hasta || "").slice(0, 10);
@@ -264,8 +275,25 @@ export function cuotaConvenioDelPeriodo(
  * Preguntarle a la función en vez de reimplementar la regla es lo que evita que la pantalla
  * anuncie una fecha y el cobro haga otra cosa.
  */
+/**
+ * La primera cuota que la ventana del acuerdo PROPONE al firmar: el primer día de pago, después de
+ * hoy, en que `cuotaConvenioDelPeriodo` la exigiría — salta el prorrateo y las semanas que el
+ * acuerdo cubre. Es la misma cuenta que cobra, así que lo que se le dice al cliente es lo que se le
+ * cobra. Se guarda en `convenios.fecha_primera_cuota` (mig 206).
+ */
+export function primeraCuotaConvenio(contrato: ContratoCiclo, firma: Date, cubreHasta: string | null): string | null {
+  return proximaCuotaConvenio({ cuota_por_periodo: 1, created_at: fechaAISO(firma), cubre_periodo_hasta: cubreHasta }, contrato, firma);
+}
+
+/** El día de pago de la última cuota (la fecha límite), contando desde la primera. */
+export function ultimaCuotaConvenio(contrato: ContratoCiclo, primeraISO: string, cuotas: number): string {
+  let d = new Date(primeraISO.slice(0, 10) + "T12:00:00");
+  for (let i = 1; i < cuotas; i++) d = proximoDiaPago(contrato, d);
+  return fechaAISO(d);
+}
+
 export function proximaCuotaConvenio(
-  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null } | null | undefined,
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; fecha_primera_cuota?: string | null } | null | undefined,
   contrato: ContratoCiclo,
   hoy: Date,
 ): string | null {
@@ -342,6 +370,26 @@ function periodosConvenioExigidos(
   contrato: ContratoCiclo,
   hoy: Date,
 ): number {
+  // RODAR EL PAQUETE (mig 118, regla del dueño 24-ago): las cuotas del convenio de las semanas
+  // en que la moto estuvo GUARDADA se corren al final — no se perdonan, se exigen más tarde
+  // (mismo principio que cajas_exoneradas, mig 078: restar ANTES del tope de deuda_total hace
+  // que la curva se corra y el total igual se pague completo).
+  return Math.max(periodosConvenioCorridos(convenio, contrato, hoy) - (convenio.periodos_exonerados ?? 0), 0);
+}
+
+/**
+ * Los períodos con cuota del convenio desde la firma hasta `hoy`, SIN restar los rodados.
+ *
+ * La nómina la usa para saber cuántas cuotas tocaban la semana de cada caja: los rodados los resta
+ * ella con su historia (cuántos llevaba rodados ESE día, no los de hoy). Antes la nómina contaba
+ * semanas desde la firma por su cuenta y no sabía del prorrateo ni de las semanas cubiertas: le
+ * exigía una cuota de más a 91 de 201 contratos con acuerdo (caso DQL76I, 27-oct-2026).
+ */
+export function periodosConvenioCorridos(
+  convenio: { cuota_por_periodo?: number | null; created_at?: string | null; cubre_periodo_hasta?: string | null; fecha_primera_cuota?: string | null },
+  contrato: ContratoCiclo,
+  hoy: Date,
+): number {
   if (!convenio.created_at) return 0;
   const hoyIni = fechaAISO(inicioPeriodoActual(contrato, hoy));
   let d = inicioPeriodoActual(contrato, new Date(convenio.created_at.slice(0, 10) + "T12:00:00"));
@@ -353,11 +401,7 @@ function periodosConvenioExigidos(
     if (cuotaConvenioDelPeriodo(convenio, contrato, d) > 0) n++;
     d = proximoDiaPago(contrato, d);
   }
-  // RODAR EL PAQUETE (mig 118, regla del dueño 24-ago): las cuotas del convenio de las semanas
-  // en que la moto estuvo GUARDADA se corren al final — no se perdonan, se exigen más tarde
-  // (mismo principio que cajas_exoneradas, mig 078: restar ANTES del tope de deuda_total hace
-  // que la curva se corra y el total igual se pague completo).
-  return Math.max(n - (convenio.periodos_exonerados ?? 0), 0);
+  return n;
 }
 
 /**

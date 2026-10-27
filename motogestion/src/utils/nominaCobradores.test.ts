@@ -735,3 +735,87 @@ describe("rodadasDesdeRegistros — de lo registrado a semanas corridas", () => 
     expect(r).toEqual([{ contrato_id: "k", fecha: "2026-09-22", periodos: 1, creada: "2026-09-22T23:15:00Z", corrioAcuerdo: false }]);
   });
 });
+
+describe("las cuotas del acuerdo se cuentan con la MISMA función de Cartera (27-oct-2026)", () => {
+  // CASO REAL — DQL76I, EVER LUIS DE LA ROSA (cobrador Carlos Ariza). Recibió la moto el jueves
+  // 24-sep con un acuerdo de base de $308.000 (11 × $30.000) firmado ese mismo día. Pagó cada
+  // semana completa ($202.000 + $30.000) y Cartera lo mostró al día. La nómina contaba las semanas
+  // desde la firma SIN saltarse la del prorrateo: le exigía una cuota de más y pagaba la semana del
+  // 5-oct en $0 y las del 12 y 19-oct como atrasadas ($3.750). Debían ser tres de $7.500.
+  const EVER: ContratoNomina = {
+    id: "ever", cliente_id: "cl-ever", moto_id: "m-dql", estado: "Activo",
+    forma_pago: "Semanal", dia_pago: "Lunes", valor_semanal: 202000,
+    tarifa_diaria: 27000, tarifa_domingo: 14000, ahorro_diario: 4000, ahorro_domingo: 2000,
+    es_migrado: false, motor_v2: true, total_cajas: 91, cajas_pagadas: 4, cajas_previas: 0, caja_actual_pagado: 0,
+    prorrateo_total: 109000, prorrateo_pagado: 109000,
+    fecha_entrega: "2026-09-24", fecha_inicio_cajas: "2026-09-28",
+  };
+  const MOTO_DQL = [{ id: "m-dql", placa: "DQL76I", subadmin_id: "CARLOS", grupo: "COSTA" }];
+  const ACUERDO = { contrato_id: "ever", cuota_por_periodo: 30000, numero_cuotas: 11, periodos_exonerados: 0, cubre_periodo_hasta: null, created_at: "2026-09-24T22:33:45Z" };
+  const p = (fecha: string, created_at: string, tarifa: number, convenio: number, extra: Partial<PagoNomina> = {}): PagoNomina => ({
+    contrato_id: "ever", fecha, created_at, estado: "Confirmado", aplicado_tarifa: tarifa, aplicado_convenio: convenio, ...extra,
+  });
+  const PAGOS = [
+    p("2026-09-24", "2026-09-24T22:40:21Z", 202000, 0, { tipo_registro: "adelanto_base" }),
+    p("2026-09-29", "2026-09-29T13:29:51Z", 0, 0, { aplicado_prorrateo: 109000 }),
+    p("2026-10-06", "2026-10-06T15:05:02Z", 202000, 30000),
+    p("2026-10-13", "2026-10-13T21:02:51Z", 202000, 30000),
+    p("2026-10-21", "2026-10-21T21:48:11Z", 200000, 0),
+    p("2026-10-21", "2026-10-23T16:07:25Z", 2000, 30000, { tipo_registro: "transferencia" }),
+  ];
+  const EVENTOS = [
+    { contrato_id: "ever", caja_numero: 0, fecha: "2026-09-29", fuente: "pago" as const },
+    { contrato_id: "ever", caja_numero: 1, fecha: "2026-09-24", fuente: "pago" as const },
+    { contrato_id: "ever", caja_numero: 2, fecha: "2026-10-06", fuente: "pago" as const },
+    { contrato_id: "ever", caja_numero: 3, fecha: "2026-10-13", fuente: "pago" as const },
+    { contrato_id: "ever", caja_numero: 4, fecha: "2026-10-23", fuente: "pago" as const },
+  ];
+  const semana = (desde: string, hasta: string) => nominaSemana({
+    desde, hasta, contratos: [EVER], pagos: PAGOS, motos: MOTO_DQL, recepciones: [],
+    clientesPorId: new Map([["cl-ever", "EVER LUIS DE LA ROSA JIMENEZ"]]),
+    eventos: EVENTOS, convenios: [ACUERDO], rodadas: [],
+  });
+
+  it("DQL76I: el prorrateo y las tres semanas pagadas completas, todas a tiempo", () => {
+    expect(semana("2026-09-28", "2026-10-04")[0].renglones.map(r => r.tipo)).toEqual(["prorrateo"]);
+    for (const [desde, hasta] of [["2026-10-05", "2026-10-11"], ["2026-10-12", "2026-10-18"], ["2026-10-19", "2026-10-25"]]) {
+      const n = semana(desde, hasta);
+      expect(n[0].ciclosATiempo).toBe(1);
+      expect(n[0].ciclosAtrasados).toBe(0);
+      expect(n[0].total).toBe(VALOR_CICLO);
+    }
+  });
+
+  it("DQL76I: la semana del 26-oct sin pago no paga nada", () => {
+    expect(semana("2026-10-26", "2026-11-01")).toHaveLength(0);
+  });
+
+  it("el acuerdo que CUBRE semanas no exige cuota mientras corren: la primera semana que paga, paga $7.500", () => {
+    // Acuerdo del jueves 13-ago que absorbió la semana del 17 (cubre hasta el 24). La semana del 24
+    // es la primera en que se exige la cuota 1 — pagada el mismo lunes junto con la semana.
+    const conCobertura = { contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 16, cubre_periodo_hasta: "2026-08-24", created_at: "2026-08-13T15:00:00Z" };
+    const n = nominaSemana({
+      desde: "2026-08-24", hasta: "2026-08-30",
+      contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [conCobertura],
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-24", created_at: "2026-08-24T15:00:00Z", estado: "Confirmado", aplicado_tarifa: 202000, aplicado_convenio: 60000 }],
+      eventos: [{ contrato_id: "ct1", caja_numero: 7, fecha: "2026-08-24", fuente: "pago" }],
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+});
+
+describe("la nómina cobra el acuerdo desde la primera cuota GUARDADA (27-oct-2026)", () => {
+  it("si la primera cuota guardada es más tarde, las semanas antes de ella no piden convenio", () => {
+    // Acuerdo del lunes 10-ago con primera cuota acordada para el 24: la semana del 17 se paga sola.
+    const acuerdo = { contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 16, created_at: "2026-08-10T15:00:00Z", fecha_primera_cuota: "2026-08-24" };
+    const n = nominaSemana({
+      ...SEMANA, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+      convenios: [acuerdo],
+      pagos: [{ contrato_id: "ct1", fecha: "2026-08-17", created_at: "2026-08-17T15:00:00Z", estado: "Confirmado", aplicado_tarifa: 202000 }],
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+});

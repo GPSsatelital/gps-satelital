@@ -1,4 +1,4 @@
-import { proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
+import { periodosConvenioCorridos, proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
 
 // LA NÓMINA DE LOS COBRADORES — la regla del dueño, cerrada el 22-ago pregunta por pregunta
 // (ver memoria regla-nomina-cobradores). Se paga por MOTO GESTIONADA, por ciclo del cliente:
@@ -117,6 +117,10 @@ export type ConvenioNomina = {
   /** Cuotas corridas al final porque la moto estuvo guardada (mig 118) — esas semanas el
    *  paquete no exige la pata del convenio. */
   periodos_exonerados?: number | null;
+  /** Primer día NO cubierto cuando el acuerdo absorbió semanas: antes de él no se exige cuota. */
+  cubre_periodo_hasta?: string | null;
+  /** La primera cuota que se le dijo al cliente al firmar (mig 206): desde ahí se cuentan. */
+  fecha_primera_cuota?: string | null;
   created_at: string;
 };
 
@@ -403,9 +407,6 @@ export function nominaSemanaDetallada(opts: {
       for (let k = Math.max(antes, 0); k < despues; k++) info.fechasCubiertas.push(dia(p.fecha));
     }
   }
-  const SEMANA_MS = 7 * 24 * 3600 * 1000;
-  const semanasEntre = (lunesA: string, lunesB: string) =>
-    Math.round((Date.parse(lunesB + "T12:00:00") - Date.parse(lunesA + "T12:00:00")) / SEMANA_MS);
 
   // ── 1) CICLOS: cada caja del libro que se llenó dentro de la semana ─────────
   for (const c of contratos) {
@@ -436,8 +437,9 @@ export function nominaSemanaDetallada(opts: {
     // La fecha en que el PAQUETE de una caja quedó completo: la caja llena Y el convenio al día
     // hasta la semana en que esa caja se exigía. null = todavía falta una pata → no hay renglón
     // ("si no paga completo es como si la caja de la semana no se ha completado" — el dueño).
-    // La cuota 1 se exige la semana SIGUIENTE a la firma: el convenio arranca el período
-    // completo que sigue, igual que el convenio de base del wizard.
+    // Cuántas cuotas tocaban lo dice la MISMA cuenta de Cartera (`periodosConvenioCorridos`), que
+    // sabe que el acuerdo no corre en el prorrateo ni en las semanas que cubre. Antes se contaban
+    // semanas desde la firma acá y a 91 de 201 contratos se les pedía una cuota de más (DQL76I).
     const cvInfo = convenioPorContrato.get(c.id);
 
     // CÓMO ESTABA EL CONTRATO el día en que se cobró cada semana (opción A, 30-sep): las semanas
@@ -456,7 +458,7 @@ export function nominaSemanaDetallada(opts: {
       // se corren al final igual que la semana. Mismo resta-antes-del-tope de siempre.
       const req = Math.min(
         Math.max(
-          semanasEntre(lunesDe(cvInfo.cv.created_at), lunesDe(exigencia)) - cuotasCorridasAl(fechaCaja),
+          periodosConvenioCorridos(cvInfo.cv, c, new Date(exigencia + "T12:00:00")) - cuotasCorridasAl(fechaCaja),
           0,
         ),
         cvInfo.cv.numero_cuotas,

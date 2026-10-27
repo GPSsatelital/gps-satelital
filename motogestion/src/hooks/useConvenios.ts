@@ -20,6 +20,9 @@ export type Convenio = {
   concepto: string;
   aprobado_por: string | null;
   cubre_periodo_hasta: string | null; // si el convenio absorbió la cuota del período actual al crearse
+  /** La primera cuota que se le dijo al cliente al firmar (mig 206). Desde ahí cobran Cartera,
+   *  la nómina y ZALA. null = acuerdo de antes de la columna (se calcula como antes). */
+  fecha_primera_cuota?: string | null;
   firma_url: string | null; // firma del acuerdo de pago (opcional)
   /** La acompañante como CODEUDORA SOLIDARIA (mig 151). Nombre y cédula quedan congelados al
    *  firmar: el papel firmado tiene que seguir diciendo quién firmó aunque editen al cliente. */

@@ -9,8 +9,8 @@ import { useContratos, infoFinContrato } from "../hooks/useContratos";
 import { useMotos } from "../hooks/useMotos";
 import { generarHTMLAcuerdoPago } from "../hooks/useDocumentos";
 import HtmlFirmado from "./HtmlFirmado";
-import { valorPeriodoReal, proximoDiaPago, huecoCuotasHoy, fechaCubrePeriodo, financiarSemanas } from "../utils/cicloPago";
-import { hoyDate, fechaISO, fmtFechaLarga } from "../utils/fecha";
+import { valorPeriodoReal, huecoCuotasHoy, fechaCubrePeriodo, financiarSemanas, primeraCuotaConvenio, ultimaCuotaConvenio } from "../utils/cicloPago";
+import { hoyDate, fmtFechaLarga } from "../utils/fecha";
 import { sumarLoQueEntra, deudasMarcadas as soloMarcadas, type QueEntra } from "../utils/convenioQueEntra";
 
 interface Props {
@@ -211,6 +211,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   const [cuotasInput, setCuotasInput] = useState("");
   const [cuotaInput, setCuotaInput] = useState("");
   const [fechaLimite, setFechaLimite] = useState("");
+  const [primeraCuota, setPrimeraCuota] = useState("");
   const [firma, setFirma] = useState<string | null>(null);
   // LA ACOMPAÑANTE COMO CODEUDORA SOLIDARIA (mig 151, pedido del dueño 12-sep-2026): responde por
   // la deuda en las mismas condiciones que el titular. Solo aparece si ese cliente tiene
@@ -399,30 +400,29 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
   // decía "primer pago", que es otra cosa). De ese dato depende que `marcar_convenios_vencidos()`
   // decida si un convenio se venció: con la fecha del PRIMER pago, un convenio de 6 cuotas nacía
   // vencido a la semana. Queda editable por si acordaron otra fecha.
+  // LA PRIMERA CUOTA SE GUARDA (decisión del dueño, 27-oct-2026: "cuando se firma el acuerdo, ¿no
+  // se dice ahí mismo cuándo le toca cancelar? Debe ser igual a eso"). La propone la MISMA cuenta
+  // que después cobra (`primeraCuotaConvenio`: salta el prorrateo y las semanas que el acuerdo
+  // cubre) y el funcionario la puede cambiar si acordaron otra. Cartera, la nómina y ZALA cobran
+  // desde la que quede guardada.
+  //
+  // 🔴 Antes se mostraba el día de pago siguiente a hoy sin más, y la fecha límite se contaba desde
+  // hoy: a quien firmaba durante su prorrateo se le anunciaba una primera cuota que Cartera no le
+  // cobraba, y la fecha límite le quedaba una semana corta — `marcar_convenios_vencidos()` lo
+  // marcaba INCUMPLIDO antes de su última cuota (72 de 171 acuerdos, medido el 27-oct).
+  const primeraPropuesta = contratoActual
+    ? primeraCuotaConvenio(contratoActual, hoyDate(), cuotaSemana > 0 ? cubreParaBase : null)
+    : null;
   useEffect(() => {
-    if (!contratoActual || cuotasCalc <= 0) return;
-    // 🔴 Si se financiaron semanas, la PRIMERA cuota no cae en el período de hoy: cae en el
-    // primero NO cubierto (`cubreHasta`), porque durante las semanas financiadas el cliente no
-    // paga nada. Contando desde hoy, la fecha queda corta por esas mismas semanas — y entonces
-    // `marcar_convenios_vencidos()` lo marca INCUMPLIDO antes de que termine de pagar, con
-    // 3 incumplidos = liquidación obligatoria. (ALBERT, YAL59H: límite 14-sep y su última cuota
-    // cae el 21.) Se arranca un día antes de `cubreHasta` para que la primera cuota SEA ese día.
-    let d = hoyDate();
-    if (cubreHasta) {
-      const inicio = new Date(cubreHasta + "T00:00:00");
-      if (inicio > d) d = new Date(inicio.getTime() - 86400000);
-    }
-    for (let i = 0; i < cuotasCalc; i++) d = proximoDiaPago(contratoActual, d);
-    setFechaLimite(fechaISO(d));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cuotasCalc, contratoId, cubreHasta]);
+    if (primeraPropuesta) setPrimeraCuota(primeraPropuesta);
+  }, [primeraPropuesta]);
 
-  // Cuándo cae la PRIMERA cuota. Es solo informativo — no se guarda —, pero el funcionario lo
-  // necesita para decírselo al cliente en el momento de firmar. Antes este dato SÍ estaba a la
-  // vista, porque el campo de fecha pedía "el primer pago" y se escribía a mano; al pasarlo a
-  // "fecha límite" (que es lo que de verdad usa `marcar_convenios_vencidos()`) se perdió de
-  // pantalla sin querer, y el dueño lo reportó. Se repone como renglón de lectura.
-  const fechaPrimerPago = contratoActual ? fechaISO(proximoDiaPago(contratoActual, hoyDate())) : null;
+  // La fecha límite es el día de pago de la ÚLTIMA cuota, contando desde la primera.
+  useEffect(() => {
+    if (!contratoActual || cuotasCalc <= 0 || !primeraCuota) return;
+    setFechaLimite(ultimaCuotaConvenio(contratoActual, primeraCuota, cuotasCalc));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cuotasCalc, contratoId, primeraCuota]);
 
   async function handleGuardar() {
     if (guardando) return;
@@ -444,7 +444,9 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       setError(`Son ${cuotasCalc} cuotas y lo normal son ${CUOTAS_NORMALES}. Si es a propósito, marca la casilla de abajo para dejarlo por escrito.`);
       return;
     }
+    if (!primeraCuota) { setError("Selecciona la fecha de la primera cuota."); return; }
     if (!fechaLimite) { setError("Selecciona la fecha límite (la de la última cuota)."); return; }
+    if (fechaLimite < primeraCuota) { setError("La fecha límite no puede ser antes de la primera cuota."); return; }
     if (huellaResuelta && !hayAlgunaHuella) {
       setError(hayAcompanante
         ? `Ni ${clienteNombre.toUpperCase()} ni ${acompNombre.toUpperCase()} tienen la huella registrada. Regístrale la huella a alguno de los dos en su ficha (Clientes → el cliente → Editar) y vuelve a intentar.`
@@ -529,6 +531,7 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
       cuota_por_periodo: cuotaCalc,
       numero_cuotas: cuotasCalc,
       cuotas_pagadas: 0,
+      fecha_primera_cuota: primeraCuota,
       fecha_limite: fechaLimite,
       estado: "activo",
       // Rastro de la excepción: queda DENTRO del motivo, que es lo que se imprime en el acuerdo
@@ -880,24 +883,28 @@ export default function ModalConvenio({ contratoId, clienteNombre, onClose, meta
               </div>
             )}
 
-            {fechaPrimerPago && (
-              <div style={{ padding: "10px 14px", borderRadius: 12, background: "var(--soft2)", border: "1px solid var(--line)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Primera cuota</span>
-                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{fmtFechaLarga(fechaPrimerPago)}</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
-                  <span style={{ fontSize: 13, color: "var(--muted2)", minWidth: 0 }}>Última cuota</span>
-                  <strong style={{ fontSize: 13.5, color: "var(--text)" }}>{cuotasCalc > 0 && fechaLimite ? fmtFechaLarga(fechaLimite) : "— falta definir las cuotas"}</strong>
-                </div>
+            <div>
+              <div style={labelStyle}>Primera cuota</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                Es el día que se le dice al cliente, y desde ese día se le cobra. La propone el sistema;
+                puedes cambiarla si acordaron otra.
               </div>
-            )}
+              <input
+                type="date"
+                style={inputStyle}
+                value={primeraCuota}
+                onChange={e => setPrimeraCuota(e.target.value)}
+              />
+              {primeraCuota && (
+                <div style={{ fontSize: 13, color: "var(--text)", marginTop: 4 }}>{fmtFechaLarga(primeraCuota)}</div>
+              )}
+            </div>
 
             <div>
               <div style={labelStyle}>Fecha límite (última cuota)</div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                Se calcula sola avanzando {cuotasCalc > 0 ? cuotasCalc : "N"} día{cuotasCalc === 1 ? "" : "s"} de pago
-                desde hoy. Puedes cambiarla si acordaron otra.
+                Se calcula sola: {cuotasCalc > 0 ? cuotasCalc : "N"} cuota{cuotasCalc === 1 ? "" : "s"} contando
+                desde la primera. Puedes cambiarla si acordaron otra.
               </div>
               <input
                 type="date"

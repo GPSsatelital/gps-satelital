@@ -54,6 +54,13 @@ export function vigiaCubre(desdeISO: string): boolean {
   return desdeISO >= VIGIA_DESDE;
 }
 
+/**
+ * La primera semana de los cortes con precorte y cierre del miércoles (decisión del dueño,
+ * 27-oct-2026). Las semanas anteriores se pagaron por fuera: cuentan como cerradas, y lo que el
+ * cliente pagó en ellas y se confirmó desde aquí entra en la semana de la confirmación.
+ */
+export const INICIO_CORTES_NOMINA = "2026-10-26";
+
 export const VALOR_CICLO = 7500;
 // EL ATRASADO PASÓ DEL 30% AL 50% (decisión del dueño, 15-sep-2026). Sube CON ÉL la semana de
 // convenio de una moto guardada, que se apoya en esta misma tarifa desde el 23-ago — él lo
@@ -108,6 +115,9 @@ export type EventoCaja = {
   caja_numero: number;   // 0 = prorrateo
   fecha: string;
   fuente: "pago" | "convenio";
+  /** El pago que la llenó (mig 207). Con él, la semana se cuenta con el día en que PAGÓ el cliente;
+   *  `fecha` es el día en que se confirmó, que en una transferencia puede ser días después. */
+  pago_id?: string | null;
 };
 
 export type ConvenioNomina = {
@@ -218,6 +228,7 @@ export type ContratoNomina = ContratoCiclo & {
 };
 
 export type PagoNomina = {
+  id?: string;
   contrato_id: string;
   /** Cuándo PAGÓ el cliente (la nómina agrupa por esta fecha). */
   fecha: string;
@@ -359,6 +370,12 @@ export function nominaSemanaDetallada(opts: {
    * semana el día en que se cobró, y se queda la cuenta de antes: sin correr las semanas.
    */
   rodadas?: RodadaNomina[] | null;
+  /**
+   * ¿Esa semana ya está cerrada para ese cobrador? Lo que el cliente pagó en una semana cerrada y
+   * se confirmó después no se pierde: entra en la semana en que se confirmó. Por defecto, cerradas
+   * = las anteriores al arranque de los cortes (ver INICIO_CORTES_NOMINA).
+   */
+  semanaCerrada?: (cobradorId: string | null, lunes: string) => boolean;
 }): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [], referidos = [] } = opts;
   const rodadasPorContrato = new Map<string, RodadaNomina[]>();
@@ -377,6 +394,20 @@ export function nominaSemanaDetallada(opts: {
   /** Contratos cuya caja se llenó esta semana pero quedaron sin renglón porque falta la
    *  cuota del convenio. Solo alimenta el desglose de lo NO pagado — no cambia ni un peso. */
   const frenadoPorConvenio = new Set<string>();
+  // EL DÍA EN QUE PAGÓ EL CLIENTE (decisión del dueño, 27-oct-2026). La anotación del vigía trae el
+  // día en que se CONFIRMÓ: una transferencia del viernes confirmada el lunes salía "atrasada" y en
+  // la semana siguiente (29 casos solo en la semana del 19-oct). Si la anotación dice qué pago la
+  // llenó, manda el día de ese pago; si no (anotaciones de antes de la mig 207), queda como antes.
+  const fechaDelPago = new Map<string, string>();
+  for (const p of pagos) if (p.id) fechaDelPago.set(p.id, dia(p.fecha));
+  const fechaReal = (ev: EventoCaja) => (ev.pago_id && fechaDelPago.get(ev.pago_id)) || ev.fecha;
+  // EN QUÉ SEMANA SE PAGA el renglón: la del día en que pagó el cliente, salvo que esa semana ya
+  // esté cerrada para ese cobrador — entonces la de la confirmación, para que nadie lo pierda
+  // (regla del dueño, 27-oct: "dando plazo a lunes y martes para ingresar los pagos que hagan
+  // falta, así nadie pierde nada"). Si fue a tiempo o atrasado lo decide SIEMPRE el día en que pagó.
+  const semanaCerrada = opts.semanaCerrada ?? ((_: string | null, lunes: string) => lunes < INICIO_CORTES_NOMINA);
+  const ubicar = (fPago: string, fConfirmo: string, cobradorId: string | null) =>
+    semanaCerrada(cobradorId, lunesDe(fPago)) && fConfirmo > fPago ? fConfirmo : fPago;
   const eventosPorContrato = new Map<string, EventoCaja[]>();
   if (eventos) for (const e of eventos) {
     if (!eventosPorContrato.has(e.contrato_id)) eventosPorContrato.set(e.contrato_id, []);
@@ -476,9 +507,11 @@ export function nominaSemanaDetallada(opts: {
         // plata. Su plata real llega en las cuotas — que son la pata-convenio de los paquetes
         // semanales, no renglones propios (regla del paquete, 23-ago).
         if (ev.fuente === "convenio") continue;
+        const fEv = fechaReal(ev);
         if (ev.caja_numero === 0) {
-          if (ev.fecha < desde || ev.fecha > hasta) continue;
-          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: ev.fecha, valor: VALOR_CICLO });
+          const fP = ubicar(fEv, ev.fecha, moto.subadmin_id);
+          if (fP < desde || fP > hasta) continue;
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: fP, valor: VALOR_CICLO });
           continue;
         }
         // La semana ADELANTADA del wizard (su primera caja, pagada con la base): nadie la cobró.
@@ -486,25 +519,27 @@ export function nominaSemanaDetallada(opts: {
         if (c.total_cajas != null && ev.caja_numero > c.total_cajas) continue;
         const rel = ev.caja_numero - previas;
         if (rel < 1) continue;   // cajas del corte de migración: no son gestión de nadie acá
-        const exigencia = exigenciaDe(rel + semanasCorridasAl(ev.fecha));
+        const exigencia = exigenciaDe(rel + semanasCorridasAl(fEv));
         // El renglón se fecha cuando se completó el PAQUETE (la pata que llegó de última):
         // una caja llena de una semana vieja puede volverse renglón esta semana, si la cuota
         // del convenio que le faltaba recién entró.
-        const paq = fechaPaquete(exigencia, ev.fecha);
+        const paq = fechaPaquete(exigencia, fEv);
         if (paq === null) {
           // La caja SÍ se llenó esta semana, pero falta la pata del convenio. No es un renglón
           // —es la regla del paquete— pero tampoco es "no pagó": se anota para poder decirle al
           // cobrador la verdad exacta en el desglose de lo no pagado.
-          if (ev.fecha >= desde && ev.fecha <= hasta) frenadoPorConvenio.add(c.id);
+          const fF = ubicar(fEv, ev.fecha, moto.subadmin_id);
+          if (fF >= desde && fF <= hasta) frenadoPorConvenio.add(c.id);
           continue;
         }
-        if (paq < desde || paq > hasta) continue;
         const atrasada = lunesDe(exigencia) < lunesDe(paq);
-        semanaConCiclo.add(c.id + "|" + lunesDe(paq));
+        const fRenglon = ubicar(paq, ev.fecha, moto.subadmin_id);
+        if (fRenglon < desde || fRenglon > hasta) continue;
+        semanaConCiclo.add(c.id + "|" + lunesDe(fRenglon));
         renglones.push({
           motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
-          fecha: paq,
+          fecha: fRenglon,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
         });
       }

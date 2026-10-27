@@ -819,3 +819,63 @@ describe("la nómina cobra el acuerdo desde la primera cuota GUARDADA (27-oct-20
     expect(n[0].total).toBe(VALOR_CICLO);
   });
 });
+
+describe("la semana se cuenta con el día en que PAGÓ el cliente, no el de la confirmación (27-oct-2026)", () => {
+  // Contrato semanal de los lunes: la caja 6 se exige el lunes 2-nov, la 7 el lunes 9-nov.
+  const C2: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-11-02" };
+  const pagoDe = (id: string, fecha: string, confirmado: string): PagoNomina => ({
+    id, contrato_id: "ct1", fecha, created_at: confirmado + "T15:00:00Z", estado: "Confirmado", aplicado_tarifa: 202000,
+  });
+  type Ev = { caja_numero: number; fecha: string; pago_id?: string | null };
+  const semana = (desde: string, hasta: string, pagos: PagoNomina[], eventos: Ev[], contrato = C2,
+                  semanaCerrada?: (c: string | null, l: string) => boolean) =>
+    nominaSemana({
+      desde, hasta, contratos: [contrato], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES, pagos,
+      eventos: eventos.map(e => ({ contrato_id: "ct1", fuente: "pago" as const, ...e })), semanaCerrada,
+    });
+
+  it("caso IEW80I: pagó el viernes por transferencia, se confirmó el lunes → A TIEMPO, en la semana en que pagó", () => {
+    const pagos = [pagoDe("p1", "2026-11-06", "2026-11-09")];
+    const eventos = [{ caja_numero: 6, fecha: "2026-11-09", pago_id: "p1" }];
+    const suSemana = semana("2026-11-02", "2026-11-08", pagos, eventos);
+    expect(suSemana[0].ciclosATiempo).toBe(1);
+    expect(suSemana[0].ciclosAtrasados).toBe(0);
+    expect(suSemana[0].renglones[0].fecha).toBe("2026-11-06");
+    expect(suSemana[0].total).toBe(VALOR_CICLO);
+    // La semana de la confirmación no la vuelve a pagar.
+    expect(semana("2026-11-09", "2026-11-15", pagos, eventos)).toHaveLength(0);
+  });
+
+  it("si la semana en que pagó YA SE CERRÓ, entra en la de la confirmación y sigue valiendo a tiempo", () => {
+    const pagos = [pagoDe("p1", "2026-11-06", "2026-11-11")];
+    const eventos = [{ caja_numero: 6, fecha: "2026-11-11", pago_id: "p1" }];
+    const cerrada = (_: string | null, l: string) => l <= "2026-11-02";
+    expect(semana("2026-11-02", "2026-11-08", pagos, eventos, C2, cerrada)).toHaveLength(0);
+    const siguiente = semana("2026-11-09", "2026-11-15", pagos, eventos, C2, cerrada);
+    expect(siguiente[0].ciclosATiempo).toBe(1);
+    expect(siguiente[0].renglones[0].fecha).toBe("2026-11-11");
+  });
+
+  it("arranque: lo pagado la semana del 19-oct y confirmado el 26-oct entra en la semana del 26, a tiempo", () => {
+    const C3: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-10-19" };   // caja 6 = lunes 19-oct
+    const pagos = [pagoDe("p9", "2026-10-24", "2026-10-26")];
+    const eventos = [{ caja_numero: 6, fecha: "2026-10-26", pago_id: "p9" }];
+    expect(semana("2026-10-19", "2026-10-25", pagos, eventos, C3)).toHaveLength(0);
+    const n = semana("2026-10-26", "2026-11-01", pagos, eventos, C3);
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("el que de verdad pagó tarde sigue saliendo ATRASADO", () => {
+    const pagos = [pagoDe("p2", "2026-11-10", "2026-11-10")];
+    const n = semana("2026-11-09", "2026-11-15", pagos, [{ caja_numero: 6, fecha: "2026-11-10", pago_id: "p2" }]);
+    expect(n[0].ciclosAtrasados).toBe(1);
+    expect(n[0].total).toBe(VALOR_ATRASADO);
+  });
+
+  it("sin saber qué pago llenó la semana (anotaciones viejas), queda como antes: la fecha de la anotación", () => {
+    const pagos = [pagoDe("p3", "2026-11-06", "2026-11-09")];
+    const n = semana("2026-11-09", "2026-11-15", pagos, [{ caja_numero: 6, fecha: "2026-11-09" }]);
+    expect(n[0].ciclosAtrasados).toBe(1);
+  });
+});

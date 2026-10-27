@@ -468,7 +468,11 @@ export default function ReportesView({ onNavigate }: Props) {
     return d.toISOString().slice(0, 10);
   }, [lunesNomina]);
   const [intentoNomina, setIntentoNomina] = useState(0);
-  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, domingoNomina, tab === "nomina" || pdfPideNomina, intentoNomina);
+  // Hasta HOY y no hasta el domingo (27-oct-2026): la semana se cuenta con el día en que pagó el
+  // cliente, y una transferencia del sábado confirmada el lunes tiene su anotación fechada el lunes
+  // — fuera de la semana, pero es de ella.
+  const hastaEventosNomina = hoyISO() > domingoNomina ? hoyISO() : domingoNomina;
+  const { eventos: eventosNomina, cargando: cargandoCajas, error: errorCajas } = useCajasLlenadas(desdeEventosNomina, hastaEventosNomina, tab === "nomina" || pdfPideNomina, intentoNomina);
   // Las rodadas con su fecha: cada semana se paga según cómo estaba el día en que se cobró (30-sep).
   const { registros: registrosRodadas, cargando: cargandoRodadas, error: errorRodadas } = useRodadas(tab === "nomina" || tab === "resumen" || pdfPideNomina, intentoNomina);
   const rodadasNomina = useMemo(() => {
@@ -524,7 +528,8 @@ export default function ReportesView({ onNavigate }: Props) {
     return semanasTendencia.map(l => {
       const desdeEv = masDias(l, -84);
       const hastaSem = masDias(l, 6);
-      const ev = eventosTendencia.filter(e => e.fecha >= desdeEv && e.fecha <= hastaSem);
+      // Sin cortar en el domingo: lo confirmado después puede ser de esta semana (día en que pagó).
+      const ev = eventosTendencia.filter(e => e.fecha >= desdeEv);
       return nominaSemanaDetallada({ ...entradasNomina, desde: l, hasta: hastaSem, eventos: ev.length ? ev : null }).nominas;
     });
   }, [tab, eventosTendencia, semanasTendencia, entradasNomina]);

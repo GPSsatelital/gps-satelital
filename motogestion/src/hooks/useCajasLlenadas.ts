@@ -12,6 +12,8 @@ export type CajaLlenada = {
   caja_numero: number;
   fecha: string;
   fuente: "pago" | "convenio";
+  /** El pago que la llenó (mig 207); null en las anotaciones de antes. */
+  pago_id: string | null;
 };
 
 /**
@@ -35,7 +37,7 @@ export function useCajasLlenadas(desde: string, hasta: string, activo: boolean, 
       for (let desdeFila = 0; ; desdeFila += 1000) {
         const { data, error } = await supabase
           .from("cajas_llenadas")
-          .select("contrato_id, caja_numero, fecha, fuente")
+          .select("contrato_id, caja_numero, fecha, fuente, pago_id")
           .gte("fecha", desde)
           .lte("fecha", hasta)
           .order("fecha").order("id")

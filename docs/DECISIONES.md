@@ -892,3 +892,24 @@ lo cobraba ese mismo día; 0 casos al decidirlo).
 `periodosConvenioCorridos`) · `nominaCobradores.ts` · `ModalConvenio.tsx` · mig 206 (columna, ZALA, relleno, límites, los 11).
 **Queda aparte:** el papel firmado del acuerdo todavía no imprime la primera cuota; `ModalAmpliarConvenio` y el motor al
 recuperar un incumplido (mig 093) siguen calculando su fecha límite desde hoy.
+
+### D-057 · 27-oct-2026 · Nómina: el día en que pagó el cliente, precorte, corte los miércoles y pago el 15 y el 30
+**Decidió:** el dueño: *"se hará un precorte los días actuales y se hará un corte definitivo semanalmente los miércoles
+dando plazo a lunes y martes para ingresar los pagos que hagan falta, así nadie pierde nada; los funcionarios cerrarán o
+firmarán cada semana pero los pagos serán quincenales los 15 y los 30 de cada mes"*.
+**Por qué:** en la semana del 19-oct, de 98 pagos "atrasados", 29 eran transferencias pagadas dentro de la semana y
+confirmadas el lunes siguiente o después: la nómina contaba el día de la confirmación (`cajas_llenadas.fecha`), no el
+día en que pagó el cliente. $108.750 de menos solo esa semana. Los otros 69 eran atrasos reales.
+**Qué se decidió:**
+1. Si fue a tiempo o atrasado lo decide el día en que pagó el cliente (`pagos.fecha`). El renglón se paga en la semana
+   en que pagó; si esa semana ya está cerrada para ese supervisor, en la de la confirmación (nadie lo pierde).
+   `cajas_llenadas.pago_id` dice qué pago llenó cada semana (mig 207, sin tocar el motor).
+2. Arranca con la semana del 26-oct (`INICIO_CORTES_NOMINA`); las anteriores se pagaron por fuera y cuentan como cerradas.
+3. Lunes y martes: precorte (se ve, no se cierra; avisa las transferencias sin confirmar). Miércoles: corte definitivo y
+   firma de cada supervisor ("revisé y estoy de acuerdo"). Si un supervisor no está de acuerdo, su semana no se cierra
+   hasta aclarar.
+4. Cada 15 y 30 se pagan las semanas ya cerradas que no se hayan pagado. El día no lo fija el sistema: se registra el día
+   en que se paga (el mismo 15/30, o un día antes o después) y entran las cerradas hasta ese día.
+5. Cierran y registran el pago ADMIN y ADMIN_PRINCIPAL (como hoy).
+**Dónde vive:** `nominaCobradores.ts` (`fechaReal`, `ubicar`, `semanaCerrada`, `INICIO_CORTES_NOMINA`) · mig 207. Los
+puntos 3 y 4 (precorte, corte del miércoles, pago quincenal) se construyen aparte.

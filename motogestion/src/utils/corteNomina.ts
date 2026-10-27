@@ -69,3 +69,39 @@ export function porConfirmarPorCobrador(
   }
   return out;
 }
+
+// ── EL PAGO DEL 15 Y EL 30 (decisión del dueño, 27-oct-2026, D-057) ─────────────────────────────
+// "Cada 15 y 30 se pagan las semanas ya cerradas el miércoles que no se hayan pagado." El día no lo
+// fija el sistema: se registra el día en que se paga (el 15/30, o un día antes o después) y entran
+// todas las semanas cerradas hasta ese momento. Una semana cerrada se paga UNA sola vez (candado en
+// la base, mig 208).
+
+export type CierreParaPagar = { id: string; subadmin_id: string | null; semana_lunes: string; total: number };
+
+/** Las semanas cerradas que todavía no se le han pagado a cada supervisor, con su total. Las de antes
+ *  del arranque de los cortes nunca entran: se pagaron por fuera de la app. */
+export function semanasPorPagar<T extends CierreParaPagar>(
+  cierres: T[],
+  pagadas: Set<string>,
+): Map<string | null, { semanas: T[]; total: number }> {
+  const out = new Map<string | null, { semanas: T[]; total: number }>();
+  for (const c of cierres) {
+    if (c.semana_lunes.slice(0, 10) < INICIO_CORTES_NOMINA || pagadas.has(c.id)) continue;
+    const a = out.get(c.subadmin_id) ?? { semanas: [], total: 0 };
+    out.set(c.subadmin_id, { semanas: [...a.semanas, c], total: a.total + Number(c.total) });
+  }
+  for (const v of out.values()) v.semanas.sort((x, y) => x.semana_lunes.localeCompare(y.semana_lunes));
+  return out;
+}
+
+/** El próximo día de pago desde `hoy` (incluido): el 15, o el 30 (en febrero, el último día). */
+export function proximoPagoQuincenal(hoy: string): string {
+  const [a, m, d] = hoy.slice(0, 10).split("-").map(Number);
+  const ultimo = new Date(a, m, 0).getDate();
+  const fin = Math.min(30, ultimo);
+  const mm = String(m).padStart(2, "0");
+  if (d <= 15) return `${a}-${mm}-15`;
+  if (d <= fin) return `${a}-${mm}-${String(fin).padStart(2, "0")}`;
+  const sig = new Date(a, m, 15);   // el 15 del mes siguiente
+  return `${sig.getFullYear()}-${String(sig.getMonth() + 1).padStart(2, "0")}-15`;
+}

@@ -74,3 +74,20 @@ describe("el desprendible imprime también lo que NO se pagó", () => {
     expect(total(conReverso)).toBe(total(solo));
   });
 });
+
+describe("el comprobante del pago del 15 y el 30", () => {
+  it("lista cada semana cerrada con su valor, el total y la firma de recibido", async () => {
+    const { htmlComprobantePagoNomina } = await import("./generarDesprendibleNomina");
+    const html = htmlComprobantePagoNomina({
+      cobradorNombre: "Carlos Ariza", fecha: "2026-11-15", total: 390000,
+      semanas: [{ semana_lunes: "2026-11-02", total: 210000 }, { semana_lunes: "2026-10-26", total: 180000 }],
+    }, "Fredy Mora");
+    expect(html).toContain("CARLOS ARIZA");
+    expect(html.indexOf("26 de oct")).toBeGreaterThan(-1);
+    expect(html.indexOf("26 de oct")).toBeLessThan(html.indexOf("2 de nov"));   // en orden
+    expect(html).toContain("$180.000");
+    expect(html).toContain("$210.000");
+    expect(html).toContain("$390.000");
+    expect(html).toContain("recibí conforme");
+  });
+});

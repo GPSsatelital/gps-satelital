@@ -167,8 +167,8 @@ export function htmlDesprendibleNomina(
 
   <div class="cierre">
     <div class="firmas">
-      <div><div class="linea">${quienPagaNombre.toUpperCase()}<div class="rol">Quien paga — Club de Moteros</div></div></div>
-      <div><div class="linea">${nombreCobrador.toUpperCase()}<div class="rol">Cobrador — recibí conforme, verifiqué el detalle</div></div></div>
+      <div><div class="linea">${quienPagaNombre.toUpperCase()}<div class="rol">Quien cierra — Club de Moteros</div></div></div>
+      <div><div class="linea">${nombreCobrador.toUpperCase()}<div class="rol">Supervisor — revisé el detalle y estoy de acuerdo</div></div></div>
     </div>
   </div>
 </body>
@@ -183,6 +183,81 @@ export function generarDesprendibleNomina(
   const ventana = window.open("", "_blank", "width=820,height=900");
   if (!ventana) return;
   ventana.document.write(htmlDesprendibleNomina(...args));
+  ventana.document.close();
+  ventana.focus();
+  setTimeout(() => ventana.print(), 400);
+}
+
+// ── EL COMPROBANTE DEL PAGO DEL 15 Y EL 30 (D-057, parte 4) ─────────────────────────────────────
+// El desprendible de cada semana dice "revisé y estoy de acuerdo"; este papel es el de la PLATA: qué
+// semanas cerradas se le pagan al supervisor ese día y cuánto en total, con su firma de recibido.
+
+export type PagoQuincenalPapel = {
+  cobradorNombre: string;
+  fecha: string;
+  total: number;
+  semanas: Array<{ semana_lunes: string; total: number }>;
+  observacion?: string | null;
+};
+
+function textoSemanaPapel(lunes: string) {
+  const d = new Date(lunes.slice(0, 10) + "T12:00:00");
+  const fin = new Date(d); fin.setDate(fin.getDate() + 6);
+  const f = (x: Date) => x.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+  return `Semana del ${f(d)} al ${f(fin)}`;
+}
+
+export function htmlComprobantePagoNomina(pago: PagoQuincenalPapel, quienPagaNombre: string): string {
+  const filas = pago.semanas
+    .slice().sort((a, b) => a.semana_lunes.localeCompare(b.semana_lunes))
+    .map(s => `<tr><td>${textoSemanaPapel(s.semana_lunes)}</td><td class="num">${cop(Number(s.total))}</td></tr>`).join("");
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Pago de nómina ${pago.cobradorNombre} — ${pago.fecha}</title>
+<style>
+  @page { size: letter; margin: 12mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #0f172a; padding: 26px; }
+  @media print { body { padding: 0; } }
+  h1 { font-size: 18px; margin-bottom: 2px; }
+  .sub { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  th { background: #f1f5f9; text-align: left; padding: 5px 8px; border: 1px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #475569; }
+  td { padding: 6px 8px; border: 1px solid #e2e8f0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .total td { font-weight: bold; font-size: 14px; background: #f8fafc; }
+  .nota { font-size: 11px; color: #475569; line-height: 1.5; margin-bottom: 40px; }
+  .firmas { display: flex; gap: 40px; margin-top: 50px; }
+  .firmas > div { flex: 1; }
+  .linea { border-top: 1px solid #0f172a; padding-top: 6px; font-weight: bold; text-transform: uppercase; }
+  .rol { font-weight: normal; font-size: 11px; color: #64748b; text-transform: none; }
+</style>
+</head>
+<body>
+  <h1>Pago de nómina</h1>
+  <div class="sub">${pago.cobradorNombre.toUpperCase()} · pagado el ${fechaLarga(pago.fecha)}</div>
+  <table>
+    <thead><tr><th>Semana cerrada</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>${filas}</tbody>
+    <tr class="total"><td>TOTAL PAGADO</td><td class="num">${cop(pago.total)}</td></tr>
+  </table>
+  ${pago.observacion ? `<div class="nota"><strong>Observación:</strong> ${pago.observacion}</div>` : ""}
+  <div class="nota">Cada semana ya fue revisada y firmada por el supervisor el miércoles de su cierre (el detalle
+  de cada pago está en su desprendible). Este papel deja constancia de la entrega del dinero.</div>
+  <div class="firmas">
+    <div><div class="linea">${quienPagaNombre.toUpperCase()}<div class="rol">Quien paga — Club de Moteros</div></div></div>
+    <div><div class="linea">${pago.cobradorNombre.toUpperCase()}<div class="rol">Supervisor — recibí conforme</div></div></div>
+  </div>
+</body>
+</html>`;
+}
+
+export function imprimirComprobantePagoNomina(...args: Parameters<typeof htmlComprobantePagoNomina>) {
+  const ventana = window.open("", "_blank", "width=820,height=900");
+  if (!ventana) return;
+  ventana.document.write(htmlComprobantePagoNomina(...args));
   ventana.document.close();
   ventana.focus();
   setTimeout(() => ventana.print(), 400);

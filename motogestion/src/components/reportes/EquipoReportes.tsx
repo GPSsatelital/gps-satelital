@@ -41,10 +41,22 @@ export type FilaCobradorNomina = {
   pagada: string | null;
   /** Transferencias de esta semana que todavía no se confirman (precorte, D-057). */
   porConfirmar: { n: number; total: number } | null;
+  /** Día en que esta semana se le pagó en el pago del 15/30; null si todavía no. */
+  pagadaQuincena: string | null;
+};
+/** EL PAGO DEL 15 Y EL 30 (D-057, parte 4). */
+export type DatosPagoQuincenal = {
+  proximo: string;
+  puedePagar: boolean;
+  cargando: boolean;
+  error: boolean;
+  porSupervisor: Array<{ id: string; nombre: string; semanas: number; total: number }>;
+  recientes: Array<{ id: string; nombre: string; fecha: string; total: number; semanas: number }>;
 };
 export type DatosNomina = {
   /** En qué punto del corte está la semana (D-057): en curso · precorte · corte · anterior. */
   etapa: { tipo: "en_curso" | "precorte" | "corte" | "anterior"; diaCorte: string; porConfirmar: { n: number; total: number } };
+  pagoQuincenal: DatosPagoQuincenal;
   textoSemana: string;
   puedeSiguiente: boolean;
   cargando: boolean;
@@ -173,6 +185,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
               {c.motos && <span>{c.motos.generaron} de {c.motos.tenia} motos le generaron pago</span>}
               <span style={{ color: c.pagada ? "var(--ok-ink)" : "var(--muted2)", fontWeight: c.pagada ? 600 : 400 }}>{c.pagada ? `Cerrada y firmada el ${c.pagada}` : "Sin cerrar"}</span>
               {c.porConfirmar && <span style={{ color: "var(--warn-ink)", fontWeight: 600 }}>{c.porConfirmar.n} por confirmar ({plata(c.porConfirmar.total)})</span>}
+              {c.pagadaQuincena && <span style={{ color: "var(--ok-ink)", fontWeight: 600 }}>Pagada el {c.pagadaQuincena}</span>}
             </span>
           </button>
         ))}
@@ -182,6 +195,53 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
           Ver sus motos por grupo <ArrowRight size={16} aria-hidden="true" />
         </button>
       </Tarjeta>
+
+      {(() => {
+        // EL PAGO DEL 15 Y EL 30 (D-057, parte 4): las semanas cerradas que no se le han pagado a cada
+        // supervisor, y los pagos ya hechos con su comprobante.
+        const q = d.pagoQuincenal;
+        const dia = new Date(q.proximo + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+        const fechaCorta = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+        const btn: React.CSSProperties = { minHeight: 44, padding: "0 12px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 };
+        return (
+          <Tarjeta titulo="Pago del 15 y el 30"
+            ayuda="Cada 15 y cada 30 se le paga a cada supervisor todas sus semanas ya cerradas y firmadas que todavía no se le han pagado. El pago se registra el día en que se hace; ninguna semana se puede pagar dos veces. Las semanas de antes del 26 de octubre se pagaron por fuera de la app.">
+            <div style={{ fontSize: 13 }}>Próximo pago: <b>{dia}</b></div>
+            {q.cargando ? <div style={{ ...muted, fontSize: 13, padding: "8px 4px" }}>Cargando los pagos…</div>
+              : q.error ? <div style={{ fontSize: 13, color: "var(--bad-ink)", padding: "8px 4px" }}>No se pudieron traer los pagos de nómina.</div>
+              : (
+              <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                {q.porSupervisor.length === 0 && <div style={{ ...muted, fontSize: 13, padding: "4px" }}>No hay semanas cerradas por pagar.</div>}
+                {q.porSupervisor.map(s => (
+                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", minHeight: 44 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.nombre}</div>
+                      <div style={muted}>{s.semanas} {s.semanas === 1 ? "semana cerrada" : "semanas cerradas"} sin pagar · <b style={{ color: "var(--text)" }}>{plata(s.total)}</b></div>
+                    </div>
+                    {q.puedePagar && (
+                      <button onClick={() => onAbrir("pagar:" + s.id)} style={{ ...btn, border: "none", background: "var(--accent)", color: "var(--on-accent)" }}>Registrar pago</button>
+                    )}
+                  </div>
+                ))}
+                {q.recientes.length > 0 && (
+                  <>
+                    <div style={{ ...muted, marginTop: 8, textTransform: "uppercase", fontWeight: 600 }}>Pagos registrados</div>
+                    {q.recientes.map(p => (
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px", minHeight: 44 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nombre}</div>
+                          <div style={muted}>{fechaCorta(p.fecha)} · {p.semanas} {p.semanas === 1 ? "semana" : "semanas"} · {plata(p.total)}</div>
+                        </div>
+                        <button onClick={() => onAbrir("comprobante:" + p.id)} style={{ ...btn, border: "1px solid var(--line2)", background: "transparent", color: "var(--text)" }}>Comprobante</button>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </Tarjeta>
+        );
+      })()}
 
       <Tarjeta titulo="Cada cobrador, semana a semana"
         ayuda="De las motos que cada cobrador ya tenía esa semana, cuántas le generaron pago. Empieza el 14 de septiembre: entre el 7 y el 13 se les puso fecha nueva a 176 motos, y antes de eso no se sabe con certeza quién tenía cada una. Cada lunes se suma una semana. Debajo de cada semana, cuántos supervisores la cerraron y firmaron.">

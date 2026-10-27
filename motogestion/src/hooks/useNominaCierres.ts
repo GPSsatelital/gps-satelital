@@ -32,7 +32,7 @@ export type NominaCierre = {
  * si la firma no sube y guardáramos igual, ese pago quedaría para siempre sin la constancia de
  * que el cobrador recibió — y sin forma de repararlo.
  */
-async function subir(dataUrl: string, ruta: string): Promise<{ url: string | null; error: string | null }> {
+export async function subir(dataUrl: string, ruta: string): Promise<{ url: string | null; error: string | null }> {
   try {
     const res = await fetch(dataUrl);
     const blob = await res.blob();
@@ -49,7 +49,7 @@ async function subir(dataUrl: string, ruta: string): Promise<{ url: string | nul
 
 const SIN_CIERRES: NominaCierre[] = [];
 
-export type CierreCorto = Pick<NominaCierre, "semana_lunes" | "subadmin_id" | "created_at">;
+export type CierreCorto = Pick<NominaCierre, "id" | "semana_lunes" | "subadmin_id" | "total" | "created_at">;
 const SIN_CORTOS: CierreCorto[] = [];
 
 /** Qué cobradores quedaron pagados en la app en VARIAS semanas (las semanas de cada cobrador, en
@@ -61,7 +61,7 @@ export function useCierresDeSemanas(semanas: string[], activo: boolean, intento 
   useEffect(() => {
     if (!activo || semanas.length === 0) return;
     let vivo = true;
-    void supabase.from("nomina_cierres").select("semana_lunes, subadmin_id, created_at").in("semana_lunes", semanas)
+    void supabase.from("nomina_cierres").select("id, semana_lunes, subadmin_id, total, created_at").in("semana_lunes", semanas)
       .then(({ data, error }) => { if (vivo) setTraido({ clave, cierres: (data ?? []) as CierreCorto[], error: !!error }); });
     return () => { vivo = false; };
   }, [clave, activo]); // eslint-disable-line react-hooks/exhaustive-deps

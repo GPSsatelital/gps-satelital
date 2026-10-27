@@ -31,8 +31,10 @@ import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, INICIO_CORTES_NOMINA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
-import { etapaCorte, diaDeCorte, porConfirmarPorCobrador, semanaCerradaSegun } from "../utils/corteNomina";
-import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
+import { etapaCorte, diaDeCorte, porConfirmarPorCobrador, semanaCerradaSegun, semanasPorPagar, proximoPagoQuincenal } from "../utils/corteNomina";
+import { useNominaPagos } from "../hooks/useNominaPagos";
+import ModalPagoNomina from "../components/ModalPagoNomina";
+import { generarDesprendibleNomina, imprimirComprobantePagoNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useCarteraDelDia } from "../hooks/useCarteraDelDia";
 import { opcionesDia, textoDia, avisoDelDia, type FilaCarteraDia } from "../utils/carteraDelDia";
@@ -493,6 +495,13 @@ export default function ReportesView({ onNavigate }: Props) {
   const { cierres: cierresDesdeInicio, cargando: cargandoCierresTodos, error: errorCierresTodos } =
     useCierresDeSemanas(semanasDesdeInicio, tab === "nomina" || pdfPideNomina, intentoNomina);
   const semanaCerradaNomina = useMemo(() => semanaCerradaSegun(cierresDesdeInicio), [cierresDesdeInicio]);
+  // EL PAGO DEL 15 Y EL 30 (D-057, parte 4): las semanas cerradas que no se le han pagado a cada uno.
+  const { pagos: pagosNomina, cierresPagados, pagoDeCierre, cargando: cargandoPagosNomina, error: errorPagosNomina, registrarPago } =
+    useNominaPagos(tab === "nomina", intentoNomina);
+  const porPagarNomina = useMemo(() => semanasPorPagar(cierresDesdeInicio, cierresPagados),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cierresDesdeInicio, pagosNomina]);
+  const [pagandoA, setPagandoA] = useState<string | null>(null);   // supervisor al que se le registra el pago
   // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
   // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
   const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || cargandoCierresTodos || sinDatos;
@@ -2080,6 +2089,17 @@ export default function ReportesView({ onNavigate }: Props) {
   const motosDeOtroN = new Set(renglonesN.filter(({ r }) => TIPOS_COBRO.has(r.tipo)).map(({ r }) => r.motoId)
     .filter(id => { const m = motoPorId.get(id); return !!m && !teniaAlEmpezar(m, lunesNomina); })).size;
   const datosNomina: DatosNomina = {
+    pagoQuincenal: {
+      proximo: proximoPagoQuincenal(hoyISO()),
+      puedePagar: esAdmin,
+      cargando: cargandoPagosNomina || cargandoCierresTodos,
+      error: errorPagosNomina || errorCierresTodos,
+      porSupervisor: [...porPagarNomina.entries()]
+        .filter((e): e is [string, (typeof e)[1]] => e[0] !== null)
+        .map(([id, v]) => ({ id, nombre: nombreCobradorN(id), semanas: v.semanas.length, total: v.total }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      recientes: pagosNomina.slice(0, 6).map(p => ({ id: p.id, nombre: p.cobrador_nombre, fecha: p.fecha, total: Number(p.total), semanas: p.semanas.length })),
+    },
     etapa: {
       tipo: etapaNomina, diaCorte: diaDeCorte(lunesNomina),
       porConfirmar: [...porConfirmarNomina.values()].reduce((a, x) => ({ n: a.n + x.n, total: a.total + x.total }), { n: 0, total: 0 }),
@@ -2107,6 +2127,7 @@ export default function ReportesView({ onNavigate }: Props) {
         motos: ci ? null : celdaCobrador(n.subadminId!, lunesNomina, n.renglones),
         pagada: ci ? fechaCortaN(ci.created_at) : null,
         porConfirmar: ci ? null : (porConfirmarNomina.get(n.subadminId!) ?? null),
+        pagadaQuincena: ci && pagoDeCierre.get(ci.id) ? fechaCortaN(pagoDeCierre.get(ci.id)!.fecha) : null,
       };
     }),
     portafolios: (() => {
@@ -2150,6 +2171,13 @@ export default function ReportesView({ onNavigate }: Props) {
     const i = clave.indexOf(":");
     const tipo = clave.slice(0, i);
     const valor = clave.slice(i + 1);
+    // EL PAGO DEL 15 Y EL 30 (D-057, parte 4): registrar el pago de un supervisor, o reimprimir uno.
+    if (tipo === "pagar") { if (esAdmin) setPagandoA(valor); return; }
+    if (tipo === "comprobante") {
+      const pg = pagosNomina.find(x => x.id === valor);
+      if (pg) imprimirComprobantePagoNomina({ cobradorNombre: pg.cobrador_nombre, fecha: pg.fecha, total: Number(pg.total), semanas: pg.semanas, observacion: pg.observacion }, nombreCobradorN(pg.pagado_por));
+      return;
+    }
     const semana = textoSemanaNomina;
     if (tipo === "parte") {
       const deLaParte = renglonesN.filter(({ r }) => valor === "visitas" ? r.tipo === "visita" : valor === "referidos" ? r.tipo === "referido" : r.tipo !== "visita" && r.tipo !== "referido");
@@ -3000,7 +3028,22 @@ export default function ReportesView({ onNavigate }: Props) {
       {tab === "nomina" && (
         <EquipoNomina d={datosNomina} onMover={moverSemanaNomina} onReintentar={reintentarNomina} onAbrir={abrirDetalleNomina} />
       )}
-      {/* CERRAR Y PAGAR la semana de un cobrador (mig 120): se cierra con el cálculo VIVO y completo. */}
+      {/* EL PAGO DEL 15 Y EL 30 (D-057, parte 4): todas sus semanas cerradas sin pagar, firma de recibido. */}
+      {tab === "nomina" && pagandoA && (() => {
+        const info = porPagarNomina.get(pagandoA);
+        if (!info || info.semanas.length === 0) return null;
+        return (
+          <ModalPagoNomina
+            cobradorNombre={nombreCobradorN(pagandoA)}
+            semanas={info.semanas}
+            onClose={() => setPagandoA(null)}
+            onPagar={({ firmaDataUrl, fotoDataUrl, observacion }) => registrarPago({
+              subadminId: pagandoA, cierreIds: info.semanas.map(s => s.id), firmaDataUrl, fotoDataUrl, observacion,
+            })}
+          />
+        );
+      })()}
+      {/* CERRAR la semana de un supervisor (mig 120): se cierra con el cálculo VIVO y completo. */}
       {tab === "nomina" && cerrando && (() => {
         const n = nominas.find(x => x.subadminId === cerrando);
         if (!n) return null;

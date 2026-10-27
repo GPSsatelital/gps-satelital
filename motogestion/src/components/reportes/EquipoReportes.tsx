@@ -39,8 +39,12 @@ export type FilaCobradorNomina = {
   motos: CeldaSemana;
   /** Día en que se registró el pago en la app; null si no se registró. */
   pagada: string | null;
+  /** Transferencias de esta semana que todavía no se confirman (precorte, D-057). */
+  porConfirmar: { n: number; total: number } | null;
 };
 export type DatosNomina = {
+  /** En qué punto del corte está la semana (D-057): en curso · precorte · corte · anterior. */
+  etapa: { tipo: "en_curso" | "precorte" | "corte" | "anterior"; diaCorte: string; porConfirmar: { n: number; total: number } };
   textoSemana: string;
   puedeSiguiente: boolean;
   cargando: boolean;
@@ -89,6 +93,20 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
         <button onClick={() => onMover(1)} disabled={!d.puedeSiguiente} aria-label="Semana siguiente"
           style={{ ...btnSemana, cursor: d.puedeSiguiente ? "pointer" : "not-allowed", opacity: d.puedeSiguiente ? 1 : 0.4 }}><ChevronRight size={18} aria-hidden="true" /></button>
       </div>
+
+      {(() => {
+        // EL CORTE DE LA SEMANA (D-057): lunes y martes se revisa y se confirma lo que falte; el
+        // miércoles se cierra. Así ninguna transferencia confirmada tarde se le pierde al supervisor.
+        const e = d.etapa;
+        const dia = new Date(e.diaCorte + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+        const falta = e.porConfirmar.n > 0
+          ? <> Faltan por confirmar <b>{e.porConfirmar.n} {e.porConfirmar.n === 1 ? "pago" : "pagos"}</b> de esta semana ({plata(e.porConfirmar.total)}).</>
+          : <> No falta ningún pago de esta semana por confirmar.</>;
+        if (e.tipo === "anterior") return <Aviso tono="info">Esta semana es de antes del 26 de octubre: <b>se pagó por fuera de la app</b> y no se cierra aquí.</Aviso>;
+        if (e.tipo === "en_curso") return <Aviso tono="info">Semana en curso. El lunes y el martes siguientes se revisa, y se cierra el <b>{dia}</b>.</Aviso>;
+        if (e.tipo === "precorte") return <Aviso tono="warn"><b>Precorte.</b> Hoy y hasta el martes se revisa y se confirman las transferencias que falten. Se cierra el <b>{dia}</b>.{falta}</Aviso>;
+        return <Aviso tono="info"><b>Corte.</b> Ya se puede cerrar cada supervisor.{e.porConfirmar.n > 0 ? <> Quedan {e.porConfirmar.n} {e.porConfirmar.n === 1 ? "pago" : "pagos"} sin confirmar ({plata(e.porConfirmar.total)}): si se confirman después de cerrar, entran en la semana siguiente.</> : null}</Aviso>;
+      })()}
 
       {(d.cargando || d.error) && (
         <Aviso tono={d.error ? "bad" : "info"} accion={d.error ? (
@@ -154,6 +172,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
             <span style={{ ...muted, fontSize: 11, gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", gap: "2px 8px" }}>
               {c.motos && <span>{c.motos.generaron} de {c.motos.tenia} motos le generaron pago</span>}
               <span style={{ color: c.pagada ? "var(--ok-ink)" : "var(--muted2)", fontWeight: c.pagada ? 600 : 400 }}>{c.pagada ? `Pagada en la app el ${c.pagada}` : "Pago no registrado en la app"}</span>
+              {c.porConfirmar && <span style={{ color: "var(--warn-ink)", fontWeight: 600 }}>{c.porConfirmar.n} por confirmar ({plata(c.porConfirmar.total)})</span>}
             </span>
           </button>
         ))}

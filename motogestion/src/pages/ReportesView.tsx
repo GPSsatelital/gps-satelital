@@ -31,6 +31,7 @@ import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
 import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { etapaCorte, diaDeCorte, porConfirmarPorCobrador } from "../utils/corteNomina";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useCarteraDelDia } from "../hooks/useCarteraDelDia";
@@ -489,6 +490,13 @@ export default function ReportesView({ onNavigate }: Props) {
   const nominaLista = !nominaCargando && !nominaError;
   const reintentarNomina = () => { setIntentoNomina(i => i + 1); void recargarCierres(); };
   const textoSemanaNomina = textoSemana(lunesNomina, domingoNomina);
+  // EL CORTE (D-057): en curso → precorte (lunes y martes) → corte (desde el miércoles). Solo en el
+  // corte se puede cerrar; antes, la oficina confirma lo que falte para que nadie lo pierda.
+  const etapaNomina = etapaCorte(lunesNomina, hoyISO());
+  const porConfirmarNomina = useMemo(
+    () => porConfirmarPorCobrador(pagos, contratos, motos, lunesNomina, domingoNomina),
+    [pagos, contratos, motos, lunesNomina, domingoNomina],
+  );
 
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
   const entradasNomina = useMemo(() => ({
@@ -2061,6 +2069,10 @@ export default function ReportesView({ onNavigate }: Props) {
   const motosDeOtroN = new Set(renglonesN.filter(({ r }) => TIPOS_COBRO.has(r.tipo)).map(({ r }) => r.motoId)
     .filter(id => { const m = motoPorId.get(id); return !!m && !teniaAlEmpezar(m, lunesNomina); })).size;
   const datosNomina: DatosNomina = {
+    etapa: {
+      tipo: etapaNomina, diaCorte: diaDeCorte(lunesNomina),
+      porConfirmar: [...porConfirmarNomina.values()].reduce((a, x) => ({ n: a.n + x.n, total: a.total + x.total }), { n: 0, total: 0 }),
+    },
     textoSemana: textoSemanaNomina,
     puedeSiguiente: domingoNomina < hoyISO(),
     cargando: nominaCargando, error: !!nominaError,
@@ -2083,6 +2095,7 @@ export default function ReportesView({ onNavigate }: Props) {
         // En una semana ya pagada mandan las cifras congeladas: el reverso vivo podría contradecirlas.
         motos: ci ? null : celdaCobrador(n.subadminId!, lunesNomina, n.renglones),
         pagada: ci ? fechaCortaN(ci.created_at) : null,
+        porConfirmar: ci ? null : (porConfirmarNomina.get(n.subadminId!) ?? null),
       };
     }),
     portafolios: (() => {
@@ -2175,8 +2188,14 @@ export default function ReportesView({ onNavigate }: Props) {
           csv: { Placa: m.placa, Cliente: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "") : "", Grupo: m.grupo ?? "", Pago: "No generó pago", Motivo: mv ? TEXTO_SIN_GESTION[mv] : "Solo visita o referido", Valor: 0 },
         };
       });
-      const puedeCerrar = nominaLista && !grupoNomina;
-      const porQueNo = grupoNomina ? "Quita el filtro de grupo para pagar o imprimir." : nominaError ? "No se pudo traer toda la semana." : "Cargando la semana…";
+      // Imprimir el desprendible se puede siempre que la semana esté completa; CERRAR solo desde el
+      // miércoles del corte (D-057): antes, la oficina todavía puede estar confirmando pagos de esa semana.
+      const puedeImprimir = nominaLista && !grupoNomina;
+      const puedeCerrar = puedeImprimir && etapaNomina === "corte";
+      const diaCorteTxt = new Date(diaDeCorte(lunesNomina) + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+      const porQueNo = grupoNomina ? "Quita el filtro de grupo para pagar o imprimir." : nominaError ? "No se pudo traer toda la semana." : !nominaLista ? "Cargando la semana…"
+        : etapaNomina === "anterior" ? "Esta semana es de antes del 26 de octubre: se pagó por fuera de la app."
+        : `Se puede cerrar desde el ${diaCorteTxt}. Hasta entonces es precorte: se revisa y se confirman los pagos que falten.`;
       const deriva = derivaNomina.get(valor);
       const botonPie: React.CSSProperties = { flex: "1 1 140px", height: 44, borderRadius: 12, cursor: puedeCerrar ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: puedeCerrar ? 1 : 0.5, fontFamily: "inherit" };
       setDetalle({
@@ -2203,7 +2222,7 @@ export default function ReportesView({ onNavigate }: Props) {
         archivo: `nomina_${nombreArchivo(nombre)}_${lunesNomina}`,
         acciones: (
           <>
-            <button disabled={!puedeCerrar} onClick={() => {
+            <button disabled={!puedeImprimir} onClick={() => {
               const tenia = motosQueTenia(valor, lunesNomina);
               const idsTenia = new Set(tenia.map(m => m.id));
               generarDesprendibleNomina(x.n, nombre, lunesNomina, domingoNomina, profile?.nombre ?? "", {
@@ -2213,7 +2232,7 @@ export default function ReportesView({ onNavigate }: Props) {
                 sinGestion: ci ? [] : (sinGestionPorCobrador.get(valor) ?? []).filter(sg => idsTenia.has(sg.motoId)),
                 motosAsignadas: ci ? 0 : tenia.length,
               });
-            }} style={{ ...botonPie, border: "1px solid var(--line2)", background: "transparent", color: "var(--text)" }}>
+            }} style={{ ...botonPie, cursor: puedeImprimir ? "pointer" : "not-allowed", opacity: puedeImprimir ? 1 : 0.5, border: "1px solid var(--line2)", background: "transparent", color: "var(--text)" }}>
               <Printer size={16} aria-hidden="true" /> Desprendible
             </button>
             {ci ? (

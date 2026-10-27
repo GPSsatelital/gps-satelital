@@ -122,13 +122,13 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
         <Aviso tono="info">Esta semana se le paga a cada cobrador según las motos que tiene <b>hoy</b>. {d.motosDeOtro} {d.motosDeOtro === 1 ? "moto con gestión todavía no era" : "motos con gestión todavía no eran"} de su cobrador de hoy cuando empezó esa semana, y el sistema no guarda quién las tenía antes.</Aviso>
       )}
       {d.grupoFiltrado && (
-        <Aviso tono="info">Estás viendo solo lo que paga <b>{d.grupoFiltrado}</b>. Para cerrar y pagar o imprimir un desprendible, quita el filtro de grupo: así nunca se paga una nómina recortada.</Aviso>
+        <Aviso tono="info">Estás viendo solo lo que paga <b>{d.grupoFiltrado}</b>. Para cerrar la semana o imprimir un desprendible, quita el filtro de grupo: así nunca se cierra una nómina recortada.</Aviso>
       )}
 
       <Tarjeta titulo="Lo que se paga esta semana"
         ayuda="La nómina de los cobradores en la semana, de lunes a domingo, partida en lo que se paga por cobrar las cuotas, por las visitas domiciliarias y por los referidos (clientes que trajo el mismo cobrador). Toca una parte para ver cada pago.">
         <div style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plata(d.total)}</div>
-        <div style={muted}>{d.cobradores.length} {d.cobradores.length === 1 ? "cobrador" : "cobradores"} · pago registrado en la app: {pagadas === 0 ? "ninguno" : `${pagadas} de ${d.cobradores.length}`}</div>
+        <div style={muted}>{d.cobradores.length} {d.cobradores.length === 1 ? "cobrador" : "cobradores"} · cerradas y firmadas: {pagadas === 0 ? "ninguna" : `${pagadas} de ${d.cobradores.length}`}</div>
         {d.total > 0 && (
           <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", marginTop: 10, background: "var(--soft)" }} aria-hidden="true">
             {(["cobros", "visitas", "referidos"] as const).map(k => <div key={k} style={{ width: `${pct(d.partes[k], d.total)}%`, background: COLOR_PARTE[k] }} />)}
@@ -159,7 +159,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
       </Tarjeta>
 
       <Tarjeta titulo="Por cobrador"
-        ayuda="Lo que se le paga a cada cobrador esta semana y, de las motos que ya tenía esa semana, cuántas le generaron pago (una semana cobrada, una retención o la cuota de una retenida). Toca uno para ver cada pago, las motos que no le generaron pago y por qué, imprimir el desprendible o registrar el pago.">
+        ayuda="Lo que se le paga a cada cobrador esta semana y, de las motos que ya tenía esa semana, cuántas le generaron pago (una semana cobrada, una retención o la cuota de una retenida). Toca uno para ver cada pago, las motos que no le generaron pago y por qué, imprimir el desprendible o cerrar su semana (desde el miércoles del corte).">
         {d.cobradores.length === 0 ? (
           <div style={{ ...muted, fontSize: 13, padding: "8px 4px" }}>Esta semana no hay nada que pagar.</div>
         ) : d.cobradores.map(c => (
@@ -171,7 +171,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
             {c.motos && <span style={{ gridColumn: "1 / -1" }}><BarraMotos c={c.motos} /></span>}
             <span style={{ ...muted, fontSize: 11, gridColumn: "1 / -1", display: "flex", flexWrap: "wrap", gap: "2px 8px" }}>
               {c.motos && <span>{c.motos.generaron} de {c.motos.tenia} motos le generaron pago</span>}
-              <span style={{ color: c.pagada ? "var(--ok-ink)" : "var(--muted2)", fontWeight: c.pagada ? 600 : 400 }}>{c.pagada ? `Pagada en la app el ${c.pagada}` : "Pago no registrado en la app"}</span>
+              <span style={{ color: c.pagada ? "var(--ok-ink)" : "var(--muted2)", fontWeight: c.pagada ? 600 : 400 }}>{c.pagada ? `Cerrada y firmada el ${c.pagada}` : "Sin cerrar"}</span>
               {c.porConfirmar && <span style={{ color: "var(--warn-ink)", fontWeight: 600 }}>{c.porConfirmar.n} por confirmar ({plata(c.porConfirmar.total)})</span>}
             </span>
           </button>
@@ -184,7 +184,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
       </Tarjeta>
 
       <Tarjeta titulo="Cada cobrador, semana a semana"
-        ayuda="De las motos que cada cobrador ya tenía esa semana, cuántas le generaron pago. Empieza el 14 de septiembre: entre el 7 y el 13 se les puso fecha nueva a 176 motos, y antes de eso no se sabe con certeza quién tenía cada una. Cada lunes se suma una semana. Debajo de cada semana, si quedó pagada en la app.">
+        ayuda="De las motos que cada cobrador ya tenía esa semana, cuántas le generaron pago. Empieza el 14 de septiembre: entre el 7 y el 13 se les puso fecha nueva a 176 motos, y antes de eso no se sabe con certeza quién tenía cada una. Cada lunes se suma una semana. Debajo de cada semana, cuántos supervisores la cerraron y firmaron.">
         {d.tendencia.cargando ? (
           <div style={{ ...muted, fontSize: 13, padding: "8px 4px" }}>Cargando las semanas…</div>
         ) : (
@@ -193,7 +193,7 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
               {d.tendencia.semanas.map(s => (
                 <div key={s.lunes} style={{ fontSize: 11, color: "var(--muted2)", lineHeight: 1.35 }}>
                   <div style={{ fontWeight: 600, color: "var(--text)" }}>{s.texto}</div>
-                  <div>{s.enCurso ? "va corriendo" : s.pagadas === 0 ? "sin pago registrado" : `pagada ${s.pagadas} de ${s.cobradores}`}</div>
+                  <div>{s.enCurso ? "va corriendo" : s.pagadas === 0 ? "sin cerrar" : `cerrada ${s.pagadas} de ${s.cobradores}`}</div>
                 </div>
               ))}
             </div>

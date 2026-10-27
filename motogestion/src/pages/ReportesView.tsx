@@ -30,8 +30,8 @@ import { useNominaCierres, useCierresDeSemanas } from "../hooks/useNominaCierres
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
-import { etapaCorte, diaDeCorte, porConfirmarPorCobrador } from "../utils/corteNomina";
+import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, INICIO_CORTES_NOMINA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { etapaCorte, diaDeCorte, porConfirmarPorCobrador, semanaCerradaSegun } from "../utils/corteNomina";
 import { generarDesprendibleNomina } from "../utils/generarDesprendibleNomina";
 import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useCarteraDelDia } from "../hooks/useCarteraDelDia";
@@ -483,10 +483,20 @@ export default function ReportesView({ onNavigate }: Props) {
   }, [registrosRodadas, contratos]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
   const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina" || pdfPideNomina);
+  // TODAS las semanas cerradas desde el arranque de los cortes (D-057): lo que el cliente pagó en
+  // una semana ya cerrada para ese supervisor y se confirmó después entra en la semana siguiente.
+  const semanasDesdeInicio = useMemo(() => {
+    const out: string[] = [];
+    for (let l = INICIO_CORTES_NOMINA; l <= lunesDe(hoyISO()); l = masDias(l, 7)) out.push(l);
+    return out;
+  }, []);
+  const { cierres: cierresDesdeInicio, cargando: cargandoCierresTodos, error: errorCierresTodos } =
+    useCierresDeSemanas(semanasDesdeInicio, tab === "nomina" || pdfPideNomina, intentoNomina);
+  const semanaCerradaNomina = useMemo(() => semanaCerradaSegun(cierresDesdeInicio), [cierresDesdeInicio]);
   // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
   // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
-  const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || sinDatos;
-  const nominaError = errorCajas || errorRodadas || errorCierres || (!!errorDatos && sinDatos);
+  const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || cargandoCierresTodos || sinDatos;
+  const nominaError = errorCajas || errorRodadas || errorCierres || errorCierresTodos || (!!errorDatos && sinDatos);
   const nominaLista = !nominaCargando && !nominaError;
   const reintentarNomina = () => { setIntentoNomina(i => i + 1); void recargarCierres(); };
   const textoSemanaNomina = textoSemana(lunesNomina, domingoNomina);
@@ -512,7 +522,8 @@ export default function ReportesView({ onNavigate }: Props) {
         .filter(c => c.referido_por_funcionario)
         .map(c => ({ cliente_id: c.id, funcionario_id: c.referido_por_funcionario! })),
       rodadas: rodadasNomina,
-  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina]);
+      semanaCerrada: semanaCerradaNomina,
+  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, semanaCerradaNomina]);
   const nominaDetalle = useMemo(() => {
     if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [] };
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
@@ -2200,7 +2211,7 @@ export default function ReportesView({ onNavigate }: Props) {
       const botonPie: React.CSSProperties = { flex: "1 1 140px", height: 44, borderRadius: 12, cursor: puedeCerrar ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: puedeCerrar ? 1 : 0.5, fontFamily: "inherit" };
       setDetalle({
         titulo: nombre.toUpperCase(),
-        subtitulo: `${semana} · ${ci ? `pagada en la app el ${fechaCortaN(ci.created_at)}${ci.firma_url ? ", firmada" : ", sin firma"}` : "pago no registrado en la app"}`,
+        subtitulo: `${semana} · ${ci ? `cerrada el ${fechaCortaN(ci.created_at)}${ci.firma_url ? ", firmada" : ", sin firma"}` : "sin cerrar"}`,
         encabezado: (
           <div style={{ display: "grid", gap: 4 }}>
             <div style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{plataT(total)}</div>
@@ -2237,12 +2248,12 @@ export default function ReportesView({ onNavigate }: Props) {
             </button>
             {ci ? (
               <span style={{ ...botonPie, cursor: "default", opacity: 1, border: "1px solid var(--ok-line)", background: "var(--ok-soft)", color: "var(--ok-ink)" }}>
-                <Check size={16} aria-hidden="true" /> Pagada el {fechaCortaN(ci.created_at)}
+                <Check size={16} aria-hidden="true" /> Cerrada el {fechaCortaN(ci.created_at)}
               </span>
             ) : (
               <button disabled={!puedeCerrar} onClick={() => { setDetalle(null); setCerrando(valor); }}
                 style={{ ...botonPie, border: "none", background: "var(--accent)", color: "var(--on-accent)" }}>
-                <Check size={16} aria-hidden="true" /> Cerrar y pagar
+                <Check size={16} aria-hidden="true" /> Cerrar la semana
               </button>
             )}
           </>
@@ -3001,16 +3012,22 @@ export default function ReportesView({ onNavigate }: Props) {
             lunes={lunesNomina}
             domingo={domingoNomina}
             onClose={() => setCerrando(null)}
-            onCerrar={({ firmaDataUrl, fotoDataUrl, observacion }) => cerrarSemana({
-              semanaLunes: lunesNomina,
-              subadminId: n.subadminId,
-              cobradorNombre: nombre,
-              total: n.total,
-              renglones: n.renglones,
-              totalesGrupo: totalesPorGrupo(n.renglones),
-              firmaDataUrl, fotoDataUrl, observacion,
-              cerradoPor: profile?.id ?? "",
-            })}
+            onCerrar={async ({ firmaDataUrl, fotoDataUrl, observacion }) => {
+              const r = await cerrarSemana({
+                semanaLunes: lunesNomina,
+                subadminId: n.subadminId,
+                cobradorNombre: nombre,
+                total: n.total,
+                renglones: n.renglones,
+                totalesGrupo: totalesPorGrupo(n.renglones),
+                firmaDataUrl, fotoDataUrl, observacion,
+                cerradoPor: profile?.id ?? "",
+              });
+              // La lista de semanas cerradas se vuelve a pedir: desde ya, lo que se confirme tarde de
+              // esta semana para este supervisor entra en la siguiente (D-057).
+              if (!r.error) setIntentoNomina(i => i + 1);
+              return r;
+            }}
           />
         );
       })()}

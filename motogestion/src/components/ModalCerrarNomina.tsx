@@ -18,7 +18,9 @@ interface Props {
 }
 
 /**
- * CERRAR Y PAGAR la semana de un cobrador (mig 120).
+ * CERRAR la semana de un supervisor (mig 120). Desde el 27-oct-2026 (D-057) el cierre es el corte
+ * del miércoles: el supervisor firma que revisó y está de acuerdo; la plata se entrega aparte, el
+ * 15 o el 30, con todas sus semanas cerradas.
  *
  * Pedido del dueño: *"¿dónde se cierran las semanas que ya se pagaron para que los funcionarios
  * firmen y se puedan subir las fotos de lo firmado?"*. Hasta hoy la nómina se recalculaba cada
@@ -51,7 +53,7 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
 
   async function confirmar() {
     if (guardando) return;
-    if (!firma) { setError("Falta la firma del cobrador. Es la constancia de que recibió."); return; }
+    if (!firma) { setError("Falta la firma del supervisor. Es la constancia de que revisó su semana y está de acuerdo."); return; }
     setError(null);
     setGuardando(true);
     try {
@@ -74,7 +76,7 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Cerrar y pagar la semana</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Cerrar la semana</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2, textTransform: "uppercase" }}>{cobradorNombre}</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{fmtDia(lunes)} al {fmtDia(domingo)}</div>
           </div>
@@ -83,7 +85,7 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
 
         {/* Lo que se le paga, sin letra chica */}
         <div style={{ padding: "12px 14px", borderRadius: 14, background: "var(--accent-soft2)", border: "1px solid var(--accent-line)" }}>
-          <div style={{ fontSize: 12.5, color: "var(--accent-ink)" }}>Se le paga</div>
+          <div style={{ fontSize: 12.5, color: "var(--accent-ink)" }}>Su semana</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "var(--accent-ink)", fontVariantNumeric: "tabular-nums", lineHeight: 1.15 }}>
             $ {fmt(nomina.total)}
           </div>
@@ -106,15 +108,18 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
         </div>
 
         <div style={{ padding: "9px 12px", borderRadius: 12, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", lineHeight: 1.45 }}>
-          Al cerrar, <b>estas cifras quedan congeladas</b>: un pago que entre después ya no las mueve.
-          El cierre <b>no se puede editar ni borrar</b>. Imprime el desprendible antes, para que el
-          cobrador verifique renglón por renglón lo que se le está pagando.
+          Al cerrar, <b>estas cifras quedan congeladas</b>: un pago que se confirme después entra en
+          su semana siguiente. El cierre <b>no se puede editar ni borrar</b>. Imprime el desprendible
+          antes, para que el supervisor revise renglón por renglón. <b>Si no está de acuerdo, no
+          cierres:</b> aclara primero lo que falte. La plata se le entrega el 15 o el 30, con las
+          demás semanas cerradas.
         </div>
 
-        {/* Firma del cobrador — la constancia de que recibió */}
+        {/* Firma del supervisor — revisó su semana y está de acuerdo (D-057). La plata se entrega
+            en el pago quincenal, no aquí. */}
         <div>
           <CanvasFirma
-            label="Firma del cobrador — recibí conforme"
+            label="Firma del supervisor — revisé y estoy de acuerdo"
             modal
             onChange={setFirma}
           />
@@ -155,7 +160,7 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
           <button onClick={onClose} disabled={guardando} style={{ ...secondaryBtn, flex: 1, minWidth: 0 }}>Cancelar</button>
           <button onClick={confirmar} disabled={guardando}
                   style={{ ...primaryBtn, flex: 2, minWidth: 0, opacity: guardando ? 0.6 : 1 }}>
-            {guardando ? "Guardando..." : `Cerrar y pagar $ ${fmt(nomina.total)}`}
+            {guardando ? "Cerrando..." : `Cerrar la semana · $ ${fmt(nomina.total)}`}
           </button>
         </div>
       </div>

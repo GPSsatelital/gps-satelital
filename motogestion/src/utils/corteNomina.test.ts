@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diaDeCorte, etapaCorte, porConfirmarPorCobrador } from "./corteNomina";
+import { diaDeCorte, etapaCorte, porConfirmarPorCobrador, semanaCerradaSegun } from "./corteNomina";
 
 // EL PRECORTE Y EL CORTE DEL MIÉRCOLES (decisión del dueño, 27-oct-2026, D-057): "se hará un
 // precorte los días actuales y se hará un corte definitivo semanalmente los miércoles dando plazo a
@@ -56,5 +56,24 @@ describe("las transferencias que faltan por confirmar, por supervisor", () => {
     ], contratos, motos, "2026-10-26", "2026-11-01");
     expect(r.get(null)).toEqual({ n: 1, total: 80000 });
     expect(r.get("ANA")).toBeUndefined();
+  });
+});
+
+describe("qué semanas están cerradas para cada supervisor", () => {
+  const cerrada = semanaCerradaSegun([
+    { semana_lunes: "2026-10-26", subadmin_id: "ANA" },
+    { semana_lunes: "2026-11-02", subadmin_id: "LUIS" },
+  ]);
+  it("la que se cerró y firmó está cerrada solo para ese supervisor", () => {
+    expect(cerrada("ANA", "2026-10-26")).toBe(true);
+    expect(cerrada("LUIS", "2026-10-26")).toBe(false);
+    expect(cerrada("LUIS", "2026-11-02")).toBe(true);
+  });
+  it("las de antes del 26-oct cuentan como cerradas para todos (se pagaron por fuera)", () => {
+    expect(cerrada("ANA", "2026-10-19")).toBe(true);
+    expect(cerrada(null, "2026-10-19")).toBe(true);
+  });
+  it("una semana sin cierre sigue abierta", () => {
+    expect(cerrada("ANA", "2026-11-02")).toBe(false);
   });
 });

@@ -930,8 +930,9 @@ Lo que está afectando cifras reales de clientes en este momento.
   Propuesta: una sola función "traer todo por páginas" + una alarma si una consulta llega justo a 1.000.
 
 - [ ] 💻 **`npm run cierre` compara fechas en UTC** (`cierre.mjs`, líneas 77-80): después de las 7 pm de Colombia ya es el día siguiente en UTC y no ve lo registrado hoy en `DECISIONES.md`/`DERRAPES.md` (pasó el 25-sep con D-026). Usar la fecha de Colombia, como `hoyISO()`.
-- [ ] 💻 **Aviso en "Cerrar y pagar" de la nómina** cuando la semana todavía no terminó. Hoy deja
-  cerrar una semana a medias y **no se puede deshacer**.
+- [x] 💻 **Aviso en "Cerrar y pagar" de la nómina** cuando la semana todavía no terminó. Hoy deja
+  cerrar una semana a medias y **no se puede deshacer**. *(Hecho 27-oct, D-057: el botón ahora es
+  "Cerrar la semana" y solo se habilita desde el miércoles después de la semana.)*
 - [ ] 💻 **`dias_mora` puede contar un hueco de cajas que un acuerdo ya cubrió.** Un solo caso en
   toda la flota (JORGE TOVAR, y se resolvió corrigiéndole el día de pago). **Si aparece un segundo
   caso, ahí sí arreglarlo de raíz** — con dos casos se sabe qué tienen en común.

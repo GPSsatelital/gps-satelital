@@ -189,13 +189,13 @@ export function informeSociosHTML(d: DatosInforme, opciones: { secciones: Seccio
       const n = e.nomina;
       partes.push(sub(`Nómina · ${n.semana} (la semana escogida en Equipo; la nómina va por semana, no por el período)`));
       partes.push(kpis([
-        { l: "Se paga", v: plata(n.total), s: `pago registrado en la app: ${n.pagadas === 0 ? "ninguno" : `${n.pagadas} de ${n.cobradores.length}`}` },
+        { l: "Se paga", v: plata(n.total), s: `cerradas y firmadas: ${n.pagadas === 0 ? "ninguna" : `${n.pagadas} de ${n.cobradores.length}`}` },
         { l: "Cobro de cuotas", v: plata(n.cobros) },
         { l: `${n.nVisitas} visitas`, v: plata(n.visitas) },
         { l: `${n.nReferidos} referidos`, v: plata(n.referidos) },
       ]));
-      partes.push(tabla([{ t: "Cobrador" }, { t: "Total", al: "right" }, { t: "Cobros", al: "right" }, { t: "Visitas", al: "right" }, { t: "Referidos", al: "right" }, { t: "Motos que le generaron pago", al: "center" }, { t: "Pago en la app", al: "center" }],
-        n.cobradores.map(c => [esc(c.nombre.toUpperCase()), plata(c.total), plata(c.cobros), plata(c.visitas), plata(c.referidos), esc(c.motos), c.pagada ?? "no registrado"])));
+      partes.push(tabla([{ t: "Cobrador" }, { t: "Total", al: "right" }, { t: "Cobros", al: "right" }, { t: "Visitas", al: "right" }, { t: "Referidos", al: "right" }, { t: "Motos que le generaron pago", al: "center" }, { t: "Semana cerrada", al: "center" }],
+        n.cobradores.map(c => [esc(c.nombre.toUpperCase()), plata(c.total), plata(c.cobros), plata(c.visitas), plata(c.referidos), esc(c.motos), c.pagada ?? "sin cerrar"])));
     } else {
       partes.push(nota("La nómina no se pudo incluir: ábrela en Equipo para verla."));
     }

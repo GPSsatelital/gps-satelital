@@ -31,6 +31,18 @@ export function etapaCorte(lunes: string, hoy: string): EtapaCorte {
 }
 
 /**
+ * ¿Esa semana ya está cerrada para ese supervisor? Cerrada = la cerró y firmó (`nomina_cierres`), o
+ * es de antes del arranque de los cortes (se pagó por fuera). Lo que el cliente pagó en una semana
+ * cerrada y se confirma después entra en la semana de la confirmación (`ubicar` en nominaCobradores).
+ */
+export function semanaCerradaSegun(
+  cierres: Array<{ semana_lunes: string; subadmin_id: string | null }>,
+): (cobradorId: string | null, lunes: string) => boolean {
+  const cerradas = new Set(cierres.map(c => `${c.subadmin_id}|${c.semana_lunes.slice(0, 10)}`));
+  return (cobradorId, lunes) => lunes < INICIO_CORTES_NOMINA || cerradas.has(`${cobradorId}|${lunes}`);
+}
+
+/**
  * Lo que falta por confirmar de esa semana, por supervisor: pagos pendientes que el cliente hizo
  * dentro de la semana. Es lo que la oficina tiene que confirmar lunes y martes para que entre antes
  * del cierre. El alquiler de la moto prestada no cuenta: no es gestión de nómina. `null` = motos

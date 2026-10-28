@@ -489,7 +489,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // Cobro para recuperar: registra el pago sobre el contrato suspendido (la BD reparte con
   // FIFO: primero cuotas atrasadas, luego la multa). Al quedar la deuda de recuperación en
   // $0, el botón "Devolver moto" se habilita solo.
-  const [cobroRec, setCobroRec] = useState<MotoRetenida | null>(null);
+  const [cobroSel, setCobroRec] = useState<MotoRetenida | null>(null);
+  // Las cifras se leen de la lista viva, no de la foto del momento en que se tocó el botón: si antes
+  // se rodó el tiempo guardado, las cuotas atrasadas bajaron y el reparto tiene que usar las nuevas.
+  const cobroRec = cobroSel ? (motosRetenidas.find(x => x.contratoId === cobroSel.contratoId) ?? cobroSel) : null;
   const [cobroMonto, setCobroMonto] = useState("");
   const [cobroProc, setCobroProc] = useState(false);
   const [cobroErr, setCobroErr] = useState<string | null>(null);
@@ -502,7 +505,7 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // — antes del formulario del convenio si no tiene, antes de la entrega si ya tiene. Quien
   // opere decide (el subadmin también tiene permiso); lo sagrado es que TODO quede registrado:
   // qué se decidió, quién, cuándo y con qué documento.
-  const [preResolver, setPreResolver] = useState<{ m: MotoRetenida; luego: "entrega" | "convenio" | "plazo" } | null>(null);
+  const [preResolver, setPreResolver] = useState<{ m: MotoRetenida; luego: "entrega" | "convenio" | "plazo" | "cobro" } | null>(null);
   // Prestar reemplazo a un cliente cuya moto está varada (soloInfoTaller).
   const [prestarRec, setPrestarRec] = useState<MotoRetenida | null>(null);
   const [prestamoProc, setPrestamoProc] = useState<string | null>(null);
@@ -596,7 +599,11 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     const rec = recepciones
       .filter(r => r.contrato_id === contratoId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-    return rec ? rec.created_at.slice(0, 10) : hoyISO();
+    if (rec) return rec.created_at.slice(0, 10);
+    // Sin recepción pegada al contrato (quedó guardada solo con la moto), la misma fecha que
+    // muestra la tarjeta. Antes caía en HOY y la ventana decía "1 día guardada" a una moto con
+    // 58 días en bodega (XZN26H, 28-oct-2026), y con esa cuenta se decidía cobrar o rodar.
+    return motosRetenidas.find(x => x.contratoId === contratoId)?.fechaRetencion ?? hoyISO();
   };
 
   // ¿El tiempo guardado de ESTA retención ya se resolvió (cobrar o rodar)? Un acuerdo de
@@ -1226,12 +1233,21 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           🔄 Prestar reemplazo
                         </button>
                     )}
-                    {!m.soloInfoTaller && !entregable && (
+                    {/* La guardada TEMPORAL se puede entregar siempre, pero eso no quiere decir que no se le
+                        pueda recibir plata (28-oct-2026): «¿le entrego la moto?» y «¿le recibo
+                        plata?» son dos preguntas. Antes el botón dependía solo de la primera y a
+                        las temporales nunca se les podía cobrar, debieran lo que debieran. */}
+                    {!m.soloInfoTaller && (!entregable || (m.esTemporal && m.totalPendiente + m.cuotasAtrasadas > 0)) && (
                       <button
                         /* Si falta la multa, propone SOLO la multa: es el mínimo para llevarse la
                            moto y lo demás puede ir al convenio. Si ya está paga, propone todo lo
                            que debe, por si el cliente quiere ponerse al día de una. */
-                        onClick={() => { setCobroRec(m); setCobroMonto(String(faltaMulta ? m.multaPendiente : m.totalRecuperar)); setCobroErr(null); }}
+                        onClick={() => {
+                          // En la temporal, la decisión del tiempo guardado va ANTES de cobrar (dueño,
+                          // 28-oct): si no, la plata llena semanas de la bodega que se iban a rodar.
+                          if (m.esTemporal && !tiempoGuardadoResuelto(m.contratoId)) { setPreResolver({ m, luego: "cobro" }); return; }
+                          setCobroRec(m); setCobroMonto(String(faltaMulta ? m.multaPendiente : m.totalRecuperar)); setCobroErr(null);
+                        }}
                         disabled={procesandoEsta}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--ok-ink)", color: "var(--card)" }}
                       >
@@ -1518,6 +1534,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
               setPreResolver(null);
               if (luego === "entrega") setEntregaRec(m);
               else if (luego === "plazo") setPlazoRec(m);
+              else if (luego === "cobro") { setCobroRec(m); setCobroMonto(""); setCobroErr(null); }
               else setConvenioRec(m);
             }}
           />

@@ -14,6 +14,7 @@ import { usePrestamos } from "../hooks/usePrestamos";
 import { useAuth } from "../contexts/AuthContext";
 import { valorPeriodoReal, formatDiaPago } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
+import { papelesMoto, textoBloqueo } from "../utils/papelesMoto";
 import { labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import CanvasFirma from "./CanvasFirma";
 import LectorHuella from "./LectorHuella";
@@ -121,12 +122,18 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
     if (empalmePendiente(contrato)) {
       b.push("Este contrato tiene el empalme abierto: su ahorro y su deuda todavía se pueden editar. Ciérralo en Cartera antes de ceder, o el acta congelaría cifras sin confirmar.");
     }
+    // Sin papeles al día no se entrega la moto (27/28-oct-2026). Con el contrato Activo la moto pasa
+    // de mano HOY, al firmar; si está Suspendido sale después por Inmovilizaciones, que revisa allá.
+    if (contrato.estado === "Activo" && moto) {
+      const r = papelesMoto(moto, hoyISO());
+      if (!r.puedeEntregar) b.push(textoBloqueo(moto.placa, r));
+    }
     const pend = pagos.filter(p => p.contrato_id === contrato.id && p.estado === "Pendiente");
     if (pend.length > 0) {
       b.push(`Hay ${pend.length} pago(s) sin confirmar en este contrato. Confírmalos o recházalos primero: si se confirman después de la cesión, esa plata le llenaría las semanas al cliente nuevo.`);
     }
     return b;
-  }, [contrato, pagos, prestamoActivoDeContrato]);
+  }, [contrato, pagos, prestamoActivoDeContrato, moto]);
 
   // ── Requisitos del que recibe ──────────────────────────────────────────────
   // "Aprobado" es el requisito duro: ese estado solo se alcanza tras papeles, acompañante y
@@ -197,6 +204,14 @@ export default function ModalCederContrato({ contrato, onClose, onDone }: Props)
     setError(null);
     setGuardando(true);
     try {
+      // Los papeles se leen otra vez de la base: la fecha pudo vencerse o corregirse mientras tanto.
+      if (contrato.estado === "Activo" && contrato.moto_id) {
+        const { data: papelesBD, error: errPapeles } = await supabase.from("motos")
+          .select("placa, fecha_seguro, fecha_tecnomecanica").eq("id", contrato.moto_id).single();
+        if (errPapeles || !papelesBD) { setError("No se pudo revisar el SOAT y la tecnomecánica de la moto. Revisa la conexión e intenta de nuevo."); return; }
+        const rPapeles = papelesMoto(papelesBD, hoyISO());
+        if (!rPapeles.puedeEntregar) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
+      }
       // 1. LA EVIDENCIA PRIMERO. Si algo no sube, no se registra nada: una cesión sin el acta ni
       //    las firmas es justo lo que este flujo viene a evitar.
       const fCed = await subirDataUrl(firmaCedente!, "firma-cedente");

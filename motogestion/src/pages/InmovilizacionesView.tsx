@@ -24,6 +24,7 @@ import {
   calcularAhorroAplicado,
 } from "../utils/cicloPago";
 import { hoyISO, hoyDate as hoyDateFn } from "../utils/fecha";
+import { papelesMoto, textoBloqueo } from "../utils/papelesMoto";
 import { diasTexto } from "../utils/mensajeria";
 import AvisoEnvio, { type AvisoDeEnvio } from "../components/AvisoEnvio";
 import ModalPlazoEntrega from "../components/ModalPlazoEntrega";
@@ -653,6 +654,13 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
     if (!puedeEntregar(m)) {
       alert(`Para entregar la moto ${m.placa}: primero se debe pagar la multa/deudas ($${fmt(m.totalPendiente)}) y las cuotas atrasadas, dejarlas en un convenio, o darle un plazo. Usa "💵 Cobrar", "📝 Convenio" o "⏳ Dar plazo".`);
       return;
+    }
+    // Sin papeles al día no vuelve a la calle (28-oct-2026), sea de mora o de taller/garantía.
+    // Se avisa antes de llenar el formulario; el formulario lo vuelve a revisar en la base al guardar.
+    const motoRet = motos.find(x => x.id === m.motoId);
+    if (motoRet) {
+      const r = papelesMoto(motoRet, hoyISO());
+      if (!r.puedeEntregar) { alert(textoBloqueo(m.placa, r)); return; }
     }
     // Se va a soltar la moto DEBIENDO, amparado en un plazo. Se dice en la cara antes, con la
     // fecha — el que entrega tiene que saber qué está autorizando (misma forma que la temporal).

@@ -6,6 +6,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { inputStyle, labelStyle, primaryBtn, secondaryBtn } from "../styles/shared";
 import MoneyInput from "./MoneyInput";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "./FotosAngulos";
+import { papelesMoto, textoBloqueo } from "../utils/papelesMoto";
+import { hoyISO } from "../utils/fecha";
 
 // Formulario de ENTREGA al devolver una moto retenida ya paga. Documenta el estado de
 // la moto igual que la entrega original (6 fotos guiadas, incl. la persona que la recibe
@@ -71,6 +73,15 @@ export default function ModalEntregaDevolucion({ contratoId, clienteId, clienteN
     setError(null);
     setGuardando(true);
     try {
+      // Sin papeles al día no se entrega (28-oct-2026). Se lee la moto de la base: la fecha pudo
+      // corregirse o vencerse desde que se abrió la pantalla.
+      if (motoId) {
+        const { data: papelesBD, error: errPapeles } = await supabase.from("motos")
+          .select("placa, fecha_seguro, fecha_tecnomecanica").eq("id", motoId).single();
+        if (errPapeles || !papelesBD) { setError("No se pudo revisar el SOAT y la tecnomecánica de la moto. Revisa la conexión e intenta de nuevo."); return; }
+        const rPapeles = papelesMoto(papelesBD, hoyISO());
+        if (!rPapeles.puedeEntregar) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
+      }
       // 0. La llave que se quedó (mig 122): hay que responder, y si NO la devolvió se confirma en
       //    la cara antes de soltar la moto. No bloquea — quien entrega decide, pero queda escrito.
       if (seFueConCopia) {

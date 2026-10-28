@@ -8,7 +8,36 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **27-oct-2026**.
+- Última revisión: **28-oct-2026**.
+
+> ▶️ **AL ARRANCAR (28-oct, tarde) — esto quedó hecho y subido hoy; sigue lo de abajo.**
+> - ✅ **Sin SOAT y tecnomecánica al día no sale ninguna moto** (b8ddd82, f8bfd68): contrato nuevo (pasos 2, 6 y 7),
+>   préstamo de reemplazo, ceder contrato activo y devolver la retenida (mora o taller). Vence en ≤15 días = solo
+>   avisa; vencido / sin fecha / año mal escrito = bloquea y **nadie** se lo salta. `utils/papelesMoto.ts` + 11 pruebas.
+>   🧑 **46 motos** con papeles vencidos o sin fecha: PDF en el escritorio del dueño para corregirlas a mano.
+> - ✅ **Inmovilizaciones** (867b6b4, 1c33bc1): «Cobrar» también en las guardadas temporales que deben (con la
+>   decisión del tiempo guardado ANTES, dueño «1»); la ventana del tiempo guardado ya no dice «1 día» cuando la
+>   recepción quedó suelta (usa la fecha de la tarjeta: XZN26H, YAV73H, RNG53H, RLZ92H); y con **liquidación abierta
+>   o la moto en manos de otro cliente** la tarjeta dice «En liquidación LIQ-xxxx → Abrir Liquidaciones» y NO ofrece
+>   cobrar, acuerdo, plazo ni entregar (dueño «1»; si el cliente viene a recuperarla, primero se anula la
+>   liquidación). La liquidación **anulada** ya no cuenta como abierta. Subido un miércoles antes de las 6 p.m.
+>   **por orden expresa del dueño**.
+> - 🔲 **Hallazgos de hoy, para decidir:**
+>   · **54 de 77 contratos suspendidos tienen liquidación abierta** (las 14 temporales, todas). Varias viejas:
+>     **RLZ98H MARCOS VILLEGAS LIQ-0039 desde el 5-sep**, RNG53H LIQ-0005 desde el 10-ago, LIQ-0011 (XZP35H) desde
+>     el 20-ago. Mientras siguen abiertas, la deuda en pantalla crece (JOSE LUIS JULIO MEDRANO XZN84H y MARCOS:
+>     moto ya en el patio, `fecha_fin_cobro` vacía). 🧑 La oficina tiene que cerrarlas.
+>   · **YAL65H con DOS contratos suspendidos** a la vez: BRADER (LIQ-0078) y LEIDER CHIQUILLO (sin liquidación).
+>   · **Partes 2 y 3 de las motos guardadas** (sin aprobar): un botón propio para «rodar el tiempo guardado» y que
+>     la multa no trabe el acuerdo (esta toca el motor).
+> - 🔲 **MEDARDO JOSE CAÑATE (DQG96I)** — su acuerdo #1 de $364.000 (firmado 15-sep 12:29) es correcto por las
+>   reglas, PERO ese día tenía **$70.000 de saldo a favor** sin usar (transferencia del 18-ago anotada 52 min antes) y
+>   **$100.000** del 14-sep se anotaron 18 min DESPUÉS de firmar: $170.000 quietos 39 días hasta el 24-oct. Con ellos
+>   el acuerdo habría sido $194.000. El cuadre da exacto ($2.532.000 = $2.532.000). 🧑 Decidir: dejarlo así o plan
+>   para corregirlo. PDF de una hoja en el escritorio del dueño. Propuesta pendiente: **avisar en la ventana del
+>   acuerdo si el cliente tiene saldo a favor sin usar**.
+> - 🧑 Tarjetas de los 4 supervisores (12 por hoja) en el escritorio, carpeta «Tarjetas supervisores».
+> - ⚙️ El arranque automático sigue apuntando al disco P: (falla sin daño): cambiarlo cuando el dueño lo apruebe.
 
 > ▶️ **AL ARRANCAR (27-oct) — la nómina nueva quedó TERMINADA y subida; sigue el bloqueo de papeles.**
 > - ✅ **Nómina (D-056 + D-057), todo en producción** (222bbf3 → 1508505; migs 206, 207 y 208 ya corridas): las cuotas
@@ -635,7 +664,7 @@ Lo que está afectando cifras reales de clientes en este momento.
   número de rodadas solo se sabe CUÁNTAS, no DÓNDE cayeron; `acuerdos_tiempo_rodado` tiene las
   fechas de entrada y salida de la moto.
 
-- [ ] 💻 🔴 **A una moto guardada TEMPORAL no se le puede cobrar ni conveniar — 12 motos,
+- [ ] 💻 **(Parte 1 HECHA el 28-oct, 867b6b4; faltan las partes 2 y 3)** **A una moto guardada TEMPORAL no se le puede cobrar ni conveniar — 12 motos,
   $14.816.500 que la pantalla no puede tocar.** Es **la mitad de un arreglo del 8-sep** que quedó
   sin terminar. Lo levantó el dueño con **XYZ49H (LUIS EDUARDO VEGAS)** el 24-sep: *"la entregó
   voluntariamente pero en Inmovilizaciones no me aparece para hacerle convenio ni rodar tiempo ni
@@ -985,6 +1014,10 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **28-oct · Papeles de la moto e Inmovilizaciones** — sin SOAT/tecno al día no se entrega, presta, cede ni
+  devuelve ninguna moto (b8ddd82, f8bfd68); Inmovilizaciones: cobrar a temporales, fecha del tiempo guardado y
+  «En liquidación» en vez de cobrar/entregar (867b6b4, 1c33bc1). 1.004 pruebas, revisado a 375 px.
 
 - [x] **26 y 27-oct · LA NÓMINA NUEVA (D-056, D-057)** — 6 subidas (222bbf3, 21ef8b2, 04a39ed, 376d5e6, 71d0a82,
   1508505), migs 206·207·208 corridas por el dueño con sus verificaciones (223·0·2·11 · 77/76/1 · 1·1·1·2) y la

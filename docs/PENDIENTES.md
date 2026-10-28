@@ -22,11 +22,13 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - 🧑 **Miércoles 4-nov: primer cierre de verdad** (semana del 26-oct). Mirarlo con el dueño en la pantalla real.
 >   **Primer pago: el 15-nov es domingo** → el dueño dijo: por lo general el mismo día, el día antes si se puede, y
 >   si no, el día después. La app no fija el día: se registra el día que se paga.
-> - 🔲 **Siguiente pedido del dueño (27-oct): no dejar entregar una moto sin SOAT y tecnomecánica al día.** «cuando
->   se seleccione una moto para entregar y no tengo información de seguro y tecnomecánica o esté vencida salga la
->   alerta y que le bloquee el seguir». Sin empezar: primero plan + preguntas de a una (¿moto nueva que todavía no
->   necesita tecno? ¿vence en pocos días = bloquea o solo avisa? ¿quién puede saltarlo, si alguien?). Campos:
->   `motos.fecha_seguro`, `motos.fecha_tecnomecanica`; el paso 2 del `WizardContrato` y el préstamo de reemplazo.
+> - ✅ **28-oct: sin SOAT y tecnomecánica al día no se entrega ni se presta la moto** (b8ddd82,
+>   `utils/papelesMoto.ts` + 11 pruebas). Respuestas del dueño: vence en 15 días o menos = solo avisa · vencido,
+>   sin fecha o año mal escrito = bloquea y **nadie** se lo salta · la prestada de reemplazo también. Contrato nuevo
+>   paso 2 (rojo, no se escoge), pasos 6 y 7 (vuelve a leer la base antes de activar) y `ModalPrestarReemplazo`.
+>   🔲 **Preguntarle:** ¿también al **ceder un contrato** y al **devolver la moto retenida** a su dueño? (ahí la moto
+>   cambia de manos sin escogerla; no se tocaron). 🧑 46 motos con papeles vencidos o sin fecha: PDF en el
+>   escritorio del dueño para actualizarlas a mano (29 con cliente, 9 disponibles, 6 en taller, 2 retenidas).
 > - 🔲 Sigue esperando al dueño lo de **JORGE BELLO / JESUS QUIÑONEZ** (abajo).
 > - ⚙️ El proyecto ya NO se trabaja en el disco P:. Vive en `C:\Users\USER\Documents\GitHub\gps-satelital`. El
 >   arranque automático de Claude todavía intenta `git pull` en `P:/Proyectos/gps-satelital` y falla (sin daño):

@@ -81,8 +81,8 @@ export default function ModalPagoNomina({ cobradorNombre, semanas, onPagar, onCl
           <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
             {ordenadas.map(s => (
               <div key={s.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13, color: "var(--accent-ink)" }}>
-                <span style={{ minWidth: 0 }}>{textoSemana(s.semana_lunes)}</span>
-                <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>$ {fmt(Number(s.total))}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>{textoSemana(s.semana_lunes)}</span>
+                <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>$ {fmt(Number(s.total))}</span>
               </div>
             ))}
           </div>
@@ -94,7 +94,7 @@ export default function ModalPagoNomina({ cobradorNombre, semanas, onPagar, onCl
           Imprime el comprobante para que también lo firme en papel.
         </div>
 
-        <CanvasFirma label="Firma del supervisor — recibí conforme" modal onChange={setFirma} />
+        <CanvasFirma label="Firma del supervisor — recibí conforme" modal opcional={false} onChange={setFirma} />
 
         <div>
           <div style={labelStyle}>Foto del comprobante firmado <span style={{ fontWeight: 400, color: "var(--muted)" }}>(opcional)</span></div>
@@ -130,7 +130,7 @@ export default function ModalPagoNomina({ cobradorNombre, semanas, onPagar, onCl
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onClose} disabled={guardando} style={{ ...secondaryBtn, flex: 1, minWidth: 0 }}>Cancelar</button>
           <button onClick={confirmar} disabled={guardando} style={{ ...primaryBtn, flex: 2, minWidth: 0, opacity: guardando ? 0.6 : 1 }}>
-            {guardando ? "Registrando..." : `Registrar pago · $ ${fmt(total)}`}
+            {guardando ? "Registrando..." : "Registrar pago"}
           </button>
         </div>
       </div>

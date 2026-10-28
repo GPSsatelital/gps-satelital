@@ -121,6 +121,7 @@ export default function ModalCerrarNomina({ nomina, cobradorNombre, lunes, domin
           <CanvasFirma
             label="Firma del supervisor — revisé y estoy de acuerdo"
             modal
+            opcional={false}
             onChange={setFirma}
           />
         </div>

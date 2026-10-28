@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La nómina nueva — MotoGestión</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    color: #0f172a; margin: 0; font-size: 12.5pt; line-height: 1.55;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .pag { page-break-after: always; }
+  .pag:last-child { page-break-after: auto; }
+
+  .portada { height: 258mm; display: flex; flex-direction: column; justify-content: center; }
+  .placa {
+    display: inline-block; background: #FFD100; color: #0f172a;
+    border: 3px solid #0f172a; border-radius: 8px;
+    padding: 8px 22px; font-size: 26pt; font-weight: 800; letter-spacing: 3px;
+  }
+  .portada h1 { font-size: 40pt; margin: 26px 0 6px; line-height: 1.05; }
+  .portada .sub { font-size: 16pt; color: #334155; margin: 0 0 4px; }
+  .portada .fecha { font-size: 12pt; color: #64748b; margin-top: 22px; }
+  .aviso {
+    margin-top: 34px; background: #fef3c7; border-left: 6px solid #f59e0b;
+    padding: 14px 18px; font-size: 11.5pt; color: #78350f;
+  }
+
+  h2 {
+    font-size: 20pt; margin: 0 0 2px; color: #0f172a;
+    border-bottom: 3px solid #FFD100; padding-bottom: 6px;
+  }
+  h2 .paso { font-size: 11pt; color: #0284c7; display: block; font-weight: 700;
+             letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
+  h3 { font-size: 14pt; margin: 18px 0 6px; color: #0f172a; }
+  .paraque {
+    background: #e0f2fe; border-left: 6px solid #0284c7;
+    padding: 9px 14px; margin: 12px 0 14px; font-size: 12pt; color: #075985;
+  }
+  .fila { display: flex; gap: 14px; align-items: flex-start; }
+  .fila img {
+    width: 64mm; border: 1.5px solid #cbd5e1; border-radius: 10px; flex-shrink: 0;
+  }
+  .fila.angosta img { width: 50mm; }
+  .fila .texto { flex: 1; min-width: 0; }
+  ol.notas { margin: 0; padding-left: 20px; }
+  ol.notas li { margin-bottom: 9px; }
+  ul.simple { margin: 6px 0; padding-left: 20px; }
+  ul.simple li { margin-bottom: 6px; }
+  b.res { background: #fef3c7; padding: 0 3px; }
+  .boton { background:#0f172a; color:#fff; border-radius:5px; padding:1px 7px;
+           font-size:11pt; font-weight:600; white-space:nowrap; }
+  .ojo {
+    background: #fee2e2; border-left: 6px solid #dc2626;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #7f1d1d;
+  }
+  .bien {
+    background: #dcfce7; border-left: 6px solid #16a34a;
+    padding: 10px 14px; margin: 12px 0; font-size: 11.5pt; color: #14532d;
+  }
+  table.reglas { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11.5pt; }
+  table.reglas td { border: 1px solid #cbd5e1; padding: 8px 10px; vertical-align: top; }
+  table.reglas td.n {
+    width: 28px; text-align: center; font-weight: 800; background: #0f172a; color: #fff;
+  }
+  table.reglas th { border:1px solid #cbd5e1; padding:8px 10px; background:#f1f5f9;
+                    text-align:left; font-size:11pt; }
+  .indice li { margin-bottom: 7px; font-size: 13pt; }
+  .pie { margin-top: 20px; font-size: 10.5pt; color: #64748b; }
+  .granfrase { font-size: 26pt; line-height:1.2; font-weight: 800; margin: 26px 0 18px; }
+  .granfrase span { color:#0284c7; }
+  .cap { font-size: 9.5pt; color:#64748b; margin-top:5px; text-align:center; width:64mm; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ PORTADA ═══════════════ -->
+<section class="pag portada">
+  <div><span class="placa">MOTOGESTIÓN</span></div>
+  <h1>La nómina<br>nueva</h1>
+  <p class="sub">Precorte el lunes y el martes, cierre el miércoles<br>y pago el 15 y el 30.</p>
+  <p class="sub">Club de Moteros — Cartagena</p>
+  <p class="fecha">27 de octubre de 2026 · Versión 1 · Empieza con la semana del 26 de octubre</p>
+
+  <div class="aviso">
+    <b>Este manual es interno.</b><br>
+    Las fotos son de la aplicación de verdad, con los supervisores y las cifras de la semana del 26 de octubre.
+    Como esa semana todavía va corriendo, las fotos del precorte, del cierre y del pago se tomaron
+    haciendo que la app crea que ya es lunes 2, miércoles 4 y sábado 14 de noviembre. No se guardó nada.
+    No lo comparta con nadie de afuera de la empresa.
+  </div>
+</section>
+
+<!-- ═══════════════ ANTES DE EMPEZAR ═══════════════ -->
+<section class="pag">
+  <h2>Antes de empezar</h2>
+
+  <div class="paraque">
+    La nómina de los supervisores <b>se cierra cada semana</b> y <b>se paga dos veces al mes</b>: el 15 y el 30.
+    Y algo muy importante: <b>si el cliente pagó a tiempo, cuenta a tiempo</b>, aunque la oficina confirme la
+    transferencia días después.
+  </div>
+
+  <h3>La semana de la nómina</h3>
+  <table class="reglas">
+    <tr><th>Cuándo</th><th>Qué pasa</th><th>Quién</th></tr>
+    <tr><td>Lunes a domingo</td><td>Se trabaja la semana, como siempre.</td><td>Supervisores</td></tr>
+    <tr><td>Lunes y martes siguientes</td><td><b>Precorte:</b> se revisa la semana y se confirman las transferencias que falten. Todavía no se puede cerrar.</td><td>Secretaria y administrador</td></tr>
+    <tr><td>Miércoles</td><td><b>Corte:</b> se cierra la semana de cada supervisor y él firma que está de acuerdo.</td><td>Administrador y supervisor</td></tr>
+    <tr><td>El 15 y el 30</td><td><b>Pago:</b> se le entregan todas sus semanas cerradas que no se le han pagado, y firma que recibió.</td><td>Administrador y supervisor</td></tr>
+  </table>
+
+  <h3>Quién puede cerrar y pagar</h3>
+  <p>Solo el <b>ADMIN</b> y el <b>ADMIN_PRINCIPAL</b>. Todo se hace en
+    <span class="boton">Más</span> › <span class="boton">Reportes</span> › <span class="boton">Equipo</span> › <span class="boton">Nómina</span>.</p>
+
+  <div class="ojo">
+    <b>Dos firmas distintas, no se confunden.</b><br>
+    El <b>miércoles</b> el supervisor firma <b>«revisé y estoy de acuerdo»</b>: todavía no recibe plata.<br>
+    El <b>15 y el 30</b> firma <b>«recibí conforme»</b>: ese día sí recibe la plata.
+  </div>
+
+  <p class="pie">Las semanas de antes del 26 de octubre se pagaron por fuera de la app: no se cierran ni se pagan aquí.</p>
+</section>
+
+<!-- ═══════════════ A TIEMPO O ATRASADO ═══════════════ -->
+<section class="pag">
+  <h2>¿A tiempo o atrasado?</h2>
+
+  <div class="paraque">
+    Lo decide <b>el día en que pagó el cliente</b>, no el día en que la oficina confirmó la transferencia.
+  </div>
+
+  <table class="reglas">
+    <tr><th>El cliente pagó</th><th>La oficina lo confirmó</th><th>Para el supervisor</th></tr>
+    <tr><td>Dentro de su semana (por ejemplo, el viernes)</td><td>El lunes o el martes siguiente</td><td><b>A tiempo: $7.500</b>, en la semana en que pagó</td></tr>
+    <tr><td>Dentro de su semana</td><td>Después del cierre del miércoles</td><td><b>A tiempo: $7.500</b>, en la semana siguiente</td></tr>
+    <tr><td>Después de su semana</td><td>Cuando sea</td><td><b>Atrasado: $3.750</b></td></tr>
+  </table>
+
+  <h3>Un ejemplo</h3>
+  <p>A un cliente le tocaba pagar el <b>lunes 12</b>. Pagó por transferencia el <b>viernes 16</b>, y la secretaria
+    la confirmó el <b>lunes 19</b>.</p>
+  <ul class="simple">
+    <li>Pagó dentro de su semana (del lunes 12 al domingo 18): <b>cuenta a tiempo, $7.500</b>.</li>
+    <li>Se confirmó el lunes, en el precorte: <b>entra en la semana del 12</b>, que todavía no se ha cerrado.</li>
+    <li>Si se hubiera confirmado el jueves, después del cierre: entraría en la <b>semana siguiente</b>, pero igual <b>$7.500</b>.</li>
+  </ul>
+
+  <div class="bien">
+    <b>Nadie pierde un pago.</b> Antes, una transferencia confirmada tarde salía como atrasada y en la semana
+    equivocada. Solo en la semana del 19 de octubre fueron 29 casos. Ahora la app lo cuenta bien sola.
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 1 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 1 · Lunes y martes</span>El precorte</h2>
+
+  <div class="paraque">
+    Se mira cómo quedó la semana y se confirman las transferencias que falten. <b>Todavía no se cierra.</b>
+  </div>
+
+  <div class="fila">
+    <div><img src="img/02-precorte.png" alt="El aviso de precorte"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>Entre a <span class="boton">Más</span> › <span class="boton">Reportes</span> › <span class="boton">Equipo</span> › <span class="boton">Nómina</span>.</li>
+        <li>Arriba sale la semana que terminó el domingo.</li>
+        <li>El aviso amarillo dice <b>«Precorte»</b>, el día en que se cierra (el miércoles) y <b>cuántos pagos de esa semana faltan por confirmar</b>.</li>
+        <li>La secretaria confirma esos pagos en <span class="boton">Cartera</span> › <span class="boton">Confirmar</span>, como siempre.</li>
+      </ol>
+      <div class="ojo">
+        Lunes y martes son para confirmar. Todo lo que se confirme antes del miércoles entra en su semana.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 1 · Lunes y martes</span>Lo que falta de cada supervisor</h2>
+
+  <div class="fila angosta">
+    <div><img src="img/03-por-confirmar.png" alt="Pagos por confirmar de cada supervisor"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>Baje hasta <b>«Por cobrador»</b>.</li>
+        <li>Cada supervisor sale con lo que lleva su semana.</li>
+        <li>Si tiene pagos sin confirmar, sale en naranja, por ejemplo: <b>«4 por confirmar ($697.000)»</b>.</li>
+      </ol>
+      <div class="bien">
+        <b>Supervisores:</b> si ven un pago suyo sin confirmar, avísenle a la secretaria el lunes o el martes.
+      </div>
+    </div>
+  </div>
+
+  <div class="fila angosta" style="margin-top:14px">
+    <div><img src="img/04-detalle-precorte.png" alt="El detalle de un supervisor en el precorte"></div>
+    <div class="texto">
+      <ol class="notas" start="4">
+        <li>Al tocar un supervisor sale todo su detalle: cada moto, si fue a tiempo o atrasada, y cuánto.</li>
+        <li>El <span class="boton">Desprendible</span> se puede imprimir para revisarlo con él.</li>
+        <li><span class="boton">Cerrar la semana</span> está apagado, y dice desde qué día se puede cerrar.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 2 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 2 · Miércoles</span>El corte</h2>
+
+  <div class="fila angosta">
+    <div><img src="img/05-corte.png" alt="El aviso de corte"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>Desde el miércoles el aviso cambia a <b>«Corte. Ya se puede cerrar cada supervisor»</b>.</li>
+        <li>Si quedó algún pago sin confirmar, el aviso lo dice. No se pierde: cuando se confirme, entra en la <b>semana siguiente</b>.</li>
+        <li>Cada supervisor se cierra por separado. Si uno no está hoy, los demás se pueden cerrar igual.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="fila angosta" style="margin-top:14px">
+    <div><img src="img/06-detalle-corte.png" alt="El detalle con el botón de cerrar encendido"></div>
+    <div class="texto">
+      <ol class="notas" start="4">
+        <li>Toque al supervisor.</li>
+        <li>Imprima el <span class="boton">Desprendible</span> y revíselo con él, renglón por renglón.</li>
+        <li>Si está de acuerdo, toque <span class="boton">Cerrar la semana</span>.</li>
+      </ol>
+      <div class="ojo">
+        <b>Si no está de acuerdo, no cierre.</b> Primero se aclara lo que falte. Su semana queda abierta y no
+        entra en el pago del 15 o el 30 hasta que se cierre.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 2 · Miércoles</span>Cerrar y firmar</h2>
+
+  <div class="fila">
+    <div><img src="img/07-ventana-cerrar.png" alt="La ventana para cerrar la semana"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>La ventana muestra <b>su semana</b>: el total, cuántos pagos a tiempo, atrasados, retenciones, visitas y de qué portafolio sale la plata.</li>
+        <li>Lea con él el aviso amarillo: al cerrar, <b>las cifras quedan congeladas</b> y no se pueden editar ni borrar.</li>
+        <li>El supervisor firma con el dedo: <b>«revisé y estoy de acuerdo»</b>. Sin la firma no se puede cerrar.</li>
+        <li>Si quiere, tome una foto del desprendible firmado en papel.</li>
+        <li>Toque <span class="boton">Cerrar la semana</span>.</li>
+      </ol>
+      <div class="bien">
+        Después del cierre, en la lista sale <b>«Cerrada y firmada el …»</b> al lado de ese supervisor.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PASO 3 ═══════════════ -->
+<section class="pag">
+  <h2><span class="paso">Paso 3 · El 15 y el 30</span>El pago</h2>
+
+  <div class="paraque">
+    Se le pagan al supervisor <b>todas sus semanas cerradas que no se le han pagado</b>. El pago se registra el día
+    en que se hace: el mismo 15 o 30, o un día antes o después si cae domingo o festivo.
+  </div>
+
+  <div class="fila">
+    <div><img src="img/09-pago-tarjeta.png" alt="La tarjeta del pago del 15 y el 30"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>En Nómina, baje hasta la tarjeta <b>«Pago del 15 y el 30»</b>.</li>
+        <li>Arriba dice cuándo es el próximo pago.</li>
+        <li>Cada supervisor sale con <b>cuántas semanas cerradas tiene sin pagar</b> y el total. Ese es el número que se le entrega.</li>
+        <li>Toque <span class="boton">Registrar pago</span> en el supervisor.</li>
+      </ol>
+      <p class="pie">En la foto, cada supervisor tiene una semana: la del 26 de octubre, con lo que llevaba ese día.</p>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 3 · El 15 y el 30</span>La firma de recibido</h2>
+
+  <div class="fila">
+    <div><img src="img/10-ventana-pago.png" alt="La ventana para registrar el pago"></div>
+    <div class="texto">
+      <ol class="notas">
+        <li>La ventana muestra <b>cada semana que se le paga</b>, con su valor, y el total.</li>
+        <li>Entréguele la plata.</li>
+        <li>El supervisor firma con el dedo: <b>«recibí conforme»</b>. Sin la firma no se registra.</li>
+        <li>Si quiere, tome una foto del comprobante firmado en papel, y escriba una observación (por ejemplo, «se pagó en efectivo»).</li>
+        <li>Toque <span class="boton">Registrar pago</span>.</li>
+      </ol>
+      <div class="ojo">
+        <b>Una semana se paga una sola vez.</b> El sistema no deja pagarla dos veces, aunque se toque dos veces el
+        botón o se intente desde dos celulares.
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pag">
+  <h2><span class="paso">Paso 3 · El 15 y el 30</span>El comprobante en papel</h2>
+
+  <p>Debajo de la tarjeta salen los <b>pagos registrados</b>. Cada uno tiene su botón
+    <span class="boton">Comprobante</span> para imprimirlo:</p>
+
+  <img src="img/12-comprobante.png" alt="El comprobante del pago" style="width:100%;border:1.5px solid #cbd5e1;border-radius:10px">
+
+  <ul class="simple" style="margin-top:12px">
+    <li>Las semanas que se pagaron y el total.</li>
+    <li>Dos firmas: <b>quien paga</b> y el <b>supervisor</b> («recibí conforme»).</li>
+  </ul>
+</section>
+
+<!-- ═══════════════ CALENDARIO ═══════════════ -->
+<section class="pag">
+  <h2>Qué semanas entran en cada pago</h2>
+
+  <div class="paraque">
+    Cada 15 y cada 30 se pagan <b>todas las semanas ya cerradas el miércoles que no se hayan pagado</b>.
+  </div>
+
+  <table class="reglas">
+    <tr><th>Semana trabajada</th><th>Se cierra</th><th>Se paga</th></tr>
+    <tr><td>26 oct al 1 nov</td><td>Miércoles 4 de noviembre</td><td><b>15 de noviembre</b></td></tr>
+    <tr><td>2 al 8 nov</td><td>Miércoles 11 de noviembre</td><td><b>15 de noviembre</b></td></tr>
+    <tr><td>9 al 15 nov</td><td>Miércoles 18 de noviembre</td><td><b>30 de noviembre</b></td></tr>
+    <tr><td>16 al 22 nov</td><td>Miércoles 25 de noviembre</td><td><b>30 de noviembre</b></td></tr>
+    <tr><td>23 al 29 nov</td><td>Miércoles 2 de diciembre</td><td><b>15 de diciembre</b></td></tr>
+  </table>
+
+  <ul class="simple" style="margin-top:12px">
+    <li>Casi siempre son <b>dos semanas</b> por pago. A veces caben <b>tres</b> (cuando hay tres miércoles entre un pago y el otro).</li>
+    <li>Una semana que no se firmó a tiempo <b>pasa al pago siguiente</b>: no se pierde.</li>
+    <li>En febrero, el pago de fin de mes es el <b>último día</b> del mes.</li>
+  </ul>
+
+  <h3>Lo que hay que tener en cuenta</h3>
+  <table class="reglas">
+    <tr><td class="n">1</td><td>Lunes y martes son para confirmar transferencias.</td></tr>
+    <tr><td class="n">2</td><td>Lo que se confirme después del cierre entra en la semana siguiente, con su valor de a tiempo o atrasado.</td></tr>
+    <tr><td class="n">3</td><td>El miércoles se firma «estoy de acuerdo». El 15 y el 30, «recibí».</td></tr>
+    <tr><td class="n">4</td><td>Si un supervisor no está de acuerdo, no se cierra hasta aclarar.</td></tr>
+    <tr><td class="n">5</td><td>Un cierre y un pago no se editan ni se borran.</td></tr>
+  </table>
+
+  <p class="pie">Hay un video corto de este tema: <b>«Video 6 - La nomina nueva»</b> (1 minuto y medio), y una
+    presentación: <b>«Capacitacion 27-oct - Tema 7 - La nomina nueva»</b>, con el video adentro.</p>
+</section>
+
+</body>
+</html>

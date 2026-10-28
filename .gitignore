@@ -46,3 +46,7 @@ docs/manual-rodado/img/
 docs/manual-rodado/*.pdf
 # Tarjetas promocionales: llevan los teléfonos del equipo
 docs/tarjetas/
+
+# Manual de la nómina nueva (27-oct): capturas con datos de clientes.
+docs/manual-nomina/img/
+docs/manual-nomina/*.pdf

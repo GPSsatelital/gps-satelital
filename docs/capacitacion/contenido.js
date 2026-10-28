@@ -540,6 +540,113 @@ window.CAP = {
     { tipo: "video", tema: 6, video: "v5", titulo: "Video: leer la cuenta semana por semana", min: 1.5,
       notas: "Este video repasa todo el tema en un minuto. Se lo pueden mandar al equipo por WhatsApp." },
 
+
+    // ─────────────────────────────── TEMA 7 (27-oct) ───────────────────────────────
+    // La nómina nueva (D-057): precorte, corte del miércoles y pago del 15 y el 30. Para los
+    // administradores y los supervisores. Fotos: t7-*.png (scripts/manual/capturas-nomina.mjs; se
+    // copian de docs/manual-nomina/img/ con el prefijo t7-).
+    { tipo: "seccion", n: 7, titulo: "La nómina nueva", sub: "Se cierra cada semana el miércoles. Se paga el 15 y el 30.", min: 0.5,
+      notas: "Tema siete: cómo se cierra y se paga la nómina de los supervisores desde ahora. Arranca con la semana del 26 de octubre." },
+
+    { tipo: "frase", tema: 7, icono: "calendario", min: 1,
+      frase: "Se cierra cada semana. Se paga cada quincena.",
+      sub: "Y ningún pago se pierde porque la oficina lo confirmó tarde.",
+      notas: "Esta es la idea. Cada semana se revisa y se firma, pero la plata se entrega dos veces al mes. Y lo más importante para ustedes, supervisores: si un cliente pagó a tiempo, cuenta a tiempo, aunque la transferencia se confirme días después." },
+
+    { tipo: "pasos", tema: 7, titulo: "La semana de la nómina", min: 1.5,
+      pasos: [
+        { icono: "moto", t: "De lunes a domingo", d: "Se trabaja la semana, como siempre." },
+        { icono: "lista", t: "Lunes y martes: precorte", d: "Se revisa y se confirman las transferencias que falten." },
+        { icono: "firma", t: "Miércoles: corte", d: "Cada supervisor revisa su semana y firma que está de acuerdo." },
+        { icono: "plata", t: "El 15 y el 30: pago", d: "Se entregan todas las semanas cerradas que no se han pagado." },
+      ],
+      notas: "Cuatro momentos. La semana se trabaja de lunes a domingo. El lunes y el martes siguientes son el precorte: se mira cómo quedó y la oficina confirma lo que falte. El miércoles es el corte: se cierra y se firma. Y el 15 y el 30 se entrega la plata." },
+
+    { tipo: "pantalla", tema: 7, titulo: "Lunes y martes: el precorte", ruta: ["Más (abajo a la derecha)", "Reportes", "Equipo", "Nómina"], img: "t7-02-precorte.png", min: 1.5,
+      marcas: [
+        { r: [3.3, 44.4, 93.4, 6.8], t: "La semana que se está revisando." },
+        { r: [3.3, 52.6, 93.4, 12.3], t: "El aviso dice qué día se cierra y cuántos pagos de esa semana faltan por confirmar." },
+      ],
+      ojo: "En el precorte todavía no se puede cerrar. Es el tiempo para confirmar las transferencias que faltan.",
+      notas: "El lunes, al entrar a Nómina, sale el aviso de precorte. Dice que se cierra el miércoles y cuántos pagos de esa semana todavía no se han confirmado. Esos dos días son para eso: que la oficina los confirme." },
+
+    { tipo: "pantalla", tema: 7, titulo: "Lo que falta por confirmar, por supervisor", ruta: ["Nómina", "Baje hasta «Por cobrador»"], img: "t7-03-por-confirmar.png", min: 1,
+      marcas: [
+        { r: [6.7, 14, 86.7, 9.4], t: "Cada supervisor, con lo que lleva la semana." },
+        { r: [7.7, 21.6, 40, 2.6], t: "Las transferencias de su semana que siguen sin confirmar." },
+      ],
+      notas: "En la lista de cada supervisor sale cuántos pagos suyos faltan por confirmar. Supervisores: si ven que les falta uno, avísenle a la secretaria el lunes o el martes, no el jueves." },
+
+    { tipo: "pantalla", tema: 7, titulo: "Antes del miércoles el botón no deja", ruta: ["Nómina", "Toque al supervisor"], img: "t7-04-detalle-precorte.png", min: 1,
+      marcas: [
+        { r: [2, 32.6, 90, 8.2], t: "Dice desde qué día se puede cerrar." },
+        { r: [3.3, 87, 93.4, 5.5], t: "El desprendible sí se imprime para revisarlo. «Cerrar la semana» está apagado." },
+      ],
+      notas: "Si toca a un supervisor en el precorte, puede ver todo su detalle e imprimir el desprendible para revisarlo con él. Pero el botón de cerrar está apagado hasta el miércoles." },
+
+    { tipo: "pantalla", tema: 7, titulo: "Miércoles: el corte", ruta: ["Más", "Reportes", "Equipo", "Nómina"], img: "t7-05-corte.png", min: 1,
+      marcas: [
+        { r: [3.3, 52.6, 93.4, 12.3], t: "Ya se puede cerrar. Si quedó algo sin confirmar, entra en la semana siguiente." },
+      ],
+      notas: "El miércoles el aviso cambia a corte: ya se puede cerrar cada supervisor. Si quedó un pago sin confirmar, no se pierde: entra en la semana siguiente." },
+
+    { tipo: "pantalla", tema: 7, titulo: "Cerrar la semana de un supervisor", ruta: ["Nómina", "Toque al supervisor", "«Cerrar la semana»"], img: "t7-07-ventana-cerrar.png", min: 2,
+      marcas: [
+        { r: [9.7, 16.8, 80.5, 23.5], t: "Lo que se le reconoce esa semana, y de qué portafolio sale." },
+        { r: [9.7, 42.2, 80.5, 18.7], t: "Al cerrar queda congelado y no se puede editar ni borrar." },
+        { r: [9.7, 62.8, 80.5, 15], t: "Firma el supervisor: «revisé y estoy de acuerdo»." },
+      ],
+      ojo: "Si el supervisor no está de acuerdo, no se cierra: se aclara primero lo que falte.",
+      notas: "Al tocar Cerrar la semana sale el total, cuántos pagos a tiempo, atrasados y demás, y de qué portafolio sale. El supervisor revisa el desprendible y firma que está de acuerdo. Ojo: esta firma no es de recibir plata; la plata se entrega el 15 o el 30. Y si no está de acuerdo, no se cierra hasta aclarar." },
+
+    { tipo: "tabla", tema: 7, titulo: "A tiempo o atrasado: manda el día en que pagó el cliente", min: 1.5,
+      columnas: ["El cliente pagó", "La oficina lo confirmó", "Para el supervisor"],
+      filas: [
+        ["Dentro de su semana (ej. el viernes)", "El lunes siguiente", "A tiempo: $7.500, en la semana en que pagó"],
+        ["Dentro de su semana", "Después del cierre del miércoles", "A tiempo: $7.500, en la semana siguiente"],
+        ["Después de su semana", "Cuando sea", "Atrasado: $3.750"],
+      ],
+      notas: "Esta tabla es para los supervisores. Lo que decide si fue a tiempo o atrasado es el día en que el cliente pagó, no el día en que la oficina confirmó la transferencia. Si se confirma antes del miércoles, entra en su semana. Si se confirma después del cierre, entra en la semana siguiente, pero con su valor de a tiempo." },
+
+    { tipo: "tabla", tema: 7, titulo: "Qué semanas entran en cada pago", min: 1.5,
+      columnas: ["Semana trabajada", "Se cierra", "Se paga"],
+      filas: [
+        ["26 oct al 1 nov", "Miércoles 4 nov", "15 de noviembre"],
+        ["2 al 8 nov", "Miércoles 11 nov", "15 de noviembre"],
+        ["9 al 15 nov", "Miércoles 18 nov", "30 de noviembre"],
+        ["16 al 22 nov", "Miércoles 25 nov", "30 de noviembre"],
+      ],
+      pie: "Cada 15 y 30 se pagan todas las semanas ya cerradas que no se hayan pagado. Si una no se firmó a tiempo, pasa al pago siguiente.",
+      notas: "La regla es sencilla: el 15 y el 30 se paga todo lo que ya se cerró el miércoles y no se ha pagado. Casi siempre son dos semanas; a veces tres. Y una semana que no se firmó a tiempo no se pierde: pasa al pago siguiente." },
+
+    { tipo: "pantalla", tema: 7, titulo: "El 15 y el 30: registrar el pago", ruta: ["Nómina", "«Pago del 15 y el 30»", "«Registrar pago»"], img: "t7-09-pago-tarjeta.png", min: 1.5,
+      marcas: [
+        { r: [7.7, 18.8, 84.6, 7.6], t: "Cada supervisor con sus semanas cerradas sin pagar y el total." },
+        { r: [61.5, 20.2, 29.7, 5.2], t: "«Registrar pago»: solo el administrador." },
+      ],
+      notas: "En Nómina está la tarjeta Pago del 15 y el 30. Ahí sale cada supervisor con las semanas que ya cerró y no se le han pagado, y el total. Ese es el número que se le entrega." },
+
+    { tipo: "pantalla", tema: 7, titulo: "La firma de recibido", ruta: ["«Registrar pago»", "Firma del supervisor", "«Registrar pago»"], img: "t7-10-ventana-pago.png", min: 1.5,
+      marcas: [
+        { r: [9.7, 18.2, 80.5, 15], t: "Cada semana que se le paga, y el total." },
+        { r: [9.7, 48.4, 80.5, 14.4], t: "Firma el supervisor: «recibí conforme»." },
+      ],
+      ojo: "Una semana se paga una sola vez. El sistema no deja pagarla dos veces.",
+      notas: "Al registrar el pago, el supervisor firma que recibió. Puede tomarse una foto del comprobante firmado en papel. Y el sistema no deja pagar dos veces la misma semana." },
+
+    { tipo: "lista", tema: 7, tono: "alerta", titulo: "Lo que hay que tener en cuenta", min: 1.5,
+      items: [
+        "Lunes y martes son para confirmar transferencias. Todo lo confirmado antes del miércoles entra en su semana.",
+        "Lo que se confirme después del cierre no se pierde: entra en la semana siguiente, con su valor.",
+        "La firma del miércoles es «estoy de acuerdo». La del 15 y el 30 es «recibí».",
+        "Si un supervisor no está de acuerdo, no se cierra hasta aclarar.",
+        "Las semanas de antes del 26 de octubre se pagaron por fuera de la app.",
+      ],
+      notas: "Cinco cosas para no equivocarse. La más importante para la oficina: confirmar las transferencias lunes y martes. Y para los supervisores: no hay que pelear por un pago confirmado tarde, el sistema ya lo cuenta bien." },
+
+    { tipo: "video", tema: 7, video: "v6", titulo: "Video: la nómina nueva", min: 1.5,
+      notas: "Este video repasa todo el tema en un minuto. Se lo pueden mandar a los supervisores por WhatsApp." },
+
     // ─────────────────────────────── CIERRE ───────────────────────────────
     { tipo: "tabla", titulo: "¿Dónde busco...?", min: 2,
       columnas: ["Quiero...", "Voy a..."],
@@ -552,6 +659,7 @@ window.CAP = {
         ["Hacer una liquidación", "Contratos › Iniciar liquidación · Más › Liquidaciones"],
         ["Rodar por deuda", "Contratos › el contrato › Rodar por deuda"],
         ["Ceder un contrato", "Contratos › el contrato › Ceder contrato"],
+        ["Cerrar la semana de un supervisor o pagar la nómina", "Más › Reportes › Equipo › Nómina"],
       ],
       notas: "Esta es la hoja para tener a mano: lo que quiero hacer y dónde se hace. Se la vamos a dejar impresa." },
 
@@ -619,6 +727,16 @@ window.CAP = {
       { img: "t6-06-libro-dia.png", r: [10.8, 25.2, 79, 15.1], voz: "Toque un día con punto: verá cuánto pagó, y a dónde fue cada peso." },
       { img: "t6-07-libro-migrado.png", r: [6, 32.3, 87.8, 24], voz: "Si viene del cuaderno, esas semanas salen juntas, ya pagadas. Desde el corte, cada una con su detalle." },
       { img: "t6-02-libro-resumen.png", r: [6, 61.8, 87.8, 18.2], alerta: true, voz: "Ojo. Si una cuenta no cuadra, no la arregle ni borre pagos. Avísele al administrador, con la placa y la fecha." },
+    ] },
+    v6: { archivo: "Video 6 - La nomina nueva.mp4", titulo: "La nómina nueva", fecha: "27 de octubre de 2026", escenas: [
+      { img: "t7-02-precorte.png", r: [3.3, 44.4, 93.4, 20.6], voz: "La nómina de los supervisores se trabaja de lunes a domingo. Se ve en Reportes, en Equipo, en Nómina." },
+      { img: "t7-02-precorte.png", r: [3.3, 52.6, 93.4, 12.3], voz: "El lunes y el martes son el precorte. El aviso dice cuántas transferencias de esa semana faltan por confirmar. Esos dos días son para confirmarlas." },
+      { img: "t7-03-por-confirmar.png", r: [6.7, 14, 86.7, 9.4], voz: "En cada supervisor sale cuántos pagos suyos siguen sin confirmar." },
+      { img: "t7-05-corte.png", r: [3.3, 52.6, 93.4, 12.3], voz: "El miércoles es el corte. Ya se puede cerrar la semana de cada supervisor." },
+      { img: "t7-07-ventana-cerrar.png", r: [9.7, 62.8, 80.5, 15], voz: "El supervisor revisa su desprendible, y firma que está de acuerdo. Si no lo está, no se cierra hasta aclarar." },
+      { img: "t7-05-corte.png", r: [3.3, 52.6, 93.4, 12.3], alerta: true, voz: "Ojo. Lo que decide si fue a tiempo es el día en que pagó el cliente. Si la transferencia se confirma después del cierre, no se pierde: entra en la semana siguiente, con su valor." },
+      { img: "t7-09-pago-tarjeta.png", r: [7.7, 18.8, 84.6, 7.6], voz: "El quince y el treinta, en Pago del quince y el treinta, salen las semanas cerradas que no se han pagado. Se toca Registrar pago." },
+      { img: "t7-10-ventana-pago.png", r: [9.7, 48.4, 80.5, 14.4], voz: "El supervisor firma que recibió, y se imprime el comprobante. Una semana se paga una sola vez." },
     ] },
   },
 };

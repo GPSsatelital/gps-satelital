@@ -37,11 +37,11 @@ const icono = (nombre, color) => {
 const K = { fondo: "0B1A36", tarjeta: "12264D", linea: "24406F", texto: "F1F5F9", suave: "B6C3D8", cian: "38BDF8",
   amarillo: "FFD100", bien: "4ADE80", mal: "F87171", alerta: "FBBF24", oscuro: "04111F", tenue: "6F86AB" };
 const F = "Segoe UI";
-const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato", 6: "Cómo leer la cuenta de un cliente" };
-const ARCHIVOS = { 1: "Tema 1 - El dia del administrador", 2: "Tema 2 - Liquidaciones", 3: "Tema 3 - Taller, prestamo y rodar el tiempo", 4: "Tema 4 - Rodar por deuda", 5: "Tema 5 - Ceder un contrato", 6: "Tema 6 - Como leer la cuenta de un cliente" };
+const NOMBRES = { 1: "El día del administrador", 2: "Liquidaciones", 3: "Taller, préstamo y rodar el tiempo", 4: "Nuevo: rodar por deuda", 5: "Ceder un contrato", 6: "Cómo leer la cuenta de un cliente", 7: "La nómina nueva" };
+const ARCHIVOS = { 1: "Tema 1 - El dia del administrador", 2: "Tema 2 - Liquidaciones", 3: "Tema 3 - Taller, prestamo y rodar el tiempo", 4: "Tema 4 - Rodar por deuda", 5: "Tema 5 - Ceder un contrato", 6: "Tema 6 - Como leer la cuenta de un cliente", 7: "Tema 7 - La nomina nueva" };
 // El tema 6 se hizo después (9-oct): su portada lleva su propia fecha y su archivo, su día.
-const FECHA_TEMA = { 6: "9 de octubre de 2026" };
-const DIA_TEMA = { 6: "9-oct" };
+const FECHA_TEMA = { 6: "9 de octubre de 2026", 7: "27 de octubre de 2026" };
+const DIA_TEMA = { 6: "9-oct", 7: "27-oct" };
 const TOTAL_TEMAS = Object.keys(NOMBRES).length;
 const temaDe = s => s.tema ?? s.n ?? null;
 const W = 13.333, H = 7.5, MX = 0.75;

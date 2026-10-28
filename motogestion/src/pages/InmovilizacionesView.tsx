@@ -119,9 +119,10 @@ export default function InmovilizacionesView({ onNavigate }: { onNavigate?: (vie
   // puede recortar por persona. El convenio de recuperación exige el permiso crear_convenio.
   const puedeLiquidar = puede("iniciar_liquidacion");
   const { liquidaciones } = useLiquidaciones();
-  /** La liquidación abierta de un contrato, si la hay ("cerrada" ya terminó). */
+  /** La liquidación abierta de un contrato, si la hay ("cerrada" ya terminó y "anulada" se deshizo:
+   *  antes la anulada contaba como abierta y al contrato no le volvía a salir "Iniciar liquidación"). */
   const liqAbiertaDe = (contratoId: string) =>
-    liquidaciones.find(l => l.contrato_id === contratoId && l.estado !== "cerrada") ?? null;
+    liquidaciones.find(l => l.contrato_id === contratoId && l.estado !== "cerrada" && l.estado !== "anulada") ?? null;
   const puedeCrearConvenio = puede("crear_convenio");
   // EL PLAZO EXIGE LO MISMO QUE EL CONVENIO (corregido 2-sep, auditoría previa a crear dos
   // subadmins más). Primero se ató al rol —"igual que el plazo extra de Cartera"— y quedaba al
@@ -1103,6 +1104,14 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
             // que sí manda es si debe algo conveniable; "temporal" solo dice que no es morosa.
             const puedeHacerConvenio = !m.soloInfoTaller && m.conveniable > 0 && m.convenioId == null && !faltaMulta;
             const procesandoEsta = procesandoId === m.contratoId;
+            // FUERA DE BODEGA (dueño, 28-oct-2026): con la liquidación abierta, o con la moto ya en
+            // manos de otro cliente, la cuenta se cierra en la liquidación. Cobrar, conveniar o
+            // entregar desde aquí es cobrar por un lado mientras la liquidación cuenta por el otro
+            // (y "entregar" podía querer devolver una moto que ya anda con otra persona). Si el
+            // cliente llega a recuperarla, primero se anula la liquidación y vuelven los botones.
+            const liqAb = liqAbiertaDe(m.contratoId);
+            const motoDeOtro = !!m.motoId && contratos.some(x => x.moto_id === m.motoId && x.id !== m.contratoId && x.estado === "Activo");
+            const fueraDeBodega = !!liqAb || motoDeOtro;
             return (
               <div key={m.contratoId} style={{ background: m.esTemporal ? "var(--accent-soft4)" : "var(--bad-soft)", border: `2px solid ${m.esTemporal ? "var(--accent-line)" : "var(--bad-line)"}`, borderRadius: 16, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
@@ -1176,7 +1185,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                           puede quedar escondida detrás del botón verde: se avisa con el monto y
                           quien entrega decide si le cobra, le deja convenio, o se la entrega igual.
                           Decisión del dueño, 28-jul-2026: avisar, no bloquear. */}
-                      {m.esTemporal && (m.totalPendiente > 0 || m.cuotasAtrasadas > 0) && (
+                      {m.esTemporal && !fueraDeBodega && (m.totalPendiente > 0 || m.cuotasAtrasadas > 0) && (
                         <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 10, background: "var(--warn-soft)", border: "1px solid var(--warn-line)", fontSize: 12, color: "var(--warn-ink)", fontWeight: 600 }}>
                           ⚠️ Este cliente debe <strong>${fmt(m.totalPendiente + m.cuotasAtrasadas)}</strong>
                           {m.totalPendiente > 0 && m.cuotasAtrasadas > 0
@@ -1201,7 +1210,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                             ? <>Guardada el {new Date(m.fechaRetencion + "T00:00:00").toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })} · {m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""}</>
                             : <>{m.diasRetenida} día{m.diasRetenida !== 1 ? "s" : ""} retenida · <span style={{ color: "var(--warn-ink)" }}>sin fecha registrada</span></>}
                         </span>
-                        {m.listaParaLiquidar && (
+                        {m.listaParaLiquidar && !liqAb && (
                           <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)" }}>
                             📄 Lista para liquidar (7+ días)
                           </span>
@@ -1237,7 +1246,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                         pueda recibir plata (28-oct-2026): «¿le entrego la moto?» y «¿le recibo
                         plata?» son dos preguntas. Antes el botón dependía solo de la primera y a
                         las temporales nunca se les podía cobrar, debieran lo que debieran. */}
-                    {!m.soloInfoTaller && (!entregable || (m.esTemporal && m.totalPendiente + m.cuotasAtrasadas > 0)) && (
+                    {!m.soloInfoTaller && !fueraDeBodega && (!entregable || (m.esTemporal && m.totalPendiente + m.cuotasAtrasadas > 0)) && (
                       <button
                         /* Si falta la multa, propone SOLO la multa: es el mínimo para llevarse la
                            moto y lo demás puede ir al convenio. Si ya está paga, propone todo lo
@@ -1254,7 +1263,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                         💵 Cobrar
                       </button>
                     )}
-                    {puedeHacerConvenio && puedeCrearConvenio && (
+                    {puedeHacerConvenio && puedeCrearConvenio && !fueraDeBodega && (
                       <button
                         onClick={() => {
                           // EL PRE-PASO: si no tiene convenio, la decisión del tiempo guardado
@@ -1275,7 +1284,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                     {/* DAR PLAZO (2-sep): la salida para el que está al día y solo arrastra una
                         deuda vieja que cancela en un par de días. Mismos candados que el convenio
                         (la multa primero) y los mismos roles que ya dan plazo extra en Cartera. */}
-                    {puedeHacerConvenio && puedeDarPlazo && m.plazoHasta == null && (
+                    {puedeHacerConvenio && puedeDarPlazo && m.plazoHasta == null && !fueraDeBodega && (
                       <button
                         onClick={() => {
                           if (!tiempoGuardadoResuelto(m.contratoId)) { setPreResolver({ m, luego: "plazo" }); return; }
@@ -1288,7 +1297,7 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                         ⏳ Dar plazo
                       </button>
                     )}
-                    {!m.soloInfoTaller && (
+                    {!m.soloInfoTaller && !fueraDeBodega && (
                       <button
                         onClick={() => handleAbrirEntrega(m)}
                         disabled={!entregable || procesandoEsta}
@@ -1310,12 +1319,28 @@ Tiene plazo hasta el ${fmtFechaLarga(m.plazoHasta)}. Ese día la campana avisa s
                     {/* Si ya hay una liquidación abierta, se dice y se deja de ofrecer "iniciar":
                         antes el botón se veía idéntico y se podía intentar de nuevo sin saber que
                         ya existía. */}
-                    {puedeLiquidar && liqAbiertaDe(m.contratoId) && (
-                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
-                        📄 {liqAbiertaDe(m.contratoId)!.numero} en curso — sigue en Liquidaciones
+                    {liqAb && (
+                      <div style={{ display: "grid", gap: 4, maxWidth: 220 }}>
+                        <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--warn-soft)", color: "var(--warn-ink)" }}>
+                          📄 En liquidación {liqAb.numero}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.35 }}>
+                          La cuenta se cierra en la liquidación. Si el cliente viene a recuperar la moto, primero se anula la liquidación.
+                        </span>
+                        {onNavigate && (
+                          <button onClick={() => onNavigate("liquidaciones")}
+                            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--warn-line)", cursor: "pointer", fontSize: 12, fontWeight: 700, background: "var(--card)", color: "var(--warn-ink)" }}>
+                            Abrir Liquidaciones →
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {!liqAb && motoDeOtro && (
+                      <span style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--bad-soft)", color: "var(--bad-ink)", maxWidth: 220 }}>
+                        La moto ya la tiene otro cliente: este contrato se cierra con una liquidación.
                       </span>
                     )}
-                    {puedeLiquidar && !liqAbiertaDe(m.contratoId) && (
+                    {puedeLiquidar && !liqAb && (
                       <button
                         onClick={() => setLiquidacionModal(m)}
                         disabled={procesandoEsta}

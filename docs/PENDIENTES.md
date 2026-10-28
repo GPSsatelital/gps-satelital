@@ -8,7 +8,29 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **23-oct-2026**.
+- Última revisión: **27-oct-2026**.
+
+> ▶️ **AL ARRANCAR (27-oct) — la nómina nueva quedó TERMINADA y subida; sigue el bloqueo de papeles.**
+> - ✅ **Nómina (D-056 + D-057), todo en producción** (222bbf3 → 1508505; migs 206, 207 y 208 ya corridas): las cuotas
+>   del acuerdo se cuentan igual que Cartera y la primera cuota se guarda al firmar · la semana se cuenta con el día en
+>   que **pagó** el cliente (no el de la confirmación) · precorte lunes y martes · «Cerrar la semana» el miércoles con
+>   firma «revisé y estoy de acuerdo» · pago el 15 y el 30 de todas las semanas cerradas sin pagar, con firma «recibí
+>   conforme» y comprobante; una semana no se paga dos veces (candado en la base). Arranca con la semana del 26-oct.
+> - ✅ **Entregables:** manual `docs/manual-nomina/LA-NOMINA-NUEVA.pdf` (11 hojas) · tema 7 de la capacitación ·
+>   `Video 6 - La nomina nueva.mp4` (88 s) metido en el PowerPoint del tema 7. PDF, video, PowerPoint y fotos NO van
+>   a GitHub (nombres y cifras de los supervisores): viven solo en el PC.
+> - 🧑 **Miércoles 4-nov: primer cierre de verdad** (semana del 26-oct). Mirarlo con el dueño en la pantalla real.
+>   **Primer pago: el 15-nov es domingo** → el dueño dijo: por lo general el mismo día, el día antes si se puede, y
+>   si no, el día después. La app no fija el día: se registra el día que se paga.
+> - 🔲 **Siguiente pedido del dueño (27-oct): no dejar entregar una moto sin SOAT y tecnomecánica al día.** «cuando
+>   se seleccione una moto para entregar y no tengo información de seguro y tecnomecánica o esté vencida salga la
+>   alerta y que le bloquee el seguir». Sin empezar: primero plan + preguntas de a una (¿moto nueva que todavía no
+>   necesita tecno? ¿vence en pocos días = bloquea o solo avisa? ¿quién puede saltarlo, si alguien?). Campos:
+>   `motos.fecha_seguro`, `motos.fecha_tecnomecanica`; el paso 2 del `WizardContrato` y el préstamo de reemplazo.
+> - 🔲 Sigue esperando al dueño lo de **JORGE BELLO / JESUS QUIÑONEZ** (abajo).
+> - ⚙️ El proyecto ya NO se trabaja en el disco P:. Vive en `C:\Users\USER\Documents\GitHub\gps-satelital`. El
+>   arranque automático de Claude todavía intenta `git pull` en `P:/Proyectos/gps-satelital` y falla (sin daño):
+>   cambiarlo en `~/.claude/settings.json` cuando el dueño lo apruebe.
 
 > ▶️ **AL ARRANCAR (23-oct, noche) — una pregunta espera al dueño:**
 > **JORGE BELLO (RLT88H) y JESUS QUIÑONEZ (RMU62H), tiempo rodado dos veces** (detalle en P0 abajo). Ya se le explicó
@@ -113,7 +135,7 @@ está en su bloque de abajo.
 9. Borrar o mover un pago pierde la referencia o deja el comprobante en la carpeta equivocada.
 10. Ventanas aparte con botones invisibles (blanco sobre blanco).
 11. El formulario de motos acepta años imposibles (el 0028 de DQL79I).
-12. Un aviso antes de cerrar una semana de nómina que todavía no termina.
+12. ~~Un aviso antes de cerrar una semana de nómina que todavía no termina.~~ ✅ 27-oct (D-057).
 13. Herramientas: la prueba espejo de la plata corre sola antes de subir, revisión automática en GitHub (no
     existe) y el cierre de sesión con la hora de Colombia.
 
@@ -394,6 +416,11 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## P1 — A medio hacer: cerrar antes de abrir otra cosa
+
+- [ ] 💻 **Cabos sueltos de la primera cuota del acuerdo (D-056, vistos el 26-oct, sin aprobar).**
+  `ModalAmpliarConvenio` y la recuperación del motor todavía calculan `fecha_limite` desde HOY, no desde la
+  primera cuota guardada; y el acuerdo impreso no dice cuándo es la primera cuota. No cambian la nómina de hoy.
+  Antes de tocar: medir cuántos acuerdos ampliados quedarían distintos.
 
 - [ ] 💻 🔴 **CANDADOS CONTRA REPETIR ACCIONES (pedido del dueño, 10-oct) — EN CURSO (D-054).** ✅ 23-oct mig 203:
   tiempo guardado y referencia de transferencia. ✅ mig 204: recepción (30 min), abono a la base (10 min), una
@@ -956,6 +983,14 @@ Lo que está afectando cifras reales de clientes en este momento.
 ---
 
 ## Cerrados recientemente
+
+- [x] **26 y 27-oct · LA NÓMINA NUEVA (D-056, D-057)** — 6 subidas (222bbf3, 21ef8b2, 04a39ed, 376d5e6, 71d0a82,
+  1508505), migs 206·207·208 corridas por el dueño con sus verificaciones (223·0·2·11 · 77/76/1 · 1·1·1·2) y la
+  prueba espejo de ZALA en 0 diferencias (367 contratos). Empezó por DQL76I: pagaba a tiempo y la nómina lo daba
+  como parcial (contaba cuotas del acuerdo sin el prorrateo ni las semanas cubiertas, y fechaba con la
+  confirmación). Ahora: el día en que pagó el cliente manda (`cajas_llenadas.pago_id`), precorte lunes/martes,
+  cierre el miércoles con firma, pago el 15 y el 30 (`nomina_pagos`, `registrar_pago_nomina` con candado).
+  Manual + tema 7 + video. 993 pruebas en verde.
 
 - [x] **10-oct · El nombre largo ya no se monta sobre las etiquetas ni las tarjetas** (973aac2) — AILTON
   MIGUELUCHIRODRIGUEZ REYES: en Clientes (celular) pisaba «Activo»/«Tiempo definido»; en la ficha (computador)

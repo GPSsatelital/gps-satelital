@@ -14,6 +14,7 @@ import LectorHuella from "../components/LectorHuella";
 import ModalConvenio from "../components/ModalConvenio";
 import { calcularProrrateoInicial, proximoDiaPago, totalCajasContrato } from "../utils/cicloPago";
 import { hoyISO } from "../utils/fecha";
+import { papelesMoto, resumenPapeles, textoBloqueo } from "../utils/papelesMoto";
 import { ANGULOS_FOTO, IconoAngulo, type AnguloFoto } from "../components/FotosAngulos";
 import { CONCEPTO_CONVENIO_BASE } from "../utils/cuentaLiquidacion";
 import { PISO_BASE } from "../utils/excedenteBase";
@@ -222,7 +223,9 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
       return (m.estado === "Disponible") && (m.placa.toLowerCase().includes(q) || m.marca.toLowerCase().includes(q) || m.modelo.toLowerCase().includes(q));
     }
     return m.estado === "Disponible";
-  });
+  }).map(m => ({ m, papeles: papelesMoto(m, hoy) }))
+    // Las que no se pueden entregar van al final, para que no tapen a las que sí.
+    .sort((a, b) => Number(b.papeles.puedeEntregar) - Number(a.papeles.puedeEntregar));
 
   const tarifaDiaria = Number(form.tarifa_ls) || 0;
   const tarifaDomingo = Number(form.tarifa_dom) || 0;
@@ -466,6 +469,11 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
   async function handleStep2(mId: string) {
     if (!contratoId) return;
     if (guardando) return;
+    const elegida = motos.find(m => m.id === mId);
+    if (elegida) {
+      const r = papelesMoto(elegida, hoyISO());
+      if (!r.puedeEntregar) { setError(textoBloqueo(elegida.placa, r)); return; }
+    }
     setGuardando(true); setError(null);
     try {
       // ¿Esta moto tiene una liquidación sin cerrar? En la operación real el papeleo va detrás
@@ -584,6 +592,10 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     if (!kmInicial) { setError("Ingresa el kilometraje inicial."); return; }
     const faltantes = ANGULOS_FOTO.filter(a => !fotosEntrega[a.key]);
     if (faltantes.length > 0) { setError(`Falta la foto: ${faltantes.map(a => a.label).join(", ")}.`); return; }
+    if (motoActual) {
+      const r = papelesMoto(motoActual, hoyISO());
+      if (!r.puedeEntregar) { setError(textoBloqueo(motoActual.placa, r)); return; }
+    }
     setError(null);
     setStep(7);
   }
@@ -605,6 +617,13 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
     setGuardando(true); setError(null);
     const noQuedoNada = "No quedó nada a medias: revise la conexión y vuelva a tocar Confirmar acta y activar contrato.";
     try {
+      // Sin papeles al día no se entrega (27-oct-2026). Se lee la moto otra vez de la base: entre
+      // el paso 2 y hoy pudo vencerse algo, o alguien pudo corregir la fecha.
+      const { data: papelesBD, error: errPapeles } = await supabase.from("motos")
+        .select("placa, fecha_seguro, fecha_tecnomecanica").eq("id", motoId).single();
+      if (errPapeles || !papelesBD) { setError(`No se pudo revisar el SOAT y la tecnomecánica de la moto. ${noQuedoNada}`); return; }
+      const rPapeles = papelesMoto(papelesBD, hoyISO());
+      if (!rPapeles.puedeEntregar) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
       // 1. Las fotos primero. Antes, si una no subía, la entrega seguía sin ella y nadie se enteraba.
       const urls: Record<string, string> = {};
       for (const { key, label } of ANGULOS_FOTO) {
@@ -969,7 +988,7 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {motosDisponibles.slice(0, 30).map(m => (
+                {motosDisponibles.slice(0, 30).map(({ m, papeles }) => papeles.puedeEntregar ? (
                   <button key={m.id} onClick={() => {
                     if (!confirm(`¿Confirmas la moto ${m.placa} (${m.marca} ${m.modelo}) para ${(clienteActual?.nombre ?? "").toUpperCase()}?`)) return;
                     setMotoEligiendo(m.id);
@@ -983,12 +1002,29 @@ export default function WizardContrato({ clientes, motos, contratos, contratoIni
                         <div style={{ fontWeight: 700, fontSize: 14, color: "var(--accent)" }}>{m.placa}</div>
                         <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
                         <div style={{ fontSize: 11, color: "var(--faint)" }}>{m.grupo} · {m.cilindraje}</div>
+                        <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 4 }}>{resumenPapeles(papeles)}</div>
+                        {papeles.avisos.map(a => (
+                          <div key={a} style={{ fontSize: 12, fontWeight: 600, color: "var(--warn-ink)", marginTop: 4 }}>{a}. Se puede entregar; renuévelo.</div>
+                        ))}
                       </div>
                       {guardando && motoEligiendo === m.id
                         ? <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Asignando...</div>
                         : <div style={{ fontSize: 22, color: "var(--accent)" }}>→</div>}
                     </div>
                   </button>
+                ) : (
+                  // No es un botón: no se puede escoger, y la tarjeta misma dice por qué y dónde arreglarlo.
+                  <div key={m.id} style={{
+                      width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--bad-line)",
+                      background: "var(--bad-soft)", textAlign: "left", boxSizing: "border-box",
+                    }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--bad-ink)" }}>{m.placa} · No se puede entregar</div>
+                    <div style={{ fontSize: 13, color: "var(--muted2)" }}>{m.marca} {m.modelo} · {m.color}</div>
+                    {papeles.bloqueos.map(b => (
+                      <div key={b} style={{ fontSize: 12, fontWeight: 600, color: "var(--bad-ink)", marginTop: 4 }}>{b}</div>
+                    ))}
+                    <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 4 }}>Actualice la fecha en Motos › {m.placa} › Editar.</div>
+                  </div>
                 ))}
               </div>
             </div>

@@ -7,6 +7,8 @@ import { useUbicaciones } from "../hooks/useUbicaciones";
 import { useAuth } from "../contexts/AuthContext";
 import { card, secondaryBtn, primaryBtn, inputStyle, labelStyle } from "../styles/shared";
 import { ANGULOS_FOTO, GridFotosAngulos, type AnguloFoto } from "./FotosAngulos";
+import { papelesMoto, resumenPapeles, textoBloqueo } from "../utils/papelesMoto";
+import { hoyISO } from "../utils/fecha";
 
 // TEMA B F2: elegir una moto del pool para prestar como reemplazo a un cliente cuya moto
 // está varada (taller, fiscalía, tránsito o garantía). Muestra tipo (diario/tiempo definido) +
@@ -70,10 +72,13 @@ export default function ModalPrestarReemplazo({ contratoId, clienteId = null, mo
       // Las de mora tienen dueño con 7 días para recuperarlas pagando, así que van después;
       // las de incapacidad de tiempo definido son las peores (el dueño quiere ESA placa).
       const seguro = m.estado === "Disponible";
-      return { m, cat, tipo, seguro };
+      // Sin papeles al día tampoco se presta (27-oct-2026): la prestada también sale a la calle.
+      const papeles = papelesMoto(m, hoyISO());
+      return { m, cat, tipo, seguro, papeles };
     })
     .filter(x => !busq.trim() || x.m.placa.toLowerCase().includes(busq.toLowerCase()))
-    .sort((a, b) => Number(b.seguro) - Number(a.seguro)); // seguras primero
+    // Primero las que se pueden prestar; dentro de ellas, las seguras primero.
+    .sort((a, b) => Number(b.papeles.puedeEntregar) - Number(a.papeles.puedeEntregar) || Number(b.seguro) - Number(a.seguro));
 
   async function subirFotos(motoId: string): Promise<{ urls: string[]; fallidas: number }> {
     const urls: string[] = [];
@@ -102,6 +107,12 @@ export default function ModalPrestarReemplazo({ contratoId, clienteId = null, mo
     if (!confirm(`¿Prestar la moto ${motoSel.placa} a ${clienteNombre} mientras su moto ${placaOriginal} está ${motivoVarada}?`)) return;
     setGuardando(true); setError(null);
     try {
+      // Los papeles se leen otra vez de la base: alguien pudo corregir o vencerse la fecha mientras tanto.
+      const { data: papelesBD, error: errPapeles } = await supabase.from("motos")
+        .select("placa, fecha_seguro, fecha_tecnomecanica").eq("id", sel).single();
+      if (errPapeles || !papelesBD) { setError("No se pudo revisar el SOAT y la tecnomecánica de la moto. Revisa la conexión e intenta de nuevo."); return; }
+      const rPapeles = papelesMoto(papelesBD, hoyISO());
+      if (!rPapeles.puedeEntregar) { setError(textoBloqueo(papelesBD.placa, rPapeles)); return; }
       // 1. La evidencia PRIMERO. Si no sube, no se presta: sin foto no hay prueba de cómo salió.
       const { urls, fallidas } = await subirFotos(sel);
       if (fallidas > 0) { setError(`No se pudieron subir ${fallidas} foto(s). Revisa la conexión e intenta de nuevo — el préstamo necesita las 6 fotos como respaldo.`); return; }
@@ -163,7 +174,14 @@ export default function ModalPrestarReemplazo({ contratoId, clienteId = null, mo
 
             <div style={{ display: "grid", gap: 6, maxHeight: "44vh", overflowY: "auto" }}>
               {pool.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", padding: 16 }}>No hay motos disponibles para prestar.</div>}
-              {pool.map(({ m, cat, tipo, seguro }) => (
+              {pool.map(({ m, cat, tipo, seguro, papeles }) => !papeles.puedeEntregar ? (
+                // No es un botón: no se puede escoger, y la tarjeta misma dice por qué y dónde arreglarlo.
+                <div key={m.id} style={{ border: "1px solid var(--bad-line)", borderRadius: 12, padding: "10px 12px", background: "var(--bad-soft)", boxSizing: "border-box" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--bad-ink)" }}>{m.placa} · No se puede prestar</div>
+                  {papeles.bloqueos.map(b => <div key={b} style={{ fontSize: 12, fontWeight: 600, color: "var(--bad-ink)", marginTop: 2 }}>{b}</div>)}
+                  <div style={{ fontSize: 12, color: "var(--bad-ink)", marginTop: 2 }}>Actualice la fecha en Motos › {m.placa} › Editar.</div>
+                </div>
+              ) : (
                 <button key={m.id} onClick={() => setSel(m.id)} style={{
                   textAlign: "left", border: `2px solid ${sel === m.id ? "var(--accent)" : "var(--line)"}`, borderRadius: 12, padding: "10px 12px",
                   background: sel === m.id ? "var(--accent-soft2)" : "var(--card)", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
@@ -172,6 +190,8 @@ export default function ModalPrestarReemplazo({ contratoId, clienteId = null, mo
                     <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", textTransform: "uppercase" }}>{m.placa}</span>
                     <span style={{ fontSize: 12, color: "var(--muted)", marginLeft: 6 }}>{m.marca} {m.modelo} · {m.grupo}</span>
                     <span style={{ display: "block", fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{tipo !== "—" ? tipo : "Sin contrato"}</span>
+                    <span style={{ display: "block", fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{resumenPapeles(papeles)}</span>
+                    {papeles.avisos.map(a => <span key={a} style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--warn-ink)", marginTop: 2 }}>{a}. Renuévelo.</span>)}
                   </span>
                   <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
                     <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: cat.bg, color: cat.color }}>{cat.label}</span>

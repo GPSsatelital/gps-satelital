@@ -26,8 +26,8 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   `utils/papelesMoto.ts` + 11 pruebas). Respuestas del dueño: vence en 15 días o menos = solo avisa · vencido,
 >   sin fecha o año mal escrito = bloquea y **nadie** se lo salta · la prestada de reemplazo también. Contrato nuevo
 >   paso 2 (rojo, no se escoge), pasos 6 y 7 (vuelve a leer la base antes de activar) y `ModalPrestarReemplazo`.
->   🔲 **Preguntarle:** ¿también al **ceder un contrato** y al **devolver la moto retenida** a su dueño? (ahí la moto
->   cambia de manos sin escogerla; no se tocaron). 🧑 46 motos con papeles vencidos o sin fecha: PDF en el
+>   ✅ También al **ceder un contrato activo** y al **devolver la moto retenida** (de mora o de taller/garantía/
+>   incapacidad: el dueño escogió «1» en las dos preguntas). La ventana de ceder no se vio en pantalla. 🧑 46 motos con papeles vencidos o sin fecha: PDF en el
 >   escritorio del dueño para actualizarlas a mano (29 con cliente, 9 disponibles, 6 en taller, 2 retenidas).
 > - 🔲 Sigue esperando al dueño lo de **JORGE BELLO / JESUS QUIÑONEZ** (abajo).
 > - ⚙️ El proyecto ya NO se trabaja en el disco P:. Vive en `C:\Users\USER\Documents\GitHub\gps-satelital`. El

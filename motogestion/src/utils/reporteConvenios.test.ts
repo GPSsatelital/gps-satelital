@@ -54,6 +54,18 @@ describe("la película del convenio: cada abono desde que se firmó", () => {
   it("el saldo es lo que falta para terminarlo", () => {
     expect(run()[0]).toMatchObject({ total: 542000, saldo: 446000, cuotasCompletas: 2 });
   });
+
+  it("con el total pagado cuentan TODAS las cuotas, también la última más chica (caso GERMAN DIAZ)", () => {
+    // $308.000 en cuotas de $48.000: 6 completas + una última de $20.000.
+    const german: ConvenioIn = { ...CONVENIO, deuda_total: 308000, cuota_por_periodo: 48000, numero_cuotas: 7, estado: "cumplido" };
+    const abonos: PagoConvIn[] = [48000, 48000, 48000, 48000, 48000, 48000, 20000].map((m, i) => ({
+      contrato_id: "ct1", fecha: `2026-08-${10 + i}`, created_at: `2026-08-${10 + i}T10:00:00Z`,
+      estado: "Confirmado", valor: m, aplicado_convenio: m,
+    }));
+    const r = reporteConvenios([german], abonos, [CONTRATO], MOTOS, CLIENTES, SUBS, "2026-10-30", false)[0];
+    expect(r.cuotasCompletas).toBe(7);
+    expect(r.abonos[6].cuotasCompletadas).toBe(1);   // la de $20.000 cierra la séptima
+  });
 });
 
 describe("cómo va: al día o atrasado", () => {

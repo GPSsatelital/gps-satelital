@@ -524,7 +524,7 @@ export default function ReportesView({ onNavigate }: Props) {
       motos: motos.map(m => ({ id: m.id, placa: m.placa, subadmin_id: m.subadmin_id ?? null, grupo: m.grupo ?? null })),
       recepciones,
       clientesPorId: new Map(clientes.map(c => [c.id, c.nombre])),
-      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, cubre_periodo_hasta: cv.cubre_periodo_hasta, fecha_primera_cuota: cv.fecha_primera_cuota, created_at: cv.created_at })),
+      convenios: convenios.map(cv => ({ contrato_id: cv.contrato_id, cuota_por_periodo: cv.cuota_por_periodo, numero_cuotas: cv.numero_cuotas, periodos_exonerados: cv.periodos_exonerados, cubre_periodo_hasta: cv.cubre_periodo_hasta, fecha_primera_cuota: cv.fecha_primera_cuota, deuda_total: cv.deuda_total, created_at: cv.created_at })),
       visitas: visitas.map(v => ({ id: v.id, cliente_id: v.cliente_id, realizada_por: v.realizada_por ?? null, fecha: v.fecha, estado: v.estado })),
       // Quién trajo a cada cliente (mig 153): $30.000 a esa persona en la semana de la entrega.
       referidos: clientes

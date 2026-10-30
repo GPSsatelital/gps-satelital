@@ -10,6 +10,22 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **28-oct-2026**.
 
+> ▶️ **AL ARRANCAR (30-oct) — nómina: la última cuota del acuerdo ya cuenta.**
+> - ✅ **Nómina frenaba semanas pagadas** (lo levantó CARLOS ARIZA con su lista de motos): cuando el acuerdo
+>   no da cuotas exactas, la última es más chica ($308.000 / $48.000 = 6 + $20.000). La nómina contaba cuotas por
+>   múltiplos de la cuota y esa última nunca entraba → «le falta la cuota del convenio» para siempre, aunque el
+>   acuerdo estuviera cumplido. **32 contratos** (Ariza 9 · Alvarez 11 · Lumar 8 · Brandon 4). Ahora, con el total
+>   pagado cuentan todas (`nominaCobradores.ts` y `reporteConvenios.ts`, + 3 pruebas). Semana del 26-oct medida:
+>   **$1.812.500 → $1.985.000** (Ariza +$30.000: IGC39I, IEW57I, RMY50H, RNB18H). Las semanas que esperaban esa
+>   última cuota salen atrasadas el día en que se completó el acuerdo (regla del paquete): XYZ53H ×8 el 26-oct,
+>   RMZ59H ×6 el 28-oct.
+> - 🧑 Si las semanas de antes del 26-oct se pagaron por fuera **con las cifras de la app**, a los 4 cobradores les
+>   faltaron semanas por este error. Se puede medir cuántas, si el dueño quiere.
+> - 🔲 **ISMAEL GAMARRA (RLZ94H)**: todo lo que pagó en octubre (más de $1.400.000) se fue a deudas (migración
+>   $345.000 y daño $70.000 pendientes) y nada a la semana → la nómina dice «no pagó». Revisar si es lo pactado.
+> - Revisadas con Carlos Ariza y correctas: YAL64H (acuerdo atrasado de verdad), IGC33I (abonó parcial), YAL63H,
+>   DQL84I, DPU52I, RMM72H (no pagaron esta semana), RML42H y XZT91H (atrasadas), y las 5 retenidas (sí salen).
+
 > ▶️ **AL ARRANCAR (28-oct, tarde) — esto quedó hecho y subido hoy; sigue lo de abajo.**
 > - ✅ **Sin SOAT y tecnomecánica al día no sale ninguna moto** (b8ddd82, f8bfd68): contrato nuevo (pasos 2, 6 y 7),
 >   préstamo de reemplazo, ceder contrato activo y devolver la retenida (mora o taller). Vence en ≤15 días = solo

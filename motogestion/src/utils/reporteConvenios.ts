@@ -105,11 +105,16 @@ export function reporteConvenios(
           && (p.aplicado_convenio ?? 0) > 0 && p.created_at >= cv.created_at)
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
+      // Con el total pagado cuentan todas las cuotas, también la última más chica (la que absorbe
+      // el resto) — misma regla que la nómina (nominaCobradores, caso GERMAN DIAZ 30-oct).
+      const cuotasCon = (monto: number) => monto >= cv.deuda_total
+        ? cv.numero_cuotas
+        : Math.min(Math.floor(monto / cv.cuota_por_periodo), cv.numero_cuotas);
       let acum = 0;
       const abonos: AbonoConvenio[] = propios.map(p => {
-        const antes = Math.floor(acum / cv.cuota_por_periodo);
+        const antes = cuotasCon(acum);
         acum += p.aplicado_convenio ?? 0;
-        const despues = Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
+        const despues = cuotasCon(acum);
         return {
           fecha: dia(p.fecha),
           monto: p.aplicado_convenio ?? 0,
@@ -146,7 +151,7 @@ export function reporteConvenios(
         saldo: Math.max(cv.deuda_total - abonado, 0),
         exigido,
         atrasado: Math.max(exigido - abonado, 0),
-        cuotasCompletas: Math.min(Math.floor(abonado / cv.cuota_por_periodo), cv.numero_cuotas),
+        cuotasCompletas: cuotasCon(abonado),
         alDia: exigido - abonado <= 0,
         ultimoAbono,
         diasSinAbonar: ultimoAbono ? diasEntre(ultimoAbono, hoyISO) : null,

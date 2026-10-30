@@ -330,6 +330,37 @@ describe("EL PAQUETE: semana + convenio = UNA sola gestión (regla del dueño, 2
     });
     expect(n).toHaveLength(0);
   });
+
+  // Caso GERMAN DIAZ (IGC39I, 30-oct): $308.000 en cuotas de $48.000 = 6 cuotas + una ÚLTIMA de
+  // $20.000. Pagó todo y el acuerdo quedó cumplido, pero la nómina contaba cuotas por múltiplos de
+  // $48.000: la última nunca entraba y le frenaba al cobrador todas las semanas de ahí en adelante.
+  // Acá en chiquito: $140.000 en cuotas de $60.000 → 60 + 60 + 20.
+  describe("la ÚLTIMA cuota, más chica, también cuenta (caso GERMAN DIAZ)", () => {
+    const CORTO = { contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 3, deuda_total: 140000, created_at: "2026-08-10T00:00:00Z" };
+    const SEMANA_7SEP = { desde: "2026-09-07", hasta: "2026-09-13" };
+    const CAJA_9 = [{ contrato_id: "ct1", caja_numero: 9, fecha: "2026-09-07", fuente: "pago" as const }];
+
+    it("acuerdo pagado completo: la semana del 7-sep paga $7.500", () => {
+      const n = nominaSemana({
+        ...SEMANA_7SEP, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+        convenios: [CORTO],
+        pagos: [conv("2026-08-17", 60000), conv("2026-08-24", 60000), conv("2026-08-31", 20000)],
+        eventos: CAJA_9,
+      });
+      expect(n[0].ciclosATiempo).toBe(1);
+      expect(n[0].total).toBe(VALOR_CICLO);
+    });
+
+    it("si a la última cuota le falta plata, la semana sigue esperando", () => {
+      const n = nominaSemana({
+        ...SEMANA_7SEP, contratos: [CONTRATO], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES,
+        convenios: [CORTO],
+        pagos: [conv("2026-08-17", 60000), conv("2026-08-24", 60000), conv("2026-08-31", 19000)],
+        eventos: CAJA_9,
+      });
+      expect(n).toHaveLength(0);
+    });
+  });
 });
 
 describe("la semana de nómina", () => {

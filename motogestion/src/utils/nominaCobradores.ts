@@ -131,6 +131,8 @@ export type ConvenioNomina = {
   cubre_periodo_hasta?: string | null;
   /** La primera cuota que se le dijo al cliente al firmar (mig 206): desde ahí se cuentan. */
   fecha_primera_cuota?: string | null;
+  /** El total pactado: al llegar a él cuentan TODAS las cuotas, también la última más chica. */
+  deuda_total?: number | null;
   created_at: string;
 };
 
@@ -418,6 +420,9 @@ export function nominaSemanaDetallada(opts: {
   // con el mismo conteo del motor (mig 045): acumulado FIFO de aplicado_convenio desde la firma;
   // cada múltiplo de la cuota es una cuota completa. fechasCubiertas[n-1] = el día del pago que
   // dejó cubiertas n cuotas. Si un contrato tiene varios convenios, manda el más reciente.
+  // La ÚLTIMA cuota absorbe el resto y suele ser más chica ($308.000 / $48.000 = 6 + $20.000):
+  // con el total pagado cuentan todas, o esa última no entraba nunca y frenaba al cobrador para
+  // siempre (GERMAN DIAZ, IGC39I, 30-oct-2026).
   const convenioPorContrato = new Map<string, { cv: ConvenioNomina; fechasCubiertas: string[] }>();
   for (const cv of convenios) {
     if (cv.cuota_por_periodo <= 0) continue;
@@ -434,7 +439,9 @@ export function nominaSemanaDetallada(opts: {
     for (const p of pagosConv) {
       const antes = Math.floor(acum / cv.cuota_por_periodo);
       acum += p.aplicado_convenio ?? 0;
-      const despues = Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
+      const despues = cv.deuda_total && acum >= cv.deuda_total
+        ? cv.numero_cuotas
+        : Math.min(Math.floor(acum / cv.cuota_por_periodo), cv.numero_cuotas);
       for (let k = Math.max(antes, 0); k < despues; k++) info.fechasCubiertas.push(dia(p.fecha));
     }
   }

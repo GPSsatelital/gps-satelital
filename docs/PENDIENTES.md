@@ -19,8 +19,14 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   **$1.812.500 → $1.985.000** (Ariza +$30.000: IGC39I, IEW57I, RMY50H, RNB18H). Las semanas que esperaban esa
 >   última cuota salen atrasadas el día en que se completó el acuerdo (regla del paquete): XYZ53H ×8 el 26-oct,
 >   RMZ59H ×6 el 28-oct.
-> - 🧑 Si las semanas de antes del 26-oct se pagaron por fuera **con las cifras de la app**, a los 4 cobradores les
->   faltaron semanas por este error. Se puede medir cuántas, si el dueño quiere.
+> - 🧑 **Medido (30-oct): semanas del 14-sep al 25-oct, $780.000 que la app dejó sin contar** — Ariza $232.500 ·
+>   Alvarez $270.000 · Brandon $157.500 · Lumar $120.000. Dos causas: la última cuota ($468.750) y pagos de jueves a
+>   domingo confirmados el lunes siguiente ($311.250; esas anotaciones no guardan el pago, se infirió con la regla de
+>   la mig 207). Excel moto por moto en el escritorio («Nomina - lo que falto antes del 26-oct.xlsx», fuera de git:
+>   lleva clientes). 🧑 El dueño decide si lo paga por fuera.
+> - 🔲 **Pagos anotados tarde que se fueron a saldo a favor** (IEW90I: $100.000 del 14-oct y $102.000 del 15-oct
+>   anotados el 24-oct; DQL77I: $202.000 del 13-oct anotado el 23-oct). La semana se llenó recién cuando se aplicó el
+>   saldo, así que la nómina la ve tarde. Revisar por qué el motor no los llevó a la semana (¿copias repetidas?).
 > - 🔲 **ISMAEL GAMARRA (RLZ94H)**: todo lo que pagó en octubre (más de $1.400.000) se fue a deudas (migración
 >   $345.000 y daño $70.000 pendientes) y nada a la semana → la nómina dice «no pagó». Revisar si es lo pactado.
 > - Revisadas con Carlos Ariza y correctas: YAL64H (acuerdo atrasado de verdad), IGC33I (abonó parcial), YAL63H,

@@ -26,7 +26,12 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   lleva clientes). 🧑 El dueño decide si lo paga por fuera.
 > - 🔲 **Pagos anotados tarde que se fueron a saldo a favor** (IEW90I: $100.000 del 14-oct y $102.000 del 15-oct
 >   anotados el 24-oct; DQL77I: $202.000 del 13-oct anotado el 23-oct). La semana se llenó recién cuando se aplicó el
->   saldo, así que la nómina la ve tarde. Revisar por qué el motor no los llevó a la semana (¿copias repetidas?).
+>   saldo, así que la nómina la ve tarde. **Causa:** la regla del 29-ago (mig 119) — un pago solo llena las semanas
+>   exigidas a SU fecha (+3 días); si antes se anotó uno más nuevo que llenó esa semana, el viejo cae a saldo a favor.
+>   No es plata perdida: es el ORDEN en que se anotan. 27 pagos desde agosto ($3.370.500). ✅ Aviso en Cartera
+>   (Hoy y Contratos): «💰 $X a favor sin usar» cuando el cliente debe y tiene saldo — se aplica a mano desde el
+>   detalle. 🧑 Hoy con plata quieta: **MLH39H** ($98.000, en mora) y **EYQ88H** ($110.000, en mora) → aplicar ya;
+>   RMM69H, DQW24I, RMW28H (al día), IGC53I y DQG99I (retenidas). Motor NO se tocó (regla del dueño).
 > - 🔲 **ISMAEL GAMARRA (RLZ94H)**: todo lo que pagó en octubre (más de $1.400.000) se fue a deudas (migración
 >   $345.000 y daño $70.000 pendientes) y nada a la semana → la nómina dice «no pagó». Revisar si es lo pactado.
 > - Revisadas con Carlos Ariza y correctas: YAL64H (acuerdo atrasado de verdad), IGC33I (abonó parcial), YAL63H,

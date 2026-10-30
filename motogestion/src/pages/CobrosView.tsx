@@ -3267,6 +3267,7 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                     )}
                     {empalmePendiente(c) && <Badge tone="warn">⚠️ Empalme</Badge>}
                     {faltaConvenio && <Badge tone="accent">📝 Falta convenio</Badge>}
+                    {pendiente > 0 && (c.saldoAFavor ?? 0) > 0 && <Badge tone="ok">💰 $ {fmt(c.saldoAFavor ?? 0)} a favor sin usar</Badge>}
                   </div>
                   <Btn
                     variant="primary"
@@ -3626,6 +3627,13 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                                   ? `${etiquetaSemanaDeMas(dd.cierre, c.forma_pago).toLowerCase()} · debe $${fmt(dd.cierre.debeTotal)}`
                                   : <>cuota ${fmt(dd.cuota.falta)}{(dd.acuerdo?.falta ?? 0) > 0 ? ` + conv. $${fmt(dd.acuerdo!.falta)}` : ""}{dd.deudas.falta > 0 ? ` + deuda $${fmt(dd.deudas.falta)}` : ""}</>}
                               </div>
+                              {/* Pagos anotados en desorden caen a saldo a favor y el cliente sale debiendo
+                                  con la plata en la empresa (MLH39H, 30-oct). Se avisa; se aplica a mano. */}
+                              {(c.saldoAFavor ?? 0) > 0 && (
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ok-ink)", marginTop: 2 }}>
+                                  💰 $ {fmt(c.saldoAFavor ?? 0)} a favor sin usar
+                                </div>
+                              )}
                             </>
                           ) : (
                             <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ok-ink)", background: "var(--ok-soft)", borderRadius: 8, padding: "2px 8px" }}>{c.convenioACobrar ? "● Al día · convenio" : "● Al día"}</span>

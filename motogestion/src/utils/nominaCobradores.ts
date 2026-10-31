@@ -1,4 +1,4 @@
-import { periodosConvenioCorridos, proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
+import { cajasExigidasHasta, periodosConvenioCorridos, proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
 import { rastroSaldoFavor, type PagoSaldo } from "./saldoFavor";
 
 // LA NÓMINA DE LOS COBRADORES — la regla del dueño, cerrada el 22-ago pregunta por pregunta
@@ -163,6 +163,13 @@ export type GestionNomina = {
   tipo: TipoGestion;
   /** El día en que entró la plata (o en que se retuvo). */
   fecha: string;
+  /**
+   * El día en que el cliente terminó de pagar (D-060). Casi siempre es `fecha`; cambia cuando el pago
+   * se confirmó con su semana ya cerrada y el renglón se pasó a la semana de la confirmación. La
+   * retención mira este día, no `fecha`: cubre lo que el cliente pagó en su semana, no lo que se
+   * confirmó en ella.
+   */
+  pagadoEl?: string;
   valor: number;
   /**
    * Quién cobra ESTE renglón. Si no viene, lo cobra el dueño de la moto (`motos.subadmin_id`),
@@ -196,22 +203,34 @@ export type NominaCobrador = {
  * solo están saliendo las gestiones que salen"* y *"quiero que salgan ahí también los que no
  * pagaron"*.
  *
- * Los cinco motivos son EXCLUYENTES y se deciden en este orden:
+ * Los motivos son EXCLUYENTES y se deciden en este orden:
  *   sin_contrato ........ la moto no tiene cliente (disponible, taller, liquidada). Nada que cobrar.
  *   diario .............. contrato diario: fuera de la nómina por decisión del dueño.
- *   retenida_sin_abono .. contrato Suspendido. La retención ya se pagó en SU semana; desde ahí solo
- *                         paga si el cliente sigue abonando el convenio ($3.750). No entró nada.
+ *   pago_otra_semana .... el cliente SÍ pagó esta semana, pero se le paga en otra: se confirmó con la
+ *                         semana ya cerrada, o la cuota del acuerdo la completó después (D-060).
+ *   retenida_sin_abono .. contrato Suspendido y ya retenida esa semana. La retención ya se pagó en SU
+ *                         semana; desde ahí solo paga si el cliente sigue abonando el convenio ($3.750).
  *   falta_convenio ...... la caja SÍ se llenó esta semana, pero falta la cuota del convenio. Es la
  *                         regla del paquete, no un descuido: el cliente pagó a medias.
- *   no_pago ............. contrato activo al que no se le llenó ninguna caja. Esto sí es mora.
+ *   adelantada .......... la semana que se cobraba esta semana ya estaba pagada desde antes (D-060).
+ *   no_tocaba ........... esta semana no se le cobraba nada (quincenal o mensual) y no debía nada (D-060).
+ *   no_pago ............. contrato activo que no pagó lo que se le cobraba. Esto sí es mora.
+ *
+ * 🔴 31-oct-2026 (D-060): antes solo existían los cinco de siempre y todo lo demás salía «No pagó su
+ * semana». En la semana del 12-oct, 11 motos de CARLOS ARIZA decían eso y sus clientes SÍ habían pagado
+ * (se confirmó el lunes 19 y se les pagaba en la semana del 19). El dueño las vio y creyó que faltaban.
  */
-export type MotivoSinGestion = "sin_contrato" | "diario" | "retenida_sin_abono" | "falta_convenio" | "no_pago";
+export type MotivoSinGestion = "sin_contrato" | "diario" | "pago_otra_semana" | "retenida_sin_abono" | "falta_convenio"
+  | "adelantada" | "no_tocaba" | "no_pago";
 
 export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   sin_contrato: "Sin cliente (no hay nada que cobrar)",
   diario: "Contrato diario (fuera de la nómina)",
+  pago_otra_semana: "Pagó esta semana, pero se le paga en otra",
   retenida_sin_abono: "Retenida — no abonó el convenio esta semana",
   falta_convenio: "Pagó la semana, le falta la cuota del convenio",
+  adelantada: "Esta semana ya la tenía pagada por adelantado",
+  no_tocaba: "Esta semana no le tocaba pagar",
   no_pago: "No pagó su semana",
 };
 
@@ -222,6 +241,9 @@ export type MotoSinGestion = {
   cliente: string;
   cobradorId: string;
   motivo: MotivoSinGestion;
+  /** El motivo con sus fechas, cuando las hay: «Pagó el 17 de oct y se confirmó el 19 de oct: se le
+   *  paga en la semana del 19 al 25 de oct». Si no viene, se muestra `TEXTO_SIN_GESTION[motivo]`. */
+  detalle?: string;
 };
 
 export type ContratoNomina = ContratoCiclo & {
@@ -333,12 +355,46 @@ export function rodadasDesdeRegistros(
 
 const dia = (iso: string) => iso.slice(0, 10);
 
+/**
+ * El día EN COLOMBIA de un instante que la base guarda en hora de Londres (UTC). Colombia va 5 horas
+ * atrás todo el año, sin horario de verano.
+ *
+ * 🔴 31-oct-2026 (D-060): la retención se fechaba con el día de Londres. Las cuatro que hizo CARLOS
+ * ARIZA el sábado 25-oct entre las 7 y las 9:30 de la noche quedaban el domingo 26 y se pagaban en la
+ * semana siguiente; las del domingo 11-oct en la noche, igual.
+ * Si el texto no trae zona horaria ya es hora de aquí, y se toma su día tal cual.
+ */
+export function diaColombia(ts: string): string {
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(ts.trim())) return dia(ts);
+  const t = Date.parse(ts);
+  return Number.isNaN(t) ? dia(ts) : new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 /** El lunes de la semana de una fecha (la semana de nómina va de lunes a domingo). */
 export function lunesDe(iso: string): string {
   const d = new Date(dia(iso) + "T12:00:00");
   const retro = (d.getDay() + 6) % 7;             // lunes=0 ... domingo=6
   d.setDate(d.getDate() - retro);
   return d.toISOString().slice(0, 10);
+}
+
+const masDias = (iso: string, n: number) => {
+  const d = new Date(dia(iso) + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+/** «17 de oct» */
+function fechaCorta(iso: string): string {
+  const [, m, d] = dia(iso).split("-").map(Number);
+  return `${d} de ${MESES_CORTOS[m - 1]}`;
+}
+/** «del 19 al 25 de oct» · «del 26 de oct al 1 de nov» */
+function semanaCorta(lunesISO: string): string {
+  const domingo = masDias(lunesISO, 6);
+  const [, mL, dL] = lunesISO.split("-").map(Number);
+  const [, mD, dD] = domingo.split("-").map(Number);
+  return mL === mD ? `del ${dL} al ${dD} de ${MESES_CORTOS[mD - 1]}` : `del ${fechaCorta(lunesISO)} al ${fechaCorta(domingo)}`;
 }
 
 /**
@@ -517,6 +573,24 @@ export function nominaSemanaDetallada(opts: {
     if (!partiturasPorContrato.has(cv.contrato_id)) partiturasPorContrato.set(cv.contrato_id, []);
     partiturasPorContrato.get(cv.contrato_id)!.push(cv.partitura);
   }
+  /** Contratos que SÍ pagaron dentro de esta semana pero se les paga en otra (D-060): el día en que
+   *  pagó, en qué día quedó el renglón y por qué. Solo alimenta la etiqueta de lo NO pagado. */
+  const pagoCorrido = new Map<string, { pago: string; seCuenta: string; confirmado: string; paquete: string }>();
+  // LAS RETENCIONES DE CADA MOTO, con el día de Colombia (D-060). De aquí salen tres cosas: el renglón
+  // de $17.500 (2), qué semana cubre cada retención (2c) y desde cuándo está retenido un contrato (1b).
+  const retencionesDeMoto = new Map<string, string[]>();
+  for (const r of recepciones) {
+    if (r.motivo !== "retencion_mora") continue;
+    if (!retencionesDeMoto.has(r.moto_id)) retencionesDeMoto.set(r.moto_id, []);
+    retencionesDeMoto.get(r.moto_id)!.push(diaColombia(r.created_at));
+  }
+  /** El último día en que se retuvo la moto de este contrato (desde su entrega). null = no hay registro. */
+  const ultimaRetencion = (c: ContratoNomina): string | null => {
+    if (!c.moto_id) return null;
+    const desdeEntrega = c.fecha_entrega ? dia(c.fecha_entrega) : "";
+    const fs = (retencionesDeMoto.get(c.moto_id) ?? []).filter(f => f >= desdeEntrega).sort();
+    return fs.length ? fs[fs.length - 1] : null;
+  };
 
   // ── EL PAQUETE: de cada convenio se precalcula la fecha en que quedó cubierta cada cuota,
   // con el mismo conteo del motor (mig 045): acumulado FIFO de aplicado_convenio desde la firma;
@@ -620,10 +694,14 @@ export function nominaSemanaDetallada(opts: {
         // Con pagos anotados en desorden manda el día en que el cliente terminó de pagar ESA semana
         // (en orden de sus fechas); si no, el del pago que la llenó. Dónde se paga no cambia (`ubicar`).
         const fEv = (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev);
+        const pagoEnLaSemana = fEv >= desde && fEv <= hasta;
         if (ev.caja_numero === 0) {
           const fP = ubicar(fEv, ev.fecha, moto.subadmin_id);
-          if (fP < desde || fP > hasta) continue;
-          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: fP, valor: VALOR_CICLO });
+          if (fP < desde || fP > hasta) {
+            if (pagoEnLaSemana && !pagoCorrido.has(c.id)) pagoCorrido.set(c.id, { pago: fEv, seCuenta: fP, confirmado: ev.fecha, paquete: fEv });
+            continue;
+          }
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: fP, pagadoEl: fEv, valor: VALOR_CICLO });
           continue;
         }
         // La semana ADELANTADA del wizard (su primera caja, pagada con la base): nadie la cobró.
@@ -640,18 +718,24 @@ export function nominaSemanaDetallada(opts: {
           // La caja SÍ se llenó esta semana, pero falta la pata del convenio. No es un renglón
           // —es la regla del paquete— pero tampoco es "no pagó": se anota para poder decirle al
           // cobrador la verdad exacta en el desglose de lo no pagado.
+          // También en la semana en que el cliente pagó (D-060): ahí tampoco es "no pagó".
           const fF = ubicar(fEv, ev.fecha, moto.subadmin_id);
-          if (fF >= desde && fF <= hasta) frenadoPorConvenio.add(c.id);
+          if ((fF >= desde && fF <= hasta) || pagoEnLaSemana) frenadoPorConvenio.add(c.id);
           continue;
         }
         const atrasada = lunesDe(exigencia) < lunesDe(paq);
         const fRenglon = ubicar(paq, ev.fecha, moto.subadmin_id);
-        if (fRenglon < desde || fRenglon > hasta) continue;
+        if (fRenglon < desde || fRenglon > hasta) {
+          // Pagó esta semana pero se le paga en otra: se dice en vez de "no pagó" (D-060).
+          if (pagoEnLaSemana && !pagoCorrido.has(c.id)) pagoCorrido.set(c.id, { pago: fEv, seCuenta: fRenglon, confirmado: ev.fecha, paquete: paq });
+          continue;
+        }
         semanaConCiclo.add(c.id + "|" + lunesDe(fRenglon));
         renglones.push({
           motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente,
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
           fecha: fRenglon,
+          pagadoEl: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
         });
       }
@@ -724,15 +808,21 @@ export function nominaSemanaDetallada(opts: {
   //        convenio. Se paga UNA sola vez por semana (la gestión es semanal, nunca por cuota:
   //        regla del paquete, 23-ago) y a tarifa de atrasado — lo que vive en un convenio nació
   //        de un atraso.
+  //        🔴 SOLO DESDE QUE SE RETUVO (31-oct-2026, D-060). El estado "Suspendido" es el de HOY: sin
+  //        este corte, las cuotas que el cliente pagó cuando todavía tenía la moto también salían
+  //        aquí, y esas ya iban dentro de su semana (RML58H: cuota del 17-oct pagada aparte, retenida
+  //        el 25). 8 casos, $30.000. Sin registro de la retención se queda como antes.
   for (const info of convenioPorContrato.values()) {
     const c = contratos.find(x => x.id === info.cv.contrato_id);
     if (!c || c.estado !== "Suspendido" || !c.moto_id || c.forma_pago === "Diario") continue;
     const moto = motoDe.get(c.moto_id);
     if (!moto) continue;
     const cliente = clientesPorId.get(c.cliente_id) ?? "—";
+    const retenidaDesde = ultimaRetencion(c);
     const semanasPagadas = new Set<string>();
     for (const f of info.fechasCubiertas) {
       if (f < desde || f > hasta) continue;
+      if (retenidaDesde && f < retenidaDesde) continue;
       const sem = lunesDe(f);
       if (semanasPagadas.has(sem) || semanaConCiclo.has(c.id + "|" + sem)) continue;
       semanasPagadas.add(sem);
@@ -740,11 +830,11 @@ export function nominaSemanaDetallada(opts: {
     }
   }
 
-  // ── 2) RETENCIONES: una sola vez, la semana en que se retiene ───────────────
+  // ── 2) RETENCIONES: una sola vez, la semana en que se retiene (con el día de Colombia, D-060) ───
   const yaRetenida = new Set<string>();
   for (const r of recepciones) {
     if (r.motivo !== "retencion_mora") continue;
-    const f = dia(r.created_at);
+    const f = diaColombia(r.created_at);
     if (f < desde || f > hasta) continue;
     if (yaRetenida.has(r.moto_id)) continue;      // dos registros de la misma moto = una retención
     yaRetenida.add(r.moto_id);
@@ -819,15 +909,18 @@ export function nominaSemanaDetallada(opts: {
   // aunque el cliente pague ahí mismo la semana atrasada para recuperarla. Sin esto se pagaban
   // $17.500 + $3.750 por el mismo trabajo. Desde la semana siguiente todo corre normal (y para
   // los que quedaron con convenio, la pata del convenio va dentro del paquete, como siempre).
+  //
+  // 🔴 31-oct-2026 (D-060): la retención cubre lo que el cliente PAGÓ en su semana (`pagadoEl`), no lo
+  // que quedó en ella. Antes miraba la semana del renglón: a IGC53I y RML58H, que pagaron su semana a
+  // tiempo el 17-oct (confirmada el 19), la retención del 25 les quitaba esos $7.500; y lo pagado en la
+  // semana de la retención pero confirmado con esa semana ya cerrada, se pagaba aparte.
   const semanaDeRetencion = new Set<string>();
-  for (const r of renglones) {
-    if (r.tipo === "retencion") semanaDeRetencion.add(r.motoId + "|" + lunesDe(r.fecha));
-  }
+  for (const [motoId, fs] of retencionesDeMoto) for (const f of fs) semanaDeRetencion.add(motoId + "|" + lunesDe(f));
   const renglonesFinales = semanaDeRetencion.size === 0 ? renglones : renglones.filter(r =>
     // La visita y el referido NO son gestión de cobro de esa semana: son por traer al cliente y
     // por ir a su casa. La retención no se los traga.
     r.tipo === "retencion" || r.tipo === "visita" || r.tipo === "referido"
-    || !semanaDeRetencion.has(r.motoId + "|" + lunesDe(r.fecha)));
+    || !semanaDeRetencion.has(r.motoId + "|" + lunesDe(r.pagadoEl ?? r.fecha)));
 
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────
   const porCobrador = new Map<string | null, GestionNomina[]>();
@@ -846,16 +939,55 @@ export function nominaSemanaDetallada(opts: {
     if (!m.subadmin_id || conRenglon.has(m.id)) continue;
     const c = contratos.find(x => x.moto_id === m.id && x.estado !== "Cancelado" && x.estado !== "Finalizado");
     let motivo: MotivoSinGestion;
+    let detalle: string | undefined;
+    const corrido = c ? pagoCorrido.get(c.id) : undefined;
+    // ¿Ya estaba retenida esa semana? "Suspendido" es el estado de HOY: si la retuvieron después, esa
+    // semana todavía tenía la moto (D-060). Sin registro de la retención se le cree al estado.
+    const retenidaDesde = c ? ultimaRetencion(c) : null;
+    const retenidaEsaSemana = !!c && c.estado === "Suspendido" && (!retenidaDesde || retenidaDesde <= hasta);
     if (!c) motivo = "sin_contrato";
     else if (c.forma_pago === "Diario") motivo = "diario";
-    else if (c.estado === "Suspendido") motivo = "retenida_sin_abono";
+    else if (corrido) {
+      motivo = "pago_otra_semana";
+      const donde = `se le paga en la semana ${semanaCorta(lunesDe(corrido.seCuenta))}`;
+      detalle = corrido.paquete > corrido.pago
+        ? `Pagó la semana el ${fechaCorta(corrido.pago)} y la cuota del acuerdo el ${fechaCorta(corrido.paquete)}: ${donde}`
+        : `Pagó el ${fechaCorta(corrido.pago)} y se confirmó el ${fechaCorta(corrido.confirmado)}: ${donde}`;
+    }
+    else if (retenidaEsaSemana) motivo = "retenida_sin_abono";
     else if (frenadoPorConvenio.has(c.id)) motivo = "falta_convenio";
-    else if (c.estado === "Activo") motivo = "no_pago";
+    else if (c.estado === "Activo" || c.estado === "Suspendido") {
+      motivo = "no_pago";
+      // ¿Se le cobraba algo esta semana? Con el mismo contador de Cartera (`cajasExigidasHasta`).
+      if (eventos && c.motor_v2 && c.fecha_inicio_cajas) {
+        const evC = eventosPorContrato.get(c.id) ?? [];
+        const exigidasAl = (d: string) => cajasExigidasHasta(c, new Date(d + "T12:00:00"));
+        const debiaAntes = exigidasAl(masDias(desde, -1));
+        const debiaAlFinal = exigidasAl(hasta);
+        const pagadas = c.cajas_pagadas ?? 0;
+        const llenasAntes = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha >= desde).length;
+        const llenasAlFinal = pagadas - evC.filter(e => e.caja_numero > 0 && e.fecha > hasta).length;
+        // El prorrateo pendiente esa semana: si hoy todavía no está completo, o si se completó después.
+        // Sin anotación y completo = se pagó antes de que existiera el registro (IGC48I, agosto).
+        const ev0 = evC.find(e => e.caja_numero === 0);
+        const prorrateoPendiente = !c.es_migrado && (c.prorrateo_total ?? 0) > 0 && dia(c.fecha_inicio_cajas) <= hasta
+          && ((c.prorrateo_pagado ?? 0) < (c.prorrateo_total ?? 0) || (!!ev0 && ev0.fecha > hasta));
+        if (!prorrateoPendiente && debiaAlFinal > debiaAntes && llenasAntes >= debiaAlFinal) {
+          motivo = "adelantada";
+          const ev = evC.find(e => e.caja_numero === debiaAlFinal && e.fuente === "pago");
+          if (ev) detalle = `Esta semana ya la tenía pagada: la pagó por adelantado el ${fechaCorta(fechaReal(ev))}`;
+        } else if (!prorrateoPendiente && debiaAlFinal === debiaAntes && llenasAlFinal >= debiaAlFinal) {
+          motivo = "no_tocaba";
+          if (c.forma_pago !== "Semanal") detalle = `${c.forma_pago}: esta semana no le tocaba pagar`;
+        }
+      }
+    }
     else motivo = "sin_contrato";
     sinGestion.push({
       motoId: m.id, placa: m.placa, grupo: m.grupo ?? "—",
       cliente: c ? (clientesPorId.get(c.cliente_id) ?? "—") : "—",
       cobradorId: m.subadmin_id, motivo,
+      ...(detalle ? { detalle } : {}),
     });
   }
   sinGestion.sort((a, b) => a.placa.localeCompare(b.placa));

@@ -957,3 +957,40 @@ $596.250. Medido con el código real y visto en la pantalla.
 llama `confirmarPago()` en `usePagos.ts` (el embudo de los 3 botones de Cartera y el de Caja Diaria). Sin migración.
 **Ojo:** lo de antes del 26-oct se pagó por fuera, igual que en D-058: lo que dice la app menos lo pagado es lo que falta.
 
+### D-060 · 31-oct-2026 · Nómina de CARLOS ARIZA: la semana de ARNOL, la hora de las retenciones, la cuota de retenida y las etiquetas
+**Decidió:** el dueño, al revisar la nómina de Ariza (semanas del 12 y del 19-oct, 26 motos): *«Sí, los 4»*.
+**Qué encontró la revisión:** 7 motos ya salían pagadas (arreglo del 30-oct, la última cuota del acuerdo). 11 de
+Ariza decían «No pagó su semana» en la semana del 12 y sus clientes sí pagaron: se confirmó el lunes 19 y se les paga
+en la del 19 (a Brandon le pasaba con 9, a Lumar con 7, a Alvarez con 6). Varias estaban bien por las reglas (paquete
+con acuerdo, atrasadas, adelantadas, quincenal). Y tres errores de verdad:
+1. **ARNOL ESPRIELLA (IEW93I):** el borrado del 8-oct (copia de un doble toque) le restó una semana que sí pagó. Lo
+   que pagó para semanas suma $1.622.000 y su ahorro trae 8 semanas, pero el contador decía 7 ($1.421.000). Pagó dos
+   veces: la transferencia del 2-oct es real (comprobante No. 0000032600) y él paga una vez por semana, siempre.
+2. **La hora de las retenciones:** se fechaban con el día de Londres (la base guarda UTC). Las 4 que hizo Ariza el
+   sábado 25-oct entre 7 y 9:30 p.m. (IGC51I, IGC53I, RML58H, RLT86H) quedaban en la semana del 26; las del domingo
+   11-oct en la noche (DPU46I, RMM71H), en la del 12.
+3. **La cuota de acuerdo de una retenida** se pagaba también en semanas en que la moto todavía no estaba retenida
+   (el estado "Suspendido" es el de hoy). Esas cuotas ya iban dentro de su semana. 9 casos, $33.750.
+**Qué se decidió:**
+1. Devolverle la semana a ARNOL (mig 210, con guardas y rastro en la auditoría).
+2. La retención se fecha con el día de Colombia (`diaColombia`).
+3. La retención cubre lo que el cliente PAGÓ en su semana (`pagadoEl`), no lo que se confirmó en ella: no se come una
+   semana pagada antes (IGC53I y RML58H pagaron la suya el 17), y lo que pagó en su semana para recuperarla no se paga
+   aparte aunque se confirme después.
+4. La cuota de una retenida cuenta solo desde el día en que se retuvo la moto (sin registro de la retención, como antes).
+5. Las motos que no generaron pago dicen la verdad: «Pagó el 16 de oct y se confirmó el 19 de oct: se le paga en la
+   semana del 19 al 25 de oct», «Pagó la semana el 7 de oct y la cuota del acuerdo el 16 de oct…», «Esta semana ya la
+   tenía pagada: la pagó por adelantado el 1 de oct», «Quincenal: esta semana no le tocaba pagar», y «Retenida» solo
+   desde la semana en que la retuvieron. En la pantalla y en el desprendible.
+**Efecto medido con el código real (24-ago a 1-nov):** Ariza +$15.000 (semana del 5-oct +$42.500, 12-oct −$38.750,
+19-oct +$77.500, 26-oct −$66.250, y ±$3.750 en dos semanas viejas) · Lumar −$7.500 · Brandon −$7.500 (cuotas de
+retenida de RML49H y RMU62H) · Alvarez −$3.750. Cuando se corra la mig 210, Ariza +$18.750 más (ARNOL a tiempo desde
+la semana del 5-oct). Semana del 12-oct de Ariza: $618.750 → $580.000; la de Brandon sigue en $395.000. Visto en la
+pantalla a 375 px y en el desprendible.
+**Dónde vive:** `nominaCobradores.ts` (`diaColombia`, `pagadoEl`, motivos `pago_otra_semana`, `adelantada`,
+`no_tocaba`), `ReportesView.tsx`, `generarDesprendibleNomina.ts`, mig 210.
+**Ojo:** la semana del 26-oct es la primera que se cierra en la app: a Ariza le bajan ahí $66.250 porque las 4
+retenciones del sábado 25 pasan a la semana del 19, que se paga por fuera; hay que sumárselas a lo que le falta.
+YAL58H (Lumar, semana del 28-sep): una cuota del 30-sep, el día en que le devolvieron la moto tras una retención
+anterior, ya no cuenta ($3.750); no hay registro de cuándo termina una retención para decidirlo mejor.
+

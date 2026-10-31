@@ -10,6 +10,17 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
 - Última revisión: **31-oct-2026**.
 
+> ▶️ **AL ARRANCAR (31-oct, tarde) — nómina de CARLOS ARIZA revisada moto por moto (D-060).**
+> - ✅ Subido: retenciones con el día de Colombia · la retención cubre lo que el cliente pagó en su semana · cuota de
+>   retenida solo desde la retención · etiquetas que dicen la verdad («pagó el X, se le paga en la semana del Y»,
+>   «pagada por adelantado», «quincenal: no le tocaba»). Ariza +$15.000 (semana del 26-oct −$66.250: sus 4
+>   retenciones del sábado 25 pasan a la del 19, que se paga por fuera). Brandon y Lumar −$7.500, Alvarez −$3.750.
+> - 🔲 🧑 **Mig 210 (ARNOL, IEW93I): falta que el dueño la corra** (el SQL se le pegó en el chat). Después verificar:
+>   8 semanas, $6.000 en curso, ahorro $214.000, semanas 4 a 8 llenadas el 7, 7, 15, 22 y 29-oct. Ariza +$18.750.
+> - 🔲 `cajas_llenadas.fecha` también se guarda con el día de Londres (`current_date` en UTC): lo que se confirma de
+>   7 p.m. a medianoche queda con el día siguiente. Solo pesa cuando la semana del pago ya está cerrada. Medir antes.
+> - 🔲 La caja diaria no tiene cierres en la app desde el 13-ago (sin arqueo no se pudo comprobar el efectivo de ARNOL).
+
 > ▶️ **AL ARRANCAR (31-oct) — nómina de BRANDON revisada moto por moto (semanas del 12 y del 19-oct).**
 > - ✅ **Error 1 corregido (mig 209 corrida, D-058):** antes del 26-oct la nómina usaba el día en que se CONFIRMÓ el
 >   pago. Se completó qué pago llenó cada semana (2.237): ahora cuenta el día en que pagó el cliente. Brandon $387.500 →
@@ -243,7 +254,7 @@ Lo que está afectando cifras reales de clientes en este momento.
 
 - [ ] 🧑 🔴 **(Oficina) PAGOS REPETIDOS — confirmar si son copias** (medido el 8-oct, al arreglar el doble toque).
   Un doble toque registraba el mismo cobro dos veces (arreglado: commit 97ba56d + mig 192). Quedan por decidir:
-  · **ARNOL ESPRIELLA (IEW93I), 7-oct:** una transferencia de $248.000 (3:58 p.m.) y un efectivo de $248.000
+  · ✅ (31-oct, D-060: pagó las dos, se le devuelve la semana con la mig 210) **ARNOL ESPRIELLA (IEW93I), 7-oct:** una transferencia de $248.000 (3:58 p.m.) y un efectivo de $248.000
     (3:59 p.m.); hubo un tercero, la copia del efectivo, que ya se borró el 8-oct y le restó $201.000 de semana
     (y $45.000 del acuerdo). Si pagó UNA vez, sobra la transferencia y hay que rehacer su cuenta; si pagó dos,
     hay que devolverle lo que el borrado le quitó. **No tocar hasta que la oficina diga.**

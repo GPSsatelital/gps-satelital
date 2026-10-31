@@ -2213,18 +2213,20 @@ export default function ReportesView({ onNavigate }: Props) {
       const total = grupoNomina ? x.renglones.reduce((a, r) => a + r.valor, 0) : x.n.total;
       // Las motos que ya tenía al empezar la semana y no le generaron pago, con su motivo. En una
       // semana pagada no se muestran: mandan las cifras congeladas de ese día.
-      const motivoDe = new Map((sinGestionPorCobrador.get(valor) ?? []).map(sg => [sg.motoId, sg.motivo]));
+      const motivoDe = new Map((sinGestionPorCobrador.get(valor) ?? []).map(sg => [sg.motoId, sg]));
       const conPago = new Set(x.n.renglones.filter(r => TIPOS_COBRO.has(r.tipo)).map(r => r.motoId));
       const sinPago = ci ? [] : motosQueTenia(valor, lunesNomina).filter(m => !conPago.has(m.id));
       const filasSinPago: FilaDetalle[] = sinPago.map(m => {
-        const mv = motivoDe.get(m.id);
+        const sg = motivoDe.get(m.id);
+        // Con fechas cuando las hay (D-060): «Pagó el 17 de oct y se confirmó el 19 de oct: se le paga en…».
+        const textoMotivo = sg ? (sg.detalle ?? TEXTO_SIN_GESTION[sg.motivo]) : null;
         const c = contratoDeMotoN(m.id);
         return {
           id: "sinpago|" + m.id, placa: m.placa, grupo: m.grupo ?? "—",
           titulo: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : "Sin cliente",
-          subtitulo: mv ? TEXTO_SIN_GESTION[mv] : "Solo tuvo una visita o un referido esta semana",
+          subtitulo: textoMotivo ?? "Solo tuvo una visita o un referido esta semana",
           monto: 0, montoColor: "var(--muted2)", filtro: "sinpago", onClick: () => irDesdeMoto(m.id),
-          csv: { Placa: m.placa, Cliente: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "") : "", Grupo: m.grupo ?? "", Pago: "No generó pago", Motivo: mv ? TEXTO_SIN_GESTION[mv] : "Solo visita o referido", Valor: 0 },
+          csv: { Placa: m.placa, Cliente: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "") : "", Grupo: m.grupo ?? "", Pago: "No generó pago", Motivo: textoMotivo ?? "Solo visita o referido", Valor: 0 },
         };
       });
       // Imprimir el desprendible se puede siempre que la semana esté completa; CERRAR solo desde el

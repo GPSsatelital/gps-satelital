@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, nominaSemanaDetallada, semanasEnOrdenDePago, exoneradasAlDia, rodadasDesdeRegistros, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
+import { nominaSemana, nominaSemanaDetallada, semanasEnOrdenDePago, diaColombia, exoneradasAlDia, rodadasDesdeRegistros, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -1019,5 +1019,154 @@ describe("pagos anotados en desorden: cada semana con el día en que el cliente 
       aplicaSaldo("pS", "2026-11-09", 202000),
     ];
     expect(semanasEnOrdenDePago(c, pagos, [ev(6, "2026-11-02", "p0"), ev(7, "2026-11-09", "pS")], [])).toBeNull();
+  });
+});
+
+describe("revisión de la nómina de CARLOS ARIZA (31-oct-2026, D-060)", () => {
+  // La caja 6 se exige el lunes 2-nov, la 7 el 9-nov, la 8 el 16-nov.
+  const C9: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-11-02" };
+  const ret = (ts: string) => [{ moto_id: "m1", motivo: "retencion_mora", created_at: ts }];
+  const pagoId = (id: string, fecha: string, anotado: string, extra: Partial<PagoNomina> = {}): PagoNomina =>
+    ({ id, contrato_id: "ct1", fecha, created_at: anotado, estado: "Confirmado", aplicado_tarifa: 202000, ...extra });
+  const ev = (caja: number, fecha: string, pago_id: string | null = null) =>
+    ({ contrato_id: "ct1", caja_numero: caja, fecha, fuente: "pago" as const, pago_id });
+  const base = { motos: MOTOS, clientesPorId: CLIENTES };
+
+  it("diaColombia: la hora de Londres se pasa al día de Colombia (UTC-5)", () => {
+    expect(diaColombia("2026-10-26T00:14:00+00:00")).toBe("2026-10-25");   // sábado 25, 7:14 p.m. aquí
+    expect(diaColombia("2026-10-26T05:00:00Z")).toBe("2026-10-26");
+    expect(diaColombia("2026-10-25")).toBe("2026-10-25");
+    expect(diaColombia("2026-10-25T19:14:00")).toBe("2026-10-25");          // sin zona: ya es hora de aquí
+  });
+
+  it("la retención del sábado en la noche se paga en ESA semana, no en la siguiente (IGC51I)", () => {
+    const recepciones = ret("2026-11-08T01:30:00+00:00");   // sábado 7-nov, 8:30 p.m. en Colombia
+    const sem = (desde: string, hasta: string) =>
+      nominaSemana({ ...base, desde, hasta, contratos: [C9], recepciones, pagos: [], eventos: [] });
+    const esa = sem("2026-11-02", "2026-11-08");
+    expect(esa[0].retenciones).toBe(1);
+    expect(esa[0].renglones[0].fecha).toBe("2026-11-07");
+    expect(sem("2026-11-09", "2026-11-15")).toHaveLength(0);
+  });
+
+  it("la retención cubre lo que el cliente PAGÓ en su semana, no lo que se confirmó en ella (IGC53I)", () => {
+    // Pagó su semana el viernes 6-nov, se confirmó el lunes 9 con esa semana ya cerrada; la retuvieron el 12.
+    const n = nominaSemana({
+      ...base, desde: "2026-11-09", hasta: "2026-11-15", contratos: [C9],
+      pagos: [pagoId("p1", "2026-11-06", "2026-11-09T15:00:00Z")],
+      recepciones: ret("2026-11-12T15:00:00Z"),
+      eventos: [ev(6, "2026-11-09", "p1")],
+      semanaCerrada: (_, l) => l <= "2026-11-02",
+    });
+    expect(n[0].ciclosATiempo).toBe(1);
+    expect(n[0].retenciones).toBe(1);
+    expect(n[0].total).toBe(VALOR_CICLO + VALOR_RETENCION);
+  });
+
+  it("lo que pagó en la semana de la retención para recuperarla no se paga aparte, aunque se confirme después", () => {
+    const C10: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-10-26" };   // debía la semana del 26-oct
+    const args = {
+      ...base, contratos: [C10],
+      pagos: [pagoId("p2", "2026-11-07", "2026-11-09T15:00:00Z")],
+      recepciones: ret("2026-11-03T15:00:00Z"),
+      eventos: [ev(6, "2026-11-09", "p2")],
+      semanaCerrada: (_: string | null, l: string) => l <= "2026-11-02",
+    };
+    expect(nominaSemana({ ...args, desde: "2026-11-02", hasta: "2026-11-08" })[0].total).toBe(VALOR_RETENCION);
+    expect(nominaSemana({ ...args, desde: "2026-11-09", hasta: "2026-11-15" })).toHaveLength(0);
+  });
+
+  it("la cuota del acuerdo de una retenida solo cuenta desde que se retuvo la moto (RML58H)", () => {
+    const susp: ContratoNomina = { ...CONTRATO, estado: "Suspendido", fecha_entrega: "2026-09-21" };
+    const convenios = [{ contrato_id: "ct1", cuota_por_periodo: 40000, numero_cuotas: 8, created_at: "2026-09-21T10:00:00Z" }];
+    const pagos: PagoNomina[] = [
+      { contrato_id: "ct1", fecha: "2026-11-17", created_at: "2026-11-17T15:00:00Z", estado: "Confirmado", aplicado_convenio: 40000 },
+      { contrato_id: "ct1", fecha: "2026-12-01", created_at: "2026-12-01T15:00:00Z", estado: "Confirmado", aplicado_convenio: 40000 },
+    ];
+    const sem = (desde: string, hasta: string, recepciones = ret("2026-11-25T15:00:00Z")) =>
+      nominaSemana({ ...base, desde, hasta, contratos: [susp], recepciones, convenios, pagos });
+    expect(sem("2026-11-16", "2026-11-22")).toHaveLength(0);              // el 17 todavía tenía la moto
+    const despues = sem("2026-11-30", "2026-12-06");
+    expect(despues[0].cuotasConvenio).toBe(1);
+    expect(despues[0].total).toBe(VALOR_ATRASADO);
+    // Sin registro de la retención se queda como antes: no hay con qué saber desde cuándo está retenida.
+    expect(sem("2026-11-16", "2026-11-22", [])[0].cuotasConvenio).toBe(1);
+  });
+
+  describe("las motos que no generaron pago dicen la verdad", () => {
+    const motivo = (o: Record<string, unknown>) => {
+      const r = nominaSemanaDetallada({ ...base, recepciones: [], pagos: [], contratos: [C9], ...o } as never);
+      return r.sinGestion.find(x => x.placa === "ABC12D");
+    };
+
+    it("pagó esta semana pero se confirmó con la semana cerrada: dice dónde se le paga (11 motos de Ariza)", () => {
+      const sg = motivo({
+        desde: "2026-11-02", hasta: "2026-11-08",
+        pagos: [pagoId("p1", "2026-11-06", "2026-11-09T15:00:00Z")],
+        eventos: [ev(6, "2026-11-09", "p1")],
+        semanaCerrada: (_: string | null, l: string) => l <= "2026-11-02",
+      });
+      expect(sg?.motivo).toBe("pago_otra_semana");
+      expect(sg?.detalle).toBe("Pagó el 6 de nov y se confirmó el 9 de nov: se le paga en la semana del 9 al 15 de nov");
+    });
+
+    it("pagó la semana pero la cuota del acuerdo la completó después: también lo dice (DQG97I)", () => {
+      const sg = motivo({
+        desde: "2026-11-02", hasta: "2026-11-08",
+        convenios: [{ contrato_id: "ct1", cuota_por_periodo: 60000, numero_cuotas: 16, created_at: "2026-10-26T00:00:00Z" }],
+        pagos: [
+          pagoId("p3", "2026-11-03", "2026-11-03T15:00:00Z"),
+          { contrato_id: "ct1", fecha: "2026-11-10", created_at: "2026-11-10T15:00:00Z", estado: "Confirmado", aplicado_convenio: 60000 },
+        ],
+        eventos: [ev(6, "2026-11-03", "p3")],
+      });
+      expect(sg?.motivo).toBe("pago_otra_semana");
+      expect(sg?.detalle).toBe("Pagó la semana el 3 de nov y la cuota del acuerdo el 10 de nov: se le paga en la semana del 9 al 15 de nov");
+    });
+
+    it("la semana ya estaba pagada por adelantado: no es «no pagó» (RLZ94H)", () => {
+      const sg = motivo({
+        desde: "2026-11-02", hasta: "2026-11-08",
+        contratos: [{ ...C9, cajas_pagadas: 6 }],
+        pagos: [pagoId("p4", "2026-10-30", "2026-10-30T15:00:00Z")],
+        eventos: [ev(6, "2026-10-30", "p4")],
+      });
+      expect(sg?.motivo).toBe("adelantada");
+      expect(sg?.detalle).toBe("Esta semana ya la tenía pagada: la pagó por adelantado el 30 de oct");
+    });
+
+    it("quincenal en una semana sin día de pago, y al día: no le tocaba pagar (IGC48I)", () => {
+      const quincenal: ContratoNomina = { ...CONTRATO, forma_pago: "Quincenal", dias_pago_mes: [3, 18], dia_pago: "", fecha_inicio_cajas: "2026-11-03", cajas_pagadas: 6 };
+      const sg = motivo({
+        desde: "2026-11-09", hasta: "2026-11-15", contratos: [quincenal],
+        pagos: [pagoId("p5", "2026-11-03", "2026-11-03T15:00:00Z", { aplicado_tarifa: 435000 })],
+        eventos: [ev(6, "2026-11-03", "p5")],
+      });
+      expect(sg?.motivo).toBe("no_tocaba");
+      expect(sg?.detalle).toBe("Quincenal: esta semana no le tocaba pagar");
+    });
+
+    it("su primer pago (prorrateo) se completó antes de que existiera el registro: no lo cuenta como pendiente (IGC48I)", () => {
+      const quincenal: ContratoNomina = {
+        ...CONTRATO, forma_pago: "Quincenal", dias_pago_mes: [3, 18], dia_pago: "", fecha_inicio_cajas: "2026-11-03",
+        es_migrado: false, cajas_previas: 0, cajas_pagadas: 1, prorrateo_total: 47000, prorrateo_pagado: 47000,
+      };
+      const sg = motivo({ desde: "2026-11-09", hasta: "2026-11-15", contratos: [quincenal], eventos: [] });
+      expect(sg?.motivo).toBe("no_tocaba");
+      // Y si el prorrateo de verdad sigue sin pagarse, no es "no le tocaba": sí debía.
+      const debe = motivo({ desde: "2026-11-09", hasta: "2026-11-15", contratos: [{ ...quincenal, prorrateo_pagado: 0 }], eventos: [] });
+      expect(debe?.motivo).toBe("no_pago");
+    });
+
+    it("la que de verdad no pagó sigue diciendo «No pagó su semana»", () => {
+      expect(motivo({ desde: "2026-11-09", hasta: "2026-11-15", contratos: [{ ...C9, cajas_pagadas: 6 }], eventos: [ev(6, "2026-11-02")] })?.motivo).toBe("no_pago");
+    });
+
+    it("«Retenida» solo desde la semana en que la retuvieron: antes todavía tenía la moto", () => {
+      const susp: ContratoNomina = { ...C9, estado: "Suspendido", fecha_entrega: "2026-09-21" };
+      const recepciones = ret("2026-11-25T15:00:00Z");
+      expect(motivo({ desde: "2026-11-16", hasta: "2026-11-22", contratos: [susp], recepciones, eventos: [] })?.motivo).toBe("no_pago");
+      expect(motivo({ desde: "2026-11-30", hasta: "2026-12-06", contratos: [susp], recepciones, eventos: [] })?.motivo).toBe("retenida_sin_abono");
+    });
   });
 });

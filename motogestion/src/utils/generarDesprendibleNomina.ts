@@ -90,6 +90,7 @@ export function htmlDesprendibleNomina(
   .conteo { font-size: 11.5px; color: #475569; margin: -12px 0 16px; }
   .no-pago-titulo { font-size: 12.5px; font-weight: bold; color: #92400e; margin: 4px 0 6px; }
   .motivo { background: #fffbeb; font-size: 11px; font-weight: bold; color: #92400e; text-transform: uppercase; }
+  .detalle { font-size: 10.5px; color: #64748b; text-transform: none; margin-top: 1px; }
   .regla { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #334155; line-height: 1.55; margin-bottom: 10px; }
   .cierre { page-break-inside: avoid; break-inside: avoid; }
   .firmas { display: flex; gap: 40px; margin-top: 40px; }
@@ -145,7 +146,7 @@ export function htmlDesprendibleNomina(
               <tr>
                 <td class="placa">${f.placa}</td>
                 <td style="color:#64748b;font-size:10.5px">${f.grupo}</td>
-                <td style="text-transform:uppercase">${f.cliente}</td>
+                <td style="text-transform:uppercase">${f.cliente}${f.detalle ? `<div class="detalle">${f.detalle}</div>` : ""}</td>
                 <td class="num" style="color:#94a3b8">${cop(0)}</td>
               </tr>`).join("");
         }).join("")

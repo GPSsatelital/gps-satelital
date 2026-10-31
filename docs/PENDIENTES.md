@@ -18,7 +18,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - ✅ **Mig 210 (ARNOL, IEW93I) corrida y verificada** (31-oct): 8 semanas, $6.000 en curso, ahorro $214.000, debe 0,
 >   próximo pago lunes 2-nov; rastro «Semana devuelta» en la auditoría. Ariza +$18.750.
 > - ✅ Informes en lenguaje sencillo para BRANDON y ARIZA (semanas del 12 y del 19-oct), moto por moto, en el escritorio
->   del dueño (llevan nombres de clientes: no van al repo). Generador en %TEMP%\nomina-informes\hacer.py.
+>   del dueño (llevan nombres de clientes: no van al repo). Generador y copia de los PDF en `docs/informes-nomina/` (carpeta ignorada por git).
 > - 🔲 `cajas_llenadas.fecha` también se guarda con el día de Londres (`current_date` en UTC): lo que se confirma de
 >   7 p.m. a medianoche queda con el día siguiente. Solo pesa cuando la semana del pago ya está cerrada. Medir antes.
 > - 🔲 La caja diaria no tiene cierres en la app desde el 13-ago (sin arqueo no se pudo comprobar el efectivo de ARNOL).

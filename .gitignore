@@ -46,6 +46,8 @@ docs/manual-rodado/img/
 docs/manual-rodado/*.pdf
 # Tarjetas promocionales: llevan los teléfonos del equipo
 docs/tarjetas/
+# Informes de nómina explicados (31-oct): llevan nombres de clientes. El generador vive acá; el PDF va al escritorio.
+docs/informes-nomina/
 
 # Manual de la nómina nueva (27-oct): capturas con datos de clientes.
 docs/manual-nomina/img/

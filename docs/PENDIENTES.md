@@ -15,8 +15,11 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   retenida solo desde la retención · etiquetas que dicen la verdad («pagó el X, se le paga en la semana del Y»,
 >   «pagada por adelantado», «quincenal: no le tocaba»). Ariza +$15.000 (semana del 26-oct −$66.250: sus 4
 >   retenciones del domingo 25 en la noche pasan a la del 19, que se paga por fuera). Brandon y Lumar −$7.500, Alvarez −$3.750.
-> - 🔲 🧑 **Mig 210 (ARNOL, IEW93I): falta que el dueño la corra** (el SQL se le pegó en el chat). Después verificar:
->   8 semanas, $6.000 en curso, ahorro $214.000, semanas 4 a 8 llenadas el 7, 7, 15, 22 y 29-oct. Ariza +$18.750.
+> - ✅ **Mig 210 (ARNOL, IEW93I) corrida y verificada** (31-oct): 8 semanas, $6.000 en curso, ahorro $214.000, debe 0,
+>   próximo pago lunes 2-nov; rastro «Semana devuelta» en la auditoría. Ariza +$18.750.
+> - ✅ Informes en lenguaje sencillo para BRANDON y ARIZA (semanas del 12 y del 19-oct), moto por moto, en el escritorio
+>   del dueño (llevan nombres de clientes: no van al repo). Generador en %TEMP%
+omina-informes\hacer.py.
 > - 🔲 `cajas_llenadas.fecha` también se guarda con el día de Londres (`current_date` en UTC): lo que se confirma de
 >   7 p.m. a medianoche queda con el día siguiente. Solo pesa cuando la semana del pago ya está cerrada. Medir antes.
 > - 🔲 La caja diaria no tiene cierres en la app desde el 13-ago (sin arqueo no se pudo comprobar el efectivo de ARNOL).

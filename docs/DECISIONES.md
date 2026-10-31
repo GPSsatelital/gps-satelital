@@ -994,3 +994,5 @@ retenciones del sábado 25 pasan a la semana del 19, que se paga por fuera; hay 
 YAL58H (Lumar, semana del 28-sep): una cuota del 30-sep, el día en que le devolvieron la moto tras una retención
 anterior, ya no cuenta ($3.750); no hay registro de cuándo termina una retención para decidirlo mejor.
 
+
+**Corrección a D-060 (31-oct, misma tarde):** el 25-oct fue **domingo**, no sábado. Las 4 retenciones de Ariza fueron el domingo 25 entre las 7 y las 9:30 de la noche: en hora de Londres ya era el lunes 26, por eso saltaban a la semana siguiente. La prueba automática se corrigió para usar un domingo en la noche (con un sábado el error no se veía).

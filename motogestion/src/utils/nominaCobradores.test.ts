@@ -1033,19 +1033,19 @@ describe("revisión de la nómina de CARLOS ARIZA (31-oct-2026, D-060)", () => {
   const base = { motos: MOTOS, clientesPorId: CLIENTES };
 
   it("diaColombia: la hora de Londres se pasa al día de Colombia (UTC-5)", () => {
-    expect(diaColombia("2026-10-26T00:14:00+00:00")).toBe("2026-10-25");   // sábado 25, 7:14 p.m. aquí
+    expect(diaColombia("2026-10-26T00:14:00+00:00")).toBe("2026-10-25");   // domingo 25, 7:14 p.m. aquí
     expect(diaColombia("2026-10-26T05:00:00Z")).toBe("2026-10-26");
     expect(diaColombia("2026-10-25")).toBe("2026-10-25");
     expect(diaColombia("2026-10-25T19:14:00")).toBe("2026-10-25");          // sin zona: ya es hora de aquí
   });
 
-  it("la retención del sábado en la noche se paga en ESA semana, no en la siguiente (IGC51I)", () => {
-    const recepciones = ret("2026-11-08T01:30:00+00:00");   // sábado 7-nov, 8:30 p.m. en Colombia
+  it("la retención del domingo en la noche se paga en ESA semana, no en la siguiente (IGC51I)", () => {
+    const recepciones = ret("2026-11-09T01:30:00+00:00");   // domingo 8-nov, 8:30 p.m. en Colombia (en Londres ya es lunes 9)
     const sem = (desde: string, hasta: string) =>
       nominaSemana({ ...base, desde, hasta, contratos: [C9], recepciones, pagos: [], eventos: [] });
     const esa = sem("2026-11-02", "2026-11-08");
     expect(esa[0].retenciones).toBe(1);
-    expect(esa[0].renglones[0].fecha).toBe("2026-11-07");
+    expect(esa[0].renglones[0].fecha).toBe("2026-11-08");
     expect(sem("2026-11-09", "2026-11-15")).toHaveLength(0);
   });
 

@@ -360,7 +360,7 @@ const dia = (iso: string) => iso.slice(0, 10);
  * atrás todo el año, sin horario de verano.
  *
  * 🔴 31-oct-2026 (D-060): la retención se fechaba con el día de Londres. Las cuatro que hizo CARLOS
- * ARIZA el sábado 25-oct entre las 7 y las 9:30 de la noche quedaban el domingo 26 y se pagaban en la
+ * ARIZA el domingo 25-oct entre las 7 y las 9:30 de la noche quedaban el lunes 26 y se pagaban en la
  * semana siguiente; las del domingo 11-oct en la noche, igual.
  * Si el texto no trae zona horaria ya es hora de aquí, y se toma su día tal cual.
  */

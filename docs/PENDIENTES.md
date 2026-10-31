@@ -14,7 +14,7 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - ✅ Subido: retenciones con el día de Colombia · la retención cubre lo que el cliente pagó en su semana · cuota de
 >   retenida solo desde la retención · etiquetas que dicen la verdad («pagó el X, se le paga en la semana del Y»,
 >   «pagada por adelantado», «quincenal: no le tocaba»). Ariza +$15.000 (semana del 26-oct −$66.250: sus 4
->   retenciones del sábado 25 pasan a la del 19, que se paga por fuera). Brandon y Lumar −$7.500, Alvarez −$3.750.
+>   retenciones del domingo 25 en la noche pasan a la del 19, que se paga por fuera). Brandon y Lumar −$7.500, Alvarez −$3.750.
 > - 🔲 🧑 **Mig 210 (ARNOL, IEW93I): falta que el dueño la corra** (el SQL se le pegó en el chat). Después verificar:
 >   8 semanas, $6.000 en curso, ahorro $214.000, semanas 4 a 8 llenadas el 7, 7, 15, 22 y 29-oct. Ariza +$18.750.
 > - 🔲 `cajas_llenadas.fecha` también se guarda con el día de Londres (`current_date` en UTC): lo que se confirma de

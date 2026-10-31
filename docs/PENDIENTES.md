@@ -8,7 +8,23 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **28-oct-2026**.
+- Última revisión: **31-oct-2026**.
+
+> ▶️ **AL ARRANCAR (31-oct) — nómina de BRANDON revisada moto por moto (semanas del 12 y del 19-oct).**
+> - ✅ **Error 1 corregido (mig 209 corrida, D-058):** antes del 26-oct la nómina usaba el día en que se CONFIRMÓ el
+>   pago. Se completó qué pago llenó cada semana (2.237): ahora cuenta el día en que pagó el cliente. Brandon $387.500 →
+>   $395.000 (12-oct) y $466.250 → $503.750 (19-oct). Todos, del 24-ago al 25-oct: +$465.000. 🧑 Esas semanas se pagaron
+>   por fuera: lo que dice la app ahora menos lo pagado es lo que falta (sin sumarle el Excel del 30-oct).
+> - 🔲 **Error 2, sin arreglar: pagos anotados en desorden.** Si se anota primero una transferencia nueva, esa paga la
+>   semana vieja y la vieja cae a saldo a favor. PEDRO (IEW90I) pagó las dos semanas a tiempo (comprobantes del Nequi
+>   COSTA: $100.000 el 14 y $102.000 el 15; $70.000 + $75.000 el 21 y $62.000 el 23) pero se anotaron el 23-24 al revés:
+>   la app le da $3.750 + $3.750 en vez de $7.500 + $7.500. Esto puede pasar en la semana del 26-oct, que se cierra el
+>   miércoles 4-nov. Falta: plan + decisión del dueño.
+> - Revisado y BIEN: DPU48I (le faltan 2 cuotas del acuerdo: regla del paquete; solo la etiqueta dice «no pagó»),
+>   IEW92I (la semana del 12-oct se pagó tarde con plata que sobró de un pago viejo), RLT66H (la del 19-oct la pagó el
+>   28), RMY88H (salen las 4 semanas: la 4ª en la del 26-oct). DQL81I y DQG87I: arreglados el 30-oct (última cuota).
+> - 🔲 **IEW92I:** una transferencia del 7-oct se anotó el 20, después de firmar su acuerdo (17-oct): el acuerdo pudo
+>   salir $202.000 más grande (mismo caso de MEDARDO).
 
 > ▶️ **AL ARRANCAR (30-oct) — nómina: la última cuota del acuerdo ya cuenta.**
 > - ✅ **Nómina frenaba semanas pagadas** (lo levantó CARLOS ARIZA con su lista de motos): cuando el acuerdo

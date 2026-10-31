@@ -913,3 +913,22 @@ día en que pagó el cliente. $108.750 de menos solo esa semana. Los otros 69 er
 5. Cierran y registran el pago ADMIN y ADMIN_PRINCIPAL (como hoy).
 **Dónde vive:** `nominaCobradores.ts` (`fechaReal`, `ubicar`, `semanaCerrada`, `INICIO_CORTES_NOMINA`) · mig 207. Los
 puntos 3 y 4 (precorte, corte del miércoles, pago quincenal) se construyen aparte.
+
+### D-058 · 31-oct-2026 · Nómina: también las semanas de antes del 26-oct se cuentan con el día en que pagó el cliente
+**Decidió:** el dueño, al revisar la nómina de BRANDON (semanas del 12 y del 19-oct): *«sí corrígelo»*.
+**Por qué:** la mig 207 (D-057) guardó qué pago llenó cada semana solo desde el 26-oct. Para las de antes, la nómina
+seguía usando el día en que se CONFIRMÓ el pago: una transferencia pagada dentro de su semana y confirmada después salía
+atrasada ($3.750 en vez de $7.500). Ej.: DPU42I pagó el 14 y se confirmó el 21; IEW83I pagó el 15 y se confirmó el 20;
+RMY88H pagó el 16 y se confirmó el 19. Verificado semana por semana con la regla del dueño: si el pago primero completó
+una semana anterior, esa sigue atrasada (RMY88H: su semana del 5-oct sigue en $3.750).
+**Qué se decidió:** completar el pago de las semanas llenadas antes del 26-oct con el mismo método de la mig 207 (el pago
+anotado en el mismo instante o el último anotado antes). Si un pago aparece en dos momentos separados (más de 10 min),
+solo cuenta el primero. Cada una queda marcada (`pago_deducido`) y se puede deshacer.
+**Efecto:** 2.237 semanas corregidas; 758 siguen sin pago (629 del corte de migración, 124 adelantadas con la base, 5
+dudosas) y ninguna le paga al supervisor. Del 24-ago al 25-oct: Ariza +$161.250 · Alvarez +$105.000 · Lumar +$101.250
+· Brandon +$97.500 (+$465.000). Brandon: semana del 12-oct $387.500 → $395.000, del 19-oct $466.250 → $503.750 (visto
+en la pantalla). La semana del 26-oct no cambia.
+**Dónde vive:** mig 209 (`cajas_llenadas.pago_deducido`). El código de la nómina no cambió.
+**Ojo:** esas semanas se pagaron por fuera. Lo que dice la app ahora menos lo que se le pagó a cada uno es lo que falta;
+no sumarle encima el Excel del 30-oct («lo que faltó antes del 26-oct»), que ya incluía parte de esta misma causa.
+

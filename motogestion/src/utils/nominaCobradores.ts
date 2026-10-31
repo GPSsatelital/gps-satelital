@@ -1,4 +1,5 @@
 import { periodosConvenioCorridos, proximoDiaPago, valorPeriodoReal, type ContratoCiclo } from "./cicloPago";
+import { rastroSaldoFavor, type PagoSaldo } from "./saldoFavor";
 
 // LA NÓMINA DE LOS COBRADORES — la regla del dueño, cerrada el 22-ago pregunta por pregunta
 // (ver memoria regla-nomina-cobradores). Se paga por MOTO GESTIONADA, por ciclo del cliente:
@@ -133,6 +134,9 @@ export type ConvenioNomina = {
   fecha_primera_cuota?: string | null;
   /** El total pactado: al llegar a él cuentan TODAS las cuotas, también la última más chica. */
   deuda_total?: number | null;
+  /** Qué financió el acuerdo de cada semana (mig 116). Con eso se sabe cuánto de esa semana sí
+   *  fue plata — lo necesitan los pagos anotados en desorden (ver `semanasEnOrdenDePago`). */
+  partitura?: Array<{ tipo: string; ref?: string | number | null; monto: number }> | null;
   created_at: string;
 };
 
@@ -227,6 +231,8 @@ export type ContratoNomina = ContratoCiclo & {
   cliente_id: string;
   moto_id: string | null;
   estado: string;
+  /** El saldo a favor que traía del cuaderno (empalme): no tiene un pago detrás con fecha. */
+  saldo_favor_apertura?: number | null;
 };
 
 export type PagoNomina = {
@@ -251,6 +257,9 @@ export type PagoNomina = {
   aplicado_ahorro?: number | null;
   aplicado_prorrateo?: number | null;
   aplicado_convenio?: number | null;
+  /** Para seguir el saldo a favor hasta el pago que lo generó (pagos anotados en desorden). */
+  valor?: number;
+  aplicado_saldo_favor?: number | null;
 };
 
 export type MotoNomina = { id: string; placa: string; subadmin_id: string | null; grupo?: string | null };
@@ -330,6 +339,86 @@ export function lunesDe(iso: string): string {
   const retro = (d.getDay() + 6) % 7;             // lunes=0 ... domingo=6
   d.setDate(d.getDate() - retro);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * LOS PAGOS ANOTADOS EN DESORDEN (31-oct-2026, D-059, aprobado por el dueño: «sí, las dos partes»).
+ *
+ * 🔴 EL CASO: PEDRO FLOREZ (IEW90I) pagó su semana del 12-oct el 14 y el 15, y la del 19-oct el 21 y
+ * el 23 (comprobantes del Nequi). La oficina los anotó el 23 y 24 al revés: primero los nuevos. El
+ * motor llena siempre la semana más vieja con lo que se confirma primero, así que la plata del 21 y
+ * el 23 llenó la semana del 12, y la del 14 y el 15 cayó a saldo a favor (un pago solo llena las
+ * semanas que ya se cobraban a su fecha, mig 119) hasta que se aplicó el 27. La nómina veía las dos
+ * semanas atrasadas ($3.750 + $3.750) cuando el cliente pagó todo a tiempo ($7.500 + $7.500).
+ *
+ * QUÉ HACE: en un contrato con pagos anotados en desorden, cuenta la plata de las semanas en el ORDEN
+ * DE LOS DÍAS EN QUE PAGÓ EL CLIENTE (D-057) y dice, de cada semana llenada con plata, qué día el
+ * cliente terminó de pagarla. La regla del dueño se mantiene: la plata primero completa la semana más
+ * vieja que falte. El saldo a favor que se aplicó cuenta con el día del pago que lo generó; el del
+ * cuaderno (no tiene pago detrás) con el día en que se aplicó, como siempre.
+ *
+ * CÓMO: se ancla en lo que se sabe seguro HOY — semanas pagadas y lo que lleva la semana en curso —
+ * y se recorre la plata del día más nuevo al más viejo: los últimos pesos son de la semana en curso,
+ * los anteriores de la última semana llena, y así hacia atrás. Las semanas que cubrió un acuerdo solo
+ * cuentan la parte que sí fue plata (lo que dice su partitura). Sin desorden devuelve null y la
+ * nómina sigue como siempre.
+ */
+export function semanasEnOrdenDePago(
+  c: ContratoNomina,
+  pagosC: PagoNomina[],
+  eventosC: EventoCaja[],
+  partituras: Array<NonNullable<ConvenioNomina["partitura"]>>,
+): Map<number, string> | null {
+  const confirmados = pagosC.filter(p => p.estado === "Confirmado" && !!p.id);
+  const reales = confirmados.filter(p => p.tipo_registro !== "saldo_favor");
+  // Desorden = un pago que cayó a saldo a favor cuando ANTES se había anotado uno más nuevo que sí llenó semana.
+  const huboDesorden = reales.some(p =>
+    (p.aplicado_saldo_favor ?? 0) > 0
+    && reales.some(q => q.created_at < p.created_at && dia(q.fecha) > dia(p.fecha) && (q.aplicado_tarifa ?? 0) > 0));
+  if (!huboDesorden) return null;
+
+  const rastro = rastroSaldoFavor(c, confirmados.map(p => ({ ...p, id: p.id!, valor: p.valor ?? 0 }) as PagoSaldo));
+  const aportes: Array<{ f: string; m: number; orden: string }> = [];
+  for (const p of confirmados) {
+    const t = p.aplicado_tarifa ?? 0;
+    if (t <= 0) continue;
+    if (p.tipo_registro !== "saldo_favor") { aportes.push({ f: dia(p.fecha), m: t, orden: p.created_at }); continue; }
+    let resto = t;
+    for (const o of rastro.usos[p.id!]?.vieneDe ?? []) {
+      if (resto <= 0) break;
+      const toma = Math.min(resto, o.monto);
+      aportes.push({ f: o.fecha ? dia(o.fecha) : dia(p.fecha), m: toma, orden: p.created_at });
+      resto -= toma;
+    }
+    if (resto > 0) aportes.push({ f: dia(p.fecha), m: resto, orden: p.created_at });
+  }
+  aportes.sort((a, b) => a.f.localeCompare(b.f) || a.orden.localeCompare(b.orden));
+
+  const valor = valorPeriodoReal(c);
+  if (valor <= 0) return null;
+  const financiado = new Map<number, number>();
+  for (const pt of partituras.flat()) {
+    if (pt.tipo !== "semana" || pt.ref == null) continue;
+    const n = Number(pt.ref);
+    financiado.set(n, (financiado.get(n) ?? 0) + Number(pt.monto ?? 0));
+  }
+  const deConvenio = new Set(eventosC.filter(e => e.fuente === "convenio").map(e => e.caja_numero));
+  const plataDe = (n: number) => deConvenio.has(n) ? Math.max(valor - (financiado.get(n) ?? valor), 0) : valor;
+
+  const pagadas = c.cajas_pagadas ?? 0;
+  const out = new Map<number, string>();
+  for (const e of eventosC) {
+    if (e.fuente !== "pago" || e.caja_numero <= 0 || e.caja_numero > pagadas) continue;
+    // Cuánta plata vino DESPUÉS de completar esta semana: lo de la semana en curso y las semanas siguientes.
+    let despues = c.caja_actual_pagado ?? 0;
+    for (let n = e.caja_numero + 1; n <= pagadas; n++) despues += plataDe(n);
+    let acum = 0;
+    for (let j = aportes.length - 1; j >= 0; j--) {
+      acum += aportes[j].m;
+      if (acum > despues) { out.set(e.caja_numero, aportes[j].f); break; }
+    }
+  }
+  return out;
 }
 
 /**
@@ -414,6 +503,19 @@ export function nominaSemanaDetallada(opts: {
   if (eventos) for (const e of eventos) {
     if (!eventosPorContrato.has(e.contrato_id)) eventosPorContrato.set(e.contrato_id, []);
     eventosPorContrato.get(e.contrato_id)!.push(e);
+  }
+  // PAGOS ANOTADOS EN DESORDEN (D-059): por contrato, el día en que el cliente terminó de pagar cada
+  // semana contando sus pagos por la fecha en que pagó. Se calcula solo para quien lo necesita.
+  const pagosPorContrato = new Map<string, PagoNomina[]>();
+  for (const p of pagos) {
+    if (!pagosPorContrato.has(p.contrato_id)) pagosPorContrato.set(p.contrato_id, []);
+    pagosPorContrato.get(p.contrato_id)!.push(p);
+  }
+  const partiturasPorContrato = new Map<string, Array<NonNullable<ConvenioNomina["partitura"]>>>();
+  for (const cv of convenios) {
+    if (!cv.partitura?.length) continue;
+    if (!partiturasPorContrato.has(cv.contrato_id)) partiturasPorContrato.set(cv.contrato_id, []);
+    partiturasPorContrato.get(cv.contrato_id)!.push(cv.partitura);
   }
 
   // ── EL PAQUETE: de cada convenio se precalcula la fecha en que quedó cubierta cada cuota,
@@ -509,12 +611,15 @@ export function nominaSemanaDetallada(opts: {
 
     // ── MODO EXACTO (mig 112): las anotaciones del vigía dicen qué caja se llenó y cuándo ──
     if (eventos) {
+      const enOrden = semanasEnOrdenDePago(c, pagosPorContrato.get(c.id) ?? [], eventosPorContrato.get(c.id) ?? [], partiturasPorContrato.get(c.id) ?? []);
       for (const ev of eventosPorContrato.get(c.id) ?? []) {
         // Las cajas marcadas por un CONVENIO no se pagan por la anotación: entró papel, no
         // plata. Su plata real llega en las cuotas — que son la pata-convenio de los paquetes
         // semanales, no renglones propios (regla del paquete, 23-ago).
         if (ev.fuente === "convenio") continue;
-        const fEv = fechaReal(ev);
+        // Con pagos anotados en desorden manda el día en que el cliente terminó de pagar ESA semana
+        // (en orden de sus fechas); si no, el del pago que la llenó. Dónde se paga no cambia (`ubicar`).
+        const fEv = (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev);
         if (ev.caja_numero === 0) {
           const fP = ubicar(fEv, ev.fecha, moto.subadmin_id);
           if (fP < desde || fP > hasta) continue;

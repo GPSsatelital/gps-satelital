@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nominaSemana, nominaSemanaDetallada, exoneradasAlDia, rodadasDesdeRegistros, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
+import { nominaSemana, nominaSemanaDetallada, semanasEnOrdenDePago, exoneradasAlDia, rodadasDesdeRegistros, lunesDe, resumirRenglones, totalesPorGrupo, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, type ContratoNomina, type PagoNomina , vigiaCubre, VALOR_VISITA, VALOR_REFERIDO } from "./nominaCobradores";
 
 // LA NÓMINA SE PAGA EN PLATA REAL cada semana. Estas pruebas son la regla del dueño
 // (22-ago, memoria regla-nomina-cobradores) convertida en cifras.
@@ -908,5 +908,116 @@ describe("la semana se cuenta con el día en que PAGÓ el cliente, no el de la c
     const pagos = [pagoDe("p3", "2026-11-06", "2026-11-09")];
     const n = semana("2026-11-09", "2026-11-15", pagos, [{ caja_numero: 6, fecha: "2026-11-09" }]);
     expect(n[0].ciclosAtrasados).toBe(1);
+  });
+});
+
+describe("pagos anotados en desorden: cada semana con el día en que el cliente la pagó (31-oct-2026, D-059)", () => {
+  // La caja 6 se exige el lunes 2-nov, la 7 el 9-nov, la 8 el 16-nov y la 9 el 23-nov.
+  const base: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-11-02" };
+  const p = (id: string, fecha: string, anotado: string, tarifa: number, extra: Partial<PagoNomina> = {}): PagoNomina => ({
+    id, contrato_id: "ct1", fecha, created_at: anotado, estado: "Confirmado", valor: tarifa, aplicado_tarifa: tarifa, ...extra,
+  });
+  // Aplicar el saldo a favor es un movimiento aparte que gasta lo guardado (aplicado_saldo_favor negativo).
+  const aplicaSaldo = (id: string, fecha: string, monto: number): PagoNomina => ({
+    id, contrato_id: "ct1", fecha, created_at: fecha + "T15:00:00Z", estado: "Confirmado", tipo_registro: "saldo_favor",
+    valor: monto, aplicado_tarifa: monto, aplicado_saldo_favor: -monto,
+  });
+  const ev = (caja: number, fecha: string, pagoId: string | null, fuente: "pago" | "convenio" = "pago") =>
+    ({ contrato_id: "ct1", caja_numero: caja, fecha, fuente, pago_id: pagoId });
+  const semana = (desde: string, hasta: string, contrato: ContratoNomina, pagos: PagoNomina[], eventos: ReturnType<typeof ev>[]) =>
+    nominaSemana({ desde, hasta, contratos: [contrato], motos: MOTOS, recepciones: [], clientesPorId: CLIENTES, pagos, eventos });
+
+  it("caso PEDRO (IEW90I): se anotó primero el pago nuevo → las dos semanas salen A TIEMPO, cada una en la semana en que pagó", () => {
+    const c = { ...base, cajas_pagadas: 8 };
+    const pagos = [
+      p("p0", "2026-11-02", "2026-11-02T15:00:00Z", 202000),
+      p("pB", "2026-11-17", "2026-11-24T15:00:00Z", 202000),   // anotado PRIMERO: llenó la caja 7
+      p("pA", "2026-11-10", "2026-11-24T16:00:00Z", 0, { valor: 202000, aplicado_saldo_favor: 202000 }),   // cayó a saldo a favor
+      aplicaSaldo("pS", "2026-11-25", 202000),                  // ese saldo llenó la caja 8
+    ];
+    const eventos = [ev(6, "2026-11-02", "p0"), ev(7, "2026-11-24", "pB"), ev(8, "2026-11-25", "pS")];
+    const s9 = semana("2026-11-09", "2026-11-15", c, pagos, eventos);
+    expect(s9[0].ciclosATiempo).toBe(1);
+    expect(s9[0].ciclosAtrasados).toBe(0);
+    expect(s9[0].renglones[0].fecha).toBe("2026-11-10");
+    const s16 = semana("2026-11-16", "2026-11-22", c, pagos, eventos);
+    expect(s16[0].ciclosATiempo).toBe(1);
+    expect(s16[0].ciclosAtrasados).toBe(0);
+    expect(s16[0].renglones[0].fecha).toBe("2026-11-17");
+    // La semana en que se anotaron no las vuelve a pagar.
+    expect(semana("2026-11-23", "2026-11-29", c, pagos, eventos)).toHaveLength(0);
+  });
+
+  it("con las fechas reales de PEDRO (semanas ya cerradas): entran en la semana en que se anotaron, pero A TIEMPO", () => {
+    const c: ContratoNomina = { ...CONTRATO, fecha_inicio_cajas: "2026-10-05", cajas_pagadas: 8 };   // caja 7 = lun 12-oct, caja 8 = lun 19-oct
+    const pagos = [
+      p("p0", "2026-10-05", "2026-10-05T15:00:00Z", 202000),
+      // Lo de la semana del 19 (pagado el 21 y el 23) se anotó primero y llenó la del 12.
+      p("b1", "2026-10-21", "2026-10-23T15:00:00Z", 100000),
+      p("b2", "2026-10-23", "2026-10-24T10:00:00Z", 102000),
+      // Lo de la semana del 12 (pagado el 14 y el 15) se anotó después y cayó a saldo a favor.
+      p("a1", "2026-10-14", "2026-10-24T11:00:00Z", 0, { valor: 100000, aplicado_saldo_favor: 100000 }),
+      p("a2", "2026-10-15", "2026-10-24T11:05:00Z", 0, { valor: 102000, aplicado_saldo_favor: 102000 }),
+      aplicaSaldo("sf", "2026-10-27", 202000),
+    ];
+    const eventos = [ev(6, "2026-10-05", "p0"), ev(7, "2026-10-24", "b2"), ev(8, "2026-10-27", "sf")];
+    const s19 = semana("2026-10-19", "2026-10-25", c, pagos, eventos);
+    expect(s19[0].ciclosATiempo).toBe(1);
+    expect(s19[0].ciclosAtrasados).toBe(0);
+    expect(s19[0].total).toBe(VALOR_CICLO);
+    const s26 = semana("2026-10-26", "2026-11-01", c, pagos, eventos);
+    expect(s26[0].ciclosATiempo).toBe(1);
+    expect(s26[0].ciclosAtrasados).toBe(0);
+    expect(s26[0].total).toBe(VALOR_CICLO);
+  });
+
+  it("la regla del dueño se mantiene: la plata primero completa la semana vieja que falta, y esa sale ATRASADA", () => {
+    // Debía $102.000 de la caja 6. Pagó $202.000 el 10-nov y $202.000 el 17-nov, y se anotaron al revés.
+    const c = { ...base, cajas_pagadas: 7, caja_actual_pagado: 100000 };
+    const pagos = [
+      p("p0", "2026-11-03", "2026-11-03T15:00:00Z", 100000),
+      p("pB", "2026-11-17", "2026-11-18T10:00:00Z", 202000),   // anotado primero: completó la 6 y abonó a la 7
+      p("pA", "2026-11-10", "2026-11-18T11:00:00Z", 102000, { valor: 202000, aplicado_saldo_favor: 100000 }),   // completó la 7; el resto a saldo
+      aplicaSaldo("pS", "2026-11-24", 100000),                  // abono a la caja 8
+    ];
+    const eventos = [ev(6, "2026-11-18", "pB"), ev(7, "2026-11-18", "pA")];
+    // En el orden de los días: el 10-nov completó la 6 (tarde) y el 17-nov completó la 7 (tarde).
+    const s9 = semana("2026-11-09", "2026-11-15", c, pagos, eventos);
+    expect(s9[0].ciclosAtrasados).toBe(1);
+    expect(s9[0].ciclosATiempo).toBe(0);
+    expect(s9[0].renglones[0].fecha).toBe("2026-11-10");
+    const s16 = semana("2026-11-16", "2026-11-22", c, pagos, eventos);
+    expect(s16[0].ciclosAtrasados).toBe(1);
+    expect(s16[0].ciclosATiempo).toBe(0);
+  });
+
+  it("una semana que cubrió un acuerdo solo cuenta la parte que sí fue plata (su partitura)", () => {
+    // Caja 6: $102.000 el 2-nov y $100.000 el 3-nov (a tiempo). Caja 7: abonó $102.000 y el acuerdo
+    // financió $100.000. Cajas 8 y 9: pagadas el 17 y el 24-nov, anotadas al revés.
+    const c = { ...base, cajas_pagadas: 9 };
+    const pagos = [
+      p("a", "2026-11-02", "2026-11-02T15:00:00Z", 102000),
+      p("b", "2026-11-03", "2026-11-03T15:00:00Z", 100000),
+      p("x", "2026-11-11", "2026-11-11T15:00:00Z", 102000),
+      p("p9", "2026-11-24", "2026-11-24T15:00:00Z", 202000),
+      p("p8", "2026-11-17", "2026-11-24T16:00:00Z", 0, { valor: 202000, aplicado_saldo_favor: 202000 }),
+      aplicaSaldo("sf", "2026-11-25", 202000),
+    ];
+    const eventos = [ev(6, "2026-11-03", "b"), ev(7, "2026-11-12", null, "convenio"), ev(8, "2026-11-24", "p9"), ev(9, "2026-11-25", "sf")];
+    const m = semanasEnOrdenDePago(c, pagos, eventos, [[{ tipo: "semana", ref: 7, monto: 100000 }]]);
+    expect(m?.get(9)).toBe("2026-11-24");
+    expect(m?.get(8)).toBe("2026-11-17");
+    // Sin la partitura saldría el 11-nov (atrasada): contaría la semana del acuerdo como si no tuviera plata.
+    expect(m?.get(6)).toBe("2026-11-03");
+  });
+
+  it("sin pagos anotados en desorden no cambia nada", () => {
+    // Pagó de más el 2-nov; lo que sobró se guardó y se aplicó el 9-nov. Nada se anotó al revés.
+    const c = { ...base, cajas_pagadas: 7 };
+    const pagos = [
+      p("p0", "2026-11-02", "2026-11-02T15:00:00Z", 202000, { valor: 404000, aplicado_saldo_favor: 202000 }),
+      aplicaSaldo("pS", "2026-11-09", 202000),
+    ];
+    expect(semanasEnOrdenDePago(c, pagos, [ev(6, "2026-11-02", "p0"), ev(7, "2026-11-09", "pS")], [])).toBeNull();
   });
 });

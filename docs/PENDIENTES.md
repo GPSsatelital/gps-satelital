@@ -15,11 +15,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   pago. Se completó qué pago llenó cada semana (2.237): ahora cuenta el día en que pagó el cliente. Brandon $387.500 →
 >   $395.000 (12-oct) y $466.250 → $503.750 (19-oct). Todos, del 24-ago al 25-oct: +$465.000. 🧑 Esas semanas se pagaron
 >   por fuera: lo que dice la app ahora menos lo pagado es lo que falta (sin sumarle el Excel del 30-oct).
-> - 🔲 **Error 2, sin arreglar: pagos anotados en desorden.** Si se anota primero una transferencia nueva, esa paga la
->   semana vieja y la vieja cae a saldo a favor. PEDRO (IEW90I) pagó las dos semanas a tiempo (comprobantes del Nequi
->   COSTA: $100.000 el 14 y $102.000 el 15; $70.000 + $75.000 el 21 y $62.000 el 23) pero se anotaron el 23-24 al revés:
->   la app le da $3.750 + $3.750 en vez de $7.500 + $7.500. Esto puede pasar en la semana del 26-oct, que se cierra el
->   miércoles 4-nov. Falta: plan + decisión del dueño.
+> - ✅ **Error 2 corregido (D-059, sin migración):** pagos anotados en desorden. Al confirmar una transferencia sale un
+>   aviso si hay otra más vieja sin confirmar o si ya se confirmó un pago más nuevo; y la nómina cuenta la plata en el
+>   orden de los días en que pagó el cliente. PEDRO (IEW90I): $3.750 + $3.750 → $7.500 + $7.500. Todos: +$116.250 del
+>   24-ago al 1-nov, nadie baja; semana del 26-oct: Brandon +$7.500, Alvarez +$3.750, Lumar +$3.750.
 > - Revisado y BIEN: DPU48I (le faltan 2 cuotas del acuerdo: regla del paquete; solo la etiqueta dice «no pagó»),
 >   IEW92I (la semana del 12-oct se pagó tarde con plata que sobró de un pago viejo), RLT66H (la del 19-oct la pagó el
 >   28), RMY88H (salen las 4 semanas: la 4ª en la del 26-oct). DQL81I y DQG87I: arreglados el 30-oct (última cuota).

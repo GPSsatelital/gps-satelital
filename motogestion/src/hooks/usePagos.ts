@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabase";
 import { createTableStore } from "./createTableStore";
 import { normalizarRef } from "./useIngresosNoIdentificados";
 import { hoyISO } from "../utils/fecha";
+import { avisoOrdenDelPago } from "../utils/ordenDelPago";
 
 export type PagoEstado = "Confirmado" | "Pendiente" | "Rechazado";
 export type MetodoPago = "Efectivo" | "Transferencia";
@@ -413,11 +414,20 @@ export function usePagos() {
    * candado —que dejaría el mismo hueco abierto en la próxima pantalla que confirme pagos—, se
    * arregla en el embudo por donde pasan TODAS las confirmaciones.
    */
-  async function confirmarPago(id: string) {
+  async function confirmarPago(id: string): Promise<{ error: string | null; cancelado?: boolean }> {
     // Se lee de la BD, no del store: el store puede no tener la fila (ventana de días) y acá
     // no se puede adivinar — de una adivinanza salió justamente este defecto.
     const { data: pago } = await supabase.from("pagos")
-      .select("tipo_registro, entregado_caja").eq("id", id).single();
+      .select("contrato_id, fecha, valor, estado, metodo, tipo_registro, entregado_caja").eq("id", id).single();
+    // PAGOS EN DESORDEN (D-059): confirmar una transferencia antes que otra más vieja, o después de
+    // un pago más nuevo, manda la plata a saldo a favor. Se avisa antes; la secretaria decide.
+    if (pago?.metodo === "Transferencia" && pago.contrato_id) {
+      const { data: otros } = await supabase.from("pagos")
+        .select("id, fecha, valor, estado, metodo, tipo_registro, aplicado_tarifa")
+        .eq("contrato_id", pago.contrato_id).in("estado", ["Pendiente", "Confirmado"]);
+      const aviso = avisoOrdenDelPago({ ...pago, id }, otros ?? []);
+      if (aviso && !window.confirm(aviso)) return { error: null, cancelado: true };
+    }
     const campoSinEntregar = pago?.tipo_registro === "campo" && !pago.entregado_caja;
     const { error } = await supabase.from("pagos")
       .update(campoSinEntregar ? { estado: "Confirmado", entregado_caja: true } : { estado: "Confirmado" })

@@ -3758,8 +3758,8 @@ export default function CobrosView({ initialOpenForm = false, onNavigate, puedeH
                 {(!esCampo || p.entregado_caja) && puedeConfirmarPago && (
                   <button
                     onClick={async () => {
-                      const { error: errConf } = await confirmarPago(p.id);
-                      if (!errConf) {
+                      const { error: errConf, cancelado } = await confirmarPago(p.id);
+                      if (!errConf && !cancelado) {
                         // `p` es el pago de ANTES de confirmar: para el motor v2 trae ceros, porque
                         // la base reparte justo al confirmar. Se relee para que el recibo diga lo
                         // que quedó guardado y no lo que había antes.

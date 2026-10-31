@@ -932,3 +932,28 @@ en la pantalla). La semana del 26-oct no cambia.
 **Ojo:** esas semanas se pagaron por fuera. Lo que dice la app ahora menos lo que se le pagó a cada uno es lo que falta;
 no sumarle encima el Excel del 30-oct («lo que faltó antes del 26-oct»), que ya incluía parte de esta misma causa.
 
+### D-059 · 31-oct-2026 · Pagos anotados en desorden: aviso al confirmar y nómina en el orden en que pagó el cliente
+**Decidió:** el dueño, al revisar la nómina de BRANDON: *«sí, las dos partes»* y *«listo súbelo»*.
+**Por qué:** PEDRO FLOREZ (IEW90I) pagó su semana del 12-oct el 14 y el 15, y la del 19-oct el 21 y el 23 (comprobantes
+del Nequi COSTA). La oficina anotó primero las transferencias nuevas. El motor llena siempre la semana más vieja con lo
+que se confirma primero, y un pago solo llena las semanas que ya se cobraban a su fecha (mig 119): la plata del 14 y el
+15 cayó a saldo a favor, el cliente apareció debiendo hasta que se aplicó a mano el 27, y la nómina vio las dos semanas
+atrasadas ($3.750 + $3.750) cuando el cliente pagó todo a tiempo ($7.500 + $7.500).
+**Qué se decidió:**
+1. **Aviso al confirmar una transferencia** (no bloquea, la secretaria decide; el efectivo nunca lo muestra porque
+   siempre es de hoy). Caso A: hay otra transferencia más vieja sin confirmar del mismo contrato → «confirme primero la
+   más vieja». Caso B: ya se confirmó un pago más nuevo que llenó semanas → «esta plata puede quedar como saldo a favor;
+   aplíquelo desde el detalle del cliente». Si cancela, no se confirma ni se imprime recibo.
+2. **La nómina cuenta la plata en el orden de los días en que pagó el cliente**, solo en los contratos con pagos
+   anotados en desorden (un pago que cayó a saldo a favor después de que se anotó uno más nuevo). La regla del dueño se
+   mantiene: la plata primero completa la semana más vieja que falte. El saldo a favor aplicado cuenta con el día del
+   pago que lo generó; el del cuaderno, con el día en que se aplicó. Las semanas que cubrió un acuerdo cuentan solo la
+   parte que fue plata (su partitura). Dónde se paga cada renglón no cambia (semana cerrada → semana en que se anotó).
+**Efecto:** 29 contratos con desorden; 62 semanas cambian. Del 24-ago al 1-nov: Lumar +$41.250 · Alvarez +$37.500 ·
+Brandon +$18.750 · Ariza +$18.750 (+$116.250); nadie baja. Semana del 26-oct (la primera que se cierra en la app, el
+4-nov): Brandon +$7.500, Alvarez +$3.750, Lumar +$3.750. Brandon: 19-oct $503.750 → $507.500, 26-oct $588.750 →
+$596.250. Medido con el código real y visto en la pantalla.
+**Dónde vive:** `semanasEnOrdenDePago()` en `nominaCobradores.ts` · `avisoOrdenDelPago()` en `ordenDelPago.ts`, que
+llama `confirmarPago()` en `usePagos.ts` (el embudo de los 3 botones de Cartera y el de Caja Diaria). Sin migración.
+**Ojo:** lo de antes del 26-oct se pagó por fuera, igual que en D-058: lo que dice la app menos lo pagado es lo que falta.
+

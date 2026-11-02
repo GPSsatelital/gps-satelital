@@ -48,6 +48,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
 >   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las
 >   pantallas: preguntarle al dueño antes de arreglarlo.
+> - ⚠️ **Encontrado el 2-nov (ya pasaba antes): en modo NOCHE no se lee la frase de la tarjeta «Referido por»** del
+>   formulario del cliente («Solo se valida cuando al nuevo cliente se le entrega la moto.»). Tiene el color fijo
+>   `#4b5563`: sobre el verde oscuro da contraste 1,08 (medido; hace falta 4,5). De día da 6,88. Se arregla usando el
+>   color del tema, pero es visual: preguntarle al dueño antes.
 > - Mejoras propuestas el 2-nov, **sin aprobar**: (1) 🧑 IEW65I (contrato activo) y YAV73H (suspendido) no tienen
 >   supervisor: no le salen a nadie para cobrar · (2) hoja de entrega firmada por cada moto que cambia de supervisor
 >   (cuánto debe ese día; fuera del repo) · (3) en el desprendible, marcar las motos que tuvo solo parte de la semana ·

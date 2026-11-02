@@ -1314,7 +1314,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
         <div style={{ padding: 14, borderRadius: 16, background: "var(--ok-soft)", border: "1px solid var(--ok-line)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 10 }}>Referido por (opcional)</div>
-          <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
+          <div style={{ fontSize: 12, color: "var(--ok-ink)", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...estiloTarjeta, textTransform: "uppercase" }} readOnly={tarjetaDeLaApp} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
             <div><div style={labelStyle}>Cédula de quien refirió</div><input style={estiloTarjeta} readOnly={tarjetaDeLaApp} value={data.referido_por_cedula ?? ""} onChange={(e) => update({ referido_por_cedula: e.target.value })} /></div>

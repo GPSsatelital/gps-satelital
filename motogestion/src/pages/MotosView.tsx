@@ -151,7 +151,9 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   const [query, setQuery] = useState("");
   const [filtroEstado] = useState(initialFilter);
   const [filtroGrupo, setFiltroGrupo] = useState<"todos" | GrupoMoto>("todos");
-  const [soloSinAsignar, setSoloSinAsignar] = useState(false);
+  // Filtro por supervisor (2-nov-2026, solo ADMIN/AP): "todos", "sin" (sin supervisor) o el id de uno.
+  // El botón «Sin asignar» es este mismo filtro en "sin": los dos se prenden juntos.
+  const [filtroSupervisor, setFiltroSupervisor] = useState<string>("todos");
   // Las vendidas (mig 186) no salen en la lista; este filtro las muestra solas, para encontrarlas.
   const [verVendidas, setVerVendidas] = useState(false);
   // Moto sobre la que se abre la hoja rápida de asignación de sub-admin (solo ADMIN/AP).
@@ -255,15 +257,36 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
     observaciones: "",
   });
 
-  const filtered = useMemo(() => {
+  // Todos los filtros menos el del supervisor: de acá salen la lista y el número al lado de cada
+  // supervisor, para que ese número sea siempre las motos que aparecen al escogerlo.
+  const sinFiltroSupervisor = useMemo(() => {
     let list = filtrarMotos(motos).filter(m => [m.placa, m.marca, m.modelo, m.grupo].join(" ").toLowerCase().includes(query.toLowerCase()));
     if (filtroEstado === "retencion") list = list.filter(m => ["Fiscalia","Transito","Garantia"].includes(m.estado));
     else if (filtroEstado.startsWith("grupo:")) list = list.filter(m => m.grupo === filtroEstado.replace("grupo:", ""));
     else if (filtroEstado) list = list.filter(m => m.estado === filtroEstado);
     if (filtroGrupo !== "todos") list = list.filter(m => m.grupo === filtroGrupo);
-    if (soloSinAsignar) list = list.filter(m => !m.subadmin_id);
     return list.filter(m => verVendidas ? !enLaEmpresa(m) : enLaEmpresa(m));
-  }, [motos, query, filtroEstado, filtroGrupo, soloSinAsignar, filtrarMotos, verVendidas]);
+  }, [motos, query, filtroEstado, filtroGrupo, filtrarMotos, verVendidas]);
+  const filtered = useMemo(() => {
+    if (filtroSupervisor === "todos") return sinFiltroSupervisor;
+    if (filtroSupervisor === "sin") return sinFiltroSupervisor.filter(m => !m.subadmin_id);
+    return sinFiltroSupervisor.filter(m => m.subadmin_id === filtroSupervisor);
+  }, [sinFiltroSupervisor, filtroSupervisor]);
+  // Cada supervisor que tiene motos (no salen los que no tienen ninguna), con cuántas le salen con los
+  // demás filtros. El escogido se queda en la lista aunque con esos filtros le salgan 0.
+  const opcionesSupervisor = useMemo(() => {
+    const ids = new Set(filtrarMotos(motos).flatMap(m => m.subadmin_id ? [m.subadmin_id] : []));
+    if (filtroSupervisor !== "todos" && filtroSupervisor !== "sin") ids.add(filtroSupervisor);
+    const cuantas = new Map<string, number>();
+    for (const m of sinFiltroSupervisor) if (m.subadmin_id) cuantas.set(m.subadmin_id, (cuantas.get(m.subadmin_id) ?? 0) + 1);
+    return [...ids]
+      .map(id => {
+        const nombre = subadmins.find(s => s.id === id)?.nombre;
+        return { id, nombre: nombre ? nombre.toLocaleUpperCase("es") : "Sin nombre", n: cuantas.get(id) ?? 0 };
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [motos, filtrarMotos, sinFiltroSupervisor, filtroSupervisor, subadmins]);
+  const nSinSupervisor = useMemo(() => sinFiltroSupervisor.filter(m => !m.subadmin_id).length, [sinFiltroSupervisor]);
   const nVendidas = useMemo(() => filtrarMotos(motos).filter(m => !enLaEmpresa(m)).length, [motos, filtrarMotos]);
 
   // Nombre del sub-admin a cargo (solo ADMIN/AP puede leer estos nombres por RLS).
@@ -326,8 +349,11 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
   }, [contratos, clientes, subadmins]);
 
   const GRUPOS_FILTRO: ("todos" | GrupoMoto)[] = ["todos", "COSTA", "PRADERA", "RASTREADOR", "USADAS"];
+  // Se llama como {ChipsGrupo()} y no como <ChipsGrupo />: lleva una lista desplegable y, como
+  // componente nacido dentro de otro, se rearmaría en cada cambio y perdería el foco.
   function ChipsGrupo() {
     return (
+      <>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         {GRUPOS_FILTRO.map(g => (
           <Chip key={g} activo={filtroGrupo === g} onClick={() => setFiltroGrupo(g)}>
@@ -335,7 +361,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           </Chip>
         ))}
         {esAdminOSuperior && (
-          <Chip activo={soloSinAsignar} onClick={() => setSoloSinAsignar(v => !v)}>
+          <Chip activo={filtroSupervisor === "sin"} onClick={() => setFiltroSupervisor(v => v === "sin" ? "todos" : "sin")}>
             👤 Sin asignar
           </Chip>
         )}
@@ -349,6 +375,22 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           <Chip activo={false} onClick={() => setAbrirDescarga(true)}>⬇️ Descargar</Chip>
         )}
       </div>
+      {esAdminOSuperior && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <label htmlFor="filtro-supervisor" style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", flexShrink: 0 }}>Supervisor</label>
+          <select
+            id="filtro-supervisor"
+            value={filtroSupervisor}
+            onChange={e => setFiltroSupervisor(e.target.value)}
+            style={{ ...inputStyle, flex: 1, minWidth: 0, width: "auto", maxWidth: isMobile ? undefined : 360, height: 40, padding: "0 12px", fontSize: 13, cursor: "pointer" }}
+          >
+            <option value="todos">Todos los supervisores</option>
+            {opcionesSupervisor.map(o => <option key={o.id} value={o.id}>{`${o.nombre} · ${o.n}`}</option>)}
+            <option value="sin">{`Sin supervisor · ${nSinSupervisor}`}</option>
+          </select>
+        </div>
+      )}
+      </>
     );
   }
 
@@ -806,7 +848,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         ) : (
           <div>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 10 }} />
-            <ChipsGrupo />
+            {ChipsGrupo()}
             {filtered.length === 0
               ? <div style={{ ...card, textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>
               : (
@@ -849,7 +891,7 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
         <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
           <div style={{ ...card, flex: "1 1 0", minWidth: 0 }}>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por placa, modelo, grupo..." style={{ ...inputStyle, marginBottom: 14 }} />
-            <ChipsGrupo />
+            {ChipsGrupo()}
             {filtered.length === 0 && <div style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No hay motos.</div>}
             <div ref={listWrapRef} style={{ ...listaConScroll(false), gap: 6 }}>
               {filtered.map((moto) => {
@@ -1187,7 +1229,8 @@ export default function MotosView({ initialFilter = "", initialOpenForm = false,
           periodo={`Generado el ${hoyISO()}`}
           resumenFiltro={[
             filtroGrupo !== "todos" ? filtroGrupo : null,
-            soloSinAsignar ? "sin encargado" : null,
+            filtroSupervisor === "sin" ? "sin encargado"
+              : filtroSupervisor !== "todos" ? `encargado ${opcionesSupervisor.find(o => o.id === filtroSupervisor)?.nombre ?? ""}` : null,
             verVendidas ? "vendidas" : null,
             query.trim() ? `"${query.trim()}"` : null,
           ].filter(Boolean).join(" · ") || "toda la flota visible"}

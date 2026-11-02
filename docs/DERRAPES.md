@@ -506,3 +506,19 @@ input syntax for type uuid». La migración se deshizo sola (para eso está la p
 **Quién lo cazó:** la prueba de la migración, al correrla el dueño.
 **Qué lo evita ahora:** antes de escribir un trigger, mirar el TIPO de cada columna que se compara o se muestra
 (en la migración que creó la tabla, o mejor en la base viva), no suponerlo por el nombre.
+
+### Tomé el «antes» de la nómina con los datos a medio cargar (2-nov)
+**Lo que pasó:** para comparar la nómina antes y después del libro de asignaciones, la primera foto de la semana del
+19-oct decía $2.749.000 y 122 motos sin gestión; con todo cargado son $3.063.750 y 124. Solo revisé que la pantalla
+no dijera «Cargando»; no revisé «No se pudo traer» ni que las cajas hubieran llegado completas.
+**Quién lo cazó:** yo, porque el «antes» no cuadraba con la pantalla de ese momento. Se rehízo: código viejo y nuevo
+sobre los MISMOS datos, en el mismo momento, en las 3 semanas. Salieron iguales.
+**Qué lo evita ahora:** comparar viejo contra nuevo con los mismos datos al mismo tiempo, nunca dos fotos tomadas a
+horas distintas; y antes de leer una cifra, que no diga «Cargando» ni «No se pudo traer».
+
+### Dije «antes de responderte reviso algo» y no le respondí al dueño (2-nov)
+**Lo que pasó:** a mitad de la nómina el dueño preguntó si había entendido lo del referido del equipo. Revisé el
+formulario y los datos, y volví a la nómina sin contestarle. Su pregunta quedó sin respuesta toda la tarea.
+**Quién lo cazó:** yo, al cerrar.
+**Qué lo evita ahora:** una pregunta del dueño que llega en medio de una tarea se contesta en el siguiente mensaje,
+aunque sea corto, antes de seguir con lo demás.

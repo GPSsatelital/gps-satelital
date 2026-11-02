@@ -47,6 +47,9 @@ export function semanaCerradaSegun(
  * dentro de la semana. Es lo que la oficina tiene que confirmar lunes y martes para que entre antes
  * del cierre. El alquiler de la moto prestada no cuenta: no es gestión de nómina. `null` = motos
  * sin supervisor.
+ *
+ * `quienTenia` es el libro de asignaciones (D-061): el pago es de quien tenía la moto el día en que
+ * pagó el cliente. Si no viene, o no sabe de esa moto (undefined), del supervisor de hoy.
  */
 export function porConfirmarPorCobrador(
   pagos: Array<{ contrato_id: string; fecha: string; estado: string; valor: number; tipo_registro?: string | null }>,
@@ -54,6 +57,7 @@ export function porConfirmarPorCobrador(
   motos: Array<{ id: string; subadmin_id?: string | null }>,
   desde: string,
   hasta: string,
+  quienTenia?: (motoId: string, dia: string) => string | null | undefined,
 ): Map<string | null, { n: number; total: number }> {
   const motoDe = new Map(contratos.map(c => [c.id, c.moto_id]));
   const cobradorDe = new Map(motos.map(m => [m.id, m.subadmin_id]));
@@ -63,7 +67,8 @@ export function porConfirmarPorCobrador(
     const f = p.fecha.slice(0, 10);
     if (f < desde || f > hasta) continue;
     const moto = motoDe.get(p.contrato_id);
-    const quien = moto ? (cobradorDe.get(moto) ?? null) : null;
+    const segunLibro = moto && quienTenia ? quienTenia(moto, f) : undefined;
+    const quien = segunLibro !== undefined ? segunLibro : moto ? (cobradorDe.get(moto) ?? null) : null;
     const a = out.get(quien) ?? { n: 0, total: 0 };
     out.set(quien, { n: a.n + 1, total: a.total + p.valor });
   }

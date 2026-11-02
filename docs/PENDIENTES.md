@@ -21,13 +21,26 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   quien la tenía en ese momento. **El día del cambio cuenta para el que RECIBE la moto** (respuesta del dueño).
 >   ✅ **Mig 211 corrida el 2-nov a las 2:20 p. m. y verificada** (D-061): 400 motos = 400 renglones abiertos, 0 que no
 >   coinciden, disparador 1, ninguna pasada después de la foto; leída también desde la app con la sesión del dueño.
->   💻 **Sigue: la nómina lee el libro, subida el martes 3** · cierre normal el miércoles 4.
+>   ✅ **La nómina ya lee el libro (hecho y medido el 2-nov; commit local, SIN subir).** Cada pago es de quien tenía
+>   la moto el día en que pagó el cliente; la retención, de quien la tenía a esa hora; en «no generó pago», la moto
+>   que cambió de manos sale con el motivo nuevo «Pasó a otro supervisor esta semana». «Por confirmar» y «cuántas
+>   motos tenía» también salen del libro. Medido con el código viejo y el nuevo sobre los mismos datos completos:
+>   semanas del 19-oct ($3.063.750), 26-oct ($2.256.250) y 2-nov IGUALES, porque ninguna moto ha cambiado desde
+>   el libro (400 renglones, los 400 abiertos). 17 pruebas nuevas (`nominaLibroAsignaciones.test.ts`); 1.048 en verde.
+>   💻 **Subirla el martes 3** (`git push origin main`) · cierre normal el miércoles 4.
 >   ✅ Decidido (2-nov, «dale a la que recomiendas»): Reportes → Por admin (D-035, «Antes de asignar») también usa el
 >   libro, **después del cierre del miércoles 4** (fase 2, junto con el SQL que pone el `desde` real de los tramos de antes).
 >   🧑 Mientras tanto, **no cerrar la semana del 26-oct a ningún supervisor que haya entregado o recibido motos.**
 > - ✅ **Filtro por SUPERVISOR en Motos** (pedido del 2-nov), solo para ADMIN y ADMIN_PRINCIPAL (*«Solo yo y el ADMIN»*):
 >   lista «Supervisor» debajo de los grupos, con cuántas motos salen de cada uno; «Sin asignar» = «Sin supervisor»; la
 >   descarga dice el escogido. Medido en la app: el número de cada opción = las motos que aparecen. Subido el 2-nov.
+> - ⚠️ **Por definir — pedido del 2-nov: al registrar un cliente y escoger en «¿Alguien del equipo lo trajo?» a una
+>   persona, que la tarjeta «Referido por (opcional)» se llene sola con su nombre y su cédula.** Hoy la oficina los
+>   escribe a mano: los 73 clientes que trajo el equipo tienen la tarjeta llena, y 8 llevan una cédula distinta de la
+>   que más se repite para esa persona (una misma cédula aparece como la de tres supervisores). La app NO guarda la
+>   cédula de los del equipo (`profiles` no tiene esa columna): habría que guardarla una vez, en Usuarios. No toca
+>   premios: lo del equipo ya no cuenta para premios por `referido_por_funcionario` (D-047). El formulario es el mismo
+>   para registrar y para editar (`renderClienteForm`). Falta: que el dueño confirme que es eso; después, el plan.
 > - ⚠️ **Encontrado el 2-nov (ya pasaba antes): con la app en modo DÍA y el celular en modo NOCHE, las cajas para
 >   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
 >   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las

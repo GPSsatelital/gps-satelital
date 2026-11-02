@@ -110,6 +110,9 @@ export const VALOR_REFERIDO = 30000;
 
 export type TipoGestion = "ciclo" | "ciclo_atrasado" | "prorrateo" | "retencion" | "cuota_convenio" | "visita" | "referido";
 
+/** La gestión de COBRO de una moto. La visita y el referido no: se pagan por traer al cliente. */
+export const TIPOS_COBRO: ReadonlySet<TipoGestion> = new Set<TipoGestion>(["ciclo", "ciclo_atrasado", "prorrateo", "retencion", "cuota_convenio"]);
+
 /** Anotación del vigía (mig 112): una caja que se llenó, con fecha y por cuál camino. */
 export type EventoCaja = {
   contrato_id: string;
@@ -215,13 +218,16 @@ export type NominaCobrador = {
  *   adelantada .......... la semana que se cobraba esta semana ya estaba pagada desde antes (D-060).
  *   no_tocaba ........... esta semana no se le cobraba nada (quincenal o mensual) y no debía nada (D-060).
  *   no_pago ............. contrato activo que no pagó lo que se le cobraba. Esto sí es mora.
+ *   cambio_supervisor ... la moto pasó a otro supervisor durante la semana y lo que pagó el cliente
+ *                         fue después del cambio: se le cuenta al que la recibió (D-061). Se decide
+ *                         antes que todos los demás, porque esa moto sí generó pago, pero para otro.
  *
  * 🔴 31-oct-2026 (D-060): antes solo existían los cinco de siempre y todo lo demás salía «No pagó su
  * semana». En la semana del 12-oct, 11 motos de CARLOS ARIZA decían eso y sus clientes SÍ habían pagado
  * (se confirmó el lunes 19 y se les pagaba en la semana del 19). El dueño las vio y creyó que faltaban.
  */
 export type MotivoSinGestion = "sin_contrato" | "diario" | "pago_otra_semana" | "retenida_sin_abono" | "falta_convenio"
-  | "adelantada" | "no_tocaba" | "no_pago";
+  | "adelantada" | "no_tocaba" | "no_pago" | "cambio_supervisor";
 
 export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   sin_contrato: "Sin cliente (no hay nada que cobrar)",
@@ -232,6 +238,7 @@ export const TEXTO_SIN_GESTION: Record<MotivoSinGestion, string> = {
   adelantada: "Esta semana ya la tenía pagada por adelantado",
   no_tocaba: "Esta semana no le tocaba pagar",
   no_pago: "No pagó su semana",
+  cambio_supervisor: "Pasó a otro supervisor esta semana: su pago se le cuenta al nuevo",
 };
 
 export type MotoSinGestion = {
@@ -368,6 +375,74 @@ export function diaColombia(ts: string): string {
   if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(ts.trim())) return dia(ts);
   const t = Date.parse(ts);
   return Number.isNaN(t) ? dia(ts) : new Date(t - 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Un tramo del LIBRO DE ASIGNACIONES (mig 211, D-061): qué supervisor tuvo la moto y desde/hasta
+ * cuándo. `desde` null = la tenía desde antes de que existiera el libro · `hasta` null = la tiene
+ * hoy · `subadmin_id` null = sin supervisor.
+ */
+export type TramoAsignacion = { moto_id: string; subadmin_id: string | null; desde: string | null; hasta: string | null };
+
+export type LibroAsignaciones = {
+  /**
+   * Quién tenía la moto al TERMINAR ese día de Colombia: el día del cambio cuenta para el que la
+   * RECIBE (regla del dueño, 2-nov-2026: «Del que la recibe»). undefined = el libro no sabe de ese
+   * día: la moto no está, o el día es anterior a su primer tramo con fecha.
+   */
+  elDia: (motoId: string, diaISO: string) => string | null | undefined;
+  /** A quién se le paga lo de ese día: `elDia`, y si el libro no sabe de ese día, el primer supervisor
+   *  que le conoce. undefined = la moto no está en el libro (se le paga al de hoy, como antes). */
+  aQuienEl: (motoId: string, diaISO: string) => string | null | undefined;
+  /** Lo mismo con la hora exacta, para lo que la tiene (la retención). */
+  aQuienEn: (motoId: string, instante: string) => string | null | undefined;
+  /** El primer día en que pasó de un supervisor a otro entre que terminó `desdeISO` y que terminó
+   *  `hastaISO`. null = no cambió de manos. El primer tramo de una moto no es un cambio: es donde el
+   *  libro empieza a saber de ella. */
+  cambioEntre: (motoId: string, desdeISO: string, hastaISO: string) => string | null;
+};
+
+/** El instante en que termina un día de Colombia (las 12 de la noche, 5 horas antes que en Londres). */
+const finDelDiaColombia = (diaISO: string) => Date.parse(dia(diaISO) + "T05:00:00Z") + 24 * 3600 * 1000;
+
+export function libroDeAsignaciones(tramos: TramoAsignacion[]): LibroAsignaciones {
+  const porMoto = new Map<string, Array<{ quien: string | null; desde: number; hasta: number }>>();
+  for (const t of tramos) {
+    const desde = t.desde ? Date.parse(t.desde) : -Infinity;
+    const hasta = t.hasta ? Date.parse(t.hasta) : Infinity;
+    if (Number.isNaN(desde) || Number.isNaN(hasta)) continue;
+    if (!porMoto.has(t.moto_id)) porMoto.set(t.moto_id, []);
+    porMoto.get(t.moto_id)!.push({ quien: t.subadmin_id, desde, hasta });
+  }
+  // Con dos cambios en el mismo instante, el que sigue abierto va de último.
+  for (const ts of porMoto.values()) ts.sort((a, b) => a.desde - b.desde || a.hasta - b.hasta);
+  // Los tramos van seguidos (el disparador cierra uno y abre el otro en el mismo instante): el
+  // vigente es el último que ya había empezado. Antes del primero, el libro no sabe.
+  const vigente = (motoId: string, t: number, contandoElInicio: boolean): string | null | undefined => {
+    const ts = porMoto.get(motoId);
+    if (!ts) return undefined;
+    let quien: string | null | undefined;
+    for (const x of ts) {
+      if (contandoElInicio ? x.desde > t : x.desde >= t) break;
+      quien = x.quien;
+    }
+    return quien;
+  };
+  const conRespaldo = (motoId: string, q: string | null | undefined) =>
+    q !== undefined ? q : porMoto.get(motoId)?.[0]?.quien;
+  return {
+    elDia: (motoId, d) => vigente(motoId, finDelDiaColombia(d), false),
+    aQuienEl: (motoId, d) => conRespaldo(motoId, vigente(motoId, finDelDiaColombia(d), false)),
+    aQuienEn: (motoId, instante) => {
+      const t = Date.parse(instante);
+      return conRespaldo(motoId, Number.isNaN(t) ? undefined : vigente(motoId, t, true));
+    },
+    cambioEntre: (motoId, d1, d2) => {
+      const a = finDelDiaColombia(d1), b = finDelDiaColombia(d2);
+      const x = (porMoto.get(motoId) ?? []).find((x, i) => i > 0 && x.desde >= a && x.desde < b);
+      return x ? new Date(x.desde - 5 * 3600 * 1000).toISOString().slice(0, 10) : null;
+    },
+  };
 }
 
 /** El lunes de la semana de una fecha (la semana de nómina va de lunes a domingo). */
@@ -523,8 +598,24 @@ export function nominaSemanaDetallada(opts: {
    * = las anteriores al arranque de los cortes (ver INICIO_CORTES_NOMINA).
    */
   semanaCerrada?: (cobradorId: string | null, lunes: string) => boolean;
+  /**
+   * El libro de asignaciones (mig 211, D-061). Con él, cada renglón es de quien tenía la moto el día
+   * en que pagó el cliente (el día del cambio cuenta para el que la recibe), la retención de quien la
+   * tenía a esa hora, y cada moto sin pago sale en la lista de quien la tenía al empezar la semana.
+   * Sin libro, todo es del supervisor de hoy, como antes.
+   */
+  asignaciones?: TramoAsignacion[] | null;
 }): { nominas: NominaCobrador[]; sinGestion: MotoSinGestion[] } {
   const { desde, hasta, contratos, pagos, motos, recepciones, clientesPorId, convenios = [], visitas = [], referidos = [] } = opts;
+  const libro = opts.asignaciones ? libroDeAsignaciones(opts.asignaciones) : null;
+  /** De quién era la moto ese día (D-061). Si el libro no sabe de ella, del supervisor de hoy. */
+  const quienEl = (moto: MotoNomina, d: string): string | null => {
+    const q = libro?.aQuienEl(moto.id, d);
+    return q !== undefined ? q : moto.subadmin_id;
+  };
+  /** El renglón dice de quién es solo si no es del supervisor de hoy: sin cambios, sale igual que antes. */
+  const deQuien = (moto: MotoNomina, quien: string | null): { cobradorId?: string | null } =>
+    quien === moto.subadmin_id ? {} : { cobradorId: quien };
   const rodadasPorContrato = new Map<string, RodadaNomina[]>();
   for (const r of opts.rodadas ?? []) {
     if (!rodadasPorContrato.has(r.contrato_id)) rodadasPorContrato.set(r.contrato_id, []);
@@ -696,12 +787,13 @@ export function nominaSemanaDetallada(opts: {
         const fEv = (ev.caja_numero > 0 && enOrden?.get(ev.caja_numero)) || fechaReal(ev);
         const pagoEnLaSemana = fEv >= desde && fEv <= hasta;
         if (ev.caja_numero === 0) {
-          const fP = ubicar(fEv, ev.fecha, moto.subadmin_id);
+          const quien = quienEl(moto, fEv);
+          const fP = ubicar(fEv, ev.fecha, quien);
           if (fP < desde || fP > hasta) {
             if (pagoEnLaSemana && !pagoCorrido.has(c.id)) pagoCorrido.set(c.id, { pago: fEv, seCuenta: fP, confirmado: ev.fecha, paquete: fEv });
             continue;
           }
-          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: fP, pagadoEl: fEv, valor: VALOR_CICLO });
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: fP, pagadoEl: fEv, valor: VALOR_CICLO, ...deQuien(moto, quien) });
           continue;
         }
         // La semana ADELANTADA del wizard (su primera caja, pagada con la base): nadie la cobró.
@@ -719,12 +811,14 @@ export function nominaSemanaDetallada(opts: {
           // —es la regla del paquete— pero tampoco es "no pagó": se anota para poder decirle al
           // cobrador la verdad exacta en el desglose de lo no pagado.
           // También en la semana en que el cliente pagó (D-060): ahí tampoco es "no pagó".
-          const fF = ubicar(fEv, ev.fecha, moto.subadmin_id);
+          const fF = ubicar(fEv, ev.fecha, quienEl(moto, fEv));
           if ((fF >= desde && fF <= hasta) || pagoEnLaSemana) frenadoPorConvenio.add(c.id);
           continue;
         }
         const atrasada = lunesDe(exigencia) < lunesDe(paq);
-        const fRenglon = ubicar(paq, ev.fecha, moto.subadmin_id);
+        // Es de quien tenía la moto el día en que el cliente completó el paquete (D-061).
+        const quien = quienEl(moto, paq);
+        const fRenglon = ubicar(paq, ev.fecha, quien);
         if (fRenglon < desde || fRenglon > hasta) {
           // Pagó esta semana pero se le paga en otra: se dice en vez de "no pagó" (D-060).
           if (pagoEnLaSemana && !pagoCorrido.has(c.id)) pagoCorrido.set(c.id, { pago: fEv, seCuenta: fRenglon, confirmado: ev.fecha, paquete: paq });
@@ -737,6 +831,7 @@ export function nominaSemanaDetallada(opts: {
           fecha: fRenglon,
           pagadoEl: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
+          ...deQuien(moto, quien),
         });
       }
       continue;   // con anotaciones no se relee ningún pago: una sola fuente de verdad
@@ -762,7 +857,7 @@ export function nominaSemanaDetallada(opts: {
       if (pror > 0 && prorrateoTotal > 0 && prorrAcum < prorrateoTotal) {
         prorrAcum += pror;
         if (prorrAcum >= prorrateoTotal && f >= desde && f <= hasta) {
-          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: f, valor: VALOR_CICLO });
+          renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "prorrateo", fecha: f, valor: VALOR_CICLO, ...deQuien(moto, quienEl(moto, f)) });
         }
       }
 
@@ -798,6 +893,7 @@ export function nominaSemanaDetallada(opts: {
           tipo: atrasada ? "ciclo_atrasado" : "ciclo",
           fecha: paq,
           valor: atrasada ? VALOR_ATRASADO : VALOR_CICLO,
+          ...deQuien(moto, quienEl(moto, paq)),
         });
       }
     }
@@ -826,7 +922,7 @@ export function nominaSemanaDetallada(opts: {
       const sem = lunesDe(f);
       if (semanasPagadas.has(sem) || semanaConCiclo.has(c.id + "|" + sem)) continue;
       semanasPagadas.add(sem);
-      renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "cuota_convenio", fecha: f, valor: VALOR_ATRASADO });
+      renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "cuota_convenio", fecha: f, valor: VALOR_ATRASADO, ...deQuien(moto, quienEl(moto, f)) });
     }
   }
 
@@ -843,7 +939,9 @@ export function nominaSemanaDetallada(opts: {
     const contrato = contratos.find(x => x.moto_id === r.moto_id && x.estado !== "Cancelado");
     if (contrato?.forma_pago === "Diario") continue;   // los diarios están por fuera de la nómina
     const cliente = contrato ? (clientesPorId.get(contrato.cliente_id) ?? "—") : "—";
-    renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "retencion", fecha: f, valor: VALOR_RETENCION });
+    // Es de quien tenía la moto a la hora en que se retuvo (D-061): esa hora sí se sabe.
+    const q = libro?.aQuienEn(moto.id, r.created_at);
+    renglones.push({ motoId: moto.id, placa: moto.placa, grupo: moto.grupo ?? "—", cliente, tipo: "retencion", fecha: f, valor: VALOR_RETENCION, ...deQuien(moto, q !== undefined ? q : moto.subadmin_id) });
   }
 
   // ── 2b) VISITAS: $30.000 a QUIEN LA HIZO, en la semana en que se entregó la moto ──────────
@@ -924,19 +1022,31 @@ export function nominaSemanaDetallada(opts: {
 
   // ── 3) Agrupar por cobrador (null = sin asignar, se muestra aparte) ─────────
   const porCobrador = new Map<string | null, GestionNomina[]>();
+  const cobradorDe = (r: GestionNomina) => r.cobradorId !== undefined ? r.cobradorId : (motoDe.get(r.motoId)?.subadmin_id ?? null);
   for (const r of renglonesFinales) {
-    const sub = r.cobradorId !== undefined ? r.cobradorId : (motoDe.get(r.motoId)?.subadmin_id ?? null);
+    const sub = cobradorDe(r);
     if (!porCobrador.has(sub)) porCobrador.set(sub, []);
     porCobrador.get(sub)!.push(r);
   }
 
   // ── 4) EL REVERSO: las motos asignadas que NO generaron ni un renglón, con su motivo ────────
   // Se recorre por MOTO (no por renglón): es la única forma de ver lo que falta. Las motos sin
-  // cobrador no entran — no son plata de nadie y ya se muestran aparte.
+  // cobrador no entran — no son plata de nadie y ya se muestran aparte. Cada moto sale en la lista
+  // de quien la tenía al EMPEZAR la semana (D-061; el día del cambio cuenta para el que la recibe).
   const conRenglon = new Set(renglonesFinales.map(r => r.motoId));
   const sinGestion: MotoSinGestion[] = [];
   for (const m of motos) {
-    if (!m.subadmin_id || conRenglon.has(m.id)) continue;
+    const quien = quienEl(m, desde);
+    if (!quien) continue;
+    // Si pasó a otro supervisor en la semana y todo lo que se cobró de ella quedó para el nuevo, a
+    // quien la tenía al empezar no le generó nada: sale en su lista, con el porqué.
+    let paso: string | null = null;
+    if (conRenglon.has(m.id)) {
+      paso = libro?.cambioEntre(m.id, desde, hasta) ?? null;
+      if (!paso) continue;
+      const cobros = renglonesFinales.filter(r => r.motoId === m.id && TIPOS_COBRO.has(r.tipo));
+      if (cobros.length === 0 || cobros.some(r => cobradorDe(r) === quien)) continue;
+    }
     const c = contratos.find(x => x.moto_id === m.id && x.estado !== "Cancelado" && x.estado !== "Finalizado");
     let motivo: MotivoSinGestion;
     let detalle: string | undefined;
@@ -945,7 +1055,11 @@ export function nominaSemanaDetallada(opts: {
     // semana todavía tenía la moto (D-060). Sin registro de la retención se le cree al estado.
     const retenidaDesde = c ? ultimaRetencion(c) : null;
     const retenidaEsaSemana = !!c && c.estado === "Suspendido" && (!retenidaDesde || retenidaDesde <= hasta);
-    if (!c) motivo = "sin_contrato";
+    if (paso) {
+      motivo = "cambio_supervisor";
+      detalle = `Pasó a otro supervisor el ${fechaCorta(paso)}: lo que el cliente pagó desde ese día se le cuenta al nuevo`;
+    }
+    else if (!c) motivo = "sin_contrato";
     else if (c.forma_pago === "Diario") motivo = "diario";
     else if (corrido) {
       motivo = "pago_otra_semana";
@@ -986,7 +1100,7 @@ export function nominaSemanaDetallada(opts: {
     sinGestion.push({
       motoId: m.id, placa: m.placa, grupo: m.grupo ?? "—",
       cliente: c ? (clientesPorId.get(c.cliente_id) ?? "—") : "—",
-      cobradorId: m.subadmin_id, motivo,
+      cobradorId: quien, motivo,
       ...(detalle ? { detalle } : {}),
     });
   }

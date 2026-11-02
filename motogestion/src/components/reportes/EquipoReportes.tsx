@@ -63,8 +63,11 @@ export type DatosNomina = {
   error: boolean;
   /** false = semana anterior al registro exacto de ciclos (22-ago): se calcula releyendo pagos. */
   vigia: boolean;
-  /** Motos con gestión esta semana que hoy son de un cobrador que entonces todavía no las tenía. */
+  /** Motos con gestión esta semana que su cobrador de hoy todavía no tenía al empezar la semana, de
+   *  días en que el libro de asignaciones (D-061) aún no existía: no se sabe quién las tenía. */
   motosDeOtro: number;
+  /** Motos con gestión que pasaron de un supervisor a otro durante la semana (D-061). */
+  motosRepartidas: number;
   sinCobrador: { n: number; total: number; placas: string[] } | null;
   grupoFiltrado: string | null;
   total: number;
@@ -130,8 +133,11 @@ export function EquipoNomina({ d, onMover, onReintentar, onAbrir }: {
       {!d.vigia && (
         <Aviso tono="warn">Esta semana es de antes del registro exacto de ciclos (existe desde el 22 de agosto). Las cifras se calculan releyendo los pagos: <b>revisa el desprendible antes de pagar.</b></Aviso>
       )}
+      {d.motosRepartidas > 0 && (
+        <Aviso tono="info">{d.motosRepartidas} {d.motosRepartidas === 1 ? "moto con gestión pasó" : "motos con gestión pasaron"} de un supervisor a otro en esta semana. Cada pago se le cuenta a quien tenía la moto <b>el día en que pagó el cliente</b>; el día del cambio, al que la recibió.</Aviso>
+      )}
       {d.motosDeOtro > 0 && (
-        <Aviso tono="info">Esta semana se le paga a cada cobrador según las motos que tiene <b>hoy</b>. {d.motosDeOtro} {d.motosDeOtro === 1 ? "moto con gestión todavía no era" : "motos con gestión todavía no eran"} de su cobrador de hoy cuando empezó esa semana, y el sistema no guarda quién las tenía antes.</Aviso>
+        <Aviso tono="info">{d.motosDeOtro} {d.motosDeOtro === 1 ? "moto con gestión todavía no era" : "motos con gestión todavía no eran"} de su cobrador de hoy cuando empezó esa semana, y de antes del 2 de noviembre no hay registro de quién {d.motosDeOtro === 1 ? "la tenía: se le cuenta" : "las tenía: se le cuentan"} al primer supervisor que aparece en el libro de asignaciones.</Aviso>
       )}
       {d.grupoFiltrado && (
         <Aviso tono="info">Estás viendo solo lo que paga <b>{d.grupoFiltrado}</b>. Para cerrar la semana o imprimir un desprendible, quita el filtro de grupo: así nunca se cierra una nómina recortada.</Aviso>

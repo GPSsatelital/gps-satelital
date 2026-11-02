@@ -30,7 +30,7 @@ import { useNominaCierres, useCierresDeSemanas } from "../hooks/useNominaCierres
 import ModalCerrarNomina from "../components/ModalCerrarNomina";
 import { useConvenios } from "../hooks/useConvenios";
 import { useUbicaciones } from "../hooks/useUbicaciones";
-import { nominaSemanaDetallada, rodadasDesdeRegistros, TEXTO_SIN_GESTION, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, INICIO_CORTES_NOMINA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
+import { nominaSemanaDetallada, rodadasDesdeRegistros, libroDeAsignaciones, TEXTO_SIN_GESTION, TIPOS_COBRO, lunesDe, resumirRenglones, totalesPorGrupo, vigiaCubre, VALOR_CICLO, VALOR_ATRASADO, VALOR_RETENCION, PCT_ATRASADO, VALOR_VISITA, VALOR_REFERIDO, INICIO_CORTES_NOMINA, type TipoGestion, type GestionNomina } from "../utils/nominaCobradores";
 import { etapaCorte, diaDeCorte, porConfirmarPorCobrador, semanaCerradaSegun, semanasPorPagar, proximoPagoQuincenal } from "../utils/corteNomina";
 import { useNominaPagos } from "../hooks/useNominaPagos";
 import ModalPagoNomina from "../components/ModalPagoNomina";
@@ -39,6 +39,7 @@ import { useCajasLlenadas } from "../hooks/useCajasLlenadas";
 import { useCarteraDelDia } from "../hooks/useCarteraDelDia";
 import { opcionesDia, textoDia, avisoDelDia, type FilaCarteraDia } from "../utils/carteraDelDia";
 import { useRodadas } from "../hooks/useRodadas";
+import { useAsignacionesMotos } from "../hooks/useAsignacionesMotos";
 import { motosGuardadas } from "../utils/motosGuardadas";
 import { reporteConvenios, totalesConvenios, type ConvenioReporte } from "../utils/reporteConvenios";
 import { MOTIVO_RECEPCION_LABEL, UBICACION_LABEL } from "../hooks/useUbicaciones";
@@ -226,8 +227,6 @@ function textoSemanaCorto(lunes: string) {
   const dom = masDias(lunes, 6);
   return lunes.slice(0, 7) === dom.slice(0, 7) ? `${Number(lunes.slice(8, 10))}-${Number(dom.slice(8, 10))} ${mesCorto(lunes)}` : `${Number(lunes.slice(8, 10))} ${mesCorto(lunes)}-${Number(dom.slice(8, 10))} ${mesCorto(dom)}`;
 }
-/** Los pagos de nómina por COBRAR (no la visita ni el referido): los que dicen que una moto "le generó pago". */
-const TIPOS_COBRO = new Set<TipoGestion>(["ciclo", "ciclo_atrasado", "prorrateo", "retencion", "cuota_convenio"]);
 const TIPO_NOMINA: Record<TipoGestion, string> = {
   ciclo: "Semana cobrada a tiempo", ciclo_atrasado: "Semana atrasada", prorrateo: "Primer pago (prorrateo)",
   retencion: "Retención", cuota_convenio: "Cuota de acuerdo de una retenida", visita: "Visita domiciliaria", referido: "Referido: trajo al cliente",
@@ -483,6 +482,10 @@ export default function ReportesView({ onNavigate }: Props) {
     const formaPago = new Map(contratos.map(c => [c.id, c.forma_pago]));
     return rodadasDesdeRegistros(registrosRodadas.acuerdos, registrosRodadas.auditoria, id => formaPago.get(id), ts => fechaISO(new Date(ts)));
   }, [registrosRodadas, contratos]);
+  // El libro de asignaciones (mig 211, D-061): cada pago es de quien tenía la moto el día en que pagó
+  // el cliente, no del supervisor de hoy. El día del cambio cuenta para el que la recibe.
+  const { tramos: tramosAsignacion, cargando: cargandoLibro, error: errorLibro } = useAsignacionesMotos(tab === "nomina" || pdfPideNomina, intentoNomina);
+  const libroMotos = useMemo(() => tramosAsignacion ? libroDeAsignaciones(tramosAsignacion) : null, [tramosAsignacion]);
   // Semanas ya pagadas (mig 120): cifras congeladas + firma + foto del desprendible.
   const { cerrarSemana, cierreDe, cargando: cargandoCierres, error: errorCierres, recargar: recargarCierres } = useNominaCierres(lunesNomina, tab === "nomina" || pdfPideNomina);
   // TODAS las semanas cerradas desde el arranque de los cortes (D-057): lo que el cliente pagó en
@@ -503,9 +506,10 @@ export default function ReportesView({ onNavigate }: Props) {
     [cierresDesdeInicio, pagosNomina]);
   const [pagandoA, setPagandoA] = useState<string | null>(null);   // supervisor al que se le registra el pago
   // Un cierre congela la cifra para siempre: no se deja pagar ni imprimir mientras falte algo de la
-  // semana (las cajas, las rodadas, los cierres o los pagos). Si algo falló, se dice y no se paga.
-  const nominaCargando = cargandoCajas || cargandoRodadas || cargandoCierres || cargandoCierresTodos || sinDatos;
-  const nominaError = errorCajas || errorRodadas || errorCierres || errorCierresTodos || (!!errorDatos && sinDatos);
+  // semana (las cajas, las rodadas, el libro de asignaciones, los cierres o los pagos). Si algo
+  // falló, se dice y no se paga.
+  const nominaCargando = cargandoCajas || cargandoRodadas || cargandoLibro || cargandoCierres || cargandoCierresTodos || sinDatos;
+  const nominaError = errorCajas || errorRodadas || errorLibro || errorCierres || errorCierresTodos || (!!errorDatos && sinDatos);
   const nominaLista = !nominaCargando && !nominaError;
   const reintentarNomina = () => { setIntentoNomina(i => i + 1); void recargarCierres(); };
   const textoSemanaNomina = textoSemana(lunesNomina, domingoNomina);
@@ -513,8 +517,8 @@ export default function ReportesView({ onNavigate }: Props) {
   // corte se puede cerrar; antes, la oficina confirma lo que falte para que nadie lo pierda.
   const etapaNomina = etapaCorte(lunesNomina, hoyISO());
   const porConfirmarNomina = useMemo(
-    () => porConfirmarPorCobrador(pagos, contratos, motos, lunesNomina, domingoNomina),
-    [pagos, contratos, motos, lunesNomina, domingoNomina],
+    () => porConfirmarPorCobrador(pagos, contratos, motos, lunesNomina, domingoNomina, libroMotos?.aQuienEl),
+    [pagos, contratos, motos, lunesNomina, domingoNomina, libroMotos],
   );
 
   const [cerrando, setCerrando] = useState<string | null>(null);   // subadminId en curso
@@ -532,7 +536,8 @@ export default function ReportesView({ onNavigate }: Props) {
         .map(c => ({ cliente_id: c.id, funcionario_id: c.referido_por_funcionario! })),
       rodadas: rodadasNomina,
       semanaCerrada: semanaCerradaNomina,
-  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, semanaCerradaNomina]);
+      asignaciones: tramosAsignacion,
+  }), [contratos, pagos, motos, recepciones, clientes, convenios, visitas, rodadasNomina, semanaCerradaNomina, tramosAsignacion]);
   const nominaDetalle = useMemo(() => {
     if (tab !== "nomina" && !pdfPideNomina) return { nominas: [], sinGestion: [] };
     return nominaSemanaDetallada({ ...entradasNomina, desde: lunesNomina, hasta: domingoNomina, eventos: eventosNomina });
@@ -2065,7 +2070,13 @@ export default function ReportesView({ onNavigate }: Props) {
   const asignadaElMoto = (m: (typeof motos)[number]) => m.subadmin_asignado_desde ? fechaISO(new Date(m.subadmin_asignado_desde)) : null;
   /** ¿El cobrador de hoy ya tenía esta moto al empezar la semana? Sin fecha = de antes de la mig 058. */
   const teniaAlEmpezar = (m: (typeof motos)[number], lunes: string) => { const a = asignadaElMoto(m); return !a || a <= lunes; };
-  const motosQueTenia = (id: string, lunes: string) => motos.filter(m => m.subadmin_id === id && teniaAlEmpezar(m, lunes) && pasaGrupoN(m.grupo ?? "—"));
+  /** De quién era la moto al empezar la semana: lo dice el libro de asignaciones (D-061). De los días
+   *  en que el libro todavía no sabía de ella, la regla de antes: la del cobrador de hoy, si ya la tenía. */
+  const quienAlEmpezar = (m: (typeof motos)[number], lunes: string): string | null => {
+    const q = libroMotos?.elDia(m.id, lunes);
+    return q !== undefined ? q : teniaAlEmpezar(m, lunes) ? (m.subadmin_id ?? null) : null;
+  };
+  const motosQueTenia = (id: string, lunes: string) => motos.filter(m => quienAlEmpezar(m, lunes) === id && pasaGrupoN(m.grupo ?? "—"));
   const celdaCobrador = (id: string, lunes: string, renglones: GestionNomina[]): CeldaSemana => {
     const suyas = motosQueTenia(id, lunes);
     if (suyas.length === 0) return null;
@@ -2085,9 +2096,15 @@ export default function ReportesView({ onNavigate }: Props) {
     .filter(x => !grupoNomina || x.renglones.length > 0);
   const sinCobradorN = filtros.cobrador.length === 0 ? nominasVista.find(n => n.subadminId === null) : undefined;
   const renglonesN = cobradoresN.flatMap(x => x.renglones.map(r => ({ r, quien: x.n.subadminId })));
-  // Las motos con gestión que hoy son de un cobrador que no las tenía cuando empezó la semana.
-  const motosDeOtroN = new Set(renglonesN.filter(({ r }) => TIPOS_COBRO.has(r.tipo)).map(({ r }) => r.motoId)
-    .filter(id => { const m = motoPorId.get(id); return !!m && !teniaAlEmpezar(m, lunesNomina); })).size;
+  const motosConCobroN = [...new Set(renglonesN.filter(({ r }) => TIPOS_COBRO.has(r.tipo)).map(({ r }) => r.motoId))];
+  // Las motos con gestión de las que no se sabe quién las tenía al empezar la semana: el libro empezó
+  // el 2-nov y de antes solo queda la fecha de la última asignación (D-037). Se cuentan a quien las tiene.
+  const motosDeOtroN = motosConCobroN.filter(id => {
+    const m = motoPorId.get(id);
+    return !!m && (!libroMotos || libroMotos.elDia(id, lunesNomina) === undefined) && !teniaAlEmpezar(m, lunesNomina);
+  }).length;
+  // Las que pasaron de un supervisor a otro en la semana (D-061): cada pago va a quien la tenía ese día.
+  const motosRepartidasN = libroMotos ? motosConCobroN.filter(id => libroMotos.cambioEntre(id, lunesNomina, domingoNomina) !== null).length : 0;
   const datosNomina: DatosNomina = {
     pagoQuincenal: {
       proximo: proximoPagoQuincenal(hoyISO()),
@@ -2109,6 +2126,7 @@ export default function ReportesView({ onNavigate }: Props) {
     cargando: nominaCargando, error: !!nominaError,
     vigia: vigiaCubre(lunesNomina),
     motosDeOtro: motosDeOtroN,
+    motosRepartidas: motosRepartidasN,
     sinCobrador: sinCobradorN && sinCobradorN.renglones.some(r => pasaGrupoN(r.grupo)) ? (() => {
       const rs = sinCobradorN.renglones.filter(r => pasaGrupoN(r.grupo));
       return { n: rs.length, total: rs.reduce((a, r) => a + r.valor, 0), placas: [...new Set(rs.map(r => r.placa))] };
@@ -2141,7 +2159,9 @@ export default function ReportesView({ onNavigate }: Props) {
         pagadas: new Set(cierresTendencia.filter(c => c.semana_lunes === l && c.subadmin_id).map(c => c.subadmin_id)).size,
         cobradores: (tendenciaNomina[i] ?? []).filter(n => n.subadminId !== null).length,
       })),
-      filas: [...new Set(motos.map(m => m.subadmin_id).filter((x): x is string => !!x))]
+      // Los de hoy y los que el libro dice que tuvieron motos (D-061): quien entregó todas sigue saliendo
+      // en las semanas en que sí las tenía.
+      filas: [...new Set([...motos.map(m => m.subadmin_id), ...(tramosAsignacion ?? []).map(t => t.subadmin_id)].filter((x): x is string => !!x))]
         .filter(id => pasaCobradorN(id))
         .map(id => ({ id, nombre: nombreCobradorN(id), celdas: semanasTendencia.map((l, i) => celdaCobrador(id, l, (tendenciaNomina[i] ?? []).find(n => n.subadminId === id)?.renglones ?? [])) }))
         .filter(f => f.celdas.some(c => c && c.tenia > 0))

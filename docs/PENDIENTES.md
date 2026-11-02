@@ -8,7 +8,34 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **31-oct-2026**.
+- Última revisión: **2-nov-2026**.
+
+> ▶️ **AL ARRANCAR (2-nov) — entró un supervisor nuevo (WILINTON MORA) y se le están pasando motos.**
+> - 🔴 **La nómina le paga cada moto al supervisor que la tiene HOY**: no hay registro de quién la tenía antes. Si una
+>   moto cambia de supervisor antes de cerrar su semana, lo de esa semana le sale al nuevo y se le quita al que la trabajó.
+> - ✅ **Foto de quién tenía cada moto** el 2-nov a la 1:33 p. m. (400 motos, solo lectura):
+>   `docs/informes-nomina/asignaciones-antes-2nov-2026.txt` (carpeta ignorada por git). Las 2 que ya habían pasado a
+>   Wilinton a las 12:05 (NHT27I, NHT95I) son contratos nuevos del 29 y el 31-oct: no le dejaron nómina a nadie.
+> - 💻 **Decidido (2-nov): LIBRO DE ASIGNACIONES.** Tabla `motos_asignaciones` + disparador sobre `motos.subadmin_id`
+>   (mig 211, con la foto adentro) y la nómina le paga a quien tenía la moto el día que el cliente pagó; la retención, a
+>   quien la tenía en ese momento. **El día del cambio cuenta para el que RECIBE la moto** (respuesta del dueño).
+>   ✅ **Mig 211 corrida el 2-nov a las 2:20 p. m. y verificada** (D-061): 400 motos = 400 renglones abiertos, 0 que no
+>   coinciden, disparador 1, ninguna pasada después de la foto; leída también desde la app con la sesión del dueño.
+>   💻 **Sigue: la nómina lee el libro, subida el martes 3** · cierre normal el miércoles 4.
+>   ✅ Decidido (2-nov, «dale a la que recomiendas»): Reportes → Por admin (D-035, «Antes de asignar») también usa el
+>   libro, **después del cierre del miércoles 4** (fase 2, junto con el SQL que pone el `desde` real de los tramos de antes).
+>   🧑 Mientras tanto, **no cerrar la semana del 26-oct a ningún supervisor que haya entregado o recibido motos.**
+> - ✅ **Filtro por SUPERVISOR en Motos** (pedido del 2-nov), solo para ADMIN y ADMIN_PRINCIPAL (*«Solo yo y el ADMIN»*):
+>   lista «Supervisor» debajo de los grupos, con cuántas motos salen de cada uno; «Sin asignar» = «Sin supervisor»; la
+>   descarga dice el escogido. Medido en la app: el número de cada opción = las motos que aparecen. Subido el 2-nov.
+> - ⚠️ **Encontrado el 2-nov (ya pasaba antes): con la app en modo DÍA y el celular en modo NOCHE, las cajas para
+>   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
+>   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las
+>   pantallas: preguntarle al dueño antes de arreglarlo.
+> - Mejoras propuestas el 2-nov, **sin aprobar**: (1) 🧑 IEW65I (contrato activo) y YAV73H (suspendido) no tienen
+>   supervisor: no le salen a nadie para cobrar · (2) hoja de entrega firmada por cada moto que cambia de supervisor
+>   (cuánto debe ese día; fuera del repo) · (3) en el desprendible, marcar las motos que tuvo solo parte de la semana ·
+>   (4) historial de supervisores en la ficha de la moto · (5) pasar varias motos de una vez.
 
 > ▶️ **AL ARRANCAR (31-oct, tarde) — nómina de CARLOS ARIZA revisada moto por moto (D-060).**
 > - ✅ Subido: retenciones con el día de Colombia · la retención cubre lo que el cliente pagó en su semana · cuota de

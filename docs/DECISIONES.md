@@ -996,3 +996,26 @@ anterior, ya no cuenta ($3.750); no hay registro de cuándo termina una retenci�
 
 
 **Corrección a D-060 (31-oct, misma tarde):** el 25-oct fue **domingo**, no sábado. Las 4 retenciones de Ariza fueron el domingo 25 entre las 7 y las 9:30 de la noche: en hora de Londres ya era el lunes 26, por eso saltaban a la semana siguiente. La prueba automática se corrigió para usar un domingo en la noche (con un sábado el error no se veía).
+
+### D-061 · 2-nov-2026 · El libro de asignaciones: la nómina le paga a quien tenía la moto ese día
+**Decidió:** el dueño, el día en que entró WILINTON MORA y se le iban a pasar motos con la semana del 26-oct sin
+cerrar: *«Libro de asignaciones»* · *«Del que la recibe»* · *«dale a la que recomiendas»*.
+**Por qué:** `motos.subadmin_id` guarda solo el supervisor de HOY. La nómina le paga cada moto al que la tiene hoy: si
+una moto cambia de supervisor antes de cerrarse su semana, lo de esa semana se le va al nuevo y se le quita al que la
+trabajó. No quedaba registro de quién la tenía antes.
+**Qué se decidió:**
+1. Un libro (`motos_asignaciones`, mig 211): un renglón por cada supervisor que tuvo cada moto, desde y hasta cuándo.
+   Lo escribe solo un disparador cada vez que cambia `motos.subadmin_id`, con la hora y quién lo hizo.
+2. La nómina le paga cada renglón a quien tenía la moto el día en que el cliente pagó; la retención, a quien la tenía
+   en ese momento. Visitas y referidos no cambian.
+3. **El día del cambio cuenta para el que RECIBE la moto**: se mira quién la tenía al final de ese día.
+4. Antes del primer renglón del libro, la moto es del primero que aparece en él (como hasta hoy).
+5. Reportes → Por admin (D-035, «Antes de asignar») también usará el libro, después del cierre del miércoles 4-nov.
+**Efecto:** mig 211 corrida el 2-nov a las 2:20 p. m. y verificada: 400 motos = 400 renglones abiertos, 0 que no
+coinciden con `motos`, disparador prendido y ninguna moto pasada entre la foto de la 1:33 p. m. y la corrida. Leído
+también desde la app con la sesión del dueño (400). Hasta que suba el cambio de la nómina, la nómina sigue igual.
+**Dónde vive:** mig 211 (`motos_asignaciones`, `anotar_asignacion_moto()`). La foto de la 1:33 p. m., con fechas:
+`docs/informes-nomina/asignaciones-antes-2nov-2026.txt` (carpeta privada, ignorada por git).
+**Ojo:** NHT27I y NHT95I pasaron a Wilinton a las 12:05, antes de la foto: el libro las tiene de él desde ahí
+(contratos nuevos del 29 y el 31-oct; no le dejaron nómina a nadie). Mientras no suba el cambio de la nómina, no cerrar
+la semana del 26-oct a ningún supervisor que haya entregado o recibido motos.

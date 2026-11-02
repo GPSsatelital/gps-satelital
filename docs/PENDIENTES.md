@@ -41,9 +41,10 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   `equipo_cedulas` (mig 212): la escribe solo el dueño; la leen el dueño, el ADMIN y la secretaria. Las tarjetas
 >   viejas no se tocan (73 clientes; corregir las 8 que tienen otra cédula es otra decisión). Probado a 375 px, de día
 >   y de noche, con una cédula de prueba solo en la pantalla. 10 pruebas nuevas; 1.058 en verde.
->   **Falta, en este orden:** (1) 🧑 el dueño corre la mig 212 (debe dar tabla 1 · rls true · reglas 4 · cedulas 0) ·
->   (2) 💻 subirla el martes 3, junto con la nómina · (3) 🧑 el dueño escribe en Usuarios la cédula de las 7 personas ·
->   (4) 💻 revisar en la app que cada una sale bien en la tarjeta.
+>   ✅ **Mig 212 corrida el 2-nov a las 4:11 p. m. y verificada:** tabla 1 · rls true · reglas 4 · cedulas 0, o sea que
+>   la prueba de adentro pasó (un supervisor no ve ni escribe; el dueño y la secretaria sí ven). La app ya la encuentra.
+>   **Falta, en este orden:** (1) 💻 subirla el martes 3, junto con la nómina · (2) 🧑 el dueño escribe en Usuarios la
+>   cédula de las 7 personas · (3) 💻 revisar en la app que cada una sale bien en la tarjeta.
 > - ⚠️ **Encontrado el 2-nov (ya pasaba antes): con la app en modo DÍA y el celular en modo NOCHE, las cajas para
 >   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
 >   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las

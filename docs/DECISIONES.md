@@ -1050,3 +1050,7 @@ escribir una cédula, la migración se deshace sola) · `src/utils/referidoEquip
 Usuarios (`ModalEditar`) · Clientes (`renderClienteForm`).
 **Ojo:** primero se corre la mig 212 y después se escriben las cédulas; al revés, Usuarios dice «Usuario guardado, pero
 falló guardar la cédula». Las cédulas del equipo son datos personales: no van en el repo ni en el chat.
+
+**Mig 212 corrida (2-nov, 4:11 p. m.):** dio tabla 1 · rls true · reglas 4 · cedulas 0, así que la prueba de adentro pasó:
+el supervisor de la prueba no vio ni escribió ninguna cédula, y la secretaria (hay 1) y el dueño sí la vieron. Leída
+también desde la app con la sesión del dueño: 0 cédulas, sin error. Anotada en `migraciones_aplicadas`.

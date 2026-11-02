@@ -522,3 +522,12 @@ formulario y los datos, y volví a la nómina sin contestarle. Su pregunta qued�
 **Quién lo cazó:** yo, al cerrar.
 **Qué lo evita ahora:** una pregunta del dueño que llega en medio de una tarea se contesta en el siguiente mensaje,
 aunque sea corto, antes de seguir con lo demás.
+
+### Le volví a hablar en inglés al dueño (2-nov, cuarta vez)
+**Lo que pasó:** mientras arreglaba la frase de la tarjeta y subía todo, los avisos cortos de avance salieron en inglés.
+El dueño: *«¿por qué estás hablando en inglés?»* y *«piensa siempre en español»*. Ya había pasado el 6-oct, el 8-oct y
+el 31-oct, y estaba escrito en la memoria. Pasó después de un resumen automático de la conversación escrito en inglés
+y de avisos del sistema en inglés: me puse a pensar en inglés, y los avisos salieron en el idioma en que pensaba.
+**Quién lo cazó:** el dueño.
+**Qué lo evita ahora:** pensar en español también, desde la primera línea, aunque el resumen o los avisos del sistema
+vengan en inglés. Si lo que pienso está en español, lo que escribo sale en español.

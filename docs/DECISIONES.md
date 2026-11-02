@@ -1054,3 +1054,10 @@ falló guardar la cédula». Las cédulas del equipo son datos personales: no va
 **Mig 212 corrida (2-nov, 4:11 p. m.):** dio tabla 1 · rls true · reglas 4 · cedulas 0, así que la prueba de adentro pasó:
 el supervisor de la prueba no vio ni escribió ninguna cédula, y la secretaria (hay 1) y el dueño sí la vieron. Leída
 también desde la app con la sesión del dueño: 0 cédulas, sin error. Anotada en `migraciones_aplicadas`.
+
+**Subido el 2-nov a las 4:23 p. m. (2e3d428), un día antes de lo planeado (D-061 y D-062):** el dueño pidió *«sube todo
+hoy mismo si no daña nada»*. Era lunes de cobro y antes de las 6, pero nada de lo subido toca el motor, la cartera, los
+pagos ni el reparto: la nómina con el libro (D-061), la tarjeta del referido y su frase (D-062) y documentos. Y publicar
+no le recarga la app a nadie: sale el aviso «Hay una versión nueva de la app» con su botón. Antes de subir: tipos sin
+errores, armado bien y 1.058 pruebas en verde. Después: comprobado en la versión publicada que la pantalla de clientes
+trae la tarjeta nueva y que Reportes lee el libro.

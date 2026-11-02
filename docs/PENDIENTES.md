@@ -21,21 +21,23 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   quien la tenía en ese momento. **El día del cambio cuenta para el que RECIBE la moto** (respuesta del dueño).
 >   ✅ **Mig 211 corrida el 2-nov a las 2:20 p. m. y verificada** (D-061): 400 motos = 400 renglones abiertos, 0 que no
 >   coinciden, disparador 1, ninguna pasada después de la foto; leída también desde la app con la sesión del dueño.
->   ✅ **La nómina ya lee el libro (hecho y medido el 2-nov; commit local, SIN subir).** Cada pago es de quien tenía
+>   ✅ **La nómina ya lee el libro (hecho y medido el 2-nov; subido el 2-nov a las 4:23 p. m.).** Cada pago es de quien tenía
 >   la moto el día en que pagó el cliente; la retención, de quien la tenía a esa hora; en «no generó pago», la moto
 >   que cambió de manos sale con el motivo nuevo «Pasó a otro supervisor esta semana». «Por confirmar» y «cuántas
 >   motos tenía» también salen del libro. Medido con el código viejo y el nuevo sobre los mismos datos completos:
 >   semanas del 19-oct ($3.063.750), 26-oct ($2.256.250) y 2-nov IGUALES, porque ninguna moto ha cambiado desde
 >   el libro (400 renglones, los 400 abiertos). 17 pruebas nuevas (`nominaLibroAsignaciones.test.ts`); 1.048 en verde.
->   💻 **Subirla el martes 3** (`git push origin main`) · cierre normal el miércoles 4.
+>   ✅ **Subida el 2-nov a las 4:23 p. m.** (2e3d428), un día antes de lo planeado, a pedido del dueño (*«sube todo hoy
+>   mismo si no daña nada»*). Comprobado en la versión publicada: Reportes ya lee el libro. Cierre normal el miércoles 4.
 >   ✅ Decidido (2-nov, «dale a la que recomiendas»): Reportes → Por admin (D-035, «Antes de asignar») también usa el
 >   libro, **después del cierre del miércoles 4** (fase 2, junto con el SQL que pone el `desde` real de los tramos de antes).
->   🧑 Mientras tanto, **no cerrar la semana del 26-oct a ningún supervisor que haya entregado o recibido motos.**
+>   🧑 Ya se puede cerrar la semana del 26-oct como siempre. **Antes de cerrar, tocar «Actualizar» en el aviso «Hay una
+>   versión nueva de la app»** (o recargar), para cerrar con la nómina nueva y no con la que quedó abierta en pantalla.
 > - ✅ **Filtro por SUPERVISOR en Motos** (pedido del 2-nov), solo para ADMIN y ADMIN_PRINCIPAL (*«Solo yo y el ADMIN»*):
 >   lista «Supervisor» debajo de los grupos, con cuántas motos salen de cada uno; «Sin asignar» = «Sin supervisor»; la
 >   descarga dice el escogido. Medido en la app: el número de cada opción = las motos que aparecen. Subido el 2-nov.
 > - ✅ **La tarjeta «Referido por» se llena sola cuando lo trajo alguien del equipo** (pedido y aprobado el 2-nov,
->   D-062; hecho, commit local, SIN subir). Al escoger a la persona en «¿Alguien del equipo lo trajo?», la tarjeta sale
+>   D-062; subido el 2-nov a las 4:23 p. m.). Al escoger a la persona en «¿Alguien del equipo lo trajo?», la tarjeta sale
 >   con su nombre y su cédula y no se toca a mano; «Nadie» la deja vacía; si no tiene cédula guardada, se escribe a mano
 >   como antes. La cédula se guarda una vez en Usuarios (campo nuevo, solo para SUBADMIN y VISITADOR), en la tabla
 >   `equipo_cedulas` (mig 212): la escribe solo el dueño; la leen el dueño, el ADMIN y la secretaria. Las tarjetas
@@ -43,16 +45,21 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 >   y de noche, con una cédula de prueba solo en la pantalla. 10 pruebas nuevas; 1.058 en verde.
 >   ✅ **Mig 212 corrida el 2-nov a las 4:11 p. m. y verificada:** tabla 1 · rls true · reglas 4 · cedulas 0, o sea que
 >   la prueba de adentro pasó (un supervisor no ve ni escribe; el dueño y la secretaria sí ven). La app ya la encuentra.
->   **Falta, en este orden:** (1) 💻 subirla el martes 3, junto con la nómina · (2) 🧑 el dueño escribe en Usuarios la
->   cédula de las 7 personas · (3) 💻 revisar en la app que cada una sale bien en la tarjeta.
+>   ✅ Subida el 2-nov a las 4:23 p. m. y comprobada en la versión publicada (la pantalla de clientes trae la tarjeta
+>   nueva). **Falta:** (1) 🧑 el dueño escribe en Usuarios la cédula de las 7 personas · (2) 💻 revisar en la app que
+>   cada una sale bien en la tarjeta (solo mirar, sin guardar).
 > - ⚠️ **Encontrado el 2-nov (ya pasaba antes): con la app en modo DÍA y el celular en modo NOCHE, las cajas para
 >   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
 >   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las
 >   pantallas: preguntarle al dueño antes de arreglarlo.
-> - ⚠️ **Encontrado el 2-nov (ya pasaba antes): en modo NOCHE no se lee la frase de la tarjeta «Referido por»** del
->   formulario del cliente («Solo se valida cuando al nuevo cliente se le entrega la moto.»). Tiene el color fijo
->   `#4b5563`: sobre el verde oscuro da contraste 1,08 (medido; hace falta 4,5). De día da 6,88. Se arregla usando el
->   color del tema, pero es visual: preguntarle al dueño antes.
+> - ✅ **La frase de la tarjeta «Referido por» ya se lee de noche** («Solo se valida cuando al nuevo cliente se le
+>   entrega la moto.»). Tenía el gris fijo `#4b5563` (el único de toda la app): de noche daba contraste 1,08. Aprobado
+>   el 2-nov (*«Sí, arréglala»*) y subido a las 4:23 p. m. (2e3d428): ahora usa el verde de la misma tarjeta
+>   (`var(--ok-ink)`), medido en la app a 375 px: 6,97 de noche y 6,49 de día (hace falta 4,5). Los grises del tema no
+>   servían: de noche, sobre ese verde, el más claro da 4,41.
+> - ⚠️ **Encontrado el 2-nov al medir (ya pasaba antes): de noche, las etiquetas «Nombre de quien refirió» y «Cédula de
+>   quien refirió» de esa tarjeta dan contraste 4,41** (hace falta 4,5; de día dan 9,43). Usan el estilo de etiqueta de
+>   todo el formulario (`labelStyle`, `var(--muted2)`). Se leen, pero quedan justo por debajo: preguntarle al dueño.
 > - Mejoras propuestas el 2-nov, **sin aprobar**: (1) 🧑 IEW65I (contrato activo) y YAV73H (suspendido) no tienen
 >   supervisor: no le salen a nadie para cobrar · (2) hoja de entrega firmada por cada moto que cambia de supervisor
 >   (cuánto debe ese día; fuera del repo) · (3) en el desprendible, marcar las motos que tuvo solo parte de la semana ·

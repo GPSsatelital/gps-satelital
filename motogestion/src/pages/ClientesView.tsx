@@ -32,6 +32,8 @@ import { ListBox, ItemLista } from "../components/ListaEstandar";
 import FotoCliente from "../components/FotoCliente";
 import { Chip, Badge, type BadgeTone } from "../components/atomos";
 import { abrirDocumento } from "../lib/storagePrivado";
+import { useCedulasEquipo } from "../hooks/useCedulasEquipo";
+import { alEscogerDelEquipo, tarjetaLlenadaPorLaApp, ROLES_QUE_VEN_CEDULAS_EQUIPO } from "../utils/referidoEquipo";
 
 
 const labelStyle: React.CSSProperties = { marginBottom: 6, fontSize: 14, fontWeight: 600, color: "var(--muted2)" };
@@ -610,6 +612,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
 
   const { clienteIdsPermitidos, filtrarVisitas, esSubadmin } = useScope();
   const { subadmins } = useSubadmins();
+  const cedulasEquipo = useCedulasEquipo();
   const { clientes: todosClientes, loading, error, crearCliente, actualizarCliente, cambiarEstadoCliente, aplicarExcepcion, subirDocumento, asignarVisitaCliente } = useClientes();
   const { registrar: registrarAbonoBase } = useAbonosBase();
   const { visitas: todasVisitas, resolverVisita, asignarVisita } = useVisitas();
@@ -1107,6 +1110,12 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
   // `esNuevo`: el método de pago de la base solo se pregunta al REGISTRAR. Al editar no aplica —
   // editar el monto no significa que el cliente haya vuelto a entregar plata.
   function renderClienteForm(data: NuevoCliente, update: (patch: Partial<NuevoCliente>) => void, esNuevo = false) {
+    // La tarjeta «Referido por» con lo guardado en Usuarios (D-062): ver utils/referidoEquipo.
+    const delEquipo = data.referido_por_funcionario ? subadmins.find(s2 => s2.id === data.referido_por_funcionario) : undefined;
+    const tarjetaDeLaApp = tarjetaLlenadaPorLaApp(data, subadmins, cedulasEquipo);
+    const faltaCedulaEquipo = !!delEquipo && !cedulasEquipo.has(delEquipo.id) && !(data.referido_por_cedula ?? "").trim()
+      && ROLES_QUE_VEN_CEDULAS_EQUIPO.has(role);
+    const estiloTarjeta = tarjetaDeLaApp ? { ...inputStyle, background: "var(--soft)", cursor: "default" } : inputStyle;
     return (
       <div style={{ display: "grid", gap: 20, marginTop: 18 }}>
 
@@ -1256,7 +1265,7 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
               <select
                 style={inputStyle}
                 value={data.referido_por_funcionario ?? ""}
-                onChange={(e) => update({ referido_por_funcionario: e.target.value || null })}
+                onChange={(e) => update(alEscogerDelEquipo(e.target.value || null, subadmins, cedulasEquipo))}
               >
                 <option value="">— Nadie / llegó por su cuenta —</option>
                 {subadmins.map(s2 => <option key={s2.id} value={s2.id}>{s2.nombre}</option>)}
@@ -1307,9 +1316,19 @@ export default function ClientesView({ initialFilter = "", initialOpenForm = fal
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ok-ink)", marginBottom: 10 }}>Referido por (opcional)</div>
           <div style={{ fontSize: 12, color: "#4b5563", marginBottom: 12 }}>Solo se valida cuando al nuevo cliente se le entrega la moto.</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...inputStyle, textTransform: "uppercase" }} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
-            <div><div style={labelStyle}>Cédula de quien refirió</div><input style={inputStyle} value={data.referido_por_cedula ?? ""} onChange={(e) => update({ referido_por_cedula: e.target.value })} /></div>
+            <div><div style={labelStyle}>Nombre de quien refirió</div><input style={{ ...estiloTarjeta, textTransform: "uppercase" }} readOnly={tarjetaDeLaApp} value={data.referido_por_nombre ?? ""} onChange={(e) => update({ referido_por_nombre: e.target.value.toUpperCase() })} /></div>
+            <div><div style={labelStyle}>Cédula de quien refirió</div><input style={estiloTarjeta} readOnly={tarjetaDeLaApp} value={data.referido_por_cedula ?? ""} onChange={(e) => update({ referido_por_cedula: e.target.value })} /></div>
           </div>
+          {tarjetaDeLaApp && delEquipo && (
+            <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 8, lineHeight: 1.45 }}>
+              Llenada con los datos de <span style={{ textTransform: "uppercase" }}>{delEquipo.nombre}</span> en Usuarios. Para cambiarla, escoja otra persona en «¿Alguien del equipo lo trajo?».
+            </div>
+          )}
+          {faltaCedulaEquipo && delEquipo && (
+            <div style={{ fontSize: 12, color: "var(--ok-ink)", marginTop: 8, lineHeight: 1.45 }}>
+              Escriba la cédula a mano: <span style={{ textTransform: "uppercase" }}>{delEquipo.nombre}</span> todavía no la tiene guardada en Usuarios.
+            </div>
+          )}
         </div>
 
         <div>

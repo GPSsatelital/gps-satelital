@@ -1019,3 +1019,34 @@ también desde la app con la sesión del dueño (400). Hasta que suba el cambio 
 **Ojo:** NHT27I y NHT95I pasaron a Wilinton a las 12:05, antes de la foto: el libro las tiene de él desde ahí
 (contratos nuevos del 29 y el 31-oct; no le dejaron nómina a nadie). Mientras no suba el cambio de la nómina, no cerrar
 la semana del 26-oct a ningún supervisor que haya entregado o recibido motos.
+
+### D-062 · 2-nov-2026 · La tarjeta «Referido por» se llena sola cuando lo trajo alguien del equipo
+**Decidió:** el dueño, el 2-nov: *«al seleccionarlo en la tarjeta de referido opcional salga ya el nombre y cedula de
+la persona que se selecciono»*; el plan, con *«Sí, apruebo»*.
+**Por qué:** la oficina escribía a mano el nombre y la cédula de la persona del equipo. De los 73 clientes que trajo el
+equipo, 8 llevan una cédula distinta de la que más se repite para esa persona, y una misma cédula aparece como la de
+tres supervisores. La app no guardaba la cédula de la gente del equipo.
+**Qué se decidió:**
+1. La cédula de cada persona del equipo se guarda una vez, en Usuarios (campo «Cédula», solo para SUBADMIN y
+   VISITADOR: los que salen en «¿Alguien del equipo lo trajo?»). Vive en una tabla aparte, `equipo_cedulas` (mig 212),
+   y no en `profiles`, porque la secretaria —que es la que registra clientes— no puede leer los perfiles de los demás,
+   y así la cédula tiene sus propias reglas: la escribe solo el ADMIN_PRINCIPAL; la leen el ADMIN_PRINCIPAL, el ADMIN y
+   la SECRETARIA. Un supervisor no ve ninguna, ni la suya.
+2. En el formulario del cliente (el mismo para registrar y para editar): al escoger a la persona, la tarjeta sale con
+   su nombre en mayúscula y su cédula, y no se puede cambiar a mano; para cambiarla se escoge otra persona. «Nadie»
+   deja la tarjeta vacía. Si la persona todavía no tiene cédula guardada, sale el nombre y la cédula se escribe a mano,
+   como antes, con un aviso que lo dice. A quien no puede leer las cédulas le pasa lo mismo, pero sin el aviso.
+3. Las tarjetas de los clientes ya registrados no se tocan: la app no cambia sola ninguna. Una tarjeta vieja que
+   coincide con lo guardado sale bloqueada; una que no coincide queda como estaba y se puede corregir a mano. Corregir
+   las 8 que tienen otra cédula es una decisión aparte.
+4. No toca plata, nómina ni premios (lo del equipo ya no cuenta para premios, D-047).
+**Efecto:** mientras la mig 212 no esté corrida y las cédulas no estén guardadas, el formulario funciona como antes. Probado
+en la app a 375 px, de noche y de día, con una cédula de prueba puesta solo en la pantalla (no se guardó nada): la
+tarjeta sale llena y bloqueada, con el aviso; «Nadie» la deja vacía; sin cédula guardada sale el nombre y la cédula
+queda para escribirla. Contraste medido de la tarjeta bloqueada: 11,78 de noche y 16,3 de día; el aviso, 6,97 y 6,49.
+10 pruebas nuevas (`referidoEquipo.test.ts`).
+**Dónde vive:** mig 212 (`equipo_cedulas`, sus 4 reglas y una prueba adentro: si un supervisor alcanza a leer o a
+escribir una cédula, la migración se deshace sola) · `src/utils/referidoEquipo.ts` · `src/hooks/useCedulasEquipo.ts` ·
+Usuarios (`ModalEditar`) · Clientes (`renderClienteForm`).
+**Ojo:** primero se corre la mig 212 y después se escriben las cédulas; al revés, Usuarios dice «Usuario guardado, pero
+falló guardar la cédula». Las cédulas del equipo son datos personales: no van en el repo ni en el chat.

@@ -34,13 +34,16 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 > - ✅ **Filtro por SUPERVISOR en Motos** (pedido del 2-nov), solo para ADMIN y ADMIN_PRINCIPAL (*«Solo yo y el ADMIN»*):
 >   lista «Supervisor» debajo de los grupos, con cuántas motos salen de cada uno; «Sin asignar» = «Sin supervisor»; la
 >   descarga dice el escogido. Medido en la app: el número de cada opción = las motos que aparecen. Subido el 2-nov.
-> - ⚠️ **Por definir — pedido del 2-nov: al registrar un cliente y escoger en «¿Alguien del equipo lo trajo?» a una
->   persona, que la tarjeta «Referido por (opcional)» se llene sola con su nombre y su cédula.** Hoy la oficina los
->   escribe a mano: los 73 clientes que trajo el equipo tienen la tarjeta llena, y 8 llevan una cédula distinta de la
->   que más se repite para esa persona (una misma cédula aparece como la de tres supervisores). La app NO guarda la
->   cédula de los del equipo (`profiles` no tiene esa columna): habría que guardarla una vez, en Usuarios. No toca
->   premios: lo del equipo ya no cuenta para premios por `referido_por_funcionario` (D-047). El formulario es el mismo
->   para registrar y para editar (`renderClienteForm`). Falta: que el dueño confirme que es eso; después, el plan.
+> - ✅ **La tarjeta «Referido por» se llena sola cuando lo trajo alguien del equipo** (pedido y aprobado el 2-nov,
+>   D-062; hecho, commit local, SIN subir). Al escoger a la persona en «¿Alguien del equipo lo trajo?», la tarjeta sale
+>   con su nombre y su cédula y no se toca a mano; «Nadie» la deja vacía; si no tiene cédula guardada, se escribe a mano
+>   como antes. La cédula se guarda una vez en Usuarios (campo nuevo, solo para SUBADMIN y VISITADOR), en la tabla
+>   `equipo_cedulas` (mig 212): la escribe solo el dueño; la leen el dueño, el ADMIN y la secretaria. Las tarjetas
+>   viejas no se tocan (73 clientes; corregir las 8 que tienen otra cédula es otra decisión). Probado a 375 px, de día
+>   y de noche, con una cédula de prueba solo en la pantalla. 10 pruebas nuevas; 1.058 en verde.
+>   **Falta, en este orden:** (1) 🧑 el dueño corre la mig 212 (debe dar tabla 1 · rls true · reglas 4 · cedulas 0) ·
+>   (2) 💻 subirla el martes 3, junto con la nómina · (3) 🧑 el dueño escribe en Usuarios la cédula de las 7 personas ·
+>   (4) 💻 revisar en la app que cada una sale bien en la tarjeta.
 > - ⚠️ **Encontrado el 2-nov (ya pasaba antes): con la app en modo DÍA y el celular en modo NOCHE, las cajas para
 >   escribir y las listas desplegables salen con fondo gris oscuro y letra oscura** (medido: el buscador de Motos, fondo
 >   rgb(59,59,59) y letra #0f172a). Al tema de día le falta `color-scheme: light` en `index.css`. Toca todas las

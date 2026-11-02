@@ -401,6 +401,11 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   // El WhatsApp del funcionario vive en su usuario (decisión del dueño, 8-sep; mig 132): de aquí lo
   // lee ZALA para reenviarle los comprobantes de sus motos. Reemplaza el archivo a mano de ZALA.
   const [whatsapp, setWhatsapp] = useState(usuario.whatsapp ?? "");
+  // La cédula de la gente del equipo (mig 212, D-062): sale sola en la tarjeta «Referido por» cuando
+  // esta persona trae un cliente. Vive aparte de profiles para que solo la lean quienes registran
+  // clientes. Solo la llevan los que salen en «¿Alguien del equipo lo trajo?» (SUBADMIN y VISITADOR).
+  const [cedula, setCedula] = useState("");
+  const [cedulaGuardada, setCedulaGuardada] = useState("");
   const [role, setRole] = useState<Role>(usuario.role);
   const [grupo, setGrupo] = useState<GrupoSocio>((usuario.grupo as GrupoSocio) ?? "RASTREADOR");
   const [accesos, setAccesos] = useState<ViewKey[]>(
@@ -424,6 +429,12 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
         if (data?.acciones) setAccionesOv(data.acciones as AccionesUsuario);
         if (typeof data?.whatsapp === "string") setWhatsapp(data.whatsapp);
       });
+    supabase.from("equipo_cedulas").select("cedula").eq("profile_id", usuario.id).maybeSingle()
+      .then(({ data }) => {
+        if (!vivo || !data?.cedula) return;
+        setCedula(data.cedula);
+        setCedulaGuardada(data.cedula);
+      });
     return () => { vivo = false; };
   }, [usuario.id]);
   function cambiarAccion(key: string, estado: EstadoAccion | null) {
@@ -441,6 +452,7 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
   }
 
   const isSocio = role === "SOCIO";
+  const llevaCedula = role === "SUBADMIN" || role === "VISITADOR";
 
   function cambiarRole(r: Role) {
     setRole(r);
@@ -457,6 +469,11 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
     setError(null); setOk(null);
     if (!nombre.trim()) { setError("El nombre no puede quedar vacío."); return; }
     if (!email.trim()) { setError("El correo no puede quedar vacío."); return; }
+    const ced = cedula.replace(/\D/g, "");
+    if (llevaCedula && ced && (ced.length < 5 || ced.length > 12)) {
+      setError("Revise la cédula: debe tener entre 5 y 12 números.");
+      return;
+    }
     setGuardando(true);
     const { error } = await invocar({
       action: "update",
@@ -474,6 +491,12 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
       const wa = d.length === 10 ? "57" + d : d || null;
       const { error: errAcc } = await supabase.from("profiles").update({ acciones: accionesOv, whatsapp: wa }).eq("id", usuario.id);
       if (errAcc) { setGuardando(false); setError("Usuario guardado, pero falló guardar los permisos de acciones o el WhatsApp: " + errAcc.message); return; }
+    }
+    if (llevaCedula && ced !== cedulaGuardada) {
+      const { error: errCed } = ced
+        ? await supabase.from("equipo_cedulas").upsert({ profile_id: usuario.id, cedula: ced })
+        : await supabase.from("equipo_cedulas").delete().eq("profile_id", usuario.id);
+      if (errCed) { setGuardando(false); setError("Usuario guardado, pero falló guardar la cédula: " + errCed.message); return; }
     }
     setGuardando(false);
     onGuardado();
@@ -519,6 +542,15 @@ function ModalEditar({ usuario, onClose, onGuardado }: { usuario: PerfilUsuario;
               A este número ZALA le reenvía los comprobantes de las motos a su cargo. Solo dígitos; el 57 se pone solo.
             </div>
           </div>
+          {llevaCedula && (
+            <div>
+              <div style={labelStyle}>Cédula</div>
+              <input inputMode="numeric" style={inputStyle} value={cedula} onChange={e => setCedula(e.target.value)} placeholder="Solo números" />
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                Sale sola en la tarjeta «Referido por» cuando esta persona trae un cliente.
+              </div>
+            </div>
+          )}
           <div>
             <div style={labelStyle}>Rol</div>
             <select style={inputStyle} value={role} onChange={e => cambiarRole(e.target.value as Role)}>

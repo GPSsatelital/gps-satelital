@@ -531,3 +531,9 @@ y de avisos del sistema en inglés: me puse a pensar en inglés, y los avisos sa
 **Quién lo cazó:** el dueño.
 **Qué lo evita ahora:** pensar en español también, desde la primera línea, aunque el resumen o los avisos del sistema
 vengan en inglés. Si lo que pienso está en español, lo que escribo sale en español.
+
+**Y otra vez, minutos después (2-nov):** con la entrada de arriba ya escrita y pensando en español, otros dos avisos de
+avance salieron en inglés. El dueño mandó la foto: *«aja y entonces?»*. La causa de verdad no era solo el pensar: esos
+avisos los escribo cuando el sistema me recuerda que le cuente al dueño cómo voy, y ese recordatorio llega en inglés;
+lo contesté en su idioma. **Qué lo evita ahora:** antes de mandar cualquier aviso, por corto que sea, mirar que esté en
+español. El recordatorio del sistema dice CUÁNDO avisar, no en qué idioma.

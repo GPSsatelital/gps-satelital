@@ -1061,3 +1061,33 @@ pagos ni el reparto: la nómina con el libro (D-061), la tarjeta del referido y 
 no le recarga la app a nadie: sale el aviso «Hay una versión nueva de la app» con su botón. Antes de subir: tipos sin
 errores, armado bien y 1.058 pruebas en verde. Después: comprobado en la versión publicada que la pantalla de clientes
 trae la tarjeta nueva y que Reportes lee el libro.
+
+### D-063 · 3-nov-2026 · Reportes: las motos guardadas por supervisor
+**Decidió:** el dueño, el 3-nov: *«hagamos porfa en reportes de las motos que están guardadas o retenidas por categoría
+de supervisor»* · *«lo del valor o plata que se pierde no es necesario»* · *«Sí, constrúyelo»*.
+**Por qué:** Guardadas decía cuántas motos están quietas y cuántos días llevan, pero no de qué supervisor son. Para
+pedirle cuentas a cada uno había que revisar la lista moto por moto.
+**Qué se decidió:**
+1. En Reportes → Flota → Guardadas, un cuadro «Por supervisor · hoy»: una fila por supervisor que tenga motos guardadas
+   (por nombre), «Sin supervisor» al final y el Total. Cada fila dice cuántas motos y cuántos días suman, y debajo las
+   tres clases de la lista: por no pagar, taller con cliente y taller sin cliente.
+2. Si aplica, dos líneas más por fila: cuántas llevan más de 30 días (y cuántos días lleva la más vieja) y cuántas
+   tienen la liquidación abierta.
+3. Tocar un número deja en la lista de abajo solo esas motos, con el aviso «Mostrando…» y el botón «Ver todas».
+4. El supervisor es el que tiene la moto HOY (`motos.subadmin_id`), no el libro de asignaciones: el libro es para la
+   nómina (D-061) y aquí la pregunta es de quién son hoy.
+5. «Con liquidación abierta» se cuenta con la regla de Inmovilizaciones (ni cerrada ni anulada): son 21, no las 6 que
+   dije al principio con otra cuenta (DERRAPES, 3-nov). No se llama «En liquidación» porque en el Resumen de Reportes
+   ese nombre ya cuenta otra cosa (diccionario C19).
+6. Sin atajo a Motos: allá «Sin supervisor» son 79 motos (todas, no solo las guardadas) y la ficha de la moto no deja
+   asignar supervisor, así que el atajo llevaría a otra cuenta.
+7. Sin la plata que se deja de ganar (el dueño no la quiso). En la lista y en el Excel de Guardadas, «Sin cobrador»
+   pasa a decir «Sin supervisor».
+**Efecto:** medido en la app con la sesión del dueño, el 3-nov: 55 motos y 846 días, igual que el recuadro de arriba
+(44 por no pagar, 5 en taller con cliente, 6 en taller sin cliente); 9 con más de 30 días (la más vieja, 87); 21 con
+liquidación abierta, 20 de ellas sin supervisor. Las 26 cifras que se pueden tocar dan exactamente las motos de la
+lista. 19 motos no tienen fecha de entrada y no suman días. 6 pruebas nuevas; 1.064 en verde.
+**Dónde vive:** `guardadasPorSupervisor()` en `src/utils/reportesFlota.ts` (con sus pruebas) · `CuadroPorSupervisor`
+en `src/components/reportes/FlotaReportes.tsx` · `ReportesView` (la lista de Guardadas ahora lee las liquidaciones) ·
+diccionario C26.
+**No toca:** plata, nómina, Motos, la ficha de la moto, Inmovilizaciones ni el Resumen. ZALA no lo usa.

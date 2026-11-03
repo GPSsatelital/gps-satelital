@@ -537,3 +537,32 @@ avance salieron en inglés. El dueño mandó la foto: *«aja y entonces?»*. La 
 avisos los escribo cuando el sistema me recuerda que le cuente al dueño cómo voy, y ese recordatorio llega en inglés;
 lo contesté en su idioma. **Qué lo evita ahora:** antes de mandar cualquier aviso, por corto que sea, mirar que esté en
 español. El recordatorio del sistema dice CUÁNDO avisar, no en qué idioma.
+
+### La sexta vez, y la causa de fondo (3-nov)
+**Lo que pasó:** al retomar la sesión, otros avisos de avance salieron en inglés («The project is intact…»). El dueño
+mandó la foto: *«¿cómo podemos solucionar que hables o escribas en inglés los comandos o comentarios?»*.
+**Quién lo cazó:** el dueño.
+**La causa de fondo:** las cinco veces anteriores lo arreglé con promesas y notas en mi memoria, y la memoria me llega
+como recordatorio de fondo, no como orden. Claude Code trae un ajuste, `language`, que le pasa el idioma a Claude como
+orden del programa, y no estaba puesto en ningún archivo de ajustes.
+**Qué lo evita ahora:** `"language": "spanish"` en `~/.claude/settings.json` (el del usuario; el `.claude/settings.json`
+de la raíz del repo no sirve para esto, porque en las sesiones abiertas en `motogestion/` no se lee: en la conversación
+del 3-nov el arranque del proyecto corrió 0 veces y el hook del usuario 12) y la REGLA DE IDIOMA arriba del CLAUDE.md.
+Comprobado: apenas se guardó el ajuste, la orden «responde siempre en español» apareció en las instrucciones de esa
+misma sesión. Si vuelve a pasar, el siguiente refuerzo es un recordatorio que se pegue a cada mensaje del dueño (hook
+`UserPromptSubmit`).
+
+### Le dije «6 ya no vuelven con su cliente» y eran 21 (3-nov)
+**Lo que pasó:** al proponer mejoras al cuadro de motos guardadas por supervisor, conté las que ya no vuelven con su
+cliente por el MOTIVO de la última recepción («Liquidación de contrato» o «Entrega voluntaria»): 6. Al revisar antes de
+construir, con la regla que ya usa Inmovilizaciones (contrato con liquidación ni cerrada ni anulada), eran 21.
+**Por qué:** cuando la moto ya estaba retenida por mora y después se le inicia la liquidación, no se hace otra
+recepción, así que el motivo sigue diciendo «Retención por mora». El motivo no es la fuente de verdad de la liquidación.
+**Quién lo cazó:** yo, antes de construir nada; se lo corregí al dueño en el mismo mensaje.
+**Qué lo evita ahora:** si la app ya cuenta un concepto en otra pantalla (aquí, «En liquidación» de Inmovilizaciones),
+se mide con ESA cuenta, no con un texto que se le parece.
+
+**Y la etiqueta (3-nov, el mismo día):** el dibujo aprobado decía «21 en liquidación», pero en Reportes → Resumen la fila
+«En liquidación» (hoy 5) cuenta otra cosa: contratos detenidos cuya moto ya tiene otro cliente. Lo vi al escribir la
+fila del diccionario, antes de subir; quedó «con liquidación abierta» y la ayuda explica la diferencia. **Qué lo evita:**
+antes de ponerle nombre a una cifra nueva, buscar ese nombre en el mismo módulo (regla 2 de las cifras), no solo el cálculo.

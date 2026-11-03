@@ -33,6 +33,19 @@ permisos, las convenciones. **Solo lo que no se vence.**
 
 ---
 
+## REGLA DE IDIOMA — OBLIGATORIO SIEMPRE
+*(pedida por el dueño el 3-nov-2026, después de seis veces en que se me fueron avisos en inglés.
+Va junto con el ajuste `"language": "spanish"` en `~/.claude/settings.json` —el del usuario, que
+se lee desde cualquier carpeta—, que le pasa el idioma a Claude como orden del programa)*
+
+Todo lo que el dueño ve va en español: los mensajes, cada aviso corto entre paso y paso, la
+descripción de cada comando, los títulos de la lista de tareas, el recuadro del final (resumen,
+pregunta y botones), el razonamiento y el resumen automático cuando la conversación se hace larga.
+Los nombres que viven en el código (variables, funciones, archivos, tablas) quedan como están.
+Que los avisos del sistema lleguen en inglés no cambia el idioma de la respuesta.
+
+---
+
 ## REGLA DE AUTORIZACIÓN — OBLIGATORIO SIEMPRE
 
 **Nunca implementar nada sin antes describir el plan y esperar confirmación explícita del usuario.**

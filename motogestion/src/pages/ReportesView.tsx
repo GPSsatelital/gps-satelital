@@ -12,6 +12,7 @@ import { useCesiones, titularEnFecha } from "../hooks/useCesiones";
 import { useSubadmins } from "../hooks/useSubadmins";
 import { useMotos, enLaEmpresa } from "../hooks/useMotos";
 import { useDeudas } from "../hooks/useDeudas";
+import { useLiquidaciones } from "../hooks/useLiquidaciones";
 import { hoyISO, hoyDate, fechaISO } from "../utils/fecha";
 import { useAuth } from "../contexts/AuthContext";
 import { useBackGuard } from "../contexts/BackNav";
@@ -445,6 +446,7 @@ export default function ReportesView({ onNavigate }: Props) {
   const flotaMotos = useMemo(() => motos.filter(enLaEmpresa), [motos]);
   const { deudas }    = useDeudas();
   const { visitas }   = useVisitas();
+  const { liquidaciones } = useLiquidaciones();   // Guardadas: cuáles tienen la liquidación abierta
   const { convenios, convenioPorCobrarDelContrato, loading: cargandoConvenios, error: errorConvenios } = useConvenios();
   const { rodados: rodadosDeuda } = useRodadosPorDeuda(null);
   // Mientras llegan los datos de la primera carga las cuentas dan cero, y un $0 con el sello verde
@@ -1277,6 +1279,11 @@ export default function ReportesView({ onNavigate }: Props) {
   // estén) y en el taller con o sin cliente. Los días, el sitio y el encargado salen de `motosGuardadas`
   // (la última recepción); si una de estas no figura ahí, va sin fecha en vez de inventarla. Antes
   // Guardadas contaba por el estado de la moto (47) y Flota por el contrato (49).
+  // «Con liquidación abierta»: la regla de Inmovilizaciones (`liqAbiertaDe`), ni cerrada ni anulada. No es
+  // la fila «En liquidación» del Resumen (detenido y la moto ya con otro cliente).
+  const contratosEnLiquidacion = useMemo(
+    () => new Set(liquidaciones.filter(l => l.estado !== "cerrada" && l.estado !== "anulada").map(l => l.contrato_id)),
+    [liquidaciones]);
   const quietas = useMemo(() => {
     const info = new Map(guardadas.map(g => [g.motoId, g]));
     const nombreSub = new Map(subadmins.map(sa => [sa.id, sa.nombre]));
@@ -1292,16 +1299,18 @@ export default function ReportesView({ onNavigate }: Props) {
       const noSirve = !!g0 && (g0.motivo === MOTIVO_RECEPCION_LABEL.nuevo_registro
         || (!!c?.fecha_entrega && !!g0.desde && g0.desde.slice(0, 10) < c.fecha_entrega));
       const g = noSirve ? undefined : g0;
+      const contratoId = lm.contratoId ?? g?.contratoId ?? null;
       return [{
         motoId: m.id, placa: m.placa, grupo: m.grupo ?? "SIN GRUPO", estado: m.estado as string, lugar: lm.lugar,
         donde: sitioFisico(m.estado), motivo: g?.motivo ?? LUGAR_MOTIVO[lm.lugar] ?? "",
         clienteNombre: c ? (clientePorId.get(c.cliente_id)?.nombre ?? "—") : (g?.clienteNombre || "Sin cliente"),
-        contratoId: lm.contratoId ?? g?.contratoId ?? null,
-        subadminId: m.subadmin_id ?? null, subadminNombre: m.subadmin_id ? (nombreSub.get(m.subadmin_id) ?? "Cobrador") : "Sin cobrador",
+        contratoId,
+        subadminId: m.subadmin_id ?? null, subadminNombre: m.subadmin_id ? (nombreSub.get(m.subadmin_id) ?? "Cobrador") : "Sin supervisor",
         desde: g?.desde ?? null, dias: g?.dias ?? null, sinRegistro: g ? g.sinRegistro : true,
+        enLiquidacion: !!contratoId && contratosEnLiquidacion.has(contratoId),
       }];
     });
-  }, [motos, lugarDeMoto, guardadas, contratoPorId, clientePorId, subadmins]);
+  }, [motos, lugarDeMoto, guardadas, contratoPorId, clientePorId, subadmins, contratosEnLiquidacion]);
   const plata = (n: number) => `$ ${fmt(n)}`;
   const placaDe = (contratoId: string) => { const c = contratoPorId.get(contratoId); return c?.moto_id ? motos.find(m => m.id === c.moto_id)?.placa : undefined; };
   const grupoDe = (contratoId: string) => atribucion.get(contratoId)?.grupo;

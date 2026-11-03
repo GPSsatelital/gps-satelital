@@ -64,3 +64,75 @@ export function dondeEstaCadaMoto(
   }
   return res;
 }
+
+// GUARDADAS POR SUPERVISOR (pedido del dueño, 3-nov-2026): las mismas motos de Guardadas, repartidas
+// según el supervisor que tiene cada moto hoy (`motos.subadmin_id`). Los días solo suman las motos con
+// fecha de entrada: si no hay recepción, la fecha no se inventa (D-033/034).
+
+export type GuardadaPorSupervisorIn = {
+  lugar: LugarMoto;
+  subadminId: string | null;
+  subadminNombre: string;
+  dias: number | null;
+  /** El contrato tiene una liquidación ni cerrada ni anulada (la misma regla de Inmovilizaciones). */
+  enLiquidacion: boolean;
+};
+
+export type FilaSupervisor = {
+  /** null = las motos que no tienen supervisor. */
+  subadminId: string | null;
+  nombre: string;
+  motos: number;
+  retenida: number;
+  tallerConCliente: number;
+  tallerSinCliente: number;
+  /** Días sumados de las motos que tienen fecha de entrada. */
+  dias: number;
+  conFecha: number;
+  /** Más de 30 días: el mismo corte del tramo «más de 30 días» de la lista. */
+  masDe30: number;
+  /** Los días de la que más lleva; null si ninguna tiene fecha de entrada. */
+  masVieja: number | null;
+  enLiquidacion: number;
+};
+
+const filaVacia = (subadminId: string | null, nombre: string): FilaSupervisor => ({
+  subadminId, nombre, motos: 0, retenida: 0, tallerConCliente: 0, tallerSinCliente: 0,
+  dias: 0, conFecha: 0, masDe30: 0, masVieja: null, enLiquidacion: 0,
+});
+
+function sumarMoto(f: FilaSupervisor, m: GuardadaPorSupervisorIn) {
+  f.motos++;
+  if (m.lugar === "retenida") f.retenida++;
+  else if (m.lugar === "tallerConCliente") f.tallerConCliente++;
+  else if (m.lugar === "tallerSinCliente") f.tallerSinCliente++;
+  if (m.dias !== null) {
+    f.dias += m.dias;
+    f.conFecha++;
+    if (m.dias > 30) f.masDe30++;
+    f.masVieja = f.masVieja === null ? m.dias : Math.max(f.masVieja, m.dias);
+  }
+  if (m.enLiquidacion) f.enLiquidacion++;
+}
+
+/** Una fila por supervisor con motos guardadas (por nombre), «Sin supervisor» al final, y el total. */
+export function guardadasPorSupervisor(lista: GuardadaPorSupervisorIn[]): { filas: FilaSupervisor[]; total: FilaSupervisor } {
+  const porId = new Map<string, FilaSupervisor>();
+  let sinSupervisor: FilaSupervisor | null = null;
+  const total = filaVacia(null, "Total");
+  for (const m of lista) {
+    let f: FilaSupervisor;
+    if (m.subadminId === null) {
+      if (!sinSupervisor) sinSupervisor = filaVacia(null, "Sin supervisor");
+      f = sinSupervisor;
+    } else {
+      f = porId.get(m.subadminId) ?? filaVacia(m.subadminId, m.subadminNombre);
+      porId.set(m.subadminId, f);
+    }
+    sumarMoto(f, m);
+    sumarMoto(total, m);
+  }
+  const filas = [...porId.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  if (sinSupervisor) filas.push(sinSupervisor);
+  return { filas, total };
+}

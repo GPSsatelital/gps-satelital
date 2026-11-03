@@ -8,7 +8,27 @@ Lista viva y **ordenada por prioridad**. La idea es que nada se pierda a medida 
 - 📋 = salió de la pizarra del dueño (foto del 19-sep).
 - ⚠️ **Por definir** = está anotado con una lectura provisional, pero **antes de construirlo hay que
   preguntarle al dueño la pregunta que dice ahí**. No arrancar sin esa respuesta.
-- Última revisión: **2-nov-2026**.
+- Última revisión: **3-nov-2026**.
+
+> ▶️ **AL ARRANCAR (3-nov) — pedidos del día: motos guardadas y retenidas por supervisor en Reportes, y después
+> investigar Trello y aplicaciones parecidas.**
+> - ✅ **Idioma (aprobado el 3-nov, «Sí, ponlos»):** `"language": "spanish"` en `~/.claude/settings.json` + REGLA DE
+>   IDIOMA arriba del CLAUDE.md. Comprobado: apenas se guardó el ajuste, la orden «responde siempre en español»
+>   apareció en las instrucciones de la misma sesión. Detalle en `docs/DERRAPES.md` (la sexta vez).
+> - ⚠️ **Encontrado el 3-nov: las sesiones abiertas en la carpeta `motogestion/` no leen `.claude/settings.json` de la
+>   raíz del repo.** En la conversación del 28-oct al 3-nov el arranque del proyecto (`scripts/arranque.mjs`) corrió
+>   0 veces y el del usuario 12. Por eso tampoco aplica el `MCP_TIMEOUT` de 120 s, y MemPalace se corta a los 30 s.
+>   Preguntarle al dueño cómo arreglarlo (abrir las sesiones en la raíz, o mover esos ajustes).
+> - ✅ **Guardadas por supervisor (D-063, hecho y subido el 3-nov):** en Reportes → Flota → Guardadas, el cuadro «Por
+>   supervisor · hoy». Medido con la sesión del dueño: 55 motos y 846 días (igual que el recuadro de arriba), 9 con más
+>   de 30 días, 21 con liquidación abierta; las 26 cifras tocables dan exactamente las motos de la lista. 6 pruebas
+>   nuevas; 1.064 en verde. Sin atajo a Motos (allá «Sin supervisor» son 79, no estas 30).
+> - ⚠️ **Encontrado el 3-nov (no se tocó, preguntar): 4 liquidaciones ANULADAS en contratos vigentes** (LIQ-0112,
+>   LIQ-0068, LIQ-0048, LIQ-0043; ninguno tiene otra liquidación). Contratos (`ContratosView`, la línea de `liqAbierta`)
+>   solo descarta las cerradas, así que en esos 4 contratos dice «Liquidación … en curso — va en «anulada»» y esconde
+>   el botón Liquidar. El asistente de contrato (`WizardContrato`) también cuenta las anuladas como abiertas al avisar.
+>   Inmovilizaciones y Liquidaciones ya descartan cerradas y anuladas. Arreglo propuesto: usar esa misma regla.
+> - 🔲 **Sigue: investigar Trello y aplicaciones parecidas** (pedido del 3-nov).
 
 > ▶️ **AL ARRANCAR (2-nov) — entró un supervisor nuevo (WILINTON MORA) y se le están pasando motos.**
 > - 🔴 **La nómina le paga cada moto al supervisor que la tiene HOY**: no hay registro de quién la tenía antes. Si una
